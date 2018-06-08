@@ -1,0 +1,58 @@
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${BOOST_FILESYSTEM_INCLUDE_DIRS}
+  ${BOOST_SYSTEM_INCLUDE_DIRS}
+  )
+
+set(OPENCL_SRC "")
+
+add_library(xilinxopencl SHARED ${OPENCL_SRC}
+  $<TARGET_OBJECTS:xocl>
+  $<TARGET_OBJECTS:xrt>
+  $<TARGET_OBJECTS:xclbin>
+  $<TARGET_OBJECTS:impl>
+  $<TARGET_OBJECTS:xdp>
+  )
+
+set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
+#add_compile_options("-fPIC" "-std=c++11")
+add_compile_options("-fPIC")
+
+add_subdirectory(impl)
+add_subdirectory(xclbin)
+add_subdirectory(xocl)
+add_subdirectory(xrt)
+add_subdirectory(xdp)
+
+set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
+
+set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_VERSION_MAJOR})
+
+target_link_libraries(xilinxopencl
+  ${BOOST_FILESYSTEM_LIBRARY}
+  ${BOOST_SYSTEM_LIBRARY}
+  dl
+  pthread
+  crypt
+  rt
+  )
+
+install (TARGETS xilinxopencl LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+
+SET (ICD_FILE_NAME "xilinx.icd")
+
+message("-- Preparing OpenCL ICD ${ICD_FILE_NAME}")
+
+configure_file (
+  "${ICD_FILE_NAME}.in"
+  ${ICD_FILE_NAME}
+  )
+
+set(OCL_ICD_INSTALL_PREFIX "/etc/OpenCL/vendors")
+
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${ICD_FILE_NAME} DESTINATION ${OCL_ICD_INSTALL_PREFIX})
+
+add_subdirectory(driver)
+
+include (dkms.cmake)

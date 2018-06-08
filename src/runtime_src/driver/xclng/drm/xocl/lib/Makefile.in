@@ -1,0 +1,28 @@
+#
+# Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+#
+# Authors:
+#
+# This software is licensed under the terms of the GNU General Public
+# License version 2, as published by the Free Software Foundation, and
+# may be copied, distributed, and modified under those terms.
+#
+# This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+xocl_lib-y	:= ../lib/libxdma.o
+xocl_lib-y	+=  \
+		../lib/libqdma/qdma_descq.o	\
+		../lib/libqdma/qdma_device.o	\
+		../lib/libqdma/qdma_intr.o	\
+		../lib/libqdma/qdma_regs.o	\
+		../lib/libqdma/qdma_thread.o	\
+		../lib/libqdma/qdma_context.o	\
+		../lib/libqdma/qdma_mbox.o	\
+		../lib/libqdma/qdma_sriov.o	\
+		../lib/libqdma/thread.o	\
+		../lib/libqdma/xdev.o	\
+		../lib/libqdma/libqdma_export.o

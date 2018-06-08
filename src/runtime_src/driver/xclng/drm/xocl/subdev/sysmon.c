@@ -1,0 +1,331 @@
+/*
+ * A GEM style device manager for PCIe based OpenCL accelerators.
+ *
+ * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ *
+ * Authors:
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <linux/hwmon.h>
+#include <linux/hwmon-sysfs.h>
+#include "../xocl_drv.h"
+#include "mgmt-ioctl.h"
+
+#define TEMP 		0x400 		// TEMPOERATURE REGISTER ADDRESS
+#define VCCINT		0x404 		// VCCINT REGISTER OFFSET
+#define VCCAUX		0x408 		// VCCAUX REGISTER OFFSET
+#define VCCBRAM		0x418 		// VCCBRAM REGISTER OFFSET
+#define	TEMP_MAX	0x480
+#define	VCCINT_MAX	0x484
+#define	VCCAUX_MAX	0x488
+#define	VCCBRAM_MAX	0x48c
+#define	TEMP_MIN	0x490
+#define	VCCINT_MIN	0x494
+#define	VCCAUX_MIN	0x498
+#define	VCCBRAM_MIN	0x49c
+
+#define	SYSMON_TO_MILLDEGREE(val)		\
+	(((int64_t)(val) * 501374 >> 16) - 273678)
+#define	SYSMON_TO_MILLVOLT(val)			\
+	((val) * 1000 * 3 >> 16)
+
+#define	READ_REG32(sysmon, off)		\
+	XOCL_READ_REG32(sysmon->base + off)
+#define	WRITE_REG32(sysmon, val, off)	\
+	XOCL_WRITE_REG32(val, sysmon->base + off)
+
+struct xocl_sysmon {
+	void __iomem		*base;
+	struct device		*hwmon_dev;
+};
+
+static int get_prop(struct platform_device *pdev, u32 prop, void *val)
+{
+	struct xocl_sysmon	*sysmon;
+	u32			tmp;
+
+	sysmon = platform_get_drvdata(pdev);
+	BUG_ON(!sysmon);
+
+	switch (prop) {
+	case XOCL_SYSMON_PROP_TEMP:
+		tmp = READ_REG32(sysmon, TEMP);
+		*(u32 *)val = SYSMON_TO_MILLDEGREE(tmp);
+		break;
+	case XOCL_SYSMON_PROP_TEMP_MAX:
+		tmp = READ_REG32(sysmon, TEMP_MAX);
+		*(u32 *)val = SYSMON_TO_MILLDEGREE(tmp);
+		break;
+	case XOCL_SYSMON_PROP_TEMP_MIN:
+		tmp = READ_REG32(sysmon, TEMP_MIN);
+		*(u32 *)val = SYSMON_TO_MILLDEGREE(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_INT:
+		tmp = READ_REG32(sysmon, VCCINT);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_INT_MAX:
+		tmp = READ_REG32(sysmon, VCCINT_MAX);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_INT_MIN:
+		tmp = READ_REG32(sysmon, VCCINT_MIN);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_AUX:
+		tmp = READ_REG32(sysmon, VCCAUX);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_AUX_MAX:
+		tmp = READ_REG32(sysmon, VCCAUX_MAX);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_AUX_MIN:
+		tmp = READ_REG32(sysmon, VCCAUX_MIN);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_BRAM:
+		tmp = READ_REG32(sysmon, VCCBRAM);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_BRAM_MAX:
+		tmp = READ_REG32(sysmon, VCCBRAM_MAX);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	case XOCL_SYSMON_PROP_VCC_BRAM_MIN:
+		tmp = READ_REG32(sysmon, VCCBRAM_MIN);
+		*(u32 *)val = SYSMON_TO_MILLVOLT(tmp);
+		break;
+	default:
+		xocl_err(&pdev->dev, "Invalid prop");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static struct xocl_sysmon_funcs sysmon_ops = {
+	.get_prop	= get_prop,
+};
+
+/* sysfs support */
+static ssize_t show_sysmon(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	struct platform_device *pdev = dev_get_drvdata(dev);
+	u32 val;
+
+	get_prop(pdev, attr->index, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+
+static ssize_t show_name(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	return sprintf(buf, "%s\n", XCLMGMT_SYSMON_HWMON_NAME);
+}
+
+static SENSOR_DEVICE_ATTR(temp1_input, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_TEMP);
+static SENSOR_DEVICE_ATTR(temp1_highest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_TEMP_MAX);
+static SENSOR_DEVICE_ATTR(temp1_lowest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_TEMP_MIN);
+
+static SENSOR_DEVICE_ATTR(in0_input, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_INT);
+static SENSOR_DEVICE_ATTR(in0_highest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_INT_MAX);
+static SENSOR_DEVICE_ATTR(in0_lowest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_INT_MIN);
+
+static SENSOR_DEVICE_ATTR(in1_input, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_AUX);
+static SENSOR_DEVICE_ATTR(in1_highest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_AUX_MAX);
+static SENSOR_DEVICE_ATTR(in1_lowest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_AUX_MIN);
+
+static SENSOR_DEVICE_ATTR(in2_input, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_BRAM);
+static SENSOR_DEVICE_ATTR(in2_highest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_BRAM_MAX);
+static SENSOR_DEVICE_ATTR(in2_lowest, 0444, show_sysmon, NULL,
+	XOCL_SYSMON_PROP_VCC_BRAM_MIN);
+
+static struct attribute *hwmon_sysmon_attributes[] = {
+	&sensor_dev_attr_temp1_input.dev_attr.attr,
+	&sensor_dev_attr_temp1_highest.dev_attr.attr,
+	&sensor_dev_attr_temp1_lowest.dev_attr.attr,
+	&sensor_dev_attr_in0_input.dev_attr.attr,
+	&sensor_dev_attr_in0_highest.dev_attr.attr,
+	&sensor_dev_attr_in0_lowest.dev_attr.attr,
+	&sensor_dev_attr_in1_input.dev_attr.attr,
+	&sensor_dev_attr_in1_highest.dev_attr.attr,
+	&sensor_dev_attr_in1_lowest.dev_attr.attr,
+	&sensor_dev_attr_in2_input.dev_attr.attr,
+	&sensor_dev_attr_in2_highest.dev_attr.attr,
+	&sensor_dev_attr_in2_lowest.dev_attr.attr,
+	NULL
+};
+
+static const struct attribute_group hwmon_sysmon_attrgroup = {
+	.attrs = hwmon_sysmon_attributes,
+};
+
+static struct sensor_device_attribute sysmon_name_attr =
+	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
+
+static void mgmt_sysfs_destroy_sysmon(struct platform_device *pdev)
+{
+	struct xocl_sysmon *sysmon;
+
+	sysmon = platform_get_drvdata(pdev);
+
+	device_remove_file(sysmon->hwmon_dev, &sysmon_name_attr.dev_attr);
+	sysfs_remove_group(&sysmon->hwmon_dev->kobj,
+		&hwmon_sysmon_attrgroup);
+
+	hwmon_device_unregister(sysmon->hwmon_dev);
+	sysmon->hwmon_dev = NULL;
+}
+
+static int mgmt_sysfs_create_sysmon(struct platform_device *pdev)
+{
+	struct xocl_sysmon *sysmon;
+	struct xocl_dev_core *core;
+	int err;
+
+	sysmon = platform_get_drvdata(pdev);
+	core = XDEV(xocl_get_xdev(pdev));
+
+	sysmon->hwmon_dev = hwmon_device_register(&core->pdev->dev);
+	if (IS_ERR(sysmon->hwmon_dev)) {
+		err = PTR_ERR(sysmon->hwmon_dev);
+		xocl_err(&pdev->dev, "register sysmon hwmon failed: 0x%x", err);
+		goto hwmon_reg_failed;
+	}
+
+	dev_set_drvdata(sysmon->hwmon_dev, pdev);
+	err = device_create_file(sysmon->hwmon_dev,
+		&sysmon_name_attr.dev_attr);
+	if (err) {
+		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
+		goto create_name_failed;
+	}
+
+	err = sysfs_create_group(&sysmon->hwmon_dev->kobj,
+		&hwmon_sysmon_attrgroup);
+	if (err) {
+		xocl_err(&pdev->dev, "create pw group failed: 0x%x", err);
+		goto create_grp_failed;
+	}
+
+	return 0;
+
+create_grp_failed:
+	device_remove_file(sysmon->hwmon_dev, &sysmon_name_attr.dev_attr);
+create_name_failed:
+	hwmon_device_unregister(sysmon->hwmon_dev);
+	sysmon->hwmon_dev = NULL;
+hwmon_reg_failed:
+	return err;
+}
+
+static int sysmon_probe(struct platform_device *pdev)
+{
+	struct xocl_sysmon *sysmon;
+	struct resource *res;
+	int err;
+
+	sysmon = devm_kzalloc(&pdev->dev, sizeof(*sysmon), GFP_KERNEL);
+	if (!sysmon)
+		return -ENOMEM;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_err(&pdev->dev, "resource is NULL");
+		return -EINVAL;
+	}
+	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
+		res->start, res->end);
+	sysmon->base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!sysmon->base) {
+		err = -EIO;
+		xocl_err(&pdev->dev, "Map iomem failed");
+		goto failed;
+	}
+
+	platform_set_drvdata(pdev, sysmon);
+
+	err = mgmt_sysfs_create_sysmon(pdev);
+	if (err) {
+		goto create_sysmon_failed;
+	}
+
+	xocl_subdev_register(pdev, XOCL_SUBDEV_SYSMON, &sysmon_ops);
+
+	return 0;
+
+create_sysmon_failed:
+	platform_set_drvdata(pdev, NULL);
+failed:
+	return err;
+}
+
+
+static int sysmon_remove(struct platform_device *pdev)
+{
+	struct xocl_sysmon	*sysmon;
+
+	sysmon = platform_get_drvdata(pdev);
+	if (!sysmon) {
+		xocl_err(&pdev->dev, "driver data is NULL");
+		return -EINVAL;
+	}
+
+	mgmt_sysfs_destroy_sysmon(pdev);
+
+	if (sysmon->base)
+		iounmap(sysmon->base);
+
+	platform_set_drvdata(pdev, NULL);
+	devm_kfree(&pdev->dev, sysmon);
+
+	return 0;
+}
+
+struct platform_device_id sysmon_id_table[] = {
+	{ XOCL_SYSMON, 0 },
+	{ },
+};
+
+static struct platform_driver	sysmon_driver = {
+	.probe		= sysmon_probe,
+	.remove		= sysmon_remove,
+	.driver		= {
+		.name = "xocl_sysmon",
+	},
+	.id_table = sysmon_id_table,
+};
+
+int __init xocl_init_sysmon(void)
+{
+	return platform_driver_register(&sysmon_driver);
+}
+
+void xocl_fini_sysmon(void)
+{
+	platform_driver_unregister(&sysmon_driver);
+}

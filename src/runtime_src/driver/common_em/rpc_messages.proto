@@ -1,0 +1,290 @@
+// Copyright 2014 Xilinx, Inc. All rights reserved.
+//
+// This file contains confidential and proprietary information
+// of Xilinx, Inc. and is protected under U.S. and
+// international copyright and other intellectual property
+// laws.
+//
+// DISCLAIMER
+// This disclaimer is not a license and does not grant any
+// rights to the materials distributed herewith. Except as
+// otherwise provided in a valid license issued to you by
+// Xilinx, and to the maximum extent permitted by applicable
+// law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND
+// WITH ALL FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES
+// AND CONDITIONS, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING
+// BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, NON-
+// INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE; and
+// (2) Xilinx shall not be liable (whether in contract or tort,
+// including negligence, or under any other theory of
+// liability) for any loss or damage of any kind or nature
+// related to, arising under or in connection with these
+// materials, including for any direct, or any indirect,
+// special, incidental, or consequential loss or damage
+// (including loss of data, profits, goodwill, or any type of
+// loss or damage suffered as a result of any action brought
+// by a third party) even if such damage or loss was
+// reasonably foreseeable or Xilinx had been advised of the
+// possibility of the same.
+//
+// CRITICAL APPLICATIONS
+// Xilinx products are not designed or intended to be fail-
+// safe, or for use in any application requiring fail-safe
+// performance, such as life-support or safety devices or
+// systems, Class III medical devices, nuclear facilities,
+// applications related to the deployment of airbags, or any
+// other applications that could lead to death, personal
+// injury, or severe property or environmental damage
+// (individually and collectively, "Critical
+// Applications"). Customer assumes the sole risk and
+// liability of any use of Xilinx products in Critical
+// Applications, subject only to applicable laws and
+// regulations governing limitations on product liability.
+//
+// THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS
+// PART OF THIS FILE AT ALL TIMES.
+
+message call_packet_info {
+    required fixed64 size = 1;
+    optional fixed32 xcl_api = 2;
+}
+message response_packet_info {
+    required fixed64 size = 1;
+    optional fixed32 xcl_api = 2;
+}
+
+//setenvironment
+message xclSetEnvironment_call {
+  message namevaluepair{
+       optional string name = 1;
+       optional string value = 2;
+  }
+  repeated namevaluepair environment = 3;
+}
+
+message xclSetEnvironment_response {
+     optional bool ack = 1;
+}
+
+//---------------------------------------------
+//xclLoadBitstream
+
+message xclLoadBitstream_call {
+  required bytes xmlfile = 1;
+  required bytes dlopenfilename = 2;
+  required bytes devicename = 3 ;
+  required bytes devicedirectory = 4 ;
+  required bytes binarydirectory = 5 ;
+  required bool verbose = 6;
+  message ddrbank {
+    optional uint64 size = 7;
+  }
+  repeated ddrbank ddrbanks = 8;
+}
+
+message xclLoadBitstream_response {
+     required bool ack = 1;
+}
+
+//xclAllocDeviceBuffer
+message xclAllocDeviceBuffer_call {
+     required uint64 ddraddress = 1;
+     required uint64 size = 2;
+}
+
+message xclAllocDeviceBuffer_response {
+     required bool ack = 1;
+}
+
+//xclFreeDeviceBuffer
+message xclFreeDeviceBuffer_call {
+     required uint64 ddraddress = 1;
+}
+
+message xclFreeDeviceBuffer_response {
+     required bool ack = 1;
+}
+
+//---------------------------------------------
+//xclClose
+message xclClose_call {
+     optional bytes xclDeviceHandle = 2;
+     optional bool closeall = 3;
+}
+
+message xclClose_response {
+     required bool valid = 1;
+}
+//---------------------------------------------
+//xclCopyBufferHost2Device
+message xclCopyBufferHost2Device_call {
+     required bytes xclDeviceHandle = 2;
+     required uint64 dest = 3;
+     required bytes src = 4;
+     required uint64 size = 5;
+     required uint64 seek = 6;
+     optional uint32 space = 7;
+}
+
+message xclCopyBufferHost2Device_response {
+     required uint64 size = 1;
+}
+//---------------------------------------------
+//xclCopyBufferDevice2Host
+message xclCopyBufferDevice2Host_call {
+     required bytes xclDeviceHandle = 2;
+     required bytes dest = 3;
+     required uint64 src = 4;
+     required uint64 size = 5;
+     required uint64 skip = 6;
+     optional uint32 space = 7;
+}
+
+message xclCopyBufferDevice2Host_response {
+     required uint64 size = 1;
+     required bytes dest = 2;
+}
+//---------------------------------------------
+//xclWriteAddrSpaceDeviceRam
+message xclWriteAddrSpaceDeviceRam_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     required bytes data = 4;
+}
+
+message xclWriteAddrSpaceDeviceRam_response {
+     required bool valid = 1;
+}
+
+//xclWriteAddrKernelCtrl
+message xclWriteAddrKernelCtrl_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     required bytes data = 4;
+     message kernelInfo {
+       optional uint64 addr = 1;
+       optional uint32 size = 2;
+       optional string name = 3;
+     }
+     repeated kernelInfo kernel_info = 5;
+}
+
+message xclWriteAddrKernelCtrl_response {
+     required bool valid = 1;
+}
+//---------------------------------------------
+//xclReadAddrSpaceDeviceRam
+message xclReadAddrSpaceDeviceRam_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     optional bytes data = 4;
+}
+
+message xclReadAddrSpaceDeviceRam_response {
+     required bool valid = 1;
+     optional bytes data = 2;
+}
+//xclReadAddrKernelCtrl
+message xclReadAddrKernelCtrl_call {
+     //required bytes xcl_api = 1;
+     required uint64 addr = 2;
+     required uint32 size = 3;
+     optional bytes data = 4;
+}
+
+message xclReadAddrKernelCtrl_response {
+     required bool valid = 1;
+     optional bytes data = 2;
+}
+
+//---------------------------------------------
+//xclPerfMonReadCounters
+message xclPerfMonReadCounters_call {
+     required string slotname = 1;
+     optional bool accel = 2;
+}
+
+message xclPerfMonReadCounters_response {
+     optional uint32 wr_byte_count = 1;
+     optional uint32 wr_trans_count = 2;
+     optional uint32 total_wr_latency = 3;
+     optional uint32 rd_byte_count = 4;
+     optional uint32 rd_trans_count = 5;
+     optional uint32 total_rd_latency = 6;
+}
+
+//------------------Trace--------------
+//xclPerfMonGetTraceCount
+message xclPerfMonGetTraceCount_call {
+     optional bool ack = 1;
+     optional string slotname = 2;
+     optional bool accel = 3;
+}
+
+message xclPerfMonGetTraceCount_response {
+     optional uint32 no_of_samples = 1;
+}
+
+//---------------------------------------------
+//xclPerfMonReadTrace
+message xclPerfMonReadTrace_call {
+     optional bool ack = 1;
+     optional string slotname = 2;
+     optional bool accel = 3;
+}
+
+message xclPerfMonReadTrace_response {
+   message events {
+       optional uint32 awlen = 1;
+       optional uint32 arlen = 2;
+       optional uint32 eventflags = 3;
+       optional uint32 timestamp = 4;
+       optional uint64 host_timestamp = 5;
+       optional uint32 rd_bytes = 6;
+       optional uint32 wr_bytes = 7;
+    }
+     repeated events output_data = 8;
+}
+
+//DDR Serializing
+message ddr_mem_msg {
+  required bytes data = 1;
+  optional uint64 size = 2;
+  optional bytes strb_data = 3;
+  optional uint64 fullsize = 4;
+}
+
+//xclGetDeviceTimestamp
+message xclGetDeviceTimestamp_call {
+     optional bool ack = 1;
+}
+
+message xclGetDeviceTimestamp_response {
+     required uint64 device_timestamp = 1;
+}
+
+message xclReadBusStatus_call {
+     optional int32 slot_n = 1;
+}
+
+message xclReadBusStatus_response {
+     optional uint64 uncomplete_rd_cycles = 1;
+     optional uint64 uncomplete_wr_cycles = 2;
+     optional uint64 idle_bus_cycles = 3;
+     optional uint64 uncomplete_rd_id = 4;
+     optional uint64 uncomplete_wr_id = 5;
+}
+
+message xclGetDebugMessages_call {
+  optional bool ack = 1;
+  optional bool force = 2;
+}
+
+message xclGetDebugMessages_response {
+     optional bytes display_msgs = 1;
+     optional bytes log_msgs = 2;
+     optional bytes stop_msgs = 3;
+}

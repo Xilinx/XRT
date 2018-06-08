@@ -1,0 +1,2 @@
+KERNEL=="renderD*",MODE="0666"
+KERNEL=="xvc_pub.u*",MODE="0666"

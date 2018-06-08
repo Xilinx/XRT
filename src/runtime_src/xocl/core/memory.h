@@ -1,0 +1,731 @@
+/**
+ * Copyright (C) 2016-2017 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef xocl_core_memory_h_
+#define xocl_core_memory_h_
+
+#include "xocl/core/object.h"
+#include "xocl/core/refcount.h"
+#include "xocl/core/property.h"
+
+#include "xocl/xclbin/xclbin.h"
+
+#include "xrt/device/device.h"
+
+#include <map>
+
+namespace xocl {
+
+class memory : public refcount, public _cl_mem
+{
+  using memory_flags_type  = property_object<cl_mem_flags>;
+  using memory_extension_flags_type = property_object<unsigned int>;
+  using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+protected:
+  using buffer_object_handle = xrt::device::BufferObjectHandle;
+  using pipe_property_type = property_object<cl_pipe_attributes>;
+  using buffer_object_map_type = std::map<const device*,buffer_object_handle>;
+  using bomap_type = std::map<const device*,buffer_object_handle>;
+  using bomap_value_type = bomap_type::value_type;
+  using bomap_iterator_type = bomap_type::iterator;
+public:
+  memory(context* cxt, cl_mem_flags flags);
+  virtual ~memory();
+
+  unsigned int
+  get_uid() const 
+  {
+    return m_uid;
+  }
+
+  const memory_flags_type
+  get_flags() const
+  {
+    return m_flags;
+  }
+
+  void
+  add_flags(cl_mem_flags flags)
+  {
+    m_flags |= flags;
+  }
+
+  const memory_extension_flags_type
+  get_ext_flags() const 
+  {
+    return m_ext_flags;
+  }
+
+  const memory_extension_flags_type
+  add_ext_flags(memory_extension_flags_type flags)
+  {
+    return m_ext_flags |= flags;
+  }
+
+  context*
+  get_context() const 
+  {
+    return m_context.get();
+  }
+
+  bool
+  is_sub_buffer() const
+  {
+    return get_sub_buffer_parent() != nullptr;
+  }
+
+  // Derived classes accessors
+  // May be structured differently when _xcl_mem is eliminated
+  virtual size_t
+  get_size() const 
+  { 
+    throw std::runtime_error("get_size on bad object");
+  }
+
+  /**
+   * Get set of memory indicies where this memory object is allocated
+   *
+   * @param device
+   *   Device to check allocation on
+   * @return bitmask identifying matching memory, or 0 if not 
+   *   allocated on device.
+   */
+  virtual memidx_bitmask_type
+  get_memidx(const device* d) const;
+
+  /**
+   * Get memory index of DDR bank where this memory object is allocated 
+   * if owning context has one device only.
+   *
+   * @return bitmask identifying matching memory banks, or 0 if not 
+   *   allocated on device or there are multiple devices in context.
+   */
+  virtual memidx_bitmask_type
+  get_memidx() const;
+
+  /**
+   * Get the address and DDR bank where this memory object is allocated
+   * if owning context has one device only.
+   *
+   * @return through reference arguments address and bank
+   */
+  virtual void
+  try_get_address_bank(uint64_t& addr, std::string& bank) const;
+
+  virtual void*
+  get_host_ptr() const 
+  {
+    throw std::runtime_error("get_host_ptr called on bad object");
+  }
+
+  virtual bool
+  is_aligned() const
+  {
+    throw std::runtime_error("is_aligned called on bad object");
+  }
+
+  virtual cl_mem_object_type
+  get_type() const = 0;
+
+  virtual memory*
+  get_sub_buffer_parent() const 
+  { 
+    //throw std::runtime_error("get_sub_buffer_parent called on bad object");
+    return nullptr;
+  }
+
+  virtual size_t
+  get_sub_buffer_offset() const 
+  {
+    throw std::runtime_error("get_sub_buffer_offset called on bad object");
+  }
+
+  virtual cl_image_format
+  get_image_format()
+  {
+    throw std::runtime_error("get_image_format called on bad object");
+  }
+
+  virtual size_t
+  get_image_data_offset() const 
+  {
+    throw std::runtime_error("get_image_offset called on bad object");
+  }
+
+  virtual size_t
+  get_image_width() const 
+  {
+    throw std::runtime_error("get_image_width called on bad object");
+  }
+
+  virtual size_t
+  get_image_height() const 
+  {
+    throw std::runtime_error("get_image_height called on bad object");
+  }
+
+  virtual size_t
+  get_image_depth() const 
+  {
+    throw std::runtime_error("get_image_depth called on bad object");
+  }
+
+  virtual size_t
+  get_image_bytes_per_pixel() const 
+  {
+    throw std::runtime_error("get_bytes_per_pixel called on bad object");
+  }
+
+  virtual size_t 
+  get_image_row_pitch() const
+  {
+    throw std::runtime_error("get_image_row_pitch called on bad object");
+  }
+
+  virtual size_t
+  get_image_slice_pitch() const
+  {
+    throw std::runtime_error("get_image_slice_pitch called on bad object");
+  }
+
+  virtual void
+  set_image_row_pitch(size_t pitch) 
+  {
+    throw std::runtime_error("set_image_row_pitch called on bad object");
+  }
+
+  virtual void
+  set_image_slice_pitch(size_t pitch) 
+  {
+    throw std::runtime_error("set_image_slice_pitch called on bad object");
+  }
+
+  virtual void*
+  get_pipe_host_ptr() const 
+  {
+    throw std::runtime_error("get_pipe_host_ptr called on bad object");
+  }
+
+  virtual const pipe_property_type
+  get_pipe_properties() const 
+  { 
+    throw std::runtime_error("get_pipe_properties called on bad object");
+  }
+
+  virtual cl_uint
+  get_pipe_packet_size() const
+  {
+    throw std::runtime_error("get_pipe_packet_size called on bad object");
+  }
+
+  virtual cl_uint
+  get_pipe_max_packets() const
+  {
+    throw std::runtime_error("get_pipe_max_packets called on bad object");
+  }
+
+  /****************************************************************
+   * Mapping from memory object to device buffer object.  The mapping
+   * is maintained in this class (as opposed to device class).  The
+   * memory overhead for a std::map with few entries is small in
+   * comparison to the runtime overhead of accessing a single std::map
+   * with many entries.  If stored in device the mapping would be from
+   * mem->boh with the requirement that all access be syncrhonized.
+   * If stored stored here in this class the mapping is from
+   * device->boh and locking is per memory object.
+   ****************************************************************/
+
+  /**
+   * Update Device to BufferObject map of the cl_mem buffer.
+   * Note: get_buffer_object functions require this map.
+   *
+   * This function return true on success or throws run time error.
+   * If BO is not mapped to buffer then it is added to the map.
+   * Otherwise it results in runtime error.
+   *
+   * @param device
+   *   The device that created the cl_mem buffer object
+   *   The BufferObject handle from the device
+   * @return
+   *   true or throws runtime error
+   */
+  virtual void
+  update_buffer_object_map(device* device, buffer_object_handle boh);
+
+
+  /**
+   * Get or create the device buffer object associated with arg device
+   *
+   * This function return the buffer object that is associated with
+   * the argument device.  If a buffer object does not exist it is
+   * created and associated with device.
+   *
+   * @param device
+   *   The device object that creates the buffer object
+   * @return
+   *   The buffer object
+   */
+  virtual buffer_object_handle
+  get_buffer_object(device* device);
+
+  /**
+   * Get the buffer object on argument device or error out if none
+   * exists.
+   *
+   * This function return the buffer object that is associated with
+   * argument device.  If a buffer object does not exist the function
+   * throws std::runtime_error.
+   *
+   * @param device
+   *   The device from which to get a buffer object.  
+   * @return
+   *   The buffer object associated with the device, or 
+   *   std::runtime_error if no buffer object exists.
+   */
+  buffer_object_handle
+  get_buffer_object_or_error(const device* device) const;
+
+  /**
+   * Get the buffer object on argument device or nullptr if none
+   *
+   * This function return the buffer object that is associated
+   * argument device. If a buffer object does not exist the 
+   * function returns nullptr;
+   *
+   * @param device
+   *   The device from which to get a buffer object.
+   * @return
+   *   The buffer object associated with the device, or nullptr if
+   *   none.
+   */
+  buffer_object_handle
+  get_buffer_object_or_null(const device* device) const;
+
+  /**
+   * Try-lock to get the buffer object on argument device or nullptr if lock cannot be acquired onone
+   *
+   * This function return the buffer object that is associated
+   * argument device. If a buffer object does not exist the
+   * function returns nullptr. If a lock cannot be acquired it returns nullptr;
+   *
+   * @param device
+   *   The device from which to get a buffer object.
+   * @return
+   *   The buffer object associated with the device, or nullptr if
+   *   none.
+   */
+  buffer_object_handle
+  try_get_buffer_object_or_error(const device* device) const;
+
+  /**
+   * Get buffer object or create with arguments.
+   *
+   * Used for progvar memory objects exclusively.
+   */
+  virtual buffer_object_handle
+  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
+
+  /**
+   * Check if buffer is resident on any device
+   *
+   * Return: %true if this buffer is resident on a device, %false otherwise.
+   */
+  virtual bool
+  is_resident() const
+  {
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    return m_resident.size();
+  }
+
+  /**
+   * Check if buffer is resident on device
+   */
+  virtual bool
+  is_resident(const device* device) const
+  {
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    return (std::find(m_resident.begin(),m_resident.end(),device) != m_resident.end());
+  }
+
+  /**
+   * Get resident device if exactly one
+   */
+  virtual const device*
+  get_resident_device() const
+  {
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    auto sz = m_resident.size();
+    if (!sz || sz>1)
+      return nullptr;
+    return m_resident[0];
+  }
+
+  /**
+   * Set device resident
+   */
+  void
+  set_resident(const device* device)
+  {
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    if (std::find(m_resident.begin(),m_resident.end(),device) == m_resident.end())
+      m_resident.push_back(device);
+  }
+
+  /**
+   * Clear resident devices
+   */
+  void
+  clear_resident() 
+  {
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    m_resident.clear();
+  }
+
+  /**
+   * Add a dtor callback
+   */
+  void
+  add_dtor_notify(std::function<void()> fcn);
+
+private:
+  unsigned int m_uid = 0;
+  ptr<context> m_context;
+  
+  memory_flags_type m_flags = 0;
+  memory_extension_flags_type m_ext_flags = 0;
+
+  // List of dtor callback functions. On heap to avoid
+  // allocation unless needed.
+  std::unique_ptr<std::vector<std::function<void()>>> m_dtor_notify;
+
+  mutable std::mutex m_boh_mutex;
+  bomap_type m_bomap;
+  std::vector<const device*> m_resident;
+};
+
+class buffer : public memory
+{
+public:
+  buffer(context* ctx,cl_mem_flags flags, size_t sz, void* host_ptr)
+    : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
+  {
+    // device is unknown so alignment requirement has to be hardwired
+    const size_t alignment = 4096;
+
+    if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
+      // allocate sufficiently aligned memory and reassign m_host_ptr
+      if (posix_memalign(&m_host_ptr,alignment,sz))
+        throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
+    if (flags & CL_MEM_COPY_HOST_PTR)
+      std::memcpy(m_host_ptr,host_ptr,sz);
+
+    m_aligned = (reinterpret_cast<uintptr_t>(m_host_ptr) % alignment)==0;
+  }
+
+  ~buffer()
+  {
+    if (m_host_ptr && (get_flags() & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)))
+      free(m_host_ptr);
+  }
+
+  virtual cl_mem_object_type
+  get_type() const 
+  {
+    return CL_MEM_OBJECT_BUFFER;
+  }
+
+  virtual void*
+  get_host_ptr() const
+  {
+    return m_host_ptr;
+  }
+
+  virtual bool
+  is_aligned() const
+  {
+    return m_aligned;
+  }
+
+  virtual size_t
+  get_size() const
+  {
+    return m_size;
+  }
+
+private:
+  bool m_aligned = false;
+  size_t m_size = 0;
+  void* m_host_ptr = nullptr;
+};
+
+class sub_buffer : public buffer
+{
+public:
+  sub_buffer(memory* parent,cl_mem_flags flags,size_t offset, size_t sz)
+  : buffer(parent->get_context(),flags,sz,
+           parent->get_host_ptr() 
+           ? static_cast<char*>(parent->get_host_ptr())+offset
+           : nullptr)
+  , m_parent(parent),m_offset(offset)
+  {}
+
+  virtual size_t
+  get_sub_buffer_offset() const
+  {
+    return m_offset;
+  }
+
+  virtual memory*
+  get_sub_buffer_parent() const
+  {
+    return m_parent.get();
+  }
+
+  virtual const device*
+  get_resident_device() const
+  {
+    if (auto d = memory::get_resident_device())
+      return d;
+    return m_parent->get_resident_device();
+  }
+
+  virtual bool
+  is_resident() const
+  {
+    // sub buffer is resident if it itself is resident on some device
+    if (memory::is_resident())
+      return true;
+
+    // or if parent is resident on some device
+    if (m_parent->is_resident())
+      return true;
+
+    return false;
+  }
+
+  virtual bool
+  is_resident(const device* device) const
+  {
+    // sub buffer is resident if it itself is marked resident
+    if (memory::is_resident(device))
+      return true;
+
+    // or, if parent is resident
+    if (m_parent->is_resident(device)) {
+      // make sub buffer explicit resident, logically const
+      const_cast<sub_buffer*>(this)->make_resident(device);
+      return true;
+    }
+    return false;
+  }
+private:
+  void
+  make_resident(const device* device) 
+  {
+    memory::get_buffer_object(const_cast<xocl::device*>(device));
+    memory::set_resident(device);
+  }
+
+
+private:
+  ptr<memory> m_parent;
+  size_t m_offset;
+};
+
+class image : public buffer
+{
+  struct image_info {
+    cl_image_format fmt;
+    cl_image_desc desc;
+  };
+
+public:
+  image(context* ctx,cl_mem_flags flags, size_t sz,
+	  size_t w, size_t h, size_t depth,
+	  size_t row_pitch, size_t slice_pitch,
+	  uint32_t bpp, cl_mem_object_type type,
+	  cl_image_format fmt, void* host_ptr)
+    : buffer(ctx,flags,sz+sizeof(image_info), host_ptr)
+  {
+      m_width = w;
+      m_height = h;
+      m_depth = depth;
+      m_row_pitch = row_pitch;
+      m_slice_pitch = slice_pitch;
+      m_bpp = bpp;
+      m_image_type = type;
+      m_format = fmt;
+  }
+
+  virtual cl_mem_object_type
+  get_type() const 
+  {
+    return m_image_type;
+  }
+
+  virtual cl_image_format
+  get_image_format()
+  {
+    return m_format;
+  }
+
+  virtual size_t
+  get_image_data_offset() const 
+  {
+    return sizeof(image_info);
+  }
+
+  virtual size_t
+  get_image_width() const 
+  {
+    return m_width;
+  }
+
+  virtual size_t
+  get_image_height() const 
+  {
+    return m_height;
+  }
+
+  virtual size_t
+  get_image_depth() const 
+  {
+    return m_depth;
+  }
+
+  virtual size_t
+  get_image_bytes_per_pixel() const 
+  {
+    return m_bpp;
+  }
+
+  virtual size_t 
+  get_image_row_pitch() const
+  {
+    return m_row_pitch;
+  }
+
+  virtual size_t
+  get_image_slice_pitch() const
+  {
+    return m_slice_pitch;
+  }
+
+  virtual void
+  set_image_row_pitch(size_t pitch) 
+  {
+    m_row_pitch = pitch;
+  }
+
+  virtual void
+  set_image_slice_pitch(size_t pitch) 
+  {
+    m_slice_pitch = pitch;
+  }
+
+
+  virtual buffer_object_handle
+  get_buffer_object(device* device);
+
+  virtual buffer_object_handle
+  get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t memoryIndex);
+
+private:
+
+  void populate_image_info(image_info& info) {
+    memset(&info, 0, sizeof(image_info));
+    info.fmt = m_format;
+    info.desc.image_type=m_image_type;
+    info.desc.image_width=m_width;
+    info.desc.image_height=m_height;
+    info.desc.image_depth=m_depth;
+    info.desc.image_array_size=0;
+    info.desc.image_row_pitch=m_row_pitch;
+    info.desc.image_slice_pitch=m_slice_pitch;
+    info.desc.num_mip_levels=0;
+    info.desc.num_samples=0;
+  }
+
+private:
+  size_t m_width;
+  size_t m_height;
+  size_t m_depth;
+  size_t m_row_pitch;
+  size_t m_slice_pitch;
+  uint32_t m_bpp; //bytes per pixel
+  cl_mem_object_type m_image_type;
+  cl_image_format m_format;
+};
+
+/**
+ * Pipes are not accessible from host code.
+ */
+class pipe : public memory
+{
+  using pipe_property_type = memory::pipe_property_type;
+public:
+  pipe(context* ctx,cl_mem_flags flags, cl_uint packet_size, cl_uint max_packets)
+    : memory(ctx,flags), m_packet_size(packet_size), m_max_packets(max_packets)
+  {}
+
+  void
+  set_pipe_host_ptr(void* p)
+  {
+    m_host_ptr = p;
+  }
+
+  virtual cl_mem_object_type
+  get_type() const 
+  {
+    return CL_MEM_OBJECT_PIPE;
+  }
+
+  virtual void*
+  get_pipe_host_ptr() const
+  {
+    return m_host_ptr;
+  }
+
+  virtual const pipe_property_type
+  get_pipe_properties() const
+  {
+    return m_props;
+  }
+
+  virtual cl_uint
+  get_pipe_packet_size() const
+  {
+    return m_packet_size;
+  }
+
+  virtual cl_uint
+  get_pipe_max_packets() const
+  {
+    return m_max_packets;
+  }
+
+private:
+  pipe_property_type m_props;
+  cl_uint m_packet_size = 0;
+  cl_uint m_max_packets = 0;
+  void* m_host_ptr = nullptr;
+};
+
+} // xocl
+
+#endif
+
+

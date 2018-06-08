@@ -1,0 +1,63 @@
+{
+  "Devices": [
+  {
+    "Name": "xilinx:adm-pcie-7v3:1ddr:3.0",
+     "DdrBanks": [
+     {
+       "NAME": "expanded_region_memory_ddrmem",
+       "TYPE": "ddr3",
+       "SIZE": "8GB",
+       "AXI_ARBITRATION_SCHEME": "TDM",
+       "BURST_LENGTH": "8",
+       "APP_ADDR_WIDTH": "30",
+       "APP_DATA_WIDTH": "512",
+       "ControllerType": "DDR3_SDRAM",
+       "ADDR_WIDTH": "16",
+       "AXI_ADDR_WIDTH": "33",
+       "AXI_DATA_WIDTH": "512",
+       "AXI_ID_WIDTH": "1",
+       "AutoPrecharge": "false",
+       "AxiNarrowBurst": "false",
+       "BANK_GROUP_WIDTH": "0",
+       "BANK_WIDTH": "3",
+       "CL": "0",
+       "COLUMN_WIDTH": "10",
+       "CWL": "0",
+       "Mem_Add_Map": "ROW_COLUMN_BANK",
+       "Ordering": "Normal",
+       "RANK_WIDTH": "2",
+       "ROW_WIDTH": "16",
+       "tCK": "1250",
+       "tCKE": "0",
+       "tFAW": "24",
+       "tMRD": "1",
+       "tRAS": "39",
+       "tRTW": "10",  
+       "tRCD": "17",
+       "tREFI": "16",
+       "tRFC": "421",
+       "tRP": "17",
+       "tRRD": "5",
+       "tRTP": "10",
+       "tWR": "20",
+       "tWTR": "6",
+       "tXPR": "54",
+       "tZQCS": "64",
+       "tZQI": "0",
+       "tZQINIT": "128",
+       "CAS_LATENCY": "11",
+       "CAS_WRITE_LATENCY": "11",
+       "DATA_WIDTH": "8",
+       "MEMORY_PART": "MT18KSF1G72HZ-1G6",
+       "MEM_ADDR_MAP": "ROW_COLUMN_BANK",
+       "TIMEPERIOD_PS": "1250",
+       "tWTR_L": "6", 
+       "tWTR_S": "4",
+       "tCCD": "4",
+       "tRRD_L": "6",
+       "tRRD_S": "4"
+     }
+    ]
+  }
+  ]
+}

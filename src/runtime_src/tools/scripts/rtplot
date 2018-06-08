@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# GNUPlot for [Debug] xocl_debug = true
+
+usage()
+{
+    echo "Usage: rtplot [optios]* <data>"
+    echo
+    echo "SDAccel gnuplot of event data (work-in-progress)"
+    echo ""
+    echo "Collect data input by adding the following to sdaccel.ini:"
+    echo "  [Debug]"
+    echo "    xocl_debug = true"
+    echo ""
+    echo "Default log file is 'xocl.log'"
+    echo 
+    echo "Optionally specify:"
+    echo "    xocl_log = myfile"
+    echo "    xocl_event_begin = <id of first event to log> (default: 0)"
+    echo "    xocl_event_end = <id of last event to log> (default: 1000)"
+    echo ""
+    echo "After running host code, plot the data with this script:"
+    echo "  % gp xocl.log"
+    echo ""
+    echo "Options:"
+    echo "[--range|-d <event#> <event#>] Range of events to print"
+    echo "[--dependencies|-d]            Print event dependencies"
+}
+
+file=$1
+
+# script arguments
+opt_event_begin=
+opt_event_end=
+opt_file=
+opt_dep=0
+
+while [ $# -gt 0 ]; do
+   case "$1" in
+      -help)
+        usage
+        exit 0
+        ;;
+      --dependencies|-d)
+        opt_dep=1
+        shift
+        ;;
+      --range|-r)
+        opt_event_begin=$2
+        shift
+        opt_event_end=$2
+        shift
+        ;;
+   *)
+      file=$1
+      shift
+      ;;
+   esac
+done
+
+# read the input file
+readarray -t input < $file
+
+# first event number is the event offset
+line0=(${input[0]})
+offset=${line0[0]}
+
+# total number of events equal number of lines in input
+events=${#input[@]}
+lines=$events
+
+# tiim the input to the specified event range
+if [ "X$opt_event_begin" == "X" ]; then
+ opt_event_begin=$offset
+fi
+
+if [ "X$opt_event_end" == "X" ]; then
+  opt_event_end=$(($lines+$offset))
+fi
+
+if [ $opt_event_begin -lt $offset ]; then
+  opt_event_begin=$offset
+fi
+
+if [ $opt_event_end -gt $(($offset+$events-1)) ]; then
+  opt_event_end=$(($offset+$events-1))
+fi
+
+# plot range of input data
+pbegin=$(($opt_event_begin-$offset))
+pend=$(($opt_event_end-$offset))
+
+# event dependencies
+if [ $opt_dep == 1 ]; then
+ for ((i=$pbegin; i < $pend ; i++)) ; do
+  event=$(($i+$offset))
+  line=(${input[$i]})
+  if [ ${#line[@]} -gt 6 ]; then
+   for ((c=6 ; c < ${#line[@]} ; c++)); do
+    devent=$((${line[$c]}-$offset))
+    dline=(${input[$devent]})
+    x1=${line[3]}
+    x1=`bc -l <<< $x1/1000000`
+    y1=${line[0]}
+    x2=${dline[5]}
+    x2=`bc -l <<< $x2/1000000`
+    y2=${dline[0]}
+    ddata=$ddata";set arrow from $x1,$y1 to $x2,$y2"
+   done
+  fi
+ done
+fi
+
+/home/soeren/staff/tools/gnuplot/5.0.5/bin/gnuplot -p <<- EOF
+set grid
+set nokey
+
+$ddata
+
+plot "$file" every ::$pbegin::$pend using (\$3/1e6):1, \
+     "$file" every ::$pbegin::$pend using (\$4/1e6):1, \
+     "$file" every ::$pbegin::$pend using (\$5/1e6):1, \
+     "$file" every ::$pbegin::$pend using (\$6/1e6):1, \
+     "$file" every ::$pbegin::$pend using (\$5/1e6) : (\$1) : ((\$6-\$5)/1e6) : (0.0) with vector nohead lc rgb "red"
+
+pause mouse keypress
+
+EOF

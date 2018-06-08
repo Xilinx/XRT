@@ -1,0 +1,16 @@
+
+/{
+	xlnk {
+		compatible = "xlnx,xlnk-1.0";
+	};
+};
+
+&amba {
+	zyxclmm_drm {
+		compatible = "xlnx,zocl";
+		status = "okay";
+		reg = <0x0 0xA0000000 0x0 0x100000>;
+	};
+};
+
+

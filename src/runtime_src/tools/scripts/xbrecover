@@ -1,0 +1,195 @@
+#!/bin/bash
+
+# Xilinx Board recovery
+
+# This script will try to recover the board. 
+# Return 0 if it is able to recover the board successfully.
+# Return any non-zero value if recovery fails. 
+#
+# If recovery fails, cold reboot is your best bet.
+#
+# If run without root privileges, the script would not attempt to install the Linux kernel drivers
+
+
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+XBINST_DIR=$ROOT_DIR/../../
+VERIFY_DIR=$XBINST_DIR/test
+OWNER=`whoami`
+SHELL=`echo $0`
+
+declare -i RET
+declare -i ret
+declare -i err
+
+#Initialize the variables
+err=0
+ret=0
+RET=0
+VERBOSE="no"
+
+usage () {
+	echo -e "Xilinx Board recovery\n"
+	echo "Returns 0 if it is able to recover the board successfully."
+	echo "Returns any non-zero value if recovery fails. User has to cold reboot in this case."
+	echo -e "For best results, user must run xbrecover with root privileges.\n"
+    echo "Usage: $0 [-v <yes|no>]"
+    echo "       -v verbose"
+    exit 1
+}
+
+xbrecover_echo() {
+	if [[ $VERBOSE == "yes" ]]; then
+		echo $1
+    fi
+}
+
+xbrecover_exit() {
+    RET=$1
+    if [ $RET == 0 ]; then
+        echo "xbrecover: Board successfully recovered."
+    else 
+        echo "xbrecover: Board NOT in recovererable state. Please cold reboot your machine to continue."
+    fi
+    echo "Return code: $RET"
+    exit $RET
+}
+
+run_verify() {
+    RET=0
+    pushd $VERIFY_DIR 2>&1 >/dev/null
+    xbrecover_echo "=================Running Verify================="
+    ./verify.exe verify.xclbin 2>&1 >/dev/null
+    if [ $? == 0 ]; then
+       xbrecover_echo "Running Verify passed. "
+       RET=0
+    else 
+       xbrecover_echo "Running Verify failed. "
+       RET=1
+    fi
+    xbrecover_echo "================================================"
+    
+    popd 2>&1 >/dev/null
+    return $RET
+}
+
+run_xbsak() {
+    OPTIONS=$1
+    RET=0
+    xbrecover_echo "=======Running xbsak with $OPTIONS ================="
+    xbsak $1 2>&1 >/dev/null
+    if [ $? == 0 ]; then
+       xbrecover_echo "Running xbsak with $OPTIONS passed. "
+       RET=0
+    else 
+       xbrecover_echo "Running xbsak with $OPTIONS failed. "
+       RET=1
+    fi
+     
+    xbrecover_echo "=======Running xbsak with $OPTIONS done============="
+    return $RET
+}
+
+reinstall_drivers() {
+    RET=0
+    xbrecover_echo "=================reinstall_drivers================="
+    
+    
+    if [ $OWNER != "root" ]; then
+       echo "WARN: root priviledges required, skipping driver installation"
+       RET=1
+       return $RET
+    fi
+    
+    pushd $XBINST_DIR 2>&1 >/dev/null
+    
+    ./install.sh 2>/dev/null >/dev/null
+    if [ $? == 0 ]; then
+       xbrecover_echo "Driver install passed. "
+       RET=0
+    else 
+       xbrecover_echo "Driver install failed. "
+       RET=1
+    fi
+    
+    popd 2>&1 >/dev/null
+    xbrecover_echo "=================reinstall_drivers done============"
+    return $RET
+}
+
+is_verify_validate_good() {
+	err=0
+	run_verify
+	RET=$?
+	xbrecover_echo "run_verify return code is $RET"
+	if [ $RET -ne 0 ]; then
+	   err=1
+	fi
+	
+	run_xbsak "validate"
+	RET=$?
+	xbrecover_echo "xbsak validate return code is $ret"
+	if [ $RET -ne 0 ]; then
+	   err=1
+	fi
+
+	return $err
+}
+
+while [[ $# -gt 0 ]]
+do
+    switch="$1"
+    case $switch in
+        -v)
+            VERBOSE="$2"
+            shift
+            ;;
+        -h)
+            usage
+            ;;
+        *)
+            usage
+            ;;
+    esac
+    shift
+done
+
+#Source setup.sh
+xbrecover_echo "source setup.sh"
+source $XBINST_DIR/setup.sh
+    
+#=====================================================
+#Step 1: Try to run verify and validate and see if that works. 
+is_verify_validate_good
+ret=$?
+#If err is still 0, we can exit safely. 
+if [ $ret == 0 ]; then
+   xbrecover_exit $ret
+fi
+
+#=====================================================
+#Step 2: Now try reset and then see if that helps 
+run_xbsak "reset -h"
+ret=$?
+xbrecover_echo "run_xbsak_hotreset return code is $ret"
+
+is_verify_validate_good
+ret=$?
+#If err is still 0, we can exit safely. 
+if [ $ret == 0 ]; then
+   xbrecover_exit $ret
+fi
+
+#=====================================================
+#Step 3: Now try reset, re-install the drivers and then see if that helps 
+run_xbsak "reset -h"
+ret=$?
+xbrecover_echo "run_xbsak_hotreset return code is $ret"
+
+reinstall_drivers
+ret=$?
+xbrecover_echo "reinstall_drivers return code is $ret"
+
+is_verify_validate_good
+ret=$? 
+
+xbrecover_exit $ret

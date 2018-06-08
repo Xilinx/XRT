@@ -1,0 +1,516 @@
+/*
+ * A GEM style (optionally CMA backed) device manager for ZynQ based
+ * OpenCL accelerators.
+ *
+ * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ *
+ * Authors:
+ *    Sonal Santan <sonal.santan@xilinx.com>
+ *    Umang Parekh <umang.parekh@xilinx.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <linux/dma-mapping.h>
+#include <linux/pagemap.h>
+#include <linux/iommu.h>
+#include <asm/io.h>
+#include "zocl_drv.h"
+
+static inline void __user *to_user_ptr(u64 address)
+{
+	return (void __user *)(uintptr_t)address;
+}
+
+void zocl_describe(const struct drm_zocl_bo *obj)
+{
+	size_t size_in_kb = obj->cma_base.base.size / 1024;
+	size_t physical_addr = obj->cma_base.paddr;
+
+	DRM_INFO("%p: H[0x%zxKB] D[0x%zx]\n",
+		  obj,
+		  size_in_kb,
+		  physical_addr);
+}
+
+int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
+{
+	int prot = IOMMU_READ | IOMMU_WRITE;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	ssize_t err;
+
+	/* Create scatter gather list from user's pages */
+	bo->sgt = drm_prime_pages_to_sg(bo->pages, bo->gem_base.size >> PAGE_SHIFT);
+	if (IS_ERR(bo->sgt)) {
+		bo->uaddr = 0;
+		return PTR_ERR(bo->sgt);
+	}
+
+	/* MAP user's VA to pages table into IOMMU */
+	err = iommu_map_sg(zdev->domain, bo->uaddr, bo->sgt->sgl,
+			   bo->sgt->nents, prot);
+	if (err < 0) {
+		/* If IOMMU map failed forget user's VA */
+		bo->uaddr = 0;
+		DRM_ERROR("Failed to map buffer through IOMMU: %zd\n", err);
+		return err;
+	}
+	return 0;
+}
+
+int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	/* If IOMMU map had failed before bo->uaddr will be zero */
+	if (bo->uaddr)
+		iommu_unmap(zdev->domain, bo->uaddr, bo->gem_base.size);
+	return 0;
+}
+
+static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
+	uint64_t unaligned_size)
+{
+	size_t size = PAGE_ALIGN(unaligned_size);
+	struct drm_gem_cma_object *cma_obj;
+  int err = 0;
+
+	if (!size)
+		return ERR_PTR(-EINVAL);
+
+  cma_obj = kzalloc(sizeof(*cma_obj), GFP_KERNEL);
+  if (!cma_obj) {
+    DRM_DEBUG("cma object create failed\n");
+    return ERR_PTR(-ENOMEM);
+  }
+
+	err = drm_gem_object_init(dev, &cma_obj->base, size);
+	if (err) {
+    DRM_DEBUG("drm gem object initial failed\n");
+    goto out1;
+  }
+
+  cma_obj->sgt   = NULL;
+  cma_obj->vaddr = NULL;
+  cma_obj->paddr = 0x0;
+
+	return to_zocl_bo(&cma_obj->base);
+out1:
+  kfree(cma_obj);
+  return NULL;
+}
+
+void zocl_free_userptr_bo(struct drm_gem_object *gem_obj) {
+  // Do all drm_gem_cma_free_object(bo->base) do, execpt free vaddr.
+  struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
+
+  DRM_INFO("zocl_free_userptr_bo: obj 0x%p", zocl_bo);
+  if (zocl_bo->cma_base.sgt)
+    sg_free_table(zocl_bo->cma_base.sgt);
+
+  drm_gem_object_release(gem_obj);
+
+  kfree(&zocl_bo->cma_base);
+}
+
+static struct drm_zocl_bo *zocl_create_bo(struct drm_device *dev,
+	uint64_t unaligned_size, unsigned user_flags)
+{
+	size_t size = PAGE_ALIGN(unaligned_size);
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_gem_cma_object *cma_obj;
+  struct drm_zocl_bo *bo;
+	int err;
+
+	if (!size)
+		return ERR_PTR(-EINVAL);
+
+	if (zdev->domain) {
+		bo = kzalloc(sizeof(*bo), GFP_KERNEL);
+		if (!bo)
+			return ERR_PTR(-ENOMEM);
+
+		err = drm_gem_object_init(dev, &bo->gem_base, size);
+		if (err < 0)
+			goto free;
+	} else {
+		cma_obj = drm_gem_cma_create(dev, size);
+		if (IS_ERR(cma_obj))
+			return ERR_PTR(-ENOMEM);
+
+		bo = to_zocl_bo(&cma_obj->base);
+	}
+
+	if (user_flags & DRM_ZOCL_BO_FLAGS_EXECBUF) {
+		bo->flags = DRM_ZOCL_BO_FLAGS_EXECBUF;
+		bo->metadata.state = DRM_ZOCL_EXECBUF_STATE_ABORT;
+	}
+
+	return bo;
+free:
+	kfree(bo);
+	return ERR_PTR(err);
+}
+
+int zocl_create_bo_ioctl(struct drm_device *dev,
+		void *data,
+		struct drm_file *filp)
+{
+	int ret;
+	struct drm_zocl_create_bo *args = data;
+	struct drm_zocl_bo *bo;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+
+  // Remove all flags, except EXECBUF. This flag compatible with xocl driver
+  args->flags &= DRM_ZOCL_BO_FLAGS_EXECBUF;
+
+	if (zdev->domain) {
+		if ((args->flags & DRM_ZOCL_BO_FLAGS_COHERENT) ||
+				(args->flags & DRM_ZOCL_BO_FLAGS_CMA))
+			return -EINVAL;
+
+		// TODO: SHIM should pass the correct flags
+		args->flags |= DRM_ZOCL_BO_FLAGS_SVM;
+		if (!(args->flags & DRM_ZOCL_BO_FLAGS_SVM))
+			return -EINVAL;
+
+		bo = zocl_create_bo(dev, args->size, args->flags);
+		bo->flags |= DRM_ZOCL_BO_FLAGS_SVM;
+
+		DRM_DEBUG("%s:%s:%d: %p\n", __FILE__, __func__, __LINE__, bo);
+
+		if (IS_ERR(bo)) {
+			DRM_DEBUG("object creation failed\n");
+			return PTR_ERR(bo);
+		}
+		bo->pages = drm_gem_get_pages(&bo->gem_base);
+		if (IS_ERR(bo->pages)) {
+			ret = PTR_ERR(bo->pages);
+			goto out_free;
+		}
+
+		bo->sgt = drm_prime_pages_to_sg(bo->pages, bo->gem_base.size >> PAGE_SHIFT);
+		if (IS_ERR(bo->sgt))
+			goto out_free;
+
+		bo->vmapping = vmap(bo->pages, bo->gem_base.size >> PAGE_SHIFT, VM_MAP,
+				pgprot_writecombine(PAGE_KERNEL));
+
+		if (!bo->vmapping) {
+			ret = -ENOMEM;
+			goto out_free;
+		}
+
+		ret = drm_gem_create_mmap_offset(&bo->gem_base);
+		if (ret < 0)
+			goto out_free;
+
+		ret = drm_gem_handle_create(filp, &bo->gem_base, &args->handle);
+		if (ret < 0)
+			goto out_free;
+
+		zocl_describe(bo);
+		drm_gem_object_unreference_unlocked(&bo->gem_base);
+		return ret;
+
+out_free:
+		zocl_free_bo(&bo->gem_base);
+		return ret;
+	} else {
+		// This is not good. But force to use COHERENT and CMA flags here.
+		// We can remove this only when XRT can use the same flags for xocl and zocl
+		args->flags |= DRM_ZOCL_BO_FLAGS_COHERENT;
+		args->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+
+		bo = zocl_create_bo(dev, args->size, args->flags);
+		if (IS_ERR(bo)) {
+			DRM_DEBUG("object creation failed\n");
+			return PTR_ERR(bo);
+		}
+
+		bo->flags |= DRM_ZOCL_BO_FLAGS_COHERENT;
+		bo->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+
+		ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
+		if (ret) {
+			drm_gem_cma_free_object(&bo->cma_base.base);
+			DRM_DEBUG("handle creation failed\n");
+			return ret;
+		}
+
+		zocl_describe(bo);
+		drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+
+		return ret;
+	}
+}
+
+int zocl_userptr_bo_ioctl(struct drm_device *dev,
+                          void *data,
+                          struct drm_file *filp)
+{
+	int ret;
+	struct drm_zocl_bo *bo;
+	unsigned int page_count;
+	struct drm_zocl_userptr_bo *args = data;
+  struct page **pages;
+  unsigned int sg_count;
+
+  if (offset_in_page(args->addr))
+    return -EINVAL;
+  
+  if (args->flags & DRM_ZOCL_BO_FLAGS_EXECBUF)
+    return -EINVAL;
+
+  bo = zocl_create_userprt_bo(dev, args->size);
+  if (IS_ERR(bo)) {
+    DRM_DEBUG("object creation failed\n");
+    return PTR_ERR(bo);
+  }
+
+	/* Use the page rounded size so we can accurately account for number of pages */
+	page_count = bo->cma_base.base.size >> PAGE_SHIFT;
+
+  pages = drm_malloc_ab(page_count, sizeof(*pages));
+  if (!pages) {
+    ret = -ENOMEM;
+    goto out1;
+  }
+
+  ret = get_user_pages_fast(args->addr, page_count, 1, pages);
+	if (ret != page_count) {
+    ret = -ENOMEM;
+		goto out0;
+  }
+
+  //for (i = 0; i < page_count; i++) {
+  //  DRM_INFO("minm userptr_ioctl: page[%d] PTN is 0x%zx", i, (size_t)page_to_pfn(pages[i]));
+  //}
+
+  bo->cma_base.sgt = drm_prime_pages_to_sg(pages, page_count);
+  if (IS_ERR(bo->cma_base.sgt)) {
+    ret = PTR_ERR(bo->cma_base.sgt);
+    goto out0;
+  }
+
+
+  sg_count = dma_map_sg(dev->dev, bo->cma_base.sgt->sgl, bo->cma_base.sgt->nents, 0);
+  if(sg_count <= 0) {
+    ret = -ENOMEM;
+    goto out0;
+  }
+
+  bo->cma_base.paddr = sg_dma_address((bo->cma_base.sgt)->sgl);
+
+  // Physical address must be continuous
+  if (sg_count != 1) {
+    ret = -EINVAL;
+    goto out0;
+  }
+
+  bo->cma_base.vaddr = (void *)args->addr;
+  
+  ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
+	if (ret) {
+    ret = -EINVAL;
+		DRM_DEBUG("handle creation failed\n");
+    goto out0;
+	}
+
+  bo->flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
+
+	zocl_describe(bo);
+	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+
+  // TODO: I release the pages here and the kernel can still work. Keep this. Need more test to make sure this is safe. Or we need a better way to handle it.
+  drm_free_large(pages);
+
+  return ret;
+
+out0:
+  drm_free_large(pages);
+out1:
+  zocl_free_userptr_bo(&bo->cma_base.base);
+	DRM_DEBUG("handle creation failed\n");
+  return ret;
+}
+
+int zocl_map_bo_ioctl(struct drm_device *dev,
+		void *data,
+		struct drm_file *filp)
+{
+  int ret = 0;
+	struct drm_zocl_map_bo *args = data;
+	struct drm_gem_object *gem_obj;
+
+	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -EINVAL;
+	}
+
+  if (zocl_bo_userptr(to_zocl_bo(gem_obj))) {
+    ret = -EPERM;
+    goto out;
+  }
+
+	/* The mmap offset was set up at BO allocation time. */
+	args->offset = drm_vma_node_offset_addr(&gem_obj->vma_node);
+	zocl_describe(to_zocl_bo(gem_obj));
+
+out:
+	drm_gem_object_unreference_unlocked(gem_obj);
+	return ret;
+}
+
+int zocl_sync_bo_ioctl(struct drm_device *dev,
+		void *data,
+		struct drm_file *filp)
+{
+	const struct drm_zocl_sync_bo *args = data;
+	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
+							       args->handle);
+	void *kaddr;
+	int ret = 0;
+
+
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -EINVAL;
+	}
+
+	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size) ||
+		((args->offset + args->size) > gem_obj->size)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	kaddr = drm_gem_cma_prime_vmap(gem_obj);
+
+	/* only invalidate the range of addresses requested by the user */
+	kaddr += args->offset;
+
+	if (args->dir == DRM_ZOCL_SYNC_BO_TO_DEVICE)
+		flush_kernel_vmap_range(kaddr, args->size);
+	else if (args->dir == DRM_ZOCL_SYNC_BO_FROM_DEVICE)
+		invalidate_kernel_vmap_range(kaddr, args->size);
+	else
+		ret = -EINVAL;
+
+out:
+	drm_gem_object_unreference_unlocked(gem_obj);
+
+	return ret;
+}
+
+int zocl_info_bo_ioctl(struct drm_device *dev,
+		void *data,
+		struct drm_file *filp)
+{
+	const struct drm_zocl_bo *bo;
+	struct drm_zocl_info_bo *args = data;
+	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
+							       args->handle);
+
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -EINVAL;
+	}
+
+	bo = to_zocl_bo(gem_obj);
+
+	args->size = bo->cma_base.base.size;
+	args->paddr = bo->cma_base.paddr;
+	drm_gem_object_unreference_unlocked(gem_obj);
+
+	return 0;
+}
+
+int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp)
+{
+	const struct drm_zocl_pwrite_bo *args = data;
+	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
+							       args->handle);
+	char __user *user_data = to_user_ptr(args->data_ptr);
+	int ret = 0;
+	void *kaddr;
+
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -EINVAL;
+	}
+
+	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
+		|| ((args->offset + args->size) > gem_obj->size)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (args->size == 0) {
+		ret = 0;
+		goto out;
+	}
+
+	if (!access_ok(VERIFY_READ, user_data, args->size)) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	kaddr = drm_gem_cma_prime_vmap(gem_obj);
+	kaddr += args->offset;
+
+	ret = copy_from_user(kaddr, user_data, args->size);
+out:
+	drm_gem_object_unreference_unlocked(gem_obj);
+
+	return ret;
+}
+
+int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp)
+{
+	const struct drm_zocl_pread_bo *args = data;
+	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
+							       args->handle);
+	char __user *user_data = to_user_ptr(args->data_ptr);
+	int ret = 0;
+	void *kaddr;
+
+	if (!gem_obj) {
+		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
+		return -EINVAL;
+	}
+
+	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
+		|| ((args->offset + args->size) > gem_obj->size)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (args->size == 0) {
+		ret = 0;
+		goto out;
+	}
+
+	if (!access_ok(VERIFY_WRITE, user_data, args->size)) {
+		ret = EFAULT;
+		goto out;
+	}
+
+	kaddr = drm_gem_cma_prime_vmap(gem_obj);
+	kaddr += args->offset;
+
+	ret = copy_to_user(user_data, kaddr, args->size);
+
+out:
+	drm_gem_object_unreference_unlocked(gem_obj);
+
+	return ret;
+}

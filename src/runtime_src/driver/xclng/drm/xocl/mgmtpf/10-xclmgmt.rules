@@ -1,0 +1,3 @@
+KERNEL=="xclmgmt*",MODE="0666",SYMLINK="%k"
+KERNEL=="xvc_pub.m*",MODE="0666"
+KERNEL=="xvc_pri.m*",MODE="0666"

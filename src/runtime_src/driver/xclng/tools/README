@@ -1,0 +1,2 @@
+For CENTOS 7
+sudo yum install glibc-static libstdc++-static

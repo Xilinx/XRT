@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
+    echo "Registering XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
+    dkms add -m xrt -v "@XRT_VERSION_STRING@"
+fi
+
+if [ -e /lib/modules/`uname -r`/build/include ]; then
+    echo "Building XRT Linux kernel modules sources with dkms"
+    dkms build -m xrt -v "@XRT_VERSION_STRING@"
+    echo "Installing XRT Linux kernel modules sources with dkms"
+    dkms install -m xrt -v "@XRT_VERSION_STRING@" --force
+else
+    echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
+fi
+
+exit 0

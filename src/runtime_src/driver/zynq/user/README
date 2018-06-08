@@ -1,0 +1,25 @@
+#############################################
+# HOW TO COMPILE HAL LIBRARY
+#############################################
+
+Makesure you have install Xilin SDK and SDx.
+XILINX_SDK and XILINX_SDX environment variables
+must be set.
+
+You are not, you can do this by source the setting script.
+If you are using bash, do this:
+
+$ source /path/to/your/sdx/setting64.sh
+$ source /path/to/your/sdk/setting64.sh
+
+After you have SDx and SDK installed and set,
+run below command to compile HAL library.
+
+#For MPSoC platform:
+$ make
+or
+$ make CROSS_COMPILE=aarch64-linux-gnu-
+
+#For Zynq7000 platform:
+$ make CROSS_COMPILE=arm-linux-gnueabihf-
+

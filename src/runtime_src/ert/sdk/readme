@@ -1,0 +1,42 @@
+Hi Soren,
+
+Please grab the zip from here:
+
+/wrk/xsjhdnobkup4/elleryc/share/xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk.zip
+
+It has BSPs for both microblazes as well as an update to the board_mon.c file. Note I still haven’t added the register map updates yet so I will need to update board_mon.c one more time at least.
+
+Thanks,
+~Ellery
+
+Recipe for creating bsp archives used during rdi build
+
+% unzip xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk.zip
+% cd xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk/ert_project/empty_application_bsp
+% env PATH=/tools/batonroot/rodin/devkits/lnx64/cross/RHEL6/microblaze/lin/bin:$PATH make libs
+% find . -type f -name \*.o -exec /bin/rm {} \;
+% tar cvf $RDI_ROOT/src/products/sdx/ocl/src/runtime_src/ert/scheduler/sched_bsp.tar .
+% cd $RDI_ROOT/src/products/sdx/ocl/src/runtime_src/ert/scheduler
+% p4 edit sched_bsp.tar.bz2
+% \rm sched_bsp.tar.bz2
+% bzip2 sched_bsp.tar
+% p4 edit lscript.ld
+% cp <path>/xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk/ert_project/lscript.ld .
+
+
+Repeat for mgmt_project
+
+% cd xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk/mgmt_project/empty_application_bsp
+% env PATH=/tools/batonroot/rodin/devkits/lnx64/cross/RHEL6/microblaze/lin/bin:$PATH make libs
+% find . -type f -name \*.o -exec /bin/rm {} \;
+% tar cvf $RDI_ROOT/src/products/sdx/ocl/src/runtime_src/ert/scheduler/mgmt_bsp.tar .
+% cd $RDI_ROOT/src/products/sdx/ocl/src/runtime_src/ert/management
+% p4 edit mgmt_bsp.tar.bz2
+% \rm mgmt_bsp.tar.bz2
+% bzip2 mgmt_bsp.tar
+% p4 edit lscript.ld
+% cp <path>/xilinx_kcu1500_4ddr-xpr_5_0_nopr.sdk/mgmt_project/lscript.ld .
+
+
+
+

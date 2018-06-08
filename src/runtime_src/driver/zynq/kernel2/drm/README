@@ -1,0 +1,33 @@
+#############################################
+# HOW TO COMPILE ZOCL/ZOCLSVM driver
+#############################################
+#Prerequisite:
+	Linux build directory
+
+If you build Linux image by Petalinux (For example, 2017.4), the Linux builddirectory is in this path.
+<Petalinux Project>/build/tmp/work/plnx_aarch64-xilinx-linux/linux-xlnx/4.9-xilinx-v2017.4+git999-r0/linux-xlnx-4.9-xilinx-v2017.4+git999/
+
+If you don't have tmp/ in build/ directory. Go check your /tmp file system.
+
+#Run below command to compile zocl driver.
+
+For MPSoC
+$ make LINUXDIR=path/to/your/petalinux/build/directory CROSS_COMPILE=aarch64-linux-gnu- modules
+
+For Zynq7000
+$ make LINUXDIR=path/to/your/petalinux/build/directory CROSS_COMPILE=arm-linux-gnueabihf- target=arm modules
+
+
+#############################################
+# Device tree
+#############################################
+
+You will find some .dts files in zocl/ directory.
+They are used for update your device tree.
+
+If you build Linux image by Petalinux, attach the .dts
+that match your target device to <Petalinux Project>/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi
+
+For example, if you are using MPSoC,
+$ cat zocl/xlnk_dts_fragment_mpsoc.dts >> <Petalinux Project>/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi
+
