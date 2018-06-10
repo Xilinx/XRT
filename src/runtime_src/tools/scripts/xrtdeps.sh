@@ -32,6 +32,7 @@ RH_LIST=(\
      opencv \
      pciutils \
      perl \
+     pkgconfig \
      python \
      redhat-lsb \
      rpm-build \
@@ -66,6 +67,7 @@ UB_LIST=(\
      perl \
      python \
      pciutils \
+     pkg-config \
      python3-sphinx \
      python3-sphinx-rtd-theme \
      sphinx-common \
