@@ -118,7 +118,7 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
 
   auto probeFunc = (probeFuncType)dlsym(handle.get(), propeFunc().c_str());
   if (!probeFunc)
-    throw std::runtime_error("Missing xclProbe function in HAL driver '" + dll + "'");
+    return;
 
   unsigned pmdCount = 0;
 
@@ -157,8 +157,8 @@ static bool
 is_singleprocess_cpu_em()
 {
   static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool signle_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return signle_process_cpu_em;
+  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
+  return single_process_cpu_em;
 }
 
 } // namespace
@@ -197,8 +197,17 @@ loadDevices()
     }
   }
 
+  // [optional]/opt/xrt
+  bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+  if (!xrt.empty() && !isEmulationMode()) {
+    directoryOrError(xrt);
+    bfs::path p(xrt / "xrt/lib");
+    if (bfs::is_directory(p))
+      loadHalDevices(devices,p);
+  }
+
   bfs::path sdaccel(emptyOrValue(getenv("XILINX_SDX")));
-  if (!sdaccel.empty() && !isEmulationMode()) {
+  if (xrt.empty() && !sdaccel.empty() && !isEmulationMode()) {
     directoryOrError(sdaccel);
     bfs::path p(sdaccel / "data/sdaccel/pcie");
     p /= getPlatform();
@@ -250,7 +259,7 @@ loadDevices()
     }
   }
 
-  if (sdaccel.empty() && opencl.empty())
+  if (xrt.empty() && sdaccel.empty() && opencl.empty())
     throw std::runtime_error("Either XILINX_OPENCL or XILINX_SDX must be set");
 
   return devices;
