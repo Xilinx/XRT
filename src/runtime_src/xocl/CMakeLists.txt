@@ -9,9 +9,19 @@ set(XRT_XOCL_API_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/api")
 set(XRT_XOCL_CORE_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/core")
 set(XRT_XOCL_XCLBIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/xclbin")
 
+include_directories(
+  ${XRT_XOCL_API_DIR}
+)
+
 file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/*.h"
   "${XRT_XOCL_API_DIR}/*.cpp"
+  "${XRT_XOCL_API_DIR}/detail/*.h"
+  "${XRT_XOCL_API_DIR}/detail/*.cpp"
+  "${XRT_XOCL_API_DIR}/khronos/*.h"
+  "${XRT_XOCL_API_DIR}/khronos/*.cpp"
+  "${XRT_XOCL_API_DIR}/xlnx/*.h"
+  "${XRT_XOCL_API_DIR}/xlnx/*.cpp"
   )
 
 file(GLOB XRT_XOCL_CORE_FILES
