@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Run board tests from sprite
+# Usage:
+#  % mkdir test
+#  % cd test
+#  % board.sh -board vcu1525 [-sync]
+
 XRTBUILD=$(dirname ${BASH_SOURCE[0]})
 
 ################################################################
@@ -7,7 +13,6 @@ XRTBUILD=$(dirname ${BASH_SOURCE[0]})
 ################################################################
 xrt=$XRTBUILD/Release/opt
 sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
-#sdx=/home/soeren/perforce/sbx-p4/REL/2018.2/prep/rdi/sdx
 
 board=vcu1525
 keep=1
@@ -19,14 +24,14 @@ usage()
 {
     echo "Usage:"
     echo
-    echo "[-help]                    List this help"
-    echo "[-board <ku3|vu9p|...>]    Board to use"
-    echo "[-sync]                    Sync from sprite"
-    echo "[-norun]                   Don't run, just rsync all tests"
-    echo "[-rm]                      Remove the synced test after run"
-    echo "[-ini <path>]              Path to sdaccel.ini file"
-    echo "[-xrt <path>]              Path to XRT install"
-    echo "[-sdx <path>]              Path to SDx install"
+    echo "[-help]                        List this help"
+    echo "[-board <kcu1500|vcu1525|...>] Board to use"
+    echo "[-sync]                        Sync from sprite"
+    echo "[-norun]                       Don't run, just rsync all tests"
+    echo "[-rm]                          Remove the synced test after run"
+    echo "[-ini <path>]                  Path to sdaccel.ini file"
+    echo "[-xrt <path>]                  Path to XRT install"
+    echo "[-sdx <path>]                  Path to SDx install"
 
     exit 1
 }

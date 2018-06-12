@@ -1,33 +1,37 @@
 #!/bin/bash
 
+# Loader for XRT
+# Usage:
+#  % run.sh ./host.exe kernel.xclin
+#  % run.sh -dbg ./host.exe kernel.xclin
+#  % run.sh -dbg emacs
+
 XRTBUILD=$(dirname ${BASH_SOURCE[0]})
 
-# Set to location of your XRT install
-# Unset to disable XRT (reverts to 2018.2 SDx behavior)
-#
-# For your local build, this script assumes that you have built
-# XRT in specified folder.
-xrt=$XRTBUILD/Debug/opt
-#xrt=/opt
+# Define SDX and VIVADO to allow this loader script to be used
+# through other scripts (e.g. sprite scripts) that invoke SDx
+# and Vivado tools in addition to using XRT.
 
-# Set to location of your SDx install
+# Set to location of your preferred SDx install
 sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
 #sdx=/home/soeren/perforce/sbx-p4/REL/2018.2/prep/rdi/sdx
 
-# Set to location of your Vivado install
+# Set to location of your preferred Vivado install
 vivado=/proj/xbuilds/2018.2_daily_latest/installs/lin64/Vivado/2018.2
 
 ext=.o
+rel="Release"
 cmd=""
 em=""
 conf=""
+xrt=""
 
 usage()
 {
     echo "Usage:"
     echo
     echo "[-help]                    List this help"
-    echo "[-dbg]                     Set env for debug (does not affect 'xrt')"
+    echo "[-dbg]                     Set env for debug"
     echo "[-em <sw_emu | hw_emu>]    Run emulation"
     echo "[-conf]                    Run conformance mode testing"
     echo "[-ini <path>]              Set SDACCEL_INI_PATH"
@@ -45,6 +49,7 @@ while [ $# -gt 0 ]; do
             ;;
         -dbg)
             ext=.g
+            rel="Debug"
             shift
             ;;
         -em)
@@ -96,6 +101,10 @@ fi
 if [ "X$conf" != "X" ] ; then
  echo "XCL_CONFORMANCE=1"
  export XCL_CONFORMANCE=1
+fi
+
+if [ "X$xrt" == "X" ] ; then
+ xrt=$XRTBUILD/$rel/opt
 fi
 
 if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
