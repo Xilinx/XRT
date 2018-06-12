@@ -1,1 +1,1 @@
-@XRT_INSTALL_DIR@/libxilinxopencl.so
+@XRT_INSTALL_DIR@/lib/libxilinxopencl.so

@@ -1,55 +1,38 @@
 Building and Installing Software Stack
 --------------------------------------
 
-OCL Runtime
-~~~~~~~~~~~
-
-::
-
-   git clone https://github.com/Xilinx/SDAccel.git
-   cd SDAccel
-   mkdir build
-   cd build
-   cmake ../
-   make
-
-
 XRT
 ~~~
 
-The key XRT components making up the software stack are provided as zip files. These files
-can be found in SDx installation directory under ``data/sdaccel/pcie/src`` directory.
-
-xocl
-~~~~
 ::
 
-   unzip xocl.zip
-   cd driver/xclng/drm/xocl
-   make
-   sudo make install
+   git clone https://github.com/Xilinx/XRT.git
+   cd XRT/build
+   ./build.sh
 
-xclmgmt
-~~~~~~~
+``build.sh`` script builds for both Debug and Release profiles.
+
+To build RPM package on RHEL/CentOS or DEB package on Ubuntu
+
 ::
+   cd XRT/build/Release
+   make package
 
-   unzip xclmgmt.zip
-   cd driver/xclng/mgmt
-   make
-   sudo make install
+To install the XRT RPM package
 
-HAL
-~~~
 ::
+   yum install ./XRT-2.1.0-Linux.rpm
 
-   unzip xclgemhal.zip
-   cd driver/xclng/user_gem
-   make
+To install the XRT DEB package
 
-xbsak
-~~~~~
 ::
+   apt install ./XRT-2.1.0-Linux.deb
 
-   unzip xclgemhal.zip
-   cd driver/xclng/tools/xbsak_gem
+XRT Documentation
+~~~~~~~~~~~~~~~~~
+
+XRT Documentation can be built automatically using Sphinx doc builder together with Linux kernel based kernel-doc utility.
+
+::
+   cd XRT/src/runtime_src/doc/
    make

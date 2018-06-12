@@ -1,7 +1,7 @@
 PROJECT(SDAccel)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 
-SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/Sdaccel")
+SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/1_2
@@ -9,7 +9,6 @@ include_directories(
   )
 
 INCLUDE (FindPkgConfig)
-#INCLUDE (FindOpenCL)
 
 # DRM
 pkg_check_modules(DRM REQUIRED libdrm)
@@ -20,6 +19,7 @@ ELSE(DRM_FOUND)
   MESSAGE(FATAL_ERROR "Looking for DRM - not found")
 ENDIF(DRM_FOUND)
 
+# OpenCL header files
 pkg_check_modules(OPENCL REQUIRED OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
@@ -30,7 +30,6 @@ ENDIF(OPENCL_FOUND)
 
 #set(Boost_DEBUG 1)
 INCLUDE (FindBoost)
-#set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_USE_STATIC_LIBS  ON)
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
