@@ -19,19 +19,27 @@ keep=1
 sync=0
 ini=""
 run=1
+tests=
 
 usage()
 {
-    echo "Usage:"
+    echo "Usage (example):"
+    echo "% board.sh -board vcu1525 -sync"
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
     echo "[-rm]                          Remove the synced test after run"
+    echo "[-tests <path>]                List of tests to run"
     echo "[-ini <path>]                  Path to sdaccel.ini file"
     echo "[-xrt <path>]                  Path to XRT install"
     echo "[-sdx <path>]                  Path to SDx install"
+    echo ""
+    echo "With -sync the script rsyncs all UNIT_HW tests from sprite into current"
+    echo "directory.  Without -sync (and without -tests) the script runs all previously"
+    echo "synced tests.  Use -tests <file> to specify a subset of the currently synced"
+    echo "tests to run (file must have one test per line)"
 
     exit 1
 }
@@ -56,6 +64,11 @@ while [ $# -gt 0 ]; do
             ;;
         -norun)
             run=0
+            shift
+            ;;
+        -tests)
+            shift
+            tests=(`cat $1`)
             shift
             ;;
         -sdx)
@@ -110,10 +123,10 @@ echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 ################################################################
 # Test extraction
 ################################################################
-if [ $sync -eq 0 ]; then
+if [[ $sync == 0 && "X$tests" == "X" ]]; then
  # use existing already rsynced tests
  tests=(`find . -maxdepth 1 -mindepth 1 -type d`)
-else
+elif [ $sync == 1 ] ; then
  base=/proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD
 
  # latests csv
@@ -130,6 +143,7 @@ fi
 for f in ${tests[*]}; do
  echo $f
 done
+
 
 ################################################################
 # Test driver
@@ -154,14 +168,14 @@ for f in ${tests[*]}; do
   fi
   cd $d
   echo "================================================================"
-  echo "Running test in = $PWD"
+  echo "RUNDIR          = $PWD"
   echo "XILINX_XRT      = $XILINX_XRT"
   echo "XILINX_SDX      = $XILINX_SDX"
   echo "XILINX_OPENCL   = $XILINX_OPENCL"
   echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
   echo "================================================================"
   cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
-  echo "Running $f $cmd ..."
+  echo "Running $cmd"
   $cmd | tee run.log
   rc=${PIPESTATUS[0]}
   cd $here
