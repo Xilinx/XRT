@@ -23,6 +23,7 @@ add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(xdp)
+add_subdirectory(ert)
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 

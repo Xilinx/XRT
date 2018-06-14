@@ -18,6 +18,8 @@
 #include "xbram_hw.h"
 #include "xintc_l.h"
 
+#define ERT_UNUSED __attribute__((unused))
+
 //FIXED_BOARD should follow vbnv format: xilinx:vcu1525:4ddr-xpr:4.2
 #ifdef FIXED_BOARD
 #define USE_FIXED_BOARD 1
@@ -708,11 +710,11 @@ void print_sensor_data(void)
 	uint8_t ipmi_ver_minor;
 	uint8_t fw_ver_major;
 	uint8_t fw_ver_minor;
-	float *se98a_reading;
+	ERT_UNUSED float *se98a_reading;
 	int32_t lm96063_local_temp;
-	float   *lm96063_remote_temp;
+	ERT_UNUSED float   *lm96063_remote_temp;
 	uint8_t lm96063_fan_rpm;
-	float *ltc3884_temp;
+	ERT_UNUSED float *ltc3884_temp;
 	uint32_t adc_data;
 	uint8_t rd_code;
 

@@ -19,19 +19,40 @@ keep=1
 sync=0
 ini=""
 run=1
+tests=
+csv=
 
 usage()
 {
-    echo "Usage:"
+    echo "Usage (example):"
+    echo "% board.sh -board vcu1525 -sync"
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
     echo "[-rm]                          Remove the synced test after run"
+    echo "[-tests <path>]                List of tests to run"
+    echo "[-csv <path>]                  Path to csv file to parse for tests"
     echo "[-ini <path>]                  Path to sdaccel.ini file"
     echo "[-xrt <path>]                  Path to XRT install"
     echo "[-sdx <path>]                  Path to SDx install"
+    echo ""
+    echo "With no optional options, this script runs all previously synced tests in" 
+    echo "current directory. "
+    echo "% board.sh -board vcu1525"
+    echo ""
+    echo "Use -sync to sync all UNIT_HW tests from latest sprite run into working directory."
+    echo "% board.sh -board vcu1525 -sync "
+    echo ""
+    echo "Use -tests <file> (without -sync) to run a subset of curently synced tests.  "
+    echo "The specified file should have one tests per line"
+    echo "% board.sh -board vcu1525 -tests ~/tmp/files.txt"
+    echo ""
+    echo "Use -csv (with -sync) to explicity specify an older csv file to parse for PASSed"
+    echo "tests.  It's possible latest sprite had hickups and had no PASSed tests."
+    echo "The path to the csv file must be a absolute path to sprite generated file."
+    echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
 
     exit 1
 }
@@ -56,6 +77,16 @@ while [ $# -gt 0 ]; do
             ;;
         -norun)
             run=0
+            shift
+            ;;
+        -tests)
+            shift
+            tests=(`cat $1`)
+            shift
+            ;;
+        -csv)
+            shift
+            csv=$1
             shift
             ;;
         -sdx)
@@ -110,26 +141,35 @@ echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 ################################################################
 # Test extraction
 ################################################################
-if [ $sync -eq 0 ]; then
+if [[ $sync == 0 && "X$tests" == "X" ]]; then
  # use existing already rsynced tests
  tests=(`find . -maxdepth 1 -mindepth 1 -type d`)
-else
+elif [ $sync == 1 ] ; then
  base=/proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD
 
  # latests csv
- csv=(`find $base -mindepth 1 -maxdepth 1 -type f -name \*.csv`)
- csv=${csv[-1]}
+ csvs=(`find $base -mindepth 1 -maxdepth 1 -type f -name \*.csv`)
+
+ if [ "X$csv" == "X" ]; then
+   csv=${csvs[-1]}
+ fi
  suffix=$(basename $csv)
  suffix=${suffix%%.*}
  rundir=TEST_WORK_${suffix}
 
  # tests to rsync
  tests=(`egrep -e 'PASS' ${csv} | awk -F, '{print $3}' | grep -v PASS | grep $board | sort | awk -F/ '{print $NF}'`)
+
+ if [ ${#tests[@]} == 0 ]; then
+   echo "No tests found in $csv"
+   echo "Use -csv to specify another csv file"
+ fi
 fi
 
 for f in ${tests[*]}; do
  echo $f
 done
+
 
 ################################################################
 # Test driver
@@ -154,14 +194,14 @@ for f in ${tests[*]}; do
   fi
   cd $d
   echo "================================================================"
-  echo "Running test in = $PWD"
+  echo "RUNDIR          = $PWD"
   echo "XILINX_XRT      = $XILINX_XRT"
   echo "XILINX_SDX      = $XILINX_SDX"
   echo "XILINX_OPENCL   = $XILINX_OPENCL"
   echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
   echo "================================================================"
   cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
-  echo "Running $f $cmd ..."
+  echo "Running $cmd"
   $cmd | tee run.log
   rc=${PIPESTATUS[0]}
   cd $here
