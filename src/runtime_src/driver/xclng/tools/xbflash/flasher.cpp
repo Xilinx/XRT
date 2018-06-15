@@ -159,7 +159,7 @@ int Flasher::mapDevice(unsigned int devIdx)
         return -EINVAL;
     }
 
-    char cDBDF[12]; // size of dbdf string
+    char cDBDF[128]; // size of dbdf string
     xcldev::pci_device_scanner::device_info dev = scanner.device_list.at( devIdx );
     sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", dev.domain, dev.bus, dev.device, dev.mgmt_func );
     mDBDF = std::string( cDBDF );
