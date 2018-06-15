@@ -11,7 +11,7 @@ XRTBUILD=$(dirname ${BASH_SOURCE[0]})
 ################################################################
 # Environment
 ################################################################
-xrt=$XRTBUILD/Release/opt
+xrt=$XRTBUILD/Release/opt/xilinx/xrt
 sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
 
 board=vcu1525
@@ -35,8 +35,8 @@ usage()
     echo "[-tests <path>]                List of tests to run"
     echo "[-csv <path>]                  Path to csv file to parse for tests"
     echo "[-ini <path>]                  Path to sdaccel.ini file"
-    echo "[-xrt <path>]                  Path to XRT install"
-    echo "[-sdx <path>]                  Path to SDx install"
+    echo "[-xrt <path>]                  Path to XRT install (default: $xrt)"
+    echo "[-sdx <path>]                  Path to SDx install (default: $sdx)"
     echo ""
     echo "With no optional options, this script runs all previously synced tests in" 
     echo "current directory. "
@@ -122,8 +122,8 @@ fi
 
 if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
- export LD_LIBRARY_PATH=$XILINX_XRT/xrt/lib
- export PATH=$XILINX_XRT/xrt/bin:${PATH}
+ export LD_LIBRARY_PATH=$XILINX_XRT/lib
+ export PATH=$XILINX_XRT/bin:${PATH}
 fi
 
 if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then

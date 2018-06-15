@@ -9,7 +9,7 @@ add_custom_target(ert ALL
  DEPENDS scheduler management
 )
 
-set(ERT_INSTALL_PREFIX "/opt/xrt/share/fw")
+set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
 
 install (FILES  
  ${CMAKE_CURRENT_BINARY_DIR}/scheduler/sched.bin

@@ -197,11 +197,11 @@ loadDevices()
     }
   }
 
-  // [optional]/opt/xrt
+  // [optional]/xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
   if (!xrt.empty() && !isEmulationMode()) {
     directoryOrError(xrt);
-    bfs::path p(xrt / "xrt/lib");
+    bfs::path p(xrt / "lib");
     if (bfs::is_directory(p))
       loadHalDevices(devices,p);
   }

@@ -35,8 +35,8 @@ usage()
     echo "[-em <sw_emu | hw_emu>]    Run emulation"
     echo "[-conf]                    Run conformance mode testing"
     echo "[-ini <path>]              Set SDACCEL_INI_PATH"
-    echo "[-sdx <path>]              Specify SDx to use"
-    echo "[-xrt <path>]              Specify XRT to use"
+    echo "[-sdx <path>]              Specify SDx install (default: $sdx)"
+    echo "[-xrt <path>]              Path to XRT install (default: $XRTBUILD/opt/xilinx/xrt)"
     echo "[-ldp <path>]              Prepend path to LD_LIBRARY_PATH"
 
     exit 1
@@ -104,13 +104,13 @@ if [ "X$conf" != "X" ] ; then
 fi
 
 if [ "X$xrt" == "X" ] ; then
- xrt=$XRTBUILD/$rel/opt
+ xrt=$XRTBUILD/$rel/opt/xilinx/xrt
 fi
 
 if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
- export LD_LIBRARY_PATH=$XILINX_XRT/xrt/lib
- export PATH=$XILINX_XRT/xrt/bin:${PATH}
+ export LD_LIBRARY_PATH=$XILINX_XRT/lib
+ export PATH=$XILINX_XRT/bin:${PATH}
 fi
 
 if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
