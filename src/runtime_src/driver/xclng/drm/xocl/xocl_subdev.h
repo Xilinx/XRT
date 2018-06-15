@@ -417,6 +417,14 @@ enum {
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
+#define USER_RES_AWS                            \
+       ((struct xocl_subdev_info []) {             \
+           XOCL_DEVINFO_FEATURE_ROM,           \
+           XOCL_DEVINFO_XDMA,              \
+           XOCL_DEVINFO_SCHEDULER,             \
+           XOCL_DEVINFO_ICAP_USER,             \
+       })
+
 #define	USER_RES_DSA52							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -444,6 +452,15 @@ enum {
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
 	}
+
+#define XOCL_BOARD_USER_AWS                         \
+   (struct xocl_board_private){                    \
+       .flags      = 0,                    \
+       .subdev_info    = USER_RES_AWS,         \
+       .subdev_num = ARRAY_SIZE(USER_RES_AWS),     \
+       .user_bar = 0,                      \
+       .intr_bar = 1,                      \
+   }
 
 #define	XOCL_BOARD_USER_DSA52						\
 	(struct xocl_board_private){					\

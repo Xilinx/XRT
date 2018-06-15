@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2017 Xilinx, Inc
+ * Copyright (C) 2017-2018 Xilinx, Inc
  * Author: Ryan Radjabi
  * An argument parser to prepare for the 'dd' function in xbsak. This
  * parser is designed after the Unix 'dd' command.

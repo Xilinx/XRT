@@ -2,28 +2,27 @@
 
 CXX := g++
 CXX_EXT := cpp
+AR := ar
+ARFLAGS := rcv
 
 ifeq ($(ec2),1)
     CXXFLAGS := -Werror -std=c++11
-    STLIB = libawsxcldrv.a
-    SHLIB = libawsxcldrv.so
+    STLIB = libxrt-aws.a
+    SHLIB = libxrt-aws.so
+    SHIM_INC := -I../../../../ -I../../include -I../../../include -I../../../../../linux_kernel_drivers 
 else
 # For bare metal testing, i.e. in non EC2 environment
     CXXFLAGS := -Werror -std=c++11 -DINTERNAL_TESTING
-    STLIB = libawsbmgemdrv.a
-    SHLIB = libawsbmgemdrv.so
+    STLIB = libxrtbm-aws.a
+    SHLIB = libxrtbm-aws.so
+    SHIM_INC := -I../../../../ -I../../include -I../../../include -I../user_common -I../../../../driver/xclng/include/drm -I../../../../driver/aws/kernel/include
 endif
-
-AR := ar
-ARFLAGS := rcv
 
 LIBS := $(STLIB) $(SHLIB)
 
 XCLHAL_VER = -DXCLHAL_MAJOR_VER=2 -DXCLHAL_MINOR_VER=1
 
-SHIM_INC := -I../../../../ -I../../include -I../../../include -I../../../../../linux_kernel_drivers 
-SHIM_INC += -I../user_common
-CXXFLAGS += $(CXXFLAGS) $(XCLHAL_VER) $(SHIM_INC) -fpic -fvisibility=hidden -lrt  -lfpga_mgmt
+CXXFLAGS += $(CXXFLAGS) $(XCLHAL_VER) $(SHIM_INC) -fpic -fvisibility=hidden -lrt  -lfpga_mgmt -Wall
 
 ifeq ($(debug),1)
 	CXXFLAGS += -g -DDEBUG

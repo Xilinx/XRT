@@ -1,8 +1,5 @@
-#ifndef _XDMA_SHIM_H_
-#define _XDMA_SHIM_H_
-
 /**
- * Copyright (C) 2017 Xilinx, Inc
+ * Copyright (C) 2017-2018 Xilinx, Inc
  * Author: Sonal Santan
  * AWS HAL Driver layered on top of kernel drivers
  *
@@ -20,13 +17,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#ifndef _XDMA_SHIM_H_
+#define _XDMA_SHIM_H_
 
-//#define INTERNAL_TESTING 1
-
-#include "driver/include/xclhal2.h"
-#include "driver/include/xclperf.h"
-//#include "driver/include/drm.h"
-#include "driver/xclng/include/drm/drm.h"
+#include "xclhal2.h"
+#include "xclperf.h"
+#include "drm.h"
 #include <fstream>
 #include <list>
 #include <map>
@@ -37,6 +33,7 @@
 
 #ifndef INTERNAL_TESTING
 #include "fpga_pci.h"
+#include "fpga_mgmt.h"
 #endif
 
 // Work around GCC 4.8 + XDMA BAR implementation bugs
@@ -330,7 +327,7 @@ public:
         uint32_t bin2dec(const char * str, int start, int number);
         std::string dec2bin(uint32_t n);
         std::string dec2bin(uint32_t n, unsigned bits);
-        static std::string getDSAName(unsigned deviceVersion);
+        static std::string getDSAName(unsigned short deviceId, unsigned short subsystemId);
 
     private:
         // This is a hidden signature of this class and helps in preventing
@@ -344,9 +341,9 @@ public:
 #ifdef INTERNAL_TESTING
         int mMgtHandle;
 #else
-	pci_bar_handle_t ocl_kernel_bar; // AppPF BAR0 for OpenCL kernels
-	pci_bar_handle_t sda_mgmt_bar;; // MgmtPF BAR4, for SDAccel Perf mon etc
-	pci_bar_handle_t ocl_global_mem_bar; // AppPF BAR4
+        pci_bar_handle_t ocl_kernel_bar;     // AppPF BAR0 for OpenCL kernels
+        pci_bar_handle_t sda_mgmt_bar;       // MgmtPF BAR4, for SDAccel Perf mon etc
+        pci_bar_handle_t ocl_global_mem_bar; // AppPF BAR4
 #endif
         uint32_t mMemoryProfilingNumberSlots;
         uint32_t mAccelProfilingNumberSlots;
@@ -373,6 +370,11 @@ public:
         xclDeviceInfo2 mDeviceInfo;
         RangeTable mLegacyAddressTable;
 
+#ifndef INTERNAL_TESTING
+        int sleepUntilLoaded( std::string afi );
+        int checkAndSkipReload( char *afi_id, fpga_mgmt_image_info *info );
+        int loadDefaultAfiIfCleared( void );
+#endif
     public:
         static const unsigned TAG;
     };

@@ -28,7 +28,6 @@
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)
 
-//TODO: umang
 #ifdef INTERNAL_TESTING
 #define ACCELERATOR_BAR        0
 #define MMAP_SIZE_USER         0x400000
@@ -56,10 +55,8 @@
 #include <fstream>
 #include <mutex>
 
-#include "driver/include/xclbin.h"
-//#include "driver/aws/kernel/include/xdma-ioctl.h"
-//#include "driver/aws/kernel/include/xocl_ioctl.h"
-#include "driver/xclng/include/xocl_ioctl.h"
+#include "xclbin.h"
+#include "xocl_ioctl.h"
 #include "scan.h"
 #include "awssak.h"
 
@@ -67,13 +64,11 @@
 #include "mgmt-ioctl.h"
 #else
 #define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS 3
-#include <fpga_mgmt.h>
-#include <fpga_pci.h>
-
+#define AWSMGMT_NUM_ACTUAL_CLOCKS    3
 // TODO - define this in a header file
 extern char* get_afi_from_xclBin(const xclBin *);
-
+extern char* get_afi_from_axlf(const axlf *);
+#define DEFAULT_GLOBAL_AFI "agfi-069ddd533a748059b" // 1.4 shell
 #endif
 
 namespace awsbwhal {
@@ -125,33 +120,42 @@ namespace awsbwhal {
 
     int AwsXcl::xclLoadXclBin(const xclBin *buffer)
     {
-      return -1;
-      if ( mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", legacy xclbin not supported" <<  std::endl;
+      char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
+#ifdef INTERNAL_TESTING
+      if (!memcmp(xclbininmemory, "xclbin2", 8)) {
+          return xclLoadAxlf(reinterpret_cast<axlf*>(xclbininmemory));
+      } else {
+          return -1;
       }
-
-//#ifdef INTERNAL_TESTING
-//      char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
-//
-//      if (!memcmp(xclbininmemory, "xclbin2", 8)){
-//          return xclLoadAxlf(reinterpret_cast<axlf*>(xclbininmemory));
-//      }
-//
-//      if (mLogStream.is_open()) {
-//          mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
-//      }
-//
-//      if (!mLocked)
-//          return -EPERM;
-//
-//      const unsigned cmd = XCLMGMT_IOCICAPDOWNLOAD;
-//      xclmgmt_ioc_bitstream obj = {const_cast<xclBin *>(buffer)};
-//      return ioctl(mMgtHandle, cmd, &obj);
-//#else
-//      char* afi_id = get_afi_from_xclBin(buffer);
-//      return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
-//      // TODO - add printout and eror case handing
-//#endif
+#else
+      if (!memcmp(xclbininmemory, "xclbin2", 8)) {   
+          int retVal = 0;
+          axlf *axlfbuffer = reinterpret_cast<axlf*>(const_cast<xclBin*> (buffer));
+          fpga_mgmt_image_info orig_info;
+          char* afi_id = get_afi_from_axlf(axlfbuffer);
+          std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
+          fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
+          if (checkAndSkipReload( afi_id, &orig_info )) {
+              retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+              if (!retVal) {
+                  retVal = sleepUntilLoaded( std::string(afi_id) );
+              }
+              if (!retVal) {
+                  drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
+                  retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+                  if (retVal) {
+                      std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
+                  } else {
+                      std::cout << "AFI load complete." << std::endl; 
+                  }
+              }
+          } 
+          return retVal;
+      } else {
+          char* afi_id = get_afi_from_xclBin(buffer);
+          return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+      }
+#endif
     }
 
     /* Accessing F1 FPGA memory space (i.e. OpenCL Global Memory) is mapped through AppPF BAR4
@@ -463,16 +467,16 @@ namespace awsbwhal {
             close(mMgtHandle);
 #else
 //#       error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
-	if (ocl_kernel_bar >=0)
-		fpga_pci_detach(ocl_kernel_bar);
-	if (ocl_global_mem_bar>=0)
-		fpga_pci_detach(ocl_global_mem_bar);
-	if (sda_mgmt_bar>=0)
-		fpga_pci_detach(sda_mgmt_bar);
+        if (ocl_kernel_bar >=0)
+            fpga_pci_detach(ocl_kernel_bar);
+        if (ocl_global_mem_bar>=0)
+            fpga_pci_detach(ocl_global_mem_bar);
+        if (sda_mgmt_bar>=0)
+            fpga_pci_detach(sda_mgmt_bar);
 
-	ocl_kernel_bar = -1;
-	ocl_global_mem_bar = -1;
-	sda_mgmt_bar = -1;
+        ocl_kernel_bar = -1;
+        ocl_global_mem_bar = -1;
+        sda_mgmt_bar = -1;
 
 #endif
 
@@ -483,30 +487,31 @@ namespace awsbwhal {
     }
 
     AwsXcl::AwsXcl(unsigned index, const char *logfileName,
-                       xclVerbosityLevel verbosity) : mTag(TAG), mBoardNumber(index),
-                                                      maxDMASize(0xfa0000),
-                                                      mLocked(false),
-                                                      mOffsets{0x0, 0x0, 0x0, 0x0},
+                   xclVerbosityLevel verbosity) : mTag(TAG), mBoardNumber(index),
+                   maxDMASize(0xfa0000),
+                   mLocked(false),
+                   mOffsets{0x0, 0x0, 0x0, 0x0},
                                                       mMemoryProfilingNumberSlots(0),
                                                       mAccelProfilingNumberSlots(0),
                                                       mStallProfilingNumberSlots(0)
     {
-      int slot_id = mBoardNumber;
-// FIXME: need to revisit and change number of channels
-      const std::string devName = "/dev/dri/renderD" + std::to_string(xcldev::pci_device_scanner::device_list[mBoardNumber].user_instance);
-      mUserHandle = open(devName.c_str(), O_RDWR);
-      if(mUserHandle <= 0) {
-        std::cout << "ERROR: AwsXcl - Cannot open userPF: " << devName << std::endl;
-      }
+#ifndef INTERNAL_TESTING
+        loadDefaultAfiIfCleared();
+#endif
+        const std::string devName = "/dev/dri/renderD" + std::to_string(xcldev::pci_device_scanner::device_list[mBoardNumber].user_instance);
+        mUserHandle = open(devName.c_str(), O_RDWR);
+        if(mUserHandle <= 0) {
+            std::cout << "WARNING: AwsXcl - Cannot open userPF: " << devName << std::endl;
+        }
 
 #ifdef INTERNAL_TESTING
         if(mUserHandle > 0) {
-          mUserMap = (char *)mmap(0, MMAP_SIZE_USER, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
-          if (mUserMap == MAP_FAILED) {
-            std::cout << "Map failed: " << devName << std::endl;
-            close(mUserHandle);
-            mUserHandle = -1;
-          }
+            mUserMap = (char *)mmap(0, MMAP_SIZE_USER, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
+            if (mUserMap == MAP_FAILED) {
+                std::cout << "Map failed: " << devName << std::endl;
+                close(mUserHandle);
+                mUserHandle = -1;
+            }
         }
 
         char file_name_buf[128];
@@ -514,43 +519,38 @@ namespace awsbwhal {
         std::sprintf((char *)&file_name_buf, "/dev/awsmgmt%d", mBoardNumber);
         mMgtHandle = open(file_name_buf, O_RDWR | O_SYNC);
         if(mMgtHandle > 0) {
-          if (xclGetDeviceInfo2(&mDeviceInfo)) {
-            close(mMgtHandle);
-            mMgtHandle = -1;
-          }
+            if (xclGetDeviceInfo2(&mDeviceInfo)) {
+                close(mMgtHandle);
+                mMgtHandle = -1;
+            }
         } else {
-          std::cout << "Cannot open mgmtPF: " << devName << std::endl;
+            std::cout << "Cannot open mgmtPF: " << devName << std::endl;
         }
 #else
-	ocl_kernel_bar = -1;
-	ocl_global_mem_bar = -1;
-	sda_mgmt_bar = -1;
+        int slot_id = mBoardNumber;
+        ocl_kernel_bar = -1;
+        ocl_global_mem_bar = -1;
+        sda_mgmt_bar = -1;
 
-	if (xclGetDeviceInfo2(&mDeviceInfo)) {
-      std::cout << "ERROR AwsXcl: DeviceInfo failed for slot# " << std::dec << slot_id << std::endl;
-	}
-	else
-	if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR0, 0, &ocl_kernel_bar) ) {
-      ocl_kernel_bar = -1;
-      std::cout << "ERROR AwsXcl: PCI kernel bar attach failed for slot# " << std::dec << slot_id << std::endl;
-	}
-	else
-	if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR4, 0, &ocl_global_mem_bar) ) {
-		fpga_pci_detach(ocl_kernel_bar);
-		ocl_kernel_bar = -1;
-		ocl_global_mem_bar = -1;
-		sda_mgmt_bar = -1;
-        std::cout << "ERROR AwsXcl: PCI global bar attach failed for slot# " << std::dec << slot_id << std::endl;
-	}
-	else
-	if (fpga_pci_attach(slot_id, FPGA_MGMT_PF, MGMT_PF_BAR4, 0, &sda_mgmt_bar) ) {
-		fpga_pci_detach(ocl_kernel_bar);
-		fpga_pci_detach(ocl_global_mem_bar);
-		ocl_kernel_bar = -1;
-		ocl_global_mem_bar = -1;
-		sda_mgmt_bar = -1;
-        std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
-	}
+        if (xclGetDeviceInfo2(&mDeviceInfo)) {
+            std::cout << "ERROR AwsXcl: DeviceInfo failed for slot# " << std::dec << slot_id << std::endl;
+        } else if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR0, 0, &ocl_kernel_bar) ) {
+                ocl_kernel_bar = -1;
+                std::cout << "ERROR AwsXcl: PCI kernel bar attach failed for slot# " << std::dec << slot_id << std::endl;
+        } else if (fpga_pci_attach(slot_id, FPGA_APP_PF, APP_PF_BAR4, 0, &ocl_global_mem_bar) ) {
+                    fpga_pci_detach(ocl_kernel_bar);
+                    ocl_kernel_bar = -1;
+                    ocl_global_mem_bar = -1;
+                    sda_mgmt_bar = -1;
+                    std::cout << "ERROR AwsXcl: PCI global bar attach failed for slot# " << std::dec << slot_id << std::endl;
+        } else if (fpga_pci_attach(slot_id, FPGA_MGMT_PF, MGMT_PF_BAR4, 0, &sda_mgmt_bar) ) {
+                        fpga_pci_detach(ocl_kernel_bar);
+                        fpga_pci_detach(ocl_global_mem_bar);
+                        ocl_kernel_bar = -1;
+                        ocl_global_mem_bar = -1;
+                        sda_mgmt_bar = -1;
+                        std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
+        }
 #endif
 
         //
@@ -560,13 +560,13 @@ namespace awsbwhal {
         mMemoryProfilingNumberSlots = 0;
         mPerfMonFifoCtrlBaseAddress = 0x00;
         mPerfMonFifoReadBaseAddress = 0x00;
-    //
-    // Profiling - defaults
-    // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-    mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-    mMemoryProfilingNumberSlots = 0;
-    mPerfMonFifoCtrlBaseAddress = 0x00;
-    mPerfMonFifoReadBaseAddress = 0x00;
+        //
+        // Profiling - defaults
+        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
+        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
+        mMemoryProfilingNumberSlots = 0;
+        mPerfMonFifoCtrlBaseAddress = 0x00;
+        mPerfMonFifoReadBaseAddress = 0x00;
 
         //
         // Profiling - defaults
@@ -589,45 +589,47 @@ namespace awsbwhal {
         }
 #else
         if (ocl_kernel_bar < 0) {
-          std::cout << "ERROR: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
+          std::cout << "WARNING: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
           return false;
         }
         if (ocl_global_mem_bar < 0) {
-          std::cout << "ERROR: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
+          std::cout << "WARNING: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
           return false;
         }
         if (sda_mgmt_bar < 0) {
-          std::cout << "ERROR: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
+          std::cout << "WARNING: AwsXcl isGood: kernel, global & mgmt bar are: " << std::hex << ocl_kernel_bar << ", " << std::hex << ocl_global_mem_bar << ", " << sda_mgmt_bar << std::endl;
           return false;
+        }
+        if (mUserHandle <= 0) {
+            std::cout << "WARNING: AwsXcl isGood: invalid user handle." << std::endl;
+            return false;
         }
 #endif
         return true;
-	    //return mDataMover->isGood();
-        // TODO: Add sanity check for card state
     }
 
 
     int AwsXcl::pcieBarRead(int bar_num, unsigned long long offset, void* buffer, unsigned long long length) {
-        const char *mem = 0;
+        char *mem = 0;
         char *qBuf = (char *)buffer;
         switch (bar_num) {
 #ifdef INTERNAL_TESTING
-		case 0:
-		{
-            		if ((length + offset) > MMAP_SIZE_USER) {
-                		return -1;
-            		}
-            		mem = mUserMap;
+        case 0:
+        {
+            if ((length + offset) > MMAP_SIZE_USER) {
+                return -1;
+            }
+            mem = mUserMap;
 #else
-		case APP_PF_BAR0:
-		{
+        case APP_PF_BAR0:
+        {
 #endif
-            		break;
-        	}
-		default:
-        	{
-            		return -1;
-        	}
+            break;
+        }
+        default:
+        {
+            return -1;
+        }
         }
 
         while (length >= 4) {
@@ -645,7 +647,7 @@ namespace awsbwhal {
             *qBuf = *(mem + offset);
 #else
 
-	// TODO - add support for sub 4-byte read in AWS platform
+    // TODO - add support for sub 4-byte read in AWS platform
 #endif
             offset++;
             qBuf++;
@@ -657,8 +659,8 @@ namespace awsbwhal {
     }
 
     int AwsXcl::pcieBarWrite(int bar_num, unsigned long long offset, const void* buffer, unsigned long long length) {
-        char *mem = 0;
         char *qBuf = (char *)buffer;
+        char *mem = 0;
         switch (bar_num) {
 #ifdef INTERNAL_TESTING
         case 0:
@@ -741,17 +743,9 @@ namespace awsbwhal {
       return true;
     }
 
-    std::string AwsXcl::getDSAName(unsigned deviceVersion)
+    std::string AwsXcl::getDSAName(unsigned short deviceId, unsigned short subsystemId)
     {
-        std::string dsa;
-        switch(deviceVersion){
-          case AWS_SHELL14:
-            dsa = "xilinx_aws-vu9p-f1-04261818_dynamic_5_0";
-            break;
-          default:
-            dsa = "xilinx_aws-vu9p-f1_dynamic_5_0";
-            break;
-        }
+        std::string dsa("xilinx_aws-vu9p-f1-04261818_dynamic_5_0");
         return dsa;
     }
 
@@ -801,21 +795,22 @@ namespace awsbwhal {
             info->mMigCalib = info->mMigCalib && mgmt_info_obj.mig_calibration[i];
         }
 #else
-	struct fpga_slot_spec slot_info;
-	//fpga_pci_get_slot_spec(mBoardNumber,FPGA_APP_PF,  &slot_info);
+    struct fpga_slot_spec slot_info;
+    //fpga_pci_get_slot_spec(mBoardNumber,FPGA_APP_PF,  &slot_info);
     fpga_pci_get_slot_spec(mBoardNumber, &slot_info);
-	info->mVendorId = slot_info.map[0].vendor_id;
-	info->mDeviceId = slot_info.map[0].device_id;
-// FIXME - update next 3 variables
+    info->mVendorId = slot_info.map[0].vendor_id;
+    info->mDeviceId = slot_info.map[0].device_id;
+    // FIXME - update next 3 variables
     info->mSubsystemId = slot_info.map[0].subsystem_device_id;
-	info->mSubsystemVendorId = slot_info.map[0].subsystem_vendor_id;
-	info->mDeviceVersion = 0;
+    info->mSubsystemVendorId = slot_info.map[0].subsystem_vendor_id;
+    info->mDeviceVersion = 0;
     info->mPCIeLinkWidth = 16;
     info->mPCIeLinkSpeed = 8000;
-
-	for (int i = 0; i < XCLMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
-	  info->mOCLFrequency[i] = 0;
-	}
+    fpga_mgmt_image_info imageInfo;
+    fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
+    for (int i = 0; i < AWSMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
+      info->mOCLFrequency[i] = imageInfo.metrics.clocks[i].frequency[0] / 1000000;
+    }
     info->mMigCalib = true;
 #endif
 
@@ -828,7 +823,7 @@ namespace awsbwhal {
         // than 4 DRAM channels
         info->mDDRBankCount = 4;
 
-        const std::string deviceName = getDSAName(mgmt_info_obj.device_version);
+        const std::string deviceName = getDSAName(info->mDeviceId, info->mSubsystemId);
         if (mLogStream.is_open())
                 mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << deviceName << std::endl;
 
@@ -841,7 +836,6 @@ namespace awsbwhal {
               << ", clock freq 2=" << std::dec << info->mOCLFrequency[1] << std::endl;
         }
 
-        //TODO: Umang
         info->mOnChipTemp  = 25;
         info->mFanTemp     = 0;
         info->mVInt        = 0.9;
@@ -853,7 +847,6 @@ namespace awsbwhal {
     int AwsXcl::resetDevice(xclResetKind kind) {
 
         // Call a new IOCTL to just reset the OCL region
-        // TODO : umang
 //        if (kind == XCL_RESET_FULL) {
 //            xdma_ioc_base obj = {0X586C0C6C, XDMA_IOCHOTRESET};
 //            return ioctl(mUserHandle, XDMA_IOCHOTRESET, &obj);
@@ -876,7 +869,7 @@ namespace awsbwhal {
     #else
 //    #       error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
 //    #       This API is not supported in AWS, the frequencies are set per AFI
-   	return -1;
+   	return 0;
     #endif
     }
 
@@ -1003,55 +996,120 @@ namespace awsbwhal {
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_SYNC_BO, &syncInfo);
     }
 
-    /*
-    //Sarab: Need to add
-    int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)
-    unsigned int xclVersion();
-    void intScanDevices();
-    -- 15 PerMon functions ----
-    */
-}
-//end namespace XOCL_GEM
+#ifndef INTERNAL_TESTING
+    int AwsXcl::loadDefaultAfiIfCleared( void )
+    {
+        int array_len = 16;
+        fpga_slot_spec spec_array[ array_len ];
+        std::memset( spec_array, mBoardNumber, sizeof(fpga_slot_spec) * array_len );
+        fpga_pci_get_all_slot_specs( spec_array, array_len );
+        if( spec_array[mBoardNumber].map[FPGA_APP_PF].device_id == AWS_UserPF_DEVICE_ID ) {
+            std::string agfi = DEFAULT_GLOBAL_AFI;
+            fpga_mgmt_load_local_image( mBoardNumber, const_cast<char*>(agfi.c_str()) );
+            if( sleepUntilLoaded( agfi ) ) {
+                std::cout << "ERROR: Sleep until load failed." << std::endl;
+                return -1;
+            }
+            fpga_pci_rescan_slot_app_pfs( mBoardNumber );
+        }
+        return 0;
+    }
 
-/*
-//Sarab: Need to add
-int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
-int xclUnlockDevice(xclDeviceHandle handle)
-int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)
-unsigned int xclVersion();
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
-void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
-size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle,
-    const void *src, size_t size, size_t seek)
-size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle,
-    void *dst, size_t size, size_t skip)
-void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
-int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
-    size_t size, size_t offset)
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
-unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
-ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
-    size_t count, uint64_t offset)
-ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
-    size_t count, uint64_t offset)
-void intScanDevices();
--- 15 PerMon functions ----
-*/
+    int AwsXcl::sleepUntilLoaded( const std::string afi )
+    {
+        for( int i = 0; i < 20; i++ ) {
+            std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+            fpga_mgmt_image_info info;
+            std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info) );
+            int result = fpga_mgmt_describe_local_image( mBoardNumber, &info, 0 );
+            if( result ) {
+                std::cout << "ERROR: Load image failed." << std::endl;
+                return 1;
+            }
+            if( (info.status == FPGA_STATUS_LOADED) && !std::strcmp(info.ids.afi_id, const_cast<char*>(afi.c_str())) ) {
+                break;
+            }
+        }
+        return 0;
+    }
+
+    int AwsXcl::checkAndSkipReload( char *afi_id, fpga_mgmt_image_info *orig_info )
+    {
+        if( (orig_info->status == FPGA_STATUS_LOADED) && !std::strcmp(orig_info->ids.afi_id, afi_id) ) {
+            std::cout << "This AFI already loaded. Skip reload!" << std::endl;
+            int result = 0;
+            //existing afi matched.
+            uint16_t status = 0;
+            result = fpga_mgmt_get_vDIP_status(mBoardNumber, &status);
+            if(result) {
+                printf("Error: can not get virtual DIP Switch state\n");
+                return result;
+            }
+            //Set bit 0 to 1
+            status |=  (1 << 0);
+            result = fpga_mgmt_set_vDIP(mBoardNumber, status);
+            if(result) {
+                printf("Error trying to set virtual DIP Switch \n");
+                return result;
+            }
+            std::this_thread::sleep_for(std::chrono::microseconds(250));
+            //pulse the changes in.
+            result = fpga_mgmt_get_vDIP_status(mBoardNumber, &status);
+            if(result) {
+                printf("Error: can not get virtual DIP Switch state\n");
+                return result;
+            }
+            //Set bit 0 to 0
+            status &=  ~(1 << 0);
+            result = fpga_mgmt_set_vDIP(mBoardNumber, status);
+            if(result) {
+                printf("Error trying to set virtual DIP Switch \n");
+                return result;
+            }
+            std::this_thread::sleep_for(std::chrono::microseconds(250));
+
+            printf("Successfully skipped reloading of local image.\n");
+            return result;
+        } else {
+            std::cout << "AFI not yet loaded, proceed to download." << std::endl;
+            return 1;
+        }
+    }
+#endif
+} /* end namespace awsbmhal */
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
-  if(xcldev::pci_device_scanner::device_list.size() <= deviceIndex) {
-    printf("Cannot find index %d \n", deviceIndex);
-    return nullptr;
-  }
+    if(xcldev::pci_device_scanner::device_list.size() <= deviceIndex) {
+        printf("Cannot find index %d \n", deviceIndex);
+        return nullptr;
+    }
 
-  awsbwhal::AwsXcl *handle = new awsbwhal::AwsXcl(deviceIndex, logFileName, level);
-  if (!awsbwhal::AwsXcl::handleCheck(handle)) {
-    printf("ERROR: xclOpen Handle check failed\n");
-    delete handle;
-    handle = nullptr;
-  }
+    awsbwhal::AwsXcl *handle = new awsbwhal::AwsXcl(deviceIndex, logFileName, level);
+    if (!awsbwhal::AwsXcl::handleCheck(handle)) {
+        printf("WARNING: xclOpen Handle check failed\n");
+        delete handle;
+        handle = nullptr;
+#ifndef INTERNAL_TESTING
+        /* workaround necessary to load a default afi and program with xclbin when device is in a cleared state */
+        xcldev::pci_device_scanner rescan;
+        rescan.clear_device_list();
+        rescan.scan( true );
+        for (unsigned int i=0; i<rescan.device_list.size(); i++) {
+            std::cout << "device[" << i << "].user_instance : " << rescan.device_list[ i ].user_instance << std::endl;
+            if (rescan.device_list[i].user_instance == 128) {
+                deviceIndex = i;
+                break;
+            }
+        }
+        handle = new awsbwhal::AwsXcl(deviceIndex, logFileName, level);
+        if (!awsbwhal::AwsXcl::handleCheck(handle)) {
+            printf("ERROR: xclOpen Handle check failed\n");
+            delete handle;
+            handle = nullptr;
+        }
+#endif
+    }
   return static_cast<xclDeviceHandle>(handle);
 }
 
@@ -1183,7 +1241,7 @@ int xclBootFPGA(xclDeviceHandle handle)
 //    return -ENOSYS;
     int retVal = -1;
 
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+    //awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
 //    retVal = drv->xclBootFPGA(); // boot ioctl
     retVal = 0; // skip boot ioctl since this may not be possible for AWS
 
@@ -1211,7 +1269,7 @@ int xclRemoveAndScanFPGA( void )
     const char *input = "1\n";
 
     // remove devices "echo 1 > /sys/bus/pci/devices/<deviceHandle>/remove"
-    for (int i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
+    for (unsigned int i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
     {
         std::string dev_name_pf_user = pciPath + devPath + xcldev::pci_device_scanner::device_list[i].user_name + removePath;
         std::string dev_name_pf_mgmt = pciPath + devPath + xcldev::pci_device_scanner::device_list[i].mgmt_name + removePath;
@@ -1323,9 +1381,12 @@ int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int ind
 int xclUnlockDevice(xclDeviceHandle handle)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-  if (!drv)
+  if (!drv) {
+    std::cout << "xclUnlockDevice returning -ENODEV\n";
     return -ENODEV;
-  return drv->xclUnlockDevice() ? 0 : 1;
+  } else {
+    return drv->xclUnlockDevice() ? 0 : 1;
+  }
 }
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
@@ -1392,15 +1453,4 @@ int xclXbsak(int argc, char *argv[])
 {
     return xcldev::xclXbsak(argc, argv);
 }
-
-
-/*
-//Sarab: Added for HAL2 support with XOCL GEM Driver
--- 15 PerMon functions ----
-*/
-
-
-
-
-
 

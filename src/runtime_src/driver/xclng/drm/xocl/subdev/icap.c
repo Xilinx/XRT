@@ -1070,7 +1070,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return -EPERM;
 
 	if (funcid != 0) {
-		pcidev_user = pci_get_slot(pcidev->bus, slotid);
+		pcidev_user = pci_get_slot(pcidev->bus,
+			PCI_DEVFN(slotid, funcid - 1));
+		if (!pcidev_user) {
+			pcidev_user = pci_get_device(pcidev->vendor,
+				pcidev->device + 1, NULL);
+		}
 		if (pcidev_user)
 			deviceid = pcidev_user->device;
 	}

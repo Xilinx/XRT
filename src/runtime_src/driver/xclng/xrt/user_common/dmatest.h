@@ -1,5 +1,7 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2015-2018 Xilinx, Inc
+ *
+ * Xilinx SDAccel HAL userspace driver APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -105,7 +107,7 @@ namespace xcldev {
             }
 
             if (result) {
-                delete [] buf;
+            delete [] buf;
                 return result;
             }
             Timer timer;

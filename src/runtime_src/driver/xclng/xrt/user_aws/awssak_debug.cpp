@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  * Author(s): Hem C Neema
  * PCIe HAL Driver layered on top of XOCL GEM kernel driver
  *
@@ -125,7 +125,7 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16)  << "Last Rd Addr"
             << "  " << std::setw(16)  << "Last Rd Data"
             << std::endl;
-    for (int i = 0; i<debugResults.NumSlots; ++i) {
+    for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
             << " " << std::setw(col2) << cuNameportNames[i].second
@@ -164,7 +164,7 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
-    for (int i = 0; i<debugResults.NumSlots; ++i) {
+    for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
         if (!xclAXICheckerCodes::isValidAXICheckerCodes(debugResults.OverallStatus[i],
                         debugResults.SnapshotStatus[i], debugResults.CumulativeStatus[i])) {
             std::cout << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
@@ -207,7 +207,7 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
                 << "  " << std::setw(16) << "Cumulative[2]"
                 << "  " << std::setw(16) << "Cumulative[3]"
                 << std::endl;
-        for (int i = 0; i<debugResults.NumSlots; ++i) {
+        for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
             std::cout << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second

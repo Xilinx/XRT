@@ -16,6 +16,7 @@ MYCFLAGS += -DXCLHAL_MAJOR_VER=$(MAJOR_VER) -DXCLHAL_MINOR_VER=$(MINOR_VER)
 MYCFLAGS += -DOSNAME="Linux" -DLINUX -DPOSIX
 MYCFLAGS += -DINTERNAL_TESTING
 MYCFLAGS += -I$(SDACCEL_RUNTIME_DIR)/driver/xclng/include -I$(SDACCEL_RUNTIME_DIR)/driver/include
+MYCFLAGS += -I$(SDACCEL_RUNTIME_DIR)/driver/aws/kernel/include -I$(SDACCEL_RUNTIME_DIR)/driver/xclng/include/drm
 
 STLIBRARIES := products/sdx/xclng_xrt_common_static
 

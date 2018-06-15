@@ -1,6 +1,18 @@
 /*
- * Copyright (C) 2017 Xilinx, Inc
+ * Copyright (C) 2017-2018 Xilinx, Inc
  * Debug functionality to AWS hal driver
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
 
 
@@ -65,18 +77,18 @@ namespace awsbwhal {
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
-    for (int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+    for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
       if ((mAccelmonProperties[i] >> 2) & 0x1)
         mStallProfilingNumberSlots++;
     }
 
     if (mLogStream.is_open()) {
-      for (int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
                    << ", name = " << mPerfMonSlotName[i] << std::endl;
       }
-      for (int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;
@@ -181,7 +193,6 @@ namespace awsbwhal {
     };
 
     // Read all metric counters
-    uint32_t countnum = 0;
     uint64_t baseAddress[XSPM_MAX_NUMBER_SLOTS];
     uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
 
@@ -224,6 +235,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+    default :
+      break;
   };
   return -1;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Xilinx, Inc
+ * Copyright (C) 2017-2018 Xilinx, Inc
  * Author: Sonal Santan
  * AWS HAL Driver for SDAccel/OpenCL runtime evnrionemnt, for AWS EC2 F1
  *
@@ -17,11 +17,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-//#define INTERNAL_TESTING 1
 
 #include <cstring>
 
-#include "driver/include/xclbin.h"
+#include "xclbin.h"
 
 #ifdef INTERNAL_TESTING
 #define AFI_ID_STR_MAX 64
@@ -29,9 +28,9 @@
 #include "hal/fpga_common.h"
 #endif
 
-const char *get_afi_from_xclBin(const xclBin *buffer)
-{
-      return nullptr;
+// deprecated
+//const char *get_afi_from_xclBin(const xclBin *buffer)
+//{
 //    const char *afid = reinterpret_cast<const char *>(buffer);
 //    afid += buffer->m_primaryFirmwareOffset;
 //    if (buffer->m_primaryFirmwareLength > AFI_ID_STR_MAX)
@@ -39,7 +38,7 @@ const char *get_afi_from_xclBin(const xclBin *buffer)
 //    if (std::memcmp(afid, "afi-", 4) && std::memcmp(afid, "agfi-", 5))
 //        return nullptr;
 //    return afid;
-}
+//}
 
 const char *get_afi_from_axlf(const axlf *buffer)
 {

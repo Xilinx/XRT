@@ -50,6 +50,7 @@ ifeq ($(RDI_PLATFORM),lnx64)
  XCLNG_BIN_RELEASE_DIRS := \
   platforms/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_5_0/sw/bin/gem \
   platforms/xilinx_aws-vu9p-f1_dynamic_5_0/sw/bin/gem \
+  platforms/xilinx_aws-vu9p-f1-04261818_dynamic_5_0/sw/bin/gem \
 
  # release xbsak_ng platform/sw/bin dir
  $(foreach dir,$(XCLNG_BIN_RELEASE_DIRS),\

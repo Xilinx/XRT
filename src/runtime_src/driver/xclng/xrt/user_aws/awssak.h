@@ -126,7 +126,8 @@ class device {
     xclErrorStatus m_errinfo;
 
 public:
-    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{} {
+    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{}
+    {
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open device index, " + std::to_string(m_idx));
@@ -152,11 +153,12 @@ public:
         return m_devinfo.mName;
     }
 
-    int flash(const std::string& mcs1, const std::string& mcs2, const std::string flashType) {
+    int flash(const std::string& mcs1, const std::string& mcs2, const std::string flashType)
+    {
         if (getuid() && geteuid()) {
             std::cout << "ERROR: flash operation requires root privileges" << std::endl;
             return -EACCES;
-        }
+    }
 
         int status = 0;
         if ((mcs1.size() != 0) && (mcs2.size() != 0)) {
@@ -184,28 +186,78 @@ public:
         return status;
     }
 
-    int reclock2(unsigned regionIndex, const unsigned short *freq) {
+    int reclock2(unsigned regionIndex, const unsigned short *freq)
+    {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], 0, 0};
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
-    int validate() {
-        unsigned buf[16];
-        for (unsigned i = 0; i < 4; i++) {
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, i * 4096, static_cast<void *>(buf), 16);
-            if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
-                return -EBUSY;
-            }
+    /*
+     * getComputeUnits
+     */
+    int getComputeUnits( std::vector<ip_data> &computeUnits ) const
+    {
+        const std::string DevPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+        std::string iplayout_path = DevPath + "/ip_layout";
+        std::ifstream ifs;
+        ifs.open( iplayout_path.c_str(), std::ifstream::binary );
+        if( !ifs.good() ) {
+            return errno;
         }
+        struct stat sb;
+        if(stat( iplayout_path.c_str(), &sb ) < 0)
+	    return -1;
+
+	int numCount = 0;
+	ifs.read((char*)&numCount, sizeof(numCount));
+	ifs.seekg(0, ifs.beg);
+	if(numCount == 0)
+	    return 0;
+	if(numCount < 0)
+	    return -1;
+	int buf_size = sizeof(ip_layout)*numCount + offsetof(ip_layout, m_ip_data);
+	buf_size *=2; //TODO: double it for padding safety.
+        char* fileReadBuf = new char [buf_size];
+	memset(fileReadBuf, 0, buf_size);
+        ifs.read( fileReadBuf, buf_size);
+        if( ifs.gcount() <= 0 ) {
+            delete [] fileReadBuf;
+            return errno;
+        }
+        const ip_layout *map = (ip_layout *)fileReadBuf;
+        for( int i = 0; i < map->m_count; i++ ) {
+            computeUnits.emplace_back( map->m_ip_data[ i ] );
+        }
+	delete [] fileReadBuf;
+        ifs.close();
         return 0;
     }
 
+
+    int validate()
+    {
+        std::vector<ip_data> computeUnits;
+        int retVal = getComputeUnits( computeUnits );
+        if( retVal < 0 ) {
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            return retVal;
+        }
+        unsigned buf[ 16 ];
+        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
+            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &buf, 16);
+            if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
+                return -EBUSY;
+            }
+        }        
+        return 0;
+    }
+
+    /*
+     * dump
+     *
+     * TODO: Refactor to make function much shorter.
+     */
     int dump(std::ostream& ostr) const {
-        /*
-         * xclGetUsageInfo not available for AWSMGMT
-         * xclDeviceUsage devstat;
-         * int result = xclGetUsageInfo(m_handle, &devstat);
-         */
         unsigned numDDR = m_devinfo.mDDRBankCount;
         ostr << "DSA name:       " << m_devinfo.mName << "\n";
         ostr << "Vendor:         " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
@@ -227,21 +279,6 @@ public:
         ostr << "PCIe:           " << "GEN" << m_devinfo.mPCIeLinkSpeed << " x " << m_devinfo.mPCIeLinkWidth << "\n";
         ostr << "DMA bi-directional threads:    " << m_devinfo.mDMAThreads << "\n";
         ostr << "MIG Calibrated: " << std::boolalpha << m_devinfo.mMigCalib << std::noboolalpha << "\n";
-
-        /*
-         * devstat via xclGetUsageInfo not available for AWSMGMT
-         *
-         * std::cout << "\nDevice DDR Usage:" << "\n";
-         * for (unsigned i = 0; !result & (i < numDDR); i++) {
-         *     std::cout << "  Bank[" << i << "].mem:  0x" << std::hex << devstat.ddrMemUsed[i] / 1024 << std::dec << " KB\n";
-         *     std::cout << "  Bank[" << i << "].bo:   " << devstat.ddrBOAllocated[i] << "\n";
-         * }
-         * std::cout << "\nTotal DMA Transfer Metrics:" << "\n";
-         * for (unsigned i = 0; !result & (i < 2); i++) {
-         *     std::cout << "  Chan[" << i << "].h2c:  0x" << std::hex << devstat.h2c[i] / 1024 << std::dec << " KB\n";
-         *     std::cout << "  Chan[" << i << "].c2h:  0x" << std::hex << devstat.c2h[i] / 1024 << std::dec << " KB\n";
-         * }
-        */
 
 #ifdef AXI_FIREWALL
         char cbuf[80];
@@ -265,104 +302,113 @@ public:
         // report xclbinid
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
         std::string binid_path = devPath + "/xclbinid";
-        std::ifstream ifs;
-        ifs.open( binid_path.c_str(), std::ifstream::binary );
-        if( ifs.good() ) {
-            struct stat sb;
-            stat( binid_path.c_str(), &sb );
-            char fileReadBuf[ sb.st_size ];
-            ifs.read( fileReadBuf, sb.st_size );
-            if( ifs.gcount() > 0 ) {
-                ostr << "\nXclbin ID:\n  0x" << fileReadBuf;
-            } else { // xclbinid exists, but no data read or reported
-                ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
-            }
-            ifs.close();
+        struct stat sb;
+        if( stat( binid_path.c_str(), &sb ) < 0 ) {
+            std::cout << "ERROR: failed to stat " << binid_path << std::endl;
+            return errno;
         }
+        std::ifstream ifs( binid_path.c_str(), std::ifstream::binary );
+        if( !ifs.good() ) {
+            return errno;
+        }
+        char* fileReadBuf = new char[sb.st_size];
+        memset(fileReadBuf, 0, sb.st_size);
+        ifs.read( fileReadBuf, sb.st_size );
+        if( ifs.gcount() > 0 ) {
+            ostr << "\nXclbin ID:  0x" << fileReadBuf;
+        } else { // xclbinid exists, but no data read or reported
+            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
+        }
+        delete [] fileReadBuf;
+        ifs.close();
 
         // get DDR bank count from mem_topology if possible
         std::string mem_path = devPath + "/mem_topology";
-        ifs.open( mem_path.c_str(), std::ifstream::binary );
-        if( ifs.good() ) {
-            struct stat sb;
-            stat( mem_path.c_str(), &sb );
-            char buffer[ sb.st_size ];
-            ifs.read( buffer, sb.st_size );
-            if( ifs.gcount() > 0 ) {
-                const int fixed_w = 13;
-                mem_topology *map;
-                map = (mem_topology *)buffer;
-                ostr << "\nMem Topology:\n";
-                ostr << "    Bank" << "         Type" << "  Base Address" << "          Size\n";
-                numDDR = map->m_count;
-                for( unsigned i = 0; i < numDDR; i++ ) {
-                    std::string str = "DDR[" + std::to_string( i ) + "]";
-                    ostr << " " << std::setw( fixed_w - 6 ) << str.substr( 0, fixed_w ); // print bank
-
-                    if( map->m_mem_data[ i ].m_used == 0 ) {
-                        str = "**UNUSED**";
-                    } else {
-                        std::map<MEM_TYPE, std::string> my_map = { {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
-                                                                   {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
-                                                                   {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"}, {MEM_ARE, "MEM_ARE"} };
-                        auto search = my_map.find( (MEM_TYPE)map->m_mem_data[ i ].m_type );
-                        str = search->second;
-                    }
-                    ostr << std::setw( fixed_w ) << str;
-                    std::stringstream ss;
-                    ss << "0x" << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
-                    ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w );
-                    ss.str( "" );
-                    ss << "0x" << std::hex << map->m_mem_data[ i ].m_size;                 // print size
-                    ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w ) << std::endl;
-                }
-            } else { // mem_topology exists, but no data read or reported
-                std::cout << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
-            }
-            ifs.close();
+        if( stat( mem_path.c_str(), &sb ) < 0 ) {
+            std::cout << "ERROR: failed to stat " << mem_path << std::endl;
+            return errno;
         }
+        ifs.open( mem_path.c_str(), std::ifstream::binary );
+        if( !ifs.good() ) {
+            return errno;
+        }
+        int numBanks = 0;
+        ifs.read((char*)&numBanks, sizeof(numBanks));
+        ifs.seekg(0, ifs.beg);
+        if( numBanks == 0 ) {
+            ostr << "\nMem Topology:\n";
+            ostr << "     -- none found --. See 'xbsak program'.\n";
+        } else if( numBanks > 0 ) {
+            int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
+            buf_size *= 2; //TODO: just double this for padding safety for now.
+            const int fixed_w = 13;
+            char* buffer = new char[ buf_size ];
+            memset(buffer, 0, buf_size);
+            ifs.read( buffer, buf_size);
+            mem_topology *map;
+            map = (mem_topology *)buffer;
+            ostr << "\nMem Topology:\n";
+            ostr << "     Tag" << "       Type" << "          Base Address" << "  Size (KB)\n";
+            numDDR = map->m_count;
+            for( unsigned i = 0; i < numDDR; i++ ) {
+                ostr << " [" << i << "] " << std::setw(10) << std::left << map->m_mem_data[ i ].m_tag;
+                //std::string str = "[" + std::to_string( i ) + "] ";
+                //ostr << " " << std::setw( fixed_w - 6 ) << str.substr( 0, fixed_w ); // print bank
+                //ostr << std::setw( fixed_w - 6 ) << map->m_mem_data[ i ].m_tag;
+                //ostr << map->m_mem_data[ i ].m_tag;
+                std::string str;
+                if( map->m_mem_data[ i ].m_used == 0 ) {
+                    str = "**UNUSED**";
+                } else {
+                    std::map<MEM_TYPE, std::string> my_map = {
+                         {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
+                         {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
+                         {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
+                         {MEM_ARE, "MEM_ARE"}, {MEM_HBM, "MEM_HBM"},
+                         {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"} };
+                    auto search = my_map.find( (MEM_TYPE)map->m_mem_data[ i ].m_type );
+                    str = search->second;
+                }
+                ostr << std::setw( fixed_w ) << str;
+                std::stringstream ss;
+                ss << "0x" << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
+                ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w );
+                ss.str( "" );
+                ss << "0x" << std::hex << map->m_mem_data[ i ].m_size;                 // print size
+                ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w ) << std::endl;
+            }
+            delete[] buffer;
+        } else { // mem_topology exists, but no data read or reported
+            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+        }
+        ifs.close();
 
         ostr << "\nCompute Unit Status:\n";
-        std::string iplayout_path = devPath + "/ip_layout";
-        ifs.open( iplayout_path.c_str(), std::ifstream::binary );
-        // Test if ip_layout file exists, if not, use legacy mode.
-        if( ifs.good() ) {
-            struct stat sb;
-            stat( iplayout_path.c_str(), &sb );
-            char fileReadBuf[ sb.st_size ];
-            ifs.read( fileReadBuf, sb.st_size );
-            if( ifs.gcount() > 0 ) {
-                ip_layout *map = (ip_layout *)fileReadBuf;
-                for( int i = 0; i < map->m_count; i++ ) {
-                    static int cuCnt = 0;
-                    if( map->m_ip_data[ i ].m_type == IP_KERNEL ) {
-                        unsigned statusBuf;
-                        xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, map->m_ip_data[ i ].m_base_address, &statusBuf, 4);
-                        ostr << "  CU[" << cuCnt << "]: "
-                             << map->m_ip_data[ i ].m_name
-                             << "@0x" << std::hex << map->m_ip_data[ i ].m_base_address << ", "
-                             << std::dec << parseCUStatus( statusBuf ) << "\n";
-                        cuCnt++;
-                    }
-                }
-            } else { // ip_layout exists, but no data read or reported
-                ostr << "WARNING: 'ip_layout' invalid, unable to report Compute Units. Has the bitstream been loaded? See 'xbsak program'.\n";
-            }
-            ifs.close();
+        std::vector<ip_data> computeUnits;
+        if( getComputeUnits( computeUnits ) < 0 ) {
+            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
         } else {
-            // Could not find ip_layout file, reporting in legacy mode.
-            unsigned buf[16];
-            for (unsigned i = 0; i < 4; i++) {
-                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, i * 4096, static_cast<void *>(buf), 16);
-                ostr << "  " << std::setw(7) << i << ":      0x" << std::hex << buf[0] << std::dec << " " << parseCUStatus(buf[0]) << "\n";
+            for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
+                static int cuCnt = 0;
+                if( computeUnits.at( i ).m_type == IP_KERNEL ) {
+                    unsigned statusBuf;
+                    xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+                    ostr << "  CU[" << cuCnt << "]: "
+                         << computeUnits.at( i ).m_name
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
+                         << std::dec << parseCUStatus( statusBuf ) << "\n";
+                    cuCnt++;
+                }
+            }
+            if(computeUnits.size() == 0) {
+                ostr << "     -- none found --. See 'xbsak program'.\n";
             }
         }
-
         return 0;
     }
 
-
-    int program(const std::string& xclbin, unsigned region) {
+    int program(const std::string& xclbin, unsigned region)
+    {
         std::ifstream stream(xclbin.c_str());
 
         if(!stream.is_open()) {
@@ -377,7 +423,7 @@ public:
             if (std::strncmp(temp, "xclbin2", 8))
                 return -EINVAL;
         }
-        
+
 
         stream.seekg(0, stream.end);
         int length = stream.tellg();
@@ -403,7 +449,8 @@ public:
      * xclBootFPGA because of scoping issues in m_handle, so it is done within boot().
      * Check m_handle as a valid pointer before returning.
      */
-    int boot() {
+    int boot()
+    {
         /*
          * xclBootFPGA not available for AWS
          *return xclBootFPGA(m_handle);
@@ -451,12 +498,24 @@ public:
         // get DDR bank count from mem_topology if possible
         std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/mem_topology";
         std::ifstream ifs( path.c_str(), std::ifstream::binary );
-        if( ifs.good() ) { // unified+ mode
+        if( ifs.good() )
+        {   // unified+ mode
             struct stat sb;
-            stat( path.c_str(), &sb );
-            char buffer[ sb.st_size ];
-            ifs.read( buffer, sb.st_size );
-            if( ifs.gcount() > 0 ) {
+            if(stat( path.c_str(), &sb ) < 0) {
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                return -1;
+            }
+            ifs.read((char*)&numDDR, sizeof(numDDR));
+            ifs.seekg(0, ifs.beg);
+            if( numDDR == 0 ) {
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                return -1;
+            }else {
+                int buf_size = sizeof(mem_topology)*numDDR + offsetof(mem_topology, m_mem_data) ;
+                buf_size *= 2; //TODO: just double this for padding safety for now.
+                char* buffer = new char[buf_size];
+                memset(buffer, 0, buf_size);
+                ifs.read(buffer, buf_size);
                 mem_topology *map;
                 map = (mem_topology *)buffer;
                 std::cout << "Reporting from mem_topology:" << std::endl;
@@ -469,20 +528,24 @@ public:
                         for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
                             result = memwrite( addr, sz, pattern ); //memwriteQuiet( addr, sz, pattern );
                             if( result < 0 )
-                                return result;
+                                break;
                             result = memreadCompare(addr, sz, pattern);
                             if( result < 0 )
-                                return result;
+                                break;
+                        }
+                        if( result >= 0 ) {
+                            DMARunner runner( m_handle, blockSize, 1 << i);
+                            result = runner.run();
                         }
 
-                        DMARunner runner( m_handle, blockSize );//, xcl_bank[i] );
-                        result = runner.run();
-                        if( result < 0 )
+                        if( result < 0 ) {
+                            delete [] buffer;
+                            ifs.close();
                             return result;
+                        }
                     }
                 }
-            } else { // mem_topology exists, but no data read or reported
-                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                delete [] buffer;
             }
             ifs.close();
         } else { // legacy mode
@@ -506,6 +569,8 @@ public:
                     return result;
             }
         }
+
+        return result;
     }
 
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {

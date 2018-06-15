@@ -30,9 +30,9 @@
 //TODO: can get this from config.h : PCI_PATH_SYS_BUS_PCI
 #define ROOT_DIR "/sys/bus/pci"
 #define XILINX_ID 0x1d0f
-#define AWS_UserPF_DEVICE_ID 0x1042 //userPF device on AWS F1 & Pegasus
-#define AWS_UserPF_DEVICE_ID_SDx 0xf000 //userPF device on AWS F1 after downloading xclbin into FPGA
-#define AWS_MgmtPF_DEVICE_ID 0x1040 //mgmtPF device on Pegasus (mgmtPF not visible on AWS)
+#define AWS_UserPF_DEVICE_ID 0x1042     //userPF device on AWS F1 & Pegasus
+#define AWS_MgmtPF_DEVICE_ID 0x1040     //mgmtPF device on Pegasus (mgmtPF not visible on AWS)
+#define AWS_UserPF_DEVICE_ID_SDx 0xf010 //userPF device on AWS F1 after downloading xclbin into FPGA (SHELL 1.4)
 #define OBJ_BUF_SIZE 1024
 #define DRIVER_BUF_SIZE 1024
 
