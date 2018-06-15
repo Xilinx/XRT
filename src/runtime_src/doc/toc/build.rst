@@ -4,27 +4,43 @@ Building and Installing Software Stack
 XRT
 ~~~
 
+XRT requires C++11 compiler. Please install the necessary tools and dependencies
+using the provided ``src/runtime_src/tools/scripts/xrtdeps.sh``
+
+On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
+is not applicable to Ubuntu which already has C++11 capable GCC.
+
 ::
 
-   git clone https://github.com/Xilinx/XRT.git
+   scl enable devtoolset-6 bash
+
+Build the runtime
+.................
+
+::
+
    cd XRT/build
    ./build.sh
 
 ``build.sh`` script builds for both Debug and Release profiles.
 
-To build RPM package on RHEL/CentOS or DEB package on Ubuntu
+Build RPM package on RHEL/CentOS or DEB package on Ubuntu
+.........................................................
 
 ::
 
    cd XRT/build/Release
    make package
 
-To install the XRT RPM package
+Install the XRT RPM package
+...........................
 
 ::
+
    yum install ./XRT-2.1.0-Linux.rpm
 
-To install the XRT DEB package
+Install the XRT DEB package
+...........................
 
 ::
 
@@ -39,3 +55,4 @@ XRT Documentation can be built automatically using Sphinx doc builder together w
 
    cd XRT/src/runtime_src/doc/
    make
+   firefox html/index.html
