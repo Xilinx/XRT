@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Script to install XRT dependencies
-# Note
+# Note all packages listed here are required for XRT. Some of them like jpeg, png, tiff, etc are used by applications
 RH_LIST=(\
      boost-devel \
      boost-filesystem \
+     boost-static \
      cmake \
      compat-libtiff3 \
      dkms \
@@ -17,7 +18,7 @@ RH_LIST=(\
      gnutls-devel \
      kernel-devel \
      kernel-headers \
-     kernel-headers-$(uname -r) \
+#     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
      libpng12-devel \
