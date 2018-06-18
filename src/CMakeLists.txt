@@ -28,16 +28,26 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
-#set(Boost_DEBUG 1)
-INCLUDE (FindBoost)
-set(Boost_USE_STATIC_LIBS  ON)
-find_package(Boost REQUIRED COMPONENTS system filesystem )
-
 find_program(LSB_RELEASE lsb_release)
 execute_process(COMMAND ${LSB_RELEASE} -is
   OUTPUT_VARIABLE LINUX_FLAVOR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+execute_process(COMMAND ${LSB_RELEASE} -rs
+  OUTPUT_VARIABLE LINUX_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+#set(Boost_DEBUG 1)
+INCLUDE (FindBoost)
+# On older systems libboost_system.a is not compiled with -fPIC which leads to
+# link errors when XRT shared objects try to link with it.
+# Static linking with Boost is enabled on Ubuntu 18.04.
+if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
+   set(Boost_USE_STATIC_LIBS  ON)
+endif()
+find_package(Boost REQUIRED COMPONENTS system filesystem )
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
