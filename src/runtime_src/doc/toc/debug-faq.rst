@@ -1,7 +1,7 @@
-Debug Methodology
------------------
+XRT/Board Debug FAQ
+-------------------
 
-Debugging failures on board runs can be a daunting task which often requires *tribal knowledge* to be productive. This document attempts to document the tricks of the trade to help reduce debug cycles for all users. This is a living document and will be continuously updated.
+Debugging failures on board runs can be a daunting task which often requires *tribal knowledge* to be effective. This document attempts to document the tricks of the trade to help reduce debug cycles for all users. This is a living document and will be continuously updated.
 
 Tools of the Trade
 ~~~~~~~~~~~~~~~~~~
