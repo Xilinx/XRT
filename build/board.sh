@@ -6,12 +6,16 @@
 #  % cd test
 #  % board.sh -board vcu1525 [-sync]
 
-XRTBUILD=$(dirname ${BASH_SOURCE[0]})
-
+absolute="$(cd $(dirname ${BASH_SOURCE[0]}); pwd)/$(basename ${BASH_SOURCE[0]})"
+XRTBUILD=$(dirname ${absolute})
+echo ${XRTBUILD}
 ################################################################
 # Environment
 ################################################################
 xrt=$XRTBUILD/Release/opt/xilinx/xrt
+
+
+#xrt=/scratch/home/hemn/XRT/XRT/build/Release/opt/xilinx/xrt
 sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
 
 board=vcu1525
