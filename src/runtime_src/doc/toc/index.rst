@@ -20,4 +20,4 @@ provides software interface to Xilinx FPGA. The key user APIs are defined in
    formats.rst
    system_requirements.rst
    build.rst
-   debug-methodology.rst
+   debug-faq.rst

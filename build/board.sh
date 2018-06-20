@@ -5,10 +5,7 @@
 #  % mkdir test
 #  % cd test
 #  % board.sh -board vcu1525 [-sync]
-
-absolute="$(cd $(dirname ${BASH_SOURCE[0]}); pwd)/$(basename ${BASH_SOURCE[0]})"
-XRTBUILD=$(dirname ${absolute})
-echo ${XRTBUILD}
+XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 ################################################################
 # Environment
 ################################################################
