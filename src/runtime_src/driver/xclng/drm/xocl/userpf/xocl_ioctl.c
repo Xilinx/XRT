@@ -24,6 +24,9 @@
 #include <drm/drm_mm.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#include <linux/hashtable.h>
+#endif
 #include "common.h"
 
 #if defined(XOCL_UUID)
@@ -385,23 +388,35 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
+	size_t size = 0, wrapper_size = 0;
 	size_t ddr_bank_size;
 	struct mem_topology *topo;
 	struct mem_data *mem_data;
+	uint32_t shared;
+	struct xocl_mm_wrapper *wrapper;
+	uint64_t reserved1 = 0;
+	uint64_t reserved2 = 0;
+	int err = 0;
 	int i = 0;
+
+	if (XOCL_DSA_IS_MPSOC(xdev)) {
+		/* TODO: This is still hardcoding.. */
+		reserved1 = 0x80000000;
+		reserved2 = 0x1000000;
+	}
 
 	topo = xdev->topology;
 	length = topo->m_count * sizeof(struct mem_data);
-	mm_size = topo->m_count * sizeof(struct drm_mm);
-	mm_stat_size = topo->m_count * sizeof(struct drm_xocl_mm_stat);
+	size = topo->m_count * sizeof(void *);
+	wrapper_size = sizeof(struct xocl_mm_wrapper);
+	mm_size = sizeof(struct drm_mm);
+	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
 
 	DRM_INFO("XOCL: Topology count = %d, data_length = %ld\n",
 			topo->m_count, length);
 
-	xdev->mm = vmalloc(mm_size);
-	memset(xdev->mm, 0, mm_size);
-	xdev->mm_usage_stat = vmalloc(mm_stat_size);
-	memset(xdev->mm_usage_stat, 0, mm_stat_size);
+	xdev->mm = vzalloc(size);
+	xdev->mm_usage_stat = vzalloc(size);
 	if (!xdev->mm || !xdev->mm_usage_stat)
 		return -ENOMEM;
 
@@ -420,20 +435,65 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
-		if (mem_data->m_used && mem_data->m_type != MEM_STREAMING) {
-			ddr_bank_size = mem_data->m_size * 1024;
-			DRM_INFO("XOCL: Allocating DDR bank%d", i);
-			DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
-					mem_data->m_base_address,
-					ddr_bank_size);
-			drm_mm_init(&xdev->mm[i], mem_data->m_base_address,
-					ddr_bank_size);
+		if (!mem_data->m_used)
+			continue;
 
-			DRM_INFO("drm_mm_init called\n");
+		if (mem_data->m_type == MEM_STREAMING)
+			continue;
+
+		ddr_bank_size = mem_data->m_size * 1024;
+		DRM_INFO("XOCL: Allocating DDR bank%d", i);
+		DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
+				mem_data->m_base_address,
+				ddr_bank_size);
+
+		shared = xocl_get_shared_ddr(xdev, mem_data);
+		if (shared != 0xffffffff) {
+			DRM_INFO("Found duplicated memory region!\n");
+			xdev->mm[i] = xdev->mm[shared];
+			xdev->mm_usage_stat[i] = xdev->mm_usage_stat[shared];
+			continue;
 		}
+
+		DRM_INFO("Found a new memory region\n");
+		wrapper = vzalloc(wrapper_size);
+		xdev->mm[i] = vzalloc(mm_size);
+		xdev->mm_usage_stat[i] = vzalloc(mm_stat_size);
+
+		if (!xdev->mm[i] || !xdev->mm_usage_stat[i] || !wrapper) {
+			err = -ENOMEM;
+			goto failed_at_i;
+		}
+
+		wrapper->start_addr = mem_data->m_base_address;
+		wrapper->size = mem_data->m_size*1024;
+		wrapper->mm = xdev->mm[i];
+		wrapper->mm_usage_stat = xdev->mm_usage_stat[i];
+		wrapper->ddr = i;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+		hash_add(xdev->mm_range, &wrapper->node, wrapper->start_addr);
+#endif
+
+		drm_mm_init(xdev->mm[i], mem_data->m_base_address,
+				ddr_bank_size - reserved1 - reserved2);
+
+		DRM_INFO("drm_mm_init called\n");
 	}
 
 	return 0;
+
+failed_at_i:
+	if (wrapper)
+		vfree(wrapper);
+
+	for (; i >= 0; i--) {
+		drm_mm_takedown(xdev->mm[i]);
+		if (xdev->mm[i])
+			vfree(xdev->mm[i]);
+		if (xdev->mm_usage_stat[i])
+			vfree(xdev->mm_usage_stat[i]);
+	}
+	return err;
 }
 
 static int

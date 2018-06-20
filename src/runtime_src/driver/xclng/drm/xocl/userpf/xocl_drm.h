@@ -26,7 +26,7 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 int xocl_drm_init(struct xocl_dev *xdev);
 void xocl_drm_fini(struct xocl_dev *xdev);
-
+uint32_t xocl_get_shared_ddr(struct xocl_dev *xdev, struct mem_data *m_data);
 void xocl_cleanup_mem(struct xocl_dev *xdev);
 int xocl_check_topology(struct xocl_dev *xdev);
 

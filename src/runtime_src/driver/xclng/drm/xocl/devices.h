@@ -64,7 +64,7 @@ struct xocl_board_private {
         bool			xpr;
         char			*flash_type; /* used by xbflash */
         char			*board_name; /* used by xbflash */
-        bool                    mpsoc;
+	bool			mpsoc;
 };
 
 #ifdef __KERNEL__
