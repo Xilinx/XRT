@@ -24,6 +24,9 @@
 #include <drm/drm_mm.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#include <linux/hashtable.h>
+#endif
 #include "common.h"
 
 #if defined(XOCL_UUID)
@@ -366,6 +369,17 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	//short ddr = 0;
 	struct axlf bin_obj;
 	struct xocl_mem_topology *topology;
+	struct xocl_mm_wrapper *xocl_mm_wrapper;
+	uint32_t shared_region_ddr;
+	// hardcore, need to modify if feature rom have reserved memory field
+	struct pci_dev *pdev = xdev->core.pdev;
+	unsigned short deviceid = pdev->device;
+	uint64_t reserved_bottom_offset = 0;
+	uint64_t reserved_top_offset = 0;
+	if(deviceid==0xA884){
+		reserved_bottom_offset = 0x80000000;
+		reserved_top_offset = 0x1000000;
+	}
 
 	userpf_info(xdev, "READ_AXLF IOCTL \n");
 
@@ -554,8 +568,8 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 
 	printk(KERN_INFO "XOCL: Topology count = %d, data_length = %d\n", topology->bank_count, xdev->topology.m_data_length);
 
-	xdev->mm = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_mm) * topology->bank_count, GFP_KERNEL);
-	xdev->mm_usage_stat = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_xocl_mm_stat) * topology->bank_count, GFP_KERNEL);
+	xdev->mm = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_mm*) * topology->bank_count, GFP_KERNEL);
+	xdev->mm_usage_stat = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_xocl_mm_stat*) * topology->bank_count, GFP_KERNEL);
 	if (!xdev->mm || !xdev->mm_usage_stat) {
 		err = -ENOMEM;
 		goto done;
@@ -596,9 +610,39 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	for (i=0; i < topology->bank_count; i++)
 	{
 		if (topology->m_data[i].m_used) {
+			xocl_mm_wrapper = NULL;
 			printk(KERN_INFO "%s Allocating DDR:%d with base_addr:%llx, size %llx \n", __FUNCTION__, i,
 				topology->m_data[i].m_base_address, topology->m_data[i].m_size*1024);
-			drm_mm_init(&xdev->mm[i], topology->m_data[i].m_base_address, topology->m_data[i].m_size*1024);
+
+			shared_region_ddr = xocl_mm_range_shared_with_ddr(xdev, &topology->m_data[i]);
+			if(shared_region_ddr != 0xffffffff){
+				printk(KERN_INFO "%s Duplicated memory region! \n", __FUNCTION__);
+				xdev->mm[i] = xdev->mm[shared_region_ddr];
+				xdev->mm_usage_stat[i] = xdev->mm_usage_stat[shared_region_ddr];
+			}
+			else{
+				printk(KERN_INFO "%s Found a new memory region \n", __FUNCTION__);
+				xocl_mm_wrapper = kzalloc(sizeof(struct xocl_mm_wrapper), GFP_KERNEL);
+				xdev->mm[i] = kzalloc(sizeof(struct drm_mm), GFP_KERNEL);
+				xdev->mm_usage_stat[i] = kzalloc(sizeof(struct drm_xocl_mm_stat), GFP_KERNEL);
+
+				if (!xdev->mm[i] || !xdev->mm_usage_stat[i] || !xocl_mm_wrapper) {
+					err = -ENOMEM;
+					goto failed_at_i;
+				}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+				hash_add(xdev->mm_range, &xocl_mm_wrapper->node, topology->m_data[i].m_base_address);
+#endif
+				xocl_mm_wrapper->start_addr = topology->m_data[i].m_base_address;
+				xocl_mm_wrapper->size = topology->m_data[i].m_size*1024;
+				xocl_mm_wrapper->mm = xdev->mm[i];
+				xocl_mm_wrapper->mm_usage_stat = xdev->mm_usage_stat[i];
+				xocl_mm_wrapper->ddr = i;
+
+				drm_mm_init(xdev->mm[i], topology->m_data[i].m_base_address, 
+					topology->m_data[i].m_size*1024-reserved_bottom_offset-reserved_top_offset);
+			}
 			printk(KERN_INFO "drm_mm_init called \n");
 		}
 	}
@@ -607,6 +651,19 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
+	goto done;
+	
+failed_at_i:
+	if(xocl_mm_wrapper)
+		kfree(xocl_mm_wrapper);
+
+	for(;i>=0;i--){
+		drm_mm_takedown(xdev->mm[i]);
+		if(xdev->mm[i])
+			kfree(xdev->mm[i]);
+		if(xdev->mm_usage_stat[i])
+			kfree(xdev->mm_usage_stat[i]);
+	}
 
 done:
 	if (err != 0) {
