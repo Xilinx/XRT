@@ -432,8 +432,8 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain,
-                                            unsigned flags);
+XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
+       	xclBOKind domain, uint64_t flags);
 
 /**
  * xclAllocUserPtrBO() - Allocate a BO using userptr provided by the user
@@ -444,8 +444,8 @@ XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size,
-                                                   unsigned flags);
+XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, 
+	void *userptr, size_t size, uint64_t flags);
 
 /**
  * xclFreeBO() - Free a previously allocated BO

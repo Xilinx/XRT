@@ -163,11 +163,13 @@ enum drm_xocl_sync_bo_dir {
  * @size:       Requested size of the buffer object
  * @handle:     bo handle returned by the driver
  * @flags:      DRM_XOCL_BO_XXX flags
+ * @type:       The type of bo
  */
 struct drm_xocl_create_bo {
 	uint64_t size;
 	uint32_t handle;
 	uint32_t flags;
+	uint32_t type;
 };
 
 /**
@@ -178,12 +180,14 @@ struct drm_xocl_create_bo {
  * @size:       Requested size of the buffer object
  * @handle:     bo handle returned by the driver
  * @flags:      DRM_XOCL_BO_XXX flags
+ * @type:       The type of bo
  */
 struct drm_xocl_userptr_bo {
 	uint64_t addr;
 	uint64_t size;
 	uint32_t handle;
 	uint32_t flags;
+	uint32_t type;
 };
 
 /**

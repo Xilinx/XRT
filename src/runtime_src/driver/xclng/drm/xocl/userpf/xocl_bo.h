@@ -33,7 +33,7 @@
 
 
 
-#define XOCL_MEM_BANK_MSK (0xFFFFFF)
+//#define XOCL_MEM_BANK_MSK (0xFFFFFF)
 /*
  * When the BO is imported from an ARE device. This is remote BO to
  * be accessed over ARE
@@ -61,6 +61,7 @@ struct drm_xocl_bo {
 	void                 *vmapping;
 	void                 *bar_vmapping;
 	unsigned              flags;
+	unsigned              type;
 };
 
 struct drm_xocl_unmgd {
@@ -72,26 +73,26 @@ struct drm_xocl_unmgd {
 
 static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)
 {
-	return (bo->flags & XOCL_BO_USERPTR);
+	return (bo->type & XOCL_BO_USERPTR);
 }
 
 static inline bool xocl_bo_import(const struct drm_xocl_bo *bo)
 {
-	return (bo->flags & XOCL_BO_IMPORT);
+	return (bo->type & XOCL_BO_IMPORT);
 }
 
 static inline bool xocl_bo_execbuf(const struct drm_xocl_bo *bo)
 {
-	return (bo->flags & XOCL_BO_EXECBUF);
+	return (bo->type & XOCL_BO_EXECBUF);
 }
 
 static inline bool xocl_bo_cma(const struct drm_xocl_bo *bo)
 {
-	return (bo->flags & XOCL_BO_CMA);
+	return (bo->type & XOCL_BO_CMA);
 }
 static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
 {
-	return (bo->flags & XOCL_BO_P2P);
+	return (bo->type & XOCL_BO_P2P);
 }
 
 static inline struct drm_gem_object *xocl_gem_object_lookup(struct drm_device *dev,
@@ -123,7 +124,8 @@ static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 
 static inline unsigned xocl_bo_ddr_idx(unsigned flags)
 {
-	const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
+	const unsigned ddr = flags;
+	//const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
 	if (!ddr)
 		return 0xffffffff;
 	return __builtin_ctz(ddr);
