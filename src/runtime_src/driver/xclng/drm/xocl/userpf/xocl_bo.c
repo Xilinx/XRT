@@ -211,16 +211,23 @@ static inline int check_bo_user_flags(const struct drm_device *dev, unsigned fla
 	return 0;
 }
 
-
 static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
 {
 	struct xocl_mem_topology *topology;
+	uint64_t check_len;
+//	int i;
 	topology = &xdev->topology;
+	check_len = 0;
+#if 0
+	for(i=0;i<ddr;++i)
+		check_len += (topology->m_data[ddr].m_size);
 
-	if(topology->m_data[ddr].m_base_address > xdev->bypass_bar_len){
+	/*m_data[ddr].m_size KB*/
+	if(check_len > (xdev->bypass_bar_len >> 10)){
 		userpf_err(xdev, "Bank %d is not a p2p memory bank", ddr);
 		return -EINVAL;
 	}
+#endif
 	return 0;
 }
 
@@ -415,7 +422,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct drm_xocl_create_bo *args = data;
 	unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
 	unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
-
+	uint64_t base_addr_offset;
+	base_addr_offset = xdev->topology.topology->m_mem_data[0].m_base_address;
+	
 	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
 		if (hweight_long(ddr) > 1)
 			return -EINVAL;
@@ -426,8 +435,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			DRM_ERROR("No P2P mem region available, Can't create p2p BO\n");
 			return -EINVAL;
 		}
-	}
-
+      	}
+        
 	xobj = xocl_create_bo(dev, args->size, args->flags);
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
@@ -437,7 +446,9 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	}
 
 	if(bar_mapped){
-		if(xobj->mm_node->start >= xdev->bypass_bar_len){
+		
+		if((xobj->mm_node->start - base_addr_offset
+			   + xobj->mm_node->size) > xdev->bypass_bar_len){
 			DRM_DEBUG("No enough P2P mem region available\n");
 			ret = -ENOMEM;
 			goto out_free;
@@ -445,7 +456,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 		ddr = xocl_bo_ddr_idx(xobj->flags);
 		/* DRM allocate contiguous pages, shift the vmapping with bar address offset*/
-		xobj->bar_vmapping = xdev->bypass_bar_addr + xobj->mm_node->start;
+		xobj->bar_vmapping = xdev->bypass_bar_addr + xobj->mm_node->start - base_addr_offset;
 	}
 
 #ifdef XOCL_CMA_ALLOC
