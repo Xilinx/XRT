@@ -5,8 +5,7 @@
 #  % run.sh ./host.exe kernel.xclin
 #  % run.sh -dbg ./host.exe kernel.xclin
 #  % run.sh -dbg emacs
-
-XRTBUILD=$(dirname ${BASH_SOURCE[0]})
+XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 
 # Define SDX and VIVADO to allow this loader script to be used
 # through other scripts (e.g. sprite scripts) that invoke SDx
