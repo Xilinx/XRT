@@ -378,6 +378,8 @@ typedef struct{
 #define XCL_MEM_DDR_BANK1               (1<<1)
 #define XCL_MEM_DDR_BANK2               (1<<2)
 #define XCL_MEM_DDR_BANK3               (1<<3)
+
+//--- This will match up with index in mem_topology section --
 #define XCL_BANK0                       (1<<0)
 #define XCL_BANK1                       (1<<1)
 #define XCL_BANK2                       (1<<2)
@@ -402,7 +404,15 @@ typedef struct{
 #define XCL_BANK21                      (1<<21)
 #define XCL_BANK22                      (1<<22)
 #define XCL_BANK23                      (1<<23)
-
+#define XCL_BANK24                      (1<<24)
+#define XCL_BANK25                      (1<<25)
+#define XCL_BANK26                      (1<<26)
+#define XCL_BANK27                      (1<<27)
+#define XCL_BANK28                      (1<<28)
+#define XCL_BANK29                      (1<<29)
+#define XCL_BANK30                      (1<<30)
+#define XCL_BANK31                      (1<<31)
+//----
 
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
 

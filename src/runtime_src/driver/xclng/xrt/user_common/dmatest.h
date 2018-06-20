@@ -47,7 +47,7 @@ namespace xcldev {
         std::vector<unsigned int> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
-        unsigned mFlags;
+        uint64_t mFlags;
 
         int runSyncWorker(std::vector<unsigned>::const_iterator b,
                           std::vector<unsigned>::const_iterator e,
