@@ -294,8 +294,11 @@ public:
  * and member functions associated with some class object.
  */
 // Free function, lambda, functor
+
 #pragma GCC diagnostic push
+#if __GNUC__  >= 7
 #pragma GCC diagnostic ignored "-Wnoexcept-type"
+#endif
 template <typename Q,typename F, typename ...Args>
 auto
 createF(Q& q, F&& f, Args&&... args)
@@ -324,6 +327,7 @@ createM(Q& q, F&& f, C& c, Args&&... args)
   return e;
 }
 #pragma GCC diagnostic pop
+
 // A task worker is a thread function getting work off a task queue.
 // The worker runs until the queue is stopped.
 inline void

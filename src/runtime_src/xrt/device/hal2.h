@@ -155,8 +155,11 @@ public:
   {
     return task::createM(get_queue(qt),f,*this,std::forward<Args>(args)...);
   }
+
 #pragma GCC diagnostic push
+#if __GNUC__  >= 7
 #pragma GCC diagnostic ignored "-Wnoexcept-type"
+#endif
   template <typename F,typename ...Args>
   auto
   addTaskF(F&& f,hal::queue_type qt,Args&&... args) -> decltype(task::createF(m_queue,f,std::forward<Args>(args)...))
