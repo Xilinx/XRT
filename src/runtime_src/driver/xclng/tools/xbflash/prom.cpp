@@ -225,7 +225,6 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     addrHi &= 0xF;
     unsigned endAddressHi = (endAddress >>24)& 0x3;
     unsigned cmdHi = START_ADDR_HI_CMD;
-    unsigned versionCmd = VERSION_CMD;
     cmdHi |= addrHi;
 
     // Drain mailbox

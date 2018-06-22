@@ -319,10 +319,6 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // We are not really able to disable error checks completely because the error checks are heavily intertwined
   // with the functionality in this section. Here is a good trade-off.
   if(xocl::config::api_checks()) {
-
-    //XCL_CONFORMANCE
-    bool xcl_conformancemode = (getenv("XCL_CONFORMANCE")!=nullptr);
-
     //XCL_CONFORMANCECOLLECT mode
     //write out the kernel sources in clCreateKernel and fail quickly in clEnqueueNDRange
     //skip build in clBuildProgram
@@ -363,7 +359,6 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
 
   // pick an local work size if the user does not provide one.
   if (!local_work_size) {
-    size_t lx=1, ly=1, lz=1;
     size_t max_wg_size = std::numeric_limits<size_t>::max(); // no total work items constraint
     if(!xcl_max_work_group_size_set)
       max_wg_size=getDeviceMaxWorkGroupSize(xocl::xocl(command_queue)->get_device());

@@ -47,9 +47,12 @@ validOrError(cl_kernel                 kernel,
   detail::kernel::validOrError(kernel);
   detail::kernel::validOrError(device,kernel);
 
+  // CL_INVALID_VALUE if param_name is CL_KERNEL_GLOBAL_WORK_SIZE and
+  // device is not a custom device and kernel is not a built-in
+  // kernel.
   if(param_name==CL_KERNEL_GLOBAL_WORK_SIZE &&
-     (device && getDeviceType(device)!=CL_DEVICE_TYPE_CUSTOM) ||
-     (kernel && xocl(kernel)->is_built_in())
+     (device && getDeviceType(device)!=CL_DEVICE_TYPE_CUSTOM) &&
+     (kernel && !xocl(kernel)->is_built_in())
     )
     throw error(CL_INVALID_VALUE);
   
@@ -63,6 +66,8 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
                          void *                    param_value,
                          size_t *                  param_value_size_ret)
 {
+  validOrError(kernel,device,param_name,param_value_size,param_value,param_value_size_ret);
+
   xocl::param_buffer buffer { param_value, param_value_size, param_value_size_ret };
 
   switch(param_name) {

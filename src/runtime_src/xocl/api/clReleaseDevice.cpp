@@ -35,6 +35,7 @@ validOrError(cl_device_id device)
 static cl_int 
 clReleaseDevice(cl_device_id device)
 {
+  validOrError(device);
   if (!xocl(device)->is_sub_device())
     // platform is sole owner of root devices
     return CL_SUCCESS;

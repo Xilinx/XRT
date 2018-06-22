@@ -40,7 +40,7 @@ namespace bfs = boost::filesystem;
 
 namespace {
 
-static size_t
+XRT_UNUSED static size_t
 getDeviceMaxWorkGroupSize(cl_device_id device)
 {
   static size_t size = 0;
@@ -128,7 +128,7 @@ clCreateKernel(cl_program      program,
     ostr << newsrc;
 
     //fake kernel
-    auto platform = xocl::get_global_platform();
+    XRT_UNUSED auto platform = xocl::get_global_platform();
     auto kernel = xocl::xocl(program)->create_kernel("");
     assert(kernel->get_wg_size()==getDeviceMaxWorkGroupSize(platform->get_device_range()[0].get()));
     return kernel.release();

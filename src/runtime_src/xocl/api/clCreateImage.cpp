@@ -483,7 +483,6 @@ mkImageCore (cl_context context,
 	}
     }
 
-    cl_mem_object_type final_image_type = image_type;
     unsigned bpp = getBytesPerPixel(format);
     size_t sz = 0 /* this is the size of the buffer we need.*/, adjusted_h = 0;
     size_t adjusted_row_pitch = 0, adjusted_slice_pitch = 0;

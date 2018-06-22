@@ -54,7 +54,6 @@ clGetPlatformInfo(cl_platform_id   platform,
   validOrError(platform,param_name,param_value_size,param_value,param_value_size_ret);
 
   xocl::param_buffer buffer { param_value, param_value_size, param_value_size_ret };
-  auto xplatform = xocl::xocl(platform);
 
   switch(param_name) {
   case CL_PLATFORM_PROFILE :

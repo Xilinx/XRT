@@ -27,6 +27,7 @@
 
 namespace xocl {
 
+XRT_UNUSED
 static void 
 validOrError(const cl_event event)   
 {
@@ -52,6 +53,7 @@ clGetEventProfilingInfo(cl_event             event ,
                         size_t *             param_value_size_ret )
 {
 
+  //validOrError(event);
   
   xocl::param_buffer buffer { param_value, param_value_size, param_value_size_ret };
 

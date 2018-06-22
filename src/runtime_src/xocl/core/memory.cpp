@@ -191,7 +191,6 @@ void
 memory::
 add_dtor_notify(std::function<void()> fcn)
 {
-  using notify_type = std::function<void()>;
   if (!m_dtor_notify)
     m_dtor_notify = xrt::make_unique<std::vector<std::function<void()>>>();
   m_dtor_notify->emplace_back(std::move(fcn));

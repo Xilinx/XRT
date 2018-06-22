@@ -36,6 +36,10 @@
 #define __func__ __FUNCTION__
 #endif
 
+#ifdef __GNUC__
+# define XSPI_UNUSED __attribute__((unused))
+#endif
+
 //#define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define PAGE_SIZE 256
 static const bool FOUR_BYTE_ADDRESSING = false;
@@ -342,8 +346,8 @@ int XSPI_Flasher::xclTestXSpi(int index)
     Cmd = COMMAND_FLAG_STATUSREG_READ;
     readRegister(Cmd, STATUS_READ_BYTES);
 
-    uint8_t WriteCmd = 0xff;
-    uint8_t ReadCmd = 0xff;
+    XSPI_UNUSED uint8_t WriteCmd = 0xff;
+    XSPI_UNUSED uint8_t ReadCmd = 0xff;
 
     //Test the higher two sectors - first test erase.
 
@@ -672,8 +676,8 @@ bool XSPI_Flasher::bulkErase()
     uint32_t ControlReg = CONTROL_REG_START_STATE;
     XSpi_SetControlReg(ControlReg);
 
-    uint32_t testControlReg = XSpi_GetControlReg();
-    uint32_t testStatusReg = XSpi_GetStatusReg();
+    XSPI_UNUSED uint32_t testControlReg = XSpi_GetControlReg();
+    XSPI_UNUSED uint32_t testStatusReg = XSpi_GetStatusReg();
 
     //2
     WriteBuffer[BYTE1] = COMMAND_BULK_ERASE;
@@ -722,7 +726,7 @@ bool XSPI_Flasher::getFlashId()
     }
 
     //Update flash vendor
-    for (int i = 0; i < flashVendors.size(); i++)
+    for (size_t i = 0; i < flashVendors.size(); i++)
         if(ReadBuffer[1] == flashVendors[i])
             flashVendor = flashVendors[i];
 
@@ -1016,11 +1020,12 @@ bool XSPI_Flasher::writePage(unsigned Addr, uint8_t writeCmd)
     uint8_t WriteCmd = writeCmd;
     //2
     if(!FOUR_BYTE_ADDRESSING) {
-        if(writeCmd == 0xff)
+        if(writeCmd == 0xff) {
             if(flashVendor == MACRONIX_VENDOR_ID)
                 WriteCmd = COMMAND_PAGE_PROGRAM;
             else
                 WriteCmd = COMMAND_QUAD_WRITE;
+        }
         bkupAddr &= 0x00ffffff; // truncate to 24 bits
         //3 byte address mode
         //COMMAND_PAGE_PROGRAM gives out all FF's
@@ -1125,8 +1130,8 @@ bool XSPI_Flasher::prepareXSpi()
         return true;
 
 
-    uint32_t tControlReg = XSpi_GetControlReg();
-    uint32_t tStatusReg = XSpi_GetStatusReg();
+    XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
+    XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();
 
 #if defined(_debug)
     std::cout << "Boot Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
@@ -1240,7 +1245,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record)
             std::cout << "writing page " << pageIndex << std::endl;
 #endif
             const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
-            assert ( (address + dataLen) == (pageIndex +1)*WRITE_DATA_SIZE);
+            assert ( (address + dataLen) == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
             if(TEST_MODE) {
                 std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
                 std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;

@@ -35,7 +35,8 @@
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index, E_FlasherType flasherType) : mIdx(index), mType(flasherType)
+Flasher::Flasher(unsigned int index, E_FlasherType flasherType) : 
+  mType(flasherType), mIdx(index)
 {
     mMgmtMap = nullptr;
     mXspi = nullptr;

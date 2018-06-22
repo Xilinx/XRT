@@ -45,6 +45,7 @@ clCreateSampler(cl_context           context ,
                 cl_int *             errcode_ret )
 
 {
+  validOrError(context,normalized_coords,addressing_mode,filter_mode,errcode_ret);
   xocl::assign(errcode_ret,CL_INVALID_OPERATION);
   return nullptr;
 }

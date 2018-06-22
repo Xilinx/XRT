@@ -18,11 +18,13 @@ set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 #add_compile_options("-fPIC" "-std=c++11")
 add_compile_options("-fPIC")
 
+add_subdirectory(xdp)
+
+add_compile_options("-Wall" "-Werror")
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
-add_subdirectory(xdp)
 add_subdirectory(ert)
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")

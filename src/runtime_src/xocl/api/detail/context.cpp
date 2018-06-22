@@ -44,7 +44,6 @@ validOrError(const cl_context context,const std::vector<cl_mem>& mem_objects)
 void
 validOrError(const cl_context_properties* properties)
 {
-  cl_platform_id platform = nullptr;
   xocl::property_list<cl_context_properties> context_properties(properties);
   for (auto prop : context_properties) {
     auto key = prop.get_key();

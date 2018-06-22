@@ -144,7 +144,7 @@ syslog_dispatch::~syslog_dispatch() {
 
 void 
 syslog_dispatch::send(severity_level l, const char* msg) {
- syslog(severityMap[l], msg);
+  syslog(severityMap[l], "%s", msg);
 }
 
 //file ops

@@ -81,6 +81,12 @@
 #define EXPORT static
 #endif
 
+#ifdef __GNUC__
+# define MAYBE_UNUSED __attribute__((unused))
+#endif
+
+
+
 extern "C" {
 
 typedef struct _cpu_pipe_reserve_id_t {
@@ -112,6 +118,7 @@ typedef struct _cpu_pipe_t {
  * 6.13.16.2 - work-item builtins, non-reservation, non-locking
  */
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_write_pipe_nolock(void *v, void *e)
 {
@@ -132,6 +139,7 @@ cpu_write_pipe_nolock(void *v, void *e)
   return 0;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_write_pipe_nb_nolock(void *v, void *e)
 {
@@ -153,6 +161,7 @@ cpu_write_pipe_nb_nolock(void *v, void *e)
   return 0;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_read_pipe_nolock(void *v, void *e)
 {
@@ -171,6 +180,7 @@ cpu_read_pipe_nolock(void *v, void *e)
   return 0;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_read_pipe_nb_nolock(void *v, void *e)
 {
@@ -193,6 +203,7 @@ cpu_read_pipe_nb_nolock(void *v, void *e)
 }
 
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_peek_pipe_nb_nolock(void *v, void *e)
 {
@@ -216,6 +227,7 @@ cpu_peek_pipe_nb_nolock(void *v, void *e)
  * 6.13.16.2 - work-item builtins, non-reservation, locking
  */
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_write_pipe(void *v, void *e)
 {
@@ -226,6 +238,7 @@ cpu_write_pipe(void *v, void *e)
   return ret;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_write_pipe_nb(void *v, void *e)
 {
@@ -236,6 +249,7 @@ cpu_write_pipe_nb(void *v, void *e)
   return ret;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_read_pipe(void *v, void *e)
 {
@@ -246,6 +260,7 @@ cpu_read_pipe(void *v, void *e)
   return ret;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_read_pipe_nb(void *v, void *e)
 {
@@ -256,6 +271,7 @@ cpu_read_pipe_nb(void *v, void *e)
   return ret;
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_peek_pipe_nb(void *v, void *e)
 {
@@ -270,6 +286,7 @@ cpu_peek_pipe_nb(void *v, void *e)
  * 6.13.16.2 - work-item builtins, reservation, locking
  */
 
+MAYBE_UNUSED 
 EXPORT void *
 cpu_reserve_read_pipe(void *v, unsigned n)
 {
@@ -311,6 +328,7 @@ cpu_reserve_read_pipe(void *v, unsigned n)
   return rid;
 }
 
+MAYBE_UNUSED 
 EXPORT void
 cpu_commit_read_pipe(void *v, void *r)
 {
@@ -335,6 +353,7 @@ cpu_commit_read_pipe(void *v, void *r)
   pthread_mutex_unlock(&p->rd_lock);
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_read_pipe_reserve(void *v, void *r, unsigned idx, void *e)
 {
@@ -356,6 +375,7 @@ cpu_read_pipe_reserve(void *v, void *r, unsigned idx, void *e)
   return 0;
 }
 
+MAYBE_UNUSED 
 EXPORT void *
 cpu_reserve_write_pipe(void *v, unsigned n)
 {
@@ -398,6 +418,7 @@ cpu_reserve_write_pipe(void *v, unsigned n)
   return rid;
 }
 
+MAYBE_UNUSED 
 EXPORT void
 cpu_commit_write_pipe(void *v, void *r)
 {
@@ -421,6 +442,7 @@ cpu_commit_write_pipe(void *v, void *r)
   pthread_mutex_unlock(&p->wr_lock);
 }
 
+MAYBE_UNUSED 
 EXPORT int
 cpu_write_pipe_reserve(void *v, void *r, unsigned idx, void *e)
 {
@@ -447,24 +469,28 @@ cpu_write_pipe_reserve(void *v, void *r, unsigned idx, void *e)
  * 6.13.16.3 work-group builtins
  */
 
+MAYBE_UNUSED 
 EXPORT void *
 cpu_work_group_reserve_read_pipe(void *v, unsigned n)
 {
   return cpu_reserve_read_pipe(v,n);
 }
 
+MAYBE_UNUSED 
 EXPORT void *
 cpu_work_group_reserve_write_pipe(void *v, unsigned n)
 {
   return cpu_reserve_write_pipe(v,n);
 }
 
+MAYBE_UNUSED 
 EXPORT void
 cpu_work_group_commit_read_pipe(void *v, void *r)
 {
   cpu_commit_read_pipe(v,r);
 }
 
+MAYBE_UNUSED 
 EXPORT void
 cpu_work_group_commit_write_pipe(void *v, void *r)
 {
@@ -475,6 +501,7 @@ cpu_work_group_commit_write_pipe(void *v, void *r)
  * 6.13.16.4 pipe query functions
  */
 
+MAYBE_UNUSED 
 EXPORT unsigned int
 cpu_get_pipe_num_packets(void *v)
 {
@@ -499,6 +526,7 @@ cpu_get_pipe_num_packets(void *v)
   return (unsigned int)(space / p->pkt_size);
 }
 
+MAYBE_UNUSED 
 EXPORT unsigned int
 cpu_get_pipe_max_packets(void *v)
 {

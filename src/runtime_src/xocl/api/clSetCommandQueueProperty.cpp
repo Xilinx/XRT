@@ -49,6 +49,8 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
                           cl_bool enable,
                           cl_command_queue_properties *old_properties)
 {
+  validOrError(command_queue,properties,enable,old_properties);
+
   if (old_properties)
     *old_properties = xocl(command_queue)->get_properties();
 

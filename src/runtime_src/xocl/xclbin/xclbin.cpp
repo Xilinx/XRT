@@ -1006,7 +1006,7 @@ public:
         continue;
 
       // found the connection that match cuaddr,arg
-      auto memidx = m_con->m_connection[i].mem_data_index;
+      size_t memidx = m_con->m_connection[i].mem_data_index;
       assert(m_mem->m_mem_data[memidx].m_used);
       assert(memidx<bitmask.size());
       bitmask.set(memidx);

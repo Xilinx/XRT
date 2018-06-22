@@ -46,6 +46,8 @@ static cl_event
 clCreateUserEvent(cl_context context, 
                   cl_int*    errcode_ret)
 {
+  validOrError(context,errcode_ret);
+
   // Soft event
   auto uevent = xocl::create_soft_event(context,CL_COMMAND_USER);
 

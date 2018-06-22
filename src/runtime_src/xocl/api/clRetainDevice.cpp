@@ -34,6 +34,7 @@ validOrError(cl_device_id device)
 static cl_int 
 clRetainDevice(cl_device_id device)
 {
+  validOrError(device);
   // device is managed by platform
   return CL_SUCCESS;
 }

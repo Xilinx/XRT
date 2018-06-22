@@ -104,8 +104,9 @@ int main( int argc, char *argv[] )
             std::cout << "    secondary mcs: " << args.file2 << std::endl;
             break;
         case 'o': // optional
+          {
             std::cout << "CAUTION: Overrideing flash programming mode is not recommended. You may damage your device with this option." << std::endl;
-            char *input;
+            char *input = nullptr;
             std::cout << "Are you sure you wish to proceed? [y/n]" << std::endl;
             std::cin >> input;
             if( std::string( input ).compare( "y" ) != 0 && std::string( input ).compare( "yes" ) != 0 ) {
@@ -124,6 +125,7 @@ int main( int argc, char *argv[] )
             }
             std::cout << "    flash mode: " << optarg << std::endl;
             break;
+          }
         default:
             args.isValid = false;
             break;
