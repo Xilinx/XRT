@@ -7,21 +7,47 @@ Tools of the Trade
 ~~~~~~~~~~~~~~~~~~
 
 ``dmesg``
-   Capture Linux kernel and driver log
+   Capture Linux kernel and XRT drivers log
 ``strace``
-   Capture trace of system calls made by a SDAccel application
-``xbsak``
-   Query status of FPGA device
+   Capture trace of system calls made by an XRT application
 ``gdb``
    Capture stack trace of an XRT application
+``lspci``
+   Enumerate Xilinx PCIe devices
+``xbsak``
+   Query status of Xilinx PCIe device
 ``xclbinsplit``
    Unpack an xclbin
-XRT Log
+XRT API Trace
    Run failing application with HAL logging enabled in ``sdaccel.ini`` ::
 
      [Runtime]
      hal_log=myfail.log
 
+Validating a Working Setup
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.
+
+Board Enumeration
+  Check if BIOS and Linux can see the board. So for Xilinx boards use lspci utility ::
+
+    lspci -v -d 10ee:
+
+  Check if XRT can see the board and reports sane values ::
+
+    xbsak scan
+    xbsak query
+
+DSA Sanity Test
+  Check if verify kernel works ::
+
+    cd test
+    ./verify.exe verify.xclbin
+
+  Check DDR and PCIe bandwidth ::
+
+    xbsak dmatest
 
 Common Reasons For Failures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,24 +55,24 @@ Common Reasons For Failures
 Incorrect Memory Topology Usage
 ...............................
 
-5.0+ DSAs use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
+5.0+ DSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
 
 If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable HAL logging in sdaccel.ini and then carefully go through all buffer allocation requests.
 
-Memory Read Without Write
-.........................
+Memory Read Before Write
+........................
 
-Read-Without-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically and user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-without-write errors occur if since the last bitstream download -- which results in MIG initialization -- no data has been written to a memory location but a read request is made for that sane memory location. ECC errors stall the affected MIG. This can manifest in two different ways:
+Read-Before-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if -- since the last bitstream download which results in MIG initialization -- no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
 1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbsak query`` will show that the CU is stuck in *BUSY* state and not making progress.
 2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbsak query`` will show if an AXI Firewall has indeed tripped including its timestamp.
 
-Users should review the host code carefully. Once common example is compression where the size of the compressed data is not known upfront and an application may try to read more data from host than was produced by the kernel.
+Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.
 
 Incorrect Frequency Scaling
 ...........................
 
-Incorrect frequency scaling usually indicates a tooling or infrastructure bug. Target frequencies for the dynamic region are frozen at compile time and specified in clock_freq_topology section of xclbin. If clocks in the dynamic region are running at incorrect -- higher than specified -- frequency, kernels will demonstrate weird behavior.
+Incorrect frequency scaling usually indicates a tooling or infrastructure bug. Target frequencies for the dynamic (patial reconfig) region are frozen at compile time and specified in clock_freq_topology section of xclbin. If clocks in the dynamic region are running at incorrect -- higher than specified -- frequency, kernels will demonstrate weird behavior.
 
 1. Often a CU will produce completely incorrect result with no identifiable pattern
 2. A CU might hang
@@ -55,29 +81,49 @@ Incorrect frequency scaling usually indicates a tooling or infrastructure bug. T
 
 Users should check the frequency of the board with ``xbsak query`` and compare it against the metadata in xclbin. ``xclbincat`` may be used to extract metadata from xclbin.
 
-HLS Caused CU Deadlocks
-.......................
+CU Deadlock
+...........
 
-HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbsak query`` where the CU will appear stuck in *BUSY* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
+HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbsak query`` where the CU will appear stuck in *START* or *---* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
 
-Multiple Kernel DDR Access Deadlocks
-....................................
-
-TODO
-
-Compiler Bugs
-.............
+Multiple CU DDR Access Deadlock
+...............................
 
 TODO
+
+AXI Bus Deadlock
+................
+
+AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbsak query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing ``xbsak status`` which should list and performance counter values. Optionally run ``xbsak dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
+
 
 Platform Bugs
 .............
 
 Bitsream Download Failures
   Bitstream download failures are usually caused because of incompatible xclbins. dmesg log would provide more insight into why the download failed. At OpenCL level they usually manifest as Invalid Binary (error -44).
+  Rarely MIG calibration might fail after bitstream download. This will also show up as bitstream download failure. Usually XRT driver messages in dmesg would reveal if MIG calibration failed.
 
 Incorrect Timing Constraints
   If the platform or dynamic region has invalid timing constraints -- which is really a platform or SDx tool bug -- CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
+
+Board in Crashed State
+~~~~~~~~~~~~~~~~~~~~~~
+
+When board is in crashed state PCIe read operations start returning 0XFF. In this state xbsak query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset ::
+
+  xbsak reset -h
+
+If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in `Validating a Working Setup`_
+
+XRT Scheduling Options
+~~~~~~~~~~~~~~~~~~~~~~
+
+XRT has three kernel execution schedulers today: ERT, KDS and legacy. By default XRT uses ERT which runs on Microblaze. ERT is accessed through KDS which runs inside xocl Linux kernel driver. If ERT is not available KDS uses its own built-in scheduler. From 2018.2 release onwards KDS (tgether with ERT if available in the DSA) is enabled by default. Users can optionally switch to legacy scheduler which runs in userspace. Switching scheduler will help isolate any scheduler related XRT bugs ::
+
+  [Runtime]
+  ert=false
+  kds=false
 
 Writing Good Bug Reports
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -47,17 +47,17 @@ namespace {
 static void
 cb_BufferInitialized(cl_event event, cl_int status, void *data);
 
-static void 
+static void
 cb_BufferReturned(cl_event event, cl_int status, void *data);
 
 static xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel,
                    const std::vector<size_t>& gsz, const std::vector<size_t>& lsz);
 
-static cl_event 
+static cl_event
 enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,cl_mem mem);
 
-static cl_int 
+static cl_int
 enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
                         cl_mem mem, cl_event waitEvent,
                         cl_event* event_param);
@@ -75,14 +75,14 @@ getDeviceAddressBits(cl_device_id device)
 static bool
 is_sw_emulation()
 {
-// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated 
+// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
   return swem;
-} 
+}
 
 static size_t
-getDeviceMaxWorkGroupSize(cl_device_id device) 
+getDeviceMaxWorkGroupSize(cl_device_id device)
 {
   static size_t size = 0;
   if (size)
@@ -92,7 +92,7 @@ getDeviceMaxWorkGroupSize(cl_device_id device)
 }
 
 static size_t*
-getDeviceMaxWorkItemSizes(cl_device_id device) 
+getDeviceMaxWorkItemSizes(cl_device_id device)
 {
   static size_t sizes[3] = {0,0,0};
   if (sizes[0])
@@ -195,7 +195,7 @@ validOrError(cl_command_queue command_queue,
   // work-group given by local_work_size or by the required work-
   // group size specified in the kernel source.
   auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
-  bool reqd_work_group_size_set = 
+  bool reqd_work_group_size_set =
     std::any_of(compile_wgs_range.begin(),compile_wgs_range.end(),[](size_t sz) { return sz!=0; });
   for (cl_uint work_dim_it=0; work_dim_it < work_dim; ++work_dim_it) {
     if (local_work_size && !local_work_size[work_dim_it])
@@ -259,15 +259,15 @@ validOrError(cl_command_queue command_queue,
         if ((cu_memidx_mask & mem_memidx_mask).none()) {
           std::stringstream ostr;
           ostr << "Memory bank specified for kernel instance \""
-               << cu->get_name() 
+               << cu->get_name()
                << "\" of kernel \""
                << xkernel->get_name()
                << "\" for argument \"" << arg->get_name() << "\" "
                << "does not match the physical connectivity from the binary.\n"
                << "Memory bank mask specified for argument ";
-          if (mem_memidx_mask.any()) 
+          if (mem_memidx_mask.any())
             ostr << "is \"" << mem_memidx_mask << "\"";
-          else 
+          else
             ostr << "does not exist";
           ostr << " while memory bank mask in binary is \"" << cu_memidx_mask << "\".";
           XOCL_DEBUG(std::cout,ostr.str(),"\n");
@@ -278,7 +278,7 @@ validOrError(cl_command_queue command_queue,
     }
     ++argidx;
   }
-  
+
 
   // CL_INVALID_EVENT_WAIT_LIST if event_wait_list is NULL and
   // num_events_in_wait_list > 0, or event_wait_list is not NULL and
@@ -332,15 +332,15 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
     }
 
   } // error checking end
-    
+
   auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
-  bool reqd_work_group_size_set = 
+  bool reqd_work_group_size_set =
     std::any_of(compile_wgs_range.begin(),compile_wgs_range.end(),[](size_t sz) { return sz!=0; });
-  
+
   auto max_wgs_range = xocl::xocl(kernel)->get_max_wg_size_range();
-  bool xcl_max_work_group_size_set = 
+  bool xcl_max_work_group_size_set =
     std::any_of(max_wgs_range.begin(),max_wgs_range.end(),[](size_t sz) { return sz!=0; });
-  
+
   bool xcl_max_work_group_size_totalworkitemconstraint_set =
     (max_wgs_range[0]!=0 && max_wgs_range[1]==0 && max_wgs_range[2]==0);
 
@@ -381,7 +381,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
         for (size_t x = 1; x <= dim_max[0]; ++x) {
           if (global_work_size_3D[0] % x) continue;
           if ( (x*y*z > best_wg_size) && (x*y*z <= max_wg_size) &&
-               (x*y*z <= total_size) && !(total_size % x*y*z) ) {
+               (x*y*z <= total_size) && !(total_size % (x*y*z)) ) {
             local_work_size_3D[0] = x;
             local_work_size_3D[1] = y;
             local_work_size_3D[2] = z;
@@ -476,7 +476,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
       (xrt::make_unique<execution_context>
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
     xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
-  
+
   xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
   appdebug::set_event_action(ueEvent.get(),appdebug::action_ndrange,eEvent,kernel);
 
@@ -557,7 +557,7 @@ void CL_CALLBACK cb_BufferReturned(cl_event event, cl_int status, void *data)
 
 // Creates a device printf buffer but does not initialize
 // Allocate device printf buffer if printf is needed for this workgroup.
-xocl::ptr<xocl::memory> 
+xocl::ptr<xocl::memory>
 createPrintfBuffer(cl_context context, cl_kernel kernel
                    ,const std::vector<size_t>& gsz, const std::vector<size_t>& lsz)
 {
@@ -589,10 +589,10 @@ cl_event enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,
     uint8_t *hostBuf = &args->buf[0];
     memset(hostBuf, 0xFF, bufSize);
     cl_int err = xocl::api::clEnqueueWriteBuffer
-      (queue, mem, /*blocking_read*/CL_FALSE, 
+      (queue, mem, /*blocking_read*/CL_FALSE,
        /*offset*/0, bufSize, hostBuf,
-       /*num_events_in_wait_list*/0, 
-       /*event_wait_list*/nullptr, 
+       /*num_events_in_wait_list*/0,
+       /*event_wait_list*/nullptr,
        /*return event*/&event);
     if ( err != CL_SUCCESS )
       throw xocl::error(err,"enqueueInitializePrintfBuffer");
@@ -603,8 +603,8 @@ cl_event enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,
   return event;
 }
 
-// Read device printf buffer back from the device. This must execute AFTER the 
-// clEnqueueNDRangeKernel event completes. We pass an event wait list with the 
+// Read device printf buffer back from the device. This must execute AFTER the
+// clEnqueueNDRangeKernel event completes. We pass an event wait list with the
 // enqueue event to ensure it happens in the correct order.
 cl_int enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
                                cl_mem mem, cl_event waitEvent, cl_event* event_param)
@@ -623,16 +623,16 @@ cl_int enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
     uint8_t *hostBuf = &args->buf[0];
     err = xocl::api::clEnqueueReadBuffer
       (queue, mem,
-       /*blocking_read*/CL_FALSE, 
+       /*blocking_read*/CL_FALSE,
        /*offset*/0, bufSize, hostBuf,
-       /*num_events_in_wait_list*/1, /*event_wait_list*/&waitEvent, 
+       /*num_events_in_wait_list*/1, /*event_wait_list*/&waitEvent,
        /*return event*/&event);
     if (err != CL_SUCCESS)
       throw xocl::error(err,"enqueueReadPrintfBuffer");
     err = xocl::api::clSetEventCallback(event, CL_COMPLETE, cb_BufferReturned, args.get());
     if (err == CL_SUCCESS) {
       args.release();
-    } 
+    }
   }
   return err;
 }
@@ -666,5 +666,3 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

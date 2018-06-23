@@ -124,7 +124,7 @@ class device : public xrt::hal::device
    */
   virtual void
   emplaceSVMBufferObjectMap(const BufferObjectHandle& boh, void* ptr);
-  
+
   virtual void
   eraseSVMBufferObjectMap(void* ptr);
 
@@ -156,13 +156,17 @@ public:
     return task::createM(get_queue(qt),f,*this,std::forward<Args>(args)...);
   }
 
+#pragma GCC diagnostic push
+#if __GNUC__  >= 7
+#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#endif
   template <typename F,typename ...Args>
   auto
   addTaskF(F&& f,hal::queue_type qt,Args&&... args) -> decltype(task::createF(m_queue,f,std::forward<Args>(args)...))
   {
     return task::createF(get_queue(qt),f,std::forward<Args>(args)...);
   }
-
+#pragma GCC diagnostic pop
 public:
   device(std::shared_ptr<hal2::operations> ops, unsigned int idx);
   ~device();
@@ -529,5 +533,3 @@ public:
 }} // hal2,xrt
 
 #endif
-
-

@@ -36,13 +36,13 @@ namespace xrt { namespace task {
  *
  * Wraps a std::packaged_task of any return type, such that the task's
  * return value can be captured in a future.
- * 
+ *
  * Objects of this task class can be stored in any STL container even
  * when the underlying std::packaged_tasks are of different types.
  */
 class task
 {
-  struct task_iholder 
+  struct task_iholder
   {
     virtual ~task_iholder() {};
     virtual void execute() = 0;
@@ -59,16 +59,16 @@ class task
   std::unique_ptr<task_iholder> content;
 
 public:
-  task() 
-    : content(nullptr) 
+  task()
+    : content(nullptr)
   {}
 
-  task(task&& rhs) 
+  task(task&& rhs)
     : content(std::move(rhs.content))
   {}
 
   template <typename Callable>
-  task(Callable&& c) 
+  task(Callable&& c)
     : content(new task_holder<Callable>(std::forward<Callable>(c)))
   {}
 
@@ -91,7 +91,7 @@ public:
     content->execute();
   }
 
-  void 
+  void
   operator() ()
   {
     execute();
@@ -100,7 +100,7 @@ public:
 
 /**
  * Multiple producer / multiple consumer queue of task objects
- * 
+ *
  * This code is not specifically tied to task::task, but we keep
  * the defintion here to make task.h stand-alone
  */
@@ -115,14 +115,14 @@ class mpmcqueue
   unsigned long waittime = 0; // wait time from tp to next task avail
   bool debug = false;
 public:
-  mpmcqueue() 
+  mpmcqueue()
   {}
 
-  mpmcqueue(bool dbg) 
+  mpmcqueue(bool dbg)
     : debug(dbg)
   {}
 
-  void 
+  void
   addWork(Task&& t)
   {
     std::lock_guard<std::mutex> lk(m_mutex);
@@ -151,7 +151,7 @@ public:
       m_tasks.pop();
       if (debug && m_tasks.size()==0)
         tp = time_ns();
-        
+
     }
     return task;
   }
@@ -188,7 +188,7 @@ class mpmcqueue<Task*>
 public:
   mpmcqueue() : m_stop(false) {}
 
-  void 
+  void
   addWork(Task* t)
   {
     std::lock_guard<std::mutex> lk(m_mutex);
@@ -254,7 +254,7 @@ public:
     : m_future(std::move(rhs.m_future))
   {}
 
-  event(FutureType&& f) 
+  event(FutureType&& f)
     : m_future(std::forward<FutureType>(f))
   {}
 
@@ -286,17 +286,22 @@ public:
 
 /**
  * Functions for adding work (tasks) to a task queue.
- * 
- * All functions return a task::event that encapsulates the 
- * return type of the task.  
+ *
+ * All functions return a task::event that encapsulates the
+ * return type of the task.
  *
  * Variants of the functions supports adding both free functions
  * and member functions associated with some class object.
  */
 // Free function, lambda, functor
+
+#pragma GCC diagnostic push
+#if __GNUC__  >= 7
+#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#endif
 template <typename Q,typename F, typename ...Args>
-auto 
-createF(Q& q, F&& f, Args&&... args) 
+auto
+createF(Q& q, F&& f, Args&&... args)
   -> event<decltype(f(std::forward<Args>(args)...))>
 {
   typedef decltype(f(std::forward<Args>(args)...)) value_type;
@@ -310,8 +315,8 @@ createF(Q& q, F&& f, Args&&... args)
 // Member function.  gcc4.8.4+ does not need the std::bind hints in decltype
 // The return type can be deduced the same as the non member function version.
 template <typename Q,typename F, typename C, typename ...Args>
-auto 
-createM(Q& q, F&& f, C& c, Args&&... args) 
+auto
+createM(Q& q, F&& f, C& c, Args&&... args)
   -> event<decltype(std::bind(std::forward<F>(f),std::ref(c),std::forward<Args>(args)...)())>
 {
   typedef decltype(std::bind(std::forward<F>(f),std::ref(c),std::forward<Args>(args)...)()) value_type;
@@ -321,6 +326,7 @@ createM(Q& q, F&& f, C& c, Args&&... args)
   q.addWork(std::move(t));
   return e;
 }
+#pragma GCC diagnostic pop
 
 // A task worker is a thread function getting work off a task queue.
 // The worker runs until the queue is stopped.
@@ -382,5 +388,3 @@ worker(queue& q)
 }} // task,xrt
 
 #endif
-
-

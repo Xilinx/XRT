@@ -1,5 +1,5 @@
 Multi-Process Support
---------------------
+---------------------
 
 Support for Multi-Process kernel execution is added in the 2018.2
 release as a preview feature.
@@ -14,7 +14,7 @@ Usage
 =====
 
 Processes share access to all device resources; as of 2018.2, there is
-no support for exclusive access to resources by any process.  
+no support for exclusive access to resources by any process.
 
 If two or more processes execute the same kernel, then these processes
 will acquire the kernel's compute units per the xocl kernel driver
