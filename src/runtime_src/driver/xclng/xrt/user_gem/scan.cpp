@@ -435,7 +435,6 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
     dir = opendir(dirname.c_str());
     if( !dir ) {
         perror( "opendir" );
-        closedir( dir );
         return errno;
     }
 
