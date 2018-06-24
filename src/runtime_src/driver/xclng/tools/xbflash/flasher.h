@@ -24,6 +24,7 @@
 
 #include "xspi.h"
 #include "prom.h"
+#include "msp432.h"
 #include "xclfeatures.h"
 #include <sys/stat.h>
 #include <vector>
@@ -36,9 +37,10 @@ public:
     enum E_FlasherType {
         UNSET,
         SPI,
-        BPI
+        BPI,
+		MSP432
     };
-    const char *E_FlasherTypeStrings[3] = { "UNSET", "SPI", "BPI" };
+    const char *E_FlasherTypeStrings[4] = { "UNSET", "SPI", "BPI", "MSP432" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
 
     Flasher(unsigned int index, E_FlasherType flasherType=UNSET);
@@ -50,18 +52,19 @@ public:
     static void* wordcopy(void *dst, const void* src, size_t bytes);
     static int flashRead(unsigned int pf_bar, unsigned long long offset, void *buffer, unsigned long long length);
     static int flashWrite(unsigned int pf_bar, unsigned long long offset, const void *buffer, unsigned long long length);
+    static int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
+    static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
 
 private:
     E_FlasherType mType;
     unsigned int mIdx;
     XSPI_Flasher *mXspi;
     BPI_Flasher  *mBpi;
+    MSP432_Flasher  *mMsp;
     bool mIsValid;
 
     int mapDevice(unsigned int devIdx);
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
-    static int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
-    static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
 
     FeatureRomHeader mFRHeader;
     char *mMgmtMap;
