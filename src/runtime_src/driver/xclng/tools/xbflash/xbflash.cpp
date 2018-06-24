@@ -21,10 +21,27 @@
 #include "flasher.h"
 #include "xbsak.h"
 
-const char* HelpMessage = "Help: Try 'xbflash [-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'.";
+const char* UsageMessages[] = {
+	"xbflash [-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
+	"xbflash [-d device] -p msp432_firmware",
+};
 const char* SudoMessage = "ERROR: XBFLASH requires root privileges.";
-bool sudoCheck() {
-    return !( getuid() && geteuid() );
+void usage() {
+	std::cout << "Usage:" << std::endl;
+	for (unsigned i = 0; i < (sizeof(UsageMessages) / sizeof(UsageMessages[0])); i++)
+        std::cout << "\t" << UsageMessages[i] << std::endl;
+}
+void usageAndDie() { usage(); exit(EXIT_FAILURE); }
+void sudoOrDie() {
+    if ( (getuid() == 0) || (geteuid() == 0) ) {
+    	return;
+    }
+	std::cout << SudoMessage << std::endl;
+	exit(EXIT_FAILURE);
+}
+void notSeenOrDie(bool& seen_opt) {
+	if (seen_opt) { usageAndDie(); }
+	seen_opt = true;
 }
 struct T_Arguments
 {
@@ -46,7 +63,7 @@ int main( int argc, char *argv[] )
 
     if( argc <= 1 )
     {
-        std::cout << HelpMessage << std::endl;
+    	usage();
         return 0;
     }
 
@@ -58,53 +75,55 @@ int main( int argc, char *argv[] )
     if( argc <= (startIdx+2) ) // not a valid flash program scenario
     {
         if( argc <= (startIdx+1) ) {
-            std::cout << HelpMessage << std::endl;
-            return -1;
+        	usageAndDie();
         }
+
         // argc > (startIdx+1)
         if( std::string( argv[ (startIdx+1) ] ).compare( "scan" ) == 0 ) {
-            if( !sudoCheck() ) {
-                std::cout << SudoMessage << std::endl;
-                return -EACCES;
-            }
+        	sudoOrDie();
             return scanDevices();
         } else if ( std::string( argv[ (startIdx+1) ] ).compare( "help" ) == 0 ) {
-            std::cout << HelpMessage << std::endl;
+        	usage();
             return 0;
         } else {
-            std::cout << HelpMessage << std::endl;
-            return -EINVAL;
+        	usageAndDie();
         }
     }
 
-    if( !sudoCheck() ) {
-        std::cout << SudoMessage << std::endl;
-        return -EACCES;
-    }
+    sudoOrDie();
 
+	bool seen_d = false;
+	bool seen_m = false;
+	bool seen_n = false;
+	bool seen_o = false;
+	bool seen_p = false;
     T_Arguments args;
 
     // argc > (startIdx+2)
     int opt;
-    while( ( opt = getopt( argc, argv, "d:m:n:o:" ) ) != -1 ) // adjust offset?
+    while( ( opt = getopt( argc, argv, "d:m:n:o:p:" ) ) != -1 ) // adjust offset?
     {
         switch( opt )
         {
         case 'd':
+        	notSeenOrDie(seen_d);
             args.devIdx = atoi( optarg );
             std::cout << "    device index: " << args.devIdx << std::endl;
             break;
         case 'm':
+        	notSeenOrDie(seen_m);
             args.file1 = optarg;
             std::cout << "    primary mcs: " << args.file1 << std::endl;
             args.isValid = true;
             break;
         case 'n': // optional
+        	notSeenOrDie(seen_n);
             args.file2 = optarg;
             std::cout << "    secondary mcs: " << args.file2 << std::endl;
             break;
         case 'o': // optional
           {
+        	notSeenOrDie(seen_o);
             std::cout << "CAUTION: Overrideing flash programming mode is not recommended. You may damage your device with this option." << std::endl;
             char *input = nullptr;
             std::cout << "Are you sure you wish to proceed? [y/n]" << std::endl;
@@ -126,23 +145,28 @@ int main( int argc, char *argv[] )
             std::cout << "    flash mode: " << optarg << std::endl;
             break;
           }
+        case 'p':
+			notSeenOrDie(seen_p);
+			args.file1 = optarg;
+			args.flasherType = Flasher::E_FlasherType::MSP432;
+			std::cout << "    MSP432 firmware image: " << args.file1 << std::endl;
+			args.isValid = true;
+			break;
         default:
             args.isValid = false;
             break;
         }
     }
 
-    if( !args.isValid )
+    if( !args.isValid || (seen_p && (seen_m || seen_n || seen_o)) )
     {
-        std::cout << "ERROR: Invalid arguments" << std::endl;
-        std::cout << HelpMessage << std::endl;
-        return -EINVAL;
+    	usageAndDie();
     }
 
     Flasher flasher( args.devIdx, args.flasherType );
     if( !flasher.isValid() ) {
         std::cout << "XBFLASH failed." << std::endl;
-        return -EINVAL;
+        return -1;
     }
 
     if( flasher.upgradeFirmware( args.file1, args.file2 ) != 0 )
