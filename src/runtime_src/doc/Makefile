@@ -30,7 +30,10 @@ core/xclhal2.rst : $(XRTSRCROOT)/driver/include/xclhal2.h
 core/ert.rst : $(XRTSRCROOT)/driver/include/ert.h
 	$(KERNELDOC) -rst $< > $@
 
-$(OUTDIR)/index.html: $(RST)
+core : 
+	mkdir -p core/
+
+$(OUTDIR)/index.html: core $(RST)
 	mkdir -p $(OUTDIR)
 	$(SPHINX) $(SRCDIR) $(OUTDIR)
 
