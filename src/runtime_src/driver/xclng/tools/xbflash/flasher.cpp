@@ -41,6 +41,7 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
     mMgmtMap = nullptr;
     mXspi = nullptr;
     mBpi  = nullptr;
+    mMsp = nullptr;
     mFd = 0;
     mIsValid = false;
     memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
@@ -52,7 +53,6 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
     }
 
     pcieBarRead( 0, (unsigned long long)mMgmtMap + FEATURE_ROM_BASE, &mFRHeader, sizeof(struct FeatureRomHeader) );
-
     // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
     // that EntryPointString starts with magic char sequence "xlnx".
     if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
@@ -76,6 +76,10 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
         mBpi = new BPI_Flasher( mIdx, mMgmtMap );
         mIsValid = true;
         break;
+    case MSP432:
+        mMsp = new MSP432_Flasher( mIdx, mMgmtMap );
+        mIsValid = true;
+        break;
     default:
         break;
     }
@@ -86,17 +90,14 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
  */
 Flasher::~Flasher()
 {
-    if( mXspi != nullptr )
-    {
-        delete mXspi;
-        mXspi = nullptr;
-    }
+	delete mXspi;
+	mXspi = nullptr;
 
-    if( mBpi != nullptr )
-    {
-        delete mBpi;
-        mBpi = nullptr;
-    }
+	delete mBpi;
+	mBpi = nullptr;
+
+	delete mMsp;
+	mMsp = nullptr;
 
     if( mMgmtMap != nullptr )
     {
@@ -136,6 +137,17 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
         else
         {
             retVal = mBpi->xclUpgradeFirmware( f1 );
+        }
+        break;
+    case MSP432:
+        if( f2 != nullptr )
+        {
+            std::cout << "ERROR: Only need firmware image file for flashing MSP432 chip." << std::endl;
+            retVal = -1;
+        }
+        else
+        {
+            retVal = mMsp->xclUpgradeFirmware( f1 );
         }
         break;
     default:
