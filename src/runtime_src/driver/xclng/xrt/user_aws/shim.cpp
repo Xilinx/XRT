@@ -56,12 +56,12 @@
 #include <mutex>
 
 #include "xclbin.h"
-#include "xocl_ioctl.h"
+#include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
 #include "awssak.h"
 
 #ifdef INTERNAL_TESTING
-#include "mgmt-ioctl.h"
+#include "driver/xclng/include/mgmt-ioctl.h"
 #else
 #define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
 #define AWSMGMT_NUM_ACTUAL_CLOCKS    3
