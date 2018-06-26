@@ -24,51 +24,51 @@
 #include "flasher.h"
 
 // Register offset in mgmt pf BAR 0
-#define	XMC_REG_BASE 			0x120000
+#define XMC_REG_BASE             0x120000
 
 // Register offset in register map of XMC
-#define	XMC_REG_OFF_VER 		0x0
-#define	XMC_REG_OFF_MAGIC 		0x4
-#define	XMC_REG_OFF_ERR			0xc
-#define	XMC_REG_OFF_FEATURE		0x10
-#define	XMC_REG_OFF_CTL			0x18
-#define	XMC_REG_OFF_PKT_OFFSET 	0x300
-#define	XMC_REG_OFF_PKT_STATUS 	0x304
+#define XMC_REG_OFF_VER         0x0
+#define XMC_REG_OFF_MAGIC         0x4
+#define XMC_REG_OFF_ERR            0xc
+#define XMC_REG_OFF_FEATURE        0x10
+#define XMC_REG_OFF_CTL            0x18
+#define XMC_REG_OFF_PKT_OFFSET     0x300
+#define XMC_REG_OFF_PKT_STATUS     0x304
 
-#define	XMC_MAGIC_NUM			0x74736574
-#define	XMC_VERSION				2017403
+#define XMC_MAGIC_NUM            0x74736574
+#define XMC_VERSION                2017403
 
-#define	XMC_PKT_SUPPORT_MASK	(1 << 3)
-#define	XMC_PKT_OWNER_MASK		(1 << 5)
-#define	XMC_PKT_ERR_MASK		(1 << 26)
+#define XMC_PKT_SUPPORT_MASK    (1 << 3)
+#define XMC_PKT_OWNER_MASK        (1 << 5)
+#define XMC_PKT_ERR_MASK        (1 << 26)
 
 enum xmc_packet_op {
-	XPO_UNKNOWN = 0,
-	XPO_MSP432_SEC_START,
-	XPO_MSP432_SEC_DATA
+    XPO_UNKNOWN = 0,
+    XPO_MSP432_SEC_START,
+    XPO_MSP432_SEC_DATA
 };
 MSP432_Flasher::MSP432_Flasher(unsigned int device_index, char *inMap)
 {
-	unsigned val;
+    unsigned val;
     mMgmtMap = inMap;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
-    	std::cout << "ERROR: Failed to detect XMC, bad magic number: " << std::hex << val
-    			  << std::dec << std::endl;
-    	goto nosup;
+        std::cout << "ERROR: Failed to detect XMC, bad magic number: " << std::hex << val
+                  << std::dec << std::endl;
+        goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_VER);
     if (val != XMC_VERSION) {
-    	std::cout << "ERROR: Found unsupported XMC version: " << val << std::endl;
-    	goto nosup;
+        std::cout << "ERROR: Found unsupported XMC version: " << val << std::endl;
+        goto nosup;
     }
 
     val = readReg(XMC_REG_OFF_FEATURE);
     if (val & XMC_PKT_SUPPORT_MASK) {
-    	std::cout << "ERROR: XMC packet buffer is not supported" << std::endl;
-    	goto nosup;
+        std::cout << "ERROR: XMC packet buffer is not supported" << std::endl;
+        goto nosup;
     }
 
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
@@ -77,8 +77,8 @@ MSP432_Flasher::MSP432_Flasher(unsigned int device_index, char *inMap)
     return;
 
 nosup:
-   	mMgmtMap = nullptr;
-   	return;
+       mMgmtMap = nullptr;
+       return;
 }
 
 MSP432_Flasher::~MSP432_Flasher()
@@ -102,7 +102,7 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
 
     if(!tiTxtStream.is_open()) {
         std::cout << "ERROR: Cannot open " << tiTxtFileName
-        		  <<". Check that it exists and is readable." << std::endl;
+                  <<". Check that it exists and is readable." << std::endl;
         return -ENOENT;
     }
 
@@ -120,8 +120,8 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
         {
             if (startAddress.size()) {
                 // Finish the last record
-            	mRecordList.push_back(record);
-            	startAddress.clear();
+                mRecordList.push_back(record);
+                startAddress.clear();
             }
             endRecordFound = true;
             break;
@@ -132,7 +132,7 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
             if (startAddress.size()) {
                 // Finish the last record
                 mRecordList.push_back(record);
-            	startAddress.clear();
+                startAddress.clear();
             }
             // Start a new record
             record.mStartAddress = std::stoi(newAddress, 0 , 16);
@@ -144,39 +144,39 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
         }
         default:
         {
-        	int spaces = 0;
-        	int digits = 0;
+            int spaces = 0;
+            int digits = 0;
 
             if (startAddress.size() == 0) {
-        			errorFound = true;
+                    errorFound = true;
             }
 
-        	for (unsigned i = 0; i < line.size() && !errorFound; i++) {
-        		if (line[i] == ' ') {
-        			spaces++;
-        		} else if (std::isxdigit(line[i])) {
-        			digits++;
-        		} else {
-        			errorFound = true;
-        		}
-        	}
+            for (unsigned i = 0; i < line.size() && !errorFound; i++) {
+                if (line[i] == ' ') {
+                    spaces++;
+                } else if (std::isxdigit(line[i])) {
+                    digits++;
+                } else {
+                    errorFound = true;
+                }
+            }
 
-        	// Each line has at most 16 bytes of data represented as hex in ASCII
-        	if (((digits % 2) != 0) || digits > 16 * 2) {
-        		errorFound = true;
-        	}
+            // Each line has at most 16 bytes of data represented as hex in ASCII
+            if (((digits % 2) != 0) || digits > 16 * 2) {
+                errorFound = true;
+            }
 
-        	if (!errorFound) {
-        		int bytes = digits / 2;
+            if (!errorFound) {
+                int bytes = digits / 2;
 
-        		record.mDataCount += bytes;
-        		record.mEndAddress += bytes;
-        		if (bytes < 16) {
-					// Finish the last record
-					mRecordList.push_back(record);
-					startAddress.clear();
-        		}
-        	}
+                record.mDataCount += bytes;
+                record.mEndAddress += bytes;
+                if (bytes < 16) {
+                    // Finish the last record
+                    mRecordList.push_back(record);
+                    startAddress.clear();
+                }
+            }
         }
         }
     }
@@ -184,165 +184,165 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
     tiTxtStream.seekg(0);
 
     if (errorFound) {
-		std::cout << "ERROR: Bad firmware file format." << std::endl;
-		return -EINVAL;
+        std::cout << "ERROR: Bad firmware file format." << std::endl;
+        return -EINVAL;
     }
 
-	std::cout << "INFO: Found " << mRecordList.size() << " Sections" << std::endl;
+    std::cout << "INFO: Found " << mRecordList.size() << " Sections" << std::endl;
 
-	for (ELARecordList::iterator i = mRecordList.begin(); i != mRecordList.end(); ++i) {
-		int ret = program(tiTxtStream, *i);
+    for (ELARecordList::iterator i = mRecordList.begin(); i != mRecordList.end(); ++i) {
+        int ret = program(tiTxtStream, *i);
 
-		if (ret != 0)
-			return ret;
-	}
+        if (ret != 0)
+            return ret;
+    }
 
-	return 0;
+    return 0;
 }
 
 int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
 {
-	std::string byteStr;
-	int ret = 0;
-	unsigned ndigit = 0;
-	int pos;
-	char c;
-	uint8_t *data;
-	const int charPerByte = 2;
+    std::string byteStr;
+    int ret = 0;
+    unsigned ndigit = 0;
+    int pos;
+    char c;
+    uint8_t *data;
+    const int charPerByte = 2;
 
-	std::cout << std::hex;
-	std::cout << "\tAddress=0x" << record.mStartAddress << std::dec << "\tLength=" << record.mDataCount;
-	std::cout<< std::endl;
+    std::cout << std::hex;
+    std::cout << "\tAddress=0x" << record.mStartAddress << std::dec << "\tLength=" << record.mDataCount;
+    std::cout<< std::endl;
 
-	if (record.mDataCount == 0) {
-		std::cout << "ERROR: Found zero length record, ignore" << std::endl;
-		return 0;
-	}
+    if (record.mDataCount == 0) {
+        std::cout << "ERROR: Found zero length record, ignore" << std::endl;
+        return 0;
+    }
 
-	tiTxtStream.seekg(record.mDataPos, std::ifstream::beg);
-	byteStr.clear();
-	mPkt.hdr.opCode = XPO_MSP432_SEC_START;
-	mPkt.hdr.reserved = 0;
+    tiTxtStream.seekg(record.mDataPos, std::ifstream::beg);
+    byteStr.clear();
+    mPkt.hdr.opCode = XPO_MSP432_SEC_START;
+    mPkt.hdr.reserved = 0;
 
-	const int maxDataSize = sizeof (mPkt.data);
-	data = reinterpret_cast<uint8_t *>(&mPkt.data[0]);
-	// First uint32_t in payload is always the address
-	mPkt.data[0] = record.mStartAddress;
-	mPkt.data[1] = record.mDataCount;
-	pos = sizeof (uint32_t) * 2;
+    const int maxDataSize = sizeof (mPkt.data);
+    data = reinterpret_cast<uint8_t *>(&mPkt.data[0]);
+    // First uint32_t in payload is always the address
+    mPkt.data[0] = record.mStartAddress;
+    mPkt.data[1] = record.mDataCount;
+    pos = sizeof (uint32_t) * 2;
 
-	while (ndigit < record.mDataCount * charPerByte) {
-		if (!tiTxtStream.get(c)) {
-			std::cout << "Cannot read data from firmware file" << std::endl;
-			return -EIO;
-		}
-		if (!std::isxdigit(c))
-			continue;
-		ndigit++;
+    while (ndigit < record.mDataCount * charPerByte) {
+        if (!tiTxtStream.get(c)) {
+            std::cout << "Cannot read data from firmware file" << std::endl;
+            return -EIO;
+        }
+        if (!std::isxdigit(c))
+            continue;
+        ndigit++;
 
-		byteStr.push_back(c);
-		if (byteStr.size() < charPerByte)
-			continue;
+        byteStr.push_back(c);
+        if (byteStr.size() < charPerByte)
+            continue;
 
-		int n = std::stoi(byteStr, 0 , 16);
-		byteStr.clear();
+        int n = std::stoi(byteStr, 0 , 16);
+        byteStr.clear();
 
-		data[pos++] = n;
-		if (pos < maxDataSize)
-			continue;
+        data[pos++] = n;
+        if (pos < maxDataSize)
+            continue;
 
-		// Send out a fully loaded pkt
-		mPkt.hdr.payloadSize = pos;
-		if ((ret = sendPkt()) != 0)
-			return ret;
-		// Reset opcode and pos for next data pkt
-		mPkt.hdr.opCode = XPO_MSP432_SEC_DATA;
-		pos = 0;
-	}
+        // Send out a fully loaded pkt
+        mPkt.hdr.payloadSize = pos;
+        if ((ret = sendPkt()) != 0)
+            return ret;
+        // Reset opcode and pos for next data pkt
+        mPkt.hdr.opCode = XPO_MSP432_SEC_DATA;
+        pos = 0;
+    }
 
-	// Send the last partially loaded pkt
-	if (pos) {
-		mPkt.hdr.payloadSize = pos;
-		if ((ret = sendPkt()) != 0)
-			return ret;
-	}
+    // Send the last partially loaded pkt
+    if (pos) {
+        mPkt.hdr.payloadSize = pos;
+        if ((ret = sendPkt()) != 0)
+            return ret;
+    }
 
-	// Flush the last packet sent to XMC
+    // Flush the last packet sent to XMC
 #if 0
-	return waitTillIdle();
+    return waitTillIdle();
 #else
-	return 0;
+    return 0;
 #endif
 }
 
 void describePkt(struct xmcPkt& pkt)
 {
-	uint32_t *h = reinterpret_cast<uint32_t *>(&pkt.hdr);
-	std::cout << "opcode=" << static_cast<unsigned>(pkt.hdr.opCode)
-			  << " payload_size=" << pkt.hdr.payloadSize
-			  << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
-			  << std::endl;
+    uint32_t *h = reinterpret_cast<uint32_t *>(&pkt.hdr);
+    std::cout << "opcode=" << static_cast<unsigned>(pkt.hdr.opCode)
+              << " payload_size=" << pkt.hdr.payloadSize
+              << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
+              << std::endl;
 #if 0
-	uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
-	std::cout << std::hex;
-	int nbytes = 0;
-	for (unsigned i = 0; i < pkt.hdr.payloadSize; i++) {
-		std::cout << std::uppercase << std::setfill('0') << std::setw(2)
-				  << static_cast<unsigned>(data[i]) << " ";
-		nbytes++;
-		if ((nbytes % 16) == 0)
-			std::cout << std::endl;
-	}
-	std::cout << std::endl << std::dec;
+    uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
+    std::cout << std::hex;
+    int nbytes = 0;
+    for (unsigned i = 0; i < pkt.hdr.payloadSize; i++) {
+        std::cout << std::uppercase << std::setfill('0') << std::setw(2)
+                  << static_cast<unsigned>(data[i]) << " ";
+        nbytes++;
+        if ((nbytes % 16) == 0)
+            std::cout << std::endl;
+    }
+    std::cout << std::endl << std::dec;
 #endif
 }
 
 int MSP432_Flasher::sendPkt()
 {
-	int lenInUint32 = (sizeof (mPkt.hdr) + mPkt.hdr.payloadSize + sizeof (uint32_t) - 1) / sizeof (uint32_t);
+    int lenInUint32 = (sizeof (mPkt.hdr) + mPkt.hdr.payloadSize + sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-	std::cout << "Sending XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
-	describePkt(mPkt);
+    std::cout << "Sending XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
+    describePkt(mPkt);
 #if 0
-	uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
-	int ret = waitTillIdle();
-	if (ret != 0)
-		return ret;
+    uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
+    int ret = waitTillIdle();
+    if (ret != 0)
+        return ret;
 
-	for (int i = 0; i < lenInUint32; i++) {
-		writeReg(mPktBufOffset + i * sizeof (uint32_t), pkt[i]);
-	}
+    for (int i = 0; i < lenInUint32; i++) {
+        writeReg(mPktBufOffset + i * sizeof (uint32_t), pkt[i]);
+    }
 
-	// Flip pkt buffer ownership bit
-	writeReg(XMC_REG_OFF_PKT_STATUS, readReg(XMC_REG_OFF_CTL) & ~XMC_PKT_OWNER_MASK);
+    // Flip pkt buffer ownership bit
+    writeReg(XMC_REG_OFF_PKT_STATUS, readReg(XMC_REG_OFF_CTL) & ~XMC_PKT_OWNER_MASK);
 #endif
-	return 0;
+    return 0;
 }
 
 int MSP432_Flasher::waitTillIdle()
 {
-	// In total, wait for 50 * 10ms
+    // In total, wait for 50 * 10ms
     const timespec req = {0, 10 * 1000 * 1000}; // 10ms
     int retry = 50;
     unsigned err = 0;
 
     while ((retry-- > 0) && !(readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK))
-    	(void) nanosleep(&req, nullptr);
+        (void) nanosleep(&req, nullptr);
 
     if (retry == 0) {
-    	std::cout << "ERROR: Time'd out while waiting for XMC packet to be idle" << std::endl;
-    	return -ETIMEDOUT;
+        std::cout << "ERROR: Time'd out while waiting for XMC packet to be idle" << std::endl;
+        return -ETIMEDOUT;
     }
 
     if (readReg(XMC_REG_OFF_ERR) & XMC_PKT_ERR_MASK)
-		err = readReg(XMC_REG_OFF_PKT_STATUS);
+        err = readReg(XMC_REG_OFF_PKT_STATUS);
 
     if (err) {
-    	std::cout << "ERROR: XMC packet error: " << err << std::endl;
-    	return -EINVAL;
+        std::cout << "ERROR: XMC packet error: " << err << std::endl;
+        return -EINVAL;
     }
 
-	return 0;
+    return 0;
 }
 
 unsigned MSP432_Flasher::readReg(unsigned RegOffset) {
