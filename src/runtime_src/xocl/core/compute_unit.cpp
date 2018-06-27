@@ -50,13 +50,21 @@ get_base_addr(const xocl::xclbin::symbol* symbol, const std::string& kinst)
 namespace xocl {
 
 compute_unit::
-compute_unit(const xclbin::symbol* s, const std::string& n, size_t offset, size_t size, device* d)
+compute_unit(const xclbin::symbol* s, const std::string& n, device* d)
   : m_symbol(s), m_name(n), m_device(d), m_address(get_base_addr(m_symbol,m_name))
-  , m_offset(offset), m_size(size), m_index((m_address - m_offset) >> m_size)
 {
   static unsigned int count = 0;
   m_uid = count++;
-  XOCL_DEBUG(std::cout,"xocl::compute_unit::compute_unit(",m_uid,") with index(",m_index,")\n");
+
+  // This should be reworked to not compute every time
+  auto xclbin = d->get_xclbin();
+  auto cu2addr = xclbin.cu_base_address_map();
+  auto itr = std::find(cu2addr.begin(),cu2addr.end(),m_address);
+  if (itr==cu2addr.end())
+    throw std::runtime_error("Internal error  constructing compute unit");
+  m_index = std::distance(cu2addr.begin(),itr);
+
+  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%d) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
 }
 
 compute_unit::

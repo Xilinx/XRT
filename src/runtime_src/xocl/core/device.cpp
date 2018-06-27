@@ -328,15 +328,6 @@ device(device* parent, const compute_unit_vector_type& cus)
 
   // Current program tracks this subdevice on which it is implicitly loaded.
   m_active->add_device(this);
-
-#if 0  // No need to explicit add in subdevice,  m_computeunits can copy
-       // parent cus, since cus are stored as shared ptrs a reference is
-       // retained
-  // Add CUs based on incoming list.  This controls the CUs that
-  // an NDRange event can use during execution.
-  for (auto& cu : cus)
-    add_cu(xrt::make_unique<compute_unit>(cu->get_symbol(),cu->get_name(),cu->get_offset(),cu->get_size(),this));
-#endif
 }
 
 device::
@@ -483,6 +474,38 @@ allocate_buffer_object(memory* mem)
   return alloc(mem);
 }
 
+xrt::device::BufferObjectHandle
+device::
+allocate_buffer_object(memory* mem, uint64_t memidx)
+{
+  if (mem->get_flags() & CL_MEM_REGISTER_MAP)
+    throw std::runtime_error("Cannot allocate register map buffer on bank");
+
+  auto xdevice = get_xrt_device();
+
+  // sub buffer
+  if (mem->get_sub_buffer_parent()) {
+    throw std::runtime_error("sub buffer bank allocation not implemented");
+  }
+
+  auto flag = (mem->get_ext_flags()) & 0xffffff;
+  if (flag && xdevice->hasBankAlloc()) {
+    auto bank = myctz(flag);
+    auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+    if (midx==-1)
+      midx=bank;
+    if (static_cast<uint64_t>(midx)!=memidx)
+      throw std::runtime_error("implicitly request memidx("
+                               +std::to_string(memidx)
+                               +") does not match explicit memidx("
+                               +std::to_string(midx)+")");
+  }
+
+  auto boh = alloc(mem,memidx);
+  XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
+  return boh;
+}
+
 void
 device::
 free(const memory* mem)
@@ -556,6 +579,29 @@ get_cu_memidx() const
   }
 
   return m_cu_memidx;
+}
+
+device::memidx_bitmask_type
+device::
+get_cu_memidx(kernel* kernel, int argidx) const
+{
+  bool set = false;
+  memidx_bitmask_type memidx;
+  memidx.set();
+  auto sid = kernel->get_symbol_uid();
+
+  // iterate CUs
+  for (auto& cu : get_cus()) {
+    if (cu->get_symbol_uid()!=sid)
+      continue;
+    memidx &= cu->get_memidx(argidx);
+    set = true;
+  }
+
+  if (!set)
+    memidx.reset();
+
+  return memidx;
 }
 
 xrt::device::BufferObjectHandle
@@ -981,11 +1027,9 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   m_computeunits.clear();
   m_cu_memidx = -2;
-  auto cu_base_offset = m_xclbin.cu_base_offset();
-  auto cu_size = m_xclbin.cu_size();
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,cu_base_offset,cu_size,this));
+      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,this));
     }
   }
 
