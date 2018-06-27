@@ -228,7 +228,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clIcdGetPlatformIDsKHR_fn)(
 #define CL_PIPE_ATTRIBUTE_DPDK_ID                   (1 << 31)
 
 /* Additional cl_device_partition_property */
-#define CL_DEVICE_PARTITION_BY_CLUSTER              (1 << 31)
+#define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
 
 
 /**
