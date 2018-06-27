@@ -43,6 +43,8 @@ extern "C" {
 //debug is only interested in 4 metric counters: wb,wt,rb,rt,outstanding,lwa,lwd,lra,lrd
 #define XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
 
+#define XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT		9
+
 /*
  * LAPC related defs here
  */
@@ -64,7 +66,8 @@ extern "C" {
 enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
-  XCL_DEBUG_READ_TYPE_SPM = 2
+  XCL_DEBUG_READ_TYPE_SPM = 2,
+  XCL_DEBUG_READ_TYPE_SAM = 3
 };
 
 /* Debug counter results */
@@ -82,6 +85,19 @@ typedef struct {
   unsigned int   NumSlots;
   char DevUserName[256];
 } xclDebugCountersResults;
+
+typedef struct {
+  unsigned int Version[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int CUExecutionCount[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int TotalCUExecutionCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int TotalIntStallCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int TotalStrStallCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int TotalExtStallCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int MinExecutionTime[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int MaxExecutionTime[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int TotalCUStarts[XSAM_MAX_NUMBER_SLOTS];
+  unsigned int NumSlots;
+} xclDebugSAMCounterResults;
 
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,

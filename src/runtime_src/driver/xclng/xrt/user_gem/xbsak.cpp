@@ -94,7 +94,8 @@ int xcldev::xclXbsak(int argc, char *argv[])
 	{"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED}
+	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+	{"sam", no_argument, 0, xcldev::STATUS_SAM}
     };
     int long_index;
     const char* short_options = "a:d:e:i:r:p:f:g:m:n:c:s:b:ho:"; //don't add numbers
@@ -142,6 +143,14 @@ int xcldev::xclXbsak(int argc, char *argv[])
             }
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
             break;
+        }
+        case xcldev::STATUS_SAM : {
+        	if (cmd != xcldev::STATUS) {
+				std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+				return -1;
+			}
+        	ipmask |= static_cast<unsigned int>(xcldev::STATUS_SAM_MASK);
+        	break;
         }
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
@@ -460,6 +469,9 @@ int xcldev::xclXbsak(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
             result = deviceVec[index]->readSPMCounters();
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SAM_MASK)) {
+			result = deviceVec[index]->readSAMCounters();
+		}
         break;
     default:
         std::cout << "ERROR: Not implemented\n";
