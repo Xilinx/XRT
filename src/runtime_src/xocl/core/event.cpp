@@ -53,6 +53,9 @@ to_string(cl_int status)
 
 namespace xocl {
 
+event::event_callback_list event::m_constructor_callbacks;
+event::event_callback_list event::m_destructor_callbacks;
+
 event::
 event(command_queue* cq, context* ctx, cl_command_type cmd)
   : m_context(ctx), m_command_queue(cq), m_command_type(cmd), m_wait_count(1)
@@ -60,6 +63,9 @@ event(command_queue* cq, context* ctx, cl_command_type cmd)
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
   debug::add_command_type(this,cmd);
+
+  for (auto& cb : m_constructor_callbacks)
+    cb(this);
 
   XOCL_DEBUG(std::cout,"xocl::event::event(",m_uid,")\n");
 }
@@ -80,6 +86,8 @@ event::
 ~event()
 {
   XOCL_DEBUG(std::cout,"xocl::event::~event(",m_uid,")\n");
+  for (auto& cb : m_destructor_callbacks)
+    cb(this);
 }
 
 cl_int
@@ -294,6 +302,21 @@ run_callbacks(cl_int status)
   for (auto cb : copy)
     (*cb)(status);
 }
+
+void
+event::
+register_constructor_callbacks(event_callback_type aCallback)
+{
+  m_constructor_callbacks.emplace_back(std::move(aCallback));
+}
+
+void
+event::
+register_destructor_callbacks(event_callback_type aCallback)
+{
+  m_destructor_callbacks.emplace_back(std::move(aCallback));
+}
+
 
 void
 event::
