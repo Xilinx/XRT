@@ -38,7 +38,7 @@ public:
         UNSET,
         SPI,
         BPI,
-		MSP432
+        MSP432
     };
     const char *E_FlasherTypeStrings[4] = { "UNSET", "SPI", "BPI", "MSP432" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }

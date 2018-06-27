@@ -90,14 +90,14 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
  */
 Flasher::~Flasher()
 {
-	delete mXspi;
-	mXspi = nullptr;
+    delete mXspi;
+    mXspi = nullptr;
 
-	delete mBpi;
-	mBpi = nullptr;
+    delete mBpi;
+    mBpi = nullptr;
 
-	delete mMsp;
-	mMsp = nullptr;
+    delete mMsp;
+    mMsp = nullptr;
 
     if( mMgmtMap != nullptr )
     {
@@ -115,7 +115,7 @@ Flasher::~Flasher()
  */
 int Flasher::upgradeFirmware(const char *f1, const char *f2)
 {
-    int retVal = -1;
+    int retVal = -EINVAL;
     switch( mType )
     {
     case SPI:
@@ -132,7 +132,6 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
         if( f2 != nullptr )
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
-            retVal = -1;
         }
         else
         {
@@ -143,7 +142,6 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
         if( f2 != nullptr )
         {
             std::cout << "ERROR: Only need firmware image file for flashing MSP432 chip." << std::endl;
-            retVal = -1;
         }
         else
         {
@@ -152,7 +150,6 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
         break;
     default:
         std::cout << "ERROR: Invalid programming type." << std::endl;
-        retVal = -1;
         break;
     }
     return retVal;
@@ -288,7 +285,7 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     if( !typeFound )
     {
         std::cout << "ERROR: failed to determine DSA type, unable to flash device." << std::endl;
-        return -1;
+        return -EINVAL;
     }
     return 0;
 }
