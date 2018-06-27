@@ -1,6 +1,7 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
+  ../../../../../../../aws-fpga-staging/sdk/userspace/include/
   )
 
 file(GLOB XRT_USER_AWS_FILES

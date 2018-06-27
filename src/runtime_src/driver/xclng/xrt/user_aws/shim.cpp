@@ -63,8 +63,6 @@
 #ifdef INTERNAL_TESTING
 #include "driver/xclng/include/mgmt-ioctl.h"
 #else
-#define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS    3
 // TODO - define this in a header file
 extern char* get_afi_from_xclBin(const xclBin *);
 extern char* get_afi_from_axlf(const axlf *);
@@ -808,7 +806,7 @@ namespace awsbwhal {
     info->mPCIeLinkSpeed = 8000;
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    for (int i = 0; i < AWSMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
+    for (int i = 0; i < XCLMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
       info->mOCLFrequency[i] = imageInfo.metrics.clocks[i].frequency[0] / 1000000;
     }
     info->mMigCalib = true;
