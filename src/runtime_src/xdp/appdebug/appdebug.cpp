@@ -132,6 +132,10 @@ void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution
   }
 }
 
+void register_ocl_object_appdebug_callbacks() {
+  xocl::event::register_constructor_callbacks(appdebug::add_event);
+  xocl::event::register_destructor_callbacks(appdebug::remove_event);
+}
 // Call back function to be called when a command is finished
 void cb_scheduler_cmd_done (const xrt::command* aCommand, const xocl::execution_context* aContext)
 {

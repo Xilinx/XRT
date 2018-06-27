@@ -49,6 +49,9 @@ class event : public refcount, public _cl_event
   using callback_function_type = std::function<void(cl_int)>;
   using callback_list = std::vector<callback_function_type>;
 
+  using event_callback_type = std::function<void(cl_event)>;
+  using event_callback_list = std::vector<event_callback_type>;
+
   friend class command_queue;
 
 public:
@@ -375,6 +378,13 @@ public:
     return m_execution_context.get();
   }
 
+  static event_callback_list m_constructor_callbacks;
+  static event_callback_list m_destructor_callbacks;
+
+  static void register_constructor_callbacks(event_callback_type aCallback);
+  static void register_destructor_callbacks(event_callback_type aCallback);
+
+
 protected:
   /**
    * Add argument event to event chain
@@ -607,12 +617,12 @@ public:
   event_with_debugging(Args&&... args)
     : EventType(std::forward<Args>(args)...)
   {
-    appdebug::add_event(this);
+    //appdebug::add_event(this);
   }
 
   virtual ~event_with_debugging()
   {
-    appdebug::remove_event(this);
+    //appdebug::remove_event(this);
   }
 
   /**
