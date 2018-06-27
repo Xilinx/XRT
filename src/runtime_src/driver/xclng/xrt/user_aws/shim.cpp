@@ -150,8 +150,10 @@ namespace awsbwhal {
           } 
           return retVal;
       } else {
-          char* afi_id = get_afi_from_xclBin(buffer);
-          return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          //char* afi_id = get_afi_from_xclBin(buffer);
+          //return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          std::cout << "get_afi_from_xclBin() has been deprecated" << std::endl;
+          return -1;
       }
 #endif
     }
