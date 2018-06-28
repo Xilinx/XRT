@@ -56,15 +56,13 @@
 #include <mutex>
 
 #include "xclbin.h"
-#include "xocl_ioctl.h"
+#include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
 #include "awssak.h"
 
 #ifdef INTERNAL_TESTING
-#include "mgmt-ioctl.h"
+#include "driver/xclng/include/mgmt-ioctl.h"
 #else
-#define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS    3
 // TODO - define this in a header file
 extern char* get_afi_from_xclBin(const xclBin *);
 extern char* get_afi_from_axlf(const axlf *);
@@ -152,8 +150,10 @@ namespace awsbwhal {
           } 
           return retVal;
       } else {
-          char* afi_id = get_afi_from_xclBin(buffer);
-          return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          //char* afi_id = get_afi_from_xclBin(buffer);
+          //return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          std::cout << "get_afi_from_xclBin() has been deprecated" << std::endl;
+          return -1;
       }
 #endif
     }
@@ -808,7 +808,7 @@ namespace awsbwhal {
     info->mPCIeLinkSpeed = 8000;
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    for (int i = 0; i < AWSMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
+    for (int i = 0; i < XCLMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
       info->mOCLFrequency[i] = imageInfo.metrics.clocks[i].frequency[0] / 1000000;
     }
     info->mMigCalib = true;
