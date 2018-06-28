@@ -39,6 +39,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
+     curl \
      )
 
 UB_LIST=(\
@@ -75,6 +76,7 @@ UB_LIST=(\
      strace \
      unzip \
      uuid-dev \
+     curl \
 )
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
