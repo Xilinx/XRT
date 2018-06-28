@@ -859,6 +859,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mailbox,
 	xocl_init_firewall,
 	xocl_init_icap,
+	xocl_init_mig,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -870,6 +871,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
 	xocl_fini_icap,
+	xocl_fini_mig,
 };
 
 static int __init xclmgmt_init(void)
