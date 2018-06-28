@@ -14,6 +14,7 @@ add_library(xrtcorestatic STATIC ${XRT_SRC}
   $<TARGET_OBJECTS:user_gem>
   )
 
+# Core XRT
 set_target_properties(xrtcore PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC" "-fvisibility=hidden")
 #set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -30,3 +31,29 @@ target_link_libraries(xrtcore
   )
 
 install (TARGETS xrtcore LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+
+# Vendor - AWS 
+add_library(xrt-aws SHARED ${XRT_SRC}
+  $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:user_aws>
+  )
+
+add_library(xrt-awsstatic STATIC ${XRT_SRC}
+  $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:user_aws>
+  )
+
+set_target_properties(xrt-aws PROPERTIES LINKER_LANGUAGE CXX)
+add_compile_options("-fPIC" "-fvisibility=hidden")
+
+add_subdirectory(user_aws)
+
+set_target_properties(xrt-aws PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_VERSION_MAJOR})
+
+target_link_libraries(xrt-aws
+  pthread
+  rt
+  )
+
+install (TARGETS xrt-aws LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
