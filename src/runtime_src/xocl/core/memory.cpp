@@ -35,7 +35,7 @@ namespace {
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-// 
+//
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 static xocl::device*
@@ -110,7 +110,7 @@ get_buffer_object(device* device)
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
 
-  // Maybe import from XARE device 
+  // Maybe import from XARE device
   if (m_bomap.size() && itr==m_bomap.end() && device->is_xare_device()) {
     auto first = m_bomap.begin(); // import any existing BO
     return (m_bomap[device] = device->import_buffer_object(first->first,first->second));
@@ -119,7 +119,46 @@ get_buffer_object(device* device)
   // Regular none XARE device, or first BO for this mem object
   return (itr==m_bomap.end())
     ? (m_bomap[device] = device->allocate_buffer_object(this))
-    : (*itr).second;  
+    : (*itr).second;
+}
+
+memory::buffer_object_handle
+memory::
+get_buffer_object(kernel* kernel, unsigned long argidx)
+{
+  // Must be single device context
+  if (auto device=singleContextDevice(get_context())) {
+    // Memory intersection of arg connection across all CUs in current
+    // device for the kernel
+    auto cu_memidx_mask = device->get_cu_memidx(kernel,argidx);
+
+    auto memidx_mask = get_memidx(device);
+    if (memidx_mask.any()) {
+      // "this" buffer is already allocated on device, verify that
+      // current bank match that reqired for kernel argument
+      if ((cu_memidx_mask & memidx_mask).none()) {
+        // revisit error code
+        throw std::runtime_error("Buffer is allocated in wrong memory bank\n");
+      }
+      return get_buffer_object_or_error(device);
+    }
+    else {
+      // "this" buffer is not curently allocated on device, allocate
+      // in first available bank for argument
+      for (size_t idx=0; idx<cu_memidx_mask.size(); ++idx) {
+        if (cu_memidx_mask.test(idx)) {
+          try {
+            std::lock_guard<std::mutex> lk(m_boh_mutex);
+            return (m_bomap[device] = device->allocate_buffer_object(this,idx));
+          }
+          catch (const std::bad_alloc&) {
+          }
+        }
+      }
+      throw std::bad_alloc();
+    }
+  }
+  throw std::bad_alloc();
 }
 
 memory::buffer_object_handle
@@ -144,6 +183,7 @@ get_buffer_object_or_null(const device* device) const
     : (*itr).second;
 }
 
+
 memory::buffer_object_handle
 memory::
 try_get_buffer_object_or_error(const device* device) const
@@ -159,7 +199,7 @@ try_get_buffer_object_or_error(const device* device) const
 
 memory::memidx_bitmask_type
 memory::
-get_memidx(const device* dev) const 
+get_memidx(const device* dev) const
 {
   if (auto boh = get_buffer_object_or_null(dev))
     return dev->get_boh_memidx(boh);
@@ -224,5 +264,3 @@ get_buffer_object(device* device)
 }
 
 } // xocl
-
-
