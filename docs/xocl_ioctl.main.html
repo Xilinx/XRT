@@ -1,0 +1,656 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>User Physical Function &mdash; Xilinx Runtime 2018.2 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="next" title="Linux Sys FileSystem Nodes" href="sysfs.html"/>
+        <link rel="prev" title="Management Physical Function" href="mgmt-ioctl.main.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2018.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Xilinx Runtime</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>User Physical Function</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/xocl_ioctl.main.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="user-physical-function">
+<h1>User Physical Function<a class="headerlink" href="#user-physical-function" title="Permalink to this headline">¶</a></h1>
+<p><strong>A GEM style driver for Xilinx PCIe based accelerators</strong></p>
+<p>This file defines ioctl command codes and associated structures for interacting with
+<em>xocl</em> PCI driver for Xilinx FPGA platforms.</p>
+<p>Device memory allocation is modeled as buffer objects (bo). For each bo driver tracks the host pointer
+backed by scatter gather list &#8211; which provides backing storage on host &#8211; and the corresponding device
+side allocation of contiguous buffer in one of the memory mapped DDRs/BRAMs, etc.</p>
+<p><em>xocl</em> driver functionality is described in the following table. All the APIs are multi-threading and
+multi-process safe.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="36%" />
+<col width="28%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">#</th>
+<th class="head">Functionality</th>
+<th class="head">ioctl request code</th>
+<th class="head">data format</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>Allocate buffer on device</td>
+<td>DRM_IOCTL_XOCL_CREATE_BO</td>
+<td>drm_xocl_create_bo</td>
+</tr>
+<tr class="row-odd"><td>2</td>
+<td>Allocate buffer on device with
+userptr</td>
+<td>DRM_IOCTL_XOCL_USERPTR_BO</td>
+<td>drm_xocl_userptr_bo</td>
+</tr>
+<tr class="row-even"><td>3</td>
+<td>Prepare bo for mapping into user&#8217;s
+address space</td>
+<td>DRM_IOCTL_XOCL_MAP_BO</td>
+<td>drm_xocl_map_bo</td>
+</tr>
+<tr class="row-odd"><td>4</td>
+<td>Synchronize (DMA) buffer contents in
+requested direction</td>
+<td>DRM_IOCTL_XOCL_SYNC_BO</td>
+<td>drm_xocl_sync_bo</td>
+</tr>
+<tr class="row-even"><td>5</td>
+<td>Obtain information about buffer
+object</td>
+<td>DRM_IOCTL_XOCL_INFO_BO</td>
+<td>drm_xocl_info_bo</td>
+</tr>
+<tr class="row-odd"><td>6</td>
+<td>Update bo backing storage with user&#8217;s
+data</td>
+<td>DRM_IOCTL_XOCL_PWRITE_BO</td>
+<td>drm_xocl_pwrite_bo</td>
+</tr>
+<tr class="row-even"><td>7</td>
+<td>Read back data in bo backing storage</td>
+<td>DRM_IOCTL_XOCL_PREAD_BO</td>
+<td>drm_xocl_pread_bo</td>
+</tr>
+<tr class="row-odd"><td>8</td>
+<td>Unprotected write to device memory</td>
+<td>DRM_IOCTL_XOCL_PWRITE_UNMGD</td>
+<td>drm_xocl_pwrite_unmgd</td>
+</tr>
+<tr class="row-even"><td>9</td>
+<td>Unprotected read from device memory</td>
+<td>DRM_IOCTL_XOCL_PREAD_UNMGD</td>
+<td>drm_xocl_pread_unmgd</td>
+</tr>
+<tr class="row-odd"><td>10</td>
+<td>Obtain device usage statistics</td>
+<td>DRM_IOCTL_XOCL_USAGE_STAT</td>
+<td>drm_xocl_usage_stat</td>
+</tr>
+<tr class="row-even"><td>11</td>
+<td>Register eventfd handle for MSIX
+interrupt</td>
+<td>DRM_IOCTL_XOCL_USER_INTR</td>
+<td>drm_xocl_user_intr</td>
+</tr>
+</tbody>
+</table>
+<dl class="type">
+<dt id="c.drm_xocl_create_bo">
+struct <code class="descname">drm_xocl_create_bo</code><a class="headerlink" href="#c.drm_xocl_create_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create buffer object used with DRM_IOCTL_XOCL_CREATE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_create_bo {
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+  uint32_t type;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Requested size of the buffer object</dd>
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle returned by the driver</dd>
+<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
+<dd>DRM_XOCL_BO_XXX flags</dd>
+<dt><code class="docutils literal"><span class="pre">type</span></code></dt>
+<dd>The type of bo</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_userptr_bo">
+struct <code class="descname">drm_xocl_userptr_bo</code><a class="headerlink" href="#c.drm_xocl_userptr_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create buffer object with user&#8217;s pointer used with DRM_IOCTL_XOCL_USERPTR_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_userptr_bo {
+  uint64_t addr;
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+  uint32_t type;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">addr</span></code></dt>
+<dd>Address of buffer allocated by user</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Requested size of the buffer object</dd>
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle returned by the driver</dd>
+<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
+<dd>DRM_XOCL_BO_XXX flags</dd>
+<dt><code class="docutils literal"><span class="pre">type</span></code></dt>
+<dd>The type of bo</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_map_bo">
+struct <code class="descname">drm_xocl_map_bo</code><a class="headerlink" href="#c.drm_xocl_map_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_XOCL_MAP_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_map_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
+<dd>&#8216;Fake&#8217; offset returned by the driver which can be used with POSIX mmap</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_sync_bo">
+struct <code class="descname">drm_xocl_sync_bo</code><a class="headerlink" href="#c.drm_xocl_sync_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Synchronize the buffer in the requested direction between device and host used with DRM_IOCTL_XOCL_SYNC_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_sync_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t offset;
+  enum drm_xocl_sync_bo_dir dir;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Number of bytes to synchronize</dd>
+<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
+<dd>Offset into the object to synchronize</dd>
+<dt><code class="docutils literal"><span class="pre">dir</span></code></dt>
+<dd>DRM_XOCL_SYNC_DIR_XXX</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_info_bo">
+struct <code class="descname">drm_xocl_info_bo</code><a class="headerlink" href="#c.drm_xocl_info_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain information about an allocated buffer obbject used with DRM_IOCTL_XOCL_INFO_BO IOCTL</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_info_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Size of buffer object (out)</dd>
+<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
+<dd>Physical address (out)</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_copy_bo">
+struct <code class="descname">drm_xocl_copy_bo</code><a class="headerlink" href="#c.drm_xocl_copy_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>copy source buffer to destination buffer between device and device used with DRM_IOCTL_XOCL_COPY_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_copy_bo {
+  uint32_t dst_handle;
+  uint32_t src_handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t dst_offset;
+  uint64_t src_offset;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">dst_handle</span></code></dt>
+<dd>destination bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">src_handle</span></code></dt>
+<dd>source bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Number of bytes to synchronize</dd>
+<dt><code class="docutils literal"><span class="pre">dst_offset</span></code></dt>
+<dd>Offset into the object to destination buffer to synchronize</dd>
+<dt><code class="docutils literal"><span class="pre">src_offset</span></code></dt>
+<dd>Offset into the object to source buffer to synchronize</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_axlf">
+struct <code class="descname">drm_xocl_axlf</code><a class="headerlink" href="#c.drm_xocl_axlf" title="Permalink to this definition">¶</a></dt>
+<dd><p>load xclbin (AXLF) device image used with DRM_IOCTL_XOCL_READ_AXLF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_axlf {
+  struct axlf * xclbin;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclbin</span></code></dt>
+<dd>Pointer to user&#8217;s xclbin structure in memory</dd>
+</dl>
+<p><strong>NOTE</strong></p>
+<p>This ioctl will be removed in next release</p>
+<dl class="type">
+<dt id="c.drm_xocl_pwrite_bo">
+struct <code class="descname">drm_xocl_pwrite_bo</code><a class="headerlink" href="#c.drm_xocl_pwrite_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update bo with user&#8217;s data used with DRM_IOCTL_XOCL_PWRITE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_pwrite_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
+<dd>Offset into the buffer object to write to</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Length of data to write</dd>
+<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
+<dd>User&#8217;s pointer to read the data from</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_pread_bo">
+struct <code class="descname">drm_xocl_pread_bo</code><a class="headerlink" href="#c.drm_xocl_pread_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read data from bo used with DRM_IOCTL_XOCL_PREAD_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_pread_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
+<dd>Offset into the buffer object to read from</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Length of data to read</dd>
+<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
+<dd>User&#8217;s pointer to write the data into</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_pwrite_unmgd">
+struct <code class="descname">drm_xocl_pwrite_unmgd</code><a class="headerlink" href="#c.drm_xocl_pwrite_unmgd" title="Permalink to this definition">¶</a></dt>
+<dd><p>unprotected write to device memory used with DRM_IOCTL_XOCL_PWRITE_UNMGD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_pwrite_unmgd {
+  uint32_t address_space;
+  uint32_t pad;
+  uint64_t paddr;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">address_space</span></code></dt>
+<dd>Address space in the DSA; currently only 0 is suported</dd>
+<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
+<dd>Physical address in the specified address space</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Length of data to write</dd>
+<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
+<dd>User&#8217;s pointer to read the data from</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_pread_unmgd">
+struct <code class="descname">drm_xocl_pread_unmgd</code><a class="headerlink" href="#c.drm_xocl_pread_unmgd" title="Permalink to this definition">¶</a></dt>
+<dd><p>unprotected read from device memory used with DRM_IOCTL_XOCL_PREAD_UNMGD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_pread_unmgd {
+  uint32_t address_space;
+  uint32_t pad;
+  uint64_t paddr;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">address_space</span></code></dt>
+<dd>Address space in the DSA; currently only 0 is valid</dd>
+<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
+<dd>Physical address in the specified address space</dd>
+<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
+<dd>Length of data to write</dd>
+<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
+<dd>User&#8217;s pointer to write the data to</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_usage_stat">
+struct <code class="descname">drm_xocl_usage_stat</code><a class="headerlink" href="#c.drm_xocl_usage_stat" title="Permalink to this definition">¶</a></dt>
+<dd><p>obtain device memory usage and DMA statistics used with DRM_IOCTL_XOCL_USAGE_STAT ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_usage_stat {
+  unsigned dma_channel_count;
+  unsigned mm_channel_count;
+  uint64_t h2c;
+  uint64_t c2h;
+  struct drm_xocl_mm_stat mm;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">dma_channel_count</span></code></dt>
+<dd>How many DMA channels are present</dd>
+<dt><code class="docutils literal"><span class="pre">mm_channel_count</span></code></dt>
+<dd>How many storage banks (DDR) are present</dd>
+<dt><code class="docutils literal"><span class="pre">h2c</span></code></dt>
+<dd>Total data transferred from host to device by a DMA channel</dd>
+<dt><code class="docutils literal"><span class="pre">c2h</span></code></dt>
+<dd>Total data transferred from device to host by a DMA channel</dd>
+<dt><code class="docutils literal"><span class="pre">mm</span></code></dt>
+<dd>BO statistics for a storage bank (DDR)</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_user_intr">
+struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" href="#c.drm_xocl_user_intr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register user&#8217;s eventfd for MSIX interrupt used with DRM_IOCTL_XOCL_USER_INTR ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct drm_xocl_user_intr {
+  uint32_t ctx_id;
+  int fd;
+  int msix;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">ctx_id</span></code></dt>
+<dd>Pass 0</dd>
+<dt><code class="docutils literal"><span class="pre">fd</span></code></dt>
+<dd>File descriptor created with eventfd system call</dd>
+<dt><code class="docutils literal"><span class="pre">msix</span></code></dt>
+<dd>User interrupt number (0 to 15)</dd>
+</dl>
+<dl class="function">
+<dt id="c.DRM_IOCTL_XOCL_CREATE_BO">
+<code class="descname">DRM_IOCTL_XOCL_CREATE_BO</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.DRM_IOCTL_XOCL_CREATE_BO" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="sysfs.html" class="btn btn-neutral float-right" title="Linux Sys FileSystem Nodes" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="mgmt-ioctl.main.html" class="btn btn-neutral" title="Management Physical Function" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'2018.2',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
