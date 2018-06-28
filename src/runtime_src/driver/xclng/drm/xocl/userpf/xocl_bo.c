@@ -53,6 +53,16 @@ static inline void *drm_malloc_ab(size_t nmemb, size_t size)
 }
 #endif
 
+static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+	release_pages(pages, nr);
+#else
+	release_pages(pages, nr, cold);
+#endif
+}
+
+
 static inline void __user *to_user_ptr(u64 address)
 {
 	return (void __user *)(uintptr_t)address;
@@ -76,7 +86,7 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 	unsigned userptr = xocl_bo_userptr(xobj) ? 1 : 0;
 
 	DRM_DEBUG("%p: H[%p] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u]\n",
-		  xobj, xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping, size_in_kb, 
+		  xobj, xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping, size_in_kb,
 			physical_addr, ddr, userptr, xobj->sgt->orig_nents);
 }
 
@@ -119,7 +129,7 @@ void xocl_free_bo(struct drm_gem_object *obj)
 
 	if (xobj->pages) {
 		if (xocl_bo_userptr(xobj)) {
-			release_pages(xobj->pages, npages, 0);
+			xocl_release_pages(xobj->pages, npages, 0);
 			drm_free_large(xobj->pages);
 		}
 #ifdef XOCL_CMA_ALLOC
@@ -183,7 +193,7 @@ void xocl_free_bo(struct drm_gem_object *obj)
 }
 
 
-static inline int check_bo_user_reqs(const struct drm_device *dev, 
+static inline int check_bo_user_reqs(const struct drm_device *dev,
 	unsigned flags , unsigned type)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
@@ -539,7 +549,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned int page_count;
 	struct drm_xocl_userptr_bo *args = data;
 	//unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
-	unsigned ddr = args->flags; 
+	unsigned ddr = args->flags;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
@@ -913,7 +923,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 		ret = -EINVAL;
 		goto out;
 	}
-	
+
 	DRM_DEBUG("dst_xobj %p, src_xobj %p", dst_xobj, src_xobj);
 	DRM_DEBUG("dst_xobj->sgt %p, src_xobj->sgt %p", dst_xobj->sgt, src_xobj->sgt);
 	sgt = dst_xobj->sgt;
@@ -930,7 +940,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (((args->src_offset + args->size) > src_gem_obj->size) || 
+	if (((args->src_offset + args->size) > src_gem_obj->size) ||
 			((args->dst_offset + args->size) > dst_gem_obj->size)) {
 		DRM_ERROR("offsize + sizes out of boundary, copy_bo abort");
 		ret = -EINVAL;
@@ -1144,7 +1154,7 @@ int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
 	return 0;
 
 clear_release:
-	release_pages(unmgd->pages, unmgd->npages, 0);
+	xocl_release_pages(unmgd->pages, unmgd->npages, 0);
 clear_pages:
 	drm_free_large(unmgd->pages);
 	unmgd->pages = NULL;
@@ -1157,7 +1167,7 @@ void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 		return;
 	sg_free_table(unmgd->sgt);
 	kfree(unmgd->sgt);
-	release_pages(unmgd->pages, unmgd->npages, 0);
+	xocl_release_pages(unmgd->pages, unmgd->npages, 0);
 	drm_free_large(unmgd->pages);
 	unmgd->pages = NULL;
 }
@@ -1309,6 +1319,3 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 
 	return 0;
 }
-
-
-
