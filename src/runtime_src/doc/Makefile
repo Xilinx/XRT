@@ -1,4 +1,4 @@
-KERNELDOC_URL := https://raw.githubusercontent.com/torvalds/linux/master/scripts/kernel-doc
+KERNELDOC_URL := https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52
 KERNELDOC := ./kernel-doc
 
 SPHINX := sphinx-build
