@@ -24,8 +24,8 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "xclbin.h"
+#include "devices.h"
 #include "xocl_ioctl.h"
-#include "xocl_subdev.h"
 
 /* UUID helper functions not present in older kernels */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
@@ -84,75 +84,11 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_XILINX_VEN		0x10EE
 #define	XOCL_CHARDEV_REG_COUNT	16
 
-#define	XOCL_PCI_DEVID(ven, dev, subsysid, priv)	\
-         .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
-	 .subdevice = subsysid, .driver_data = 		\
-	 (kernel_ulong_t) &XOCL_BOARD_##priv
-
-
-#define	XOCL_MGMT_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A87, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B47, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4350, MGMT_DSA50) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4351, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x684F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x698F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4350, MGMT_6A8F_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4351, MGMT_6A8F) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4352, MGMT_6A8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, 0x4360, MGMT_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E8F, 0x4352, MGMT_6E8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x888F, PCI_ANY_ID, MGMT_888F) },   \
-	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_DEFAULT) }
-
-#define	XOCL_USER_XDMA_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A48, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A88, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B48, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4350, USER_XDMA_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4351, USER_XDMA) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A50, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4351, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4352, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E50, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6B10, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E90, 0x4352, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x8890, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },   \
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF040, PCI_ANY_ID, USER_AWS) }
-
-#define	XOCL_USER_QDMA_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) }
-
 extern struct class *xrt_class;
 
 struct xocl_dev;
 struct drm_xocl_bo;
 struct client_ctx;
-
-struct xocl_subdev_info {
-	u32			id;
-	char			*name;
-	struct resource		*res;
-	int			num_res;
-};
 
 struct xocl_subdev {
 	struct platform_device 		*pldev;
@@ -204,25 +140,6 @@ struct xocl_pci_funcs {
 	XDEV_PCIOPS(xdev)->dev_online(xdev)
 #define	xocl_user_dev_offline(xdev)	\
 	XDEV_PCIOPS(xdev)->dev_offline(xdev)
-
-/* board flags */
-enum {
-	XOCL_DSAFLAG_PCI_RESET_OFF =		0x01,
-	XOCL_DSAFLAG_MB_SCHE_OFF =		0x02,
-	XOCL_DSAFLAG_AXILITE_FLUSH =		0x04,
-	XOCL_DSAFLAG_SET_DSA_VER =		0x08,
-	XOCL_DSAFLAG_SET_XPR = 			0x10,
-};
-
-struct xocl_board_private {
-	u64			flags;
-	struct xocl_subdev_info	*subdev_info;
-	u32			subdev_num;
-	u32			user_bar;
-	u32			intr_bar;
-	u32			dsa_ver;
-	bool			xpr;
-};
 
 struct xocl_context {
 	struct hlist_node	hlist;

@@ -61,10 +61,11 @@
 // PART OF THIS FILE AT ALL TIMES.
 
 #include "shim.h"
-#include <sys/wait.h>
+#include <boost/property_tree/xml_parser.hpp>
 
 namespace xclhwemhal2 {
 
+  namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::ofstream HwEmShim::mDebugLogStream;
@@ -119,6 +120,11 @@ namespace xclhwemhal2 {
     }
 
   }
+  static size_t convert(const std::string& str)
+  {
+    return str.empty() ? 0 : std::stoul(str,0,0);
+  }
+
   static void sigHandler(int sn, siginfo_t *si, void *sc)
   {
     switch(sn) {
@@ -169,167 +175,6 @@ namespace xclhwemhal2 {
     return false;
   }
 
- void HwEmShim::populateKernelArgInfo(const Xclbin::Kernel& kernel, std::map<uint64_t,KernelArg>& kernelArgInfo)
-  {
-    std::string kernelName = kernel.GetName();
-    for (unsigned int l = 0; l < kernel.SizeArg(); ++l ) 
-    {
-      const Xclbin::Arg & arg = kernel.GetArg(l);
-      std::string name =  arg.GetName() ;
-      unsigned int qual = arg.GetAddressQualifier();
-      std::string port = arg.GetPort();
-      std::string argoffset = arg.GetOffset();
-      unsigned int offset = std::strtoul(argoffset.c_str(), 0, 0);
-      std::string argsize =  arg.GetSize();
-      unsigned int size = std::strtoul(argsize.c_str(), 0, 0);
-      std::string arghostoffset = arg.GetHostOffset() ;
-      std::string arghostsize = arg.GetHostSize();
-      std::string origuse =  arg.GetOrigUse() ;
-      KernelArg kArg;
-      kArg.name = kernelName + ":" + name;
-      kArg.size = size;
-      //workaround : set global, local, pipe args to width 8
-      if((origuse!="function") &&
-          ((qual==xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_GLOBAL) ||
-           (qual==xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_LOCAL) ||
-           (qual==xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_CONSTANT) ||
-           (qual==xclhwemhal2::HwEmShim::SPIR_ADDRSPACE_PIPES)))
-      {
-        if( mLogStream.is_open() )
-        {
-          mLogStream << __func__ << " TEMPORARY WORKAROUND : csim global size_t extending user arg " << l << " to 8" << std::endl;
-        }
-        size=8;
-      }
-      if((origuse=="function") && (name=="printf_buffer"))
-      {
-        if( mLogStream.is_open() )
-        {
-          mLogStream << __func__ << " TEMPORARY WORKAROUND : csim global size_t extending printf_buffer " << l << " to 8" << std::endl;
-        }
-        size=8;
-      }
-      //end workaround
-      kernelArgInfo[offset] = kArg;
-    }
-  }
-bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &saxiControlMap)
-  {
-    bool saxiControlMapFound=false;
-    for (unsigned int m = 0; m < instance.SizeAddrRemap(); ++m ) 
-    {
-      const Xclbin::AddrRemap & addrRemap = instance.GetAddrRemap(m);
-      std::string port = addrRemap.GetPort() ;
-      if(port=="S_AXI_CONTROL")
-      {
-        std::string sBase =  addrRemap.GetBase() ;
-        saxiControlMap = std::strtoul(sBase.c_str(), 0, 0);
-        saxiControlMapFound=true;
-        break;
-      }
-    }
-    return saxiControlMapFound;
-
-  }
-
-  size_t HwEmShim::getMinSaxiControlReMap(Xclbin::Core& core)
-  {
-    size_t minSaxiControlMap = SIZE_MAX;
-    bool min_s_axi_control_remap_set = false;
-    for ( unsigned k = 0; k < core.SizeKernel(); ++k ) 
-    {
-      const Xclbin::Kernel &kernel = core.GetKernel(k);
-      for ( unsigned l = 0; l < kernel.SizeInstance(); ++l ) 
-      {
-        const Xclbin::Instance & instance = kernel.GetInstance(l);
-        std::string instancename = instance.GetName() ;
-        for ( unsigned m = 0; m < instance.SizeAddrRemap(); ++m ) 
-        {
-          const Xclbin::AddrRemap & addrRemap = instance.GetAddrRemap(m);
-          std::string port = addrRemap.GetPort();
-          std::string sBase =  addrRemap.GetBase();
-          if(port=="S_AXI_CONTROL")
-          {
-            size_t base = std::strtoul(sBase.c_str(), 0, 0);
-            if(base<minSaxiControlMap)
-            {
-              minSaxiControlMap=base;
-              min_s_axi_control_remap_set=true;
-            }
-          }
-        }
-      }
-    }
-
-    if(!min_s_axi_control_remap_set) 
-      minSaxiControlMap=0;
-    return minSaxiControlMap;
-  }
-
-  bool HwEmShim::validateXclBin(const std::string& xmlfileName, Xclbin::Platform& platform,
-      Xclbin::Core& core, std::string &xclBinName)
-  {
-    //read the xclbin xml file and create compute units.
-    //parse XML with LMX from temporary file
-    bool errorStatus = true;
-    if( mLogStream.is_open() )
-    {
-      mLogStream << __func__ << " begin parsing XML " << std::endl;
-    }
-    LMX60_NS::elmx_error l_error;
-    Xclbin::Project project;
-    try {
-      Xclbin::Project project_( xmlfileName.c_str(), &l_error );
-      project = project_;
-    }
-    catch ( const LMX60_NS::c_lmx_exception& err ) {
-      if( mLogStream.is_open() )
-      {
-        mLogStream << __func__ << " Failed to parse " << xmlfileName << std::endl;
-      }
-      return errorStatus;
-    }
-    xclBinName = project.GetName();
-
-    //check single platform, single device XCLBIN files
-    if(!(project.SizePlatform()==1 && project.GetPlatform(0).SizeDevice()==1))
-    {
-      if( mLogStream.is_open() )
-      {
-        mLogStream << __func__ << " Cannot handle multi platform or device XCLBIN file " << std::endl;
-      }
-      return errorStatus;
-    }
-    const Xclbin::Device & device = project.GetPlatform(0).GetDevice(0); 
-
-    //check single core
-    if(!(device.SizeCore() == 1))
-    {
-      if( mLogStream.is_open() )
-      {
-        mLogStream << __func__ << " Cannot handle multiple core XCLBIN file " << std::endl;
-      }
-      return errorStatus;
-    }
-    
-    platform = project.GetPlatform(0);
-    core = device.GetCore(0);
-
-    //check core type is clc_region
-    {
-      std::string coretype =  core.GetType();
-      if(coretype!="clc_region")
-      {
-        if( mLogStream.is_open() )
-        {
-          mLogStream << __func__ << " Cannot handle coretype= " << coretype  << std::endl;
-        }
-        return errorStatus;
-      }
-    }
-    return false;
-  }
-
   int HwEmShim::xclLoadXclBin(const xclBin *header)
   {
     if (mLogStream.is_open()) {
@@ -352,25 +197,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
     {
       PRINTENDFUNC;
       return -1;
-//      if (header->m_primaryFirmwareLength == 0) {
-//        PRINTENDFUNC;
-//        return -1;
-//      }
-//      if (isUltraScale() && (header->m_secondaryFirmwareLength == 0)) {
-//        PRINTENDFUNC;
-//        return -1;
-//      }
-//
-//      zipFileSize = header->m_primaryFirmwareLength;
-//      zipFile = new char[zipFileSize+1];
-//      memcpy(zipFile, bitstreambin + header->m_primaryFirmwareOffset, zipFileSize);
-//      zipFile[zipFileSize] = 0;      
-//
-//      xmlFileSize = header->m_metadataLength;
-//      xmlFile = new char[xmlFileSize+1];
-//      memcpy(xmlFile , bitstreambin + header->m_metadataOffset, xmlFileSize);
-//      xmlFile[xmlFileSize] = '\0';
-
     }
     else if (!std::memcmp(bitstreambin,"xclbin2",7)) 
     {
@@ -399,20 +225,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
         memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
         memTopology[memTopologySize] = 0;
       }
-    //      goto done;
-    //    xdev->topology.size = memHeader->m_sectionSize;
-
-    //    get_user(bank_count, buffer);
-    //    xdev->topology.bank_count = bank_count;
-    //    buffer += offsetof(struct mem_topology, m_mem_data);
-    //    xdev->topology.m_data_length = bank_count*sizeof(struct mem_data);
-    //    xdev->topology.m_data = vmalloc(xdev->topology.m_data_length);
-    //    err = copy_from_user(xdev->topology.m_data, buffer, bank_count*sizeof(struct mem_data));
-
-    //    memTopology = new char[memTopologySize+1];
-    //    memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-    //    memTopology[memTopologySize] = 0;      
-    //  }
     }
     else
     {
@@ -430,8 +242,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
       {
         std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. This flow does not use cycle accurate models and hence the performance data generated is approximate.";
         logMessage(initMsg);
-        
-        //following function has to be called only once... as it has a startThread guard, we are calling all the times
       }
       mFirstBinary = false;
     }
@@ -447,131 +257,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
     return returnValue;
   }
 
-//  int HwEmShim::xclLoadBitstream(const char *fileName)
-//  {
-//    if (mLogStream.is_open()) {
-//      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << fileName << std::endl;
-//    }
-//
-//    std::FILE *bit_file = std::fopen(fileName, "r");
-//
-//    if (!bit_file)
-//    {
-//      std::fclose(bit_file);
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//
-//    xclBin header;
-//    if (fread((void *)&header, sizeof(header), 1, bit_file) != 1)
-//    {
-//      std::fclose(bit_file);
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//
-//    int result = 0;
-//    ssize_t zipFileSize = 0;
-//    ssize_t xmlFileSize = 0;
-//
-//    if ((!std::memcmp(header.m_magic, "xclbin0", 8)) || (!std::memcmp(header.m_magic, "xclbin1", 8)))
-//    {
-//      if (header.m_primaryFirmwareLength == 0) {
-//        // PR bit stream is missing
-//        std::fclose(bit_file);
-//        PRINTENDFUNC;
-//        return -1;
-//      }
-//      if (isUltraScale() && (header.m_secondaryFirmwareLength == 0)) {
-//        // Clear bit stream is missing
-//        std::fclose(bit_file);
-//        PRINTENDFUNC;
-//        return -1;
-//      }
-//
-//      zipFileSize = header.m_primaryFirmwareLength;
-//      result = fseek(bit_file, header.m_primaryFirmwareOffset, SEEK_SET);
-//      xmlFileSize = header.m_metadataLength;
-//    }
-//    else
-//    {
-//      fseek(bit_file, 0, SEEK_END);
-//      zipFileSize = ftell(bit_file);
-//      fseek(bit_file, 0, SEEK_SET);
-//      result = fseek(bit_file, 0, SEEK_SET);
-//    }
-//
-//    if (result)
-//    {
-//      std::fclose(bit_file);
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//
-//    if(zipFileSize <= 0)
-//    {
-//      std::fclose(bit_file);
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//
-//    char *zipFile = new char[zipFileSize+1];
-//    if(!zipFile)
-//    {
-//      std::fclose(bit_file);
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//
-//    size_t zipFileReadBytes = fread(zipFile,1,zipFileSize,bit_file);
-//
-//    if(zipFileReadBytes == 0)
-//    {
-//      std::fclose(bit_file);
-//      delete[] zipFile;
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//    zipFile[zipFileReadBytes] = '\0';
-//
-//    result = fseek(bit_file, header.m_metadataOffset, SEEK_SET);
-//    char *xmlFile = new char[xmlFileSize+1];
-//    if(!xmlFile)
-//    {
-//      std::fclose(bit_file);
-//      delete[] zipFile;
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//    size_t xmlFileReadBytes = fread(xmlFile,1,xmlFileSize,bit_file);
-//    if(xmlFileReadBytes == 0)
-//    {
-//      std::fclose(bit_file);
-//      delete[] xmlFile;
-//      delete[] zipFile;
-//      PRINTENDFUNC;
-//      return -1;
-//    }
-//    std::fclose(bit_file);
-//
-//    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileReadBytes+1,xmlFile,xmlFileReadBytes+1);
-//    //mFirstBinary is a static member variable which becomes false once first binary gets loaded
-//    if(returnValue >=0 && mFirstBinary )
-//    {
-//      HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
-//      if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
-//      {
-//        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs detailed simulation underneath. It may take long time for large data set. Please use a small dataset for faster execution. You can still get performance trend for your kernel with smaller dataset." ;
-//      logMessage(initMsg);
-//      }
-//      mFirstBinary = false;
-//    }
-//    delete[] zipFile;
-//    delete[] xmlFile;
-//    PRINTENDFUNC;
-//    return returnValue;
-//  }
- 
    int HwEmShim::xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
                                         char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize)
   {
@@ -654,7 +339,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, 4096));
-        //std::cout<<"BASE "<<std::hex<< it.base_addr<<" TAG "<<it.tag<<" SIZE "<<it.size<<" INDEX "<<it.index<<std::endl;
       }
     }
     // Write XML metadata from xclbin
@@ -685,14 +369,94 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
     fflush(fp);
     fclose(fp);
 
-    // Validate xclbin file and extract platform & core
-    Xclbin::Platform platform;
-    Xclbin::Core core;
-    std::string xclBinName("");
-    bool errorStatus = validateXclBin(xmlFileName, platform, core,xclBinName);
-    if (errorStatus)
-      return -1;
+    pt::ptree xml_project;
+    std::stringstream xml_stream;
+    xml_stream << xmlfile;
+    pt::read_xml(xml_stream,xml_project);
+
+     // iterate platforms
+    int count = 0;
+    for (auto& xml_platform : xml_project.get_child("project")) 
+    {
+      if (xml_platform.first != "platform")
+        continue;
+      if (++count>1)
+      {
+        //Give error and return from here
+      }
+    }
+
+    // iterate devices
+    count = 0;
+    for (auto& xml_device : xml_project.get_child("project.platform")) 
+    {
+      if (xml_device.first != "device")
+        continue;
+      if (++count>1)
+      {
+        //Give error and return from here
+      }
+    }
     
+    // iterate cores
+    count = 0;
+    for (auto& xml_core : xml_project.get_child("project.platform.device")) 
+    {
+      if (xml_core.first != "core")
+        continue;
+      if (++count>1)
+      {
+        //Give error and return from here
+      }
+    }
+
+    // iterate kernels
+    for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) 
+    {
+      if (xml_kernel.first != "kernel")
+        continue;
+      std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
+
+      for (auto& xml_kernel_info : xml_kernel.second) 
+      {
+        std::map<uint64_t, KernelArg> kernelArgInfo;
+        if (xml_kernel_info.first == "arg")
+        {
+          std::string name = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
+          std::string id = xml_kernel_info.second.get<std::string>("<xmlattr>.id");
+          std::string port = xml_kernel_info.second.get<std::string>("<xmlattr>.port");
+          uint64_t offset = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.offset"));
+          uint64_t size = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.size"));
+          KernelArg kArg;
+          kArg.name = kernelName + ":" + name;
+          kArg.size = size;
+          kernelArgInfo[offset] = kArg;
+        }
+        if (xml_kernel_info.first == "instance")
+        {
+          std::string instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
+
+
+          for (auto& xml_remap : xml_kernel_info.second) 
+          {
+            if (xml_remap.first != "addrRemap")
+              continue;
+            uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+            mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
+            if (xclemulation::config::getInstance()->isMemLogsEnabled())
+            {
+              std::ofstream* controlStream = new std::ofstream;
+              controlStream->open( instanceName + "_control.mem" );
+              mOffsetInstanceStreamMap[base] = controlStream;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name","");
+
     set_simulator_started(true);
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     char* simMode = NULL;
@@ -814,8 +578,11 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
       assert(pid >= 0);
       if (pid == 0){ //I am child
         //Redirecting the XSIM log to a file
-        freopen("/dev/null","w",stdout);
-        chdir(sim_path.c_str());
+        FILE* nP = freopen("/dev/null","w",stdout);
+        if(!nP) { std::cerr <<"FATAR ERROR : Unable to redirect simulation output "<<std::endl; exit(1);}
+        
+        int rV = chdir(sim_path.c_str());
+        if(rV == -1){std::cerr << "FATAL ERROR : Unable to go to simulation directory " << std::endl; exit(1);}
 
         // If the sdx server port was specified in the .ini file,
         //  we need to pass this information to the spawned xsim process.
@@ -847,41 +614,12 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
       //send environment information to device
       bool ack = true;
       xclSetEnvironment_RPC_CALL(xclSetEnvironment);
-    }
-    
-    size_t minSaxiControlMap = getMinSaxiControlReMap(core);
-
-    for ( unsigned k = 0; k < core.SizeKernel(); ++k ) 
-    {
-      const Xclbin::Kernel &kernel = core.GetKernel(k);
-      std::string name = kernel.GetName();
-      std::map<uint64_t, KernelArg> kernelArgInfo;
-      populateKernelArgInfo(kernel,kernelArgInfo);
-      
-      //kernel instances
-      for ( unsigned int l = 0; l < kernel.SizeInstance(); ++l ) 
+      if(!ack)
       {
-      //  //create cu object
-        const Xclbin::Instance & instance = kernel.GetInstance(l);
-        std::string instanceName=instance.GetName();
-
-        uint64_t saxiControlMap = 0;
-        // Return variable in the following was not being used. It has been
-        // removed to get rid of a compiler warning, and probably a Coverity CID.
-        //bool saxiControlMapFound = getSaxiControlRemap(instance,saxiControlMap);
-        getSaxiControlRemap(instance, saxiControlMap);
-        
-        if (xclemulation::config::getInstance()->isMemLogsEnabled())
-        {
-          std::ofstream* controlStream = new std::ofstream;
-          controlStream->open( instanceName + "_control.mem" );
-          mOffsetInstanceStreamMap[saxiControlMap] = controlStream;
-        }
-
-        mKernelOffsetArgsInfoMap[saxiControlMap] = kernelArgInfo;
+        //std::cout<<"environment is not set properly"<<std::endl;
       }
     }
-
+    
     if(simMode)
     {
       free(simMode);
@@ -1003,11 +741,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
              std::string dMsg ="INFO: [SDx-EM 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
-           // print populate info
-           /*    for(auto itr:offsetArgInfo)
-                 {
-                 std::cout<<"offset "<<itr.first<<" size "<<itr.second.second<<" name "<<itr.second.first<<std::endl;
-                 }*/
            xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
@@ -1033,8 +766,6 @@ bool HwEmShim::getSaxiControlRemap(const Xclbin::Instance &instance, size_t &sax
 
   size_t HwEmShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) {
     
-    uint32_t no_of_final_samples = 0;
-
     if(tracecount_calls < xclemulation::config::getInstance()->getMaxTraceCount())
     {
       tracecount_calls = tracecount_calls + 1;
@@ -1138,8 +869,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     std::string dMsg ="INFO: [SDx-EM 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
     logMessage(dMsg,1);
-    //_profile_inst->profile_buffer_size(size);
-    //_profile_inst->profile_bus_transfer_bandwidth(size,20,100000000);
     void *handle = this;
 
     unsigned int messageSize = xclemulation::config::getInstance()->getPacketSize();
@@ -1203,8 +932,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       void* c_dest = (((unsigned char*)(dest)) + processed_bytes);
       uint64_t c_src = src + processed_bytes;
 #ifndef _WINDOWS
-      // TODO: Windows build support
-      // *_RPC_CALL uses unix_socket
       uint32_t space = getAddressSpace(topology);
       xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,handle,c_dest,c_src,c_size,skip,space);
 #endif
@@ -1258,7 +985,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
     }
 
-    //flags = flags % 32;
     if (domain != XCL_MEM_DEVICE_RAM)
     {
       PRINTENDFUNC;
@@ -1426,7 +1152,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
-    //void *handle = this;
   }
 
   int HwEmShim::resetProgram(bool saveWdb)
@@ -1545,12 +1270,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim *HwEmShim::handleCheck(void *handle) {
-    //TOOD: Need to find out what kidn of checks would be done here.
-    // Sanity checks
     if (!handle)
       return 0;
 
-    //Copying the pointer locally
     return (HwEmShim *)handle;
 
   }
@@ -1597,7 +1319,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       const uint64_t bankSize = (*start).ddrSize; 
       mDdrBanks.push_back(*start);
-       //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
       mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , 4096));
       base += bankSize;
     }
@@ -1722,9 +1443,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     std::string logMsgs;
     std::string stopMsgs;
     xclGetDebugMessages_RPC_CALL(xclGetDebugMessages,ack,force,displayMsgs,logMsgs,stopMsgs);
-    //std::cout<<"display msgs are "<<displayMsgs<<std::endl;
-    //
-    //as of now, we dont know whether file is already opened or not
     if(mDebugLogStream.is_open() && logMsgs.empty() == false)
     {
       mDebugLogStream <<logMsgs;
@@ -1736,7 +1454,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::cout.flush();
     }
     PRINTENDFUNC;
-    //std::cout<<"stop msgs are "<<stopMsgs<<std::endl;
   }
 
   size_t HwEmShim::xclReadSkipCopy(uint64_t offset, void *hostBuf, size_t size)
@@ -1883,7 +1600,7 @@ static int check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	if (flags == 0xffffffff)
 		return 0;
 	
-  ddr = xocl_bo_ddr_idx(flags);
+  ddr = xclemulation::xocl_bo_ddr_idx(flags);
 	if (ddr == 0xffffffff)
 		return 0;
 	
@@ -1893,13 +1610,13 @@ static int check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	return 0;
 }
 
-drm_xocl_bo* HwEmShim::xclGetBoByHandle(unsigned int boHandle)
+xclemulation::drm_xocl_bo* HwEmShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
   if(it == mXoclObjMap.end())
     return nullptr;
 
-  drm_xocl_bo* bo = (*it).second;
+  xclemulation::drm_xocl_bo* bo = (*it).second;
   return bo;
 }
 
@@ -1921,7 +1638,7 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return  -1;
@@ -1937,10 +1654,10 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-int HwEmShim::xoclCreateBo(xocl_create_bo* info)
+int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
 	size_t size = info->size;
-  unsigned ddr = xocl_bo_ddr_idx(info->flags);
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
 
   if (!size)
   {
@@ -1953,7 +1670,7 @@ int HwEmShim::xoclCreateBo(xocl_create_bo* info)
     return -1;
   }
 	
-  struct drm_xocl_bo *xobj = new drm_xocl_bo;
+  struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
 
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr);
   xobj->size = size;
@@ -1967,14 +1684,18 @@ int HwEmShim::xoclCreateBo(xocl_create_bo* info)
   return 0;
 }
 
-unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
+  unsigned flag = flags & 0xFFFFFFFFLL;
+  unsigned type =  (unsigned)(flags >> 32);
+  flag |= type;
+  std::cout << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   }
-  xocl_create_bo info = {size, mNullBO, flags};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
   int result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
@@ -1982,16 +1703,20 @@ unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
+  unsigned flag = flags & 0xFFFFFFFFLL;
+  unsigned type =  (unsigned)(flags >> 32);
+  flag |= type;
+  std::cout << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   }
-  xocl_create_bo info = {size, mNullBO, flags};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
   int result = xoclCreateBo(&info);
-  drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;
   }
@@ -2034,7 +1759,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << write << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return nullptr;
@@ -2063,7 +1788,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -2100,7 +1825,7 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     PRINTENDFUNC;
     return;
   }
-  drm_xocl_bo* bo = (*it).second;;
+  xclemulation::drm_xocl_bo* bo = (*it).second;;
   xclFreeDeviceBuffer(bo->base);
   mXoclObjMap.erase(it);
   PRINTENDFUNC;
@@ -2115,7 +1840,7 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< src <<" , "<< size << ", " << seek << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -2135,7 +1860,7 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< dst <<" , "<< size << ", " << skip << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -2154,7 +1879,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
   if(!mMBSch || !bo)
   {
     PRINTENDFUNC;
@@ -2182,7 +1907,6 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
  //   mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << timeoutMilliSec << std::endl;
   }
 
-  static bool configurationWait = true;
   unsigned int tSec = 0;
   static bool bConfig = true;
   tSec = timeoutMilliSec/1000;

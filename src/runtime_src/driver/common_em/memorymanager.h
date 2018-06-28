@@ -17,24 +17,22 @@
 #ifndef _HWEM_MEMORY_MANAGER_H_
 #define _HWEM_MEMORY_MANAGER_H_
 
-/**
- * Copyright (C) 2015 Xilinx, Inc
- * Author: Sonal Santan
- * Simple usermode HW_EM DDR memory manager used by HAL
- * Eventually the common code here will be used by all HAL drivers.
- */
-
-
 #include <mutex>
 #include <list>
+#include <cassert>
+#include <algorithm>
+
+#include "em_defines.h"
 #ifdef USE_HAL2
 #include "xclhal2.h"
 #else
 #include "xclhal.h"
 #endif
 
-namespace xclemulation{
-    class MemoryManager {
+namespace xclemulation
+{
+    class MemoryManager 
+    {
         std::mutex mMemManagerMutex;
         std::list<std::pair<uint64_t, uint64_t> > mFreeBufferList;
         std::list<std::pair<uint64_t, uint64_t> > mBusyBufferList;
@@ -56,23 +54,14 @@ namespace xclemulation{
         void free(uint64_t buf);
         void reset();
 
-        const uint64_t size() {
-            return mSize;
-        }
-        const uint64_t start() {
-            return mStart;
-        }
-        const uint64_t freeSize() {
-            return mFreeSize;
-        }
+        const uint64_t size()     { return mSize; }
+        const uint64_t start()    { return mStart; }
+        const uint64_t freeSize() { return mFreeSize; }
+        static bool isNullAlloc(const std::pair<uint64_t, uint64_t>& buf) { return ((buf.first == mNull) || (buf.second == mNull)); }
+
         std::pair<uint64_t, uint64_t>lookup(uint64_t buf);
 
-        static bool isNullAlloc(const std::pair<uint64_t, uint64_t>& buf) {
-            return ((buf.first == mNull) || (buf.second == mNull));
-        }
-
     private:
-        /* Note that these should be called after acquiring mMemManagerMutex */
         void coalesce();
         PairList::iterator find(uint64_t buf);
     };

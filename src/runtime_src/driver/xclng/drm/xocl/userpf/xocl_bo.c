@@ -112,6 +112,11 @@ void xocl_free_bo(struct drm_gem_object *obj)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
 
+	if (xobj->dmabuf) {
+		unmap_mapping_range(xobj->dmabuf->file->f_mapping, 0, 0, 1);
+		dma_buf_put(xobj->dmabuf);
+	}
+
 	if (xobj->pages) {
 		if (xocl_bo_userptr(xobj)) {
 			release_pages(xobj->pages, npages, 0);
@@ -185,12 +190,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	u16 ddr_count;
 	unsigned ddr;
 
-	//From "mem_topology" or "feature rom" depending on
-	//unified or non-unified dsa
-	ddr_count = XOCL_DDR_COUNT(xdev);
-
-	if(ddr_count == 0)
-		return -EINVAL;
 	if (flags == 0xffffffff)
 		return 0;
 	if (type == DRM_XOCL_BO_EXECBUF)
@@ -202,6 +201,12 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (type == DRM_XOCL_BO_CMA)
 		return -EINVAL;
 #endif
+	//From "mem_topology" or "feature rom" depending on
+	//unified or non-unified dsa
+	ddr_count = XOCL_DDR_COUNT(xdev);
+
+	if(ddr_count == 0)
+		return -EINVAL;
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr == 0xffffffff)
 		return 0;
@@ -228,7 +233,7 @@ static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
 }
 
 
-static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
+struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 					  uint64_t unaligned_size,
 					  unsigned user_flags,
 					  unsigned user_type)
@@ -240,7 +245,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	u16 ddr_count = 0;
 	int err = 0;
 
-	printk(KERN_INFO "New create bo flags:%u type:%u", user_flags, user_type);
+	BO_DEBUG("New create bo flags:%u type:%u", user_flags, user_type);
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
@@ -731,7 +736,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 		goto clear;
 	}
 	/* Now perform DMA */
-	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, xobj->base.size);
+	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, args->size);
 	if (ret >= 0)
 		ret = (ret == args->size) ? 0 : -EIO;
 	xocl_release_channel(xdev, dir, channel);
@@ -952,7 +957,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 	}
 	/* Now perform DMA */
 	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel,
-		dst_gem_obj->size);
+		args->size);
 
 	if (ret >= 0)
 		ret = (ret == args->size) ? 0 : -EIO;
@@ -1080,8 +1085,35 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 
-static int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr, uint64_t size,
-			   u32 write)
+int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
+{
+	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+	int ret;
+
+	BO_ENTER("obj %p", obj);
+	if (obj->size < vma->vm_end - vma->vm_start)
+		return -EINVAL;
+
+	if (!obj->filp)
+		return -ENODEV;
+
+	ret = obj->filp->f_op->mmap(obj->filp, vma);
+	if (ret)
+		return ret;
+
+	fput(vma->vm_file);
+	if (!IS_ERR(xobj->dmabuf)) {
+		vma->vm_file = get_file(xobj->dmabuf->file);
+		vma->vm_ops = xobj->dmabuf_vm_ops;
+		vma->vm_private_data = obj;
+		vma->vm_flags |= VM_MIXEDMAP;
+	}
+
+	return 0;
+}
+
+int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
+	uint64_t size, u32 write)
 {
 	int ret;
 	char __user *user_data = to_user_ptr(data_ptr);
@@ -1119,7 +1151,7 @@ clear_pages:
 	return ret;
 }
 
-static void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
+void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 {
 	if (!unmgd->pages)
 		return;

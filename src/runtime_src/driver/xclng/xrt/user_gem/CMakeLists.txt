@@ -6,6 +6,7 @@ include_directories(
 file(GLOB XRT_USER_GEM_FILES
   "*.h"
   "*.cpp"
+  "*.c"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

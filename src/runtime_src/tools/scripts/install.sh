@@ -19,6 +19,12 @@ ROOT_DIR=`pwd`
 DEST=
 INSTALL_KERNEL_DRV="yes"
 FORCE_INSTALL_KERNEL_DRV="no"
+XRT_VER=2.1.0
+INSTALL_PKG=0
+
+if [ -e runtime/packages ]; then
+  INSTALL_PKG=1
+fi
 
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -186,154 +192,225 @@ if [ $FOUND1 -eq 0 ] ||
 fi
 
 # Install runtime if a different destination folder is desired
-if [ $ROOT_DIR != $DEST ]; then
+if [ $ROOT_DIR != $DEST ] && [ $INSTALL_PKG == 0 ] ; then
     echo "INFO: Installing runtime libraries in $DEST"
     install -d $DEST/runtime/lib/$PLAT
     install runtime/lib/$PLAT/* $DEST/runtime/lib/$PLAT
 fi
 
-# Identify the preferred device
-XCL_PLATFORM=`ls runtime/platforms | head -n 1`
-
-# Compile and install Linux kernel drivers
-mkdir -p /tmp/$$
-
-index=0
-err=0
+# Install packages
 driver_installed=0
-MODULE_NEED_TO_SIGN=''
-for DEV in runtime/platforms/*; do
-    cd $ROOT_DIR
-    XCL_PLAT=`basename $DEV`;
-    if [ $ROOT_DIR != $DEST ]; then
-        echo "INFO: Device $XCL_PLAT"
-        install -d $DEST/$DEV/driver
-        install $DEV/driver/*.so $DEST/$DEV/driver
-    fi
-    if [ $INSTALL_KERNEL_DRV != "yes" ] && [ $FORCE_INSTALL_KERNEL_DRV != "yes" ]; then
-        continue;
-    fi
-    
-    KERNEL_DEVEL_MAKEFILE="/lib/modules/`uname -r`/build/Makefile"
-    MSG="This suggests that the kernel-devel package has not been installed. Please install this package."
-    if [[ ! -f $KERNEL_DEVEL_MAKEFILE ]]; then
-      echo "ERR: Unable to find '${KERNEL_DEVEL_MAKEFILE}'. ${MSG}"
-      exit 1
-    fi
-    
-    #Clean up the old drivers. 
-    cleanup_old_drivers
-    TEMP=/tmp/$$/$index
-    rm -rf $TEMP
-    mkdir -p $TEMP
-    KERNEL_DRV_ZIPS=`ls $DEV/driver/*.zip | head -n 3`
-    for KERNEL_DRV_ZIP in $KERNEL_DRV_ZIPS; do 
-        if [[ $KERNEL_DRV_ZIP == *"hal.zip" ]]; then
-          echo "Found hal zip..ignoring"
-          continue
+xrt_installed=0
+err=0
+if [[ $INSTALL_PKG == 1 && ( $INSTALL_KERNEL_DRV == "yes" || $FORCE_INSTALL_KERRNEL_DRV == "yes" ) ]] ; then
+    FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
+    FLAVOR=`echo $FLAVOR | tr -d '"'`
+    if [[ $FLAVOR == "ubuntu" ]]; then
+        xrt="XRT-$XRT_VER-Linux.deb"
+        dpkg -s xrt 2&>1 /dev/null
+        if [ $? == 0 ] ; then
+            apt install ./runtime/packages/$xrt
+        else
+            apt install --reinstall ./runtime/packages/$xrt
         fi
-        cp $KERNEL_DRV_ZIP $TEMP
-        cd $TEMP
-        echo $TEMP
-        KERNEL_DRV_ZIP=`basename $KERNEL_DRV_ZIP`
-        unzip $KERNEL_DRV_ZIP
-        cd driver
- 
-	BASEDIR=`pwd`
-        for MAKEFILE_DIR in `find . -name Makefile 2>/dev/null`; do
-            cd $BASEDIR/`dirname $MAKEFILE_DIR`
-            echo "INFO: building kernel mode driver"
-            make
-            if [ $? != 0 ]; then
-                echo "WARN: Compiling kernel driver failed. Please make sure Linux version is"
-                echo "    Ubuntu 16.04.4 or above"
-                echo "    RHEL/CentOS 7.4 or above"
-                break;
-            fi
-            MODULE=`ls *.ko | head -n 1`
-            if [ -f /sys/firmware/efi/efivars/SecureBoot-* ]; then
-                str=`od -An -t u1 /sys/firmware/efi/efivars/SecureBoot-* | awk '{print $NF}'`
-                if [ "$str" == "1" ]; then
-                    MODULE_NEED_TO_SIGN=`echo $MODULE_NEED_TO_SIGN $MODULE`
-                    cp $MODULE /tmp
-                    continue
-                fi
-            fi
+    fi
 
-            if [ $OWNER != "root" ]; then
-                echo "WARN: root priviledges required, skipping installation of kernel module $MODULE"
-            else
-                NEW_MODULE_VER=`modinfo -F version $MODULE 2>&1`
-                MODULE=`basename $MODULE .ko`
-                OLD_MODULE_VER=`modinfo -F version $MODULE 2>&1`
-                if [ $? == 0 ]; then
-                  update_check "$NEW_MODULE_VER" "$OLD_MODULE_VER"
-                  UPDATE=$?
-                else
-                  UPDATE=0
+    if [[ $FLAVOR == "rhel" || $FLAVOR == "centos" ]]; then
+        xrt=XRT-$XRT_VER-Linux.rpm
+        yum list installed xrt 2&1> /dev/null
+        if [ $? == 0 ]; then
+            yum install -y runtime/packages/$xrt
+        else
+            yum reinstall -y runtime/packages/$xrt
+        fi
+    fi
+
+    if [ $? != 0 ]; then
+        echo "Error during install of $xrt"
+        err=1
+    else
+        ( rmmod xocl xclmgmt || true ) > /dev/null 2>&1
+        modprobe xocl
+        modprobe xclmgmt
+        xrt_installed=1
+        driver_installed=1
+    fi
+fi
+
+if [ $INSTALL_PKG == 0 ]; then
+# Compile and install Linux kernel drivers
+    mkdir -p /tmp/$$
+
+    index=0
+    err=0
+    driver_installed=0
+    MODULE_NEED_TO_SIGN=''
+    for DEV in runtime/platforms/*; do
+        cd $ROOT_DIR
+        XCL_PLAT=`basename $DEV`;
+        if [ $ROOT_DIR != $DEST ]; then
+            echo "INFO: Device $XCL_PLAT"
+            install -d $DEST/$DEV/driver
+            install $DEV/driver/*.so $DEST/$DEV/driver
+        fi
+        if [ $INSTALL_KERNEL_DRV != "yes" ] && [ $FORCE_INSTALL_KERNEL_DRV != "yes" ]; then
+            continue;
+        fi
+        
+        KERNEL_DEVEL_MAKEFILE="/lib/modules/`uname -r`/build/Makefile"
+        MSG="This suggests that the kernel-devel package has not been installed. Please install this package."
+        if [[ ! -f $KERNEL_DEVEL_MAKEFILE ]]; then
+            echo "ERR: Unable to find '${KERNEL_DEVEL_MAKEFILE}'. ${MSG}"
+            exit 1
+        fi
+        
+    #Clean up the old drivers. 
+        cleanup_old_drivers
+        TEMP=/tmp/$$/$index
+        rm -rf $TEMP
+        mkdir -p $TEMP
+        KERNEL_DRV_ZIPS=`ls $DEV/driver/*.zip | head -n 3`
+        for KERNEL_DRV_ZIP in $KERNEL_DRV_ZIPS; do 
+            if [[ $KERNEL_DRV_ZIP == *"hal.zip" ]]; then
+                echo "Found hal zip..ignoring"
+                continue
+            fi
+            cp $KERNEL_DRV_ZIP $TEMP
+            cd $TEMP
+            echo $TEMP
+            KERNEL_DRV_ZIP=`basename $KERNEL_DRV_ZIP`
+            unzip $KERNEL_DRV_ZIP
+            cd driver
+            
+	    BASEDIR=`pwd`
+            for MAKEFILE_DIR in `find . -name Makefile 2>/dev/null`; do
+                cd $BASEDIR/`dirname $MAKEFILE_DIR`
+                echo "INFO: building kernel mode driver"
+                make
+                if [ $? != 0 ]; then
+                    echo "WARN: Compiling kernel driver failed. Please make sure Linux version is"
+                    echo "    Ubuntu 16.04.4 or above"
+                    echo "    RHEL/CentOS 7.4 or above"
+                    break;
                 fi
-                if [ $UPDATE -eq 0 ] || [ $FORCE_INSTALL_KERNEL_DRV == "yes" ]; then
-                    echo "INFO: Installing new kernel mode driver $MODULE version $NEW_MODULE_VER"
-                    make install
-                    if [ -z "$NEW_MODULE_VER" ]; then
+                MODULE=`ls *.ko | head -n 1`
+                if [ -f /sys/firmware/efi/efivars/SecureBoot-* ]; then
+                    str=`od -An -t u1 /sys/firmware/efi/efivars/SecureBoot-* | awk '{print $NF}'`
+                    if [ "$str" == "1" ]; then
+                        MODULE_NEED_TO_SIGN=`echo $MODULE_NEED_TO_SIGN $MODULE`
+                        cp $MODULE /tmp
+                        continue
+                    fi
+                fi
+
+                if [ $OWNER != "root" ]; then
+                    echo "WARN: root priviledges required, skipping installation of kernel module $MODULE"
+                else
+                    NEW_MODULE_VER=`modinfo -F version $MODULE 2>&1`
+                    MODULE=`basename $MODULE .ko`
+                    OLD_MODULE_VER=`modinfo -F version $MODULE 2>&1`
+                    if [ $? == 0 ]; then
+                        update_check "$NEW_MODULE_VER" "$OLD_MODULE_VER"
+                        UPDATE=$?
+                    else
+                        UPDATE=0
+                    fi
+                    if [ $UPDATE -eq 0 ] || [ $FORCE_INSTALL_KERNEL_DRV == "yes" ]; then
+                        echo "INFO: Installing new kernel mode driver $MODULE version $NEW_MODULE_VER"
+                        make install
+                        if [ -z "$NEW_MODULE_VER" ]; then
                         # "$NEW_MODULE_VER" is 2015.4 driver where the Makefile does not load the
                         # currently built kernel module. We need to manually load the driver.
+                            ( rmmod $MODULE || true ) > /dev/null 2>&1
+                            modprobe $MODULE
+                        fi
+                        driver_installed=1
+                    else
+                        echo "INFO: More recent kernel mode driver $MODULE version $OLD_MODULE_VER already installed"
+                        echo "INFO: Skipping install of newly built kernel mode driver"
                         ( rmmod $MODULE || true ) > /dev/null 2>&1
                         modprobe $MODULE
                     fi
-                    driver_installed=1
-                else
-                    echo "INFO: More recent kernel mode driver $MODULE version $OLD_MODULE_VER already installed"
-                    echo "INFO: Skipping install of newly built kernel mode driver"
-                    ( rmmod $MODULE || true ) > /dev/null 2>&1
-                    modprobe $MODULE
+                    
+                    if [ $? != 0 ]; then
+                        echo "Error occured while installing $MODULE "
+                        err=1
+                    fi
                 fi
-                
-                if [ $? != 0 ]; then
-                    echo "Error occured while installing $MODULE "
-                    err=1
-                fi
-            fi
+            done
+            rm -rf $TEMP/driver
+            cd $ROOT_DIR
         done
-        rm -rf $TEMP/driver
-        cd $ROOT_DIR
+        index=$((index + 1))
     done
-    index=$((index + 1))
-done
 
-rm -rf /tmp/$$
+    rm -rf /tmp/$$
+fi
 cd $ROOT_DIR
 
-echo "Generating SDAccel runtime environment setup script, setup.sh for bash"
 #-- setup.sh
-echo "export XILINX_OPENCL=$DEST" > setup.sh
-echo "export LD_LIBRARY_PATH=\$XILINX_OPENCL/runtime/lib/$PLAT:\$LD_LIBRARY_PATH" >> setup.sh
-echo "export PATH=\$XILINX_OPENCL/runtime/bin:\$PATH" >> setup.sh
-#echo "export XCL_PLATFORM=$XCL_PLATFORM" >> setup.sh
-echo "unset XILINX_SDACCEL" >> setup.sh
-echo "unset XILINX_SDX" >> setup.sh
-echo "unset XCL_EMULATION_MODE" >> setup.sh
+echo "Generating SDAccel runtime environment setup script, setup.sh for bash"
+if [ $INSTALL_PKG == 1 ]; then
+cat <<EOF > setup.sh
+export XILINX_XRT=/opt/xilinx/xrt
+export LD_LIBRARY_PATH=\$XILINX_XRT/lib:\$LD_LIBRARY_PATH
+export PATH=\$XILINX_XRT/bin:\$PATH
+unset XILINX_SDACCEL
+unset XILINX_SDX
+unset XILINX_OPENCL
+unset XCL_EMULATION_MODE
+EOF
+else
+cat <<EOF > setup.sh
+export XILINX_OPENCL=$DEST
+export LD_LIBRARY_PATH=\$XILINX_OPENCL/runtime/lib/$PLAT:\$LD_LIBRARY_PATH
+export PATH=\$XILINX_OPENCL/runtime/bin:\$PATH
+unset XILINX_SDACCEL
+unset XILINX_SDX
+unset XCL_EMULATION_MODE
+EOF
+fi
 
 #-- setup.csh
-
 echo "Generating SDAccel runtime environment setup script, setup.csh for (t)csh"
-echo "setenv XILINX_OPENCL $DEST" > setup.csh
-echo "if ( ! \$?LD_LIBRARY_PATH ) then" >> setup.csh
-echo "    setenv LD_LIBRARY_PATH \$XILINX_OPENCL/runtime/lib/$PLAT" >> setup.csh
-echo "else" >> setup.csh
-echo "    setenv LD_LIBRARY_PATH \$XILINX_OPENCL/runtime/lib/$PLAT:\$LD_LIBRARY_PATH" >> setup.csh
-echo "endif" >> setup.csh
+if [ $INSTALL_PKG == 1 ]; then
+cat <<EOF >setup.csh
+setenv XILINX_XRT /opt/xilinx/xrt
+if ( ! \$?LD_LIBRARY_PATH ) then
+   setenv LD_LIBRARY_PATH \$XILINX_XRT/lib
+else
+   setenv LD_LIBRARY_PATH \$XILINX_XRT/lib:\$LD_LIBRARY_PATH
+endif
 
-echo "if ( ! \$?PATH ) then" >> setup.csh
-echo "    setenv PATH \$XILINX_OPENCL/runtime/bin" >> setup.csh
-echo "else" >> setup.csh
-echo "    setenv PATH \$XILINX_OPENCL/runtime/bin:\$PATH" >> setup.csh
-echo "endif" >> setup.csh
+if ( ! \$?PATH ) then
+   setenv PATH \$XILINX_XRT/bin
+else
+   setenv PATH \$XILINX_XRT/bin:\$PATH
+endif
+unsetenv XILINX_OPENCL
+unsetenv XILINX_SDACCEL
+unsetenv XILINX_SDX
+unsetenv XCL_EMULATION_MODE
+EOF
+else
+cat <<EOF >setup.csh
+setenv XILINX_OPENCL $DEST
+if ( ! \$?LD_LIBRARY_PATH ) then
+   setenv LD_LIBRARY_PATH \$XILINX_OPENCL/runtime/lib/$PLAT
+else
+   setenv LD_LIBRARY_PATH \$XILINX_OPENCL/runtime/lib/$PLAT:\$LD_LIBRARY_PATH
+endif
 
-#echo "setenv XCL_PLATFORM $XCL_PLATFORM" >> setup.csh
-echo "unsetenv XILINX_SDACCEL" >> setup.csh
-echo "unsetenv XILINX_SDX" >> setup.csh
-echo "unsetenv XCL_EMULATION_MODE" >> setup.csh
+if ( ! \$?PATH ) then
+   setenv PATH \$XILINX_OPENCL/runtime/bin
+else
+   setenv PATH \$XILINX_OPENCL/runtime/bin:\$PATH
+endif
+unsetenv XILINX_SDACCEL
+unsetenv XILINX_SDX
+unsetenv XCL_EMULATION_MODE
+EOF
+fi
 
 if [ "$MODULE_NEED_TO_SIGN" != "" ]; then
     echo "Secure boot is enabled. Runtime kernel drivers ($MODULE_NEED_TO_SIGN) are copied under /tmp. Please sign and install them manually."

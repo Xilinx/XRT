@@ -23,6 +23,8 @@ xocl_lib-y	+=  \
 		../lib/libqdma/qdma_context.o	\
 		../lib/libqdma/qdma_mbox.o	\
 		../lib/libqdma/qdma_sriov.o	\
+		../lib/libqdma/qdma_st_c2h.o	\
 		../lib/libqdma/thread.o	\
 		../lib/libqdma/xdev.o	\
+		../lib/libqdma/libqdma_config.o	\
 		../lib/libqdma/libqdma_export.o

@@ -74,6 +74,10 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/lib/libqdma/xdev.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_regs.h
   driver/xclng/drm/xocl/lib/libqdma/qdma_regs.c
+  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.c
+  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c
   driver/xclng/drm/xocl/subdev/feature_rom.c
   driver/xclng/drm/xocl/subdev/mm_xdma.c
   driver/xclng/drm/xocl/subdev/mm_qdma.c
@@ -94,6 +98,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/include/qdma_ioctl.h
   driver/xclng/include/drm/drm.h
   driver/xclng/include/drm/drm_mode.h
+  driver/xclng/include/devices.h
   driver/include/ert.h
   driver/include/xclfeatures.h
   driver/include/xclbin.h

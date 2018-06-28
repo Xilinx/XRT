@@ -271,6 +271,7 @@ static struct drm_driver mm_drm_driver = {
 	.gem_prime_import_sg_table      = xocl_gem_prime_import_sg_table,
 	.gem_prime_vmap                 = xocl_gem_prime_vmap,
 	.gem_prime_vunmap               = xocl_gem_prime_vunmap,
+	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,

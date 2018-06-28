@@ -324,12 +324,12 @@ XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const axlf *buffer
  * index:          The (sub)section index for the "kind" type.
  * Return:         0 on success or appropriate error number
  *
- * Get the section information from sysfs. The index corrresponds to the (section) entry 
+ * Get the section information from sysfs. The index corrresponds to the (section) entry
  * of the axlf_section_kind data being queried. The info and the size contain the return
  * binary value of the subsection and its size.
  */
 
-XCL_DRIVER_DLLESPEC int xclGetSectionInfo(xclDeviceHandle handle, void* info, 
+XCL_DRIVER_DLLESPEC int xclGetSectionInfo(xclDeviceHandle handle, void* info,
 	size_t *size, enum axlf_section_kind kind, int index);
 
 /**
@@ -444,7 +444,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, 
+XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle,
 	void *userptr, size_t size, uint64_t flags);
 
 /**
@@ -922,14 +922,7 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 
 /**
  * struct xclQueueContext - structure to describe a Queue
- * struct xclQueueWbe - write back event
  */
-struct xclQueueWbe {
-	uint64_t	req_id;		/* read and write request arg */
-        uint32_t	type;		/* read/write optional ?*/
-	uint32_t	err_code;	/* 0: success */
-        uint32_t	data_size;	/* completed data size */
-};
 
 struct xclQueueContext {
 	uint32_t	type;		/* stream or packet Queue, read or write Queue*/
@@ -942,8 +935,6 @@ struct xclQueueContext {
 	uint32_t	desc_size;	/* this might imply max inline msg size */
 
 	uint64_t	flags;		/* isr en, wb en, etc */
-
-	int (*complete)(uint64_t q_hdl, xclQueueWbe *wbe);
 };
 
 /**
@@ -959,6 +950,22 @@ struct xclQueueContext {
  */
 XCL_DRIVER_DLLESPEC int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx,  uint64_t *q_hdl);
 XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl);
+
+/**
+ * xclAllocQDMABuf - Allocate DMA buffer
+ * xclFreeQDMABuf - Free DMA buffer
+ *
+ * @handle:		Device handle
+ * @buf_hdl:		Buffer handle
+ * @size:		Buffer size
+ *
+ * return val: buffer pointer
+ *
+ * These functions allocate and free DMA buffers which is used for queue read and write
+ */
+XCL_DRIVER_DLLESPEC void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
+XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
+
 
 /**
  * xclDestroyQueue - Destroy Queue
@@ -1001,15 +1008,22 @@ XCL_DRIVER_DLLESPEC int xclStartQueue(xclDeviceHandle handle, uint64_t q_hdl);
 XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
 /**
+ * struct xclWRBuffer
+ */
+struct xclWRBuffer {
+	uint64_t	va;	 // could be pointer or offset
+	uint64_t	len;
+	uint64_t	buf_hdl; // could be NULL when va is buffer pointer
+};
+
+/**
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-	uint64_t	req_id;	//used in callback to identify req
 	uint32_t	op_code;//Write, Read, Write in-line, etc.
 
-	void		*buf;	//virtual mem addr
-	void		*sgl;	//phy mem addrs
-	uint64_t	buf_len;
+	struct xclWRBuffer	*bufs;
+        uint32_t		buf_num;
 
 	void		*cdh;
 	uint32_t	cdh_len;
