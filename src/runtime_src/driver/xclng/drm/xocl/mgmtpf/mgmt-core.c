@@ -27,7 +27,6 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include "../xocl_drv.h"
-#include "../xocl_subdev.h"
 
 //#define USE_FEATURE_ROM
 

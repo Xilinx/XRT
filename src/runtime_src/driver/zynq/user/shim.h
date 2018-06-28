@@ -38,8 +38,8 @@ public:
   // Raw read/write
   size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
-  unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
-  unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+  unsigned int xclAllocBO(size_t size, xclBOKind domain, uint64_t flags);
+  unsigned int xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags);
   void xclFreeBO(unsigned int boHandle);
   int xclGetBOInfo(uint64_t handle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);

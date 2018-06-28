@@ -27,6 +27,7 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 #include "../lib/libqdma/libqdma_export.h"
+#include "../lib/libqdma/qdma_descq.h"
 
 #define XOCL_FILE_PAGE_OFFSET   0x100000
 #ifndef VM_RESERVED
@@ -37,13 +38,8 @@
 #define	MM_EBUF_LEN		256
 
 struct mm_channel {
-	unsigned long		read_qhdl;
-	u32			read_qlen;
-	bool			read_q_started;
-
-	unsigned long		write_qhdl;
-	u32			write_qlen;
-	bool			write_q_started;
+	struct xocl_qdma_queue	queue;
+	uint64_t		total_trans_bytes;
 };
 struct xocl_mm_device {
 	/* Number of bidirectional channels */
@@ -55,60 +51,45 @@ struct xocl_mm_device {
 	 * bit 1 indicates channel is free, bit 0 indicates channel is free
 	 */
 	volatile unsigned long	channel_bitmap[2];
-	unsigned long long	*channel_usage[2];
 
-	struct mm_channel	*chans;
+	struct mm_channel	*chans[2];
 
 	struct mutex		stat_lock;
 };
 
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,
-	struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 len)
+	struct sg_table *sgt, u32 write, u64 paddr, u32 channel, u64 len)
 {
+	struct mm_channel *chan;
 	struct xocl_mm_device *mdev;
 	struct xocl_dev *xdev;
-	struct qdma_sg_req wr;
-	struct page *pg;
-	struct scatterlist *sg = sgt->sgl;
-	int nents = sgt->orig_nents;
+	struct qdma_request wr;
 	pid_t pid = current->pid;
-	int i = 0;
 	ssize_t ret;
-	unsigned long long pgaddr;
-	unsigned long qhdl;
 
 	mdev = platform_get_drvdata(pdev);
-	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, Dir: %d",
-		pid, channel, paddr, dir);
+	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, write: %d",
+		pid, channel, paddr, write);
 	xdev = xocl_get_xdev(pdev);
 
 	memset(&wr, 0, sizeof (wr));
-	wr.write = dir;
+	wr.write = write;
 	wr.dma_mapped = false;
-	memcpy(&wr.sgt, sgt, sizeof (wr.sgt));
 	wr.count = len;
 	wr.ep_addr = paddr;
 	wr.timeout_ms = 10000;
 	wr.fp_done = NULL;	/* blocking */
 
-	qhdl = dir ? mdev->chans[channel].write_qhdl :
-		mdev->chans[channel].read_qhdl;
-	ret = qdma_sg_req_submit((unsigned long)xdev->dma_handle, qhdl, &wr);
+	chan = &mdev->chans[write][channel];
+
+	ret = xocl_qdma_post_wr(pdev, &chan->queue, &wr, sgt, 0);
 	if (ret >= 0) {
-		mdev->channel_usage[dir][channel] += ret;
+		chan->total_trans_bytes += ret;
 		return ret;
 	}
 
 	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
-	for (i = 0; i < nents; i++, sg = sg_next(sg)) {
-        if (!sg)
-            break;
-		pg = sg_page(sg);
-		if (!pg)
-			continue;
-		pgaddr = page_to_phys(pg);
-		xocl_err(&pdev->dev, "%i, 0x%llx\n", i, pgaddr);
-	}
+	xocl_dump_sgtable(&pdev->dev, sgt);
 	return ret;
 }
 
@@ -127,6 +108,7 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 	struct xocl_mm_device *mdev;
 	int channel = 0;
 	int result = 0;
+	u32 write;
 
 	mdev = platform_get_drvdata(pdev);
 
@@ -148,21 +130,13 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 		goto out;
 	}
 
-	if (dir) {
-		/* h2c: write */
-		if (!mdev->chans[channel].write_q_started) {
-			xocl_err(&pdev->dev, "write queue not started, chan %d",
-				channel);
-			release_channel(pdev, dir, channel);
-			channel = -EINVAL;
-		}
-	} else {
-		if (!mdev->chans[channel].read_q_started) {
-			xocl_err(&pdev->dev, "read queue not started, char %d",
-				channel);
-			release_channel(pdev, dir, channel);
-			channel = -EINVAL;
-		}
+	write = dir ? 1 : 0;
+
+	if (!(mdev->chans[write][channel].queue.flag &
+		XOCL_QDMA_QUEUE_STARTED)) {
+		xocl_err(&pdev->dev, "queue not started, chan %d", channel);
+		release_channel(pdev, dir, channel);
+		channel = -EINVAL;
 	}
 out:
 	return channel;
@@ -173,77 +147,24 @@ static void free_channels(struct platform_device *pdev)
 	struct xocl_mm_device *mdev;
 	struct xocl_dev *xdev;
 	struct mm_channel *chan;
-	char    ebuf[MM_EBUF_LEN + 1];
-	bool	free_success = true;
+	u32	write, qidx;
 	int i, ret = 0;
 
 	mdev = platform_get_drvdata(pdev);
 
-	if (!mdev->chans)
-		return;
-
 	xdev = xocl_get_xdev(pdev);
-	for (i = 0; i < mdev->channel; i++) {
-		chan = &mdev->chans[i];
+	for (i = 0; i < mdev->channel * 2; i++) {
+		write = i / mdev->channel;
+		qidx = i % mdev->channel;
+		chan = &mdev->chans[write][qidx];
 
-		if (chan->read_q_started) {
-			ret = qdma_queue_stop((unsigned long)xdev->dma_handle,
-				chan->read_qhdl, ebuf, MM_EBUF_LEN);
-			if (ret < 0) {
-				xocl_err(&pdev->dev, "Stoping read queue for "
-					"channel %d failed, ret %x",
-					i, ret);
-				xocl_err(&pdev->dev, "Error: %s", ebuf);
-				free_success = false;
-				goto skip_del_rq;
-			}
-			chan->read_q_started = false;
+		ret = xocl_qdma_queue_destroy(pdev, &chan->queue);
+		if (ret < 0) {
+			xocl_err(&pdev->dev, "Destroy queue for "
+				"channel %d failed, ret %x", qidx, ret);
+			continue;
 		}
-		if (chan->read_qhdl) {
-			ret = qdma_queue_remove((unsigned long)xdev->dma_handle,
-				chan->read_qhdl, ebuf, MM_EBUF_LEN);
-			if (ret < 0) {
-				xocl_err(&pdev->dev, "removing read queue for "
-					"channel %d failed, ret %x",
-					i, ret);
-				xocl_err(&pdev->dev, "Error: %s", ebuf);
-				free_success = false;
-			} else {
-				chan->read_qhdl = 0;
-			}
-		}
-skip_del_rq:
-
-		if (chan->write_q_started) {
-			ret = qdma_queue_stop((unsigned long)xdev->dma_handle,
-				chan->write_qhdl, ebuf, MM_EBUF_LEN);
-			if (ret < 0) {
-				xocl_err(&pdev->dev, "Stoping write queue for "
-					"channel %d failed, ret %d",
-					i, ret);
-				xocl_err(&pdev->dev, "Error: %s", ebuf);
-				free_success = false;
-				continue;
-			}
-			chan->write_q_started = false;
-		}
-		if (chan->write_qhdl) {
-			ret = qdma_queue_remove((unsigned long)xdev->dma_handle,
-				chan->write_qhdl, ebuf, MM_EBUF_LEN);
-			if (ret < 0) {
-				xocl_err(&pdev->dev, "removing write queue for "
-					"channel %d failed, ret %d",
-					i, ret);
-				xocl_err(&pdev->dev, "Error: %s", ebuf);
-				free_success = false;
-			} else {
-				chan->write_qhdl = 0;
-			}
-		}
-	}
-
-	if (free_success) {
-		devm_kfree(&pdev->dev, mdev->chans);
+		devm_kfree(&pdev->dev, chan);
 	}
 }
 
@@ -253,20 +174,12 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 	struct xocl_dev *xdev;
 	struct qdma_queue_conf qconf;
 	struct mm_channel *chan;
+	u32	write, qidx;
 	char	ebuf[MM_EBUF_LEN + 1];
 	int	i, ret;
 
 	mdev = platform_get_drvdata(pdev);
 	mdev->channel = count;
-
-	mdev->channel_usage[0] = devm_kzalloc(&pdev->dev, sizeof (u64) *
-		mdev->channel, GFP_KERNEL);
-	mdev->channel_usage[1] = devm_kzalloc(&pdev->dev, sizeof (u64) *
-		mdev->channel, GFP_KERNEL);
-	if (!mdev->channel_usage[0] || !mdev->channel_usage[1]) {
-		xocl_err(&pdev->dev, "failed to alloc channel usage");
-		return -ENOMEM;
-	}
 
 	sema_init(&mdev->channel_sem[0], mdev->channel);
 	sema_init(&mdev->channel_sem[1], mdev->channel);
@@ -279,56 +192,37 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 	xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "Creating MM Queues, Channel %d", mdev->channel);
-	mdev->chans = devm_kzalloc(&pdev->dev, sizeof (*mdev->chans) *
+	mdev->chans[0] = devm_kzalloc(&pdev->dev, sizeof (struct mm_channel) *
 		mdev->channel, GFP_KERNEL);
+	mdev->chans[1] = devm_kzalloc(&pdev->dev, sizeof (struct mm_channel) *
+		mdev->channel, GFP_KERNEL);
+	if (mdev->chans[0] == NULL || mdev->chans[1] == NULL) {
+		xocl_err(&pdev->dev, "Alloc channel mem failed");
+		ret = -ENOMEM;
+		goto failed_create_queue;
+	}
 
-	for (i = 0; i < mdev->channel; i++) {
-		chan = &mdev->chans[i];
+	for (i = 0; i < mdev->channel * 2; i++) {
+		write = i / mdev->channel;
+		qidx = i % mdev->channel;
+		chan = &mdev->chans[write][qidx];
 
 		memset(&qconf, 0, sizeof (qconf));
 		memset(&ebuf, 0, sizeof (ebuf));
+		qconf.wbk_en =1;
+		qconf.wbk_acc_en=1;
+		qconf.wbk_pend_chk=1;
+		qconf.fetch_credit=1;
+		qconf.cmpl_stat_en=1;
+		qconf.cmpl_trig_mode=1;
 
 		qconf.st = 0; /* memory mapped */
-		qconf.c2h = 1;
-		qconf.qidx = i;
-		ret = qdma_queue_add((unsigned long)xdev->dma_handle,
-			&qconf, &chan->read_qhdl, ebuf, MM_EBUF_LEN);
-		if (ret < 0) {
-			xocl_err(&pdev->dev, "Creating read queue for channel "
-				"%d failed, ret %d", i, ret);
-			xocl_err(&pdev->dev, "Error: %s", ebuf);
+		qconf.c2h = write ? 0 : 1;
+		qconf.qidx = qidx;
+		ret = xocl_qdma_queue_create(pdev, &qconf, &chan->queue);
+		if (ret) {
 			goto failed_create_queue;
 		}
-		ret = qdma_queue_start((unsigned long)xdev->dma_handle,
-			chan->read_qhdl, ebuf, MM_EBUF_LEN);
-		if (ret < 0) {
-			xocl_err(&pdev->dev, "Starting read queue for channel "
-				"%d failed, ret %d", i, ret);
-			xocl_err(&pdev->dev, "Error: %s", ebuf);
-			goto failed_create_queue;
-		}
-		chan->read_q_started = true;
-
-		qconf.st = 0; /* memory mapped */
-		qconf.c2h = 0;
-		qconf.qidx = i;
-		ret = qdma_queue_add((unsigned long)xdev->dma_handle,
-			&qconf, &chan->write_qhdl, ebuf, MM_EBUF_LEN);
-		if (ret < 0) {
-			xocl_err(&pdev->dev, "Creating write queue for channel "
-				"%d failed, ret %d", i, ret);
-			xocl_err(&pdev->dev, "Error: %s", ebuf);
-			goto failed_create_queue;
-		}
-		ret = qdma_queue_start((unsigned long)xdev->dma_handle,
-			chan->write_qhdl, ebuf, MM_EBUF_LEN);
-		if (ret < 0) {
-			xocl_err(&pdev->dev, "Starting write queue for channel "
-				"%d failed, ret %d", i, ret);
-			xocl_err(&pdev->dev, "Error: %s", ebuf);
-			goto failed_create_queue;
-		}
-		chan->write_q_started = true;
 	}
 
 	xocl_info(&pdev->dev, "Created %d MM channels (Queues)", mdev->channel);
@@ -337,15 +231,6 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 
 failed_create_queue:
 	free_channels(pdev);
-
-	if (mdev->channel_usage[0]) {
-		devm_kfree(&pdev->dev, mdev->channel_usage[0]);
-		mdev->channel_usage[0] = NULL;
-	}
-	if (mdev->channel_usage[1]) {
-		devm_kfree(&pdev->dev, mdev->channel_usage[1]);
-		mdev->channel_usage[1] = NULL;
-	}
 
 	return ret;
 }
@@ -368,7 +253,7 @@ static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
         mdev = platform_get_drvdata(pdev);
         BUG_ON(!mdev);
 
-        return mdev->channel_usage[write][channel];
+        return mdev->chans[write][channel].total_trans_bytes;
 }
 
 static struct xocl_mm_dma_funcs mm_ops = {
@@ -402,11 +287,6 @@ static int mm_dma_probe(struct platform_device *pdev)
 
 failed:
 	if (mdev) {
-		if (mdev->channel_usage[0])
-			devm_kfree(&pdev->dev, mdev->channel_usage[0]);
-		if (mdev->channel_usage[1])
-			devm_kfree(&pdev->dev, mdev->channel_usage[1]);
-
 		devm_kfree(&pdev->dev, mdev);
 	}
 
@@ -425,11 +305,6 @@ static int mm_dma_remove(struct platform_device *pdev)
 	}
 
 	free_channels(pdev);
-
-	if (mdev->channel_usage[0])
-		devm_kfree(&pdev->dev, mdev->channel_usage[0]);
-	if (mdev->channel_usage[1])
-		devm_kfree(&pdev->dev, mdev->channel_usage[1]);
 
 	mutex_destroy(&mdev->stat_lock);
 

@@ -29,6 +29,7 @@
 #include <sys/utsname.h>
 #include <cstdlib>
 #include <gnu/libc-version.h>
+#include "devices.h"
 
 std::vector<xcldev::pci_device_scanner::device_info> xcldev::pci_device_scanner::device_list;
 
@@ -109,9 +110,9 @@ int xcldev::get_render_value(std::string& dir)
  */
 bool xcldev::pci_device_scanner::add_device(struct pci_device& device)
 {
-    if ( device.func == 1) {
+    if (get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id)) {
         mgmt_devices.emplace_back(device);
-    } else if ( device.func == 0) {
+    } else if ( get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id)) {
         user_devices.emplace_back(device);
     } else {
         assert(0);
@@ -214,8 +215,7 @@ bool xcldev::pci_device_scanner::print_pci_info()
         for (auto udev : user_devices) {
             if ( (mdev.domain == udev.domain) &&
                  (mdev.bus == udev.bus) &&
-                 (mdev.dev == udev.dev) &&
-                 (mdev.func == (udev.func + 1)) )
+                 (mdev.dev == udev.dev) )
             {
                 std::cout << "[" << i << "]" << "user:0x";
                 print(udev);
@@ -236,12 +236,12 @@ void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
         for (auto &udev : user_devices) {
             if( (mdev.domain == udev.domain) &&
                     (mdev.bus == udev.bus) &&
-                    (mdev.dev == udev.dev) &&
-                    (mdev.func == (udev.func + 1)) )
+                    (mdev.dev == udev.dev) )
+                    
             {
                 struct device_info temp = { udev.instance, mdev.instance,
                                             udev.device_name, mdev.device_name,
-                                            udev.bar0_size, mdev.bar0_size,
+                                            udev.user_bar, udev.user_bar_size,
                                             mdev.domain, mdev.bus, mdev.dev, mdev.func, udev.func };
                 if( skipValidDeviceCheck ) {
                     device_list.emplace_back(temp);
@@ -338,12 +338,22 @@ int xcldev::pci_device_scanner::scan(bool print)
         // Xilinx device from here
         device.device_id = get_val_long(subdir, "device");
         device.subsystem_id = get_val_long(subdir, "subsystem_device");
-        bar = (unsigned int)get_val_long(subdir, "userbar");
-        if( bar > 5 ) {
-            std::cout << "scan: Invalid userbar " << bar << std::endl;
-            continue;
+
+        struct xocl_board_info *board_info;
+        bool is_mgmt = false;
+
+        if ((board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
+            is_mgmt = true;
+            bar = board_info->priv_data->user_bar; 
+        } else if ((board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
+            bar = board_info->priv_data->user_bar; 
+        } else {
+            retVal = -ENODEV;
+            break;
         }
-        device.bar0_size = bar_size(subdir, bar);
+
+        device.user_bar = bar;
+        device.user_bar_size = bar_size(subdir, bar);
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -374,7 +384,7 @@ int xcldev::pci_device_scanner::scan(bool print)
         version.erase(std::remove(version.begin(), version.end(), '\n'), version.end());
         device.driver_version = version;
 
-        if( device.func == 1 ) {
+        if (is_mgmt) {
             device.instance = get_val_long(subdir2, "instance");
         } else {
             std::string drm_dir = subdir2;
@@ -456,13 +466,30 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
         device.func = func;
         device.device_name = entry->d_name;
         device.vendor_id = get_val_long(subdir, "vendor");
-        if( ( device.vendor_id == XILINX_ID ) || ( device.vendor_id == ADVANTECH_ID ) ) {
-            if( !add_device(device) )
-            {
-                closedir( dir );
-                return -1;
-            }
+        if( ( device.vendor_id != XILINX_ID ) && ( device.vendor_id != ADVANTECH_ID ) ) {
+            continue;
         }
+        device.device_id = get_val_long(subdir, "device");
+        device.subsystem_id = get_val_long(subdir, "subsystem_device");
+
+        struct xocl_board_info *board_info;
+
+        board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id);
+        if(!board_info) {
+            board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id);
+        }
+        if (!board_info) {
+            continue;
+        }
+
+        device.user_bar = board_info->priv_data->user_bar;
+        device.user_bar_size = bar_size(subdir, device.user_bar);
+        if( !add_device(device) )
+        {
+            closedir( dir );
+            return -1;
+        }
+
     }
 
     add_to_device_list( true ); // skip valid device check

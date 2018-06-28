@@ -17,6 +17,7 @@
 #define	_USERPF_COMMON_H
 
 #include "../xocl_drv.h"
+#include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
 #include "xocl_drm.h"
 
@@ -24,10 +25,10 @@
 #define	XOCL_QDMA_PCI		"xocl_qdma"
 
 #define XOCL_DRIVER_DESC        "Xilinx PCIe Accelerator Device Manager"
-#define XOCL_DRIVER_DATE        "20180125"
+#define XOCL_DRIVER_DATE        "20180612"
 #define XOCL_DRIVER_MAJOR       2018
 #define XOCL_DRIVER_MINOR       2
-#define XOCL_DRIVER_PATCHLEVEL  7
+#define XOCL_DRIVER_PATCHLEVEL  8
 
 #define XOCL_DRIVER_VERSION                             \
         __stringify(XOCL_DRIVER_MAJOR) "."              \
@@ -54,6 +55,7 @@
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
 #define MAX_DEPS        8
+
 
 struct xocl_dev	{
 	struct xocl_dev_core	core;
@@ -134,6 +136,16 @@ struct client_ctx {
 	struct pid		*pid;
 };
 
+struct xocl_qdma_queue {
+	unsigned long		dma_handle;
+	unsigned long		handle;
+	struct mutex		lock;
+	u64			flag;
+	u32			q_len;
+	struct qdma_queue_conf	*qconf;
+	struct qdma_sw_sg       *sgl_cache;
+};
+
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev,
         void *data, struct drm_file *filp);
@@ -162,5 +174,27 @@ void user_pci_reset_done(struct pci_dev *pdev);
 
 uint get_live_client_size(struct xocl_dev *xdev);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
+
+struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
+                                          uint64_t unaligned_size,
+                                          unsigned user_flags,
+                                          unsigned user_type);
+
+/* QDMA functions */
+enum {
+	XOCL_QDMA_QUEUE_ADDED	= 0x1,
+	XOCL_QDMA_QUEUE_STARTED	= 0x2,
+	XOCL_QDMA_QUEUE_DONE	= 0x4,
+};
+
+int xocl_qdma_queue_create(struct platform_device *pdev,
+        struct qdma_queue_conf *qconf, struct xocl_qdma_queue *queue);
+int xocl_qdma_queue_destroy(struct platform_device *pdev,
+	struct xocl_qdma_queue *queue);
+ssize_t xocl_qdma_post_wr(struct platform_device *pdev,
+	struct xocl_qdma_queue * queue,
+        struct qdma_request *wr, struct sg_table *sgt, off_t off);
+
+void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
 
 #endif

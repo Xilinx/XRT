@@ -1,14 +1,26 @@
-/*
- * This file is part of the Xilinx DMA IP Core driver for Linux
+/*******************************************************************************
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
- * All rights reserved.
+ * Xilinx DMA IP Core Linux Driver
+ * Copyright(c) 2017 Xilinx, Inc.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
- */
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "LICENSE".
+ *
+ * Karen Xie <karen.xie@xilinx.com>
+ *
+ ******************************************************************************/
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
@@ -75,6 +87,8 @@ void xdev_sriov_disable(struct xlnx_dma_dev *xdev)
 		kfree(xdev->vf_info);
 	xdev->vf_info = NULL;
 	xdev->vf_count = 0;
+
+	qdma_mbox_timer_stop(xdev);
 }
 
 int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
@@ -85,8 +99,8 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 	int i;
 	int rv;
 
-        if (current_vfs) {
-                dev_err(&pdev->dev, "%d VFs already enabled!n", current_vfs);
+	if (current_vfs) {
+		dev_err(&pdev->dev, "%d VFs already enabled!n", current_vfs);
 		return current_vfs;
 	}
 
@@ -103,7 +117,7 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 	xdev->vf_count = num_vfs;
 	xdev->vf_info = vf;
 
-	pr_info("%s: req %d, current %d, assigned %d.\n",
+	pr_debug("%s: req %d, current %d, assigned %d.\n",
 		xdev->conf.name, num_vfs, current_vfs, pci_vfs_assigned(pdev));
 
 	rv = pci_enable_sriov(pdev, num_vfs);
@@ -114,7 +128,9 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 		return 0;
 	}
 
-	pr_info("%s: done, req %d, current %d, assigned %d.\n",
+	qdma_mbox_timer_start(xdev);
+
+	pr_debug("%s: done, req %d, current %d, assigned %d.\n",
 		xdev->conf.name, num_vfs, pci_num_vf(pdev),
 		pci_vfs_assigned(pdev));
 
@@ -127,12 +143,12 @@ int qdma_device_sriov_config(struct pci_dev *pdev, unsigned long dev_hndl,
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	int rv;
 
-        if (!dev_hndl)
-                return -EINVAL;
+	if (!dev_hndl)
+		return -EINVAL;
 
-        rv = xdev_check_hndl(__func__, pdev, dev_hndl);
+	rv = xdev_check_hndl(__func__, pdev, dev_hndl);
 	if (rv < 0)
-                return rv;
+		return rv;
 
 	/* if zeror disable sriov */
 	if (!num_vfs) {

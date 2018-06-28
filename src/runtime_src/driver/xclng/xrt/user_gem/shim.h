@@ -222,7 +222,7 @@ public:
 
     //debug related
     uint32_t getCheckerNumberSlots(int type);
-    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames, 
+    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
@@ -248,6 +248,10 @@ public:
     int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclDestroyQueue(uint64_t q_hdl);
+    void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
+    int xclFreeQDMABuf(uint64_t buf_hdl);
+    ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
 
 private:
     xclVerbosityLevel mVerbosity;

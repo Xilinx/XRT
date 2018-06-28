@@ -36,13 +36,17 @@
 #define	_XCL_QDMA_IOCTL_H_
 
 #define	XOCL_QDMA_IOC_MAGIC		'Q'
+#define	XOCL_QDMA_QUEUE_IOC_MAGIC	'q'
 
 enum XOCL_QDMA_IOC_TYPES {
 	XOCL_QDMA_CREATE_QUEUE,
-	XOCL_QDMA_DESTROY_QUEUE,
-	XOCL_QDMA_MODIFY_QUEUE,
-	XOCL_QDMA_POST_WR,
+	XOCL_QDMA_ALLOC_BUFFER,
 	XOCL_QDMA_MAX
+};
+
+enum XOCL_QDMA_QUEUE_IOC_TYPES {
+	XOCL_QDMA_QUEUE_MODIFY,
+	XOCL_QDMA_QUEUE_MAX
 };
 
 enum XOCL_QDMA_QUEUE_STATE {
@@ -63,45 +67,18 @@ struct xocl_qdma_ioc_create_queue {
 	uint32_t		qsize;		/* number of desc */
 	uint32_t		desc_size;	/* size of each desc */
 	uint64_t		flags;		/* isr en, wb en, etc */
-	uint64_t		handle;		/* return of q handle */
+	uint64_t		handle;		/* out: queue handle */
 };
 
 /**
- * struct xocl_qdma_ioc_destroy_queue - Destroy streaming queue
- * used with XOCL_QDMA_DESTROY_QUEUE
+ * struct xocl_qdma_ioc_alloc_buf - Allocate DMA buffer
  *
- * @handle:	queue handle returned by the driver
+ * @buf_fd
+ * @size
  */
-struct xocl_qdma_ioc_destroy_queue {
-	uint64_t		handle;
-};
-
-/**
- * struct xocl_qdma_ioc_modify_queue - Modify streaming queue
- * used with XOCL_QDMA_MODIFY_QUEUE
- *
- * @handle:	queue handle returned by the driver
- */
-struct xocl_qdma_ioc_modify_queue {
-	uint64_t		handle;
-	uint32_t		state;		/* started or stopped */
-	uint64_t		rid;
-};
-
-/**
- * struct xocl_qdma_ioc_post_wr - Read / Write streaming queue
- * used with XOCL_QDMA_IOC_POST_WR
- *
- * @handle:	queue handle returned by the driver
- */
-struct xocl_qdma_ioc_post_wr {
-	uint64_t		handle;
-	uint32_t		op_code;	/* read, write etc */
-	uint64_t		buf;
-	uint64_t		buf_len;
-	uint64_t		sgl;
-	uint32_t		sgl_len;
-	uint32_t		flags;
+struct xocl_qdma_ioc_alloc_buf {
+	size_t		size;
+	int		buf_fd;
 };
 
 /**
@@ -109,10 +86,9 @@ struct xocl_qdma_ioc_post_wr {
  */
 #define	XOCL_QDMA_IOC_CREATE_QUEUE		_IO(XOCL_QDMA_IOC_MAGIC, \
 	XOCL_QDMA_CREATE_QUEUE)
-#define	XOCL_QDMA_IOC_DESTROY_QUEUE		_IO(XOCL_QDMA_IOC_MAGIC, \
-	XOCL_QDMA_DESTROY_QUEUE)
-#define	XOCL_QDMA_IOC_MODIFY_QUEUE		_IO(XOCL_QDMA_IOC_MAGIC, \
-	XOCL_QDMA_MODIFY_QUEUE)
-#define	XOCL_QDMA_IOC_POST_WR			_IO(XOCL_QDMA_IOC_MAGIC, \
-	XOCL_QDMA_POST_WR)
+#define	XOCL_QDMA_IOC_ALLOC_BUFFER		_IO(XOCL_QDMA_IOC_MAGIC, \
+	XOCL_QDMA_ALLOC_BUFFER)
+
+#define	XOCL_QDMA_IOC_QUEUE_MODIFY		_IO(XOCL_QDMA_QUEUE_IOC_MAGIC, \
+	XOCL_QDMA_QUEUE_MODIFY)
 #endif

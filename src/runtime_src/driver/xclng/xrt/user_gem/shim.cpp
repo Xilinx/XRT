@@ -133,7 +133,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityL
     mUserHandle = open(devName.c_str(), O_RDWR);
     if(mUserHandle > 0) {
         // Lets map 4M
-        mUserMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar0_size, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
+        mUserMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar_size, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
         if (mUserMap == MAP_FAILED) {
             std::cout << "Map failed: " << devName << std::endl;
             close(mUserHandle);
@@ -154,7 +154,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityL
         std::cout << "Could not open " << mgmtFile << std::endl;
         return;
     }
-    mMgtMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].mgmt_bar0_size, PROT_READ | PROT_WRITE, MAP_SHARED, mMgtHandle, 0);
+    mMgtMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar_size, PROT_READ | PROT_WRITE, MAP_SHARED, mMgtHandle, 0);
     if (mMgtMap == MAP_FAILED) // Not an error if user is not privileged
         mMgtMap = nullptr;
 
@@ -199,10 +199,10 @@ xocl::XOCLShim::~XOCLShim()
     }
 
     if (mUserMap != MAP_FAILED)
-        munmap(mUserMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar0_size);
+        munmap(mUserMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
     if (mMgtMap)
-        munmap(mMgtMap, xcldev::pci_device_scanner::device_list[mBoardNumber].mgmt_bar0_size);
+        munmap(mMgtMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
     if (mUserHandle > 0)
         close(mUserHandle);
@@ -738,7 +738,7 @@ int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *p
     return result;
 }
 
-int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size, 
+int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 	enum axlf_section_kind kind, int index)
 {
     if(section_info == nullptr)
@@ -1068,7 +1068,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
         std::cout << __func__ << " ERROR: Create Write Queue IOCTL failed" << std::endl;
-    } else 
+    } else
         *q_hdl = q_info.handle;
 
     return rc;
@@ -1098,19 +1098,89 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int xocl::XOCLShim::xclDestroyQueue(uint64_t q_hdl)
 {
-    struct xocl_qdma_ioc_destroy_queue q_info;
     int rc;
 
-    memset(&q_info, 0, sizeof (q_info));
-
-    q_info.handle = q_hdl;
-    rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_DESTROY_QUEUE, &q_info);
+    rc = close((int)q_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue IOCTL failed" << std::endl;
+        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
 
     return rc;
 }
-        
+
+/*
+ * xclAllocQDMABuf()
+ */
+void *xocl::XOCLShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
+{
+    struct xocl_qdma_ioc_alloc_buf req;
+    void *buf;
+    int rc;
+
+    memset(&req, 0, sizeof (req));
+    req.size = size;
+
+    rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
+    if (rc) {
+        std::cout << __func__ << " ERROR: Alloc buffer IOCTL failed" << std::endl;
+	return NULL;
+    }
+
+    buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
+    if (!buf) {
+        std::cout << __func__ << " ERROR: Map buffer failed" << std::endl;
+        close(req.buf_fd);
+    } else {
+        *buf_hdl = req.buf_fd;
+    }
+
+    return buf;
+}
+
+/*
+ * xclFreeQDMABuf()
+ */
+int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
+{
+    int rc;
+
+    rc = close((int)buf_hdl);
+    if (rc)
+        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+
+    return rc;
+}
+
+/*
+ * xclWriteQueue()
+ */
+ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
+{
+    ssize_t rc = 0;
+    const void *buf;
+
+    for (unsigned i = 0; i < wr->buf_num; i++) {
+        buf = (const void *)wr->bufs[i].va;
+        rc = write((int)q_hdl, buf, wr->bufs[i].len);
+    }
+    return rc;
+}
+
+/*
+ * xclReadQueue()
+ */
+ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
+{
+    ssize_t rc = 0;
+    void *buf;
+
+    for (unsigned i = 0; i < wr->buf_num; i++) {
+        buf = (void *)wr->bufs[i].va;
+        rc = read((int)q_hdl, buf, wr->bufs[i].len);
+    }
+    return rc;
+
+}
+
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -1471,7 +1541,7 @@ int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
     return drv ? drv->xclGetUsageInfo(info) : -ENODEV;
 }
 
-int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size, 
+int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size,
 	enum axlf_section_kind kind, int index)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
@@ -1530,4 +1600,28 @@ int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
+}
+
+void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+}
+
+int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
+}
+
+ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
+}
+
+ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }
