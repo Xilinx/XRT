@@ -33,7 +33,7 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
 

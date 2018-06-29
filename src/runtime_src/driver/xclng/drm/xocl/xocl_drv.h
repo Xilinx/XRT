@@ -27,8 +27,15 @@
 #include "devices.h"
 #include "xocl_ioctl.h"
 
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#define XOCL_UUID
+#endif
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
+#define XOCL_UUID
+#endif
 /* UUID helper functions not present in older kernels */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if defined(XOCL_UUID)
 static inline bool uuid_equal(const xuid_t *u1, const xuid_t *u2)
 {
 	return memcmp(u1, u2, sizeof(xuid_t)) == 0;

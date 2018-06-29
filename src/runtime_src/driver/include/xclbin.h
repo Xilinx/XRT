@@ -64,6 +64,10 @@ typedef uuid_t xuid_t;
 #else //(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 typedef uuid_t xuid_t;
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#endif
 #else
 typedef uuid_le xuid_t;
 #endif
