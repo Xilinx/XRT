@@ -259,50 +259,6 @@ struct event_debug_view_readwrite_image : public event_debug_view_base {
 };
 
 
-//using action_debug_type = std::function<appdebug::event_debug_view_base* (xocl::event*)>;
-using action_debug_type = xocl::event::action_debug_type;
-
-action_debug_type
-action_readwrite(cl_mem buffer,size_t offset, size_t size, const void* ptr);
-
-action_debug_type
-action_copybuf(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
-
-action_debug_type
-action_fill_buffer(cl_mem buffer, const void* pattern, size_t pattern_size, size_t offset, size_t size);
-
-action_debug_type
-action_map(cl_mem buffer,cl_map_flags map_flags);
-
-action_debug_type
-action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags);
-
-action_debug_type
-action_ndrange_migrate(cl_event event, cl_kernel kernel);
-
-action_debug_type
-action_ndrange(cl_event event, cl_kernel kernel);
-
-action_debug_type
-action_unmap(cl_mem buffer);
-
-action_debug_type
-action_barrier_marker(int num_events_in_wait_list, const cl_event* event_wait_list);
-
-action_debug_type
-action_readwrite_image(cl_mem image,const size_t* origin,const size_t* region,
-		                         size_t row_pitch,size_t slice_pitch,const void* ptr);
-
-
-template <typename F, typename ...Args>
-void
-set_event_action(xocl::event* event, F&& f, Args&&... args)
-{
-  //Save on effort creating lambda if debug not enabled
-  if (xrt::config::get_app_debug()) {
-    event->set_debug_action(f(std::forward<Args>(args)...));
-  }
-}
 //Debug functions
 app_debug_view<std::pair<size_t,size_t>>*
 clPrintCmdQOccupancy(cl_command_queue cq);
