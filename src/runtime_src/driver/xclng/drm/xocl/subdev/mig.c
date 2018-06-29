@@ -41,10 +41,10 @@ static int mig_get_prop(struct platform_device *pdev, struct xocl_mig	*mig,
 	uint32_t bank, uint32_t *val)
 {
 
-  if(!mig){
-  	xocl_err(&pdev->dev, "found no mig %d", bank);
+	if(!mig){
+		xocl_err(&pdev->dev, "found no mig %d", bank);
 		return -EINVAL;
-  }
+	}
 
 	if(!mig->base[bank]){
 		xocl_err(&pdev->dev, "invalid bank %d", bank);
