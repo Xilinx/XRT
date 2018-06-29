@@ -98,6 +98,28 @@ static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(ecc_cnt3);
 
+static ssize_t cnt_reset_store(struct device *dev, struct device_attribute *da,
+	const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_mig	*mig = platform_get_drvdata(pdev);
+	uint32_t bank;
+
+	if (sscanf(buf, "%d", &bank) != 1 || (bank >= MIG_MAX_NUM)) {
+		xocl_err(&pdev->dev, "input should be: echo bank > cnt_reset");
+		return -EINVAL;
+	}
+
+	if(!mig->base[bank]){
+		xocl_err(&pdev->dev, "invalid bank %d", bank);
+		return -EINVAL;
+	}
+
+	iowrite32(0, mig->base[bank]+CE_CNT);
+
+	return count;
+}
+static DEVICE_ATTR_WO(cnt_reset);
 
 #ifdef MIG_DEBUG
 static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
@@ -129,6 +151,7 @@ static struct attribute *mig_attributes[] = {
 	&dev_attr_ecc_cnt1.attr,
 	&dev_attr_ecc_cnt2.attr,
 	&dev_attr_ecc_cnt3.attr,
+	&dev_attr_cnt_reset.attr,
 #ifdef MIG_DEBUG
 	&dev_attr_ecc_inject.attr,
 #endif
