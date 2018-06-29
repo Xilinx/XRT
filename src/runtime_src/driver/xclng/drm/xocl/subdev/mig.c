@@ -20,6 +20,10 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
+/* Registers are defined in pg150-ultrascale-memory-ip.pdf: 
+ * AXI4-Lite Slave Control/Status Register Map 
+ */
+
 #define ECC_STATUS    0x0
 #define ECC_EN_IRQ    0x4
 #define ECC_ON_OFF    0x8
