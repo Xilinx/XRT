@@ -84,7 +84,7 @@ clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
   else {
     uevent = xocl::create_hard_event(command_queue,CL_COMMAND_BARRIER,num_events_in_wait_list,event_wait_list);
   }
-  appdebug::set_event_action(uevent.get(),appdebug::action_barrier_marker, (int)num_events_in_wait_list,event_wait_list);
+  xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_barrier_marker, (int)num_events_in_wait_list,event_wait_list);
 
   uevent->queue();
   cl_event event = uevent.get();

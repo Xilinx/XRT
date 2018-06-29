@@ -68,7 +68,7 @@ namespace XCL {
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
-    appdebug::register_ocl_object_appdebug_callbacks();
+    appdebug::register_xocl_appdebug_callbacks();
 #ifdef PMD_OCL
     return;
 #endif

@@ -35,7 +35,7 @@ namespace appdebug {
 void cb_scheduler_cmd_start (const xrt::command*,const xocl::execution_context*);
 void cb_scheduler_cmd_done (const xrt::command*,const xocl::execution_context*);
 
-void register_ocl_object_appdebug_callbacks ();
+void register_xocl_appdebug_callbacks ();
 
 template <typename T>
 class app_debug_track {

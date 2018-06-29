@@ -66,8 +66,8 @@ clEnqueueMarker(cl_command_queue command_queue,
     std::vector<cl_event> wait_list(wait_range.begin(),wait_range.end());
     pevent = xocl::create_hard_event
       (command_queue,CL_COMMAND_MARKER,wait_list.size(),wait_list.data());
-    appdebug::set_event_action
-      (pevent.get(),appdebug::action_barrier_marker,wait_list.size(),wait_list.data());
+    xocl::appdebug::set_event_action
+      (pevent.get(),xocl::appdebug::action_barrier_marker,wait_list.size(),wait_list.data());
   }
   pevent->queue();
   xocl::assign(event_parameter,pevent.get());
