@@ -158,7 +158,7 @@ int xcldev::device::readSAMCounters() {
 	auto longest_krnl_name_len = std::max_element(slotNames.begin(), slotNames.end(), [](std::string lhs, std::string rhs) {return lhs.length() < rhs.length();})->length();
 	int col1 = std::max(longest_krnl_name_len, strlen("CU Name")) + 4;
 	int col_width = 20;
-	if (samResult.Version[0] == 0xdeaf0100) {
+	if (samResult.Version[0] <= 0xdeaf0100) {
 		std::cout << std::left
 			<< std::setw(col1) << "CU Name"
 			<< "  " << std::setw(col_width)  << "CU Exec Cnt"
@@ -182,7 +182,7 @@ int xcldev::device::readSAMCounters() {
 				<< std::endl;
 		}
 	}
-	if (samResult.Version[0] == 0xdeaf0100) {
+	if (samResult.Version[0] > 0xdeaf0100) {
 		std::cout << std::left
 			<< std::setw(col1) << "CU Name"
 			<< "  " << std::setw(col_width)  << "CU Starts"

@@ -229,7 +229,7 @@ namespace xocl {
 		  samResult->TotalIntStallCycles[s] 		= temp[3];
 		  samResult->TotalStrStallCycles[s] 		= temp[4];
 		  samResult->TotalExtStallCycles[s]			= temp[5];
-		  samResult->MinExecutionTime[s] 			= temp[6];
+		  samResult->MinExecutionTime[s] 			= (temp[6] == 4294967295) ? 0 : temp[6];
 		  samResult->MaxExecutionTime[s] 			= temp[7];
 		  samResult->TotalCUStarts[s] 				= temp[8];
 	  }
