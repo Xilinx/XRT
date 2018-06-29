@@ -36,17 +36,39 @@ struct xocl_mig {
 	struct device		*mig_dev;
 };
 
+
+static int mig_get_prop(struct platform_device *pdev, struct xocl_mig	*mig, 
+	uint32_t bank, uint32_t *val)
+{
+
+  if(!mig){
+  	xocl_err(&pdev->dev, "found no mig %d", bank);
+		return -EINVAL;
+  }
+
+	if(!mig->base[bank]){
+		xocl_err(&pdev->dev, "invalid bank %d", bank);
+		return -EINVAL;
+	}
+
+	*val = ioread32(mig->base[bank]+CE_CNT);
+
+	return 0;
+}
+
 static ssize_t ecc_cnt0_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	u32 val;
+	uint32_t val, bank;
 
-  if(!mig)
-		return sprintf(buf, "no mig found\n");
+	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
+		return -EINVAL;
+	}
 
-	val = ioread32(mig->base[0]+CE_CNT);
+	if(mig_get_prop(pdev, mig, bank, &val))
+		val = 0xffffdead;
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -57,12 +79,15 @@ static ssize_t ecc_cnt1_show(struct device *dev, struct device_attribute *da,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	u32 val;
+	uint32_t val, bank;
 
-  if(!mig)
-		return sprintf(buf, "no mig found\n");
+	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
+		return -EINVAL;
+	}
 
-	val = ioread32(mig->base[1]+CE_CNT);
+	if(mig_get_prop(pdev, mig, bank, &val))
+		val = 0xffffdead;
+
 	return sprintf(buf, "%x\n", val);
 }
 static DEVICE_ATTR_RO(ecc_cnt1);
@@ -72,12 +97,14 @@ static ssize_t ecc_cnt2_show(struct device *dev, struct device_attribute *da,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	u32 val;
+	uint32_t val, bank;
 
-  if(!mig)
-		return sprintf(buf, "no mig found\n");
-	
-	val = ioread32(mig->base[2]+CE_CNT);
+	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
+		return -EINVAL;
+	}
+
+	if(mig_get_prop(pdev, mig, bank, &val))
+		val = 0xffffdead;
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -88,12 +115,15 @@ static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	u32 val;
+	uint32_t val, bank;
 
-  if(!mig)
-		return sprintf(buf, "no mig found\n");
-	
-	val = ioread32(mig->base[3]+CE_CNT);
+	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
+		return -EINVAL;
+	}
+
+	if(mig_get_prop(pdev, mig, bank, &val))
+		val = 0xffffdead;
+
 	return sprintf(buf, "%x\n", val);
 }
 static DEVICE_ATTR_RO(ecc_cnt3);
