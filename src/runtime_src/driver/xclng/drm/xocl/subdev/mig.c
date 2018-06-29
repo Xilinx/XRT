@@ -29,7 +29,7 @@
 
 #define	MIG_MAX_NUM		4
 
-#define MIG_TEST      1
+#define MIG_DEBUG      1
 
 struct xocl_mig {
 	void __iomem		**base;
@@ -99,7 +99,7 @@ static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
 static DEVICE_ATTR_RO(ecc_cnt3);
 
 
-#if MIG_TEST
+#ifdef MIG_DEBUG
 static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
@@ -129,7 +129,7 @@ static struct attribute *mig_attributes[] = {
 	&dev_attr_ecc_cnt1.attr,
 	&dev_attr_ecc_cnt2.attr,
 	&dev_attr_ecc_cnt3.attr,
-#if MIG_TEST
+#ifdef MIG_DEBUG
 	&dev_attr_ecc_inject.attr,
 #endif
 	NULL
@@ -179,7 +179,10 @@ static int mig_probe(struct platform_device *pdev)
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
 	if (!mig)
 		return -ENOMEM;
+	
 	mig->base = devm_kzalloc(&pdev->dev, MIG_MAX_NUM*sizeof(void __iomem *), GFP_KERNEL);
+	if (!mig->base)
+		return -ENOMEM;
 
 	for(i =0; i < MIG_MAX_NUM ;++i){
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
@@ -191,7 +194,7 @@ static int mig_probe(struct platform_device *pdev)
 			res->start, res->end);
 
 		mig->base[i] = ioremap_nocache(res->start, res->end - res->start + 1);
-		if (!mig->base) {
+		if (!mig->base[i]) {
 			err = -EIO;
 			xocl_err(&pdev->dev, "Map iomem failed");
 			goto failed;
