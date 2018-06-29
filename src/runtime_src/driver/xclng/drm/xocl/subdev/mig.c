@@ -74,6 +74,7 @@ static ssize_t ecc_cnt0_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(ecc_cnt0);
 
+
 static ssize_t ecc_cnt1_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
@@ -91,6 +92,7 @@ static ssize_t ecc_cnt1_show(struct device *dev, struct device_attribute *da,
 	return sprintf(buf, "%x\n", val);
 }
 static DEVICE_ATTR_RO(ecc_cnt1);
+
 
 static ssize_t ecc_cnt2_show(struct device *dev, struct device_attribute *da,
 	char *buf)
@@ -110,6 +112,7 @@ static ssize_t ecc_cnt2_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(ecc_cnt2);
 
+
 static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
@@ -127,6 +130,7 @@ static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
 	return sprintf(buf, "%x\n", val);
 }
 static DEVICE_ATTR_RO(ecc_cnt3);
+
 
 static ssize_t cnt_reset_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
@@ -150,6 +154,32 @@ static ssize_t cnt_reset_store(struct device *dev, struct device_attribute *da,
 	return count;
 }
 static DEVICE_ATTR_WO(cnt_reset);
+
+
+static ssize_t ecc_on_off_store(struct device *dev, struct device_attribute *da,
+	const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_mig	*mig = platform_get_drvdata(pdev);
+	uint32_t bank, val;
+
+	if (sscanf(buf, "%d %d", &bank, &val) != 2 || (bank >= MIG_MAX_NUM ) ||
+		val > 1) {
+		xocl_err(&pdev->dev, "input should be: echo bank val > ecc_on_off");
+		return -EINVAL;
+	}
+
+	if(!mig->base[bank]){
+		xocl_err(&pdev->dev, "invalid bank %d", bank);
+		return -EINVAL;
+	}
+
+	iowrite32(val, mig->base[bank]+ECC_ON_OFF);
+
+	return count;
+}
+static DEVICE_ATTR_WO(ecc_on_off);
+
 
 #ifdef MIG_DEBUG
 static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
@@ -182,6 +212,7 @@ static struct attribute *mig_attributes[] = {
 	&dev_attr_ecc_cnt2.attr,
 	&dev_attr_ecc_cnt3.attr,
 	&dev_attr_cnt_reset.attr,
+	&dev_attr_ecc_on_off.attr,
 #ifdef MIG_DEBUG
 	&dev_attr_ecc_inject.attr,
 #endif
