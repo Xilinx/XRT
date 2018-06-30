@@ -305,14 +305,14 @@ run_callbacks(cl_int status)
 
 void
 event::
-register_constructor_callbacks(event_callback_type aCallback)
+register_constructor_callbacks(event_callback_type&& aCallback)
 {
   m_constructor_callbacks.emplace_back(std::move(aCallback));
 }
 
 void
 event::
-register_destructor_callbacks(event_callback_type aCallback)
+register_destructor_callbacks(event_callback_type&& aCallback)
 {
   m_destructor_callbacks.emplace_back(std::move(aCallback));
 }

@@ -21,8 +21,6 @@
 
 #include "xrt/util/memory.h"
 
-#include "xdp/appdebug/appdebug_track.h"
-
 #include <iostream>
 
 namespace {
@@ -53,6 +51,8 @@ singleContextDevice(cl_context context)
 } // namespace
 
 namespace xocl {
+memory::memory_callback_list memory::m_constructor_callbacks;
+memory::memory_callback_list memory::m_destructor_callbacks;
 
 memory::
 memory(context* cxt, cl_mem_flags flags)
@@ -62,7 +62,11 @@ memory(context* cxt, cl_mem_flags flags)
   m_uid = uid_count++;
 
   XOCL_DEBUG(std::cout,"xocl::memory::memory(): ",m_uid,"\n");
-  appdebug::add_clmem(this);
+
+  for (auto& cb: m_constructor_callbacks)
+    cb(this);
+
+  //appdebug::add_clmem(this);
 }
 
 memory::
@@ -73,7 +77,10 @@ memory::
   if (m_dtor_notify)
     std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
                   [](std::function<void()>& fcn) { fcn(); });
-   appdebug::remove_clmem(this);
+
+  for (auto& cb: m_destructor_callbacks)
+    cb(this);
+   //appdebug::remove_clmem(this);
 }
 
 
@@ -235,6 +242,21 @@ add_dtor_notify(std::function<void()> fcn)
     m_dtor_notify = xrt::make_unique<std::vector<std::function<void()>>>();
   m_dtor_notify->emplace_back(std::move(fcn));
 }
+
+void
+memory::
+register_constructor_callbacks (memory::memory_callback_type&& cb)
+{
+  m_constructor_callbacks.emplace_back(std::move(cb));
+}
+
+void
+memory::
+register_destructor_callbacks (memory::memory_callback_type&& cb)
+{
+  m_destructor_callbacks.emplace_back(std::move(cb));
+}
+
 
 //Functions for derived classes.
 memory::buffer_object_handle

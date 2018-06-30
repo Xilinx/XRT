@@ -34,6 +34,7 @@ class memory : public refcount, public _cl_mem
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
   using pipe_property_type = property_object<cl_pipe_attributes>;
@@ -42,6 +43,9 @@ protected:
   using bomap_value_type = bomap_type::value_type;
   using bomap_iterator_type = bomap_type::iterator;
 public:
+  using memory_callback_type = std::function<void (memory*)>;
+  using memory_callback_list = std::vector<memory_callback_type>;
+
   memory(context* cxt, cl_mem_flags flags);
   virtual ~memory();
 
@@ -410,6 +414,9 @@ public:
   void
   add_dtor_notify(std::function<void()> fcn);
 
+  static void register_constructor_callbacks(memory_callback_type&& aCallback);
+  static void register_destructor_callbacks(memory_callback_type&& aCallback);
+
 private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
@@ -424,6 +431,9 @@ private:
   mutable std::mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
+
+  static memory_callback_list m_constructor_callbacks;
+  static memory_callback_list m_destructor_callbacks;
 };
 
 class buffer : public memory

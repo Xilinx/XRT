@@ -630,10 +630,16 @@ cb_action_readwrite_image (xocl::event* event, cl_mem image,const size_t* origin
 }
 
 void register_xocl_appdebug_callbacks() {
+  /* event */
   xocl::event::register_constructor_callbacks(appdebug::add_event);
   xocl::event::register_destructor_callbacks(appdebug::remove_event);
-  /*command queue*/
+  /* command queue */
+  xocl::command_queue::register_constructor_callbacks(appdebug::add_command_queue);
+  xocl::command_queue::register_destructor_callbacks(appdebug::remove_command_queue);
+
   /*cl_mem*/
+  xocl::memory::register_constructor_callbacks(appdebug::add_clmem);
+  xocl::memory::register_destructor_callbacks(appdebug::remove_clmem);
 
   /*opencl api*/
   xocl::appdebug::register_cb_action_readwrite (cb_action_readwrite);

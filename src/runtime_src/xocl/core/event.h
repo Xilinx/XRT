@@ -25,8 +25,6 @@
 #include "xocl/core/error.h"
 #include "xocl/core/execution_context.h"
 
-#include "xdp/appdebug/appdebug_track.h"
-
 #include "xrt/config.h"
 
 #include <vector>
@@ -49,7 +47,7 @@ class event : public refcount, public _cl_event
   using callback_function_type = std::function<void(cl_int)>;
   using callback_list = std::vector<callback_function_type>;
 
-  using event_callback_type = std::function<void(cl_event)>;
+  using event_callback_type = std::function<void(event*)>;
   using event_callback_list = std::vector<event_callback_type>;
 
   friend class command_queue;
@@ -381,8 +379,8 @@ public:
   static event_callback_list m_constructor_callbacks;
   static event_callback_list m_destructor_callbacks;
 
-  static void register_constructor_callbacks(event_callback_type aCallback);
-  static void register_destructor_callbacks(event_callback_type aCallback);
+  static void register_constructor_callbacks(event_callback_type&& aCallback);
+  static void register_destructor_callbacks(event_callback_type&& aCallback);
 
 
 protected:
