@@ -23,9 +23,11 @@
 #include <cassert>
 
 #include "xocl/api/profile.h"
-#include "xdp/appdebug/appdebug_track.h"
 
 namespace xocl {
+
+command_queue::commandqueue_callback_list command_queue::m_constructor_callbacks;
+command_queue::commandqueue_callback_list command_queue::m_destructor_callbacks;
 
 command_queue::
 command_queue(context* ctx, device* device, cl_command_queue_properties props)
@@ -38,7 +40,10 @@ command_queue(context* ctx, device* device, cl_command_queue_properties props)
     m_props |= CL_QUEUE_PROFILING_ENABLE;
 
   XOCL_DEBUG(std::cout,"xocl::command_queue::command_queue(",m_uid,")\n");
-  appdebug::add_command_queue(this);
+  //appdebug::add_command_queue(this);
+
+  for (auto& cb : m_constructor_callbacks)
+    cb(this);
 
   ctx->add_queue(this);
 }
@@ -49,7 +54,10 @@ command_queue::
   wait();
   
   XOCL_DEBUG(std::cout,"xocl::command_queue::~command_queue(",m_uid,")\n");
-  appdebug::remove_command_queue(this);
+  //appdebug::remove_command_queue(this);
+
+  for (auto& cb : m_destructor_callbacks)
+    cb(this);
 
   assert(m_events.empty());
   m_context->remove_queue(this);
@@ -187,7 +195,19 @@ wait_and_lock() const
     m_has_events.wait(lk);
   return queue_lock(std::move(lk));
 }
+void
+command_queue::
+register_constructor_callbacks(commandqueue_callback_type&& aCallback)
+{
+  m_constructor_callbacks.emplace_back(std::move(aCallback));
+}
 
+void
+command_queue::
+register_destructor_callbacks(commandqueue_callback_type&& aCallback)
+{
+  m_destructor_callbacks.emplace_back(std::move(aCallback));
+}
 }
 
 

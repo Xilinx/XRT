@@ -258,6 +258,7 @@ struct event_debug_view_readwrite_image : public event_debug_view_base {
   virtual std::string getstring(int aVerbose = 0, int aQuotes = 0);
 };
 
+void register_xocl_appdebug_callbacks ();
 
 //Debug functions
 app_debug_view<std::pair<size_t,size_t>>*
