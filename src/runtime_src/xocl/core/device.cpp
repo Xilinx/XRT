@@ -563,21 +563,22 @@ get_cu_memidx() const
   if (m_cu_memidx == -2) {
     m_cu_memidx = -1;
 
-    // compute intersection of all CU memory masks
-    memidx_bitmask_type mask;
-    mask.set();
-    for (auto& cu : get_cu_range())
-      mask &= cu->get_memidx_intersect();
+    if (get_num_cus()) {
+      // compute intersection of all CU memory masks
+      memidx_bitmask_type mask;
+      mask.set();
+      for (auto& cu : get_cu_range())
+        mask &= cu->get_memidx_intersect();
 
-    // select first common memory bank index if any
-    for (size_t idx=0; idx<mask.size(); ++idx) {
-      if (mask.test(idx)) {
-        m_cu_memidx = idx;
-        break;
+      // select first common memory bank index if any
+      for (size_t idx=0; idx<mask.size(); ++idx) {
+        if (mask.test(idx)) {
+          m_cu_memidx = idx;
+          break;
+        }
       }
     }
   }
-
   return m_cu_memidx;
 }
 
