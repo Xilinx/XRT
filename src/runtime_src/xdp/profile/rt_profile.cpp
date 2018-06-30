@@ -303,7 +303,10 @@ namespace XCL {
     }
     setTimeStamp(objStage, traceObject, timeStamp);
 
-    if (objStage == END) {
+    // clEnqueueNDRangeKernel returns END with no START
+    // if data transfer was already completed.
+    // We can safely discard those events
+    if (objStage == END && (traceObject->getStart() > 0.0)) {
       // Collect performance counters
       switch (objKind) {
       case READ_BUFFER: {
