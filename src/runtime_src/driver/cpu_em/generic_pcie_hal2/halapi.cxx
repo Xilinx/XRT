@@ -89,14 +89,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   return drv->xclLoadXclBin(buffer);
 }
 
-//int xclLoadBitstream(xclDeviceHandle handle, const char *fileName)
-//{
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return -1;
-//  return drv->xclLoadBitstream(fileName);
-//}
-
 uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
@@ -200,7 +192,6 @@ size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonStartCounters(type);
   return 0;
 }
 
@@ -210,7 +201,6 @@ size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonStopCounters(type);
   return 0;
 }
 
@@ -220,7 +210,6 @@ size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type, xclCo
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonReadCounters(type, counterResults);
   return 0;
 }
 
@@ -234,7 +223,6 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonClockTraining(type);
   return 0; 
 }
 
@@ -244,7 +232,6 @@ size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonStartTrace(type, startTrigger);
   return 0;
 }
 
@@ -254,7 +241,6 @@ size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonStopTrace(type);
   return 0;
 }
 
@@ -264,7 +250,6 @@ uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonGetTraceCount(type);
   return 0;
 }
 
@@ -274,7 +259,6 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  //return drv->xclPerfMonReadTrace(type, traceVector);
   return 0;
 }
 
@@ -284,7 +268,6 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return 0.0;
-  //return drv->xclGetDeviceClockFreqMHz();r
   return 0.0;
 }
 
@@ -294,7 +277,6 @@ double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return 0.0;
-  //return drv->xclGetReadMaxBandwidthMBps();
   return 0.0;
 }
 
@@ -304,7 +286,6 @@ double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return 0.0;
-  //return drv->xclGetWriteMaxBandwidthMBps();
   return 0.0;
 }
 
@@ -317,7 +298,6 @@ size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 
 void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots)
 {
-  // TODO: set number of slots on monitor
   return;
 }
 
@@ -329,21 +309,14 @@ uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
 void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
 		                     char* slotName, uint32_t length)
 {
-  // do nothing
   return;
 }
 
 void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type, xclPerfMonEventID id)
 {
-  // Nothing to do (Zynq only in 2017.1)
   return;
 }
 
-//this function returns 1 if it fails reading json file from following locations
-//    1) XCL_EMULATION_CONFIGFILE
-//
-//If config file is present in any of the above locations. This probe function creates all the hw_em device objects and stores in a devices map
-//whenever xclopen is called with specific deviceId , we search this id in the map and returns appropriate device object.
 unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())
@@ -358,7 +331,7 @@ unsigned xclProbe()
   getDevicesInfo(devicesInfo);
   
   if(devicesInfo.size() == 0)
-    return 1;//old behavior
+    return 1;
   
   std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank>, bool, bool > >::iterator start = devicesInfo.begin();
   std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool > >::iterator end = devicesInfo.end();
@@ -373,7 +346,6 @@ unsigned xclProbe()
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 
-  //std::cout<<"number of devices are "<<numDevices<<std::endl;
   return deviceIndex;
 }
 
@@ -409,16 +381,15 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   return drv->xclReadBO(boHandle, dst, size, skip);
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
+unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, uint64_t flags)
 {
-  //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return mNullBO;
   return drv->xclAllocUserPtrBO(userptr,size,flags); 
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)

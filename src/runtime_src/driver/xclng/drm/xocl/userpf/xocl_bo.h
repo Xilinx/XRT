@@ -60,6 +60,8 @@ struct drm_xocl_bo {
 	struct sg_table      *sgt;
 	void                 *vmapping;
 	void                 *bar_vmapping;
+	struct dma_buf			*dmabuf;
+	const struct vm_operations_struct *dmabuf_vm_ops;
 	unsigned              flags;
 	unsigned              type;
 };
@@ -162,5 +164,10 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
+
+int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
+        uint64_t size, u32 write);
+void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd);
 
 #endif

@@ -15,7 +15,6 @@ XOCL_KERNEL_DRV_SRC := \
  driver/xclng/drm/xocl/mgmtpf/Makefile \
  driver/xclng/drm/xocl/xocl_drv.h \
  driver/xclng/drm/xocl/xocl_subdev.c \
- driver/xclng/drm/xocl/xocl_subdev.h \
  driver/xclng/drm/xocl/xocl_ctx.c \
  driver/xclng/drm/xocl/xocl_thread.c \
  driver/xclng/drm/xocl/xocl_test.c \
@@ -38,6 +37,8 @@ XOCL_KERNEL_DRV_SRC := \
  driver/xclng/drm/xocl/lib/Makefile.in \
  driver/xclng/drm/xocl/lib/libqdma/libqdma_export.h \
  driver/xclng/drm/xocl/lib/libqdma/libqdma_export.c \
+ driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h \
+ driver/xclng/drm/xocl/lib/libqdma/libqdma_config.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_descq.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_descq.h \
  driver/xclng/drm/xocl/lib/libqdma/qdma_device.c \
@@ -49,11 +50,13 @@ XOCL_KERNEL_DRV_SRC := \
  driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.h \
  driver/xclng/drm/xocl/lib/libqdma/qdma_sriov.c \
+ driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c \
  driver/xclng/drm/xocl/lib/libqdma/thread.c \
  driver/xclng/drm/xocl/lib/libqdma/thread.h \
  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.h \
  driver/xclng/drm/xocl/lib/libqdma/version.h \
+ driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h \
  driver/xclng/drm/xocl/lib/libqdma/xdev.h \
  driver/xclng/drm/xocl/lib/libqdma/xdev.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.h \
@@ -75,6 +78,7 @@ XOCL_KERNEL_DRV_SRC := \
  driver/xclng/include/mgmt-reg.h  \
  driver/xclng/include/mgmt-ioctl.h  \
  driver/xclng/include/qdma_ioctl.h  \
+ driver/xclng/include/devices.h  \
  driver/xclng/include/drm/drm.h  \
  driver/xclng/include/drm/drm_mode.h \
  driver/include/ert.h \

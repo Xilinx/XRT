@@ -1,0 +1,482 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Embedded Runtime Library &mdash; Xilinx Runtime 2018.2 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="next" title="Multi-Process Support" href="multiprocess.html"/>
+        <link rel="prev" title="Tools and Utilities" href="tools.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2018.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Xilinx Runtime</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Embedded Runtime Library</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/ert.main.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="embedded-runtime-library">
+<h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="c._ERT_H_">
+<code class="descname">_ERT_H_</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c._ERT_H_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<blockquote>
+<div><p>This file is dual licensed.  It may be redistributed and/or modified
+under the terms of the Apache 2.0 License OR version 2 of the GNU
+General Public License.</p>
+<p>Apache License Verbiage</p>
+<p>Licensed under the Apache License, Version 2.0 (the &#8220;License&#8221;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at</p>
+<p><a class="reference external" href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a></p>
+<p>Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#8220;AS IS&#8221; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.</p>
+<p>GPL license Verbiage:</p>
+<p>This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation; either version 2 of the
+License, or (at your option) any later version.  This program is
+distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+License for more details.  You should have received a copy of the
+GNU General Public License along with this program; if not, write
+to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+Boston, MA 02111-1307 USA</p>
+</div></blockquote>
+<dl class="type">
+<dt id="c.ert_packet">
+struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.ert_packet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct ert_packet {
+  union {unnamed_union};
+  uint32_t data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal"><span class="pre">data</span></code></dt>
+<dd>count number of words representing packet payload</dd>
+</dl>
+<dl class="type">
+<dt id="c.ert_start_kernel_cmd">
+struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" href="#c.ert_start_kernel_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct ert_start_kernel_cmd {
+  union {unnamed_union};
+  uint32_t cu_mask;
+  uint32_t data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal"><span class="pre">cu_mask</span></code></dt>
+<dd>first mandatory CU mask</dd>
+<dt><code class="docutils literal"><span class="pre">data</span></code></dt>
+<dd>count number of words representing command payload</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>The packet payload is comprised of 1 mandatory CU mask plus
+extra_cu_masks per header field, followed a CU register map of size
+(count - (1 + extra_cu_masks)) uint32_t words.</p>
+<dl class="type">
+<dt id="c.ert_configure_cmd">
+struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href="#c.ert_configure_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct ert_configure_cmd {
+  union {unnamed_union};
+  uint32_t slot_size;
+  uint32_t num_cus;
+  uint32_t cu_shift;
+  uint32_t cu_base_addr;
+  uint32_t ert:1;
+  uint32_t polling:1;
+  uint32_t cu_dma:1;
+  uint32_t cu_isr:1;
+  uint32_t cq_int:1;
+  uint32_t dsa52:1;
+  uint32_t data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal"><span class="pre">slot_size</span></code></dt>
+<dd>command queue slot size</dd>
+<dt><code class="docutils literal"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
+<dt><code class="docutils literal"><span class="pre">cu_shift</span></code></dt>
+<dd>shift value to convert CU idx to CU addr</dd>
+<dt><code class="docutils literal"><span class="pre">cu_base_addr</span></code></dt>
+<dd>base address to add to CU addr for actual physical address</dd>
+<dt><code class="docutils literal"><span class="pre">ert</span></code></dt>
+<dd>1            enable embedded HW scheduler</dd>
+<dt><code class="docutils literal"><span class="pre">polling</span></code></dt>
+<dd>1        poll for command completion</dd>
+<dt><code class="docutils literal"><span class="pre">cu_dma</span></code></dt>
+<dd>1         enable CUDMA custom module for HW scheduler</dd>
+<dt><code class="docutils literal"><span class="pre">cu_isr</span></code></dt>
+<dd>1         enable CUISR custom module for HW scheduler</dd>
+<dt><code class="docutils literal"><span class="pre">cq_int</span></code></dt>
+<dd>1         enable interrupt from host to HW scheduler</dd>
+<dt><code class="docutils literal"><span class="pre">dsa52</span></code></dt>
+<dd>1          reserved for internal use</dd>
+<dt><code class="docutils literal"><span class="pre">data</span></code></dt>
+<dd>addresses of <strong>num_cus</strong> CUs</dd>
+</dl>
+<dl class="type">
+<dt id="c.ert_abort_cmd">
+struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c.ert_abort_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct ert_abort_cmd {
+  union {unnamed_union};
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+</dl>
+<dl class="function">
+<dt id="c.ERT_WORD_SIZE">
+<code class="descname">ERT_WORD_SIZE</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_WORD_SIZE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="function">
+<dt id="c.ERT_STATUS_REGISTER_ADDR">
+<code class="descname">ERT_STATUS_REGISTER_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_STATUS_REGISTER_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>MicroBlaze write, host reads.  MB(W) / HOST(COR)</p>
+<dl class="function">
+<dt id="c.ERT_CU_DMA_ENABLE_ADDR">
+<code class="descname">ERT_CU_DMA_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_DMA_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>on a specific CU.  MB selects a free CU on which the command can
+run, then writes the 1&lt;&lt;CU back to the command slot CU mask and
+writes the slot index to the CU DMA REGISTER.  HW is notified when
+the register is written and now does the DMA transfer of CU regmap
+map from command to CU, while MB continues its work. MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CQ_SLOT_SIZE_ADDR">
+<code class="descname">ERT_CQ_SLOT_SIZE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_SLOT_SIZE_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>configurable per xclbin. MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CU_OFFSET_ADDR">
+<code class="descname">ERT_CU_OFFSET_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_OFFSET_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>example a 64K regmap is 2^16 so 16 is written to the CU_OFFSET_ADDR.
+MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CQ_NUMBER_OF_SLOTS_ADDR">
+<code class="descname">ERT_CQ_NUMBER_OF_SLOTS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_NUMBER_OF_SLOTS_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CU_BASE_ADDRESS_ADDR">
+<code class="descname">ERT_CU_BASE_ADDRESS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_BASE_ADDRESS_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>CU_BASE_ADDRESS is the address of the first CU. MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CQ_BASE_ADDRESS_ADDR">
+<code class="descname">ERT_CQ_BASE_ADDRESS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_BASE_ADDRESS_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>MB(W) / HW(R)</p>
+<dl class="function">
+<dt id="c.ERT_CU_ISR_HANDLER_ENABLE_ADDR">
+<code class="descname">ERT_CU_ISR_HANDLER_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_ISR_HANDLER_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>CU interrupts.  When a CU interrupts (when done), hardware handles
+the interrupt and writes the index of the CU that completed into
+the CU_STATUS_REGISTER (HW(W)/MB(COR)) as a bitmask</p>
+<dl class="function">
+<dt id="c.ERT_CQ_STATUS_ENABLE_ADDR">
+<code class="descname">ERT_CQ_STATUS_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_STATUS_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>MB to indicate the presense of a new command in some slot.  The
+slot index is written to the CQ_STATUS_REGISTER (HOST(W)/MB(R))</p>
+<dl class="function">
+<dt id="c.ERT_NUMBER_OF_CU_ADDR">
+<code class="descname">ERT_NUMBER_OF_CU_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_NUMBER_OF_CU_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>xclbin.  This is an optimization that allows HW to only check CU
+completion on actual CUs.</p>
+<dl class="function">
+<dt id="c.ERT_HOST_INTERRUPT_ENABLE_ADDR">
+<code class="descname">ERT_HOST_INTERRUPT_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_HOST_INTERRUPT_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>When enabled writing to STATUS_REGISTER causes an interrupt in HOST.
+MB(W)</p>
+<dl class="function">
+<dt id="c.ERT_INTC_ADDR">
+<code class="descname">ERT_INTC_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_INTC_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>This value is per hardware BSP (XPAR_INTC_SINGLE_BASEADDR)</p>
+<dl class="function">
+<dt id="c.ERT_CUISR_LUT_ADDR">
+<code class="descname">ERT_CUISR_LUT_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CUISR_LUT_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="function">
+<dt id="c.ERT_INTC_IPR_ADDR">
+<code class="descname">ERT_INTC_IPR_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_INTC_IPR_ADDR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<p><strong>Description</strong></p>
+<p>CU are enabled</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="multiprocess.html" class="btn btn-neutral float-right" title="Multi-Process Support" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="tools.html" class="btn btn-neutral" title="Tools and Utilities" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'2018.2',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

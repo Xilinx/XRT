@@ -18,57 +18,7 @@
  * Copyright (C) 2015 Xilinx, Inc
  */
 
-#include <shim.h>
-
-/*
- * Define GCC version macro so we can use newer C++11 features
- * if possible
- */
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
-
-#if defined (__GNUC__) && !defined(SHIM_UNUSED)
-# define SHIM_UNUSED __attribute__((unused))
-#elif !defined(SHIM_USED)
-# define SHIM_UNUSED
-#endif
-
-#include <cstdio>
-#include <algorithm>
-#include <thread>
-#include <iostream>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#ifndef _WINDOWS
-// TODO: Windows build support
-//   dlfcn.h is a linux only header file
-//   it is included for dlopen and dlsym
-#include <dlfcn.h>
-#endif
-
-
-#include <cstring>
-
-
-#ifdef _WINDOWS
-#define __func__ __FUNCTION__
-#endif
-
-#ifdef _WINDOWS
-#define MAP_FAILED (void *)-1
-#endif
-
-//LMX
-// Note: if we include HI18N.h, we would have to link rdi_common,
-//       and rdi_common has to be compiled for both x86 and arm, we really don't
-//       want to go this route.
-// So we assume lmx is configured to use (narrow) string, so no conversion is needed
-#include "xclbin.h"
-//LMX
-
-
+#include "shim.h"
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
@@ -521,10 +471,8 @@ namespace xclcpuemhal2 {
         if (mLogStream.is_open()) 
         {
           mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
-	}
-	return -1;
-        //sharedliblength = (int)header->m_driverLength;
-        //sharedlib= xclbininmemory + header->m_driverOffset;
+        }
+        return -1;
       }
       else if (!memcmp(xclbininmemory,"xclbin2",7)) {
         auto top = reinterpret_cast<const axlf*>(header);
@@ -645,7 +593,6 @@ namespace xclcpuemhal2 {
   
   uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags)
   {
-    size_t requestedSize =  size; 
     if (mLogStream.is_open()) {
       mLogStream << __func__ <<" , "<<std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
     }
@@ -783,8 +730,6 @@ namespace xclcpuemhal2 {
     }
     dest += seek;
 
-    //_profile_inst->profile_buffer_size(size);
-    //_profile_inst->profile_bus_transfer_bandwidth(size,20,100000000);
     void *handle = this;
 
     unsigned int messageSize = get_messagesize();
@@ -800,8 +745,6 @@ namespace xclcpuemhal2 {
       void* c_src = (((unsigned char*)(src)) + processed_bytes);
       uint64_t c_dest = dest + processed_bytes;
 #ifndef _WINDOWS
-      // TODO: Windows build support
-      // *_RPC_CALL uses unix_socket
       uint32_t space =0;
       xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,handle,c_dest,c_src,c_size,seek,space);
 #endif
@@ -839,8 +782,6 @@ namespace xclcpuemhal2 {
       void* c_dest = (((unsigned char*)(dest)) + processed_bytes);
       uint64_t c_src = src + processed_bytes;
 #ifndef _WINDOWS
-      // TODO: Windows build support
-      // *_RPC_CALL uses unix_socket
       uint32_t space =0;
       xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,handle,c_dest,c_src,c_size,skip,space);
 #endif
@@ -889,7 +830,7 @@ namespace xclcpuemhal2 {
       std::stringstream cpu_em_folder;
       cpu_em_folder <<deviceDirectory<<"/binary_"<<i;
       char path[FILENAME_MAX];
-      size_t size = MAXPATHLEN;
+      size_t size = PATH_MAX;
       GetCurrentDir(path,size);
       std::string debugFilePath = cpu_em_folder.str()+"/genericpcieoutput";
       std::string destPath = std::string(path) + "/genericpcieoutput_device"+ std::to_string(mDeviceIndex) + "_"+std::to_string(i);
@@ -994,7 +935,7 @@ static int check_bo_user_flags(CpuemShim* dev, unsigned flags)
 	if (flags == 0xffffffff)
 		return 0;
 	
-  ddr = xocl_bo_ddr_idx(flags);
+  ddr = xclemulation::xocl_bo_ddr_idx(flags);
 	if (ddr == 0xffffffff)
 		return 0;
 	
@@ -1004,13 +945,13 @@ static int check_bo_user_flags(CpuemShim* dev, unsigned flags)
 	return 0;
 }
 
-drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
+xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
   if(it == mXoclObjMap.end())
     return nullptr;
 
-  drm_xocl_bo* bo = (*it).second;
+  xclemulation::drm_xocl_bo* bo = (*it).second;
   return bo;
 }
 
@@ -1031,7 +972,7 @@ int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *proper
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return  -1;
@@ -1047,10 +988,10 @@ int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *proper
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-int CpuemShim::xoclCreateBo(xocl_create_bo* info)
+int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
   size_t size = info->size;
-  unsigned ddr = xocl_bo_ddr_idx(info->flags);
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
 
   if (!size)
     return -1;
@@ -1059,7 +1000,7 @@ int CpuemShim::xoclCreateBo(xocl_create_bo* info)
   if (check_bo_user_flags(this, info->flags))
     return -1;
 
-	struct drm_xocl_bo *xobj = new drm_xocl_bo;
+	struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr);
   xobj->size = size;
   xobj->flags = info->flags;
@@ -1071,14 +1012,18 @@ int CpuemShim::xoclCreateBo(xocl_create_bo* info)
   return 0;
 }
 
-unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
+  unsigned flag = flags & 0xFFFFFFFFLL;
+  unsigned type =  (unsigned)(flags >> 32);
+  flag |= type;
+  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   }
-  xocl_create_bo info = {size, mNullBO, flags};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
   int result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
@@ -1086,16 +1031,20 @@ unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
+  unsigned flag = flags & 0xFFFFFFFFLL;
+  unsigned type =  (unsigned)(flags >> 32);
+  flag |= type;
+  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   }
-  xocl_create_bo info = {size, mNullBO, flags};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
   int result = xoclCreateBo(&info);
-  drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;
   }
@@ -1138,7 +1087,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << write << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return nullptr;
@@ -1165,7 +1114,7 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -1202,7 +1151,7 @@ void CpuemShim::xclFreeBO(unsigned int boHandle)
     PRINTENDFUNC;
     return;
   }
-  drm_xocl_bo* bo = (*it).second;;
+  xclemulation::drm_xocl_bo* bo = (*it).second;;
   if(bo)
   {
     xclFreeDeviceBuffer(bo->base);
@@ -1220,7 +1169,7 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< src <<" , "<< size << ", " << seek << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -1240,7 +1189,7 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< dst <<" , "<< size << ", " << skip << std::endl;
   }
-  drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;

@@ -287,16 +287,12 @@ int XSPI_Flasher::xclTestXSpi(int index)
     StatusReg = XSpi_GetStatusReg();
     std::cout << "Reset IP Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
 
-    //  if(!isFlashReady())
-    //  return -1;
-
     //1. Testing idCode reads.
     //--
     std::cout << "Testing id code " << std::endl;
     if(!getFlashId()) {
         std::cout << "Exiting now, as could not get correct idcode" << std::endl;
-        exit(0);
-        return -1;
+        exit(-EOPNOTSUPP);
     }
 
     std::cout << "id code successful (please verify the idcode output too" << std::endl;
@@ -413,7 +409,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
 
             if(!writePage(Addr)) {
                 std::cout << "Write page unsuccessful, returning" << std::endl;
-                return -1;
+                return -ENXIO;
             }
         }
 
@@ -440,7 +436,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
             Addr = baseAddr + WRITE_DATA_SIZE*j;
             if(!readPage(Addr)) {
                 std::cout << "Read page unsuccessful, returning" << std::endl;
-                return -1;
+                return -ENXIO;
             }
         }
         std::cout << "Done reading sector: " << sector << std::endl;
@@ -490,7 +486,7 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(const char *mcsFile, int index) {
             continue;
         }
         if (line[0] != ':') {
-            return -1;
+            return -EINVAL;
         }
         const unsigned dataLen = std::stoi(line.substr(1, 2), 0 , 16);
         const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
@@ -501,14 +497,14 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(const char *mcsFile, int index) {
             if (dataLen > 16) {
                 // For xilinx mcs files data length should be 16 for all records
                 // except for the last one which can be smaller
-                return -1;
+                return -EINVAL;
             }
             if (address != record.mDataCount) {
                 std::cout << "Address is not contiguous ! " << std::endl;
-                return -1;
+                return -EINVAL;
             }
             if (record.mEndAddress != address) {
-                return -1;
+                return -EINVAL;
             }
             record.mDataCount += dataLen;
             record.mEndAddress += dataLen;
@@ -531,10 +527,10 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(const char *mcsFile, int index) {
         case 0x04:
         {
             if (address != 0x0) {
-                return -1;
+                return -EINVAL;
             }
             if (dataLen != 2) {
-                return -1;
+                return -EINVAL;
             }
             std::string newAddress = line.substr(9, dataLen * 2);
             if (startAddress.size()) {
@@ -1150,8 +1146,7 @@ bool XSPI_Flasher::prepareXSpi()
 
     if(!getFlashId()) {
         std::cout << "Exiting now, as could not get correct idcode" << std::endl;
-        exit(0);
-        return false;
+        exit(-EOPNOTSUPP);
     }
 
     //WriteEnable writes CONTROL_REG_START_STATE - that should be enough for initial configuration ?
@@ -1253,14 +1248,14 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record)
             } else
             {
                 if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                    return -1;
+                    return -ENXIO;
                 clearBuffers();
                 {
                     //debug stuff
 #if defined(_debug)
                     if(pageIndex == 0) {
                         if(!readPage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                            return -1;
+                            return -ENXIO;
                         clearBuffers();
                     }
 #endif
@@ -1297,14 +1292,14 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record)
             }
 
             if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                return -1;
+                return -ENXIO;
             nanosleep(&req, 0);
             clearBuffers();
             {
                 //debug stuff
 #if defined(_debug)
                 if(!readPage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                    return -1;
+                    return -ENXIO;
                 clearBuffers();
 #endif
             }
@@ -1325,7 +1320,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream)
 
     if (!prepareXSpi()) {
         std::cout << "ERROR: Unable to prepare the XSpi\n";
-        return -1;
+        return -EINVAL;
     }
 
     //if(!bulkErase())
@@ -1358,7 +1353,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream)
 
         if(!valid_sector) {
             std::cout << "Invalid sector encountered" << std::endl;
-            return -1;
+            return -EINVAL;
         }
 
         //Remove the sector determinant half byte.
@@ -1430,7 +1425,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream)
 
         if (programXSpi(mcsStream, *i)) {
             std::cout << "ERROR: Could not programXSpi the block\n";
-            return -1;
+            return -EINVAL;
         }
         nanosleep(&req, 0);
     }

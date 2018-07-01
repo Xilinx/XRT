@@ -271,12 +271,13 @@ static struct drm_driver mm_drm_driver = {
 	.gem_prime_import_sg_table      = xocl_gem_prime_import_sg_table,
 	.gem_prime_vmap                 = xocl_gem_prime_vmap,
 	.gem_prime_vunmap               = xocl_gem_prime_vunmap,
+	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
 	.gem_prime_export		= drm_gem_prime_export,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid                      = drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,

@@ -32,7 +32,7 @@ class device;
 class compute_unit 
 {
 public:
-  compute_unit(const xclbin::symbol* s, const std::string& n, size_t offset, size_t size, device* d);
+  compute_unit(const xclbin::symbol* s, const std::string& n, device* d);
   ~compute_unit();
 
   unsigned int
@@ -50,22 +50,8 @@ public:
     return m_address;
   }
 
-  size_t
-  get_offset() const
-  {
-    return m_offset;
-  }
-
-  size_t
-  get_size() const
-  {
-    return m_size;
-  }
-
   /**
    * Encode this CU physical address into an index
-   *
-   * The encoding simply right shifts the CU address.
    */
   size_t
   get_index() const
@@ -119,14 +105,19 @@ public:
     return m_symbol;
   }
 
+  unsigned int
+  get_symbol_uid() const
+  {
+    return m_symbol->uid;
+  }
+
+
 private:
   unsigned int m_uid = 0;
   const xclbin::symbol* m_symbol = nullptr;
   std::string m_name;
   device* m_device = nullptr;
   size_t m_address = 0;
-  size_t m_offset = 0;
-  size_t m_size = 0;
   size_t m_index = 0;
 
   // Map CU arg to memory bank indicies. An argument can

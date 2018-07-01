@@ -1,0 +1,14 @@
+TEST_NAME@03_loopback
+OWNER@hemn
+PLATFORMS@all_pcie
+HOST_SRC@main.cpp
+HOST_INC@utils.h
+HOST_FLAGS@-g -std=c++0x -ldl
+KERNEL@loopback
+KERNEL_TYPE@clc
+KERNEL_SRC@kernel.cl
+XCLBIN@kernel
+XCLBIN_REGION@OCL_REGION_0
+XCLBIN_KERNELS@loopback
+RUN_ARGS@-k kernel.xclbin
+FLOWS@hw_all
