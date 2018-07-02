@@ -67,7 +67,7 @@
  * 10   Obtain device usage statistics         DRM_IOCTL_XOCL_USAGE_STAT      drm_xocl_usage_stat
  * 11   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
- * 12   Write device buffer to peer FPGA       DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ * 12   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  *      buffer
  * ==== ====================================== ============================== ==================================
  */
