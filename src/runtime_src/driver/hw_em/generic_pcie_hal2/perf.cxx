@@ -229,8 +229,8 @@ namespace xclhwemhal2 {
     // TODO: support other profiling
     if (type != XCL_PERF_MON_MEMORY && type != XCL_PERF_MON_ACCEL)
       return 0;
-      bool accel = (type==XCL_PERF_MON_ACCEL) ? true : false;
-      uint32_t no_of_final_samples = 0;
+    bool accel = (type==XCL_PERF_MON_ACCEL) ? true : false;
+    uint32_t no_of_final_samples = 0;
 
     if(tracecount_calls < xclemulation::config::getInstance()->getMaxTraceCount())
     {

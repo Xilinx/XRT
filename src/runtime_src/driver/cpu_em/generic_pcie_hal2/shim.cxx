@@ -831,10 +831,13 @@ namespace xclcpuemhal2 {
       cpu_em_folder <<deviceDirectory<<"/binary_"<<i;
       char path[FILENAME_MAX];
       size_t size = PATH_MAX;
-      GetCurrentDir(path,size);
-      std::string debugFilePath = cpu_em_folder.str()+"/genericpcieoutput";
-      std::string destPath = std::string(path) + "/genericpcieoutput_device"+ std::to_string(mDeviceIndex) + "_"+std::to_string(i);
-      systemUtil::makeSystemCall(debugFilePath, systemUtil::systemOperation::COPY,destPath);
+      char* pPath = GetCurrentDir(path,size);
+      if(pPath)
+      {
+        std::string debugFilePath = cpu_em_folder.str()+"/genericpcieoutput";
+        std::string destPath = std::string(path) + "/genericpcieoutput_device"+ std::to_string(mDeviceIndex) + "_"+std::to_string(i);
+        systemUtil::makeSystemCall(debugFilePath, systemUtil::systemOperation::COPY,destPath);
+      }
     }
 
   }

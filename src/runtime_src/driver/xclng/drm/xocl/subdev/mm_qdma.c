@@ -162,10 +162,11 @@ static void free_channels(struct platform_device *pdev)
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			continue;
+			return;
 		}
-		devm_kfree(&pdev->dev, chan);
 	}
+	devm_kfree(&pdev->dev, mdev->chans[0]);
+	devm_kfree(&pdev->dev, mdev->chans[1]);
 }
 
 static int set_max_chan(struct platform_device *pdev, u32 count)

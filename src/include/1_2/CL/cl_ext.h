@@ -232,7 +232,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clIcdGetPlatformIDsKHR_fn)(
 
 
 /**
- * Aquire the device address associated with a cl_mem buffer on 
+ * Aquire the device address associated with a cl_mem buffer on
  * a specific device.
  *
  * CL_INVALID_MEM_OBJECT: if mem is not a valid buffer object,
@@ -361,67 +361,27 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 #define CL_MEM_EXT_PTR_XILINX                       (1 << 31)
 
 typedef struct{
-  unsigned flags;
+  unsigned flags; //Top 8 bits reserved.
   void *obj;
   void *param;
 } cl_mem_ext_ptr_t;
 
 //valid flags in above
-//#define XCL_MEM_EXT_PROGRAM_BUFFER      (1<<0)
-//#define XCL_MEM_EXT_PROGRAM_PIPE        (1<<1)
-//#define XCL_MEM_EXT_P2P_BUFFER          (1<<2)
-//#define XCL_MEM_DDR_BANK0               (1<<8)
-//#define XCL_MEM_DDR_BANK1               (1<<9)
-//#define XCL_MEM_DDR_BANK2               (1<<10)
-//#define XCL_MEM_DDR_BANK3               (1<<11)
 #define XCL_MEM_DDR_BANK0               (1<<0)
 #define XCL_MEM_DDR_BANK1               (1<<1)
 #define XCL_MEM_DDR_BANK2               (1<<2)
 #define XCL_MEM_DDR_BANK3               (1<<3)
 
-//--- This will match up with index in mem_topology section --
-#define XCL_BANK0                       (1<<0)
-#define XCL_BANK1                       (1<<1)
-#define XCL_BANK2                       (1<<2)
-#define XCL_BANK3                       (1<<3)
-#define XCL_BANK4                       (1<<4)
-#define XCL_BANK5                       (1<<5)
-#define XCL_BANK6                       (1<<6)
-#define XCL_BANK7                       (1<<7)
-#define XCL_BANK8                       (1<<8)
-#define XCL_BANK9                       (1<<9)
-#define XCL_BANK10                      (1<<10)
-#define XCL_BANK11                      (1<<11)
-#define XCL_BANK12                      (1<<12)
-#define XCL_BANK13                      (1<<13)
-#define XCL_BANK14                      (1<<14)
-#define XCL_BANK15                      (1<<15)
-#define XCL_BANK16                      (1<<16)
-#define XCL_BANK17                      (1<<17)
-#define XCL_BANK18                      (1<<18)
-#define XCL_BANK19                      (1<<19)
-#define XCL_BANK20                      (1<<20)
-#define XCL_BANK21                      (1<<21)
-#define XCL_BANK22                      (1<<22)
-#define XCL_BANK23                      (1<<23)
-#define XCL_BANK24                      (1<<24)
-#define XCL_BANK25                      (1<<25)
-#define XCL_BANK26                      (1<<26)
-#define XCL_BANK27                      (1<<27)
-#define XCL_BANK28                      (1<<28)
-#define XCL_BANK29                      (1<<29)
-#define XCL_BANK30                      (1<<30)
-#define XCL_BANK31                      (1<<31)
-//----
-
+//-- 8 reserved bits of flags in cl_mem_ext_ptr_t
+#define XCL_MEM_LEGACY                  0x0
+#define XCL_MEM_TOPOLOGY                (1<<31)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
-
 
 //cl_program_info
 //accepted by the <flags> paramete of clGetProrgamInfo
 #define CL_PROGRAM_BUFFERS_XILINX       0x1180
 
-// cl_kernel_info 
+// cl_kernel_info
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
 

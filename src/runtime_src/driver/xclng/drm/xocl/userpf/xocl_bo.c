@@ -124,7 +124,6 @@ void xocl_free_bo(struct drm_gem_object *obj)
 
 	if (xobj->dmabuf) {
 		unmap_mapping_range(xobj->dmabuf->file->f_mapping, 0, 0, 1);
-		dma_buf_put(xobj->dmabuf);
 	}
 
 	if (xobj->pages) {
@@ -342,7 +341,8 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_mm_update_usage_stat(xdev, ddr, xobj->base.size, 1);
 	mutex_unlock(&xdev->mm_lock);
 	/* Record the DDR we allocated the buffer on */
-	xobj->flags |= (1 << ddr);
+	//xobj->flags |= (1 << ddr);
+	xobj->flags = ddr;
 
 	return xobj;
 out2:
@@ -440,10 +440,10 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
 	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
 
-	//Only one bit should be set in ddr. Other bits are now in "type"
-	if (hweight_long(ddr) > 1)
-		return -EINVAL;
-//	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
+//	//Only one bit should be set in ddr. Other bits are now in "type"
+//	if (hweight_long(ddr) > 1)
+//		return -EINVAL;
+////	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
 //		if (hweight_long(ddr) > 1)
 //			return -EINVAL;
 //	}
@@ -549,7 +549,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned int page_count;
 	struct drm_xocl_userptr_bo *args = data;
 	//unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
-	unsigned ddr = args->flags;
+	//unsigned ddr = args->flags;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
@@ -560,8 +560,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	if (args->type & DRM_XOCL_BO_CMA)
 		return -EINVAL;
 
-	if (args->flags && (hweight_long(ddr) > 1))
-		return -EINVAL;
+//	if (args->flags && (hweight_long(ddr) > 1))
+//		return -EINVAL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, args->type);
 	BO_ENTER("xobj %p", xobj);
