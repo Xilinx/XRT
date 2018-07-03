@@ -415,6 +415,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
+	MAILBOX_REQ_RESET_BEGIN,
+	MAILBOX_REQ_RESET_END,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -439,7 +441,7 @@ struct xocl_mailbox_funcs {
 		void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*init_hw)(void *base);
+	int (*reset)(struct platform_device *pdev, bool end_of_reset);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -457,8 +459,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
-#define	xocl_mailbox_init_hw(xdev, base)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->init_hw(base) : -ENODEV)
+#define	xocl_mailbox_reset(xdev, end)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
+	end) : -ENODEV)
 
 struct xocl_icap_funcs {
 	int (*freeze_axi_gate)(struct platform_device *pdev);

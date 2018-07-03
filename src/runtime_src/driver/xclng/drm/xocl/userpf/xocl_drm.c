@@ -288,6 +288,32 @@ static struct drm_driver mm_drm_driver = {
 	.patchlevel			= XOCL_DRIVER_PATCHLEVEL,
 };
 
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err)
+{
+	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
+	struct mailbox_req *req = (struct mailbox_req *)data;
+	int ret = 0;
+
+	if (err != 0)
+		return;
+
+	userpf_info(xdev, "received request (%d) from peer\n", req->req);
+
+	switch (req->req) {
+	case MAILBOX_REQ_RESET_BEGIN:
+		xocl_reset_notify(xdev->core.pdev, true);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RESET_END:
+		xocl_reset_notify(xdev->core.pdev, false);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	default:
+		break;
+	}
+}
+
 int xocl_drm_init(struct xocl_dev *xdev)
 {
 	struct drm_device	*ddev = NULL;
@@ -350,6 +376,9 @@ int xocl_drm_init(struct xocl_dev *xdev)
 			segment += ddr_size;
 		}
 	}
+
+	/* Launch the mailbox server. */
+        (void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
 	mutex_init(&xdev->stat_lock);
 	mutex_init(&xdev->mm_lock);

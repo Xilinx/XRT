@@ -490,7 +490,7 @@ static int health_check_cb(void *data)
                 ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
 		/* stop user pf */
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, true);
+			xocl_reset(lro, true);
 		}
                 if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
 			mgmt_info(lro, "Issuing pcie hot reset.");
@@ -503,7 +503,7 @@ static int health_check_cb(void *data)
 	        freeAXIGate(lro);
 	        msleep(500);
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, false);
+			xocl_reset(lro, false);
 		}
         }
         mutex_unlock(&lro->busy_mutex);
