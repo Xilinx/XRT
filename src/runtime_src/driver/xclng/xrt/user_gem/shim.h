@@ -35,6 +35,7 @@
 #include <map>
 #include <utility>
 #include <cassert>
+#include <vector>
 
 namespace xocl {
 

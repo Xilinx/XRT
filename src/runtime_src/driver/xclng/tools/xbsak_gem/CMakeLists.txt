@@ -17,6 +17,7 @@ target_link_libraries(xbsak
   xrtcorestatic
   pthread
   rt
+  ${CURSES_LIBRARIES}
   )
 
 install (TARGETS xbsak RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

@@ -472,7 +472,7 @@ void xocl::XOCLShim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
     unsigned long time = xclSysfsGetInt(true, "firewall", "detected_time");
 
     stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
-    for (int i = 0; i < stat.mNumFirewalls; i++) {
+    for (unsigned i = 0; i < stat.mNumFirewalls; i++) {
         stat.mAXIErrorStatus[i].mErrFirewallID = static_cast<xclFirewallID>(i);
     }
 
@@ -541,7 +541,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info)
     info.vcc_bram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
 
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
-    for (int i = 0;
+    for (unsigned i = 0;
         i < std::min(freqs.size(), ARRAY_SIZE(info.ocl_frequency));
         i++) {
         info.ocl_frequency[i] = freqs[i];
@@ -875,7 +875,7 @@ void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
 
     if (!dmaStatStrs.empty()) {
         stat.dma_channel_count = dmaStatStrs.size();
-        for (int i = 0;
+        for (unsigned i = 0;
             i < std::min(dmaStatStrs.size(), ARRAY_SIZE(stat.c2h));
             i++) {
             std::stringstream ss(dmaStatStrs[i]);
@@ -885,7 +885,7 @@ void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
 
     if (!mmStatStrs.empty()) {
         stat.mm_channel_count = mmStatStrs.size();
-        for (int i = 0;
+        for (unsigned i = 0;
             i < std::min(mmStatStrs.size(), ARRAY_SIZE(stat.mm));
             i++) {
             std::stringstream ss(mmStatStrs[i]);
@@ -1259,7 +1259,7 @@ static std::string getSubdevDirName(const std::string& dir,
 
     dp = opendir(dir.c_str());
     if (dp) {
-        while (entry = readdir(dp)) {
+        while ((entry = readdir(dp))) {
             if(strncmp(entry->d_name,
                 subDevName.c_str(), subDevName.size()) == 0) {
                 nm += entry->d_name;

@@ -535,7 +535,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " status \n";
 }
 
-std::unique_ptr<xcldev::device> xcldev::xclGetDevice(int index)
+std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
 {
     try {
         unsigned int count = xclProbe();
@@ -602,7 +602,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
 int xcldev::xclTop(int argc, char *argv[])
 {
     int interval = 1;
-    int index = 0;
+    unsigned index = 0;
     int c;
     const std::string usage("Options: [-d index] [-i <interval>]");
     struct topThreadCtrl ctrl = { 0 };
@@ -613,7 +613,7 @@ int xcldev::xclTop(int argc, char *argv[])
             interval = std::atoi(optarg);
             break;
         case 'd':
-            index = std::atoi(optarg);
+            index = (unsigned)std::atoi(optarg);
             break;
         default:
             std::cerr << usage << std::endl;
