@@ -43,6 +43,7 @@ RH_LIST=(\
      protobuf-devel \
      protobuf-compiler \
      protobuf-static \
+     ncurses-devel \
      )
 
 UB_LIST=(\
@@ -82,6 +83,7 @@ UB_LIST=(\
      curl \
      libprotoc-dev \
      protobuf-compiler \
+     libncurses5-dev \
 )
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
