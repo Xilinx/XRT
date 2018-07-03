@@ -42,6 +42,7 @@ RH_LIST=(\
      curl \
      protobuf-devel \
      protobuf-compiler \
+     protobuf-static \
      )
 
 UB_LIST=(\
