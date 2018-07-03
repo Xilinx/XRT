@@ -56,6 +56,13 @@
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
 #define MAX_DEPS        8
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#define XOCL_DRM_FREE_MALLOC
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+#define XOCL_DRM_FREE_MALLOC
+#endif
+#endif
 
 struct xocl_dev	{
 	struct xocl_dev_core	core;
