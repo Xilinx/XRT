@@ -163,7 +163,7 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf);
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);

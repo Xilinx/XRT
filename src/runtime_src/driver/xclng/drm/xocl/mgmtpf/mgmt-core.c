@@ -202,8 +202,8 @@ failed:
 	return ret;
 }
 
-static void fill_pcie_link_info(struct xclmgmt_dev *lro,
-	struct xclmgmt_ioc_info *obj)
+void get_pcie_link_info(struct xclmgmt_dev *lro,
+	unsigned short *link_width, unsigned short *link_speed)
 {
 	u16 stat;
 	long result;
@@ -211,13 +211,12 @@ static void fill_pcie_link_info(struct xclmgmt_dev *lro,
 	result = pcie_capability_read_word(lro->core.pdev, PCI_EXP_LNKSTA,
 		&stat);
 	if (result) {
+		*link_width = *link_speed = 0;
 		mgmt_err(lro, "Read pcie capability failed");
 		return;
 	}
-	obj->pcie_link_width =
-		(stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
-	obj->pcie_link_speed =
-		stat & PCI_EXP_LNKSTA_CLS;
+	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
+	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
@@ -264,7 +263,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->vcc_bram = val;
 
 	fill_frequency_info(lro, obj);
-	fill_pcie_link_info(lro, obj);
+	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed);
 }
 
 /* maps the PCIe BAR into user space for memory-like access using mmap() */

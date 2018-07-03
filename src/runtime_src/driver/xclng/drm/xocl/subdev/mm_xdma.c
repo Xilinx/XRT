@@ -180,6 +180,32 @@ static struct xocl_mm_dma_funcs mm_ops = {
 	.get_chan_stat = get_channel_stat,
 };
 
+static ssize_t channel_stat_raw_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	u32 i;
+	ssize_t nbytes = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 chs = get_channel_count(pdev);
+
+	for (i = 0; i < chs; i++) {
+		nbytes += sprintf(buf + nbytes, "%llu %llu\n",
+			get_channel_stat(pdev, i, 0),
+			get_channel_stat(pdev, i, 1));
+	}
+	return nbytes;
+}
+static DEVICE_ATTR_RO(channel_stat_raw);
+
+static struct attribute *xdma_attrs[] = {
+	&dev_attr_channel_stat_raw.attr,
+	NULL,
+};
+
+static struct attribute_group xdma_attr_group = {
+	.attrs = xdma_attrs,
+};
+
 static int mm_dma_probe(struct platform_device *pdev)
 {
 	struct xocl_mm_device	*mdev = NULL;
@@ -194,6 +220,12 @@ static int mm_dma_probe(struct platform_device *pdev)
 	if (!mdev) {
 		xocl_err(&pdev->dev, "alloc mm dev failed");
 		ret = -ENOMEM;
+		goto failed;
+	}
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &xdma_attr_group);
+	if (ret) {
+		xocl_err(&pdev->dev, "create attrs failed: %d", ret);
 		goto failed;
 	}
 
@@ -227,6 +259,8 @@ static int mm_dma_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &xdma_attr_group);
 
 	if (mdev->channel_usage[0])
 		devm_kfree(&pdev->dev, mdev->channel_usage[0]);
