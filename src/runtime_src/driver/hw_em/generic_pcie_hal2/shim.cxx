@@ -1058,48 +1058,51 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::string fileName = it.second;
       char path[FILENAME_MAX];
       size_t size = MAXPATHLEN;
-      GetCurrentDir(path,size);
+      char* pPath = GetCurrentDir(path,size);
 
-      // Copy waveform database
-      std::string extension = "wdb";
-      struct stat statBuf;
-      if ( stat(std::string(binaryDirectory+ "/msim").c_str(), &statBuf) == 0 )
+      if(pPath)
       {
-        extension = "wlf";
+        // Copy waveform database
+        std::string extension = "wdb";
+        struct stat statBuf;
+        if ( stat(std::string(binaryDirectory+ "/msim").c_str(), &statBuf) == 0 )
+        {
+          extension = "wlf";
+        }
+        std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
+        std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
+        systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath);
+
+        // Copy waveform config
+        std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
+        std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
+        systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2);
+
+        // Append to detailed kernel trace data mining results file
+        std::string logFilePath= binaryDirectory + "/sdaccel_profile_kernels.csv";
+        std::string destPath3 = "'" + std::string(path) + "/sdaccel_profile_kernels.csv'";
+        systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3);
+        xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
+
+        // Append to detailed kernel trace "timeline" file
+        std::string traceFilePath = binaryDirectory + "/sdaccel_timeline_kernels.csv";
+        std::string destPath4 = "'" + std::string(path) + "/sdaccel_timeline_kernels.csv'";
+        systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4);
+
+        if (mLogStream.is_open())
+          mLogStream << "appended " << logFilePath << " to " << destPath3 << std::endl;
+
+        // Copy Simulation Log file
+        std::string simulationLogFilePath= binaryDirectory + "/" + "simulate.log";
+        std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
+        systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5);
+
+        // Copy proto inst file
+        std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
+        std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
+        systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6);
+
       }
-      std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
-      std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
-      systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath);
-
-      // Copy waveform config
-      std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
-      std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
-      systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2);
-
-      // Append to detailed kernel trace data mining results file
-      std::string logFilePath= binaryDirectory + "/sdaccel_profile_kernels.csv";
-      std::string destPath3 = "'" + std::string(path) + "/sdaccel_profile_kernels.csv'";
-      systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3);
-      xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
-
-      // Append to detailed kernel trace "timeline" file
-      std::string traceFilePath = binaryDirectory + "/sdaccel_timeline_kernels.csv";
-      std::string destPath4 = "'" + std::string(path) + "/sdaccel_timeline_kernels.csv'";
-      systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4);
-
-      if (mLogStream.is_open())
-        mLogStream << "appended " << logFilePath << " to " << destPath3 << std::endl;
-
-      // Copy Simulation Log file
-      std::string simulationLogFilePath= binaryDirectory + "/" + "simulate.log";
-      std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
-      systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5);
-
-      // Copy proto inst file
-      std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
-      std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
-      systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6);
-
       i++;
     }
     mBinaryDirectories.clear();
@@ -1381,11 +1384,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) {
       char path[FILENAME_MAX];
       size_t size = MAXPATHLEN;
-      GetCurrentDir(path,size);
-      std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
-      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
-      std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
-      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+      char* pPath = GetCurrentDir(path,size);
+      if(pPath)
+      {
+        std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
+        systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
+        std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
+        systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+      }
     }
     bUnified = _unified;
     bXPR = _xpr;
@@ -1567,11 +1573,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
     char path[FILENAME_MAX];
     size_t size = MAXPATHLEN;
-    GetCurrentDir(path,size);
-    std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
-    systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
-    std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
-    systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+    char* pPath = GetCurrentDir(path,size);
+    if(pPath)
+    {
+      std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
+      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
+      std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
+      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
+    }
     if ( logfileName && (logfileName[0] != '\0')) 
     {
       mLogStream.open(logfileName);

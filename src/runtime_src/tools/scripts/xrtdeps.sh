@@ -40,6 +40,8 @@ RH_LIST=(\
      strace \
      unzip \
      curl \
+     protobuf-devel \
+     protobuf-compiler \
      )
 
 UB_LIST=(\
@@ -77,6 +79,8 @@ UB_LIST=(\
      unzip \
      uuid-dev \
      curl \
+     libprotoc-dev \
+     protobuf-compiler \
 )
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`

@@ -45,7 +45,7 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD	:= $(shell pwd)
 
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include
+XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include -I${ROOT}/../../xrt/user_gem -I${ROOT}/../../../../
 
 ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX
 

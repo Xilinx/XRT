@@ -590,6 +590,7 @@ static long stream_ioctl_alloc_buffer(struct str_device *sdev,
 
 	flags = O_CLOEXEC | O_RDWR;
 
+	drm_gem_object_reference(&xobj->base);
 	dmabuf = drm_gem_prime_export(xdev->ddev, &xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&sdev->pdev->dev, "failed to export dma_buf");

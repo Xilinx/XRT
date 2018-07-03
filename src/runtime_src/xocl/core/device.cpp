@@ -435,17 +435,26 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
-  auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc()) {
-    auto bank = myctz(flag);
-    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+  if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
+	  && xdevice->hasBankAlloc())
+  {
+    //Extension flags were passed. Get the extension flags.
+    //First 8 bits will indicate legacy/mem_topology etc. 
+    //Rest 24 bits directly indexes into mem topology section OR.
+    //have legacy one-hot encoding.
+    auto flag = mem->get_ext_flags();
+    int32_t memidx = 0;
+    if(flag & XCL_MEM_TOPOLOGY) {
+      memidx = flag & 0xffffff;
+    }else {
+      flag = flag & 0xffffff;
+      auto bank = myctz(flag);
+      memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+      if(memidx==-1){
+        memidx = bank;
+      }
+    }
 
-    // HBM support does not use bank tag, host code must use proper enum value
-    if(memidx==-1)
-      memidx = bank;
-
-    // Determine the bank number for the buffers
     try {
       auto boh = alloc(mem,memidx);
       XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
@@ -454,6 +463,26 @@ allocate_buffer_object(memory* mem)
     catch (const std::bad_alloc&) {
     }
   }
+
+//  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
+//  auto flag = (mem->get_ext_flags()) & 0xffffff;
+//  if (flag && xdevice->hasBankAlloc()) {
+//    auto bank = myctz(flag);
+//    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+//
+//    // HBM support does not use bank tag, host code must use proper enum value
+//    if(memidx==-1)
+//      memidx = bank;
+//
+//    // Determine the bank number for the buffers
+//    try {
+//      auto boh = alloc(mem,memidx);
+//      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
+//      return boh;
+//    }
+//    catch (const std::bad_alloc&) {
+//    }
+//  }
 
   // If buffer could not be allocated on the requested bank,
   // or if no bank was specified, then allocate on the bank
