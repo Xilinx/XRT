@@ -40,6 +40,8 @@ RH_LIST=(\
      strace \
      unzip \
      curl \
+     protobuf-devel \
+     protobuf-compiler \
      )
 
 UB_LIST=(\

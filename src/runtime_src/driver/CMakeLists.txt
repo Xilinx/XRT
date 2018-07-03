@@ -1,5 +1,5 @@
 add_subdirectory(include)
 add_subdirectory(xclng)
-add_subdirectory(common_em)
-add_subdirectory(cpu_em)
-add_subdirectory(hw_em)
+#add_subdirectory(common_em)
+#add_subdirectory(cpu_em)
+#add_subdirectory(hw_em)
