@@ -37,7 +37,7 @@ all : $(EXENAME)
 	$(CXX) $(CXXFLAGS) $(MYCFLAGS) $(MYCXXFLAGS) -c -MM $< -o $(patsubst %.o, %.d, $@)
 
 $(EXENAME): $(OBJS) $(HAL_LIBNAME)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(HAL_LIBNAME) -lrt
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(HAL_LIBNAME) -lrt -lncurses
 
 clean:
 	rm -rf *.o *.d $(EXENAME)

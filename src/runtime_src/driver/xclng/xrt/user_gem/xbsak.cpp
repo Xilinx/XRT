@@ -16,6 +16,10 @@
  * under the License.
  */
 
+#include <thread>
+#include <chrono>
+#include <curses.h>
+
 #include "xbsak.h"
 #include "shim.h"
 #include <linux/limits.h>
@@ -65,6 +69,10 @@ int xcldev::xclXbsak(int argc, char *argv[])
         std::string path = std::string( buf ).substr( 0, found );
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
+
+    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
+        return xclTop(argc - 1, &argv[1]);
+    }
 
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
@@ -525,4 +533,127 @@ void xcldev::printHelp(const std::string& exe)
 //    std::cout << "  " << exe << " dd -d0 --of=out.txt --bs=16 --count=32 --skip=64\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
+}
+
+std::unique_ptr<xcldev::device> xcldev::xclGetDevice(int index)
+{
+    try {
+        unsigned int count = xclProbe();
+        if (count == 0) {
+            std::cout << "ERROR: No devices found" << std::endl;
+        } else if (index >= count) {
+            std::cout << "ERROR: Device index " << index << " out of range";
+            std::cout << std::endl;
+        } else {
+            return std::unique_ptr<xcldev::device>
+                (new xcldev::device(index, nullptr));
+        }
+    }
+    catch (const std::exception& ex) {
+        std::cout << "ERROR: " << ex.what() << std::endl;
+    }
+
+    return std::unique_ptr<xcldev::device>(nullptr);
+}
+
+struct topThreadCtrl {
+    int interval;
+    std::unique_ptr<xcldev::device> dev;
+    bool quit;
+    int status;
+};
+
+static void topPrintUsage(xclDeviceUsage& devstat)
+{
+    printw("\nTotal DMA Transfer Metrics:\n");
+    for (unsigned i = 0; i < devstat.dma_channel_cnt; i++) {
+        printw("  Chan[%d].h2c:  %llu KB\n", i, devstat.h2c[i] / 1024);
+        printw("  Chan[%d].c2h:  %llu KB\n", i, devstat.c2h[i] / 1024);
+    }
+
+    printw("\nDevice Memory Usage:\n");
+    for (unsigned i = 0; i < devstat.mm_channel_cnt; i++) {
+        printw("  Bank[%d].mem:  %llu KB\n", i, devstat.ddrMemUsed[i] / 1024);
+        printw("  Bank[%d].bo:  %llu\n", i, devstat.ddrBOAllocated[i]);
+    }
+}
+
+static void topThreadFunc(struct topThreadCtrl *ctrl)
+{
+    int i = 0;
+
+    while (!ctrl->quit) {
+        if ((i % ctrl->interval) == 0) {
+            xclDeviceUsage devstat;
+            int result = ctrl->dev->usageInfo(devstat);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            clear();
+            topPrintUsage(devstat);
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        i++;
+    }
+}
+
+int xcldev::xclTop(int argc, char *argv[])
+{
+    int interval = 1;
+    int index = 0;
+    int c;
+    const std::string usage("Options: [-d index] [-i <interval>]");
+    struct topThreadCtrl ctrl = { 0 };
+
+    while ((c = getopt(argc, argv, "d:i:")) != -1) {
+        switch (c) {
+        case 'i':
+            interval = std::atoi(optarg);
+            break;
+        case 'd':
+            index = std::atoi(optarg);
+            break;
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }
+    }
+
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    ctrl.interval = interval;
+
+    ctrl.dev = xcldev::xclGetDevice(index);
+    if (!ctrl.dev) {
+        return -ENOENT;
+    }
+
+    std::cout << "top interval is " << interval << std::endl;
+
+    initscr();
+    cbreak();
+    noecho();
+
+    std::thread t(topThreadFunc, &ctrl);
+
+    // Waiting for and processing control command from stdin
+    while (!ctrl.quit) {
+        switch (getch()) {
+        case 'q':
+        case ERR:
+            ctrl.quit = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    t.join();
+    endwin();
+    return ctrl.status;
 }

@@ -785,10 +785,16 @@ public:
         }
         return 0;
     }
+
+    int usageInfo(xclDeviceUsage& devstat) const {
+        return xclGetUsageInfo(m_handle, &devstat);
+    }
 };
 
 void printHelp(const std::string& exe);
 int xclXbsak(int argc, char *argv[]);
+int xclTop(int argc, char *argv[]);
+std::unique_ptr<xcldev::device> xclGetDevice(int index);
 
 } // end namespace xcldev
 

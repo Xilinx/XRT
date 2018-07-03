@@ -917,6 +917,8 @@ int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
         info->ddrMemUsed[i] = stat.mm[i].memory_usage;
         info->ddrBOAllocated[i] = stat.mm[i].bo_count;
     }
+    info->dma_channel_cnt = stat.dma_channel_count;
+    info->mm_channel_cnt = stat.mm_channel_count;
     return 0;
 }
 
