@@ -22,6 +22,7 @@
 #include "xocl/core/execution_context.h"
 #include "xrt/util/config_reader.h"
 
+#include "xdp/profile/profile.h"
 #include "xdp/profile/rt_profile.h"
 #include "xdp/profile/rt_profile_writers.h"
 #include "xdp/profile/rt_profile_xocl.h"
@@ -69,6 +70,9 @@ namespace XCL {
     Platform = xocl::get_shared_platform();
 
     appdebug::register_xocl_appdebug_callbacks();
+    if (applicationProfilingOn()) {
+      XCL::register_xocl_profile_callbacks();
+    }
 #ifdef PMD_OCL
     return;
 #endif

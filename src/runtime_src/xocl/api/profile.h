@@ -37,7 +37,55 @@ class xclbin;
 
 namespace profile {
 
-bool isProfilingOn();
+/*
+ * callback function types called from within action_ lambdas
+*/
+using cb_action_ndrange_type = std::function<void (xocl::event* event,cl_int status,const std::string& cu_name, cl_kernel kernel,
+                                                   std::string kname, std::string xname, size_t workGroupSize,
+                                                   const size_t* globalWorkDim, const size_t* localWorkDim, unsigned int programId)>;
+using cb_action_read_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
+                                          uint64_t address, const std::string& bank)>;
+using cb_action_map_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
+                                               uint64_t address, const std::string& bank, cl_map_flags map_flags)>;
+using cb_action_write_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
+                                               uint64_t address, const std::string& bank)>;
+using cb_action_unmap_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
+                                                 uint64_t address, const std::string& bank)>;
+using cb_action_ndrange_migrate_type = std::function <void (xocl::event* event,cl_int status, cl_mem mem0,
+                                                      size_t totalSize, uint64_t address, const std::string & bank)>;
+using cb_action_migrate_type = std::function< void (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
+                                                    const std::string & bank, cl_mem_migration_flags flags)>;
+
+/*
+ * callback function types for function logging, dependency ...
+ */
+
+using cb_log_function_start_type = std::function<void(const char* functionName, long long queueAddress)>;
+using cb_log_function_end_type = std::function<void(const char* functionName, long long queueAddress)>;
+using cb_log_dependencies_type = std::function<void(xocl::event* event,  cl_uint num_deps, const cl_event* deps)>;
+using cb_add_to_active_devices_type = std::function<void (const std::string& device_name)>;
+using cb_set_kernel_clock_freq_type = std::function<void(const std::string& device_name, unsigned int freq)>;
+using cb_reset_type = std::function<void(const xocl::xclbin&)>;
+using cb_init_type = std::function<void(void)>;
+
+/*
+ * callback registration functions called from profile
+*/
+void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
+void register_cb_action_read  (cb_action_read_type&& cb);
+void register_cb_action_map (cb_action_map_type&& cb);
+void register_cb_action_write (cb_action_write_type&& cb);
+void register_cb_action_unmap (cb_action_unmap_type&& cb);
+void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
+void register_cb_action_migrate (cb_action_migrate_type&& cb);
+
+void register_cb_log_function_start (cb_log_function_start_type&& cb);
+void register_cb_log_function_end (cb_log_function_end_type&& cb);
+void register_cb_log_dependencies(cb_log_dependencies_type && cb);
+void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
+void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
+void register_cb_reset(cb_reset_type && cb);
+void register_cb_init (cb_init_type && cb);
 
 void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
 
