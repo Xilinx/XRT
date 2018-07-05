@@ -41,7 +41,7 @@
 #define	BO_DEBUG(fmt, args...)
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)
 {
 	kvfree(ptr);

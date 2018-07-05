@@ -247,7 +247,7 @@ public:
             if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
                 return -EBUSY;
             }
-        }        
+        }
         return 0;
     }
 
@@ -785,12 +785,17 @@ public:
         }
         return 0;
     }
+
+    int usageInfo(xclDeviceUsage& devstat) const {
+        return xclGetUsageInfo(m_handle, &devstat);
+    }
 };
 
 void printHelp(const std::string& exe);
 int xclXbsak(int argc, char *argv[]);
+int xclTop(int argc, char *argv[]);
+std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 
 } // end namespace xcldev
 
 #endif /* XBSAK_H */
-

@@ -599,8 +599,6 @@ static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 	u32 val;
 	struct icap *icap;
 	
-	printk(KERN_INFO "Inside icap_ocl_set_freqscaling\n");
-
 	icap = platform_get_drvdata(pdev);
 
 	/* Can only be done from mgmt pf. */
@@ -635,7 +633,6 @@ static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 
 	mutex_unlock(&icap->icap_lock);
 
-	printk(KERN_INFO "Exiting icap_ocl_set_freqscaling\n");
 	return err;
 }
 static char* icap_ocl_get_clock_freq_topology(struct platform_device *pdev)
@@ -652,10 +649,6 @@ static int icap_ocl_get_freqscaling(struct platform_device *pdev,
 {
 	int i;
 	struct icap *icap = platform_get_drvdata(pdev);
-
-	/* Can only be done from mgmt pf. */
-	if (!ICAP_PRIVILEGED(icap))
-		return -EPERM;
 
 	/* For now, only PR region 0 is supported. */
 	if (region != 0)
@@ -702,7 +695,7 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 	const char __user *buffer, unsigned long length)	
 {
 	int err;
-	printk(KERN_INFO "In clock freq topology\n");
+
 	if (length == 0)
 		return 0;
 
@@ -1781,37 +1774,46 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 };
 
-
 static ssize_t clock_freq_topology_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct icap *icap;
-	printk(KERN_INFO "In clock freq topology_show \n");
+
 	icap = platform_get_drvdata(to_platform_device(dev));
 	memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
 	return icap->icap_clock_freq_topology_length;
 }
-
 static DEVICE_ATTR_RO(clock_freq_topology);
+
+static ssize_t clock_freqs_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+	int i;
+
+	mutex_lock(&icap->icap_lock);
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+		unsigned freq = icap_get_ocl_frequency(icap, i);
+		if (freq == 0)
+			break; /* No more clocks. */
+		cnt += sprintf(buf + cnt, "%d\n", freq);
+	}
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(clock_freqs);
 
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freq_topology.attr,
+	&dev_attr_clock_freqs.attr,
 	NULL,
 };
 
 static struct attribute_group icap_attr_group = {
 	.attrs = icap_attrs,
 };
-
-static int mgmt_sysfs_create_icap(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct icap *icap = platform_get_drvdata(pdev);
-	ret = sysfs_create_group(&pdev->dev.kobj, &icap_attr_group);
-	if (ret)
-		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
-	return ret;
-}
 
 static int icap_remove(struct platform_device *pdev)
 {
@@ -1832,7 +1834,7 @@ static int icap_remove(struct platform_device *pdev)
 	free_clock_freq_topology(icap);
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
-    	
+
 	ICAP_INFO(icap, "cleaned up successfully");
 	platform_set_drvdata(pdev, NULL);
 
@@ -1904,9 +1906,11 @@ static int icap_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = mgmt_sysfs_create_icap(pdev);
-	if(ret)
+	ret = sysfs_create_group(&pdev->dev.kobj, &icap_attr_group);
+	if (ret) {
+		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
 		goto failed;
+	}
 
 	ICAP_INFO(icap, "successfully initialized");
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);

@@ -415,7 +415,7 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
 	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
 		0, 0, 0);
@@ -471,25 +471,35 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
         memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
 }
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf)
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
+	const char *raw_fmt = "%llu %d\n";
+	struct mem_topology *topo = xdev->topology.topology;
+	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);
-	if (!xdev->topology.topology || !xdev->mm_usage_stat)
+	if (!topo || !stat)
 		goto out;
 
-	for (i = 0; i < xdev->topology.topology->m_count; i++) {
-		const char *state = xdev->topology.topology->m_mem_data[i].m_used ? "on" : "off";
-		count = sprintf(buf, "[%d] %s@0x%llx; (%s); 0x%zx/0x%llx KB; %x BO\n", i,
-				xdev->topology.topology->m_mem_data[i].m_tag,
-				xdev->topology.topology->m_mem_data[i].m_base_address,
-				state,
-				xdev->mm_usage_stat[i].memory_usage/1024,
-				xdev->topology.topology->m_mem_data[i].m_size,
-				xdev->mm_usage_stat[i].bo_count);
+	for (i = 0; i < topo->m_count; i++) {
+		if (raw) {
+			count = sprintf(buf, raw_fmt,
+				stat[i].memory_usage,
+				stat[i].bo_count);
+		} else {
+			count = sprintf(buf, txt_fmt,
+				topo->m_mem_data[i].m_used ?
+					"IN-USE" : "UNUSED",
+				topo->m_mem_data[i].m_tag,
+				topo->m_mem_data[i].m_base_address,
+				topo->m_mem_data[i].m_size / 1024,
+				stat[i].memory_usage / 1024,
+				stat[i].bo_count);
+		}
 		buf += count;
 		size += count;
 	}
