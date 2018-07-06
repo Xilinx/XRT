@@ -70,6 +70,7 @@ namespace XCL {
     Platform = xocl::get_shared_platform();
 
     appdebug::register_xocl_appdebug_callbacks();
+
     if (applicationProfilingOn()) {
       XCL::register_xocl_profile_callbacks();
     }

@@ -79,6 +79,16 @@ cb_reset_type cb_reset;
 cb_init_type cb_init;
 
 /*
+ * callback functions to implementation in Profiling
+ */
+cb_get_device_trace_type cb_get_device_trace;
+cb_get_device_counters_type cb_get_device_counters;
+cb_start_device_profiling_type cb_start_device_profiling;
+cb_reset_device_profiling_type cb_reset_device_profiling;
+cb_end_device_profiling_type cb_end_device_profiling;
+
+
+/*
  * callback registration functions used by lambda generators called from profile
 */
 void register_cb_action_ndrange (cb_action_ndrange_type&& cb)
@@ -143,6 +153,32 @@ void register_cb_reset (cb_reset_type && cb)
 void register_cb_init (cb_init_type && cb)
 {
   cb_init = std::move(cb);
+}
+
+/*
+ * callbacks to functions in "Profiling"
+ */
+void register_cb_get_device_trace (cb_get_device_trace_type&& cb)
+{
+  cb_get_device_trace = std::move(cb);
+}
+void register_cb_get_device_counters (cb_get_device_counters_type&& cb)
+{
+  cb_get_device_counters = std::move(cb);
+}
+void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb)
+{
+  cb_start_device_profiling = std::move(cb);
+}
+
+void register_cb_reset_device_profiling(cb_reset_device_profiling_type&& cb)
+{
+  cb_reset_device_profiling = std::move(cb);
+}
+
+void register_cb_end_device_profiling(cb_end_device_profiling_type&& cb)
+{
+  cb_end_device_profiling = std::move(cb);
 }
 
 void
@@ -381,6 +417,34 @@ init()
 
   if (cb_init)
     cb_init();
+}
+
+void get_device_trace (bool forceReadTrace)
+{
+  if (cb_get_device_trace)
+    cb_get_device_trace (forceReadTrace);
+}
+
+void get_device_counters (bool firstReadAfterProgram, bool forceReadCounters)
+{
+  if (cb_get_device_counters)
+    cb_get_device_counters(firstReadAfterProgram, forceReadCounters);
+}
+
+void start_device_profiling(size_t numComputeUnits)
+{
+  if (cb_start_device_profiling)
+    cb_start_device_profiling(numComputeUnits);
+}
+void reset_device_profiling()
+{
+  if (cb_reset_device_profiling)
+    cb_reset_device_profiling();
+}
+void end_device_profiling()
+{
+  if (cb_end_device_profiling)
+    cb_end_device_profiling();
 }
 
 }}

@@ -69,6 +69,15 @@ using cb_reset_type = std::function<void(const xocl::xclbin&)>;
 using cb_init_type = std::function<void(void)>;
 
 /*
+ * callback functions to implementation in Profiling
+ */
+using cb_get_device_trace_type = std::function<void(bool forceReadTrace)>;
+using cb_get_device_counters_type = std::function<void(bool firstReadAfterProgram, bool forceReadCounters)>;
+using cb_start_device_profiling_type = std::function<void( size_t numComputeUnit)>;
+using cb_reset_device_profiling_type = std::function<void(void)>;
+using cb_end_device_profiling_type = std::function<void(void)>;
+
+/*
  * callback registration functions called from profile
 */
 void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
@@ -86,6 +95,13 @@ void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
 void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
 void register_cb_reset(cb_reset_type && cb);
 void register_cb_init (cb_init_type && cb);
+
+
+void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
+void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
+void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
+void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
+void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
 
 void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
 
@@ -163,6 +179,21 @@ reset(const xocl::xclbin& xclbin);
  */
 void 
 init();
+
+void
+get_device_trace (bool forceReadTrace);
+
+void
+get_device_counters (bool firstReadAfterProgram, bool forceReadCounters);
+
+void
+start_device_profiling(size_t numComputeUnits);
+
+void
+reset_device_profiling();
+
+void
+end_device_profiling();
 
 }} // profile,xocl
 
