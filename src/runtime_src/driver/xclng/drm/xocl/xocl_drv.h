@@ -28,7 +28,7 @@
 #include "xocl_ioctl.h"
 
 #if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,4)
 #define XOCL_UUID
 #endif
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
@@ -475,10 +475,10 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	char* (*ocl_get_clock_freq_topology)(struct platform_device *pdev);
-	int (*ocl_lock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
-	int (*ocl_unlock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
+	int (*ocl_lock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
+	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
