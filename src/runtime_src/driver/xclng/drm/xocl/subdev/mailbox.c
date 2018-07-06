@@ -788,8 +788,7 @@ static void chan_do_rx(struct mailbox_channel *ch)
 				MBX_ERR(mbx,
 					"got unexpected msg start pkt\n");
 				reset_pkt(pkt);
-			}
-			if (pkt->body.msg_start.msg_size >
+			} else if (pkt->body.msg_start.msg_size >
 				ch->mbc_cur_msg->mbm_len) {
 				chan_msg_done(ch, -EMSGSIZE);
 				MBX_ERR(mbx, "received msg is too big");
@@ -808,9 +807,11 @@ static void chan_do_rx(struct mailbox_channel *ch)
 			return;
 		}
 
-		err = chan_pkt2msg(ch);
-		if (err || eom)
-			chan_msg_done(ch, err);
+		if (valid_pkt(pkt)) {
+			err = chan_pkt2msg(ch);
+			if (err || eom)
+				chan_msg_done(ch, err);
+		}
 	}
 
 	/* Handle timer event. */
