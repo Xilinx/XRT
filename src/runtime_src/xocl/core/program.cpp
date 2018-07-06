@@ -22,7 +22,7 @@
 #include "error.h"
 
 #include "xrt/util/memory.h"
-#include "xdp/profile/profiling.h"
+#include "profile.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>
@@ -93,7 +93,7 @@ program(context* ctx, const std::string& source)
   m_context->add_program(this);
   global::add(this);
   // Reset profiling flag
-  Profiling::Profiler::Instance()->resetDeviceProfilingFlag();
+  xocl::profile::reset_device_profiling();
 }
 
 program::
@@ -117,7 +117,7 @@ program::
 
   // Before deleting program, do a final read of counters
   // and force flush of trace buffers
-  Profiling::Profiler::Instance()->endDeviceProfiling();
+  xocl::profile::end_device_profiling();
 
   for(auto d : get_device_range())
     d->unload_program(this);

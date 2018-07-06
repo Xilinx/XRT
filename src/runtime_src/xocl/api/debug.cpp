@@ -16,15 +16,22 @@
 
 #include "debug.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xdp/rt_singleton.h"
 
 namespace xocl { namespace debug {
+
+cb_reset_type cb_reset;
+
+void
+register_cb_reset (cb_reset_type&& cb)
+{
+  cb_reset = std::move(cb);
+}
 
 void
 reset(const xocl::xclbin& xclbin)
 {
-  auto binary = xclbin.binary();
-  XCL::RTSingleton::Instance()->getDebugManager()->reset(binary);
+  if (cb_reset)
+    cb_reset(xclbin);
 }
 
 }} // debug,xocl

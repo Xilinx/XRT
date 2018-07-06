@@ -26,6 +26,7 @@
 
 #include "profile.h"
 #include "xocl/api/profile.h"
+#include "xdp/profile/profiling.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/rt_profile.h"
 #include "xdp/profile/rt_profile_xocl.h"
@@ -580,6 +581,12 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_set_kernel_clock_freq(cb_set_kernel_clock_freq);
   xocl::profile::register_cb_reset(cb_reset);
   xocl::profile::register_cb_init(cb_init);
+
+  xocl::profile::register_cb_get_device_trace(Profiling::cb_get_device_trace);
+  xocl::profile::register_cb_get_device_counters(Profiling::cb_get_device_counters);
+  xocl::profile::register_cb_start_device_profiling(Profiling::cb_start_device_profiling);
+  xocl::profile::register_cb_reset_device_profiling(Profiling::cb_reset_device_profiling);
+  xocl::profile::register_cb_end_device_profiling(Profiling::cb_end_device_profiling);
 }
 }
 
