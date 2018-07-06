@@ -13,4 +13,4 @@ provides software interface to Xilinx FPGA. The key user APIs are defined in
 
 `Test Instructions <src/runtime_src/doc/toc/test.rst>`_
 
-`Comprehensive documentation on xilinx.github.io/XRT <https://xilinx.github.io/XRT>`_
+Comprehensive documentation on `xilinx.github.io/XRT <https://xilinx.github.io/XRT>`_
