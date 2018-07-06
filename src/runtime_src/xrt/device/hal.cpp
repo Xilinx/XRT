@@ -149,7 +149,11 @@ loadHalDevices(hal::device_list& devices, const bfs::path& dir)
   for (bfs::directory_iterator itr(dir);itr!=end;++itr) {
     bfs::path file(itr->path());
     if (isDLL(file))
-      createHalDevices(devices,file.string());
+    {
+      if (!file.filename().compare("libhw_em.so") || !file.filename().compare("libcpu_em.so") || !file.filename().compare("libcommon_em.so"))
+        continue;
+        createHalDevices(devices,file.string());
+    }
   }
 }
 
