@@ -21,7 +21,6 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "xdp/debug/rt_printf_impl.h"
 #include "impl/spir.h"
 
 #include <iostream>
@@ -444,7 +443,7 @@ start()
     size_t lwsz = m_lsize[2];
     size_t gwsx = m_gsize[0];
     size_t gwsy = m_gsize[1];
-    size_t local_buffer_size = lwsx * lwsy * lwsz * XCL::Printf::getWorkItemPrintfBufferSize();
+    size_t local_buffer_size = lwsx * lwsy * lwsz * 2048 /*XCL::Printf::getWorkItemPrintfBufferSize()*/;
     size_t group_x_size = gwsx / lwsx;
     size_t group_y_size = gwsy / lwsy;
     size_t group_id = m_cu_group_id[0] +
