@@ -37,7 +37,7 @@
 
 #include "xrt/util/memory.h"
 
-#include "xdp/debug/rt_printf.h"
+#include "printf/rt_printf.h"
 
 #include <sstream>
 

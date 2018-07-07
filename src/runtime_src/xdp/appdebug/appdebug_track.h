@@ -193,21 +193,21 @@ private:
 inline
 void add_command_queue (xocl::command_queue* cq) {
   if (xrt::config::get_app_debug()) {
-    std::cout << "Adding queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
+    //std::cout << "Adding queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->add_object(static_cast<cl_command_queue>(cq));
   }
 }
 inline
 void remove_command_queue (xocl::command_queue* cq) {
   if (xrt::config::get_app_debug()) {
-    std::cout << "Removing queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
+    //std::cout << "Removing queue xocl: " << std::hex << cq << " cl: " << (static_cast<cl_command_queue>(cq)) << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->remove_object(static_cast<cl_command_queue>(cq));
   }
 }
 inline
 void validate_command_queue (cl_command_queue cq) {
   if (xrt::config::get_app_debug()) {
-    std::cout << "validating queue cl: " << cq << std::endl;
+    //std::cout << "validating queue cl: " << cq << std::endl;
     app_debug_track<cl_command_queue>::getInstance()->validate_object(cq);
   }
   else {
@@ -221,7 +221,7 @@ inline
 void add_event (xocl::event* aEv) {
   if (xrt::config::get_app_debug()) {
     cl_event clEv = aEv;
-    std::cout << "Adding event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
+    //std::cout << "Adding event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
     //app_debug_track<cl_event>::getInstance()->add_object(static_cast<cl_event>(aEv));
     app_debug_track<cl_event>::getInstance()->add_object(clEv);
   }
@@ -231,7 +231,7 @@ void remove_event (xocl::event* aEv) {
   if (xrt::config::get_app_debug()) {
     cl_event clEv = aEv;
     //std::cout << "Removing event: " << std::hex << aEv << std::endl;
-    std::cout << "Removing event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
+    //std::cout << "Removing event xocl " << std::hex << aEv << " cl " << clEv << std::endl;
     //app_debug_track<cl_event>::getInstance()->remove_object(static_cast<cl_event>(aEv));
     app_debug_track<cl_event>::getInstance()->remove_object(clEv);
   }
@@ -239,7 +239,7 @@ void remove_event (xocl::event* aEv) {
 inline
 void validate_event (cl_event aEv) {
   if (xrt::config::get_app_debug()) {
-    std::cout << "Validating event cl " << std::hex << aEv  << std::endl;
+    //std::cout << "Validating event cl " << std::hex << aEv  << std::endl;
     app_debug_track<cl_event>::getInstance()->validate_object(aEv);
   }
   else {
