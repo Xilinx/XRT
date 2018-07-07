@@ -31,7 +31,6 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/mgmtpf/Makefile
   driver/xclng/drm/xocl/xocl_drv.h
   driver/xclng/drm/xocl/xocl_subdev.c
-  driver/xclng/drm/xocl/xocl_subdev.h
   driver/xclng/drm/xocl/xocl_ctx.c
   driver/xclng/drm/xocl/xocl_thread.c
   driver/xclng/drm/xocl/xocl_test.c
@@ -78,6 +77,8 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h
   driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h
   driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_wq.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_wq.h
   driver/xclng/drm/xocl/subdev/feature_rom.c
   driver/xclng/drm/xocl/subdev/mm_xdma.c
   driver/xclng/drm/xocl/subdev/mm_qdma.c

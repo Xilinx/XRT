@@ -51,6 +51,8 @@ XOCL_KERNEL_DRV_SRC := \
  driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.h \
  driver/xclng/drm/xocl/lib/libqdma/qdma_sriov.c \
  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c \
+ driver/xclng/drm/xocl/lib/libqdma/qdma_wq.c \
+ driver/xclng/drm/xocl/lib/libqdma/qdma_wq.h \
  driver/xclng/drm/xocl/lib/libqdma/thread.c \
  driver/xclng/drm/xocl/lib/libqdma/thread.h \
  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.c \

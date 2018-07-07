@@ -62,6 +62,7 @@ struct drm_xocl_bo {
 	void                 *bar_vmapping;
 	struct dma_buf			*dmabuf;
 	const struct vm_operations_struct *dmabuf_vm_ops;
+	unsigned		dma_nsg;
 	unsigned              flags;
 	unsigned              type;
 };
