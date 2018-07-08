@@ -152,7 +152,7 @@ loadHalDevices(hal::device_list& devices, const bfs::path& dir)
     {
       if (!file.filename().compare("libhw_em.so") || !file.filename().compare("libcpu_em.so") || !file.filename().compare("libcommon_em.so"))
         continue;
-        createHalDevices(devices,file.string());
+      createHalDevices(devices,file.string());
     }
   }
 }
@@ -229,7 +229,7 @@ loadDevices()
         hw_em = hw_em_from_xrt;
       }
     }
-    
+
     //give high priority to the driver provided in sdaccel.ini
     std::string hw_em_driver_path = xrt::config::get_hw_em_driver();
     if (!hw_em_driver_path.compare("null"))
@@ -253,7 +253,7 @@ loadDevices()
          sw_em = sw_em_from_xrt;
        }
      }
-     
+
      //give high priority to the driver provided in sdaccel.ini
      std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
      if (!sw_em_driver_path.compare("null"))
@@ -282,5 +282,3 @@ loadDevices()
 }
 
 }} // hal,xcl
-
-
