@@ -28,7 +28,7 @@
 #include "xocl_ioctl.h"
 
 #if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,4)
 #define XOCL_UUID
 #endif
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
@@ -415,6 +415,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
+	MAILBOX_REQ_RESET_BEGIN,
+	MAILBOX_REQ_RESET_END,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -439,7 +441,7 @@ struct xocl_mailbox_funcs {
 		void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*init_hw)(void *base);
+	int (*reset)(struct platform_device *pdev, bool end_of_reset);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -457,8 +459,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
-#define	xocl_mailbox_init_hw(xdev, base)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->init_hw(base) : -ENODEV)
+#define	xocl_mailbox_reset(xdev, end)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
+	end) : -ENODEV)
 
 struct xocl_icap_funcs {
 	int (*freeze_axi_gate)(struct platform_device *pdev);
@@ -472,10 +475,10 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	char* (*ocl_get_clock_freq_topology)(struct platform_device *pdev);
-	int (*ocl_lock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
-	int (*ocl_unlock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
+	int (*ocl_lock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
+	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\

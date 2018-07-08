@@ -226,6 +226,7 @@ struct mailbox_pkt {
 #define MBXCS_BIT_STOP		1
 #define MBXCS_BIT_TICK		2
 #define MBXCS_BIT_CHK_STALL	3
+#define MBXCS_BIT_POLL_MODE	4
 
 struct mailbox_channel;
 typedef	void (*chan_func_t)(struct mailbox_channel *ch);
@@ -246,7 +247,8 @@ struct mailbox_channel {
 	int			mbc_bytes_done;
 	struct mailbox_pkt	mbc_packet;
 
-	struct delayed_work	mbc_timeout_wk;
+	struct timer_list	mbc_timer;
+	bool			mbc_timer_on;
 };
 
 /*
@@ -356,15 +358,48 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-void chan_timer(struct work_struct *work)
+static void chan_timer(unsigned long data)
 {
-	struct mailbox_channel *ch =
-		container_of(work, struct mailbox_channel, mbc_timeout_wk.work);
+	struct mailbox_channel *ch = (struct mailbox_channel *)data;
 
 	MBX_DBG(ch->mbc_parent, "%s tick", ch->mbc_name);
 
 	set_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	complete(&ch->mbc_worker);
+
+	/* We're a periodic timer. */
+	mod_timer(&ch->mbc_timer, jiffies + MAILBOX_TIMER);
+}
+
+static void chan_config_timer(struct mailbox_channel *ch)
+{
+	struct list_head *pos, *n;
+	struct mailbox_msg *msg = NULL;
+	bool on = false;
+
+	mutex_lock(&ch->mbc_mutex);
+
+	if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
+		on = true;
+	} else {
+		list_for_each_safe(pos, n, &ch->mbc_msgs) {
+			msg = list_entry(pos, struct mailbox_msg, mbm_list);
+			if (msg->mbm_req_id == 0)
+			       continue;
+			on = true;
+			break;
+		}
+	}
+
+	if (on != ch->mbc_timer_on) {
+		ch->mbc_timer_on = on;
+		if (on)
+			mod_timer(&ch->mbc_timer, jiffies + MAILBOX_TIMER);
+		else
+			del_timer_sync(&ch->mbc_timer);
+	}
+
+	mutex_unlock(&ch->mbc_mutex);
 }
 
 static void free_msg(struct mailbox_msg *msg)
@@ -438,6 +473,8 @@ void timeout_msg(struct mailbox_channel *ch)
 	}
 
 	mutex_unlock(&ch->mbc_mutex);
+	
+	chan_config_timer(ch);
 
 	if (!list_empty(&l))
 		MBX_ERR(mbx, "found waiting msg time'd out");
@@ -446,11 +483,6 @@ void timeout_msg(struct mailbox_channel *ch)
 		msg = list_entry(pos, struct mailbox_msg, mbm_list);
 		list_del(&msg->mbm_list);
 		msg_done(msg, -ETIME);
-	}
-
-	if (reschedule) {
-		(void) schedule_delayed_work(&ch->mbc_timeout_wk,
-			MAILBOX_TIMER);
 	}
 }
 
@@ -497,12 +529,10 @@ static int chan_msg_enqueue(struct mailbox_channel *ch, struct mailbox_msg *msg)
 		list_add_tail(&msg->mbm_list, &ch->mbc_msgs);
 		msg->mbm_ch = ch;
 		msg->mbm_ttl = MSG_TTL;
-		if (msg->mbm_req_id && !work_busy(&ch->mbc_timeout_wk.work)) {
-			(void) schedule_delayed_work(&ch->mbc_timeout_wk,
-				MAILBOX_TIMER);
-		}
 	}
 	mutex_unlock(&ch->mbc_mutex);
+
+	chan_config_timer(ch);
 
 	return rv;
 }
@@ -592,7 +622,7 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	queue_work(ch->mbc_wq, &ch->mbc_work);
 
 	/* One timer for one channel. */
-	INIT_DELAYED_WORK(&ch->mbc_timeout_wk, chan_timer);
+	setup_timer(&ch->mbc_timer, chan_timer, (unsigned long)ch);
 
 	return 0;
 }
@@ -623,12 +653,12 @@ static void chan_fini(struct mailbox_channel *ch)
 	while ((msg = chan_msg_dequeue(ch, INVALID_MSG_ID)) != NULL)
 		msg_done(msg, -ESHUTDOWN);
 
-	cancel_delayed_work_sync(&ch->mbc_timeout_wk);
+	del_timer_sync(&ch->mbc_timer);
 }
 
 static void chan_recv_pkt(struct mailbox_channel *ch)
 {
-	int i;
+	int i, retry = 10;
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_pkt *pkt = &ch->mbc_packet;
 
@@ -636,6 +666,11 @@ static void chan_recv_pkt(struct mailbox_channel *ch)
 
 	/* Picking up a packet from HW. */
 	for (i = 0; i < PACKET_SIZE; i++) {
+		while ((mailbox_reg_rd(mbx,
+			&mbx->mbx_regs->mbr_status) & STATUS_EMPTY) &&
+			(retry-- > 0))
+			msleep(100);
+
 		*(((u32 *)pkt) + i) =
 			mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_rddata);
 	}
@@ -709,68 +744,81 @@ static void chan_do_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_pkt *pkt = &ch->mbc_packet;
+	bool needs_read = false;
 	u64 id = 0;
 	bool eom;
 	int err;
 	u32 type;
+	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+
+	/* Check if a packet is ready for reading. */
+	if (st == 0xffffffff) {
+		/* Device is still being reset. */
+		needs_read = false;
+	} else if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
+		needs_read = ((st & STATUS_EMPTY) == 0);
+	} else {
+		needs_read = ((st & STATUS_RTA) != 0);
+	}
+
+	if (needs_read) {
+		chan_recv_pkt(ch);
+		type = pkt->hdr.type & PKT_TYPE_MASK;
+		eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
+
+		switch (type) {
+		case PKT_TEST:
+			(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
+				sizeof(struct mailbox_pkt));
+			reset_pkt(pkt);
+			return;
+		case PKT_MSG_START:
+			if (ch->mbc_cur_msg) {
+				MBX_ERR(mbx, "received partial msg\n");
+				chan_msg_done(ch, -EBADMSG);
+			}
+
+			/* Get a new active msg. */
+			id = 0;
+			if (pkt->body.msg_start.msg_flags & MSG_FLAG_RESPONSE)
+				id = pkt->body.msg_start.msg_req_id;
+			ch->mbc_cur_msg = chan_msg_dequeue(ch, id);
+
+			if (!ch->mbc_cur_msg) {
+				MBX_ERR(mbx,
+					"got unexpected msg start pkt\n");
+				reset_pkt(pkt);
+			} else if (pkt->body.msg_start.msg_size >
+				ch->mbc_cur_msg->mbm_len) {
+				chan_msg_done(ch, -EMSGSIZE);
+				MBX_ERR(mbx, "received msg is too big");
+				reset_pkt(pkt);
+			}
+			break;
+		case PKT_MSG_BODY:
+			if (!ch->mbc_cur_msg) {
+				MBX_ERR(mbx, "got unexpected msg body pkt\n");
+				reset_pkt(pkt);
+			}
+			break;
+		default:
+			MBX_ERR(mbx, "invalid mailbox pkt type\n");
+			reset_pkt(pkt);
+			return;
+		}
+
+		if (valid_pkt(pkt)) {
+			err = chan_pkt2msg(ch);
+			if (err || eom)
+				chan_msg_done(ch, err);
+		}
+	}
 
 	/* Handle timer event. */
 	if (test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
 		timeout_msg(ch);
 		clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	}
-
-	/* Check if a packet is ready for reading. */
-	if ((mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status) & STATUS_RTA) == 0)
-		return;
-
-	chan_recv_pkt(ch);
-	type = pkt->hdr.type & PKT_TYPE_MASK;
-	eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
-
-	switch (type) {
-	case PKT_TEST:
-		(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
-			sizeof(struct mailbox_pkt));
-		reset_pkt(pkt);
-		return;
-	case PKT_MSG_START:
-		if (ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "received partial message\n");
-			chan_msg_done(ch, -EBADMSG);
-		}
-
-		/* Get a new active msg. */
-		id = 0;
-		if (pkt->body.msg_start.msg_flags & MSG_FLAG_RESPONSE)
-			id = pkt->body.msg_start.msg_req_id;
-		ch->mbc_cur_msg = chan_msg_dequeue(ch, id);
-
-		if (!ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "got unexpected message start packet\n");
-			reset_pkt(pkt);
-		}
-		if (pkt->body.msg_start.msg_size > ch->mbc_cur_msg->mbm_len) {
-			chan_msg_done(ch, -EMSGSIZE);
-			MBX_ERR(mbx, "received message is too big");
-			reset_pkt(pkt);
-		}
-		break;
-	case PKT_MSG_BODY:
-		if (!ch->mbc_cur_msg) {
-			MBX_ERR(mbx, "got unexpected message body packet\n");
-			reset_pkt(pkt);
-		}
-		break;
-	default:
-		MBX_ERR(mbx, "invalid mailbox packet type\n");
-		reset_pkt(pkt);
-		return;
-	}
-
-	err = chan_pkt2msg(ch);
-	if (err || eom)
-		chan_msg_done(ch, err);
 }
 
 static void chan_msg2pkt(struct mailbox_channel *ch)
@@ -817,7 +865,11 @@ static void check_tx_stall(struct mailbox_channel *ch)
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_msg *msg = ch->mbc_cur_msg;
 
-	if (msg == NULL)
+	/*
+	 * No stall checking in polling mode. Don't know how often peer will
+	 * check the channel.
+	 */
+	if ((msg == NULL) || test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state))
 		return;
 
 	/*
@@ -840,6 +892,38 @@ static void check_tx_stall(struct mailbox_channel *ch)
 static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
+	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+
+	/* Check if a packet has been read by peer. */
+	if ((st != 0xffffffff) && ((st & STATUS_STA) != 0)) {
+		clear_bit(MBXCS_BIT_CHK_STALL, &ch->mbc_state);
+
+		/*
+		 * The mailbox is free for sending new pkt now. See if we
+		 * have something to send.
+		 */
+
+		/* Finished sending a whole msg, call it done. */
+		if (ch->mbc_cur_msg &&
+			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done)) {
+			chan_msg_done(ch, 0);
+		}
+
+		if (!ch->mbc_cur_msg)
+			ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
+
+		if (ch->mbc_cur_msg) {
+			chan_msg2pkt(ch);
+		} else if (valid_pkt(&mbx->mbx_tst_pkt)) {
+			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
+				sizeof(struct mailbox_pkt));
+			reset_pkt(&mbx->mbx_tst_pkt);
+		} else {
+			return; /* Nothing to send. */
+		}
+
+		chan_send_pkt(ch);
+	}
 
 	/* Handle timer event. */
 	if (test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
@@ -847,38 +931,6 @@ static void chan_do_tx(struct mailbox_channel *ch)
 		check_tx_stall(ch);
 		clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	}
-
-	/* Check if a packet has been read by peer. */
-	if ((mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status) & STATUS_STA) == 0)
-		return;
-
-	clear_bit(MBXCS_BIT_CHK_STALL, &ch->mbc_state);
-
-	/*
-	 * The mailbox is free for sending new pkt now. See if we
-	 * have something to send.
-	 */
-
-	/* Finished sending a whole msg, call it done. */
-	if (ch->mbc_cur_msg &&
-		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done)) {
-		chan_msg_done(ch, 0);
-	}
-
-	if (!ch->mbc_cur_msg)
-		ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
-
-	if (ch->mbc_cur_msg) {
-		chan_msg2pkt(ch);
-	} else if (valid_pkt(&mbx->mbx_tst_pkt)) {
-		(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
-			sizeof(struct mailbox_pkt));
-		reset_pkt(&mbx->mbx_tst_pkt);
-	} else {
-		return; /* Nothing to send. */
-	}
-
-	chan_send_pkt(ch);
 }
 
 static ssize_t mailbox_ctl_show(struct device *dev,
@@ -908,7 +960,7 @@ static ssize_t mailbox_ctl_show(struct device *dev,
 				mailbox_reg_rd(mbx, reg));
 		}
 	}
-	
+
 	return n;
 }
 
@@ -1268,20 +1320,89 @@ int mailbox_listen(struct platform_device *pdev,
 	return 0;
 }
 
-/*
- * Will be called from mgmt pf to init hw for both mgmt and user pf after
- * device is reset.
- */
-int mailbox_init_hw(void *base)
+static int mailbox_enable_intr_mode(struct mailbox *mbx)
 {
-	struct mailbox_reg *regs = (struct mailbox_reg *)base;
+	struct resource *res;
+	int ret;
+	struct platform_device *pdev = mbx->mbx_pdev;
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 
-	/* Only trigger intr when we have full packet sent or received. */
-	iowrite32(PACKET_SIZE - 1, &regs->mbr_rit);
-	iowrite32(0, &regs->mbr_sit);
-	/* Finally, enable TX / RX intr since we're ready. */
-	iowrite32(3, &regs->mbr_ie);
+	if (mbx->mbx_irq != -1)
+		return 0;
+
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res == NULL) {
+		MBX_ERR(mbx, "failed to acquire intr resource");
+		return -EINVAL;
+	}
+
+	ret = xocl_user_interrupt_reg(xdev, res->start, mailbox_isr, mbx);
+	if (ret) {
+		MBX_ERR(mbx, "failed to add intr handler");
+		return ret;
+	}
+	ret = xocl_user_interrupt_config(xdev, res->start, true);
+	BUG_ON(ret != 0);
+
+	/* Only see intr when we have full packet sent or received. */
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_rit, PACKET_SIZE - 1);
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_sit, 0);
+
+	/* Finally, enable TX / RX intr. */
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0x3);
+
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	chan_config_timer(&mbx->mbx_rx);
+
+	clear_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_tx.mbc_state);
+	chan_config_timer(&mbx->mbx_tx);
+
+	mbx->mbx_irq = res->start;
 	return 0;
+}
+
+static void mailbox_disable_intr_mode(struct mailbox *mbx)
+{
+	struct platform_device *pdev = mbx->mbx_pdev;
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+
+	if (mbx->mbx_irq == -1)
+		return;
+
+	/*
+	 * No need to turn on polling mode for TX, which has
+	 * a channel stall checking timer always on when there is
+	 * outstanding TX packet.
+	 */
+	set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	chan_config_timer(&mbx->mbx_rx);
+
+	/* Disable both TX / RX intrs. */
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0x0);
+
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_rit, 0x0);
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_sit, 0x0);
+
+	(void) xocl_user_interrupt_config(xdev, mbx->mbx_irq, false);
+	(void) xocl_user_interrupt_reg(xdev, mbx->mbx_irq, NULL, mbx);
+
+	mbx->mbx_irq = -1;
+}
+
+int mailbox_reset(struct platform_device *pdev, bool end_of_reset)
+{
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	if (end_of_reset) {
+		MBX_INFO(mbx, "enable intr mode");
+		if (mailbox_enable_intr_mode(mbx) != 0)
+			MBX_ERR(mbx, "failed to enable intr after reset");
+	} else {
+		MBX_INFO(mbx, "enable polling mode");
+		mailbox_disable_intr_mode(mbx);
+	}
+	return ret;
 }
 
 /* Kernel APIs exported from this sub-device driver. */
@@ -1289,30 +1410,24 @@ static struct xocl_mailbox_funcs mailbox_ops = {
 	.request = mailbox_request,
 	.post = mailbox_post,
 	.listen = mailbox_listen,
-	.init_hw = mailbox_init_hw,
+	.reset = mailbox_reset,
 };
 
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 
 	BUG_ON(mbx == NULL);
 
-	/* Not ready to handle interrupts any more, disable them. */
-	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0);
+	mailbox_disable_intr_mode(mbx);
+
+	mailbox_fini_sysfs(mbx);
 
 	chan_fini(&mbx->mbx_rx);
 	chan_fini(&mbx->mbx_tx);
 
-	mailbox_fini_sysfs(mbx);
-
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
 
-	if (mbx->mbx_irq != (u32)-1) {
-		(void) xocl_user_interrupt_config(xdev, mbx->mbx_irq, false);
-		(void) xocl_user_interrupt_reg(xdev, mbx->mbx_irq, NULL, mbx);
-	}
 	if (mbx->mbx_regs)
 		iounmap(mbx->mbx_regs);
 
@@ -1324,7 +1439,6 @@ static int mailbox_remove(struct platform_device *pdev)
 
 static int mailbox_probe(struct platform_device *pdev)
 {
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 	struct mailbox *mbx = NULL;
 	struct resource *res;
 	int ret;
@@ -1343,39 +1457,10 @@ static int mailbox_probe(struct platform_device *pdev)
 		ret = -EIO;
 		goto failed;
 	}
-
-	/* Not ready to handle interrupts, disable them. */
-	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0);
 	/* Reset TX channel, RX channel is managed by peer as his TX. */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x1);
 
-	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	ret = xocl_user_interrupt_reg(xdev, res->start, mailbox_isr, mbx);
-	if (ret) {
-		/*
-		 * With old DSA, it's expected that intr does not work.
-		 * In this case, we don't fail the parent driver's attach,
-		 * but simply disable mailbox's functionality.
-		 */
-		if (ret == -EOPNOTSUPP) {
-			MBX_INFO(mbx, "mailbox is not supported");
-			return 0;
-		} else {
-			MBX_ERR(mbx, "failed to configure intr");
-		}
-		goto failed;
-	}
-	ret = xocl_user_interrupt_config(xdev, res->start, true);
-	BUG_ON(ret != 0);
-	mbx->mbx_irq = res->start;
-
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
-
-	if ((ret = mailbox_init_sysfs(mbx)) != 0) {
-		MBX_ERR(mbx, "failed to init sysfs");
-		goto failed;
-	}
-
+	/* Set up software communication channels. */
 	if ((ret = chan_init(mbx, "RX", &mbx->mbx_rx, chan_do_rx)) != 0) {
 		MBX_ERR(mbx, "failed to init rx channel");
 		goto failed;
@@ -1384,10 +1469,17 @@ static int mailbox_probe(struct platform_device *pdev)
 		MBX_ERR(mbx, "failed to init tx channel");
 		goto failed;
 	}
-
 	mailbox_recv_request(mbx);
 
-	mailbox_init_hw(mbx->mbx_regs);
+	if ((ret = mailbox_init_sysfs(mbx)) != 0) {
+		MBX_ERR(mbx, "failed to init sysfs");
+		goto failed;
+	}
+
+	if ((ret = mailbox_enable_intr_mode(mbx)) != 0)
+		goto failed;
+
+	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
 
 	MBX_INFO(mbx, "successfully initialized");
 	return 0;
