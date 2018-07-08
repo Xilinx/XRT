@@ -114,6 +114,8 @@ end:
 void xocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+	struct drm_device *ddev = xobj->base.dev;
+	struct xocl_dev *xdev = ddev->dev_private;
 	int npages = obj->size >> PAGE_SHIFT;
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
@@ -124,6 +126,11 @@ void xocl_free_bo(struct drm_gem_object *obj)
 
 	if (xobj->dmabuf) {
 		unmap_mapping_range(xobj->dmabuf->file->f_mapping, 0, 0, 1);
+	}
+
+	if (xobj->dma_nsg) {
+		pci_unmap_sg(xdev->core.pdev, xobj->sgt->sgl, xobj->dma_nsg,
+			PCI_DMA_BIDIRECTIONAL);
 	}
 
 	if (xobj->pages) {

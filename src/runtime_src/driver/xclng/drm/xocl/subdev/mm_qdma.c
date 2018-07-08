@@ -27,7 +27,7 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 #include "../lib/libqdma/libqdma_export.h"
-#include "../lib/libqdma/qdma_descq.h"
+#include "../lib/libqdma/qdma_wq.h"
 
 #define XOCL_FILE_PAGE_OFFSET   0x100000
 #ifndef VM_RESERVED
@@ -38,7 +38,7 @@
 #define	MM_EBUF_LEN		256
 
 struct mm_channel {
-	struct xocl_qdma_queue	queue;
+	struct qdma_wq		queue;
 	uint64_t		total_trans_bytes;
 };
 struct xocl_mm_device {
@@ -63,7 +63,9 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	struct mm_channel *chan;
 	struct xocl_mm_device *mdev;
 	struct xocl_dev *xdev;
-	struct qdma_request wr;
+	struct qdma_wr wr;
+	enum dma_data_direction dir;
+	u32 nents;
 	pid_t pid = current->pid;
 	ssize_t ret;
 
@@ -74,15 +76,24 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 
 	memset(&wr, 0, sizeof (wr));
 	wr.write = write;
-	wr.dma_mapped = false;
-	wr.count = len;
-	wr.ep_addr = paddr;
-	wr.timeout_ms = 10000;
-	wr.fp_done = NULL;	/* blocking */
+	wr.len = len;
+	wr.req.ep_addr = paddr;
+	wr.block = true;
+	wr.sgt = sgt;
 
 	chan = &mdev->chans[write][channel];
 
-	ret = xocl_qdma_post_wr(pdev, &chan->queue, &wr, sgt, 0);
+	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE; 
+	nents = pci_map_sg(xdev->core.pdev, sgt->sgl, sgt->orig_nents, dir);
+        if (!nents) {
+		xocl_err(&pdev->dev, "map sgl failed, sgt 0x%p.\n", sgt);
+		return -EIO;
+	}
+	sgt->nents = nents;
+
+	ret = qdma_wq_post(&chan->queue, &wr);
+	pci_unmap_sg(xdev->core.pdev, sgt->sgl, nents, dir);
+
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
 		return ret;
@@ -133,7 +144,7 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 	write = dir ? 1 : 0;
 
 	if (!(mdev->chans[write][channel].queue.flag &
-		XOCL_QDMA_QUEUE_STARTED)) {
+		QDMA_WQ_QUEUE_STARTED)) {
 		xocl_err(&pdev->dev, "queue not started, chan %d", channel);
 		release_channel(pdev, dir, channel);
 		channel = -EINVAL;
@@ -158,7 +169,7 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % mdev->channel;
 		chan = &mdev->chans[write][qidx];
 
-		ret = xocl_qdma_queue_destroy(pdev, &chan->queue);
+		ret = qdma_wq_destroy(&chan->queue);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
@@ -220,7 +231,8 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		qconf.st = 0; /* memory mapped */
 		qconf.c2h = write ? 0 : 1;
 		qconf.qidx = qidx;
-		ret = xocl_qdma_queue_create(pdev, &qconf, &chan->queue);
+		ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
+			&chan->queue);
 		if (ret) {
 			goto failed_create_queue;
 		}

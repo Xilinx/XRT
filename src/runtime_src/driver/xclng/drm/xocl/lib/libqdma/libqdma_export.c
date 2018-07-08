@@ -87,14 +87,17 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 
 	cb->left = req->count;
 
-	/* any rcv'ed packet not yet read ? */
-	lock_descq(descq);
-	descq_st_c2h_read(descq, req, 1, 1);
-	unlock_descq(descq);
-	if (!cb->left)
-		return req->count;
+	if (!wait) {
+		/* any rcv'ed packet not yet read ? */
+		lock_descq(descq);
+		descq_st_c2h_read(descq, req, 1, 1);
+		unlock_descq(descq);
+		if (!cb->left)
+			return req->count;
+	}
 
 	lock_descq(descq);
+	cb->offset = req->count;
 	if (descq->online) {
 		list_add_tail(&cb->list, &descq->pend_list);
 		/* trigger an interrupt in case the data already dma'ed but

@@ -143,16 +143,6 @@ struct client_ctx {
 	struct pid		*pid;
 };
 
-struct xocl_qdma_queue {
-	unsigned long		dma_handle;
-	unsigned long		handle;
-	struct mutex		lock;
-	u64			flag;
-	u32			q_len;
-	struct qdma_queue_conf	*qconf;
-	struct qdma_sw_sg       *sgl_cache;
-};
-
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev,
         void *data, struct drm_file *filp);
@@ -186,21 +176,6 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
                                           uint64_t unaligned_size,
                                           unsigned user_flags,
                                           unsigned user_type);
-
-/* QDMA functions */
-enum {
-	XOCL_QDMA_QUEUE_ADDED	= 0x1,
-	XOCL_QDMA_QUEUE_STARTED	= 0x2,
-	XOCL_QDMA_QUEUE_DONE	= 0x4,
-};
-
-int xocl_qdma_queue_create(struct platform_device *pdev,
-        struct qdma_queue_conf *qconf, struct xocl_qdma_queue *queue);
-int xocl_qdma_queue_destroy(struct platform_device *pdev,
-	struct xocl_qdma_queue *queue);
-ssize_t xocl_qdma_post_wr(struct platform_device *pdev,
-	struct xocl_qdma_queue * queue,
-        struct qdma_request *wr, struct sg_table *sgt, off_t off);
 
 void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
 
