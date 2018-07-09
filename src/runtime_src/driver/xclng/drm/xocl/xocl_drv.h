@@ -581,4 +581,7 @@ void xocl_fini_icap(void);
 int __init xocl_init_str_qdma(void);
 void xocl_fini_str_qdma(void);
 
+int __init xocl_init_mig(void);
+void xocl_fini_mig(void);
+
 #endif
