@@ -561,6 +561,7 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	i = 0; // Suppress warning about unused variable
 	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
 	if (rv == total)
 		rv = 0;
