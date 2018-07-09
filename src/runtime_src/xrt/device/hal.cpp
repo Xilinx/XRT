@@ -112,7 +112,7 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
 
   auto handle = handle_type(dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
   if (!handle)
-    throw std::runtime_error("Failed to open HAL driver '" + dll + "'");
+    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + dlerror());
 
   typedef unsigned int (* probeFuncType)();
 
