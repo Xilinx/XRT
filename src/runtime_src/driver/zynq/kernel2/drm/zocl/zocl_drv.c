@@ -24,6 +24,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/iommu.h>
 #include <linux/pagemap.h>
+#include <linux/io.h>
 #include "zocl_drv.h"
 #include "sched_exec.h"
 
@@ -73,107 +74,38 @@ void zocl_free_sections(struct drm_zocl_dev *zdev) {
 	}
 }
 
-static int zocl_drm_load(struct drm_device *drm, unsigned long flags)
+static irqreturn_t zocl_h2c_isr(int irq, void *arg)
+{
+	void *mmio_sched = arg;
+	DRM_INFO("IRQ number is %d -->\n", irq);
+	mmio_sched = mmio_sched + 0x58;
+	DRM_INFO("mmio_sched is 0x%x\n", ioread32(mmio_sched));
+	mmio_sched = mmio_sched - 0x58;
+	DRM_INFO("<-- IRQ handler\n");
+	return IRQ_HANDLED;
+}
+
+/**
+ * find_platform_dev_by_compatible - Find platform device by the compatible string
+ *
+ * @compat: Compatible string to look for from of_root node.
+ * 
+ * Returns a platform device. Returns NULL if not found.
+ */
+static struct platform_device* find_platform_dev_by_compatible(char *compat)
 {
 	struct platform_device *pdev;
-	struct resource *res;
-	struct drm_zocl_dev *zdev;
-	struct device_node *fnode;
-	void __iomem *map;
+	struct device_node     *fnode;
 
-	DRM_INFO("%s\n", __FUNCTION__);
-	pdev = to_platform_device(drm->dev);
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	map = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(map)) {
-		DRM_ERROR("Failed to map registers: %ld\n", PTR_ERR(map));
-		return PTR_ERR(map);
-	}
-
-	zdev = devm_kzalloc(drm->dev, sizeof(*zdev), GFP_KERNEL);
-	if (!zdev)
-		return -ENOMEM;
-
-	zdev->ddev = drm;
-	drm->dev_private = zdev;
-	zdev->regs = map;
-	zdev->res_start = res->start;
-	zdev->res_len = resource_size(res);
-
-#if defined(XCLBIN_DOWNLOAD)
-	fnode = of_get_child_by_name(of_root, "pcap");
+	fnode = of_find_compatible_node(of_root, NULL, compat);
 	if (!fnode) {
-		DRM_ERROR("FPGA programming device pcap not found\n");
-		return -ENODEV;
+		return NULL;
 	}
 
-	zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-	if (IS_ERR(zdev->fpga_mgr)) {
-		DRM_ERROR("FPGA Manager not found %ld\n", PTR_ERR(zdev->fpga_mgr));
-		return PTR_ERR(zdev->fpga_mgr);
-	}
-#endif
+	pdev = of_find_device_by_node(fnode);
 
-  zocl_init_sysfs(drm->dev);
-  
-  // Now initial kds
-  sched_init_exec(drm);
-
-	/* Initialzie IOMMU */
-	if (iommu_present(&platform_bus_type)) {
-		struct iommu_domain_geometry *geometry;
-		u64 start, end;
-		zdev->domain = iommu_domain_alloc(&platform_bus_type);
-		if (!zdev->domain)
-			return -ENOMEM;
-
-    int ret = 0;
-    ret = iommu_attach_device(zdev->domain, &pdev->dev);
-    if (ret) {
-      DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
-      iommu_domain_free(zdev->domain);
-    }
-    // TODO: SMMU can support up to 16 devices. Could we check
-    // the how many devices have attached to SMMU? And handle this
-    // issue in proper way?
-
-		geometry = &zdev->domain->geometry;
-		start = geometry->aperture_start;
-		end = geometry->aperture_end;
-
-		DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
-			 start, end);
-	}
-
-	platform_set_drvdata(pdev, zdev);
-	return 0;
-}
-
-struct drm_gem_object *zocl_gem_create_object(struct drm_device *dev, size_t size)
-{
-	return kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-}
-
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,9,0)
-static int zocl_drm_unload(struct drm_device *drm)
-#else
-static void zocl_drm_unload(struct drm_device *drm)
-#endif
-{
-	struct drm_zocl_dev *zdev = drm->dev_private;
-	if (zdev->domain) {
-		iommu_detach_device(zdev->domain, drm->dev);
-		iommu_domain_free(zdev->domain);
-	}
-#if defined(XCLBIN_DOWNLOAD)
-	fpga_mgr_put(zdev->fpga_mgr);
-#endif
-  sched_fini_exec(drm);
-	zocl_free_sections(zdev);
-  zocl_fini_sysfs(drm->dev);
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,9,0)
-  return 0;
-#endif
+	of_node_put(fnode);
+	return pdev;
 }
 
 void zocl_free_bo(struct drm_gem_object *obj)
@@ -409,11 +341,8 @@ static struct drm_driver zocl_driver = {
   .driver_features           = DRIVER_GEM | DRIVER_PRIME | DRIVER_RENDER,
   .open                      = zocl_client_open,
   .postclose                 = zocl_client_release,
-  .load                      = zocl_drm_load,
-  .unload                    = zocl_drm_unload,
   .gem_free_object           = zocl_free_bo,
   .gem_vm_ops                = &zocl_bo_vm_ops,
-	.gem_create_object				 = zocl_gem_create_object,
   .prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
   .prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
   .gem_prime_import          = drm_gem_prime_import,
@@ -437,28 +366,104 @@ static struct drm_driver zocl_driver = {
 static const struct of_device_id zocl_drm_of_match[] = {
 	{ .compatible = "xlnx,zocl", },
 	{ .compatible = "xlnx,zoclsvm", },
+	{ .compatible = "xlnx,zocl-ert", },
 	{ /* end of table */ },
 };
+MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
 
 /* init xilinx opencl drm platform */
 static int zocl_drm_platform_probe(struct platform_device *pdev)
 {
-  struct drm_device *dev;
+	const struct of_device_id *id;
+  struct drm_device *drm;
+	struct drm_zocl_dev	*zdev;
+	struct device_node fnode;
+	struct resource *res;
+	void __iomem *map;
   int ret;
-	DRM_INFO("Probing for %s\n", zocl_drm_of_match[0].compatible);
-  
-  dev = drm_dev_alloc(&zocl_driver, &pdev->dev);
-  if (IS_ERR(dev))
-    return PTR_ERR(dev);
 
-  ret = drm_dev_register(dev, 0);
+	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
+	DRM_INFO("Probing for %s\n", id->compatible);
+
+	/* Get resource and ioremap */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	map = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(map)) {
+		DRM_ERROR("Failed to map registers: %ld\n", PTR_ERR(map));
+		return PTR_ERR(map);
+	}
+
+	/* Create zocl device and initial */
+	zdev = devm_kzalloc(&pdev->dev, sizeof(*zdev), GFP_KERNEL);
+	if (!zdev)
+		return -ENOMEM;
+
+	zdev->regs       = map;
+	zdev->res_start  = res->start;
+	zdev->res_len    = resource_size(res);
+
+	zdev->ert = find_dev_by_compat(struct zocl_ert_dev, "xlnx,embedded_sched");
+
+#if defined(XCLBIN_DOWNLOAD)
+	fnode = of_get_child_by_name(of_root, "pcap");
+	if (!fnode) {
+		DRM_ERROR("FPGA programming device pcap not found\n");
+		return -ENODEV;
+	}
+
+	zdev->fpga_mgr = of_fpga_mgr_get(fnode);
+	if (IS_ERR(zdev->fpga_mgr)) {
+		DRM_ERROR("FPGA Manager not found %ld\n", PTR_ERR(zdev->fpga_mgr));
+		return PTR_ERR(zdev->fpga_mgr);
+	}
+#endif
+
+	/* Initialzie IOMMU */
+	if (iommu_present(&platform_bus_type)) {
+		struct iommu_domain_geometry *geometry;
+		u64 start, end;
+		zdev->domain = iommu_domain_alloc(&platform_bus_type);
+		if (!zdev->domain)
+			return -ENOMEM;
+
+    int ret = 0;
+    ret = iommu_attach_device(zdev->domain, &pdev->dev);
+    if (ret) {
+      DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
+      iommu_domain_free(zdev->domain);
+    }
+
+		geometry = &zdev->domain->geometry;
+		start = geometry->aperture_start;
+		end = geometry->aperture_end;
+
+		DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
+			 start, end);
+	}
+
+	platform_set_drvdata(pdev, zdev);
+
+	/* Create and register DRM device */
+  drm = drm_dev_alloc(&zocl_driver, &pdev->dev);
+  if (IS_ERR(drm))
+    return PTR_ERR(drm);
+
+  ret = drm_dev_register(drm, 0);
   if (ret)
     goto err;
+  
+	drm->dev_private = zdev;
+	zdev->ddev       = drm;
+
+  /* Initial sysfs */
+  zocl_init_sysfs(drm->dev);
+
+  /* Now initial kds */
+  sched_init_exec(drm);
 
   return 0;
-
 err:
-  drm_dev_unref(dev);
+  drm_dev_unref(drm);
   return ret;
 }
 
@@ -466,16 +471,28 @@ err:
 static int zocl_drm_platform_remove(struct platform_device *pdev)
 {
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
+	struct drm_device *drm = zdev->ddev;
 
-	if (zdev->ddev) {
-		drm_dev_unregister(zdev->ddev);
-		drm_dev_unref(zdev->ddev);
+	if (zdev->domain) {
+		iommu_detach_device(zdev->domain, drm->dev);
+		iommu_domain_free(zdev->domain);
+	}
+
+#if defined(XCLBIN_DOWNLOAD)
+	fpga_mgr_put(zdev->fpga_mgr);
+#endif
+
+  sched_fini_exec(drm);
+	zocl_free_sections(zdev);
+  zocl_fini_sysfs(drm->dev);
+
+	if (drm) {
+		drm_dev_unregister(drm);
+		drm_dev_unref(drm);
 	}
 
 	return 0;
 }
-
-MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
 
 static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
@@ -486,7 +503,39 @@ static struct platform_driver zocl_drm_private_driver = {
 	},
 };
 
-module_platform_driver(zocl_drm_private_driver);
+static struct platform_driver *const drivers[] = {
+	&zocl_ert_driver,
+};
+
+static int __init zocl_init(void)
+{
+	int ret;
+
+	// Make sure register sub device in the first place.
+	ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
+	if (ret < 0)
+		return ret;
+
+	ret = platform_driver_register(&zocl_drm_private_driver);
+	if (ret < 0)
+		goto err;
+
+	return 0;
+err:
+	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+	return ret;
+}
+module_init(zocl_init);
+
+static void __exit zocl_exit(void)
+{
+	/* Remove zocl driver first, as it is using other driver */
+	platform_driver_unregister(&zocl_drm_private_driver);
+	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+}
+module_exit(zocl_exit);
+
+//module_platform_driver(zocl_drm_private_driver);
 
 MODULE_VERSION(__stringify(ZOCL_DRIVER_MAJOR) "."
 		__stringify(ZOCL_DRIVER_MINOR) "."

@@ -19,9 +19,11 @@
 #include <linux/bitmap.h>
 #include <linux/list.h>
 #include <linux/kthread.h>
+#include <linux/delay.h>
+#include <linux/sched.h>
 #include "sched_exec.h"
 
-//#define SCHED_VERBOSE
+#define SCHED_VERBOSE
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
@@ -39,15 +41,14 @@
    })
 
 #ifdef SCHED_VERBOSE
-# define SCHED_DEBUG(msg) DRM_INFO(msg)
-# define SCHED_DEBUGF(format,...) DRM_INFO(format, ##__VA_ARGS__)
+# define SCHED_DEBUG(format,...) DRM_DEBUG(format, ##__VA_ARGS__)
 #else
-# define SCHED_DEBUG(msg)
-# define SCHED_DEBUGF(format,...)
+# define SCHED_DEBUG(format,...)
 #endif
 
 static struct scheduler global_scheduler0;
 static struct sched_ops penguin_ops;
+static struct sched_ops ps_ert_ops;
 
 /**
  * List of free sched_cmd objects.
@@ -81,7 +82,8 @@ static atomic_t num_pending = ATOMIC_INIT(0);
 inline unsigned int
 is_ert(struct drm_device *dev)
 {
-  return 0;
+  struct drm_zocl_dev *zdev = dev->dev_private;
+  return zdev->exec->ops == &ps_ert_ops;
 }
 
 /**
@@ -281,6 +283,20 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
 }
 
 /**
+ * cu_idx_to_offset() - Convert CU idx into address offset
+ *
+ * @dev: Device handle
+ * @cu_idx: Global CU idx
+ * Return: Address of CU relative to bar
+ */
+inline u32
+cu_idx_to_offset(struct drm_device *dev, unsigned int cu_idx)
+{
+  struct drm_zocl_dev *zdev = dev->dev_private;
+  return cu_idx << zdev->exec->cu_shift_offset;
+}
+
+/**
  * set_cmd_int_state() - Set internal command state used by scheduler only
  *
  * @xcmd: command to change internal state on
@@ -289,9 +305,68 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
 inline void
 set_cmd_int_state(struct sched_cmd* cmd, enum cmd_state state)
 {
-  SCHED_DEBUGF("->set_cmd_int_state(,%d)\n",state);
+  SCHED_DEBUG("-> set_cmd_int_state(,%d)\n",state);
   cmd->state = state;
-  SCHED_DEBUG("<-set_cmd_int_state\n");
+  SCHED_DEBUG("<- set_cmd_int_state\n");
+}
+
+/**
+ * setup_ert_hw() - Setup Embedded Hardware HW IP
+ *
+ * This function will be called by configure()
+ */
+void setup_ert_hw(struct drm_zocl_dev *zdev)
+{
+	char *ert_hw = zdev->ert->hw_ioremap;
+  struct sched_exec_core *exec = zdev->exec;
+	
+	SCHED_DEBUG("slot_size = 0x%x\n", slot_size(zdev->ddev));
+	SCHED_DEBUG("num_slots = %d\n", exec->num_slots);
+	SCHED_DEBUG("num_slot_masks = %d\n", exec->num_slot_masks);
+	SCHED_DEBUG("num_cus = %d\n", exec->num_cus);
+	SCHED_DEBUG("num_cu_masks = %d\n", exec->num_cu_masks);
+	SCHED_DEBUG("cu_offset = %d\n", exec->cu_shift_offset);
+	SCHED_DEBUG("cu_base_address = 0x%x\n", exec->cu_base_addr);
+	SCHED_DEBUG("cu_dma = %d\n", exec->cu_dma);
+	SCHED_DEBUG("cu_isr = %d\n", exec->cu_isr);
+	SCHED_DEBUG("cq_interrupt = %d\n", exec->cq_interrupt);
+	SCHED_DEBUG("polling_mode = %d\n", exec->polling_mode);
+
+	/* Set slot size(4K) */
+	iowrite32(slot_size(zdev->ddev)/4, ert_hw + ERT_CQ_SLOT_SIZE_REG);
+
+	/* CU offset in shift value */
+	iowrite32(exec->cu_shift_offset, ert_hw + ERT_CU_OFFSET_REG);
+
+	/* Number of command slots */
+	iowrite32(exec->num_slots, ert_hw + ERT_CQ_NUM_OF_SLOTS_REG);
+
+	/* CU physical address */
+	//TODO: Think about how to make the address mapping correct
+	iowrite32(0x81800000/4, ert_hw + ERT_CU_BASE_ADDR_REG);
+
+	/* Command queue physical address */
+	iowrite32(0x80190000/4, ert_hw + ERT_CQ_BASE_ADDR_REG);
+
+	/* Number of CUs */
+	iowrite32(exec->num_cus, ert_hw + ERT_NUM_OF_CU_REG);
+
+	/* Enable/Disable CU_DMA module */
+	iowrite32(exec->cu_dma, ert_hw + ERT_CU_DMA_ENABLE);
+
+	/* For cu dma 5.2, need to configure cuisr. Ignore it for Fidus 5.1 */
+
+  /* Enable cu interupts (cu -> cu_isr -> PS interrupt) */
+	//TODO:
+	
+	/* Enable interrupt from host to PS when new commands are ready */
+	//TODO: Microblaze is not enable this feature today. Let's see.
+
+	/* Enable C2H interrupts */
+	if (!exec->polling_mode)
+		iowrite32(0x1, ert_hw + ERT_HOST_INT_ENABLE);
+	else
+		iowrite32(0x0, ert_hw + ERT_HOST_INT_ENABLE);
 }
 
 /**
@@ -337,13 +412,28 @@ configure(struct sched_cmd *cmd)
     exec->cu_base_addr    = cfg->cu_base_addr;
     exec->num_cu_masks    = ((exec->num_cus-1)>>5) + 1;
 
-    if (cfg->ert) {
-			DRM_INFO("There is no embedded scheduler on MPSoC, using kernel driver scheduler\n");
-    }
-
-		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
-		exec->ops = &penguin_ops;
-		exec->polling_mode = 1;
+		if (!zdev->ert) {
+			if (cfg->ert) {
+				DRM_INFO("There is no embedded scheduler on MPSoC, using kernel driver scheduler\n");
+			} else {
+				SCHED_DEBUG("++ configuring penguin scheduler mode\n");
+				exec->ops = &penguin_ops;
+				exec->polling_mode = 1;
+				exec->configured = 1;
+			}
+		} else {
+			SCHED_DEBUG("++ configuring PS ERT mode\n");
+			exec->ops = &ps_ert_ops;
+			exec->polling_mode = cfg->polling;
+			exec->cq_interrupt = cfg->cq_int;
+			exec->cu_dma = cfg->cu_dma;
+			exec->cu_isr = cfg->cu_isr;
+			DRM_INFO("PS ERT feature: host_polling_mode(%d), cq_interrupt(%d), cu_dma(%d), cu_isr(%d)\n"
+								,exec->polling_mode ,exec->cq_interrupt, exec->cu_dma, exec->cu_isr);
+			//exec->cu_dma_52 = cfg->dsa52;
+			setup_ert_hw(zdev);
+			exec->configured = 1;
+		}
 
     DRM_INFO("scheduler config ert(%d) slots(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
               ,is_ert(cmd->ddev)
@@ -373,10 +463,10 @@ configure(struct sched_cmd *cmd)
 inline void
 set_cmd_state(struct sched_cmd* cmd, enum cmd_state state)
 {
-  SCHED_DEBUGF("->set_cmd_state(,%d)\n",state);
+  SCHED_DEBUG("-> set_cmd_state(,%d)\n",state);
   cmd->state = state;
   cmd->packet->state = state;
-  SCHED_DEBUG("<-set_cmd_state\n");
+  SCHED_DEBUG("<- set_cmd_state\n");
 }
 
 /**
@@ -400,10 +490,10 @@ acquire_slot_idx(struct drm_device *dev)
     if (slot_idx == -1 || slot_idx_from_mask_idx(slot_idx, mask_idx) >= zdev->exec->num_slots)
       continue;
     zdev->exec->slot_status[mask_idx] ^= (1<<slot_idx);
-    SCHED_DEBUGF("<- acquire_slot_idx returns %d\n", slot_idx_from_mask_idx(slot_idx, mask_idx));
+    SCHED_DEBUG("<- acquire_slot_idx returns %d\n", slot_idx_from_mask_idx(slot_idx, mask_idx));
     return slot_idx_from_mask_idx(slot_idx, mask_idx);
   }
-  SCHED_DEBUGF("<- acquire_slot_idx returns -1\n");
+  SCHED_DEBUG("<- acquire_slot_idx returns -1\n");
   return -1;
 }
 
@@ -420,12 +510,9 @@ static void
 release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 {
   struct drm_zocl_dev *zdev = dev->dev_private;
-  unsigned int mask_idx;
-  unsigned int pos;
-  SCHED_DEBUG("release_slot_idx\n");
-  mask_idx = slot_mask_idx(slot_idx);
-  pos = slot_idx_in_mask(slot_idx);
-  SCHED_DEBUGF("<-> release_slot_idx slot_status[%d]=0x%x, pos=%d\n",
+  unsigned int mask_idx = slot_mask_idx(slot_idx);
+  unsigned int pos = slot_idx_in_mask(slot_idx);
+  SCHED_DEBUG("<-> release_slot_idx slot_status[%d]=0x%x, pos=%d\n",
                mask_idx, zdev->exec->slot_status[mask_idx], pos);
   zdev->exec->slot_status[mask_idx] ^= (1<<pos);
 }
@@ -463,9 +550,8 @@ inline int
 cu_done(struct drm_device *dev, unsigned int cu_idx)
 {
   struct drm_zocl_dev *zdev = dev->dev_private;
-  u32 cu_addr = cu_idx_to_addr(dev, cu_idx);
-  u32* virt_addr = ioremap(cu_addr, 4);
-  SCHED_DEBUGF("-> cu_done(,%d) checks cu at address 0x%x\n", cu_idx, cu_addr);
+  u32* virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+  SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n", cu_idx, virt_addr);
   /* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
    *   * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110 
    *     * checking for 0x10 is sufficient. */
@@ -477,6 +563,35 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
     return true;
   }
   SCHED_DEBUG("<- cu_done returns 0\n");
+  return false;
+}
+
+/**
+ * ert_cu_done() - Check status of CU in ERT way
+ * 
+ * @cu_idx: Index of cu to check
+ *
+ * This function is called in polling mode only.  The cu_idx
+ * is guaranteed to have been started
+ *
+ * Return: %true if cu done, %false otherwise
+ */
+//cu_done(struct drm_device *dev, unsigned int cu_idx)
+inline int
+ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
+{
+  struct drm_zocl_dev *zdev = dev->dev_private;
+	// TODO: Remove hard code addres.
+	u32* virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+  SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n", cu_idx, virt_addr);
+  if (*virt_addr & 2) {
+		unsigned int mask_idx = cu_mask_idx(cu_idx);
+		unsigned int pos = cu_idx_in_mask(cu_idx);
+		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
+		SCHED_DEBUG("<- ert_cu_done returns 1\n");
+		return true;
+	}
+  SCHED_DEBUG("<- ert_cu_done returns 0\n");
   return false;
 }
 
@@ -493,15 +608,22 @@ notify_host(struct sched_cmd *cmd)
 
   SCHED_DEBUG("-> notify_host\n");
 
-  /* now for each client update the trigger counter in the context */
-  spin_lock_irqsave(&zdev->exec->ctx_list_lock, flags);
-  list_for_each(ptr, &zdev->exec->ctx_list) {
-      entry = list_entry(ptr, struct sched_client_ctx, link);
-      atomic_inc(&entry->trigger);
-    }
-  spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, flags);
-  /* wake up all the clients */
-  wake_up_interruptible(&zdev->exec->poll_wait_queue);
+	if (!zdev->ert) {
+		/* now for each client update the trigger counter in the context */
+		spin_lock_irqsave(&zdev->exec->ctx_list_lock, flags);
+		list_for_each(ptr, &zdev->exec->ctx_list) {
+			entry = list_entry(ptr, struct sched_client_ctx, link);
+			atomic_inc(&entry->trigger);
+		}
+		spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, flags);
+		/* wake up all the clients */
+		wake_up_interruptible(&zdev->exec->poll_wait_queue);
+	} else {
+		uint32_t cmd_mask_idx = slot_mask_idx(cmd->cq_slot_idx);
+		uint32_t csr_offset = ERT_STATUS_REG + (cmd_mask_idx<<2);
+		uint32_t pos = slot_idx_in_mask(cmd->cq_slot_idx);
+		iowrite32(1<<pos, zdev->ert->hw_ioremap + csr_offset);
+	}
   SCHED_DEBUG("<- notify_host\n");
 }
 
@@ -524,14 +646,14 @@ static void
 mark_cmd_complete(struct sched_cmd *cmd)
 {
   struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-  SCHED_DEBUGF("-> mark_cmd_complete(,%d)\n",cmd->slot_idx);
+  SCHED_DEBUG("-> mark_cmd_complete(,%d)\n", cmd->slot_idx);
   zdev->exec->submitted_cmds[cmd->slot_idx] = NULL;
   set_cmd_state(cmd, CMD_STATE_COMPLETED);
-  if (zdev->exec->polling_mode)
+  if (zdev->ert || zdev->exec->polling_mode)
     --cmd->sched->poll;
   release_slot_idx(cmd->ddev, cmd->slot_idx);
-  notify_host(cmd);
-  SCHED_DEBUGF("<- mark_cmd_complete\n");
+	notify_host(cmd);
+  SCHED_DEBUG("<- mark_cmd_complete\n");
 }
 
 /**
@@ -555,12 +677,31 @@ get_free_sched_cmd(void)
     cmd = kmalloc(sizeof(struct sched_cmd), GFP_KERNEL);
   if (!cmd)
     return ERR_PTR(-ENOMEM);
-  SCHED_DEBUGF("<- get_free_sched_cmd %p\n", cmd);
+  SCHED_DEBUG("<- get_free_sched_cmd %p\n", cmd);
   return cmd;
 }
 
+/**
+ * zocl_gem_object_unref() - unreference a drm object
+ *
+ * @cmd: cmd owning the drm object to be unreference,
+ * 			 it could be CMA or normal gem buffer
+ *
+ * Use the correct way to unreference a gem object
+ *
+ */
+void zocl_gem_object_unref(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct drm_zocl_bo *bo = cmd->buffer;
+	if (zdev->domain)
+		drm_gem_object_unreference_unlocked(&bo->gem_base);
+	else
+		drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+}
+
 /*
- * add_cmd() - Add a new command to pending list
+ * add_cmd() - Add a new command to the pending list
  *
  * @ddev: drm device owning adding the buffer object 
  * @bo: buffer objects from user space from which new command is created
@@ -570,23 +711,14 @@ get_free_sched_cmd(void)
  * Return: 0 on success, -errno on failure
  */
 static int
-add_cmd(struct drm_device *dev, struct drm_zocl_bo* bo)
+add_cmd(struct sched_cmd *cmd)
 {
-  struct sched_cmd *cmd = get_free_sched_cmd();
-  struct drm_zocl_dev *zdev = dev->dev_private;
-  int ret = 0;
+	int ret = 0;
   SCHED_DEBUG("-> add_cmd\n");
-  cmd->bo = bo;
-  cmd->ddev = dev;
+
   cmd->cu_idx = -1;
   cmd->slot_idx = -1;
-  // Get command from user space
-	if (zdev->domain)
-		cmd->packet = (struct sched_packet*)bo->vmapping;
-	else
-		cmd->packet = (struct sched_packet*)bo->cma_base.vaddr;
   DRM_INFO("packet header 0x%08x, data 0x%08x\n", cmd->packet->header, cmd->packet->data[0]);
-  cmd->sched = zdev->exec->scheduler;
   set_cmd_state(cmd, CMD_STATE_NEW);
   mutex_lock(&pending_cmds_mutex);
   list_add_tail(&cmd->list, &pending_cmds);
@@ -598,6 +730,42 @@ add_cmd(struct drm_device *dev, struct drm_zocl_bo* bo)
 
   SCHED_DEBUG("<- add_cmd\n");
   return ret;
+}
+
+/*
+ * fill_cmd_by_gem_bo() - fill a command by gem buffer object
+ *
+ * @ddev: drm device owning adding the buffer object 
+ * @bo: buffer objects from user space from which new command is created
+ *
+ * Get a free scheduler command and initial it by gem buffer object.
+ * After all, add this command to pending list.
+ *
+ * Return: 0 on success, -errno on failure
+ */
+static int
+fill_cmd_by_gem_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
+{
+  struct sched_cmd *cmd = get_free_sched_cmd();
+  struct drm_zocl_dev *zdev = dev->dev_private;
+	struct sched_packet *packet;
+	int ret;
+  SCHED_DEBUG("-> fill_cmd_by_bo\n");
+  cmd->ddev = dev;
+  cmd->sched = zdev->exec->scheduler;
+  cmd->buffer = (void*)bo;
+	if (zdev->domain)
+		packet = (struct sched_packet*)bo->vmapping;
+	else
+		packet = (struct sched_packet*)bo->cma_base.vaddr;
+	cmd->packet = packet;
+	cmd->cq_slot_idx = 0;
+	cmd->free_buffer = zocl_gem_object_unref;
+
+	ret = add_cmd(cmd);
+
+  SCHED_DEBUG("<- fill_cmd_by_bo\n");
+	return ret;
 }
 
 /**
@@ -612,7 +780,7 @@ add_cmd(struct drm_device *dev, struct drm_zocl_bo* bo)
 static int
 recycle_cmd(struct sched_cmd* cmd)
 {
-  SCHED_DEBUGF("recycle %p\n", cmd);
+  SCHED_DEBUG("recycle %p\n", cmd);
   mutex_lock(&free_cmds_mutex);
   list_move_tail(&cmd->list, &free_cmds);
   mutex_unlock(&free_cmds_mutex);
@@ -660,10 +828,7 @@ reset_exec(struct sched_exec_core* exec)
     if (zdev->exec != exec)
       continue;
     DRM_INFO("deleting stale pending cmd\n");
-		if (zdev->domain)
-			drm_gem_object_unreference_unlocked(&cmd->bo->gem_base);
-		else
-			drm_gem_object_unreference_unlocked(&cmd->bo->cma_base.base);
+		cmd->free_buffer(cmd);
     recycle_cmd(cmd);
   }
   list_for_each_safe(pos, next, &global_scheduler0.command_queue) {
@@ -672,10 +837,7 @@ reset_exec(struct sched_exec_core* exec)
     if (zdev->exec != exec)
       continue;
     DRM_INFO("deleting stale scheduler cmd\n");
-		if (zdev->domain)
-			drm_gem_object_unreference_unlocked(&cmd->bo->gem_base);
-		else
-			drm_gem_object_unreference_unlocked(&cmd->bo->cma_base.base);
+		cmd->free_buffer(cmd);
     recycle_cmd(cmd);
   }
 }
@@ -695,19 +857,13 @@ reset_all(void)
     struct sched_cmd *cmd = list_first_entry(&pending_cmds,struct sched_cmd, list);
 		zdev = cmd->ddev->dev_private;
     DRM_INFO("deleting stale pending cmd\n");
-		if (zdev->domain)
-			drm_gem_object_unreference_unlocked(&cmd->bo->gem_base);
-		else
-			drm_gem_object_unreference_unlocked(&cmd->bo->cma_base.base);
+		cmd->free_buffer(cmd);
     recycle_cmd(cmd);
   }
   while (!list_empty(&global_scheduler0.command_queue)) {
     struct sched_cmd *cmd = list_first_entry(&global_scheduler0.command_queue,struct sched_cmd, list);
     DRM_INFO("deleting stale scheduler cmd\n");
-		if (zdev->domain)
-			drm_gem_object_unreference_unlocked(&cmd->bo->gem_base);
-		else
-			drm_gem_object_unreference_unlocked(&cmd->bo->cma_base.base);
+		cmd->free_buffer(cmd);
     recycle_cmd(cmd);
   }
 }
@@ -733,7 +889,7 @@ get_free_cu(struct sched_cmd *cmd)
     int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
     if (cu_idx >= 0) {
       zdev->exec->cu_status[mask_idx] ^= 1 << cu_idx;
-      SCHED_DEBUGF("<- get_free_cu returns %d\n",cu_idx_from_mask(cu_idx, mask_idx));
+      SCHED_DEBUG("<- get_free_cu returns %d\n",cu_idx_from_mask(cu_idx, mask_idx));
       return cu_idx_from_mask(cu_idx,mask_idx);
     }
   }
@@ -752,14 +908,13 @@ get_free_cu(struct sched_cmd *cmd)
 static void
 configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-  u32 i;
-  u32 cu_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-  u32 size = regmap_size(cmd);
-  u32* virt_addr = ioremap(cu_addr, size*4);
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+  u32 i, size = regmap_size(cmd);
+	u32* virt_addr = zdev->regs + cu_idx_to_offset(cmd->ddev, cu_idx);
   struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
 
-  SCHED_DEBUGF("-> configure_cu cu_idx=%d, cu_addr=0x%x, regmap_size=%d\n",
-                cu_idx, cu_addr, size);
+  SCHED_DEBUG("-> configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
+                cu_idx, virt_addr, size);
 
   /* write register map, but skip first word (AP_START) */
   /* can't get memcpy_toio to work */
@@ -771,6 +926,37 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
   virt_addr[0] = 0x1;
 
   SCHED_DEBUG("<- configure_cu\n");
+}
+
+/**
+ * ert_configure_cu() - transfer command register map to specified CU and start the CU.
+ *
+ * @cmd: command with register map to transfer to CU
+ * @cu_idx: index of CU to configure
+ *
+ * This function is called in kernel software scheduler mode only.
+ */
+static void
+ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+  u32 i, size = regmap_size(cmd);
+	u32* virt_addr = zdev->regs + cu_idx_to_offset(cmd->ddev, cu_idx);
+  struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
+
+  SCHED_DEBUG("-> ert_configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
+                cu_idx, virt_addr, size);
+
+  /* write register map, but skip first word (AP_START) */
+  /* can't get memcpy_toio to work */
+  /* memcpy_toio(user_bar + cu_addr + 4,sk->data + sk->extra_cu_masks + 1,(size-1)*4); */
+  for (i = 1; i < size; ++i)
+    virt_addr[i] = *(sk->data + sk->extra_cu_masks + i);
+
+  /* start CU at base + 0x0 */
+  virt_addr[0] = 0x1;
+
+  SCHED_DEBUG("<- ert_configure_cu\n");
 }
 
 /**
@@ -797,13 +983,13 @@ queued_to_running(struct sched_cmd *cmd)
 
   if (zdev->exec->ops->submit(cmd)) {
     set_cmd_int_state(cmd, CMD_STATE_RUNNING);
-    if (zdev->exec->polling_mode)
+    if (zdev->ert || zdev->exec->polling_mode)
       ++cmd->sched->poll;
     zdev->exec->submitted_cmds[cmd->slot_idx] = cmd;
     retval = true;
   }
 
-  SCHED_DEBUGF("<- queued_to_running returns %d\n",retval);
+  SCHED_DEBUG("<- queued_to_running returns %d\n",retval);
 
   return retval;
 }
@@ -835,14 +1021,11 @@ running_to_complete(struct sched_cmd *cmd)
 static void
 complete_to_free(struct sched_cmd *cmd)
 { 
-	struct drm_zocl_dev *zdev;
+	//struct drm_zocl_dev *zdev;
   SCHED_DEBUG("-> complete_to_free\n");
   
-	zdev = cmd->ddev->dev_private;
-	if (zdev->domain)
-		drm_gem_object_unreference_unlocked(&cmd->bo->gem_base);
-	else
-		drm_gem_object_unreference_unlocked(&cmd->bo->cma_base.base);
+	//zdev = cmd->ddev->dev_private;
+	cmd->free_buffer(cmd);
   recycle_cmd(cmd);
   
   SCHED_DEBUG("<- complete_to_free\n");
@@ -987,7 +1170,7 @@ scheduler(void* data)
 static int
 init_scheduler_thread(void)
 {
-  SCHED_DEBUGF("init_scheduler_thread use_count=%d\n",global_scheduler0.use_count);
+  SCHED_DEBUG("init_scheduler_thread use_count=%d\n",global_scheduler0.use_count);
   if (global_scheduler0.use_count++)
     return 0;
 
@@ -1016,7 +1199,7 @@ static int
 fini_scheduler_thread(void)
 {
   int retval = 0;
-  SCHED_DEBUGF("fini_scheduler_thread use_count=%d\n",global_scheduler0.use_count);
+  SCHED_DEBUG("fini_scheduler_thread use_count=%d\n",global_scheduler0.use_count);
   if (--global_scheduler0.use_count)
     return 0;
 
@@ -1043,7 +1226,7 @@ penguin_query(struct sched_cmd *cmd)
 {
   u32 opc = opcode(cmd);
 
-  SCHED_DEBUGF("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
+  SCHED_DEBUG("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
 
   if (opc == OP_CONFIGURE || (opc == OP_START_CU && cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx))))
     mark_cmd_complete(cmd);
@@ -1081,7 +1264,7 @@ penguin_submit(struct sched_cmd *cmd)
   /* extract cu list */
   cmd->cu_idx = get_free_cu(cmd);
   if (cmd->cu_idx < 0)
-    return false;
+   return false;
 
   cmd->slot_idx = acquire_slot_idx(cmd->ddev);
   if (cmd->slot_idx < 0)
@@ -1090,7 +1273,7 @@ penguin_submit(struct sched_cmd *cmd)
   /* found free cu, transfer regmap and start it */
   configure_cu(cmd, cmd->cu_idx);
 
-  SCHED_DEBUGF("<- penguin_submit cu_idx=%d slot=%d\n", cmd->cu_idx, cmd->slot_idx);
+  SCHED_DEBUG("<- penguin_submit cu_idx=%d slot=%d\n", cmd->cu_idx, cmd->slot_idx);
 
   return true;
 }
@@ -1101,6 +1284,76 @@ penguin_submit(struct sched_cmd *cmd)
 static struct sched_ops penguin_ops = {
   .submit = penguin_submit,
   .query = penguin_query,
+};
+
+/**
+ * ps_ert_query() - Check command status of argument command
+ *
+ * @cmd: Command to check
+ *
+ * Function is called in penguin mode (no embedded scheduler).
+ */
+static void
+ps_ert_query(struct sched_cmd *cmd)
+{
+  u32 opc = opcode(cmd);
+
+  SCHED_DEBUG("-> ps_ert_queury() slot_idx=%d\n", cmd->slot_idx);
+	if (opc == OP_CONFIGURE || (opc==OP_START_CU && ert_cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx))))
+		mark_cmd_complete(cmd);
+
+  SCHED_DEBUG("<- ps_ert_queury\n");
+}
+
+/**
+ * ps_ert_submit() - PS ERT submit of a command
+ *
+ * @cmd: command to submit
+ *
+ * Special processing for configure command.  Configuration itself is
+ * done/called by queued_to_running before calling penguin_submit.  In penguin
+ * mode configuration need to ensure that the command is retired properly by
+ * scheduler, so assign it a slot index and let normal flow continue.
+ *
+ * Return: %true on successful submit, %false otherwise
+ */
+static int
+ps_ert_submit(struct sched_cmd *cmd)
+{
+  SCHED_DEBUG("-> ps_ert_submit()\n");
+  /* configuration was done by submit_cmds, ensure the cmd retired properly */
+  if (opcode(cmd)==OP_CONFIGURE) {
+    cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+    SCHED_DEBUG("<- ps_ert_submit (configure)\n");
+    return true;
+  }
+
+  if (opcode(cmd)!=OP_START_CU)
+    return false;
+
+  /* extract cu list */
+  cmd->cu_idx = get_free_cu(cmd);
+  if (cmd->cu_idx < 0)
+   return false;
+
+  cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+  if (cmd->slot_idx < 0)
+    return false;
+
+  /* found free cu, transfer regmap and start it */
+  ert_configure_cu(cmd, cmd->cu_idx);
+
+  SCHED_DEBUG("<- ps_ert_submit() cu_idx=%d slot=%d cq_slot=%d\n",
+							 cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
+	return true;
+}
+
+/**
+ * ps_ert_ops: operations for ps scheduling
+ */
+static struct sched_ops ps_ert_ops = {
+  .submit = ps_ert_submit,
+  .query = ps_ert_query,
 };
 
 /**
@@ -1137,7 +1390,7 @@ int zocl_execbuf_ioctl(struct drm_device *dev,
     goto out;
   }
 
-  if (add_cmd(dev, zocl_bo)) {
+  if (fill_cmd_by_gem_bo(dev, zocl_bo)) {
     ret = -EINVAL;
     goto out;
   }
@@ -1151,6 +1404,134 @@ out:
 	else
 		drm_gem_cma_free_object(&zocl_bo->cma_base.base);
   return ret;
+}
+
+struct sched_packet *get_next_packet(struct sched_packet *packet, unsigned int size)
+{
+	char *bytes = (char*)packet;
+	return (struct sched_packet*)(bytes+size);
+}
+
+void zocl_cmd_buffer_free(struct sched_cmd* cmd)
+{
+	SCHED_DEBUG("-> zocl_cmd_buffer_free");
+	kfree(cmd->buffer);
+	SCHED_DEBUG("<- zocl_cmd_buffer_free");
+}
+
+static unsigned int
+get_packet_size(struct sched_packet* packet)
+{
+	unsigned int payload;
+
+	SCHED_DEBUG("-> get_packet_size");
+	switch (packet->opcode) {
+		case OP_CONFIGURE: 
+			SCHED_DEBUG("configure cmd");
+			payload = 5 + packet->count;
+			break;
+		case OP_START_CU:
+			SCHED_DEBUG("start CU/Kernel cmd");
+			payload = packet->count;
+			break;
+		case OP_STOP:
+		case OP_ABORT:
+			SCHED_DEBUG("abort or stop cmd");
+		default:
+			payload = 0;
+	}
+	SCHED_DEBUG("<- get_packet_size");
+	return 1 + payload;
+}
+
+/*
+ * fill_cmd_by_buffer() - fill a command by buffer
+ *
+ * @ddev: drm device owning adding the buffer object 
+ * @buffer: buffer 
+ * @cq_idx: index of the CQ slot in BRAM
+ *
+ * Get a free scheduler command and initial it by gem buffer object.
+ * After all, add this command to pending list.
+ *
+ * Return: 0 on success, -errno on failure
+ */
+static int
+fill_cmd_by_buffer(struct drm_device *dev, void *buffer, unsigned int cq_idx)
+{
+  struct sched_cmd *cmd = get_free_sched_cmd();
+  struct drm_zocl_dev *zdev = dev->dev_private;
+	int ret;
+
+  SCHED_DEBUG("-> fill_cmd_by_buffer\n");
+  cmd->ddev = dev;
+  cmd->sched = zdev->exec->scheduler;
+  cmd->buffer = buffer;
+	cmd->packet = buffer;
+	cmd->cq_slot_idx = cq_idx;
+	cmd->free_buffer = zocl_cmd_buffer_free;
+
+	ret = add_cmd(cmd);
+
+  SCHED_DEBUG("<- fill_cmd_by_buffer\n");
+	return ret;
+}
+
+/**
+ * cq_check() - Check CQ status and submit new command to KDS
+ *
+ * @data: drm zocl device
+ *
+ * Iterate CQ BRAM for new command.
+ *
+ * Return: 0 on success, -errno on failure
+ */
+static int
+cq_check(void* data)
+{
+	struct drm_zocl_dev *zdev = data;
+	struct sched_exec_core *exec_core = zdev->exec;
+	struct zocl_ert_dev *ert = zdev->ert;
+	struct sched_packet *packet;
+	void *buffer;
+	unsigned int slot_idx;
+	int ret;
+
+	SCHED_DEBUG("-> cq_check");
+	while (!kthread_should_stop() && !exec_core->cq_interrupt) {
+		packet = ert->cq_ioremap;
+		for (slot_idx = 0; slot_idx < exec_core->num_slots; slot_idx++) {
+			//SCHED_DEBUG("packet state %d", packet->state);
+			if (packet->state == CMD_STATE_NEW) {
+				packet->state = CMD_STATE_QUEUED;
+				SCHED_DEBUG("packet header 0x%8x, packet addr 0x%p slot size %d",
+										 packet->header, packet, slot_size(zdev->ddev));
+				buffer = kzalloc(slot_size(zdev->ddev), GFP_KERNEL);
+				if (!buffer) {
+					return -ENOMEM;
+				}
+				SCHED_DEBUG("packet size in words %d", get_packet_size(packet));
+				/**
+				 * In 2018.2, CQ BRAM is used. Access PL by AXI lite is expense,
+				 * so copy packet to PS DDR. If host can directly submit command
+				 * to PS DDR, we don't need this copy.
+				 */
+				memcpy_fromio(buffer, packet, get_packet_size(packet) *sizeof(uint32_t));
+				if (fill_cmd_by_buffer(zdev->ddev, buffer, slot_idx)) {
+					ret = -EINVAL;
+					goto err;
+				}
+			}
+			packet = get_next_packet(packet, slot_size(zdev->ddev));
+		}
+
+		schedule();
+	}
+	SCHED_DEBUG("<- cq_check");
+	return 0;
+err:
+	kfree(buffer);
+	return ret;
 }
 
 /**
@@ -1178,11 +1559,15 @@ sched_init_exec(struct drm_device *drm)
   init_waitqueue_head(&exec_core->poll_wait_queue);
 
   exec_core->scheduler = &global_scheduler0;
+	exec_core->base = zdev->regs;
   exec_core->num_slots = 16;
   exec_core->num_cus = 0;
   exec_core->cu_base_addr = 0;
   exec_core->cu_shift_offset = 0;
   exec_core->polling_mode = 1;
+  exec_core->cq_interrupt = 0;
+  exec_core->cu_isr = 0;
+  exec_core->cu_dma = 0;
   exec_core->num_slot_masks = 1;
   exec_core->num_cu_masks = 0;
   exec_core->ops = &penguin_ops;
@@ -1197,6 +1582,11 @@ sched_init_exec(struct drm_device *drm)
     exec_core->cu_status[i] = 0;
 
   init_scheduler_thread();
+
+	if (zdev->ert) {
+		exec_core->hw_cq_check = kthread_run(cq_check, (void *)zdev, "zocl-ert-thread");
+	}
+
   SCHED_DEBUG("<- sched_init_exec\n");
   return 0;
 
@@ -1212,6 +1602,7 @@ sched_init_exec(struct drm_device *drm)
 int sched_fini_exec(struct drm_device *drm)
 {
   SCHED_DEBUG("-> sched_fini_exec\n");
+	kthread_stop(((struct drm_zocl_dev*)drm->dev_private)->exec->hw_cq_check);
   fini_scheduler_thread();
   SCHED_DEBUG("<- sched_fini_exec\n");
 

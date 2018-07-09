@@ -226,6 +226,7 @@ struct sched_client_ctx {
  * @cu_shift_offset: CU idx to CU address shift value
  * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
+ * @cq_interrupt: If set then X86 host will trigger interrupt to PS
  * @configured: Flag to indicate that the core data structure has been initialized
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
@@ -238,6 +239,7 @@ struct sched_client_ctx {
  * @ops: Scheduler operations vtable
  */
 struct sched_exec_core {
+	void __iomem		 					*base;
 	struct list_head           ctx_list;
 	spinlock_t	               ctx_list_lock;
 	wait_queue_head_t          poll_wait_queue;
@@ -251,6 +253,9 @@ struct sched_exec_core {
 	unsigned int               cu_shift_offset;
 	u32                        cu_base_addr;
 	unsigned int               polling_mode;
+	unsigned int               cq_interrupt;
+	unsigned int               cu_dma;
+	unsigned int               cu_isr;
 	unsigned int               configured;
 
 	/* Bitmap tracks busy(1)/free(0) slots in cmd_slots*/
@@ -262,6 +267,8 @@ struct sched_exec_core {
 
 	/* Operations for dynamic indirection dependt on MB or kernel scheduler */
 	struct sched_ops* ops;
+  struct task_struct        *hw_cq_check;
+  wait_queue_head_t          cq_wait_queue;
 };
 
 /**
@@ -293,22 +300,24 @@ struct scheduler
  * Command data used by scheduler
  *
  * @list: command object moves from list to list
- * @bo: underlying drm buffer object 
  * @exec: core data structure for scheduler
  * @state: state of command object per scheduling
  * @cu_idx: index of CU executing this cmd object; used in penguin mode only
  * @slot_idx: command queue index of this command object
+ * @buffer: underlying buffer (ex. drm buffer object)
  * @packet: mapped ert packet object from user space
  */
 struct sched_cmd
 {
   struct list_head list;
-  struct drm_zocl_bo *bo;
   struct drm_device *ddev;
   struct scheduler *sched;
   enum cmd_state state;
   int cu_idx; /* running cu, initialized to -1 */
   int slot_idx;
+	int cq_slot_idx;
+  void *buffer;
+	void (* free_buffer)(struct sched_cmd*);
 
   /* The actual cmd object representation */
   struct sched_packet *packet;

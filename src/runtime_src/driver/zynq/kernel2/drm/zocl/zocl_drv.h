@@ -26,13 +26,12 @@
 #include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
 #include "zocl_ioctl.h"
+#include "zocl_ert.h"
+#include "zocl_util.h"
 #include "xclbin.h"
 
-#define zocl_err(dev, fmt, args...)     \
-  dev_err(dev, "%s: "fmt, __func__, ##args)
-
-#define CLEAR(x)			\
-	memset(&x, 0, sizeof(x))
+#define find_dev_by_compat(dev, compat) \
+	(dev *)platform_get_drvdata(find_platform_dev_by_compatible(compat))
 
 struct drm_zocl_exec_metadata {
   enum drm_zocl_execbuf_state state;
@@ -52,49 +51,6 @@ struct drm_zocl_bo {
 	};
   struct drm_zocl_exec_metadata  metadata;
 	uint32_t                       flags;
-};
-
-struct zocl_mem_topology {
-	//TODO : check the first 4 entries - remove unneccessary ones.
-	u32             			bank_count;
-	struct mem_data 		 *m_data;
-	u32             			m_data_length; /* length of the mem_data section */
-	u64             			bank_size; /* in KB. Currently only fixed sizes are supported. */
-	u64                 	size;
-	struct mem_topology  *topology;
-};
-
-struct zocl_connectivity {
-	u64                   size;
-	struct connectivity  *connections;
-};
-
-struct zocl_layout {
-	u64                   size;
-	struct ip_layout     *layout;
-};
-
-struct zocl_debug_layout {
-	u64                     size;
-	struct debug_ip_layout *layout;
-};
-
-struct drm_zocl_dev {
-	struct drm_device       *ddev;
-	struct fpga_manager     *fpga_mgr;
-	struct iommu_domain     *domain;
-	void __iomem            *regs;
-	phys_addr_t              res_start;
-	resource_size_t          res_len;
-	unsigned int             irq;
-  struct sched_exec_core  *exec;
-
-  struct zocl_mem_topology topology;
-  struct zocl_layout       layout;
-  struct zocl_debug_layout debug_layout;
-  struct zocl_connectivity connectivity;
-  u64                      unique_id_last_bitstream;
-	//xuid_t									 xclbin_id;
 };
 
 static inline struct drm_gem_object *
