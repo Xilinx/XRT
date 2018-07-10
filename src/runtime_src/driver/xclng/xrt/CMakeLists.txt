@@ -28,7 +28,6 @@ set_target_properties(xrtcore PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrtcore
   pthread
   rt
-  ${CURSES_LIBRARIES}
   )
 
 install (TARGETS xrtcore LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
