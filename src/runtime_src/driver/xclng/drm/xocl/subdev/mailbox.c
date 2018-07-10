@@ -358,9 +358,15 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 static void chan_timer(unsigned long data)
 {
 	struct mailbox_channel *ch = (struct mailbox_channel *)data;
+#else
+static void chan_timer(struct timer_list *t)
+{
+	struct mailbox_channel *ch = from_timer(ch, t, mbc_timer);
+#endif
 
 	MBX_DBG(ch->mbc_parent, "%s tick", ch->mbc_name);
 
@@ -622,7 +628,11 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	queue_work(ch->mbc_wq, &ch->mbc_work);
 
 	/* One timer for one channel. */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	setup_timer(&ch->mbc_timer, chan_timer, (unsigned long)ch);
+#else
+	timer_setup(&ch->mbc_timer, chan_timer, 0);
+#endif
 
 	return 0;
 }
