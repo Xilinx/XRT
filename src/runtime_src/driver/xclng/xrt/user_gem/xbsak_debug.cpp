@@ -29,6 +29,9 @@
 #include <unistd.h>
 #include <sys/file.h>
 
+#include <thread>
+#include <chrono>
+
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "xbsak.h"
@@ -36,13 +39,46 @@
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
 
+xcldev::device::InstPowerStatus xcldev::device::readPowerStatus() {
+	std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
+	std::ifstream ifs(path.c_str(), std::ifstream::binary);
+	xcldev::device::InstPowerStatus current_power_status;
+	const int power_status_size = 3 * sizeof(float);
+	char buffer[power_status_size];
+	if( ifs.good() ) {
+		ifs.read(buffer, power_status_size);
+		if (ifs.gcount() > 0) {
+			auto buffer_power_status = reinterpret_cast<xcldev::device::InstPowerStatus*>(buffer);
+			current_power_status.avgPowerConsumption = buffer_power_status->avgPowerConsumption;
+			current_power_status.instPowerConsumption = buffer_power_status->instPowerConsumption;
+			current_power_status.peakPowerConsumption = buffer_power_status->peakPowerConsumption;
+		}
+		ifs.close();
+	} else {
+		std::cout <<  "ERROR: Failed to read power information. \n";
+		current_power_status = {-1.0, -1.0, -1.0};
+	}
+	return current_power_status;
+}
+
 int xcldev::device::readPowerOnce() {
-	std::cout << "device reading power once" << std::endl;
+	auto currentPowerStatus = xcldev::device::readPowerStatus();
+	std::cout << "device reading power once: " << std::endl;
+	std::cout << "average: " << currentPowerStatus.avgPowerConsumption << std::endl;
+	std::cout << "peak: " << currentPowerStatus.peakPowerConsumption << std::endl;
+	std::cout << "inst: " << currentPowerStatus.instPowerConsumption << std::endl;
 	return 0;
 }
 
 int xcldev::device::readPowerTrace() {
-	std::cout << "device reading power trace" << std::endl;
+	while (true) {
+		auto currentPowerStatus = xcldev::device::readPowerStatus();
+		std::cout << "device reading power once: " << std::endl;
+		std::cout << "average: " << currentPowerStatus.avgPowerConsumption << std::endl;
+		std::cout << "peak: " << currentPowerStatus.peakPowerConsumption << std::endl;
+		std::cout << "inst: " << currentPowerStatus.instPowerConsumption << std::endl;
+		std::this_thread::sleep_for (std::chrono::seconds(1));
+	}
 	return 0;
 }
 

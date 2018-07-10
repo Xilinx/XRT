@@ -720,6 +720,13 @@ public:
    //Debug related functionality.
     uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
 
+    struct InstPowerStatus {
+    	float avgPowerConsumption;
+    	float instPowerConsumption;
+    	float peakPowerConsumption;
+    };
+
+    InstPowerStatus readPowerStatus();
     int readPowerOnce();
     int readPowerTrace();
 
