@@ -996,6 +996,7 @@ XCL_DRIVER_DLLESPEC int xclModifyQueue(xclDeviceHandle handle, uint64_t q_hdl);
  * @q_hdl:              Queue handle
  *
  * This function set xclStartQueue to running state. xclStartQueue starts to process Read and Write requests.
+ * TODO: remove this
  */
 XCL_DRIVER_DLLESPEC int xclStartQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
@@ -1006,11 +1007,13 @@ XCL_DRIVER_DLLESPEC int xclStartQueue(xclDeviceHandle handle, uint64_t q_hdl);
  *
  * This function set Queue to init state. all pending read and write requests will be flushed.
  * wr_complete and rd_complete will be called with error wbe for flushed requests.
+ * TODO: remove this
  */
 XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
 /**
  * struct xclWRBuffer
+ *
  */
 struct xclWRBuffer {
 	uint64_t	va;	 // could be pointer or offset

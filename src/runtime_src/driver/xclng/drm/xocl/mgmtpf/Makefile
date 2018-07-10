@@ -56,7 +56,7 @@ install: all
 	-modprobe xclmgmt
 
 clean:
-	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
-	../subdev/*.o 	\
+	rm -rf *.o *.o.d *.o.cmd *~ core .depend .*.cmd *.ko *.ko.unsigned \
+	*.mod.c ../subdev/*.o ../subdev/.*.o.cmd ../*.o ../.*.o.cmd 	\
 	.tmp_versions *.symvers modules.order
 	#* *.save *.bak Modules.* modules.order Module.markers *.bin
