@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 
 usage()
@@ -49,4 +51,3 @@ cd Release
 cmake -DCMAKE_BUILD_TYPE=Release ../../src
 make -j4 DESTDIR=$PWD install
 cd $here
-
