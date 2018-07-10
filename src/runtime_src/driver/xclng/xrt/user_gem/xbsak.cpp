@@ -26,6 +26,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
 	std::cout << "***** THIS IS AN EXPERIMENTAL VERSION OF XBSAK IMPLEMENTING xbsak status --sam AND POWER PROFILING *****" << std::endl;
 	std::cout << std::endl;
 
+	unsigned sampleFreq = 1;
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
     unsigned computeIndex = 0xffffffff;
@@ -272,11 +273,16 @@ int xcldev::xclXbsak(int argc, char *argv[])
             xclbin = optarg;
             break;
         case 'f':
-            if (cmd != xcldev::CLOCK) {
-                std::cout << "ERROR: '-f' only allowed with 'clock' command\n";
+            if (cmd != xcldev::CLOCK && cmd != xcldev::POWER) {
+                std::cout << "ERROR: '-f' only allowed with 'clock' or 'power --trace' command\n";
                 return -1;
             }
-            targetFreq[0] = std::atoi(optarg);
+            if (cmd == xcldev::CLOCK) {
+            	targetFreq[0] = std::atoi(optarg);
+            }
+            if (cmd == xcldev::POWER) {
+            	sampleFreq = std::atoi(optarg);
+            }
             break;
         case 'g':
             if (cmd != xcldev::CLOCK) {
@@ -505,7 +511,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
     	}
     	if (ipmask == xcldev::POWER_TRACE_MASK) {
     		std::cout << "power trace running" << std::endl;
-    		result = deviceVec[index]->readPowerTrace();
+    		result = deviceVec[index]->readPowerTrace(sampleFreq);
     	}
     	break;
     default:

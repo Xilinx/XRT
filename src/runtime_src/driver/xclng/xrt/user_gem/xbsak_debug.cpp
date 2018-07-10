@@ -70,9 +70,10 @@ int xcldev::device::readPowerOnce() {
 	return 0;
 }
 
-int xcldev::device::readPowerTrace() {
+int xcldev::device::readPowerTrace(int sampleFreq) {
 	std::ofstream dump_file;
 	dump_file.open("/scratch/tianhaoz/misc/dump.csv", std::ios_base::app);
+	int interval = 1e6 / sampleFreq;
 	while (true) {
 		auto currentPowerStatus = xcldev::device::readPowerStatus();
 		std::cout << "device reading power once: " << std::endl;
@@ -83,7 +84,7 @@ int xcldev::device::readPowerTrace() {
 		dump_file << currentPowerStatus.peakPowerConsumption << ",";
 		dump_file << currentPowerStatus.instPowerConsumption << "\n";
 		dump_file.flush();
-		std::this_thread::sleep_for (std::chrono::seconds(1));
+		std::this_thread::sleep_for (std::chrono::microseconds(interval));
 	}
 	return 0;
 }

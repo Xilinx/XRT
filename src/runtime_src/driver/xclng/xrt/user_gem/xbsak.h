@@ -728,7 +728,7 @@ public:
 
     InstPowerStatus readPowerStatus();
     int readPowerOnce();
-    int readPowerTrace();
+    int readPowerTrace(int sampleFreq);
 
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
