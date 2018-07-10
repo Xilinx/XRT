@@ -40,10 +40,12 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
         xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
         if (prepare) {
+		xocl_mailbox_reset(xdev, false);
 		xocl_user_dev_offline(xdev);
         } else {
 		reset_notify_client_ctx(xdev);
 		xocl_user_dev_online(xdev);
+		xocl_mailbox_reset(xdev, true);
         }
 }
 EXPORT_SYMBOL_GPL(xocl_reset_notify);

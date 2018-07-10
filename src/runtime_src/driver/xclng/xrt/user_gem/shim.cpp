@@ -17,11 +17,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "shim.h"
 #include <errno.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <iomanip>
 #include <fcntl.h>
@@ -36,7 +36,6 @@
 #include <dirent.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "xbsak.h"
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -1791,11 +1790,6 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
-}
-
-int xclXbsak(int argc, char *argv[])
-{
-    return xcldev::xclXbsak(argc, argv);
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)

@@ -439,7 +439,7 @@ allocate_buffer_object(memory* mem)
 	  && xdevice->hasBankAlloc())
   {
     //Extension flags were passed. Get the extension flags.
-    //First 8 bits will indicate legacy/mem_topology etc. 
+    //First 8 bits will indicate legacy/mem_topology etc.
     //Rest 24 bits directly indexes into mem topology section OR.
     //have legacy one-hot encoding.
     auto flag = mem->get_ext_flags();
@@ -909,7 +909,27 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->write_register(offset,ptr,size);
+
+  auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
+  auto packet = cmd->get_packet();
+  auto idx = packet.size() + 1; // past header is start of payload
+  auto addr = offset;
+  auto value = reinterpret_cast<const uint32_t*>(ptr);
+
+  while (size>0) {
+    packet[idx++] = addr;
+    packet[idx++] = *value;
+    ++value;
+    addr+=4;
+    size-=4;
+  }
+
+  auto ecmd = xrt::command_cast<ert_packet*>(cmd);
+  ecmd->type = ERT_KDS_LOCAL;
+  ecmd->count = packet.size() - 1; // substract header
+
+  xrt::scheduler::schedule(cmd);
+  cmd->wait();
 }
 
 void

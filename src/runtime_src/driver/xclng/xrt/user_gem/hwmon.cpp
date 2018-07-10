@@ -17,8 +17,8 @@
 
 #include "hwmon.h"
 #include "scan.h"
-#include "xbsak.h"
 #include <dirent.h>
+#include <iostream>
 
 /*
  * Constructor

@@ -490,7 +490,7 @@ static int health_check_cb(void *data)
                 ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
 		/* stop user pf */
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, true);
+			xocl_reset(lro, true);
 		}
                 if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
 			mgmt_info(lro, "Issuing pcie hot reset.");
@@ -503,7 +503,7 @@ static int health_check_cb(void *data)
 	        freeAXIGate(lro);
 	        msleep(500);
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, false);
+			xocl_reset(lro, false);
 		}
         }
         mutex_unlock(&lro->busy_mutex);
@@ -561,6 +561,7 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	i = 0; // Suppress warning about unused variable
 	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
 	if (rv == total)
 		rv = 0;
@@ -859,6 +860,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mailbox,
 	xocl_init_firewall,
 	xocl_init_icap,
+	xocl_init_mig,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -870,6 +872,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
 	xocl_fini_icap,
+	xocl_fini_mig,
 };
 
 static int __init xclmgmt_init(void)

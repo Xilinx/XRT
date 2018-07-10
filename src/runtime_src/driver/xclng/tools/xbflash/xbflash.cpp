@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include "flasher.h"
-#include "xbsak.h"
+#include "scan.h"
 
 const char* UsageMessages[] = {
     "xbflash [-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",

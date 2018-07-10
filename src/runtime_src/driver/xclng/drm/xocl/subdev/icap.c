@@ -1678,7 +1678,7 @@ static int icap_reset_bitstream(struct platform_device *pdev)
 }
 
 static int icap_lock_unlock_peer_bitstream(struct icap *icap,
-	xuid_t *id, pid_t pid, bool lock)
+	const xuid_t *id, pid_t pid, bool lock)
 {
 	int err = 0;
 	size_t resplen = sizeof (err);
@@ -1699,7 +1699,7 @@ static int icap_lock_unlock_peer_bitstream(struct icap *icap,
 	return err;
 }
 
-static int icap_lock_bitstream(struct platform_device *pdev, xuid_t *id,
+static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	pid_t pid)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1729,7 +1729,7 @@ static int icap_lock_bitstream(struct platform_device *pdev, xuid_t *id,
 	return err;
 }
 
-static int icap_unlock_bitstream(struct platform_device *pdev, xuid_t *id,
+static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	pid_t pid)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
