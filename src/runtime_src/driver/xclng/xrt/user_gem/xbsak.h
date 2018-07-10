@@ -572,7 +572,7 @@ public:
                                 break;
                         }
                         if( result >= 0 ) {
-                            DMARunner runner( m_handle, blockSize, 1 << i);
+                            DMARunner runner( m_handle, blockSize, i);
                             result = runner.run();
                         }
 
