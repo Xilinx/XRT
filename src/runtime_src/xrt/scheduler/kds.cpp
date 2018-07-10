@@ -75,7 +75,7 @@ is_51_dsa(const xrt::device* device)
 inline bool
 is_command_done(const command_type& cmd)
 {
-  auto epacket = cmd->get_ert_packet();
+  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
   return epacket->state >= ERT_CMD_STATE_COMPLETED;
 }
 
@@ -84,24 +84,22 @@ check(const command_type& cmd)
 {
   if (!is_command_done(cmd))
     return false;
-  
+
   XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [running->done]\n");
   if (!threaded_notification) {
-    cmd->state = xrt::command::state_type::done;
-    cmd->done();
+    cmd->notify(ERT_CMD_STATE_COMPLETED);
     return true;
   }
 
   auto notify = [](command_type cmd) {
-    cmd->state = xrt::command::state_type::done;
-    cmd->done();
+    cmd->notify(ERT_CMD_STATE_COMPLETED);
   };
 
   xrt::task::createF(notify_queue,notify,cmd);
   return true;
 }
 
-static void 
+static void
 launch(command_type cmd)
 {
   XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
@@ -170,7 +168,7 @@ monitor(const xrt::device* device)
   try {
     monitor_loop(device);
   }
-  catch (const std::exception& ex) { 
+  catch (const std::exception& ex) {
     std::string msg = std::string("kds command monitor died unexpectedly: ") + ex.what();
     xrt::send_exception_message(msg.c_str());
     s_exception = std::current_exception();
@@ -188,7 +186,7 @@ static std::thread s_monitor;
 
 namespace xrt { namespace kds {
 
-void 
+void
 schedule(const command_type& cmd)
 {
   launch(cmd);
@@ -235,23 +233,23 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
   if (cudma && regmap_size>=0x210 && is_51_dsa(device)) {
     // bug in cudma.c HW
     xrt::message::send(xrt::message::severity_level::WARNING,
-                       "Disabling CUDMA. Kernel register map size '" 
-                       + std::to_string(regmap_size) 
+                       "Disabling CUDMA. Kernel register map size '"
+                       + std::to_string(regmap_size)
                        + " bytes' exceeds CUDMA limit '"
-                       + std::to_string(0x210) 
+                       + std::to_string(0x210)
                        + " bytes'.");
     cudma = false;
   }
 
-  auto configure = std::make_shared<command>(device,command::opcode_type::configure);
-  auto epacket = reinterpret_cast<ert_configure_cmd*>(configure->get_ert_packet());
+  auto configure = std::make_shared<command>(device,ERT_CONFIGURE);
+  auto epacket = xrt::command_cast<ert_configure_cmd*>(configure.get());
 
   // variables (one word each)
   epacket->slot_size = xrt::config::get_ert_slotsize();
   epacket->num_cus = num_cus;
   epacket->cu_shift = cu_offset;
   epacket->cu_base_addr = cu_base_addr;
-  
+
   // features (one word) per sdaccel.ini
   epacket->ert     = xrt::config::get_ert();
   epacket->polling = xrt::config::get_ert_polling();
@@ -261,7 +259,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
 
   // cu addr map
   std::copy(cu_addr_map.begin(), cu_addr_map.end(), epacket->data);
-  
+
   // payload size
   epacket->count = 5 + cu_addr_map.size();
 

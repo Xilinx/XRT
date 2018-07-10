@@ -29,10 +29,10 @@
 
 namespace {
 
-const char* 
-value_or_empty(const char* value) 
-{ 
-  return value ? value : ""; 
+const char*
+value_or_empty(const char* value)
+{
+  return value ? value : "";
 }
 
 ////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ namespace conformance {
 // at a time can do context switching (reconfig).  The recursive
 // mutex allows conformance_done() to lock and still be able to call
 // conformance_execute().  Note that conformance_execute() has two
-// entry points, one from event trigger action and second from 
+// entry points, one from event trigger action and second from
 // conformance::try_pending() which is called from conformance_done().
 static std::recursive_mutex s_mutex;
 
@@ -71,7 +71,7 @@ pending(xocl::execution_context* ctx)
 {
   if (s_active.empty())
     return false;
-  
+
   s_pending.push_back(ctx);
   return true;
 }
@@ -129,7 +129,7 @@ add_command_start_callback(command_callback_function_type fcn)
   cmd_start_cb.emplace_back(std::move(fcn));
 }
 
-void 
+void
 add_command_done_callback(command_callback_function_type fcn)
 {
   cmd_done_cb.emplace_back(std::move(fcn));
@@ -154,16 +154,16 @@ struct execution_context::start_kernel : xrt::command
 {
 public:
   start_kernel(xrt::device* xdevice, xocl::execution_context* ec)
-    : xrt::command(xdevice,xrt::command::opcode_type::start_kernel), m_ec(ec)
+    : xrt::command(xdevice,ERT_START_KERNEL), m_ec(ec)
   {}
   virtual void start() const
   {
     run_start_callbacks(this,m_ec);
   }
-  virtual void done() const 
-  { 
+  virtual void done() const
+  {
     run_done_callbacks(this,m_ec);
-    m_ec->done(this); 
+    m_ec->done(this);
   }
   mutable xocl::execution_context* m_ec;
 };
@@ -173,21 +173,21 @@ struct execution_context::start_kernel_conformance : start_kernel
   start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec)
     : start_kernel(xdevice,ec)
   {}
-  virtual void done() const 
-  { 
+  virtual void done() const
+  {
     run_done_callbacks(this,m_ec);
-    m_ec->conformance_done(this); 
+    m_ec->conformance_done(this);
   }
 };
 
 static int
 fill_regmap(execution_context::regmap_type& regmap, size_t offset,
-            const void* data, const size_t size, 
+            const void* data, const size_t size,
             const xocl::kernel::argument::arginfo_range_type& arginforange)
 {
   // scale raw data input to specified size so that the
   // value when cast to uint32_t* doesn't carry junk in case
-  // size is less than sizeof(uint32_t). Fill host_data 
+  // size is less than sizeof(uint32_t). Fill host_data
   // conservative with an additional sizeof(uint32_t) bytes.
   const char* cdata = reinterpret_cast<const char*>(data);
   std::vector<char> host_data(cdata,cdata+size);
@@ -250,7 +250,7 @@ add_compute_units(device* device)
     // Check that the kernel symbol is the same between the CU kernel and
     // this context kernel.  There are test cases where two kernels share
     // the same name but have different symbol from xclbin.  This will go
-    // away once we ensure that only one kernel per symbol is created in 
+    // away once we ensure that only one kernel per symbol is created in
     // which case the kernel object address can be used from comparison.
     if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
       XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
@@ -267,7 +267,7 @@ write(const command_type& cmd)
   auto data_size = packet.size() - 1; // subtract header
 
   // Construct command header
-  auto epacket = cmd->get_ert_packet();
+  auto epacket = xrt::command_cast<ert_packet*>(cmd.get());
   epacket->count = data_size;
 
   // Max number size is 4KB
@@ -282,8 +282,8 @@ write(const command_type& cmd)
   static std::string debug_fnm = value_or_empty(std::getenv("MBS_PRINT_REGMAP"));
   if (!debug_fnm.empty()) {
     std::ofstream ostr(debug_fnm,std::ios::app);
-    ostr << "# execution_context(" << get_uid() 
-         << ") kernel(" << m_kernel->get_name() 
+    ostr << "# execution_context(" << get_uid()
+         << ") kernel(" << m_kernel->get_name()
          << ") global_id(" << m_cu_global_id[0] << "," << m_cu_global_id[1] << "," << m_cu_global_id[2]
          << ") group_id(" << m_cu_group_id[0] << "," << m_cu_group_id[1] << "," << m_cu_group_id[2]
          << ")\n";
@@ -299,7 +299,7 @@ void
 execution_context::
 encode_compute_units(packet_type& packet)
 {
-  // Encode CUs in a bitmask with bits in position according to the 
+  // Encode CUs in a bitmask with bits in position according to the
   // CU physical address.   The CU address is at 4k boundaries starting
   // at 0x0, so shift >> 12 to get CU index, the shift << idx
   word_type cu_bitmask[4] = {0};
@@ -360,7 +360,7 @@ start()
               ,get_uid(),m_cu_group_id[0],m_cu_group_id[1],m_cu_group_id[2]);
 
   // On first work load, transition event to CL_RUNNING
-  if ( (m_cu_group_id[0]==0) && (m_cu_group_id[1]==0) && (m_cu_group_id[2]==0)) 
+  if ( (m_cu_group_id[0]==0) && (m_cu_group_id[1]==0) && (m_cu_group_id[2]==0))
     m_event->set_status(CL_RUNNING);
 
   auto xdevice = m_device->get_xrt_device();
@@ -396,14 +396,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE) 
+    if (address_space == SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
     }
     else if (address_space==SPIR_ADDRSPACE_GLOBAL
              || address_space==SPIR_ADDRSPACE_CONSTANT
-             || address_space==SPIR_ADDRSPACE_PIPES) 
+             || address_space==SPIR_ADDRSPACE_PIPES)
     {
       if (address_space==SPIR_ADDRSPACE_PIPES)
         throw std::runtime_error("cu_ffa.cpp internal error, unexpected address space (pipes)");
@@ -421,7 +421,7 @@ start()
       fill_regmap(regmap,offset,&physaddr, arg->get_size(), arginforange);
     }
   }
-  
+
   for (auto& arg : m_kernel->get_progvar_argument_range()) {
     uint64_t physaddr = 0;
     if (auto mem = arg->get_memory_object()) {
@@ -529,7 +529,7 @@ execute()
   // because that would fill the command queue with commands that
   // compete for same CUs and block (CQ full) other kernel calls that
   // may want to use other CUs.
-  // 
+  //
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
@@ -590,10 +590,10 @@ conformance_execute()
   // Reeconfigure if different program
   if (!same) {
     XOCL_DEBUG(std::cout,"conformance mode reconfiguration for event(",m_event->get_uid(),") ec(",get_uid(),")\n");
-    
+
     // Remove current CUs if any
     m_cus.clear();
-    
+
     // reload new program and add new CUs
     m_device->load_program(m_kernel->get_program());
     add_compute_units(m_device);

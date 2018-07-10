@@ -34,14 +34,14 @@
 namespace xocl {
 
 static void
-validOrError(cl_command_queue   command_queue, 
-             cl_mem             buffer, 
-             cl_bool            blocking, 
-             size_t             offset, 
-             size_t             size,  
-             const void *       ptr, 
-             cl_uint            num_events_in_wait_list , 
-             const cl_event *   event_wait_list , 
+validOrError(cl_command_queue   command_queue,
+             cl_mem             buffer,
+             cl_bool            blocking,
+             size_t             offset,
+             size_t             size,
+             const void *       ptr,
+             cl_uint            num_events_in_wait_list ,
+             const cl_event *   event_wait_list ,
              cl_event *         event_parameter)
 {
   if (!config::api_checks())
@@ -66,19 +66,23 @@ validOrError(cl_command_queue   command_queue,
 #endif
 
   // CL_INVALID_OPERATION if CL_MEM_REGISTER_MAP and not a blocking read
-  if ( (xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && !blocking)
-    throw error(CL_INVALID_OPERATION,"CL_MEM_REGISTER_MAP requires block read");
+  if ((xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && !blocking)
+    throw error(CL_INVALID_OPERATION,"CL_MEM_REGISTER_MAP requires blocking write");
+
+  // CL_INVALID_OPERATION if CL_MEM_REGISTER_MAP and not a multiple of 4 bytes
+  if ((xocl(buffer)->get_flags() & CL_MEM_REGISTER_MAP) && (size%4))
+    throw error(CL_INVALID_OPERATION,"CL_MEM_REGISTER_MAP requires size multiple of 4 bytes");
 }
 
 static cl_int
-clEnqueueWriteBuffer(cl_command_queue   command_queue, 
-                     cl_mem             buffer, 
-                     cl_bool            blocking, 
-                     size_t             offset, 
-                     size_t             size,  
-                     const void *       ptr, 
-                     cl_uint            num_events_in_wait_list , 
-                     const cl_event *   event_wait_list , 
+clEnqueueWriteBuffer(cl_command_queue   command_queue,
+                     cl_mem             buffer,
+                     cl_bool            blocking,
+                     size_t             offset,
+                     size_t             size,
+                     const void *       ptr,
+                     cl_uint            num_events_in_wait_list ,
+                     const cl_event *   event_wait_list ,
                      cl_event *         event_parameter)
 {
   validOrError(command_queue,buffer,blocking,offset,size,ptr,num_events_in_wait_list,event_wait_list,event_parameter);
@@ -95,13 +99,13 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
     xocl::assign(event_parameter,uevent.get());
     return CL_SUCCESS;
   }
-  
+
   auto uevent = xocl::create_hard_event
     (command_queue,CL_COMMAND_WRITE_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_write_buffer,buffer,offset,size,ptr);
   xocl::profile::set_event_action(uevent.get(),xocl::profile::action_write,buffer);
   appdebug::set_event_action(uevent.get(),appdebug::action_readwrite,buffer,offset,size,ptr);
- 
+
   uevent->queue();
   if (blocking)
     uevent->wait();
@@ -113,14 +117,14 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
 namespace api {
 
 cl_int
-clEnqueueWriteBuffer(cl_command_queue   command_queue, 
-                     cl_mem             buffer, 
-                     cl_bool            blocking, 
-                     size_t             offset, 
-                     size_t             size,  
-                     const void *       ptr, 
-                     cl_uint            num_events_in_wait_list , 
-                     const cl_event *   event_wait_list , 
+clEnqueueWriteBuffer(cl_command_queue   command_queue,
+                     cl_mem             buffer,
+                     cl_bool            blocking,
+                     size_t             offset,
+                     size_t             size,
+                     const void *       ptr,
+                     cl_uint            num_events_in_wait_list ,
+                     const cl_event *   event_wait_list ,
                      cl_event *         event_parameter)
 {
   return ::xocl::clEnqueueWriteBuffer
@@ -132,14 +136,14 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
 } // xocl
 
 cl_int
-clEnqueueWriteBuffer(cl_command_queue   command_queue, 
-                     cl_mem             buffer, 
-                     cl_bool            blocking, 
-                     size_t             offset, 
-                     size_t             size,  
-                     const void *       ptr, 
-                     cl_uint            num_events_in_wait_list , 
-                     const cl_event *   event_wait_list , 
+clEnqueueWriteBuffer(cl_command_queue   command_queue,
+                     cl_mem             buffer,
+                     cl_bool            blocking,
+                     size_t             offset,
+                     size_t             size,
+                     const void *       ptr,
+                     cl_uint            num_events_in_wait_list ,
+                     const cl_event *   event_wait_list ,
                      cl_event *         event_parameter)
 {
   try {
@@ -156,6 +160,3 @@ clEnqueueWriteBuffer(cl_command_queue   command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-
