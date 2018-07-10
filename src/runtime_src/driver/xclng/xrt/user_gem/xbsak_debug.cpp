@@ -71,12 +71,18 @@ int xcldev::device::readPowerOnce() {
 }
 
 int xcldev::device::readPowerTrace() {
+	std::ofstream dump_file;
+	dump_file.open("/scratch/tianhaoz/misc/dump.csv", std::ios_base::app);
 	while (true) {
 		auto currentPowerStatus = xcldev::device::readPowerStatus();
 		std::cout << "device reading power once: " << std::endl;
 		std::cout << "average: " << currentPowerStatus.avgPowerConsumption << std::endl;
 		std::cout << "peak: " << currentPowerStatus.peakPowerConsumption << std::endl;
 		std::cout << "inst: " << currentPowerStatus.instPowerConsumption << std::endl;
+		dump_file << currentPowerStatus.avgPowerConsumption << ",";
+		dump_file << currentPowerStatus.peakPowerConsumption << ",";
+		dump_file << currentPowerStatus.instPowerConsumption << "\n";
+		dump_file.flush();
 		std::this_thread::sleep_for (std::chrono::seconds(1));
 	}
 	return 0;
