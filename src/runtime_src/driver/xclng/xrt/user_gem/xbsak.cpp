@@ -23,7 +23,7 @@
 int xcldev::xclXbsak(int argc, char *argv[])
 {
 	std::cout << std::endl;
-	std::cout << "***** THIS IS AN EXPERIMENTAL VERSION OF XBSAK IMPLEMENTING xbsak status --sam *****" << std::endl;
+	std::cout << "***** THIS IS AN EXPERIMENTAL VERSION OF XBSAK IMPLEMENTING xbsak status --sam AND POWER PROFILING *****" << std::endl;
 	std::cout << std::endl;
 
     unsigned index = 0xffffffff;
@@ -99,7 +99,9 @@ int xcldev::xclXbsak(int argc, char *argv[])
 	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"sam", no_argument, 0, xcldev::STATUS_SAM}
+	{"sam", no_argument, 0, xcldev::STATUS_SAM},
+	{"once", no_argument, 0, xcldev::POWER_ONCE},
+	{"trace", no_argument, 0, xcldev::POWER_TRACE}
     };
     int long_index;
     const char* short_options = "a:d:e:i:r:p:f:g:m:n:c:s:b:ho:"; //don't add numbers
@@ -161,6 +163,22 @@ int xcldev::xclXbsak(int argc, char *argv[])
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
             return 0;
         }
+        case xcldev::POWER_ONCE : {
+			if (cmd != xcldev::POWER) {
+				std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+				return -1;
+			}
+			ipmask |= static_cast<unsigned int>(xcldev::POWER_ONCE_MASK);
+			break;
+		}
+		case xcldev::POWER_TRACE : {
+			if (cmd != xcldev::POWER) {
+				std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+				return -1;
+			}
+			ipmask |= static_cast<unsigned int>(xcldev::POWER_TRACE_MASK);
+			break;
+		}
             //short options are dealt here
         case 'a':{
             if (cmd != xcldev::MEM) {
@@ -477,6 +495,19 @@ int xcldev::xclXbsak(int argc, char *argv[])
 			result = deviceVec[index]->readSAMCounters();
 		}
         break;
+    case xcldev::POWER:
+    	if (ipmask == xcldev::POWER_NONE_MASK) {
+    		result = -1;
+    	}
+    	if (ipmask == xcldev::POWER_ONCE_MASK) {
+    		std::cout << "power once running" << std::endl;
+    		result = deviceVec[index]->readPowerOnce();
+    	}
+    	if (ipmask == xcldev::POWER_TRACE_MASK) {
+    		std::cout << "power trace running" << std::endl;
+    		result = deviceVec[index]->readPowerTrace();
+    	}
+    	break;
     default:
         std::cout << "ERROR: Not implemented\n";
         result = -1;

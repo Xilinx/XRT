@@ -36,6 +36,16 @@
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
 
+int xcldev::device::readPowerOnce() {
+	std::cout << "device reading power once" << std::endl;
+	return 0;
+}
+
+int xcldev::device::readPowerTrace() {
+	std::cout << "device reading power trace" << std::endl;
+	return 0;
+}
+
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;
 
