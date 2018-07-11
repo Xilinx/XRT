@@ -18,7 +18,7 @@
 #include <CL/opencl.h>
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

@@ -25,8 +25,6 @@
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/rt_profile.h"
 
-#include "xocl/api/appdebug.h"
-
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
@@ -44,6 +42,7 @@
 
 #include <map>
 #include <sstream>
+#include "xocl/api/xoclAppDebug.h"
 
 namespace {
 static const int debug_ip_layout_max_size = 65536;

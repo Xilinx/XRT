@@ -25,7 +25,6 @@
  */
 
 #include "profile.h"
-#include "xocl/api/profile.h"
 #include "xdp/profile/profiling.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/rt_profile.h"
@@ -44,6 +43,7 @@
 
 #include <map>
 #include <sstream>
+#include "xocl/api/xoclProfile.h"
 
 namespace XCL {
 

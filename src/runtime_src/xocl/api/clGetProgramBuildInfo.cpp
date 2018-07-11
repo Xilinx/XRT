@@ -24,7 +24,7 @@
 #include "xocl/xclbin/xclbin.h"
 #include "detail/program.h"
 #include "detail/device.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

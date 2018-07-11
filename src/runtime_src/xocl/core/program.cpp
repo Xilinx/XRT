@@ -22,7 +22,7 @@
 #include "error.h"
 
 #include "xrt/util/memory.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>

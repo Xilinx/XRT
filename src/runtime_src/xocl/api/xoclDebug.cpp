@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#include "debug.h"
 #include "xocl/xclbin/xclbin.h"
+#include "xoclDebug.h"
 
 namespace xocl { namespace debug {
 

@@ -19,12 +19,12 @@
 #include "xocl/config.h"
 #include "xocl/core/program.h"
 #include "xocl/core/device.h"
-#include "profile.h"
-#include "appdebug.h"
 #include "api.h"
 
 #include "detail/program.h"
 #include "detail/device.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

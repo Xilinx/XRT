@@ -21,9 +21,8 @@
 
 #include "detail/platform.h"
 
-#include "profile.h"
-
 #include "xdp/profile/profile.h"   //TODO: This should be removed once we have a way to load xdp
+#include "xoclProfile.h"
 
 namespace xocl {
 

@@ -29,8 +29,9 @@
 
 #include "api.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
+#include "xocl/api/xoclProfile.h"
+
+#include "xocl/api/xoclAppDebug.h"
 
 namespace xocl {
 
