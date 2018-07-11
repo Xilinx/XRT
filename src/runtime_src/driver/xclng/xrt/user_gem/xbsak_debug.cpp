@@ -63,23 +63,27 @@ xcldev::device::InstPowerStatus xcldev::device::readPowerStatus() {
 
 int xcldev::device::readPowerOnce() {
 	auto currentPowerStatus = xcldev::device::readPowerStatus();
-	std::cout << "device reading power once: " << std::endl;
-	std::cout << "average: " << currentPowerStatus.avgPowerConsumption << std::endl;
-	std::cout << "peak: " << currentPowerStatus.peakPowerConsumption << std::endl;
-	std::cout << "inst: " << currentPowerStatus.instPowerConsumption << std::endl;
+	std::cout << "Reading current power consumption status: " << std::endl;
+	std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
+	std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
+	std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
 	return 0;
 }
 
-int xcldev::device::readPowerTrace(int sampleFreq) {
+int xcldev::device::readPowerTrace(int sampleFreq, std::string filename) {
 	std::ofstream dump_file;
-	dump_file.open("/scratch/tianhaoz/misc/dump.csv", std::ios_base::app);
+	dump_file.open(filename, std::ios_base::app);
 	int interval = 1e6 / sampleFreq;
+	std::cout << "Reading power consumption time-trace at frequency " << sampleFreq << " Hz: " << std::endl;
 	while (true) {
 		auto currentPowerStatus = xcldev::device::readPowerStatus();
-		std::cout << "device reading power once: " << std::endl;
-		std::cout << "average: " << currentPowerStatus.avgPowerConsumption << std::endl;
-		std::cout << "peak: " << currentPowerStatus.peakPowerConsumption << std::endl;
-		std::cout << "inst: " << currentPowerStatus.instPowerConsumption << std::endl;
+		auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+		std::cout << std::endl;
+		std::cout << "Timestamp: " << timestamp << std::endl;
+		std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
+		std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
+		std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
+		dump_file << timestamp << ",";
 		dump_file << currentPowerStatus.avgPowerConsumption << ",";
 		dump_file << currentPowerStatus.peakPowerConsumption << ",";
 		dump_file << currentPowerStatus.instPowerConsumption << "\n";

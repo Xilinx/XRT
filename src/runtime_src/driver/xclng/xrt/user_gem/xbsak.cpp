@@ -36,6 +36,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
     unsigned int pattern_byte = 'J';//Rather than zero; writing char 'J' by default
     size_t sizeInBytes = 0;
     std::string outMemReadFile = "memread.out";
+    std::string powerTraceFile = "power_trace.csv";
     std::string flashType = ""; // unset and empty by default
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
@@ -205,6 +206,9 @@ int xcldev::xclXbsak(int argc, char *argv[])
             if (cmd == xcldev::FLASH) {
                 flashType = optarg;
                 break;
+            } else if (cmd == xcldev::POWER) {
+            	powerTraceFile = optarg;
+            	break;
             } else if (cmd != xcldev::MEM || subcmd != xcldev::MEM_READ) {
                 std::cout << "ERROR: '-o' not applicable for this command\n";
                 return -1;
@@ -511,7 +515,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
     	}
     	if (ipmask == xcldev::POWER_TRACE_MASK) {
     		std::cout << "power trace running" << std::endl;
-    		result = deviceVec[index]->readPowerTrace(sampleFreq);
+    		result = deviceVec[index]->readPowerTrace(sampleFreq, powerTraceFile);
     	}
     	break;
     default:
