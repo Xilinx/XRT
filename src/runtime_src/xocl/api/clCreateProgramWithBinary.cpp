@@ -30,12 +30,12 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
-#include "profile.h"
-#include "debug.h"
-
 #include <exception>
 #include <string>
 #include <algorithm>
+
+#include "xoclDebug.h"
+#include "xoclProfile.h"
 
 namespace {
 

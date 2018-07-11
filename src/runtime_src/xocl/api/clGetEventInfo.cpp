@@ -23,7 +23,7 @@
 #include "xocl/core/event.h"
 #include "xocl/config.h"
 #include "detail/event.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

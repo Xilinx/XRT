@@ -31,8 +31,6 @@
 #include "detail/event.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
 #include "api.h"
 
 #include "xrt/util/memory.h"
@@ -40,6 +38,8 @@
 #include "printf/rt_printf.h"
 
 #include <sstream>
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace {
 

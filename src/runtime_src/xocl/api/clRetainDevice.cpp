@@ -18,7 +18,7 @@
 
 #include "xocl/core/error.h"
 #include "detail/device.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

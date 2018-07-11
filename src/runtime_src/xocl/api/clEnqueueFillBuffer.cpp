@@ -28,8 +28,8 @@
 
 #include "api.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

@@ -20,7 +20,7 @@
 #include "xocl/core/context.h"
 #include "detail/context.h"
 
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

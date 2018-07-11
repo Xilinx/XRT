@@ -22,10 +22,9 @@
 #include "xrt/util/task.h"
 #include "xrt/util/memory.h"
 
-#include "xocl/api/profile.h"
-
 #include <iostream>
 #include <cassert>
+#include "xocl/api/xoclProfile.h"
 
 namespace {
 

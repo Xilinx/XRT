@@ -19,8 +19,8 @@
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 
-#include "profile.h"
 #include "detail/memory.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

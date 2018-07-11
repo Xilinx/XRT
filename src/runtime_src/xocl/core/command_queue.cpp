@@ -22,7 +22,7 @@
 #include <iostream>
 #include <cassert>
 
-#include "xocl/api/profile.h"
+#include "xocl/api/xoclProfile.h"
 
 namespace xocl {
 

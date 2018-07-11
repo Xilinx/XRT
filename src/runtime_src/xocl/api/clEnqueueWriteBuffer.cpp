@@ -23,13 +23,12 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
-
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
 #include "detail/context.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

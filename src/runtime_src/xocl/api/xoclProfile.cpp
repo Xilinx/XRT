@@ -24,8 +24,6 @@
  * are strictly forbidden in xocl.
  */
 
-#include "profile.h"
-
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
@@ -39,6 +37,7 @@
 
 #include <map>
 #include <sstream>
+#include "xoclProfile.h"
 
 namespace {
 

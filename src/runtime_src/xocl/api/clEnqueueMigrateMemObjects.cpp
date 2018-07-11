@@ -21,11 +21,10 @@
 #include "xocl/core/event.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
-
 #include "detail/event.h"
 #include "detail/memory.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

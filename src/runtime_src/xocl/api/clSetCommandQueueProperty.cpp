@@ -26,7 +26,7 @@
 #include "detail/command_queue.h"
 
 #include "api.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

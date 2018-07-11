@@ -21,12 +21,11 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xrt/util/memory.h"
-#include "profile.h"
-
 #include "detail/memory.h"
 #include "detail/context.h"
 
 #include <bitset>
+#include "xoclProfile.h"
 
 namespace {
 

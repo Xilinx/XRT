@@ -16,7 +16,6 @@
 
 #include "rt_debug.h"
 #include "rt_singleton.h"
-#include "xocl/api/debug.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/util/message.h"
 
@@ -27,6 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include "xocl/api/xoclDebug.h"
 
 namespace XCL
 {

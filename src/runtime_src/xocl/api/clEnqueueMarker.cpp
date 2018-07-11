@@ -23,8 +23,8 @@
 #include "xocl/core/event.h"
 #include "detail/command_queue.h"
 
-#include "profile.h"
-#include "appdebug.h"
+#include "xoclProfile.h"
+#include "xoclAppDebug.h"
 
 #include <vector>
 

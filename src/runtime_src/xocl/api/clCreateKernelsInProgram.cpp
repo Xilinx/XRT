@@ -23,7 +23,7 @@
 
 #include "detail/program.h"
 #include "api.h"
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

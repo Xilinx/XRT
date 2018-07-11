@@ -19,9 +19,8 @@
  * It defines lambda generator functions that are attached as
  * debug action with the cl_event
  */
-#include "appdebug.h"
-
 #include "xocl/core/event.h"
+#include "xoclAppDebug.h"
 
 namespace xocl {
 namespace appdebug {

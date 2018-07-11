@@ -23,8 +23,8 @@
 
 #include "detail/event.h"
 
-#include "profile.h"
-#include "appdebug.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 // Enqueues a barrier command which waits for either a list of events
 // to complete, or if the list is empty it waits for all commands

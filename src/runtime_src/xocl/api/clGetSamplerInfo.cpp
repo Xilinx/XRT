@@ -25,7 +25,7 @@
 
 #include "detail/sampler.h"
 
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

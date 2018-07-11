@@ -21,7 +21,7 @@
 #include "xocl/core/program.h"
 #include "detail/program.h"
 
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

@@ -24,9 +24,9 @@
 #include "detail/memory.h"
 #include "detail/event.h"
 
-#include "profile.h"
 #include "enqueue.h"
-#include "appdebug.h"
+#include "xoclAppDebug.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 
