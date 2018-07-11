@@ -46,52 +46,52 @@ cb_action_readwrite_image_type cb_action_readwrite_image;
 */
 void
 register_cb_action_readwrite (cb_action_readwrite_type&& cb) {
-  cb_action_readwrite = cb;
+  cb_action_readwrite = std::move(cb);
 }
 
 void
 register_cb_action_copybuf (cb_action_copybuf_type&& cb) {
-  cb_action_copybuf = cb;
+  cb_action_copybuf = std::move(cb);
 }
 
 void
 register_cb_action_fill_buffer (cb_action_fill_buffer_type&& cb) {
-  cb_action_fill_buffer = cb;
+  cb_action_fill_buffer = std::move(cb);
 }
 
 void
 register_cb_action_map (cb_action_map_type&& cb) {
-  cb_action_map = cb;
+  cb_action_map = std::move(cb);
 }
 
 void
 register_cb_action_migrate (cb_action_migrate_type&& cb) {
-  cb_action_migrate = cb;
+  cb_action_migrate = std::move(cb);
 }
 
 void
 register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb) {
-  cb_action_ndrange_migrate = cb;
+  cb_action_ndrange_migrate = std::move(cb);
 }
 
 void
 register_cb_action_ndrange (cb_action_ndrange_type&& cb) {
-  cb_action_ndrange = cb;
+  cb_action_ndrange = std::move(cb);
 }
 
 void
 register_cb_action_unmap (cb_action_unmap_type&& cb) {
-  cb_action_unmap = cb;
+  cb_action_unmap = std::move(cb);
 }
 
 void
 register_cb_action_barrier_marker (cb_action_barrier_marker_type&& cb) {
-  cb_action_barrier_marker = cb;
+  cb_action_barrier_marker = std::move(cb);
 }
 
 void
 register_cb_action_readwrite_image (cb_action_readwrite_image_type && cb) {
-  cb_action_readwrite_image = cb;
+  cb_action_readwrite_image = std::move(cb);
 }
 
 /*
