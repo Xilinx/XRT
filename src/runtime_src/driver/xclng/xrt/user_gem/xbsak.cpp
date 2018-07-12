@@ -27,6 +27,8 @@ int xcldev::xclXbsak(int argc, char *argv[])
 	std::cout << std::endl;
 
 	unsigned sampleFreq = 1;
+	unsigned int baseBarAddr = 0x0;
+	unsigned int readBarSize = 4;
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
     unsigned computeIndex = 0xffffffff;
@@ -37,11 +39,13 @@ int xcldev::xclXbsak(int argc, char *argv[])
     size_t sizeInBytes = 0;
     std::string outMemReadFile = "memread.out";
     std::string powerTraceFile = "power_trace.csv";
+    std::string barFile = "bar_counters.out";
     std::string flashType = ""; // unset and empty by default
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
     size_t blockSize = 0x200000;
     bool hot = false;
+    bool outputBarFile = false;
     int c;
     dd::ddArgs_t ddArgs;
 
@@ -102,6 +106,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"sam", no_argument, 0, xcldev::STATUS_SAM},
+	{"bar", no_argument, 0, xcldev::STATUS_BAR},
 	{"once", no_argument, 0, xcldev::POWER_ONCE},
 	{"trace", no_argument, 0, xcldev::POWER_TRACE}
     };
@@ -160,6 +165,14 @@ int xcldev::xclXbsak(int argc, char *argv[])
         	ipmask |= static_cast<unsigned int>(xcldev::STATUS_SAM_MASK);
         	break;
         }
+        case xcldev::STATUS_BAR : {
+        	if (cmd != xcldev::STATUS) {
+        		std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+        		return -1;
+        	}
+        	ipmask |= static_cast<unsigned int>(xcldev::STATUS_BAR_MASK);
+        	break;
+        }
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
@@ -183,13 +196,15 @@ int xcldev::xclXbsak(int argc, char *argv[])
 		}
             //short options are dealt here
         case 'a':{
-            if (cmd != xcldev::MEM) {
+            if (cmd != xcldev::MEM && cmd != xcldev::STATUS) {
                 std::cout << "ERROR: '-a' not applicable for this command\n";
                 return -1;
             }
             size_t idx = 0;
             try {
-                startAddr = std::stoll(optarg, &idx, 0);
+            	unsigned long long tmpAddr = std::stoll(optarg, &idx, 0);
+                startAddr = tmpAddr;
+                baseBarAddr = (unsigned int)tmpAddr;
             }
             catch (const std::exception& ex) {
                 //out of range, invalid argument ex
@@ -208,6 +223,10 @@ int xcldev::xclXbsak(int argc, char *argv[])
                 break;
             } else if (cmd == xcldev::POWER) {
             	powerTraceFile = optarg;
+            	break;
+            } else if (cmd == xcldev::STATUS) {
+            	barFile = optarg;
+            	outputBarFile = true;
             	break;
             } else if (cmd != xcldev::MEM || subcmd != xcldev::MEM_READ) {
                 std::cout << "ERROR: '-o' not applicable for this command\n";
@@ -237,13 +256,15 @@ int xcldev::xclXbsak(int argc, char *argv[])
             break;
         }
         case 'i': {
-            if (cmd != xcldev::MEM) {
+            if (cmd != xcldev::MEM && cmd != xcldev::STATUS) {
                 std::cout << "ERROR: '-i' not applicable for this command\n";
                 return -1;
             }
             size_t idx = 0;
             try {
-                sizeInBytes = std::stoll(optarg, &idx, 0);
+            	size_t tmpSizeInBytes = std::stoll(optarg, &idx, 0);
+                sizeInBytes = tmpSizeInBytes;
+                readBarSize = (unsigned int)tmpSizeInBytes;
             }
             catch (const std::exception& ex) {
                 //out of range, invalid argument ex
@@ -503,6 +524,9 @@ int xcldev::xclXbsak(int argc, char *argv[])
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SAM_MASK)) {
 			result = deviceVec[index]->readSAMCounters();
+		}
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_BAR_MASK)) {
+			result = deviceVec[index]->readBarCounters(baseBarAddr, readBarSize, barFile, outputBarFile);
 		}
         break;
     case xcldev::POWER:

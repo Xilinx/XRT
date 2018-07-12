@@ -31,6 +31,7 @@
 
 #include <thread>
 #include <chrono>
+#include <bitset>
 
 #include "driver/include/xclbin.h"
 #include "scan.h"
@@ -263,6 +264,28 @@ int xcldev::device::readSAMCounters() {
 				<< "  " << std::setw(col_width) << samResult.MinExecutionTime[i]
 				<< "  " << std::setw(col_width) << samResult.MaxExecutionTime[i]
 				<< std::endl;
+		}
+	}
+	return 0;
+}
+
+int xcldev::device::readBarCounters(unsigned int base, unsigned int size, std::string filename, bool output) {
+	xclDebugBarCounterResults barResult = {1};
+	barResult.base = base;
+	barResult.size = size*sizeof(int);
+	xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_BAR, &barResult);
+	if (output) {
+		std::cout << "writing result to " << filename << " ..." << std::endl;
+		std::ofstream dump_file;
+		dump_file.open(filename, std::ios_base::app);
+		for (unsigned int i = 0; i < size; i++) {
+			dump_file << "0x" << std::hex << barResult.buffer[i] << std::endl;
+		}
+		dump_file.flush();
+		dump_file.close();
+	} else {
+		for (unsigned int i = 0; i < size; i++) {
+			std::cout << "0x" << std::hex << barResult.buffer[i] << std::endl;
 		}
 	}
 	return 0;

@@ -45,6 +45,8 @@ extern "C" {
 
 #define XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT		9
 
+#define MAX_BAR_BUFFER_SIZE 					1024
+
 /*
  * LAPC related defs here
  */
@@ -67,7 +69,8 @@ enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
   XCL_DEBUG_READ_TYPE_SPM = 2,
-  XCL_DEBUG_READ_TYPE_SAM = 3
+  XCL_DEBUG_READ_TYPE_SAM = 3,
+  XCL_DEBUG_READ_TYPE_BAR = 4
 };
 
 /* Debug counter results */
@@ -98,6 +101,12 @@ typedef struct {
   unsigned int TotalCUStarts[XSAM_MAX_NUMBER_SLOTS];
   unsigned int NumSlots;
 } xclDebugSAMCounterResults;
+
+typedef struct {
+  unsigned int base;
+  unsigned int size;
+  unsigned int buffer[MAX_BAR_BUFFER_SIZE];
+} xclDebugBarCounterResults;
 
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,
