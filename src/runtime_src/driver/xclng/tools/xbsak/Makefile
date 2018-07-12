@@ -1,4 +1,4 @@
-EXENAME := xbsak_gem
+EXENAME := xbsak
 
 CXX_EXT := cpp
 CL_EXT := cl
@@ -11,7 +11,7 @@ CXXFLAGS := -Wall -Werror -std=c++11 -pthread
 ROOT1 = $(dir $(dir $(CURDIR)))
 ROOT = $(ROOT1)..
 
-HAL_INC := -I$(ROOT) -I../../../..
+HAL_INC := -I$(ROOT) -I../../../.. -I../../../include
 
 CXXFLAGS += $(HAL_INC) -I../../xrt/user_gem/
 
