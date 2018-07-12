@@ -24,10 +24,12 @@
 
 #include "xocl/api/xoclProfile.h"
 
-namespace xocl {
+namespace {
+  xocl::command_queue::commandqueue_callback_list m_constructor_callbacks;
+  xocl::command_queue::commandqueue_callback_list m_destructor_callbacks;
+}
 
-command_queue::commandqueue_callback_list command_queue::m_constructor_callbacks;
-command_queue::commandqueue_callback_list command_queue::m_destructor_callbacks;
+namespace xocl {
 
 command_queue::
 command_queue(context* ctx, device* device, cl_command_queue_properties props)

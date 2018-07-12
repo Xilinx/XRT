@@ -69,8 +69,9 @@ namespace XCL {
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
-    //Put a check for appdebug enabled
-    appdebug::register_xocl_appdebug_callbacks();
+    if (xrt::config::get_app_debug()) {
+      appdebug::register_xocl_appdebug_callbacks();
+    }
 
     if (applicationProfilingOn()) {
       XCL::register_xocl_profile_callbacks();

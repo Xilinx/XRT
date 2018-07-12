@@ -431,9 +431,6 @@ private:
   mutable std::mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
-
-  static memory_callback_list m_constructor_callbacks;
-  static memory_callback_list m_destructor_callbacks;
 };
 
 class buffer : public memory
