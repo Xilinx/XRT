@@ -47,13 +47,11 @@ to_string(cl_int status)
   return "???";
 }
 
-
+  xocl::event::event_callback_list m_constructor_callbacks;
+  xocl::event::event_callback_list m_destructor_callbacks;
 } // namespace
 
 namespace xocl {
-
-event::event_callback_list event::m_constructor_callbacks;
-event::event_callback_list event::m_destructor_callbacks;
 
 event::
 event(command_queue* cq, context* ctx, cl_command_type cmd)

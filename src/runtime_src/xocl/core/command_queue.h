@@ -193,9 +193,6 @@ private:
   std::vector<event*> m_barriers;
   ptr<event> m_last_queued_event;
   property_type m_props;
-
-  static commandqueue_callback_list m_constructor_callbacks;
-  static commandqueue_callback_list m_destructor_callbacks;
 };
 
 } // xocl
