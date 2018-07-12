@@ -23,7 +23,7 @@
 int xcldev::xclXbsak(int argc, char *argv[])
 {
 	std::cout << std::endl;
-	std::cout << "***** THIS IS AN EXPERIMENTAL VERSION OF XBSAK IMPLEMENTING xbsak status --sam AND POWER PROFILING *****" << std::endl;
+	std::cout << "***** THIS IS AN EXPERIMENTAL VERSION OF XBSAK IMPLEMENTING xbsak status --sam --bar AND POWER PROFILING *****" << std::endl;
 	std::cout << std::endl;
 
 	unsigned sampleFreq = 1;

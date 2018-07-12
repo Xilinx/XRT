@@ -284,8 +284,9 @@ int xcldev::device::readBarCounters(unsigned int base, unsigned int size, std::s
 		dump_file.flush();
 		dump_file.close();
 	} else {
+		std::cout << "Reading memory from address 0x" << std::hex << base << ": " << std::endl;
 		for (unsigned int i = 0; i < size; i++) {
-			std::cout << "0x" << std::hex << barResult.buffer[i] << std::endl;
+			std::cout << std::dec << i+1 << '\t' << "0x" << std::hex << barResult.buffer[i] << std::endl;
 		}
 	}
 	return 0;
