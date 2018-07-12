@@ -2,6 +2,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../xrt/user_gem
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
   )
 
 file(GLOB XBSAK_FILES
@@ -17,6 +18,7 @@ target_link_libraries(xbsak
   xrtcorestatic
   pthread
   rt
+  ${CURSES_LIBRARIES}
   )
 
 install (TARGETS xbsak RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

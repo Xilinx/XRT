@@ -117,16 +117,28 @@ void freeAXIGate(struct xclmgmt_dev *lro)
  * prepare = true will call xdma_offline
  * prepare = false will call xdma online
  */
-void xocl_reset(struct pci_dev *pdev, bool prepare)
+void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
 {
+	struct pci_dev *pdev = lro->user_pci_dev;
+	struct mailbox_req mbreq = { 0 };
+	int err = -EINVAL;
+	size_t resplen = sizeof (err);
 	void (*reset)(struct pci_dev *pdev, bool prepare);
-	reset = symbol_get(xocl_reset_notify);
-	if (reset) {
-		printk(KERN_INFO "%s: Calling xocl_reset_notify \n", DRV_NAME);
-		device_lock(&pdev->dev);
-		reset(pdev, prepare);
-		device_unlock(&pdev->dev);
-		symbol_put(xocl_reset_notify);
+
+	mbreq.req = prepare ?
+		MAILBOX_REQ_RESET_BEGIN : MAILBOX_REQ_RESET_END;
+	(void) xocl_peer_request(lro, &mbreq, &err, &resplen, NULL, NULL);
+	if (err != 0) {
+		/* Fallback to our hacky way if mailbox is not available. */
+		mgmt_err(lro, "cannot reset peer via mailbox, err=%d", err);
+		reset = symbol_get(xocl_reset_notify);
+		if (reset) {
+			mgmt_err(lro, "calling xocl_reset_notify() directly");
+			device_lock(&pdev->dev);
+			reset(pdev, prepare);
+			device_unlock(&pdev->dev);
+			symbol_put(xocl_reset_notify);
+		}
 	}
 }
 
@@ -218,7 +230,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		 * assume all axi access from userpf is stopped
 		 * busy lock is taken to make sure no axi access at this time
 		 */
-		xocl_reset(lro->user_pci_dev, true);
+		xocl_reset(lro, true);
 	}
 
 	if (!lro->reset_firewall) {
@@ -236,9 +248,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * lock pci config space access from userspace,
 	 * save state and issue PCIe secondary bus reset
 	 */
-	if (!XOCL_DSA_PCI_RESET_OFF(lro))
+	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		(void) xocl_mailbox_reset(lro, false);
 		xclmgmt_reset_pci(lro);
-	else {
+		(void) xocl_mailbox_reset(lro, true);
+	} else {
 		mgmt_err(lro, "PCI Hot reset is not supported on this board.");
 	}
 
@@ -268,7 +282,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	if (lro->user_pci_dev) {
 		// Bring the xdma online
-		xocl_reset(lro->user_pci_dev, false);
+		xocl_reset(lro, false);
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
@@ -295,7 +309,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 
 	/* Make the user pf offline before issuing reset. */
 	if (lro->user_pci_dev) {
-		xocl_reset(lro->user_pci_dev, true);
+		xocl_reset(lro, true);
 	}
 
 	//freeze and free AXI gate to reset the OCL region before and after the pcie reset.
@@ -372,7 +386,7 @@ done:
 
 	// Bring the user pf online
 	if (lro->user_pci_dev) {
-		xocl_reset(lro->user_pci_dev, false);
+		xocl_reset(lro, false);
 	}
 
 	// TODO: Figure out a way to reinit DMA engine which is other PF
@@ -447,14 +461,4 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	pci_restore_state(pdev);
 	pci_cfg_access_unlock(pdev);
-
-	/*
-	 * After reset, all user interrupts are disabled. We need to
-	 * reenable them. For now, we just blindly reenable all of them.
-	 * Also, mailbox IP needs to be reinitialized.
-	 * These code will be removed once we have a better reset story.
-	 */
-	XOCL_WRITE_REG32(-1, lro->core.intr_bar_addr + XCLMGMT_INTR_USER_ENABLE);
-	xocl_mailbox_init_hw(lro, lro->core.bar_addr + XOCL_MAILBOX_OFFSET_MGMT);
-	xocl_mailbox_init_hw(lro, lro->core.bar_addr + XOCL_MAILBOX_OFFSET_USER);
 }

@@ -35,6 +35,7 @@
 #include <map>
 #include <utility>
 #include <cassert>
+#include <vector>
 
 namespace xocl {
 
@@ -279,6 +280,20 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
+
+    std::ifstream xclSysfsOpen(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::string xclSysfsGetString(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    unsigned long long xclSysfsGetInt(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::vector<std::string> xclSysfsGetStrings(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    void xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info);
+    void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
+    void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 
     // Upper two denote PF, lower two bytes denote BAR
     // USERPF == 0x0

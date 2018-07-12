@@ -211,6 +211,8 @@ struct xclDeviceUsage {
     unsigned ddrBOAllocated[8];
     unsigned totalContexts;
     uint64_t xclbinId[4];
+    unsigned dma_channel_cnt;
+    unsigned mm_channel_cnt;
 };
 
 struct xclBOProperties {

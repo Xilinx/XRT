@@ -31,16 +31,10 @@ emulation_mode()
 static bool
 is_sw_emulation()
 {
-// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated 
+// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
   return swem;
-}
-
-inline bool
-mbs_enabled()
-{
-  return !emulation_mode() && xrt::config::get_ert();
 }
 
 inline bool
@@ -65,7 +59,7 @@ emu_50_disable_kds(const xrt::device* device)
 
     if (!emulation_mode())
       return;
-    
+
     if (device->getName().find("_5_0")==std::string::npos)
       return;
 
@@ -84,24 +78,20 @@ emu_50_disable_kds(const xrt::device* device)
 
 namespace xrt {  namespace scheduler {
 
-void 
+void
 start()
 {
   if (kds_enabled())
     kds::start();
-  else if (mbs_enabled())
-    mbs::start();
   else
     sws::start();
 }
 
-void 
+void
 stop()
 {
   if (kds_enabled())
     kds::stop();
-  else if (mbs_enabled())
-    mbs::stop();
   else
     sws::stop();
 
@@ -109,15 +99,13 @@ stop()
 }
 
 /**
- * Schedule a command for execution on either sws or mbs
+ * Schedule a command for execution on either sws or kds
  */
-void 
+void
 schedule(const command_type& cmd)
 {
   if (kds_enabled())
     kds::schedule(cmd);
-  else if (mbs_enabled())
-    mbs::schedule(cmd);
   else
     sws::schedule(cmd);
 }
@@ -129,11 +117,8 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
 
   if (kds_enabled())
     kds::init(device,regmap_size,cu_isr,num_cus,cu_offset,cu_base_addr,cu_addr_map);
-  else if (mbs_enabled())
-    mbs::init(device,regmap_size,cu_isr,num_cus,cu_offset,cu_base_addr,cu_addr_map);
   else
     sws::init(device,regmap_size,num_cus,cu_offset,cu_base_addr,cu_addr_map);
 }
 
 }} // scheduler,xrt
-

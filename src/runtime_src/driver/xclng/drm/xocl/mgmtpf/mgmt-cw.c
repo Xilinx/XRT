@@ -46,7 +46,7 @@ int ocl_freqscaling_ioctl(struct xclmgmt_dev *lro, const void __user *arg)
 					"than set by xclbin %d",
 					freq_obj.ocl_target_freq[i],
 					topology-> m_clock_freq[i].m_freq_Mhz);
-			    return -EDOM;
+				return -EDOM;
 			}
 		}
 	}

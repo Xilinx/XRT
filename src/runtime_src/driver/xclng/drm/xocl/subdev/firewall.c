@@ -118,7 +118,6 @@ static ssize_t show_firewall(struct device *dev, struct device_attribute *da,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct platform_device *pdev = to_platform_device(dev);
 	struct firewall *fw;
-	struct rtc_time tm;
 	u64 t;
 	u32 val;
 	int ret;
@@ -128,17 +127,15 @@ static ssize_t show_firewall(struct device *dev, struct device_attribute *da,
 
 	if (attr->index == XOCL_AF_PROP_DETECTED_TIME) {
 		get_prop(pdev,  attr->index, &t);
-		rtc_time_to_tm(t, &tm);
-		return sprintf(buf, "(%04d-%02d-%02d %02d:%02d:%02d)\n",
-			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-			tm.tm_hour, tm.tm_min, tm.tm_sec);
+		return sprintf(buf, "%llu\n", t);
 	}
+
 	ret = get_prop(pdev, attr->index, &val);
 	if (ret) {
 		return 0;
 	}
 
-	return sprintf(buf, "%d\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static SENSOR_DEVICE_ATTR(status, 0444, show_firewall, NULL,

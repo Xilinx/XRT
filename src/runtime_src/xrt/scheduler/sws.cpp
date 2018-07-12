@@ -162,7 +162,7 @@ struct slot_info
     cus.reset();
     cus.set(cu);
 
-    // If cu tracing is enabled then update command packet cumask 
+    // If cu tracing is enabled then update command packet cumask
     // to reflect running cu prior to invoking the command callback
     if (cu_trace_enabled) {
       auto& packet = get_packet();
@@ -173,7 +173,7 @@ struct slot_info
     }
 
     // Invoke command callback
-    cmd->start();
+    cmd->notify(ERT_CMD_STATE_RUNNING);
   }
 };
 
@@ -202,7 +202,7 @@ static uint64_t cu_stop_time[max_cus] = {0};
 /**
  * MB configuration
  */
-static void 
+static void
 setup()
 {
   command_queue.clear();
@@ -231,17 +231,17 @@ notify_host(slot_info* slot)
   XRT_DEBUGF("notify_host(%d)\n",slot->get_uid());
 
   if (!threaded_notification) {
-    slot->cmd->done();
+    slot->cmd->notify(ERT_CMD_STATE_COMPLETED);
     return;
   }
 
   // It is vital that cmd is kept alive through reference counting
-  // by being bound to the notify call back argument. This is 
+  // by being bound to the notify call back argument. This is
   // because the scheduler itself will remove the command from its
-  // queue once it is complete and threading doesn't ensure notify 
+  // queue once it is complete and threading doesn't ensure notify
   // is called first.
   auto notify = [](command_type cmd) {
-    cmd->done();
+    cmd->notify(ERT_CMD_STATE_COMPLETED);
   };
 
   xrt::task::createF(notify_queue,notify,slot->cmd);
@@ -268,7 +268,7 @@ configure_cu(slot_info* slot, size_type cu)
 
   // data past header and cu_masks
   auto regmap = slot->get_packet().data() + 1 + cu_masks(slot->header_value);
- 
+
   // write register map, starting at base + 0xC
   // 0x4, 0x8 used for interrupt, which is initialized in setu
   slot->device->write_register(cu_addr,regmap,size*4);
@@ -336,7 +336,7 @@ check_cu(slot_info* slot,bool wait=false)
     device->read_register(cu_addr,&ctrlreg,4);
     if (ctrlreg & (CONTROL_AP_IDLE | CONTROL_AP_DONE)) {
       cu_status.flip(cu_idx);
-      cu_slot_usage[cu_idx] = nullptr; 
+      cu_slot_usage[cu_idx] = nullptr;
       return true;
     }
   } while (wait);
@@ -376,7 +376,7 @@ check_idle_prereq(slot_info* slot)
  *     to be in a slot at default slot offset (4K), most likely slot 0.
  *  2. During regular scheduler loop, in which case the CONFIGURE_MB
  *     packet is at an arbitrary slot location.   In this scenario, the
- *     function may return (false) without processing the command if 
+ *     function may return (false) without processing the command if
  *     other commands are currently executing; this is to avoid hardware
  *     lockup.
  *
@@ -451,7 +451,7 @@ static std::vector<command_type> s_cmds;
  *  3. If status is queued (0x2), then start command on available CU
  *     Status remains queued if no CUs available, or transitions to running (0x3)
  *  4. If status is running (0x4), then check CU status
- *     Status remains running (0x4) if CU is still running, or 
+ *     Status remains running (0x4) if CU is still running, or
  *     transitions to free if CU is done
  */
 static void
@@ -499,7 +499,7 @@ scheduler_loop()
           bitmask_type mask(payload[1+i]);
           slot->cus |= (mask<<sizeof(value_type)*8*i);
         }
-  
+
         slot->header_value = (slot->header_value & ~0xF) | 0x2; // queued
         XRT_DEBUGF("slot(%d) [new->queued]\n",slot->get_uid());
       }
@@ -539,7 +539,7 @@ static std::thread s_scheduler;
 
 } // namespace
 
-namespace xrt { namespace sws { 
+namespace xrt { namespace sws {
 
 void
 schedule(const command_type& cmd)

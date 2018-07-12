@@ -202,8 +202,8 @@ failed:
 	return ret;
 }
 
-static void fill_pcie_link_info(struct xclmgmt_dev *lro,
-	struct xclmgmt_ioc_info *obj)
+void get_pcie_link_info(struct xclmgmt_dev *lro,
+	unsigned short *link_width, unsigned short *link_speed)
 {
 	u16 stat;
 	long result;
@@ -211,13 +211,12 @@ static void fill_pcie_link_info(struct xclmgmt_dev *lro,
 	result = pcie_capability_read_word(lro->core.pdev, PCI_EXP_LNKSTA,
 		&stat);
 	if (result) {
+		*link_width = *link_speed = 0;
 		mgmt_err(lro, "Read pcie capability failed");
 		return;
 	}
-	obj->pcie_link_width =
-		(stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
-	obj->pcie_link_speed =
-		stat & PCI_EXP_LNKSTA_CLS;
+	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
+	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
@@ -264,7 +263,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->vcc_bram = val;
 
 	fill_frequency_info(lro, obj);
-	fill_pcie_link_info(lro, obj);
+	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed);
 }
 
 /* maps the PCIe BAR into user space for memory-like access using mmap() */
@@ -491,7 +490,7 @@ static int health_check_cb(void *data)
                 ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
 		/* stop user pf */
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, true);
+			xocl_reset(lro, true);
 		}
                 if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
 			mgmt_info(lro, "Issuing pcie hot reset.");
@@ -504,7 +503,7 @@ static int health_check_cb(void *data)
 	        freeAXIGate(lro);
 	        msleep(500);
 		if (lro->user_pci_dev) {
-			xocl_reset(lro->user_pci_dev, false);
+			xocl_reset(lro, false);
 		}
         }
         mutex_unlock(&lro->busy_mutex);
@@ -562,6 +561,7 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	i = 0; // Suppress warning about unused variable
 	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
 	if (rv == total)
 		rv = 0;
@@ -860,6 +860,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mailbox,
 	xocl_init_firewall,
 	xocl_init_icap,
+	xocl_init_mig,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -871,6 +872,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
 	xocl_fini_icap,
+	xocl_fini_mig,
 };
 
 static int __init xclmgmt_init(void)

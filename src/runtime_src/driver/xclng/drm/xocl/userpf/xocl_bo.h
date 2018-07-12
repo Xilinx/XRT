@@ -62,6 +62,7 @@ struct drm_xocl_bo {
 	void                 *bar_vmapping;
 	struct dma_buf			*dmabuf;
 	const struct vm_operations_struct *dmabuf_vm_ops;
+	unsigned		dma_nsg;
 	unsigned              flags;
 	unsigned              type;
 };
@@ -126,11 +127,12 @@ static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 
 static inline unsigned xocl_bo_ddr_idx(unsigned flags)
 {
-	const unsigned ddr = flags;
-	//const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
-	if (!ddr)
-		return 0xffffffff;
-	return __builtin_ctz(ddr);
+        return flags;
+//	const unsigned ddr = flags;
+//	//const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
+//	if (!ddr)
+//		return 0xffffffff;
+//	return __builtin_ctz(ddr);
 }
 
 int xocl_create_bo_ioctl(struct drm_device *dev, void *data,

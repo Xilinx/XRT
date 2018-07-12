@@ -56,6 +56,13 @@
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
 #define MAX_DEPS        8
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#define XOCL_DRM_FREE_MALLOC
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+#define XOCL_DRM_FREE_MALLOC
+#endif
+#endif
 
 struct xocl_dev	{
 	struct xocl_dev_core	core;
@@ -136,16 +143,6 @@ struct client_ctx {
 	struct pid		*pid;
 };
 
-struct xocl_qdma_queue {
-	unsigned long		dma_handle;
-	unsigned long		handle;
-	struct mutex		lock;
-	u64			flag;
-	u32			q_len;
-	struct qdma_queue_conf	*qconf;
-	struct qdma_sw_sg       *sgl_cache;
-};
-
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev,
         void *data, struct drm_file *filp);
@@ -163,7 +160,7 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf);
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
@@ -179,21 +176,6 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
                                           uint64_t unaligned_size,
                                           unsigned user_flags,
                                           unsigned user_type);
-
-/* QDMA functions */
-enum {
-	XOCL_QDMA_QUEUE_ADDED	= 0x1,
-	XOCL_QDMA_QUEUE_STARTED	= 0x2,
-	XOCL_QDMA_QUEUE_DONE	= 0x4,
-};
-
-int xocl_qdma_queue_create(struct platform_device *pdev,
-        struct qdma_queue_conf *qconf, struct xocl_qdma_queue *queue);
-int xocl_qdma_queue_destroy(struct platform_device *pdev,
-	struct xocl_qdma_queue *queue);
-ssize_t xocl_qdma_post_wr(struct platform_device *pdev,
-	struct xocl_qdma_queue * queue,
-        struct qdma_request *wr, struct sg_table *sgt, off_t off);
 
 void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
 

@@ -111,6 +111,7 @@ enum {
 #define	XOCL_XIIC		"xiic" SUBDEV_SUFFIX
 #define	XOCL_MAILBOX		"mailbox" SUBDEV_SUFFIX
 #define	XOCL_ICAP		"icap" SUBDEV_SUFFIX
+#define	XOCL_MIG		"mig" SUBDEV_SUFFIX
 
 enum {
         XOCL_SUBDEV_FEATURE_ROM,
@@ -120,6 +121,7 @@ enum {
         XOCL_SUBDEV_XVC_PRI,
         XOCL_SUBDEV_SYSMON,
         XOCL_SUBDEV_AF,
+        XOCL_SUBDEV_MIG,
 	XOCL_SUBDEV_MB,
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
@@ -162,6 +164,39 @@ enum {
 		XOCL_RES_SYSMON,			\
 		ARRAY_SIZE(XOCL_RES_SYSMON),		\
 	}
+
+#define	XOCL_RES_MIG_6A8F					\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x1000000,		\
+			.end 	= 0x10003FF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x70000,		\
+			.end 	= 0x703FF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x1010000,		\
+			.end 	= 0x10103FF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x1020000,		\
+			.end 	= 0x10203FF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+		})
+
+#define	XOCL_DEVINFO_MIG_6A8F				\
+	{						\
+		XOCL_SUBDEV_MIG,			\
+		XOCL_MIG,				\
+		XOCL_RES_MIG_6A8F,			\
+		ARRAY_SIZE(XOCL_RES_MIG_6A8F),		\
+	}
+
 
 #define	XOCL_RES_AF					\
 		((struct resource []) {			\
@@ -663,6 +698,7 @@ enum {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_MIG_6A8F,        \
 		})
 
 #define	XOCL_BOARD_MGMT_6A8F_DSA52					\
@@ -695,6 +731,9 @@ enum {
 		.intr_bar = 1,						\
 	}
 
+#define	XOCL_BOARD_MGMT_XBB_DSA51	XOCL_BOARD_MGMT_6A8F
+#define	XOCL_BOARD_MGMT_XBB_DSA52	XOCL_BOARD_MGMT_6A8F_DSA52
+
 #define	XOCL_MGMT_PCI_IDS			\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A87, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -716,6 +755,9 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E8F, 0x4352, MGMT_6E8F_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x888F, PCI_ANY_ID, MGMT_888F) },   \
+	{ XOCL_PCI_DEVID(0x10EE, 0x788F, 0x4351, MGMT_XBB_DSA51) },   \
+	{ XOCL_PCI_DEVID(0x10EE, 0x788F, 0x4352, MGMT_XBB_DSA52) },   \
+	{ XOCL_PCI_DEVID(0x10EE, 0x798F, 0x4352, MGMT_XBB_DSA52) },   \
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_DEFAULT) }
 
 #define	XOCL_USER_XDMA_PCI_IDS			\
@@ -738,6 +780,9 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B10, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E90, 0x4352, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x8890, PCI_ANY_ID, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4351, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4352, USER_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x7990, 0x4352, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },   \

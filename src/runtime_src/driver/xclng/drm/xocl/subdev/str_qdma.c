@@ -22,6 +22,7 @@
 #include "../userpf/common.h"
 #include "../userpf/xocl_bo.h"
 #include "../lib/libqdma/libqdma_export.h"
+#include "../lib/libqdma/qdma_wq.h"
 #include "qdma_ioctl.h"
 
 #define	PROC_TABLE_HASH_SZ	512
@@ -32,27 +33,13 @@
 
 static dev_t	str_dev;
 
-struct queue_wqe {
-	struct stream_queue	*queue;
-	u32			index;
-	struct kiocb		*kiocb;
-	struct qdma_request	wr;
-	bool			dirty;
-};
-
 struct stream_queue {
-	struct xocl_qdma_queue	queue;
+	struct qdma_wq		queue;
 	u32			state;
 	struct file		*file;
 	int			qfd;
 	int			refcnt;
 	struct str_device	*sdev;
-	spinlock_t		wq_lock;
-	struct queue_wqe	*wq;
-	u32			wq_len;
-	u32			wq_head;
-	u32			wq_tail;
-	struct completion	wq_comp;
 
 	u64			trans_bytes;
 };
@@ -98,17 +85,18 @@ static const struct vm_operations_struct stream_vm_ops = {
 };
 
 static ssize_t stream_post_bo(struct str_device *sdev,
-	struct stream_queue *queue, struct qdma_request *wr,
-	struct drm_gem_object *gem_obj, off_t offset, size_t len)
+	struct stream_queue *queue, struct drm_gem_object *gem_obj,
+	loff_t offset, size_t len, bool write, bool block)
 {
 	struct drm_xocl_bo *xobj;
 	struct xocl_dev *xdev;
+	struct qdma_wr wr;
 	ssize_t ret;
 
 	xdev = xocl_get_xdev(sdev->pdev);
 	if (gem_obj->size < offset + len) {
 		xocl_err(&sdev->pdev->dev, "Invalid request, buf size: %ld, "
-			"request size %ld, offset %ld",
+			"request size %ld, offset %lld",
 			gem_obj->size, len, offset);
 		ret = -EINVAL;
 		goto failed;
@@ -117,10 +105,15 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	drm_gem_object_reference(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
-	ret = xocl_qdma_post_wr(sdev->pdev, &queue->queue, wr, xobj->sgt,
-		offset);
+	memset(&wr, 0, sizeof (wr));
+	wr.write = write;
+	wr.len = len;
+	wr.block = block;
+	wr.sgt = xobj->sgt;
+
+	ret = qdma_wq_post(&queue->queue, &wr);
 	if (ret < 0) {
-		xocl_dump_sgtable(&sdev->pdev->dev, xobj->sgt);
+		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
 failed:
@@ -130,16 +123,19 @@ failed:
 }
 
 static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
-	struct qdma_request *wr, char __user *buf, size_t sz)
+	char __user *buf, size_t sz, bool write, bool block)
 {
 	struct vm_area_struct	*vma;
 	struct xocl_dev *xdev;
 	struct drm_xocl_unmgd unmgd;
 	unsigned long buf_addr = (unsigned long)buf;
+	enum dma_data_direction dir;
+	u32 nents;
+	struct qdma_wr wr;
 	long	ret = 0;
 
 	xocl_info(&sdev->pdev->dev, "Read / Write Queue %ld",
-		queue->queue.handle);
+		queue->queue.qhdl);
 
 	if (((uint64_t)(buf) & ~PAGE_MASK) && queue->queue.qconf->c2h) {
 		xocl_err(&sdev->pdev->dev,
@@ -155,21 +151,37 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		if (vma->vm_start > buf_addr || vma->vm_end <= buf_addr + sz) {
 			return -EINVAL;
 		}
-		ret = stream_post_bo(sdev, queue, wr, vma->vm_private_data,
-			(buf_addr - vma->vm_start), sz);
+		ret = stream_post_bo(sdev, queue, vma->vm_private_data,
+			(buf_addr - vma->vm_start), sz, write, block);
 		return ret;
 	}
 
-	ret = xocl_init_unmgd(&unmgd, (uint64_t)buf, sz, wr->write);
+	ret = xocl_init_unmgd(&unmgd, (uint64_t)buf, sz, write);
 	if (ret) {
 		xocl_err(&sdev->pdev->dev, "Init unmgd buf failed, "
 			"ret=%ld", ret);
 		goto failed;
 	}
 
-	ret = xocl_qdma_post_wr(sdev->pdev, &queue->queue, wr,
-		unmgd.sgt, 0);
+	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
+	nents = pci_map_sg(xdev->core.pdev, unmgd.sgt->sgl,
+		unmgd.sgt->orig_nents, dir);
+	if (!nents) {
+		xocl_err(&sdev->pdev->dev, "map sgl failed");
+		ret = -EFAULT;
+		xocl_finish_unmgd(&unmgd);
+		goto failed;
+	}
 
+	memset(&wr, 0, sizeof (wr));
+	wr.write = write;
+	wr.len = sz;
+	wr.block = block;
+	wr.sgt = unmgd.sgt;
+
+	ret = qdma_wq_post(&queue->queue, &wr);
+
+	pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 	xocl_finish_unmgd(&unmgd);
 
 failed:
@@ -181,17 +193,11 @@ static ssize_t queue_read(struct file *filp, char __user *buf, size_t sz,
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	struct qdma_request	wr;
 
 	queue = (struct stream_queue *)filp->private_data;
 	sdev = queue->sdev;
 
-	memset(&wr, 0, sizeof (wr));
-	wr.count = sz;
-	wr.timeout_ms = QUEUE_POST_TIMEOUT;
-	wr.fp_done = NULL; /* non-blocking */
-
-	return queue_rw(sdev, queue, &wr, buf, sz);
+	return queue_rw(sdev, queue, buf, sz, false, true);
 }
 
 static ssize_t queue_write(struct file *filp, const char __user *buf, size_t sz,
@@ -199,18 +205,11 @@ static ssize_t queue_write(struct file *filp, const char __user *buf, size_t sz,
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	struct qdma_request	wr;
 
 	queue = (struct stream_queue *)filp->private_data;
 	sdev = queue->sdev;
 
-	memset(&wr, 0, sizeof (wr));
-	wr.count = sz;
-	wr.timeout_ms = QUEUE_POST_TIMEOUT;
-	wr.fp_done = NULL; /* non-blocking */
-	wr.write = true;
-
-	return queue_rw(sdev, queue, &wr, (char *)buf, sz);
+	return queue_rw(sdev, queue, (char *)buf, sz, true, true);
 }
 
 #if 0
@@ -384,28 +383,20 @@ static int queue_release(struct inode *inode, struct file *file)
 
 	xdev = xocl_get_xdev(sdev->pdev);
 
-	xocl_info(&sdev->pdev->dev, "Release Queue %ld", queue->queue.handle);
+	xocl_info(&sdev->pdev->dev, "Release Queue %ld", queue->queue.qhdl);
 
 	if (queue->refcnt > 0) {
 		xocl_err(&sdev->pdev->dev, "Queue is busy");
 		return -EBUSY;
 	}
 
-	ret = xocl_qdma_queue_destroy(sdev->pdev, &queue->queue);
+	ret = qdma_wq_destroy(&queue->queue);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev,
 			"Destroy queue failed ret = %ld", ret);
 		goto failed;
 	}
-	spin_lock(&queue->wq_lock);
-	if (queue->wq_head != queue->wq_tail) {
-		spin_unlock(&queue->wq_lock);
-		wait_for_completion(&queue->wq_comp);
-	} else
-		spin_unlock(&queue->wq_lock);
-	if (queue->wq) {
-		vfree(queue->wq);
-	}
+
 	devm_kfree(&sdev->pdev->dev, queue);
 		
 failed:
@@ -435,7 +426,6 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	struct qdma_queue_conf qconf;
 	struct xocl_dev *xdev;
 	struct stream_queue *queue;
-	int	i;
 	long	ret;
 
 	if (copy_from_user((void *)&req, arg,
@@ -465,7 +455,8 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 
 	if (!req.write)
 		qconf.c2h = 1;
-	ret = xocl_qdma_queue_create(sdev->pdev, &qconf, &queue->queue);
+	ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
+		&queue->queue);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "Creating Queue failed ret = %ld",
 			ret);
@@ -473,20 +464,8 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	}
 
 	xocl_info(&sdev->pdev->dev, "Created Queue handle %ld, index %d, sz %d",
-		queue->queue.handle, queue->queue.qconf->qidx,
+		queue->queue.qhdl, queue->queue.qconf->qidx,
 		queue->queue.qconf->rngsz);
-
-	queue->wq_len = queue->queue.qconf->rngsz;
-	queue->wq = vzalloc(sizeof (*queue->wq) * queue->wq_len);
-	if (!queue->wq) {
-		xocl_err(&sdev->pdev->dev, "Alloc wq failed");
-                ret = -ENOMEM;
-		goto failed;
-	}
-	for (i = 0; i < queue->wq_len; i++) {
-		queue->wq[i].index = i;
-		queue->wq[i].queue = queue;
-	}
 
 	queue->file = anon_inode_getfile("qdma_queue", &queue_fops, queue,
 		O_CLOEXEC | O_RDWR);
@@ -511,8 +490,6 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	}
 
 	queue->sdev = sdev;
-	spin_lock_init(&queue->wq_lock);
-	init_completion(&queue->wq_comp);
 
 	return 0;
 
@@ -525,15 +502,11 @@ failed:
 		queue->file = NULL;
 	}
 
-	if (queue->wq) {
-		vfree(queue->wq);
-	}
-
 	if (queue) {
 		devm_kfree(&sdev->pdev->dev, queue);
 	}
 
-	xocl_qdma_queue_destroy(sdev->pdev, &queue->queue);
+	qdma_wq_destroy(&queue->queue);
 
 	return ret;
 }
@@ -584,12 +557,21 @@ static long stream_ioctl_alloc_buffer(struct str_device *sdev,
 		goto failed;
 	}
 
+	xobj->dma_nsg = pci_map_sg(xdev->core.pdev, xobj->sgt->sgl,
+		xobj->sgt->orig_nents, PCI_DMA_BIDIRECTIONAL);
+	if (!xobj->dma_nsg) {
+		xocl_err(&sdev->pdev->dev, "map sgl failed, sgt");
+		ret = -EIO;
+		goto failed;
+	}
+
 	ret = drm_gem_create_mmap_offset(&xobj->base);
 	if (ret < 0)
 		goto failed;
 
 	flags = O_CLOEXEC | O_RDWR;
 
+	drm_gem_object_reference(&xobj->base);
 	dmabuf = drm_gem_prime_export(xdev->ddev, &xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&sdev->pdev->dev, "failed to export dma_buf");

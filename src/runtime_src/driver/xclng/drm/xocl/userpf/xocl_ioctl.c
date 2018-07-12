@@ -26,7 +26,7 @@
 #include <linux/uuid.h>
 #include "common.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
