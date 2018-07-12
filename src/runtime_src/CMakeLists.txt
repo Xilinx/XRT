@@ -14,10 +14,19 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdp>
   )
 
-set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
-#add_compile_options("-fPIC" "-std=c++11")
-add_compile_options("-fPIC")
+option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
+option(XRT_VERBOSE "Enable xrt verbosity" OFF)
 
+if (XOCL_VERBOSE)
+  add_compile_options("-DXOCL_VERBOSE")
+endif()
+
+if(XRT_VERBOSE)
+  add_compile_options("-DXRT_VERBOSE")
+endif()
+
+set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
+add_compile_options("-fPIC")
 add_subdirectory(xdp)
 
 add_compile_options("-Wall" "-Werror")
@@ -26,6 +35,7 @@ add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
+add_subdirectory(tools/scripts)
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
