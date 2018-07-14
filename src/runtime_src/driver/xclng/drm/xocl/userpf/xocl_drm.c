@@ -25,7 +25,12 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 
+#if defined(__PPC64__)
+#define XOCL_FILE_PAGE_OFFSET   0x10000
+#else
 #define XOCL_FILE_PAGE_OFFSET   0x100000
+#endif
+
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -61,10 +66,12 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
  	 * If the page offset is > than 4G, then let GEM handle that and do what
  	 * it thinks is best,we will only handle page offsets less than 4G.
  	 */
+	printk("vm pgoff %lx", vma->vm_pgoff);
 	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET)) {
 		ret = drm_gem_mmap(filp, vma);
 		if (ret)
 			return ret;
+		printk("%s:%d mmap ret %x", __FILE__, __LINE__, ret);
 		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
  		 * we have "struct page" for all backing pages for bo
 		 */
@@ -86,6 +93,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		else
 			vma->vm_page_prot = pgprot_writecombine(
 				vm_get_page_prot(vma->vm_flags));
+		printk("%s:%d mmap ret %x", __FILE__, __LINE__, ret);
 		return ret;
 	}
 
