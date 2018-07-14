@@ -33,7 +33,7 @@
 #include <boost/filesystem/operations.hpp>
 
 #include <fstream>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace bfs = boost::filesystem;
 

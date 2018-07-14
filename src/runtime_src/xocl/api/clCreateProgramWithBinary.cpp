@@ -34,8 +34,8 @@
 #include <string>
 #include <algorithm>
 
-#include "xoclDebug.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/debug.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

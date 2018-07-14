@@ -30,7 +30,7 @@
 #include "impl/cpu_pipes.h"
 
 #include <cstdlib>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

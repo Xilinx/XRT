@@ -18,15 +18,19 @@
 #include "context.h"
 #include "device.h"
 #include "event.h"
+
+#include "xocl/api/plugin/xdp/profile.h"
+
 #include <algorithm>
 #include <iostream>
 #include <cassert>
 
-#include "xocl/api/xoclProfile.h"
 
 namespace {
-  xocl::command_queue::commandqueue_callback_list m_constructor_callbacks;
-  xocl::command_queue::commandqueue_callback_list m_destructor_callbacks;
+
+static xocl::command_queue::commandqueue_callback_list sg_constructor_callbacks;
+static xocl::command_queue::commandqueue_callback_list sg_destructor_callbacks;
+
 }
 
 namespace xocl {
@@ -44,7 +48,7 @@ command_queue(context* ctx, device* device, cl_command_queue_properties props)
   XOCL_DEBUG(std::cout,"xocl::command_queue::command_queue(",m_uid,")\n");
   //appdebug::add_command_queue(this);
 
-  for (auto& cb : m_constructor_callbacks)
+  for (auto& cb : sg_constructor_callbacks)
     cb(this);
 
   ctx->add_queue(this);
@@ -54,11 +58,11 @@ command_queue::
 ~command_queue()
 {
   wait();
-  
+
   XOCL_DEBUG(std::cout,"xocl::command_queue::~command_queue(",m_uid,")\n");
   //appdebug::remove_command_queue(this);
 
-  for (auto& cb : m_destructor_callbacks)
+  for (auto& cb : sg_destructor_callbacks)
     cb(this);
 
   assert(m_events.empty());
@@ -86,7 +90,7 @@ queue(event* ev)
 
     xocl::profile::log_dependencies(ev, m_barriers.size(), reinterpret_cast<cl_event*>(m_barriers.data()) );
 
-    if (ev->get_command_type()==CL_COMMAND_BARRIER) 
+    if (ev->get_command_type()==CL_COMMAND_BARRIER)
       m_barriers.push_back(ev);
   }
 
@@ -106,7 +110,7 @@ submit(event* ev)
 
   // pre-condition: ev is locked
 
-  // submit must never fail, event calls submit when its wait count 
+  // submit must never fail, event calls submit when its wait count
   // reaches 0, if it doesn't submit, it will stay queued forever.
   //
   // submit must *not* lock the queue
@@ -201,16 +205,13 @@ void
 command_queue::
 register_constructor_callbacks(commandqueue_callback_type&& aCallback)
 {
-  m_constructor_callbacks.emplace_back(std::move(aCallback));
+  sg_constructor_callbacks.emplace_back(std::move(aCallback));
 }
 
 void
 command_queue::
 register_destructor_callbacks(commandqueue_callback_type&& aCallback)
 {
-  m_destructor_callbacks.emplace_back(std::move(aCallback));
+  sg_destructor_callbacks.emplace_back(std::move(aCallback));
 }
 }
-
-
-

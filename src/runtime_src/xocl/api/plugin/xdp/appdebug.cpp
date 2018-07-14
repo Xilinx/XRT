@@ -20,7 +20,7 @@
  * debug action with the cl_event
  */
 #include "xocl/core/event.h"
-#include "xoclAppDebug.h"
+#include "plugin/xdp/appdebug.h"
 
 namespace xocl {
 namespace appdebug {

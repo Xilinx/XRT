@@ -24,7 +24,7 @@
 #include "detail/device.h"
 
 #include <limits>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -22,7 +22,7 @@
 #include "detail/platform.h"
 #include "detail/device.h"
 #include "api.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

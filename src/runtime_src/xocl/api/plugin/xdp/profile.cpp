@@ -37,7 +37,7 @@
 
 #include <map>
 #include <sstream>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

@@ -19,7 +19,7 @@
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 #include "xrt/util/memory.h"
 

@@ -20,7 +20,7 @@
 #include "xocl/core/event.h"
 
 #include "detail/event.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

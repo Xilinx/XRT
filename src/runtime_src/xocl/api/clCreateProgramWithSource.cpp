@@ -33,7 +33,7 @@
 
 // should use some md5 checksum instead
 #include <crypt.h> 
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

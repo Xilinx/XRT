@@ -42,7 +42,7 @@
 
 #include <map>
 #include <sstream>
-#include "xocl/api/xoclAppDebug.h"
+#include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace {
 static const int debug_ip_layout_max_size = 65536;

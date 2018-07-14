@@ -23,7 +23,7 @@
 #include "xocl/core/context.h"
 #include "xocl/core/command_queue.h"
 #include "detail/memory.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

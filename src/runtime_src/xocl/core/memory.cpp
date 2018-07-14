@@ -48,8 +48,9 @@ singleContextDevice(cl_context context)
     : nullptr;
 }
 
-xocl::memory::memory_callback_list m_constructor_callbacks;
-xocl::memory::memory_callback_list m_destructor_callbacks;
+static xocl::memory::memory_callback_list m_constructor_callbacks;
+static xocl::memory::memory_callback_list m_destructor_callbacks;
+
 } // namespace
 
 namespace xocl {

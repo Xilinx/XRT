@@ -25,7 +25,7 @@
 #include "detail/context.h"
 
 #include <bitset>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

@@ -25,8 +25,8 @@
 #include "detail/event.h"
 
 #include "enqueue.h"
-#include "xoclAppDebug.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

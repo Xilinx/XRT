@@ -23,8 +23,8 @@
 
 #include "detail/event.h"
 
-#include "xoclAppDebug.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 // Enqueues a barrier command which waits for either a list of events
 // to complete, or if the list is empty it waits for all commands

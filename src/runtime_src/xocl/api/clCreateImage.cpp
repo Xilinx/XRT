@@ -26,7 +26,7 @@
 #include "detail/context.h"
 
 #include <cstdlib>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 

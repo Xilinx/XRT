@@ -20,7 +20,7 @@
 #include "xocl/core/device.h"
 #include "detail/device.h"
 #include "api.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 #include "xrt/util/memory.h"
 
 namespace {

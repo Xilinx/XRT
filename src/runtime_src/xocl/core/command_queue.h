@@ -46,7 +46,7 @@ public:
 
 private:
   // Used to aquire a lock on this queue to prevent de/queing of event
-  struct queue_lock 
+  struct queue_lock
   {
     std::unique_lock<std::mutex> m_lk;
     queue_lock(std::unique_lock<std::mutex>&& lk)
@@ -90,7 +90,7 @@ public:
 
   /**
    * Check if profiling of commands in the command-queue is enabled.
-   * 
+   *
    * @return
    *   true if profiling is enabled for this queue, false otherwise
    */
@@ -176,9 +176,19 @@ public:
   wait_and_lock() const;
 
 
+  /**
+   * Register callback function for command queue construction
+   *
+   * Callbacks are called in arbitrary order
+   */
   static void
   register_constructor_callbacks(commandqueue_callback_type&& aCallback);
 
+  /**
+   * Register callback function for command queue destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
   static void
   register_destructor_callbacks(commandqueue_callback_type&& aCallback);
 
@@ -198,5 +208,3 @@ private:
 } // xocl
 
 #endif
-
-

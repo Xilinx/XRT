@@ -22,7 +22,7 @@
 #include "detail/kernel.h"
 
 #include <cstdlib>
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

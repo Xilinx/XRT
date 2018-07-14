@@ -43,7 +43,7 @@
 
 #include <map>
 #include <sstream>
-#include "xocl/api/xoclProfile.h"
+#include "xocl/api/plugin/xdp/profile.h"
 
 namespace XCL {
 

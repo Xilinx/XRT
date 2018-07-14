@@ -414,7 +414,18 @@ public:
   void
   add_dtor_notify(std::function<void()> fcn);
 
+  /**
+   * Register callback function for memory construction
+   *
+   * Callbacks are called in arbitrary order
+   */
   static void register_constructor_callbacks(memory_callback_type&& aCallback);
+
+  /**
+   * Register callback function for memory destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
   static void register_destructor_callbacks(memory_callback_type&& aCallback);
 
 private:

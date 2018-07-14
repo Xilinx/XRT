@@ -21,8 +21,8 @@
 #include "platform.h" // for get_install_root
 #include "error.h"
 
+#include "xocl/api/plugin/xdp/profile.h"
 #include "xrt/util/memory.h"
-#include "xoclProfile.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>
@@ -62,7 +62,7 @@ get()
   return xocl::range_lock<xocl::program_iterator_type>(programs.begin(),programs.end(),std::move(lk));
 }
 
-void 
+void
 add(xocl::program* p)
 {
   std::lock_guard<std::mutex> lk(mutex);
@@ -97,7 +97,7 @@ program(context* ctx, const std::string& source)
 }
 
 program::
-program(context* ctx,cl_uint num_devices, const cl_device_id* devices, 
+program(context* ctx,cl_uint num_devices, const cl_device_id* devices,
         const unsigned char** binaries, const size_t* lengths)
   : program(ctx,"")
 {
@@ -172,7 +172,7 @@ get_progvar_names() const
   auto itr = m_binaries.begin();
   if (itr==m_binaries.end())
     return progvars;
-  
+
   auto& xclbin = (*itr).second;
   for (auto& name : get_kernel_names()) {
     auto& symbol = xclbin.lookup_kernel(name);
@@ -193,7 +193,7 @@ get_xclbin(const device* d) const
     auto itr = m_binaries.find(d);
     if (itr==m_binaries.end())
       throw xocl::error(CL_INVALID_DEVICE,"No binary for device");
-    
+
     return (*itr).second;
   }
 
@@ -229,7 +229,7 @@ create_kernel(const std::string& kernel_name)
     auto k = xrt::make_unique<kernel>(this);
     return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
   }
- 
+
   // Look up kernel symbol from arbitrary (first) xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
@@ -259,7 +259,7 @@ build(const std::vector<device*>& devices,const std::string& options)
   static bool conformance = std::getenv("XCL_CONFORMANCECOLLECT") ? true : false;
   if (!conformance)
     throw std::runtime_error("internal error program::build");
-  
+
   // Copied from xcl_device_sim.cpp
   std::ofstream buffer("_temp.cl");
   buffer << get_source();
@@ -314,5 +314,3 @@ get_global_programs()
 }
 
 } // xocl
-
-

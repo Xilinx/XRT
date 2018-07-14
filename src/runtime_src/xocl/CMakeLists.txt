@@ -24,6 +24,8 @@ file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/xlnx/*.cpp"
   "${XRT_XOCL_API_DIR}/printf/*.h"
   "${XRT_XOCL_API_DIR}/printf/*.cpp"
+  "${XRT_XOCL_API_DIR}/plugin/xdp/*.h"
+  "${XRT_XOCL_API_DIR}/plugin/xdp/*.cpp"
   )
 
 file(GLOB XRT_XOCL_CORE_FILES

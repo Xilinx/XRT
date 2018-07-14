@@ -26,7 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
-#include "xocl/api/xoclDebug.h"
+#include "xocl/api/plugin/xdp/debug.h"
 
 namespace XCL
 {

@@ -19,7 +19,7 @@
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
 #include "detail/device.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

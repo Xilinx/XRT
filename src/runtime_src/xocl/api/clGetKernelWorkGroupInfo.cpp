@@ -21,7 +21,7 @@
 #include "xocl/core/error.h"
 #include "detail/kernel.h"
 #include "api.h"
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -67,7 +67,7 @@ public:
   /**
    */
   unsigned int
-  get_uid() const 
+  get_uid() const
   {
     return m_uid;
   }
@@ -75,7 +75,7 @@ public:
   /**
    */
   std::string
-  get_suid() const 
+  get_suid() const
   {
     return std::to_string(m_uid);
   }
@@ -83,7 +83,7 @@ public:
   /**
    */
   context*
-  get_context() const 
+  get_context() const
   {
     return m_context.get();
   }
@@ -91,7 +91,7 @@ public:
   /**
    */
   command_queue*
-  get_command_queue() const 
+  get_command_queue() const
   {
     return m_command_queue.get();
   }
@@ -105,7 +105,7 @@ public:
   }
 
   /**
-   * Trigger the enqueue action if any.  
+   * Trigger the enqueue action if any.
    *
    * This function is primarily used by the event scheduler as part of
    * launcing an event.  If an event doesn't have an enqueue action,
@@ -128,10 +128,10 @@ public:
    * This function is supposed to set the action in the
    * event_with_profiling class, but currently runtime
    * collects profile data event when the command queue
-   * doesn't enable profiling.  
+   * doesn't enable profiling.
    */
   /*virtual*/ void
-  set_profile_action(event::action_profile_type&& action) 
+  set_profile_action(event::action_profile_type&& action)
   {
     if (xrt::config::get_profile())
       m_profile_action = std::move(action);
@@ -143,10 +143,10 @@ public:
    * This function is supposed to set the action in the
    * event_with_profiling class, but currently runtime
    * collects profile data event when the command queue
-   * doesn't enable profiling.  
+   * doesn't enable profiling.
    */
   /*virtual*/ void
-  trigger_profile_action(cl_int status, const std::string& cuname= "") 
+  trigger_profile_action(cl_int status, const std::string& cuname= "")
   {
     if (m_profile_action)
       m_profile_action(this,status,cuname);
@@ -174,7 +174,7 @@ public:
    * This is meant to be used only for application debug.
    */
   range_lock<event_iterator_type>
-  try_get_chain() 
+  try_get_chain()
   {
     std::unique_lock<std::mutex> lk(m_mutex, std::defer_lock);
     if (!lk.try_lock())
@@ -183,7 +183,7 @@ public:
   }
 
   // for the time being the status is changed all over the place
-  // in the old rt code.   future should bring status entirely within 
+  // in the old rt code.   future should bring status entirely within
   // this class with no external setter.
   cl_int
   set_status(cl_int s);
@@ -224,7 +224,7 @@ public:
   /**
    * Set the command type on this event.
    *
-   * Pre-condition (unchecked): Event is not yet scheduled 
+   * Pre-condition (unchecked): Event is not yet scheduled
    * No need to lock if pre-condition is met.
    *
    * @param ct
@@ -237,7 +237,7 @@ public:
   }
 
   /**
-   * Hook for overriding the autmatic time setting of 
+   * Hook for overriding the autmatic time setting of
    * a profiling event.
    *
    * Normally profiling time is set through change of
@@ -270,15 +270,15 @@ public:
    * @return
    *   true if event was queued successfully, false otherwise.
    */
-  bool 
+  bool
   queue(bool blocking_submit=false);
 
   /**
-   * Abort (terminate) this event and chain of events that wait 
+   * Abort (terminate) this event and chain of events that wait
    * on this event.
    *
    * This is currently an somewhat expensive operation as event
-   * wait chain has to be computed.  All events waiting either 
+   * wait chain has to be computed.  All events waiting either
    * directly or indirectly (this event in transitive fanout of
    * a waitlist) on this event are aborted.
    *
@@ -376,16 +376,26 @@ public:
     return m_execution_context.get();
   }
 
+  /**
+   * Register callback function for event construction
+   *
+   * Callbacks are called in arbitrary order
+   */
   static void register_constructor_callbacks(event_callback_type&& aCallback);
-  static void register_destructor_callbacks(event_callback_type&& aCallback);
 
+  /**
+   * Register callback function for event destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void register_destructor_callbacks(event_callback_type&& aCallback);
 
 protected:
   /**
    * Add argument event to event chain
    *
    * It is guaranteed argument event is already locked (called from
-   * queue::queue(ev)), or that this function is called from ev's 
+   * queue::queue(ev)), or that this function is called from ev's
    * contructor in which case there is no need to lock
    */
   void
@@ -425,21 +435,21 @@ private:
    *    Associated specified time with status
    */
   virtual void
-  time_set(cl_int status) 
+  time_set(cl_int status)
   {
     debug::time_log(this,status);
   }
 
   /**
    * If a profiling event, then record time at status change
-   * 
+   *
    * @param status
    *    Associated specified time with status
    * @param ns
    *   Override time with argument nano seconds
    */
   virtual void
-  time_set(cl_int status, cl_ulong ns) 
+  time_set(cl_int status, cl_ulong ns)
   {
     debug::time_log(this,status,ns);
   }
@@ -489,9 +499,9 @@ private:
 
   action_enqueue_type m_enqueue_action;
 
-  // move to event_with_profiling when logging of 
+  // move to event_with_profiling when logging of
   // profile data is controlled by command queue
-  action_profile_type m_profile_action; 
+  action_profile_type m_profile_action;
 
   // execution context, probably should create some derived class
   std::unique_ptr<execution_context> m_execution_context;
@@ -553,9 +563,9 @@ public:
       m_start = ns;
     else if (status==CL_COMPLETE)
       m_end = ns;
-    
+
     // CANNOT CALL OUTSIDE of xocl with this while this is locked
-    // log_profile_data(this);  
+    // log_profile_data(this);
   }
 
 #if 0 // see comment in base class event
@@ -661,7 +671,7 @@ private:
  *   Array of events that must be complete before this event can
  *   trigger.
  * @return
- *   A sharing pointer that retains one reference to the 
+ *   A sharing pointer that retains one reference to the
  *   constructed event
  */
 ptr<event>
@@ -678,7 +688,7 @@ create_hard_event(cl_command_queue cq, cl_command_type cmd, cl_uint num_deps=0, 
 
 /**
  * Create a soft event, which must be manually transitioned from state to state
- * 
+ *
  * A soft event must be manually enqueued,submitted, and marked complete.
  */
 ptr<event>
@@ -700,5 +710,3 @@ call_enqueue_action(event* ev)
 } // xocl
 
 #endif
-
-

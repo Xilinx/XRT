@@ -25,7 +25,7 @@
 #include "xocl/core/context.h"
 #include "detail/command_queue.h"
 
-#include "xoclProfile.h"
+#include "plugin/xdp/profile.h"
 
 
 namespace xocl {

@@ -15,7 +15,7 @@
  */
 
 #include "xocl/xclbin/xclbin.h"
-#include "xoclDebug.h"
+#include "plugin/xdp/debug.h"
 
 namespace xocl { namespace debug {
 
