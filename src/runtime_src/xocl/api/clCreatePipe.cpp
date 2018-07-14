@@ -27,12 +27,10 @@
 
 #include "xrt/util/memory.h"
 #include "api.h"
-#include "profile.h"
-
-// Must move out of impl
 #include "impl/cpu_pipes.h"
 
 #include <cstdlib>
+#include "xoclProfile.h"
 
 namespace xocl {
 

@@ -14,25 +14,26 @@
  * under the License.
  */
 
-#ifndef xocl_api_debug_h
-#define xocl_api_debug_h
+#ifndef xdp_profile_h
+#define xdp_profile_h
 
 /**
- * This file contains the API for adapting the xocl data structures to
- * the infrastructure for debugging of the binary.
+ * This file contains the API for adapting the xocl
+ * data structures to the profiling infrastructure.
+ *
+ * The implementation of this API still requires old "xcl" data
+ * hence profile.cpp currently lives under runtime_src/api/profile.cpp
  */
 
-namespace xocl { 
+#include "xocl/core/object.h"
+#include "xocl/core/event.h"
+#include "xocl/core/command_queue.h"
+#include <utility>
+#include <string>
 
-class xclbin;
-
-namespace debug {
-
-void
-reset(const xocl::xclbin& xclbin);
-
-}} // debug,xocl
-
+namespace XCL {
+void register_xocl_profile_callbacks();
+}
 #endif
 
 

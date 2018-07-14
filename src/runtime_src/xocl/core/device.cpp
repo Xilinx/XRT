@@ -20,14 +20,13 @@
 #include "compute_unit.h"
 
 #include "xocl/xclbin/xclbin.h"
-#include "xocl/api/profile.h"
-
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "xocl/api/xoclProfile.h"
 
 namespace {
 

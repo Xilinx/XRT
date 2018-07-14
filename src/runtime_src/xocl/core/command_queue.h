@@ -41,6 +41,9 @@ public:
   using event_queue_type = std::unordered_set<event*>;
   using event_iterator_type = event_queue_type::iterator;
 
+  using commandqueue_callback_type = std::function<void(command_queue*)>;
+  using commandqueue_callback_list = std::vector<commandqueue_callback_type>;
+
 private:
   // Used to aquire a lock on this queue to prevent de/queing of event
   struct queue_lock 
@@ -171,6 +174,13 @@ public:
    */
   queue_lock
   wait_and_lock() const;
+
+
+  static void
+  register_constructor_callbacks(commandqueue_callback_type&& aCallback);
+
+  static void
+  register_destructor_callbacks(commandqueue_callback_type&& aCallback);
 
 private:
   unsigned int m_uid = 0;

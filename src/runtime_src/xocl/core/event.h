@@ -25,8 +25,6 @@
 #include "xocl/core/error.h"
 #include "xocl/core/execution_context.h"
 
-#include "xdp/appdebug/appdebug_track.h"
-
 #include "xrt/config.h"
 
 #include <vector>
@@ -54,6 +52,9 @@ class event : public refcount, public _cl_event
 public:
   using event_vector_type = std::vector<ptr<event>>;
   using event_iterator_type = ptr_iterator<event_vector_type::iterator>;
+
+  using event_callback_type = std::function<void(event*)>;
+  using event_callback_list = std::vector<event_callback_type>;
 
   using action_enqueue_type = std::function<void (event*)>;
   using action_profile_type = std::function<void (event*, cl_int, const std::string&)>;
@@ -375,6 +376,10 @@ public:
     return m_execution_context.get();
   }
 
+  static void register_constructor_callbacks(event_callback_type&& aCallback);
+  static void register_destructor_callbacks(event_callback_type&& aCallback);
+
+
 protected:
   /**
    * Add argument event to event chain
@@ -607,12 +612,12 @@ public:
   event_with_debugging(Args&&... args)
     : EventType(std::forward<Args>(args)...)
   {
-    appdebug::add_event(this);
+    //appdebug::add_event(this);
   }
 
   virtual ~event_with_debugging()
   {
-    appdebug::remove_event(this);
+    //appdebug::remove_event(this);
   }
 
   /**

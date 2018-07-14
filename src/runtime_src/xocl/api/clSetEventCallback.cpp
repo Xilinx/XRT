@@ -19,8 +19,8 @@
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 
-#include "profile.h"
 #include "detail/event.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

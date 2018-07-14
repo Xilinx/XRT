@@ -987,7 +987,7 @@ PrintfArg BufferPrintf::buildArg(int bufIdx, ConversionSpec& conversion) const
     }
   }
   else if ( conversion.isStringClass() ) {
-    uint64_t idx = extractField(bufIdx, elementBytes);
+    /*uint64_t idx = */ (void)extractField(bufIdx, elementBytes);
     std::string str = "";
     // Temporary error - remove when %s works
     std::cout << std::endl << "ERROR: Printf conversion specifier '%s' is not allowed" << std::endl;

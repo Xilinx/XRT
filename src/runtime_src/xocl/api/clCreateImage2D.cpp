@@ -22,7 +22,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

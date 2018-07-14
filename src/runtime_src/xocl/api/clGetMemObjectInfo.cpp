@@ -25,7 +25,7 @@
 
 #include "detail/memory.h"
 
-#include "profile.h"
+#include "xoclProfile.h"
 
 namespace xocl {
 

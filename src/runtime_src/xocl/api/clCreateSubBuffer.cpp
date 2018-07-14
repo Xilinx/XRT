@@ -18,9 +18,8 @@
 
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
-#include "profile.h"
-
 #include "detail/memory.h"
+#include "xoclProfile.h"
 
 #include "xrt/util/memory.h"
 

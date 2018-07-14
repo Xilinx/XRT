@@ -22,10 +22,9 @@
 #include "xrt/util/task.h"
 #include "xrt/util/memory.h"
 
-#include "xocl/api/profile.h"
-
 #include <iostream>
 #include <cassert>
+#include "xocl/api/xoclProfile.h"
 
 namespace {
 
@@ -48,7 +47,8 @@ to_string(cl_int status)
   return "???";
 }
 
-
+  xocl::event::event_callback_list m_constructor_callbacks;
+  xocl::event::event_callback_list m_destructor_callbacks;
 } // namespace
 
 namespace xocl {
@@ -60,6 +60,9 @@ event(command_queue* cq, context* ctx, cl_command_type cmd)
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
   debug::add_command_type(this,cmd);
+
+  for (auto& cb : m_constructor_callbacks)
+    cb(this);
 
   XOCL_DEBUG(std::cout,"xocl::event::event(",m_uid,")\n");
 }
@@ -80,6 +83,8 @@ event::
 ~event()
 {
   XOCL_DEBUG(std::cout,"xocl::event::~event(",m_uid,")\n");
+  for (auto& cb : m_destructor_callbacks)
+    cb(this);
 }
 
 cl_int
@@ -294,6 +299,21 @@ run_callbacks(cl_int status)
   for (auto cb : copy)
     (*cb)(status);
 }
+
+void
+event::
+register_constructor_callbacks(event_callback_type&& aCallback)
+{
+  m_constructor_callbacks.emplace_back(std::move(aCallback));
+}
+
+void
+event::
+register_destructor_callbacks(event_callback_type&& aCallback)
+{
+  m_destructor_callbacks.emplace_back(std::move(aCallback));
+}
+
 
 void
 event::

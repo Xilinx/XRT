@@ -21,9 +21,8 @@
 #include "xocl/core/kernel.h"
 #include "detail/kernel.h"
 
-#include "profile.h"
-
 #include <cstdlib>
+#include "xoclProfile.h"
 
 namespace xocl {
 

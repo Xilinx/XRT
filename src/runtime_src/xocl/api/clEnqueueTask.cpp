@@ -17,7 +17,7 @@
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include "api.h"
-#include "xocl/api/profile.h"
+#include "xoclProfile.h"
 
 cl_int
 clEnqueueTask(cl_command_queue   command_queue ,
