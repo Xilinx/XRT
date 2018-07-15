@@ -48,8 +48,8 @@ singleContextDevice(cl_context context)
     : nullptr;
 }
 
-static xocl::memory::memory_callback_list m_constructor_callbacks;
-static xocl::memory::memory_callback_list m_destructor_callbacks;
+static xocl::memory::memory_callback_list sg_constructor_callbacks;
+static xocl::memory::memory_callback_list sg_destructor_callbacks;
 
 } // namespace
 
@@ -63,7 +63,7 @@ memory(context* cxt, cl_mem_flags flags)
 
   XOCL_DEBUG(std::cout,"xocl::memory::memory(): ",m_uid,"\n");
 
-  for (auto& cb: m_constructor_callbacks)
+  for (auto& cb: sg_constructor_callbacks)
     cb(this);
 
   //appdebug::add_clmem(this);
@@ -78,7 +78,7 @@ memory::
     std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
                   [](std::function<void()>& fcn) { fcn(); });
 
-  for (auto& cb: m_destructor_callbacks)
+  for (auto& cb: sg_destructor_callbacks)
     cb(this);
    //appdebug::remove_clmem(this);
 }
@@ -247,14 +247,14 @@ void
 memory::
 register_constructor_callbacks (memory::memory_callback_type&& cb)
 {
-  m_constructor_callbacks.emplace_back(std::move(cb));
+  sg_constructor_callbacks.emplace_back(std::move(cb));
 }
 
 void
 memory::
 register_destructor_callbacks (memory::memory_callback_type&& cb)
 {
-  m_destructor_callbacks.emplace_back(std::move(cb));
+  sg_destructor_callbacks.emplace_back(std::move(cb));
 }
 
 
