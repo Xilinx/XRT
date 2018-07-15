@@ -25,6 +25,7 @@
  */
 
 #include "profile.h"
+#include "xdp/profile/profiling.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/rt_profile.h"
 #include "xdp/profile/rt_profile_xocl.h"
@@ -42,88 +43,14 @@
 
 #include <map>
 #include <sstream>
+#include "xocl/api/plugin/xdp/profile.h"
 
-namespace {
-
-// Global flag that remains valid during shutdown
-static bool s_exiting = false;
-
-// Exiter that is constructed after (=> destructured before)
-// critical data structures that should disable profiling.
-struct X
-{
-  ~X() { s_exiting = true; }
-};
-
-static XCL::RTProfile::e_profile_command_state
-event_status_to_profile_state(cl_int status) 
-{
-  static const std::map<cl_int, XCL::RTProfile::e_profile_command_state> tbl 
-  {
-    {CL_QUEUED,    XCL::RTProfile::QUEUE}
-   ,{CL_SUBMITTED, XCL::RTProfile::SUBMIT}
-   ,{CL_RUNNING,   XCL::RTProfile::START}
-   ,{CL_COMPLETE,  XCL::RTProfile::END}
-  };
-
-  static X x;
-
-  auto itr = tbl.find(status);
-  if (itr==tbl.end())
-    throw std::runtime_error("bad event status '" + std::to_string(status) + "'");
-  return (*itr).second;
-}
-
-} // namespace
-
-namespace xocl { namespace profile {
+namespace XCL {
 
 bool isProfilingOn() {
   //static bool profilingOn = xdp::profile::isApplicationProfilingOn();
   //return profilingOn;
   return xdp::profile::isApplicationProfilingOn();
-}
-
-void
-log(xocl::event* event, cl_int status)
-{
-  if (!s_exiting)
-    event->trigger_profile_action(status,"");
-}
-
-void
-log(xocl::event* event, cl_int status, const std::string& cuname)
-{
-  if (!s_exiting)
-    event->trigger_profile_action(status,cuname);
-}
-
-void
-log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps) {
-
-  if (!xrt::config::get_timeline_trace()) {
-    return;
-  }
-
-  for (auto e :  xocl::get_range(deps, deps+num_deps)) {
-    XCL::RTSingleton::Instance()->getProfileManager()->logDependency(XCL::RTProfile::DEPENDENCY_EVENT,
-                  xocl::xocl(e)->get_suid(), event->get_suid());
-  }
-}
-
-// Attempt to get DDR physical address and bank number
-void get_address_bank(cl_mem buffer, uint64_t &address, std::string &bank)
-{
-  try {
-    auto xoclMem = xocl::xocl(buffer);
-    xoclMem->try_get_address_bank(address, bank);
-    return;
-  }
-  catch (const xocl::error& ex) {
-    // cannot get address/bank
-    address = 0;
-    bank = "Unknown";
-  }
 }
 
 // Create string to uniquely identify event
@@ -172,33 +99,34 @@ std::string get_event_dependencies_string(xocl::event* currEvent) {
   return sstr.str();
 }
 
-xocl::event::action_profile_type
-action_ndrange(cl_event event, cl_kernel kernel)
+static XCL::RTProfile::e_profile_command_state
+event_status_to_profile_state(cl_int status)
 {
-  // profile action is invoked after the event is marked complete and 
-  // at that time the kenel may have been released by a subsequent
-  // clReleaseKernel.
-  auto exctx = xocl::xocl(event)->get_execution_context();
-  auto workGroupSize = xocl::xocl(kernel)->get_wg_size();
-  auto globalWorkDim = exctx->get_global_work_size();
-  size_t localWorkDim[3] = {0,0,0};
-  range_copy(xocl::xocl(kernel)->get_compile_wg_size_range(),localWorkDim);
-  if (localWorkDim[0] == 0 && localWorkDim[1] == 0 && localWorkDim[2] == 0) {
-    std::copy(exctx->get_local_work_size(),exctx->get_local_work_size()+3,localWorkDim);
-  }
+  static const std::map<cl_int, XCL::RTProfile::e_profile_command_state> tbl
+  {
+    {CL_QUEUED,    XCL::RTProfile::QUEUE}
+   ,{CL_SUBMITTED, XCL::RTProfile::SUBMIT}
+   ,{CL_RUNNING,   XCL::RTProfile::START}
+   ,{CL_COMPLETE,  XCL::RTProfile::END}
+  };
 
-  // Leg work to access the xclbin project name.  The device may have
-  // been reloaded with a new binary by the time the action itself is
-  // called, so the work has be done here.
-  auto device = xocl::xocl(event)->get_command_queue()->get_device();
-  auto program = xocl::xocl(kernel)->get_program();
-  auto programId = xocl::xocl(kernel)->get_program()->get_uid();
-  auto xclbin = program->get_xclbin(device);
+  auto itr = tbl.find(status);
+  if (itr==tbl.end())
+    throw std::runtime_error("bad event status '" + std::to_string(status) + "'");
+  return (*itr).second;
+}
 
-  std::string xname = xclbin.project_name();
-  std::string kname  = xocl::xocl(kernel)->get_name();
 
-  return [kernel,kname,xname,workGroupSize,globalWorkDim,localWorkDim,programId](xocl::event* event,cl_int status,const std::string& cu_name) {
+
+/*
+ * Lambda generators called from openCL APIs
+ *
+ */
+void
+cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, cl_kernel kernel,
+                 std::string kname, std::string xname, size_t workGroupSize, const size_t* globalWorkDim,
+                 const size_t* localWorkDim, unsigned int programId)
+{
     if (!isProfilingOn())
       return;
 
@@ -239,18 +167,11 @@ action_ndrange(cl_event event, cl_kernel kernel)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
 }
 
-xocl::event::action_profile_type
-action_read(cl_mem buffer)
+void
+cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
 {
-  std::string bank;
-  uint64_t address;
-  get_address_bank(buffer, address, bank);
-  auto size = xocl::xocl(buffer)->get_size();
-
-  return [buffer,size,address,bank](xocl::event* event,cl_int status, const std::string&) {
     if (!isProfilingOn())
       return;
 
@@ -287,18 +208,12 @@ action_read(cl_mem buffer)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
 }
 
-xocl::event::action_profile_type
-action_map(cl_mem buffer,cl_map_flags map_flags)
+void
+cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address,
+                           const std::string& bank, cl_map_flags map_flags)
 {
-  std::string bank;
-  uint64_t address;
-  get_address_bank(buffer, address, bank);
-  auto size = xocl::xocl(buffer)->get_size();
-
-  return [buffer,size,address,bank,map_flags](xocl::event* event,cl_int status,const std::string&) {
     if (!isProfilingOn())
       return;
 
@@ -341,18 +256,10 @@ action_map(cl_mem buffer,cl_map_flags map_flags)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
 }
 
-xocl::event::action_profile_type
-action_write(cl_mem buffer)
+void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
 {
-  std::string bank;
-  uint64_t address;
-  get_address_bank(buffer, address, bank);
-  auto size = xocl::xocl(buffer)->get_size();
-
-  return [buffer,size,address,bank](xocl::event* event,cl_int status,const std::string&) {
     if (!isProfilingOn())
       return;
 
@@ -395,18 +302,10 @@ action_write(cl_mem buffer)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
 }
-
-xocl::event::action_profile_type
-action_unmap(cl_mem buffer)
+void
+cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
 {
-  std::string bank;
-  uint64_t address;
-  get_address_bank(buffer, address, bank);
-  auto size = xocl::xocl(buffer)->get_size();
-
-  return [buffer,size,address,bank](xocl::event* event,cl_int status,const std::string&) {
     if (!isProfilingOn())
       return;
 
@@ -449,41 +348,12 @@ action_unmap(cl_mem buffer)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
+
 }
 
-xocl::event::action_profile_type
-action_ndrange_migrate(cl_event event, cl_kernel kernel)
+void
+cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address, const std::string & bank)
 {
-  cl_mem mem0 = nullptr;
-  std::string bank = "Unknown";
-  uint64_t address = 0;
-  size_t totalSize = 0;
-
-  auto command_queue = xocl::xocl(event)->get_command_queue();
-  auto device = command_queue->get_device();
-
-  // Calculate total size and grab first address & bank
-  // NOTE: argument must be: NOT a progvar, NOT write only, and NOT resident
-  for (auto& arg : xocl::xocl(kernel)->get_argument_range()) {
-    if (auto mem = arg->get_memory_object()) {
-      if (arg->is_progvar() && arg->get_address_qualifier()==CL_KERNEL_ARG_ADDRESS_GLOBAL)
-        // DO NOTHING: progvars are not transfered
-        continue;
-      else if (mem->is_resident(device))
-        continue;
-      else if (!(mem->get_flags() & (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS))) {
-        if (totalSize == 0) {
-          mem0 = mem;
-          get_address_bank(mem, address, bank);
-        }
-
-        totalSize += xocl::xocl(mem)->get_size();
-      }
-    }
-  }
-
-  return [mem0,totalSize,address,bank](xocl::event* event,cl_int status,const std::string&) {
     // Catch if there's nothing to migrate or profiling is off
     if (!isProfilingOn() || (totalSize == 0))
       return;
@@ -545,27 +415,11 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
 }
 
-xocl::event::action_profile_type
-action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags)
+void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
+                                                  const std::string & bank, cl_mem_migration_flags flags)
 {
-  // profile action is invoked after the event is marked complete and 
-  // at that time the buffer may have been released by a subsequent
-  // clReleaseMemObject
-  cl_mem mem0 = (num_mem_objects > 0) ? mem_objects[0] : nullptr;
-
-  std::string bank;
-  uint64_t address;
-  get_address_bank(mem0, address, bank);
-
-  size_t totalSize = 0;
-  for (auto mem : xocl::get_range(mem_objects,mem_objects+num_mem_objects)) {
-    totalSize += xocl::xocl(mem)->get_size();
-  }
-
-  return [mem0,totalSize,address,bank,flags](xocl::event* event,cl_int status,const std::string&) {
     if (!isProfilingOn() || (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) || (totalSize == 0))
       return;
 
@@ -625,34 +479,31 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
        ,eventStr
        ,dependStr
        ,timestampMsec);
-  };
-
 }
 
-function_call_logger::
-function_call_logger(const char* function)
-  : function_call_logger(function,0)
-{}
-  
-function_call_logger::
-function_call_logger(const char* function, long long address)
-  : m_name(function), m_address(address)
+void cb_log_function_start (const char* functionName, long long queueAddress)
 {
-  static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
-  if (profile_on && XCL::active())
-    XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(m_name, m_address);
+  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress);
 }
 
-function_call_logger::
-~function_call_logger()
+void cb_log_function_end (const char* functionName, long long queueAddress)
 {
-  static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
-  if (profile_on && XCL::active())
-    XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(m_name, m_address);
+  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress);
 }
 
-void
-add_to_active_devices(const std::string& device_name)
+void cb_log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps)
+{
+  if (!xrt::config::get_timeline_trace()) {
+    return;
+  }
+
+  for (auto e :  xocl::get_range(deps, deps+num_deps)) {
+    XCL::RTSingleton::Instance()->getProfileManager()->logDependency(XCL::RTProfile::DEPENDENCY_EVENT,
+                  xocl::xocl(e)->get_suid(), event->get_suid());
+  }
+}
+
+void cb_add_to_active_devices(const std::string& device_name)
 {
   static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
   if (profile_on)
@@ -660,15 +511,14 @@ add_to_active_devices(const std::string& device_name)
 }
 
 void
-set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
+cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 {
   static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
   if (profile_on)
     XCL::RTSingleton::Instance()->getProfileManager()->setKernelClockFreqMHz(device_name, freq);
 }
 
-void
-reset(const xocl::xclbin& xclbin)
+void cb_reset (const xocl::xclbin& xclbin)
 {
   auto rts = XCL::RTSingleton::Instance();
 
@@ -709,13 +559,35 @@ reset(const xocl::xclbin& xclbin)
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }
 }
-
 void
-init()
+cb_init()
 {
   XCL::RTSingleton::Instance()->getStatus();
 }
 
-}}
+void register_xocl_profile_callbacks() {
+  xocl::profile::register_cb_action_read (cb_action_read);
+  xocl::profile::register_cb_action_write (cb_action_write);
+  xocl::profile::register_cb_action_map (cb_action_map);
+  xocl::profile::register_cb_action_migrate (cb_action_migrate);
+  xocl::profile::register_cb_action_ndrange_migrate (cb_action_ndrange_migrate);
+  xocl::profile::register_cb_action_ndrange (cb_action_ndrange);
+  xocl::profile::register_cb_action_unmap (cb_action_unmap);
+
+  xocl::profile::register_cb_log_function_start(cb_log_function_start);
+  xocl::profile::register_cb_log_function_end(cb_log_function_end);
+  xocl::profile::register_cb_log_dependencies(cb_log_dependencies);
+  xocl::profile::register_cb_add_to_active_devices(cb_add_to_active_devices);
+  xocl::profile::register_cb_set_kernel_clock_freq(cb_set_kernel_clock_freq);
+  xocl::profile::register_cb_reset(cb_reset);
+  xocl::profile::register_cb_init(cb_init);
+
+  xocl::profile::register_cb_get_device_trace(Profiling::cb_get_device_trace);
+  xocl::profile::register_cb_get_device_counters(Profiling::cb_get_device_counters);
+  xocl::profile::register_cb_start_device_profiling(Profiling::cb_start_device_profiling);
+  xocl::profile::register_cb_reset_device_profiling(Profiling::cb_reset_device_profiling);
+  xocl::profile::register_cb_end_device_profiling(Profiling::cb_end_device_profiling);
+}
+}
 
 

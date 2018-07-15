@@ -27,7 +27,7 @@
 
 #include "detail/program.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

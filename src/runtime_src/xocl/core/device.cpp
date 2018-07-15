@@ -19,9 +19,8 @@
 #include "program.h"
 #include "compute_unit.h"
 
+#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xocl/api/profile.h"
-
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 

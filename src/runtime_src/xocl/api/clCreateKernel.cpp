@@ -27,14 +27,13 @@
 
 #include "detail/program.h"
 #include "api.h"
-#include "profile.h"
-
 #include "xrt/util/memory.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 
 #include <fstream>
+#include "plugin/xdp/profile.h"
 
 namespace bfs = boost::filesystem;
 

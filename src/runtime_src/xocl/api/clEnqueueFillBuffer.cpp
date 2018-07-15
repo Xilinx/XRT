@@ -28,8 +28,8 @@
 
 #include "api.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -127,8 +127,8 @@ clEnqueueFillBuffer(cl_command_queue command_queue,
     (command_queue,CL_COMMAND_FILL_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_fill_buffer,buffer,pattern,pattern_size,offset,size);
-  appdebug::set_event_action
-    (uevent.get(),appdebug::action_fill_buffer,buffer,pattern,pattern_size,offset,size);
+  xocl::appdebug::set_event_action
+    (uevent.get(),xocl::appdebug::action_fill_buffer,buffer,pattern,pattern_size,offset,size);
 
   uevent->queue();
   xocl::assign(event,uevent.get());

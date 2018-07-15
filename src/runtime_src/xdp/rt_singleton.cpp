@@ -17,10 +17,12 @@
 // Copyright 2014 Xilinx, Inc. All rights reserved.
 
 #include "rt_singleton.h"
+#include "xdp/appdebug/appdebug.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/execution_context.h"
 #include "xrt/util/config_reader.h"
 
+#include "xdp/profile/profile.h"
 #include "xdp/profile/rt_profile.h"
 #include "xdp/profile/rt_profile_writers.h"
 #include "xdp/profile/rt_profile_xocl.h"
@@ -67,6 +69,13 @@ namespace XCL {
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
+    if (xrt::config::get_app_debug()) {
+      appdebug::register_xocl_appdebug_callbacks();
+    }
+
+    if (applicationProfilingOn()) {
+      XCL::register_xocl_profile_callbacks();
+    }
 #ifdef PMD_OCL
     return;
 #endif
