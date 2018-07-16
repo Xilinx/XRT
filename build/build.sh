@@ -43,11 +43,11 @@ fi
 
 mkdir -p Debug Release
 cd Debug
-cmake -DCMAKE_BUILD_TYPE=Debug ../../src
+cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 make -j4 DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
-cmake -DCMAKE_BUILD_TYPE=Release ../../src
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 make -j4 DESTDIR=$PWD install
 cd $here

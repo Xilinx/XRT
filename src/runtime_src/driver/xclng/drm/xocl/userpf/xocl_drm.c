@@ -25,7 +25,12 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 
+#if defined(__PPC64__)
+#define XOCL_FILE_PAGE_OFFSET   0x10000
+#else
 #define XOCL_FILE_PAGE_OFFSET   0x100000
+#endif
+
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif

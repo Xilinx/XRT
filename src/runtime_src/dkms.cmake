@@ -19,7 +19,6 @@ configure_file (
   ${DKMS_PRERM}
   )
 
-
 SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/mgmtpf/mgmt-core.c
   driver/xclng/drm/xocl/mgmtpf/mgmt-cw.c
@@ -107,9 +106,28 @@ SET (XRT_DKMS_SRCS
   driver/include/xclerr.h
   )
 
+SET (XRT_DKMS_ABS_SRCS)
+
 foreach (DKMS_FILE ${XRT_DKMS_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR}/${DKMS_DIR})
+  list (APPEND XRT_DKMS_ABS_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${DKMS_FILE})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
+
+find_program(CHECKPATCH checkpatch.pl PATHS /lib/modules/${LINUX_KERNEL_VERSION}/build/scripts/ NO_DEFAULT_PATH)
+
+message("-- checkpatch ${CHECKPATCH}")
+
+if (NOT CHECKPATCH)
+  message (WARNING "-- checkpatch.pl not found, Linux driver code style check disabled")
+else ()
+  add_custom_target(
+    checkpatch
+    COMMAND ${CHECKPATCH}
+    --emacs
+    --no-tree -f
+    ${XRT_DKMS_ABS_SRCS}
+    )
+endif ()
