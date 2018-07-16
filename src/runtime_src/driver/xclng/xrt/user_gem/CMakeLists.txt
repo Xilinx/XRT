@@ -1,11 +1,13 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
+  ${CURSES_INCLUDE_DIRS}
   )
 
 file(GLOB XRT_USER_GEM_FILES
   "*.h"
   "*.cpp"
+  "*.c"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

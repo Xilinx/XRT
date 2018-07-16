@@ -20,8 +20,7 @@
 #include "xocl/core/device.h"
 #include "detail/device.h"
 #include "api.h"
-#include "profile.h"
-
+#include "plugin/xdp/profile.h"
 #include "xrt/util/memory.h"
 
 namespace {
@@ -59,11 +58,17 @@ validOrError(cl_device_id                        in_device,
   if (!properties)
     throw error(CL_INVALID_VALUE,"No device partitioning property provided");
   
-  // Support only CL_DEVICE_PARTITION_EQUALLY
-  if (properties[0] != CL_DEVICE_PARTITION_EQUALLY)
-    throw error(CL_INVALID_VALUE,"Invalid partition property, only CL_DEVICE_PARTITION_EQUALLY supported");
-  if (properties[1] != 1)
-    throw error(CL_INVALID_VALUE,"Only one CU per subdevice is supported");
+  // Support CL_DEVICE_PARTITION_EQUALLY
+  if (properties[0] == CL_DEVICE_PARTITION_EQUALLY) {
+    if (properties[1] != 1)
+      throw error(CL_INVALID_VALUE,"Only one CU per subdevice is supported");
+  }
+  else if (properties[0] == CL_DEVICE_PARTITION_BY_CONNECTIVITY) {
+  }
+  else {
+    throw error(CL_INVALID_VALUE,"Invalid partition property, \
+                only CL_DEVICE_PARTITION_EQUALLY and CL_DEVICE_PARTITION_BY_CONNECTIVITY supported");
+  }
 
   // CL_INVALID_VALUE if out_devices is not NULL and num_devices is
   // less than the number of sub-devices created by the partition

@@ -236,6 +236,12 @@ namespace xocl {
 	  return size;
   }
 
+  size_t XOCLShim::xclDebugReadBarCounters(xclDebugBarCounterResults* barResult) {
+	  size_t size = 0;
+	  size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, barResult->base, &barResult->buffer[0], barResult->size);
+	  return size;
+  }
+
   // Read APM performance counters
   
   size_t XOCLShim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
@@ -304,6 +310,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SAM:
       return drv->xclDebugReadSAMCounters(reinterpret_cast<xclDebugSAMCounterResults*>(debugResults));
+    case XCL_DEBUG_READ_TYPE_BAR:
+      return drv->xclDebugReadBarCounters(reinterpret_cast<xclDebugBarCounterResults*>(debugResults));
     default:
       ;
   };

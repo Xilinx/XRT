@@ -19,7 +19,6 @@
  */
 
 #include <shim.h>
-#include <string.h>
 
 //########################################## THESE HAS TO BE DEFINED START ##########################################
 
@@ -78,7 +77,7 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   return drv->xclReadBO(boHandle, dst, size, skip);
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
@@ -212,7 +211,7 @@ unsigned xclProbe()
   return deviceIndex;
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
+unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, uint64_t flags)
 {
   //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);

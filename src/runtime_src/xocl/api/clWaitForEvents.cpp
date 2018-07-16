@@ -20,10 +20,10 @@
 #include "xocl/core/range.h"
 #include "detail/event.h"
 
-#include "profile.h"
 #include <iostream>
 
 #include "xocl/config.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

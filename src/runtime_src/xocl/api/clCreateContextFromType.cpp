@@ -23,8 +23,8 @@
 #include "detail/platform.h"
 #include "detail/device.h"
 #include "detail/context.h"
-#include "profile.h"
 #include "api.h"
+#include "plugin/xdp/profile.h"
 
 #include "xrt/util/memory.h"
 

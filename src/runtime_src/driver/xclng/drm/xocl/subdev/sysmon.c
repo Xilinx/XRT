@@ -117,17 +117,22 @@ static struct xocl_sysmon_funcs sysmon_ops = {
 	.get_prop	= get_prop,
 };
 
+static ssize_t show_sysmon(struct platform_device *pdev, u32 prop, char *buf)
+{
+	u32 val;
+
+	(void) get_prop(pdev, prop, &val);
+	return sprintf(buf, "%u\n", val);
+}
+
 /* sysfs support */
-static ssize_t show_sysmon(struct device *dev, struct device_attribute *da,
+static ssize_t show_hwmon(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct platform_device *pdev = dev_get_drvdata(dev);
-	u32 val;
 
-	get_prop(pdev, attr->index, &val);
-
-	return sprintf(buf, "%d\n", val);
+	return show_sysmon(pdev, attr->index, buf);
 }
 
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
@@ -136,32 +141,32 @@ static ssize_t show_name(struct device *dev, struct device_attribute *da,
 	return sprintf(buf, "%s\n", XCLMGMT_SYSMON_HWMON_NAME);
 }
 
-static SENSOR_DEVICE_ATTR(temp1_input, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(temp1_input, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_TEMP);
-static SENSOR_DEVICE_ATTR(temp1_highest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(temp1_highest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_TEMP_MAX);
-static SENSOR_DEVICE_ATTR(temp1_lowest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(temp1_lowest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_TEMP_MIN);
 
-static SENSOR_DEVICE_ATTR(in0_input, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in0_input, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_INT);
-static SENSOR_DEVICE_ATTR(in0_highest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in0_highest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_INT_MAX);
-static SENSOR_DEVICE_ATTR(in0_lowest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in0_lowest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_INT_MIN);
 
-static SENSOR_DEVICE_ATTR(in1_input, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in1_input, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_AUX);
-static SENSOR_DEVICE_ATTR(in1_highest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in1_highest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_AUX_MAX);
-static SENSOR_DEVICE_ATTR(in1_lowest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in1_lowest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_AUX_MIN);
 
-static SENSOR_DEVICE_ATTR(in2_input, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in2_input, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_BRAM);
-static SENSOR_DEVICE_ATTR(in2_highest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in2_highest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_BRAM_MAX);
-static SENSOR_DEVICE_ATTR(in2_lowest, 0444, show_sysmon, NULL,
+static SENSOR_DEVICE_ATTR(in2_lowest, 0444, show_hwmon, NULL,
 	XOCL_SYSMON_PROP_VCC_BRAM_MIN);
 
 static struct attribute *hwmon_sysmon_attributes[] = {
@@ -187,6 +192,46 @@ static const struct attribute_group hwmon_sysmon_attrgroup = {
 static struct sensor_device_attribute sysmon_name_attr =
 	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
 
+static ssize_t temp_show(struct device *dev, struct device_attribute *da,
+    char *buf)
+{
+    return show_sysmon(to_platform_device(dev), XOCL_SYSMON_PROP_TEMP, buf);
+}
+static DEVICE_ATTR_RO(temp);
+
+static ssize_t vcc_int_show(struct device *dev, struct device_attribute *da,
+    char *buf)
+{
+    return show_sysmon(to_platform_device(dev), XOCL_SYSMON_PROP_VCC_INT, buf);
+}
+static DEVICE_ATTR_RO(vcc_int);
+
+static ssize_t vcc_aux_show(struct device *dev, struct device_attribute *da,
+    char *buf)
+{
+    return show_sysmon(to_platform_device(dev), XOCL_SYSMON_PROP_VCC_AUX, buf);
+}
+static DEVICE_ATTR_RO(vcc_aux);
+
+static ssize_t vcc_bram_show(struct device *dev, struct device_attribute *da,
+    char *buf)
+{
+    return show_sysmon(to_platform_device(dev), XOCL_SYSMON_PROP_VCC_BRAM, buf);
+}
+static DEVICE_ATTR_RO(vcc_bram);
+
+static struct attribute *sysmon_attributes[] = {
+	&dev_attr_temp.attr,
+	&dev_attr_vcc_int.attr,
+	&dev_attr_vcc_aux.attr,
+	&dev_attr_vcc_bram.attr,
+	NULL,
+};
+
+static const struct attribute_group sysmon_attrgroup = {
+	.attrs = sysmon_attributes,
+};
+
 static void mgmt_sysfs_destroy_sysmon(struct platform_device *pdev)
 {
 	struct xocl_sysmon *sysmon;
@@ -194,11 +239,11 @@ static void mgmt_sysfs_destroy_sysmon(struct platform_device *pdev)
 	sysmon = platform_get_drvdata(pdev);
 
 	device_remove_file(sysmon->hwmon_dev, &sysmon_name_attr.dev_attr);
-	sysfs_remove_group(&sysmon->hwmon_dev->kobj,
-		&hwmon_sysmon_attrgroup);
-
+	sysfs_remove_group(&sysmon->hwmon_dev->kobj, &hwmon_sysmon_attrgroup);
 	hwmon_device_unregister(sysmon->hwmon_dev);
 	sysmon->hwmon_dev = NULL;
+
+	sysfs_remove_group(&pdev->dev.kobj, &sysmon_attrgroup);
 }
 
 static int mgmt_sysfs_create_sysmon(struct platform_device *pdev)
@@ -228,13 +273,21 @@ static int mgmt_sysfs_create_sysmon(struct platform_device *pdev)
 	err = sysfs_create_group(&sysmon->hwmon_dev->kobj,
 		&hwmon_sysmon_attrgroup);
 	if (err) {
-		xocl_err(&pdev->dev, "create pw group failed: 0x%x", err);
-		goto create_grp_failed;
+		xocl_err(&pdev->dev, "create hwmon group failed: 0x%x", err);
+		goto create_hwmon_failed;
+	}
+
+	err = sysfs_create_group(&pdev->dev.kobj, &sysmon_attrgroup);
+	if (err) {
+		xocl_err(&pdev->dev, "create sysmon group failed: 0x%x", err);
+		goto create_sysmon_failed;
 	}
 
 	return 0;
 
-create_grp_failed:
+create_sysmon_failed:
+	sysfs_remove_group(&sysmon->hwmon_dev->kobj, &hwmon_sysmon_attrgroup);
+create_hwmon_failed:
 	device_remove_file(sysmon->hwmon_dev, &sysmon_name_attr.dev_attr);
 create_name_failed:
 	hwmon_device_unregister(sysmon->hwmon_dev);

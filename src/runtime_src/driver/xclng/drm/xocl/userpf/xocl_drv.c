@@ -27,6 +27,7 @@ struct class *xrt_class = NULL;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+#define	EBUF_LEN	256
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
         struct xocl_dev *xdev = pci_get_drvdata(pdev);
@@ -39,10 +40,12 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
         xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
         if (prepare) {
+		xocl_mailbox_reset(xdev, false);
 		xocl_user_dev_offline(xdev);
         } else {
 		reset_notify_client_ctx(xdev);
 		xocl_user_dev_online(xdev);
+		xocl_mailbox_reset(xdev, true);
         }
 }
 EXPORT_SYMBOL_GPL(xocl_reset_notify);
@@ -66,6 +69,26 @@ void user_pci_reset_done(struct pci_dev *pdev)
         xocl_reset_notify(pdev, false);
 }
 #endif
+
+void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt)
+{
+	int i;
+	struct page *pg;
+	struct scatterlist *sg = sgt->sgl;
+	unsigned long long pgaddr;
+	int nents = sgt->orig_nents;
+
+        for (i = 0; i < nents; i++, sg = sg_next(sg)) {
+	        if (!sg)
+       		     break;
+                pg = sg_page(sg);
+                if (!pg)
+                        continue;
+                pgaddr = page_to_phys(pg);
+                xocl_err(dev, "%i, 0x%llx, offset %d, len %d\n",
+			i, pgaddr, sg->offset, sg->length);
+        }
+}
 
 /* INIT */
 static int (*xocl_drv_reg_funcs[])(void) __initdata = {

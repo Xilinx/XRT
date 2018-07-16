@@ -1,4 +1,5 @@
-KERNELDOC := /lib/modules/$(shell uname -r)/build/scripts/kernel-doc
+KERNELDOC_URL := https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52
+KERNELDOC := ./kernel-doc
 
 SPHINX := sphinx-build
 
@@ -16,6 +17,8 @@ RST :=   \
 
 $(OUTDIR)/index.html : $(wildcard $(SRCDIR)/*.rst) $(RST)
 
+.PHONY : all clean
+
 all:  $(OUTDIR)/index.html 
 
 core/mgmt-ioctl.rst : $(XRTSRCROOT)/driver/xclng/include/mgmt-ioctl.h
@@ -30,10 +33,16 @@ core/xclhal2.rst : $(XRTSRCROOT)/driver/include/xclhal2.h
 core/ert.rst : $(XRTSRCROOT)/driver/include/ert.h
 	$(KERNELDOC) -rst $< > $@
 
-$(OUTDIR)/index.html: $(RST)
+core : 
+	mkdir -p core/
+
+$(KERNELDOC) :
+	curl -o $(KERNELDOC) $(KERNELDOC_URL) && chmod +x $(KERNELDOC)
+
+$(OUTDIR)/index.html: core $(KERNELDOC) $(RST)
 	mkdir -p $(OUTDIR)
 	$(SPHINX) $(SRCDIR) $(OUTDIR)
 
 clean:
-	rm -rf $(OUTDIR)
-	rm -f $(RST)
+	rm -f $(RST) $(KERNELDOC)
+	rm -rf $(OUTDIR) core/

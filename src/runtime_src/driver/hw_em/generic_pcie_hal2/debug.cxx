@@ -82,7 +82,7 @@ namespace xclhwemhal2 {
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
-    for (int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+    for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
       if ((mAccelmonProperties[i] >> 2) & 0x1)
         mStallProfilingNumberSlots++;
     }
@@ -92,12 +92,12 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: accel slots  = " << mAccelProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: stall slots  = " << mStallProfilingNumberSlots << std::endl;
 
-      for (int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
                    << ", name = " << mPerfMonSlotName[i] << std::endl;
       }
-      for (int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;

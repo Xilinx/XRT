@@ -515,9 +515,6 @@ namespace xocl {
                       baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuExecCycles[s], 4);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                      baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_OFFSET, 
-                      &counterResults.CuExecCycles[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuMinExecCycles[s], 4);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
@@ -775,9 +772,9 @@ namespace xocl {
     // ******************************
     // Read & process all trace FIFOs
     // ******************************
+    xclTraceResults results = {};
     for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
-      xclTraceResults results;
       uint64_t temp = 0;
 
       temp = *(hostbuf + index) | (uint64_t)*(hostbuf + index + 1) << 32;
