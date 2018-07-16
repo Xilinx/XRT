@@ -55,9 +55,49 @@ static ssize_t dr_base_addr_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(dr_base_addr);
 
+static ssize_t ddr_bank_count_max_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", rom->header.DDRChannelCount);
+}
+static DEVICE_ATTR_RO(ddr_bank_count_max);
+
+static ssize_t ddr_bank_size_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", rom->header.DDRChannelSize);
+}
+static DEVICE_ATTR_RO(ddr_bank_size);
+
+static ssize_t timestamp_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%llu\n", rom->header.TimeSinceEpoch);
+}
+static DEVICE_ATTR_RO(timestamp);
+
+static ssize_t FPGA_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%s\n", rom->header.FPGAPartName);
+}
+static DEVICE_ATTR_RO(FPGA);
+
 static struct attribute *rom_attrs[] = {
 	&dev_attr_VBNV.attr,
 	&dev_attr_dr_base_addr.attr,
+	&dev_attr_ddr_bank_count_max.attr,
+	&dev_attr_ddr_bank_size.attr,
+	&dev_attr_timestamp.attr,
+	&dev_attr_FPGA.attr,
 	NULL,
 };
 
@@ -321,6 +361,9 @@ static int feature_rom_remove(struct platform_device *pdev)
 	}
 	if (rom->base)
 		iounmap(rom->base);
+
+	sysfs_remove_group(&pdev->dev.kobj, &rom_attr_group);
+
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, rom);
 	return 0;

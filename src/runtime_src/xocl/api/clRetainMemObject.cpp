@@ -20,7 +20,7 @@
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -44,6 +44,8 @@
 // THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS
 // PART OF THIS FILE AT ALL TIMES.
 
+syntax = "proto2";
+
 message call_packet_info {
     required fixed64 size = 1;
     optional fixed32 xcl_api = 2;

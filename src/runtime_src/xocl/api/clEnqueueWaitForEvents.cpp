@@ -21,7 +21,7 @@
 #include <CL/opencl.h>
 #include "xocl/config.h"
 #include "api.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -19,9 +19,8 @@
 #include "program.h"
 #include "compute_unit.h"
 
+#include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xocl/api/profile.h"
-
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
@@ -328,15 +327,6 @@ device(device* parent, const compute_unit_vector_type& cus)
 
   // Current program tracks this subdevice on which it is implicitly loaded.
   m_active->add_device(this);
-
-#if 0  // No need to explicit add in subdevice,  m_computeunits can copy
-       // parent cus, since cus are stored as shared ptrs a reference is
-       // retained
-  // Add CUs based on incoming list.  This controls the CUs that
-  // an NDRange event can use during execution.
-  for (auto& cu : cus)
-    add_cu(xrt::make_unique<compute_unit>(cu->get_symbol(),cu->get_name(),cu->get_offset(),cu->get_size(),this));
-#endif
 }
 
 device::
@@ -444,17 +434,26 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
-  auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc()) {
-    auto bank = myctz(flag);
-    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+  if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
+	  && xdevice->hasBankAlloc())
+  {
+    //Extension flags were passed. Get the extension flags.
+    //First 8 bits will indicate legacy/mem_topology etc.
+    //Rest 24 bits directly indexes into mem topology section OR.
+    //have legacy one-hot encoding.
+    auto flag = mem->get_ext_flags();
+    int32_t memidx = 0;
+    if(flag & XCL_MEM_TOPOLOGY) {
+      memidx = flag & 0xffffff;
+    }else {
+      flag = flag & 0xffffff;
+      auto bank = myctz(flag);
+      memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+      if(memidx==-1){
+        memidx = bank;
+      }
+    }
 
-    // HBM support does not use bank tag, host code must use proper enum value
-    if(memidx==-1)
-      memidx = bank;
-
-    // Determine the bank number for the buffers
     try {
       auto boh = alloc(mem,memidx);
       XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
@@ -463,6 +462,26 @@ allocate_buffer_object(memory* mem)
     catch (const std::bad_alloc&) {
     }
   }
+
+//  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
+//  auto flag = (mem->get_ext_flags()) & 0xffffff;
+//  if (flag && xdevice->hasBankAlloc()) {
+//    auto bank = myctz(flag);
+//    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+//
+//    // HBM support does not use bank tag, host code must use proper enum value
+//    if(memidx==-1)
+//      memidx = bank;
+//
+//    // Determine the bank number for the buffers
+//    try {
+//      auto boh = alloc(mem,memidx);
+//      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
+//      return boh;
+//    }
+//    catch (const std::bad_alloc&) {
+//    }
+//  }
 
   // If buffer could not be allocated on the requested bank,
   // or if no bank was specified, then allocate on the bank
@@ -481,6 +500,38 @@ allocate_buffer_object(memory* mem)
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
   return alloc(mem);
+}
+
+xrt::device::BufferObjectHandle
+device::
+allocate_buffer_object(memory* mem, uint64_t memidx)
+{
+  if (mem->get_flags() & CL_MEM_REGISTER_MAP)
+    throw std::runtime_error("Cannot allocate register map buffer on bank");
+
+  auto xdevice = get_xrt_device();
+
+  // sub buffer
+  if (mem->get_sub_buffer_parent()) {
+    throw std::runtime_error("sub buffer bank allocation not implemented");
+  }
+
+  auto flag = (mem->get_ext_flags()) & 0xffffff;
+  if (flag && xdevice->hasBankAlloc()) {
+    auto bank = myctz(flag);
+    auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+    if (midx==-1)
+      midx=bank;
+    if (static_cast<uint64_t>(midx)!=memidx)
+      throw std::runtime_error("implicitly request memidx("
+                               +std::to_string(memidx)
+                               +") does not match explicit memidx("
+                               +std::to_string(midx)+")");
+  }
+
+  auto boh = alloc(mem,memidx);
+  XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
+  return boh;
 }
 
 void
@@ -540,22 +591,46 @@ get_cu_memidx() const
   if (m_cu_memidx == -2) {
     m_cu_memidx = -1;
 
-    // compute intersection of all CU memory masks
-    memidx_bitmask_type mask;
-    mask.set();
-    for (auto& cu : get_cu_range())
-      mask &= cu->get_memidx_intersect();
+    if (get_num_cus()) {
+      // compute intersection of all CU memory masks
+      memidx_bitmask_type mask;
+      mask.set();
+      for (auto& cu : get_cu_range())
+        mask &= cu->get_memidx_intersect();
 
-    // select first common memory bank index if any
-    for (size_t idx=0; idx<mask.size(); ++idx) {
-      if (mask.test(idx)) {
-        m_cu_memidx = idx;
-        break;
+      // select first common memory bank index if any
+      for (size_t idx=0; idx<mask.size(); ++idx) {
+        if (mask.test(idx)) {
+          m_cu_memidx = idx;
+          break;
+        }
       }
     }
   }
-
   return m_cu_memidx;
+}
+
+device::memidx_bitmask_type
+device::
+get_cu_memidx(kernel* kernel, int argidx) const
+{
+  bool set = false;
+  memidx_bitmask_type memidx;
+  memidx.set();
+  auto sid = kernel->get_symbol_uid();
+
+  // iterate CUs
+  for (auto& cu : get_cus()) {
+    if (cu->get_symbol_uid()!=sid)
+      continue;
+    memidx &= cu->get_memidx(argidx);
+    set = true;
+  }
+
+  if (!set)
+    memidx.reset();
+
+  return memidx;
 }
 
 xrt::device::BufferObjectHandle
@@ -833,7 +908,27 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->write_register(offset,ptr,size);
+
+  auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
+  auto packet = cmd->get_packet();
+  auto idx = packet.size() + 1; // past header is start of payload
+  auto addr = offset;
+  auto value = reinterpret_cast<const uint32_t*>(ptr);
+
+  while (size>0) {
+    packet[idx++] = addr;
+    packet[idx++] = *value;
+    ++value;
+    addr+=4;
+    size-=4;
+  }
+
+  auto ecmd = xrt::command_cast<ert_packet*>(cmd);
+  ecmd->type = ERT_KDS_LOCAL;
+  ecmd->count = packet.size() - 1; // substract header
+
+  xrt::scheduler::schedule(cmd);
+  cmd->wait();
 }
 
 void
@@ -981,11 +1076,9 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   m_computeunits.clear();
   m_cu_memidx = -2;
-  auto cu_base_offset = m_xclbin.cu_base_offset();
-  auto cu_size = m_xclbin.cu_size();
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,cu_base_offset,cu_size,this));
+      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,this));
     }
   }
 

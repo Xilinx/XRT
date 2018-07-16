@@ -41,8 +41,8 @@ public:
         unsigned mgmt_instance;
         std::string user_name;
         std::string mgmt_name;
-        size_t user_bar0_size;
-        size_t mgmt_bar0_size;
+        int user_bar;
+        size_t user_bar_size;
         int domain;
         uint8_t bus, device, mgmt_func, user_func;
     };
@@ -59,7 +59,8 @@ private:
         uint16_t instance = INVALID_DEV;
         std::string device_name;
         std::string driver_name = "???", driver_version = "???";
-        size_t bar0_size;
+        int user_bar;
+        size_t user_bar_size;
     };
     bool add_device(struct pci_device& device);
     bool print_paths();

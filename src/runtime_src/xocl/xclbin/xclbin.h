@@ -57,6 +57,7 @@ class xclbin
 public:
   using addr_type = uint64_t;
   using memidx_bitmask_type = std::bitset<24>;
+  using memidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
@@ -341,7 +342,7 @@ public:
    *   index in the range 0,1,2...31
    *   -1 if no match
   */
-  int32_t
+  memidx_type
   mem_address_to_first_memidx(addr_type addr) const;
 
   /**
@@ -353,7 +354,7 @@ public:
    *   Tag name for memory idx
    */
   std::string
-  memidx_to_banktag(int32_t memidx) const;
+  memidx_to_banktag(memidx_type memidx) const;
     
   /**
    * Get the memory index with the specified tag.
@@ -363,7 +364,7 @@ public:
    * @return
    *   Tag memory index corresponding to tag name
    */
-  int32_t
+  memidx_type
   banktag_to_memidx(const std::string& tag) const;
 
   ////////////////////////////////////////////////////////////////

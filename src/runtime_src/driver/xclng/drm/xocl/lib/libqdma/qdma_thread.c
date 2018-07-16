@@ -1,16 +1,28 @@
-/*
- * This file is part of the Xilinx DMA IP Core driver for Linux
+/*******************************************************************************
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
- * All rights reserved.
+ * Xilinx XDMA IP Core Linux Driver
+ * Copyright(c) 2015 - 2017 Xilinx, Inc.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
- */
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "LICENSE".
+ *
+ * Karen Xie <karen.xie@xilinx.com>
+ *
+ ******************************************************************************/
 
-#define pr_fmt(fmt)     KBUILD_MODNAME ":%s: " fmt, __func__
+#define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include "qdma_thread.h"
 
@@ -45,11 +57,10 @@ static int qdma_thread_wrk_pend(struct list_head *work_item)
 
 	lock_descq(descq);
 	list_for_each_entry_safe(cb, tmp, &descq->work_list, list) {
-		struct qdma_sg_req *req = (struct qdma_sg_req *)cb;
+		struct qdma_request *req = (struct qdma_request *)cb;
 
-		if (cb->offset < req->count && descq->avail) {
+		if (((req->count == 0) || (cb->offset < req->count)) && descq->avail)
 			work += 1;
-		}
 	}
 	unlock_descq(descq);
 	return work;
@@ -68,7 +79,7 @@ static int qdma_thread_wrk_proc(struct list_head *work_item)
 		pr_debug("descq %s, wrk 0x%p.\n", descq->conf.name, cb);
 		rv = qdma_descq_proc_sgt_request(descq, cb);
 		if (rv < 0) { /* failed, return */
-			qdma_sgt_req_done(cb, rv);
+			qdma_sgt_req_done(descq, cb, rv);
 		}
 		if (!descq->avail)
 			break;
@@ -104,93 +115,76 @@ static int qdma_thread_wb_proc(struct list_head *work_item)
 
 void qdma_thread_remove_work(struct qdma_descq *descq)
 {
-	struct qdma_kthread *thp, *thp_wb;
+	struct qdma_kthread *rq_thread, *cmpl_thread;
 
 	lock_descq(descq);
-	thp = descq->wrkthp;
-	thp_wb = descq->wbthp;
+	rq_thread = descq->wrkthp;
+	cmpl_thread = descq->wbthp;
 
-	pr_debug("%s 0x%p, thread %s, %s.\n", descq->conf.name, descq,
-		thp ? thp->name : "?", thp_wb ? thp_wb->name : "?");
+	pr_debug("%s removing workload from thread %s, %s\n", descq->conf.name,
+		rq_thread ? rq_thread->name : "?", cmpl_thread ? cmpl_thread->name : "?");
 
 	descq->wbthp = NULL;
 	descq->wrkthp = NULL;
 	unlock_descq(descq);
 
-	if (thp) {
-		lock_thread(thp);
+	if (rq_thread) {
+		lock_thread(rq_thread);
 		list_del(&descq->wrkthp_list);
-		thp->work_cnt--;
-		unlock_thread(thp);
+		rq_thread->work_cnt--;
+		unlock_thread(rq_thread);
 	}
 
-	if (thp_wb) {
-		/* Polled mode */
-		lock_thread(thp_wb);
+	if (cmpl_thread) {
+		lock_thread(cmpl_thread);
 		list_del(&descq->wbthp_list);
-		thp_wb->work_cnt--;
-		unlock_thread(thp_wb);
-	} else {
-		/* Interrupt mode */
-		unsigned long flags;
-
-		spin_lock_irqsave(&descq->xdev->lock, flags);
-		list_del(&descq->intr_list);
-		spin_unlock_irqrestore(&descq->xdev->lock, flags);
+		cmpl_thread->work_cnt--;
+		unlock_thread(cmpl_thread);
 	}
 }
 
 void qdma_thread_add_work(struct qdma_descq *descq)
 {
-	struct qdma_kthread *thp = wrk_threads;
-	struct qdma_kthread *thp_wb = NULL;
+	struct qdma_kthread *rq_thread = wrk_threads;
+	struct qdma_kthread *cmpl_thread = NULL;
 	unsigned int v = 0;
 	int i, idx = thread_cnt;
 
-	for (i = 0; i < thread_cnt; i++, thp++) {
-		lock_thread(thp);
+	for (i = 0; i < thread_cnt; i++, rq_thread++) {
+		lock_thread(rq_thread);
 		if (idx == thread_cnt) {
-			v = thp->work_cnt;
+			v = rq_thread->work_cnt;
 			idx = i;
-		} else if (!thp->work_cnt) {
+		} else if (!rq_thread->work_cnt) {
 			idx = i;
-			unlock_thread(thp);
+			unlock_thread(rq_thread);
 			break;
-		} else if (thp->work_cnt < v)
+		} else if (rq_thread->work_cnt < v)
 			idx = i;
-		unlock_thread(thp);
+		unlock_thread(rq_thread);
 	}
 
-	thp = wrk_threads + idx;
-	lock_thread(thp);
-	list_add_tail(&descq->wrkthp_list, &thp->work_list);
-	thp->work_cnt++;
-	unlock_thread(thp);
+	rq_thread = wrk_threads + idx;
+	lock_thread(rq_thread);
+	list_add_tail(&descq->wrkthp_list, &rq_thread->work_list);
+	rq_thread->work_cnt++;
+	unlock_thread(rq_thread);
 
-	if (descq->xdev->num_vecs) {
-		/* Interrupt mode */
-		unsigned long flags;
-
-		spin_lock_irqsave(&descq->xdev->lock, flags);
-		list_add_tail(&descq->intr_list,
-				&descq->xdev->intr_list[descq->intr_id]);
-		spin_unlock_irqrestore(&descq->xdev->lock, flags);
-	} else {
-		/* Polled mode */
-		thp_wb = wb_threads + (thread_cnt - idx - 1);
-		lock_thread(thp_wb);
-		list_add_tail(&descq->wbthp_list, &thp_wb->work_list);
-		thp_wb->work_cnt++;
-		unlock_thread(thp_wb);
+	if (!descq->xdev->num_vecs) {	/* Polled mode only */
+		cmpl_thread = wb_threads + (thread_cnt - idx - 1);
+		lock_thread(cmpl_thread);
+		list_add_tail(&descq->wbthp_list, &cmpl_thread->work_list);
+		cmpl_thread->work_cnt++;
+		unlock_thread(cmpl_thread);
 	}
 
 	lock_descq(descq);
-	pr_info("%s 0x%p assigned to thread %s,%u, %s,%u.\n",
-		descq->conf.name, descq, thp->name, thp->work_cnt,
-		thp_wb ? thp_wb->name : "?",
-		thp_wb ? thp_wb->work_cnt : 0);
-	descq->wrkthp = thp;
-	descq->wbthp = thp_wb;
+	pr_debug("%s 0x%p assigned to thread %s,%u, %s,%u.\n",
+		descq->conf.name, descq, rq_thread->name, rq_thread->work_cnt,
+		cmpl_thread ? cmpl_thread->name : "?",
+		cmpl_thread ? cmpl_thread->work_cnt : 0);
+	descq->wrkthp = rq_thread;
+	descq->wbthp = cmpl_thread;
 	unlock_descq(descq);
 }
 
@@ -200,11 +194,13 @@ int qdma_threads_create(void)
 	int i;
 	int rv;
 
-	if (thread_cnt)
+	if (thread_cnt) {
+		pr_warn("threads already created!");
 		return 0;
+	}
+
 
 	thread_cnt =  num_online_cpus();
-	pr_info("online cpu %u.\n", thread_cnt);
 
 	wrk_threads = kzalloc(thread_cnt * 2 *
 					sizeof(struct qdma_kthread),
@@ -215,11 +211,11 @@ int qdma_threads_create(void)
 	wb_threads = wrk_threads + thread_cnt;
 
 	thp = wrk_threads;
-	/* N dma submission threads */
+	/* N dma request threads */
 	for (i = 0; i < thread_cnt; i++, thp++) {
 		thp->cpu = i;
 		thp->timeout = 0;
-		rv = qdma_kthread_start(thp, "qdma_wrk_th", i);
+		rv = qdma_kthread_start(thp, "qdma_rq_th", i);
 		thp->fproc = qdma_thread_wrk_proc;
 		thp->fpending = qdma_thread_wrk_pend;
 	}

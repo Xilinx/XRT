@@ -271,12 +271,13 @@ static struct drm_driver mm_drm_driver = {
 	.gem_prime_import_sg_table      = xocl_gem_prime_import_sg_table,
 	.gem_prime_vmap                 = xocl_gem_prime_vmap,
 	.gem_prime_vunmap               = xocl_gem_prime_vunmap,
+	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
 	.gem_prime_export		= drm_gem_prime_export,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid                      = drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,
@@ -286,6 +287,32 @@ static struct drm_driver mm_drm_driver = {
 	.minor				= XOCL_DRIVER_MINOR,
 	.patchlevel			= XOCL_DRIVER_PATCHLEVEL,
 };
+
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err)
+{
+	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
+	struct mailbox_req *req = (struct mailbox_req *)data;
+	int ret = 0;
+
+	if (err != 0)
+		return;
+
+	userpf_info(xdev, "received request (%d) from peer\n", req->req);
+
+	switch (req->req) {
+	case MAILBOX_REQ_RESET_BEGIN:
+		xocl_reset_notify(xdev->core.pdev, true);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RESET_END:
+		xocl_reset_notify(xdev->core.pdev, false);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	default:
+		break;
+	}
+}
 
 int xocl_drm_init(struct xocl_dev *xdev)
 {
@@ -349,6 +376,9 @@ int xocl_drm_init(struct xocl_dev *xdev)
 			segment += ddr_size;
 		}
 	}
+
+	/* Launch the mailbox server. */
+        (void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
 	mutex_init(&xdev->stat_lock);
 	mutex_init(&xdev->mm_lock);
@@ -414,7 +444,7 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
 	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
 		0, 0, 0);
@@ -470,25 +500,35 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
         memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
 }
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf)
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
+	const char *raw_fmt = "%llu %d\n";
+	struct mem_topology *topo = xdev->topology.topology;
+	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);
-	if (!xdev->topology.topology || !xdev->mm_usage_stat)
+	if (!topo || !stat)
 		goto out;
 
-	for (i = 0; i < xdev->topology.topology->m_count; i++) {
-		const char *state = xdev->topology.topology->m_mem_data[i].m_used ? "on" : "off";
-		count = sprintf(buf, "[%d] %s@0x%llx; (%s); 0x%zx/0x%llx KB; %x BO\n", i,
-				xdev->topology.topology->m_mem_data[i].m_tag,
-				xdev->topology.topology->m_mem_data[i].m_base_address,
-				state,
-				xdev->mm_usage_stat[i].memory_usage/1024,
-				xdev->topology.topology->m_mem_data[i].m_size,
-				xdev->mm_usage_stat[i].bo_count);
+	for (i = 0; i < topo->m_count; i++) {
+		if (raw) {
+			count = sprintf(buf, raw_fmt,
+				stat[i].memory_usage,
+				stat[i].bo_count);
+		} else {
+			count = sprintf(buf, txt_fmt,
+				topo->m_mem_data[i].m_used ?
+					"IN-USE" : "UNUSED",
+				topo->m_mem_data[i].m_tag,
+				topo->m_mem_data[i].m_base_address,
+				topo->m_mem_data[i].m_size / 1024,
+				stat[i].memory_usage / 1024,
+				stat[i].bo_count);
+		}
 		buf += count;
 		size += count;
 	}

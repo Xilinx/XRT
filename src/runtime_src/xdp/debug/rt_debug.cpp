@@ -15,6 +15,8 @@
  */
 
 #include "rt_debug.h"
+#include "rt_singleton.h"
+#include "xocl/xclbin/xclbin.h"
 #include "xrt/util/message.h"
 
 #include <unistd.h>
@@ -24,9 +26,18 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include "xocl/api/plugin/xdp/debug.h"
 
 namespace XCL
 {
+
+  void
+  cb_debug_reset (const xocl::xclbin& xclbin)
+  {
+    auto binary = xclbin.binary();
+    XCL::RTSingleton::Instance()->getDebugManager()->reset(binary);
+  }
+
   RTDebug::RTDebug() : uid(-1), pid(-1), 
 		       sdxDirectory(""), jsonFile(""), dwarfFile("")
   {
@@ -48,6 +59,8 @@ namespace XCL
 	createDirectory(sdxDirectory.c_str()) ;
       }
     }
+
+    xocl::debug::register_cb_reset(cb_debug_reset);
   }
 
   RTDebug::~RTDebug()

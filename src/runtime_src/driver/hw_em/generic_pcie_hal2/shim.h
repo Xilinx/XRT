@@ -17,65 +17,29 @@
 #ifndef _HW_EM_SHIM_H_
 #define _HW_EM_SHIM_H_
 
-// Implementation of Xilinx OpenCL low level platform APIs for hw_em
-// This is layered on top of hw_ems Linux kernel driver.
-#include <sys/param.h>
-#include "rpc_messages.pb.h"
-#include "xbar_sys_parameters.h"
 #ifndef _WINDOWS
-// TODO: Windows build support
-// unix_socket.h is linux only
-// We need to provide a Windows equivalent functionality
 #include "unix_socket.h"
-#endif
+#include "config.h"
+#include "em_defines.h"
+#include "memorymanager.h"
+#include "rpc_messages.pb.h"
 
+#include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
-#include <cstring>
-#include <algorithm>
-#include <google/protobuf/message_lite.h>
-#include <sstream>
-#include "em_defines.h"
-#include "xclhal2.h"
 #include "xclbin.h"
-#include "xclperf.h"
-#include "HPIXclbinXmlReaderWriterLMX.h"
-#include "lmx6.0/lmxparse.h"
 
-#include <list>
-#include <map>
-#include <tuple>
-#include <sys/types.h>
-#include<sys/stat.h>
-#include <mutex>
-#include <thread>
-#include <iostream>
-#include <fstream>
-#include <signal.h>
-#include <vector>
-#include "memorymanager.h"
 #include "mem_model.h"
 #include "mbscheduler.h"
-#ifdef _MSC_VER
-#include <boost/config/compiler/visualc.hpp>
 #endif
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/foreach.hpp>
-#include <cassert>
-#include <exception>
+
+#include <sys/param.h>
+#include <sys/wait.h>
+#include <thread>
+#include <signal.h>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
-
-#ifdef WINDOWS
-#include <direct.h>
-#define GetCurrentDir _getcwd
-#else
-#include <unistd.h>
-#define GetCurrentDir getcwd
-#endif  
-const uint64_t mNullBO = 0xffffffff;
 
 namespace xclhwemhal2 {
 using addr_type = uint64_t;
@@ -101,30 +65,22 @@ using addr_type = uint64_t;
   };
 
 
-//  struct MemTopology {
-//    int32_t             bank_count;
-//    struct mem_data*    m_data;
-//    u32                 m_data_length; //length of the mem_data section.
-//    uint64_t            bank_size; //in KB. Currently only fixed sizes are supported.
-//    uint64_t	    size;
-//    struct mem_topology *topology;
-//  };
-
-typedef struct {
-    std::string name;
-    unsigned int size;
-  } KernelArg;
+ typedef struct 
+ {
+   std::string name;
+   unsigned int size;
+ } KernelArg;
 
   class HwEmShim {
 
     public:
 
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
-      int xoclCreateBo(xocl_create_bo *info);
+      unsigned int xclAllocBO(size_t size, xclBOKind domain, uint64_t flags);
+      int xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
-      unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+      unsigned int xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags);
       int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
@@ -139,7 +95,7 @@ typedef struct {
       struct exec_core* getExecCore() { return mCore; }
       MBScheduler* getScheduler() { return mMBSch; }
 
-      drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
+      xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
       inline unsigned long long xocl_ddr_channel_size();
       // HAL2 RELATED member functions end 
@@ -154,12 +110,6 @@ typedef struct {
       int xclBootFPGA();
       int resetProgram(bool saveWdb=true);
       int xclGetDeviceInfo2(xclDeviceInfo2 *info);
-
-      //following functions are created for emulation diagnostics
-      bool validateXclBin(const std::string& xmlfileName, Xclbin::Platform& platform, Xclbin::Core& core,std::string &xclBinName);
-      size_t getMinSaxiControlReMap(Xclbin::Core& core);
-      void populateKernelArgInfo(const Xclbin::Kernel& kernel, std::map<uint64_t,KernelArg>& kernelArgInfo);
-      bool getSaxiControlRemap(const Xclbin::Instance &instance, size_t &saxiControlMap);
 
       // Raw read/write
       size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
@@ -285,7 +235,7 @@ typedef struct {
       bool bXPR;
       //MemTopology topology;
       // HAL2 RELATED member variables start
-      std::map<int, drm_xocl_bo*> mXoclObjMap;
+      std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
       // HAL2 RELATED member variables end 
       exec_core* mCore;

@@ -12,7 +12,7 @@ downtime provided you use a few scripts we have created:
 Building XRT
 ~~~~~~~~~~~~
 
-Make sure you build XRT on a Centos7.3+ or Ubuntu16.04 host. 
+Make sure you build XRT on a Centos7.4+ or Ubuntu16.04.4 host.
 
 It is probably safest if you keep your Git clone of XRT on a network
 mounted drive that can be accessed from different hosts.  One
@@ -47,7 +47,7 @@ To run your locally built XRT with a sample ``host.exe`` and
    <path>/XRT/build/run.sh ./host.exe kernel.xclbin
 
 By default the ``run.sh`` script uses the binaries from the Release
-profile.  In order run with the binaries from Debug profile use ``-dbg`` 
+profile.  In order run with the binaries from Debug profile use ``-dbg``
 flag; this way you can even start your favorite debugger by prefixing its
 invocation with ``run.sh -dbg``
 
@@ -76,4 +76,3 @@ run all tests that were previously synced into the current directory.
 While tests run a file named ``results.all`` will list the test with
 PASS/FAIL keyword.  This file is appended (not removed between runs).
 A complete run should take 5-10 mins for approximately 70 tests.
-

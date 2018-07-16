@@ -44,6 +44,8 @@ XCLGEM_HAL_DRV_SRC := \
  driver/xclng/xrt/user_gem/hwmon.cpp \
  driver/xclng/xrt/user_gem/xbsak_debug.cpp \
  driver/xclng/xrt/user_gem/xbsak.cpp \
+ driver/xclng/xrt/user_gem/devices.c \
+ driver/xclng/xrt/user_gem/devices.h \
  driver/xclng/xrt/user_gem/shim.h \
  driver/xclng/xrt/user_gem/scan.h \
  driver/xclng/xrt/user_gem/hwmon.h \
@@ -51,6 +53,8 @@ XCLGEM_HAL_DRV_SRC := \
  driver/xclng/xrt/user_gem/NOTICE \
  driver/xclng/xrt/user_gem/LICENSE \
  driver/xclng/include/mgmt-ioctl.h \
+ driver/xclng/include/qdma_ioctl.h \
+ driver/xclng/include/devices.h \
  driver/xclng/include/xocl_ioctl.h \
  driver/xclng/include/mgmt-reg.h \
  driver/xclng/include/drm/drm.h \

@@ -1,15 +1,26 @@
-/*
- * This file is part of the Xilinx DMA IP Core driver for Linux
+/*******************************************************************************
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
- * All rights reserved.
+ * Xilinx QDMA IP Core Linux Driver
+ * Copyright(c) 2017 Xilinx, Inc.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
- */
-
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "LICENSE".
+ *
+ * Karen Xie <karen.xie@xilinx.com>
+ *
+ ******************************************************************************/
 #ifndef __QDMA_MBOX_H__
 #define __QDMA_MBOX_H__
 
@@ -18,7 +29,6 @@
  */
 #ifdef __QDMA_VF__
 #define MBOX_BASE		0x1000
-#define MBOX_STEP		0x20000
 #else
 #define MBOX_BASE		0x2400
 #endif
@@ -61,22 +71,29 @@
 #define		S_MBOX_FN_CMD_VF_RESET	3	/* TBD PF only: reset VF */
 #define		M_MBOX_FN_CMD_VF_RESET	0x1
 
+#define MBOX_ISR_VEC			0x8
+#define		S_MBOX_ISR_VEC		0
+#define		M_MBOX_ISR_VEC		0x1F
+#define		V_MBOX_ISR_VEC(x)	((x) & M_MBOX_ISR_VEC) 
+
 #define MBOX_FN_TARGET			0xC
 #define		S_MBOX_FN_TARGET_ID	0
 #define		M_MBOX_FN_TARGET_ID	0xFF
 #define		V_MBOX_FN_TARGET_ID(x)	((x) & M_MBOX_FN_TARGET_ID) 
 
+#define MBOX_ISR_EN			0x10
+#define		S_MBOX_ISR_EN		0
+#define		M_MBOX_ISR_EN		0x1
+#define		F_MBOX_ISR_EN		0x1
+
 #define MBOX_PF_ACK_BASE		0x20
 #define MBOX_PF_ACK_STEP		4
 #define MBOX_PF_ACK_COUNT		8
 
-#define MBOX_IN_MSG_BASE		0x40
-#define MBOX_OUT_MSG_BASE		0x80
+#define MBOX_IN_MSG_BASE		0x800
+#define MBOX_OUT_MSG_BASE		0xc00
 #define MBOX_MSG_STEP			4
-#define MBOX_MSG_REG_MAX		16
-
-//#include "xlnx_queue.h"
-//#include "qdma_context.h"
+#define MBOX_MSG_REG_MAX		32
 
 struct hw_descq_context {
 	u32 sw[4];
@@ -84,6 +101,7 @@ struct hw_descq_context {
 	u32 wrb[4];
 	u32 hw[2];	/* for retrieve only */
 	u32 cr[1];	/* for retrieve only */
+	u32 qid2vec[1];
 };
 
 /*
@@ -101,6 +119,7 @@ enum mbox_msg_op {
 	MBOX_OP_RESET,		/* device reset */
 
 	MBOX_OP_FMAP,
+	MBOX_OP_CSR,
 
 	MBOX_OP_INTR_CTXT,	/* intr context */
 
@@ -133,6 +152,21 @@ struct mbox_msg_fmap {
 	struct mbox_msg_hdr hdr;
 	unsigned int qbase;
 	unsigned int qmax;
+};
+
+enum mbox_csr_type {
+	CSR_UNDEFINED,
+	CSR_RNGSZ,
+	CSR_BUFSZ,
+	CSR_TIMER_CNT,
+	CSR_CNT_TH,
+};
+
+struct mbox_msg_csr {
+	struct mbox_msg_hdr hdr;
+	unsigned int type;
+	unsigned int v[16];
+	unsigned int wb_acc;
 };
 
 struct mbox_msg_bye {
@@ -173,8 +207,8 @@ struct mbox_msg {
 		struct mbox_msg_bye bye;
 		struct mbox_msg_intr_ctxt intr_ctxt;
 		struct mbox_msg_qctxt qctxt;
+		struct mbox_msg_csr csr;
 		u32 raw[MBOX_MSG_REG_MAX];
-
 	};
 };
 
