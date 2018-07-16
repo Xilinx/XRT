@@ -22,7 +22,7 @@
 #include "xocl/api/image.h"
 #include "detail/context.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -1054,7 +1054,7 @@ public:
     return bitmask;
   }
 
-  int32_t
+  xocl::xclbin::memidx_type
   mem_address_to_first_memidx(addr_type addr) const
   {
     // m_membanks are sorted decreasing based on ddr base addresses
@@ -1073,7 +1073,7 @@ public:
   }
 
   std::string
-  memidx_to_banktag(int32_t memidx) const 
+  memidx_to_banktag(xocl::xclbin::memidx_type memidx) const 
   {
     if (!m_mem)
       return "";
@@ -1083,7 +1083,7 @@ public:
     return reinterpret_cast<const char*>(m_mem->m_mem_data[memidx].m_tag);
   }
 
-  int32_t
+  xocl::xclbin::memidx_type
   banktag_to_memidx(const std::string& banktag) const
   {
     for (auto& mb : m_membanks)
@@ -1192,15 +1192,15 @@ struct xclbin::impl
   mem_address_to_memidx(addr_type memaddr) const
   { return m_sections.mem_address_to_memidx(memaddr); }
 
-  int32_t
+  memidx_type
   mem_address_to_first_memidx(addr_type memaddr) const
   { return m_sections.mem_address_to_first_memidx(memaddr); }
 
   std::string
-  memidx_to_banktag(int32_t memidx) const
+  memidx_to_banktag(memidx_type memidx) const
   { return m_sections.memidx_to_banktag(memidx); }
 
-  int32_t
+  memidx_type
   banktag_to_memidx(const std::string& banktag) const
   { return m_sections.banktag_to_memidx(banktag); }
 
@@ -1399,7 +1399,7 @@ mem_address_to_memidx(addr_type memaddr) const
   return m_impl->mem_address_to_memidx(memaddr);
 }
 
-int32_t
+xclbin::memidx_type
 xclbin::
 mem_address_to_first_memidx(addr_type memaddr) const
 {
@@ -1408,12 +1408,12 @@ mem_address_to_first_memidx(addr_type memaddr) const
 
 std::string
 xclbin::
-memidx_to_banktag(int32_t bankidx) const
+memidx_to_banktag(memidx_type bankidx) const
 {
   return m_impl->memidx_to_banktag(bankidx);
 }
 
-int32_t
+xclbin::memidx_type
 xclbin::
 banktag_to_memidx(const std::string& tag) const
 {

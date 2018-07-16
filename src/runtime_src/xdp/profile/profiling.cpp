@@ -183,6 +183,34 @@ namespace Profiling {
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
   }
+
+  /*
+   * Callback functions called from xocl
+   */
+  void cb_get_device_trace (bool forceReadTrace)
+  {
+    Profiling::Profiler::Instance()->getDeviceTrace(forceReadTrace);
+  }
+
+  void cb_get_device_counters (bool firstReadAfterProgram, bool forceReadCounters)
+  {
+    Profiling::Profiler::Instance()->getDeviceCounters(firstReadAfterProgram, firstReadAfterProgram);
+  }
+
+  void cb_start_device_profiling(size_t numComputeUnits)
+  {
+    Profiling::Profiler::Instance()->startDeviceProfiling(numComputeUnits);
+  }
+
+  void cb_reset_device_profiling()
+  {
+    // Reset profiling flag
+    Profiling::Profiler::Instance()->resetDeviceProfilingFlag();
+  }
+  void cb_end_device_profiling()
+  {
+    Profiling::Profiler::Instance()->endDeviceProfiling();
+  }
 }
 
 

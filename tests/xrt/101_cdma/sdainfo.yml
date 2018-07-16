@@ -1,0 +1,30 @@
+args: -k kernel.xclbin --jobs 64 --seconds 1 --ert --wl
+copy: [Makefile, utils.hpp, task.hpp]
+devices:
+- [all_pcie]
+flags: -g -std=c++14 -ldl -pthread
+flows: [hw_all]
+hdrs: [xaddone_hw_64.h, utils.hpp, task.hpp]
+krnls:
+- name: addone
+  srcs: [kernel.cl]
+  type: clc
+- name: copy
+  srcs: [kernel.cl]
+  type: clc
+name: 101_cdma
+owner: soeren
+srcs: [main.cpp]
+ld_library_path: '$XILINX_OPENCL/runtime/platforms/${DSA_PLATFORM}/driver:$LD_LIBRARY_PATH'
+xclbins:
+- cus:
+  - {krnl: addone, name: addone_0}
+  - {krnl: addone, name: addone_1}
+  - {krnl: addone, name: addone_2}
+  - {krnl: addone, name: addone_3}
+  - {krnl: copy, name: copy_4}
+  - {krnl: copy, name: copy_5}
+  - {krnl: copy, name: copy_6}
+  - {krnl: copy, name: copy_7}
+  name: kernel
+  region: OCL_REGION_0

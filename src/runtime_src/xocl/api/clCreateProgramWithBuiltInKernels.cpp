@@ -25,7 +25,7 @@
 
 #include "detail/context.h"
 #include "detail/device.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

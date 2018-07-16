@@ -41,9 +41,12 @@ public:
   using event_queue_type = std::unordered_set<event*>;
   using event_iterator_type = event_queue_type::iterator;
 
+  using commandqueue_callback_type = std::function<void(command_queue*)>;
+  using commandqueue_callback_list = std::vector<commandqueue_callback_type>;
+
 private:
   // Used to aquire a lock on this queue to prevent de/queing of event
-  struct queue_lock 
+  struct queue_lock
   {
     std::unique_lock<std::mutex> m_lk;
     queue_lock(std::unique_lock<std::mutex>&& lk)
@@ -87,7 +90,7 @@ public:
 
   /**
    * Check if profiling of commands in the command-queue is enabled.
-   * 
+   *
    * @return
    *   true if profiling is enabled for this queue, false otherwise
    */
@@ -172,6 +175,23 @@ public:
   queue_lock
   wait_and_lock() const;
 
+
+  /**
+   * Register callback function for command queue construction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void
+  register_constructor_callbacks(commandqueue_callback_type&& aCallback);
+
+  /**
+   * Register callback function for command queue destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void
+  register_destructor_callbacks(commandqueue_callback_type&& aCallback);
+
 private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
@@ -188,5 +208,3 @@ private:
 } // xocl
 
 #endif
-
-

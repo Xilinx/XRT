@@ -22,11 +22,10 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/event.h"
-#include "profile.h"
-
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

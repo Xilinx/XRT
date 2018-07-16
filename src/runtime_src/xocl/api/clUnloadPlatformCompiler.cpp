@@ -18,7 +18,7 @@
 
 #include <CL/cl.h>
 #include "detail/platform.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

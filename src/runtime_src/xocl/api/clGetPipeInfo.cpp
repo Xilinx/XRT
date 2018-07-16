@@ -20,7 +20,7 @@
 #include "xocl/core/object.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 #include "xrt/config.h"
 
 namespace xocl {

@@ -17,11 +17,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "shim.h"
 #include <errno.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <iomanip>
 #include <fcntl.h>
@@ -33,9 +33,9 @@
 #include <unistd.h>
 #include <sys/file.h>
 #include <poll.h>
+#include <dirent.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "xbsak.h"
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -46,8 +46,9 @@
 #define SHIM_UNUSED __attribute__((unused))
 #endif
 
-#define GB(x)   ((size_t) (x) << 30)
-#define	USER_PCIID(x)		(((x).bus << 8) | ((x).device << 3) | (x).user_func)
+#define GB(x)           ((size_t) (x) << 30)
+#define	USER_PCIID(x)   (((x).bus << 8) | ((x).device << 3) | (x).user_func)
+#define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
 
 inline bool
 is_multiprocess_mode()
@@ -133,7 +134,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityL
     mUserHandle = open(devName.c_str(), O_RDWR);
     if(mUserHandle > 0) {
         // Lets map 4M
-        mUserMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar0_size, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
+        mUserMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar_size, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
         if (mUserMap == MAP_FAILED) {
             std::cout << "Map failed: " << devName << std::endl;
             close(mUserHandle);
@@ -154,7 +155,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityL
         std::cout << "Could not open " << mgmtFile << std::endl;
         return;
     }
-    mMgtMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].mgmt_bar0_size, PROT_READ | PROT_WRITE, MAP_SHARED, mMgtHandle, 0);
+    mMgtMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar_size, PROT_READ | PROT_WRITE, MAP_SHARED, mMgtHandle, 0);
     if (mMgtMap == MAP_FAILED) // Not an error if user is not privileged
         mMgtMap = nullptr;
 
@@ -199,10 +200,10 @@ xocl::XOCLShim::~XOCLShim()
     }
 
     if (mUserMap != MAP_FAILED)
-        munmap(mUserMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar0_size);
+        munmap(mUserMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
     if (mMgtMap)
-        munmap(mMgtMap, xcldev::pci_device_scanner::device_list[mBoardNumber].mgmt_bar0_size);
+        munmap(mMgtMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
     if (mUserHandle > 0)
         close(mUserHandle);
@@ -460,6 +461,25 @@ int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHand
     return ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
 }
 
+/*
+ * xclSysfsGetErrorStatus()
+ */
+void xocl::XOCLShim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
+{
+    unsigned int status = xclSysfsGetInt(true, "firewall", "detected_status");
+    unsigned int level = xclSysfsGetInt(true, "firewall", "detected_level");
+    unsigned long time = xclSysfsGetInt(true, "firewall", "detected_time");
+
+    stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
+    for (unsigned i = 0; i < stat.mNumFirewalls; i++) {
+        stat.mAXIErrorStatus[i].mErrFirewallID = static_cast<xclFirewallID>(i);
+    }
+
+    if (status && (level < ARRAY_SIZE(stat.mAXIErrorStatus))) {
+        stat.mAXIErrorStatus[level].mErrFirewallStatus = status;
+        stat.mAXIErrorStatus[level].mErrFirewallTime = time;
+    }
+}
 
 /*
  * xclGetErrorStatus()
@@ -467,19 +487,64 @@ int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHand
 int xocl::XOCLShim::xclGetErrorStatus(xclErrorStatus *info)
 {
 #ifdef AXI_FIREWALL
-    int ret;
-
     std::memset(info, 0, sizeof(xclErrorStatus));
-    xclErrorStatus err_obj;
-    std::memset(&err_obj, 0, sizeof(xclErrorStatus));
-    ret = ioctl(mMgtHandle, XCLMGMT_IOCERRINFO, &err_obj);
-    if (ret)
-        return ret;
+
+    // Obtain error status from sysfs. Fall back to IOCTL, if not supported.
+    xclErrorStatus err_obj = { 0 };
+    if (xclSysfsGetInt(true, "", "version") > 0) {
+        xclSysfsGetErrorStatus(err_obj);
+    } else {
+        int ret = ioctl(mMgtHandle, XCLMGMT_IOCERRINFO, &err_obj);
+        if (ret) {
+            return ret;
+        }
+    }
 
     info->mNumFirewalls = err_obj.mNumFirewalls;
-    std::memcpy(&info->mAXIErrorStatus[0], &err_obj.mAXIErrorStatus[0], sizeof(struct xclAXIErrorStatus) * info->mNumFirewalls);
+    std::memcpy(&info->mAXIErrorStatus[0], &err_obj.mAXIErrorStatus[0],
+        sizeof(struct xclAXIErrorStatus) * info->mNumFirewalls);
 #endif  // AXI Firewall
     return 0;
+}
+
+/*
+ * xclSysfsGetDeviceInfo()
+ */
+void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info)
+{
+    info.vendor =             xclSysfsGetInt(true, "", "vendor");
+    info.device =             xclSysfsGetInt(true, "", "device");
+    info.subsystem_vendor =   xclSysfsGetInt(true, "", "subsystem_vendor");
+    info.subsystem_device =   xclSysfsGetInt(true, "", "subsystem_device");
+    info.driver_version =     xclSysfsGetInt(true, "", "version");
+    info.pci_slot =           xclSysfsGetInt(true, "", "slot");
+    info.pcie_link_speed =    xclSysfsGetInt(true, "", "link_speed");
+    info.pcie_link_width =    xclSysfsGetInt(true, "", "link_width");
+    info.isXPR =              xclSysfsGetInt(true, "", "xpr");
+    info.mig_calibration[0] = xclSysfsGetInt(true, "", "mig_calibration");
+    info.mig_calibration[1] = info.mig_calibration[0];
+    info.mig_calibration[2] = info.mig_calibration[0];
+    info.mig_calibration[3] = info.mig_calibration[0];
+
+    info.ddr_channel_num =  xclSysfsGetInt(true, "rom", "ddr_bank_count_max");
+    info.ddr_channel_size = xclSysfsGetInt(true, "rom", "ddr_bank_size");
+    info.time_stamp =       xclSysfsGetInt(true, "rom", "timestamp");
+    snprintf(info.vbnv, sizeof (info.vbnv), "%s",
+                            xclSysfsGetString(true, "rom", "VBNV").c_str());
+    snprintf(info.fpga, sizeof (info.fpga), "%s",
+                            xclSysfsGetString(true, "rom", "FPGA").c_str());
+
+    info.onchip_temp = xclSysfsGetInt(true, "sysmon", "temp") / 1000;
+    info.vcc_int =     xclSysfsGetInt(true, "sysmon", "vcc_int");
+    info.vcc_aux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
+    info.vcc_bram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
+
+    auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
+    for (unsigned i = 0;
+        i < std::min(freqs.size(), ARRAY_SIZE(info.ocl_frequency));
+        i++) {
+        info.ocl_frequency[i] = freqs[i];
+    }
 }
 
 /*
@@ -494,26 +559,22 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
     info->mDMAThreads = 2;
 
-    // TODO: Windows build support
-    //    XDMA_IOCINFO depends on _IOW, which is defined indirectly by <linux/ioctl.h>
-    //    ioctl is defined in sys/ioctl.h
-    xclmgmt_ioc_info obj;
-    std::memset(&obj, 0, sizeof(xclmgmt_ioc_info));
-    int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &obj);
-    if (ret) {
-        return ret;
+    // Obtain device info from sysfs. Will fall back to IOCTL, if not supported.
+    xclmgmt_ioc_info obj = { 0 };
+    if (xclSysfsGetInt(true, "", "version") > 0) {
+        xclSysfsGetDeviceInfo(obj);
+    } else {
+        int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &obj);
+        if (ret) {
+            return ret;
+        }
     }
+
     info->mVendorId = obj.vendor;
     info->mDeviceId = obj.device;
     info->mSubsystemId = obj.subsystem_device;
     info->mSubsystemVendorId = obj.subsystem_vendor;
     info->mDeviceVersion = obj.subsystem_device & 0x00ff;
-
-    // TUL cards (0x8238) have 4 GB / bank;
-    // VU9P's (923F) also have 4GB/bank.
-    // other cards have 8 GB memory / bank
-    //info->mDDRSize = (info->mDeviceId == 0x8238) ? 0x100000000 : 0x200000000;
-
     info->mDataAlignment = KB(4);
     info->mDDRSize = GB(obj.ddr_channel_size);
     info->mDDRBankCount = obj.ddr_channel_num;
@@ -738,7 +799,7 @@ int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *p
     return result;
 }
 
-int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size, 
+int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 	enum axlf_section_kind kind, int index)
 {
     if(section_info == nullptr)
@@ -804,15 +865,49 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 }
 
 /*
+ * xclSysfsGetUsageInfo()
+ */
+void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
+{
+    auto dmaStatStrs = xclSysfsGetStrings(false, "mm_dma", "channel_stat_raw");
+    auto mmStatStrs = xclSysfsGetStrings(false, "", "memstat_raw");
+
+    if (!dmaStatStrs.empty()) {
+        stat.dma_channel_count = dmaStatStrs.size();
+        for (unsigned i = 0;
+            i < std::min(dmaStatStrs.size(), ARRAY_SIZE(stat.c2h));
+            i++) {
+            std::stringstream ss(dmaStatStrs[i]);
+            ss >> stat.c2h[i] >> stat.h2c[i];
+        }
+    }
+
+    if (!mmStatStrs.empty()) {
+        stat.mm_channel_count = mmStatStrs.size();
+        for (unsigned i = 0;
+            i < std::min(mmStatStrs.size(), ARRAY_SIZE(stat.mm));
+            i++) {
+            std::stringstream ss(mmStatStrs[i]);
+            ss >> stat.mm[i].memory_usage >> stat.mm[i].bo_count;
+        }
+    }
+}
+
+/*
  * xclGetUsageInfo()
  */
 int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
 {
-    drm_xocl_usage_stat stat;
-    std::memset(&stat, 0, sizeof(stat));
-    int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USAGE_STAT, &stat);
-    if (result) {
-        return result;
+    drm_xocl_usage_stat stat = { 0 };
+
+    // Obtain usage info from sysfs. Will fall back to IOCTL, if not supported.
+    if (xclSysfsGetInt(true, "", "version") > 0) {
+        xclSysfsGetUsageInfo(stat);
+    } else {
+        int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USAGE_STAT, &stat);
+        if (result) {
+            return result;
+        }
     }
     std::memset(info, 0, sizeof(xclDeviceUsage));
     std::memcpy(info->h2c, stat.h2c, sizeof(size_t) * 8);
@@ -821,6 +916,8 @@ int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
         info->ddrMemUsed[i] = stat.mm[i].memory_usage;
         info->ddrBOAllocated[i] = stat.mm[i].bo_count;
     }
+    info->dma_channel_cnt = stat.dma_channel_count;
+    info->mm_channel_cnt = stat.mm_channel_count;
     return 0;
 }
 
@@ -996,12 +1093,22 @@ ssize_t xocl::XOCLShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, u
  */
 int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
 {
+    if (mLogStream.is_open()) {
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
+    }
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
     return ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
 }
 
+/*
+ * xclExecBuf()
+ */
 int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
+    if (mLogStream.is_open()) {
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+                   << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
+    }
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
     drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
@@ -1058,7 +1165,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
         std::cout << __func__ << " ERROR: Create Write Queue IOCTL failed" << std::endl;
-    } else 
+    } else
         *q_hdl = q_info.handle;
 
     return rc;
@@ -1088,19 +1195,218 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int xocl::XOCLShim::xclDestroyQueue(uint64_t q_hdl)
 {
-    struct xocl_qdma_ioc_destroy_queue q_info;
     int rc;
 
-    memset(&q_info, 0, sizeof (q_info));
-
-    q_info.handle = q_hdl;
-    rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_DESTROY_QUEUE, &q_info);
+    rc = close((int)q_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue IOCTL failed" << std::endl;
+        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
 
     return rc;
 }
-        
+
+/*
+ * xclAllocQDMABuf()
+ */
+void *xocl::XOCLShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
+{
+    struct xocl_qdma_ioc_alloc_buf req;
+    void *buf;
+    int rc;
+
+    memset(&req, 0, sizeof (req));
+    req.size = size;
+
+    rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
+    if (rc) {
+        std::cout << __func__ << " ERROR: Alloc buffer IOCTL failed" << std::endl;
+	return NULL;
+    }
+
+    buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
+    if (!buf) {
+        std::cout << __func__ << " ERROR: Map buffer failed" << std::endl;
+        close(req.buf_fd);
+    } else {
+        *buf_hdl = req.buf_fd;
+    }
+
+    return buf;
+}
+
+/*
+ * xclFreeQDMABuf()
+ */
+int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
+{
+    int rc;
+
+    rc = close((int)buf_hdl);
+    if (rc)
+        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+
+    return rc;
+}
+
+// Helper to find subdevice directory name
+// Assumption: all subdevice's sysfs directory name starts with subdevice name!!
+static std::string getSubdevDirName(const std::string& dir,
+    const std::string& subDevName)
+{
+    struct dirent *entry;
+    DIR *dp;
+    std::string nm;
+
+    dp = opendir(dir.c_str());
+    if (dp) {
+        while ((entry = readdir(dp))) {
+            if(strncmp(entry->d_name,
+                subDevName.c_str(), subDevName.size()) == 0) {
+                nm += entry->d_name;
+                break;
+            }
+        }
+        closedir(dp);
+    }
+
+    return nm;
+}
+
+/*
+ * xclSysfsOpen()
+ * Obtain ifstream of a device sysfs entry
+ */
+std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
+    const std::string subDevName, const std::string entry)
+{
+    xcldev::pci_device_scanner::device_info& dev =
+        xcldev::pci_device_scanner::device_list[mBoardNumber];
+    std::string path = "/sys/bus/pci/devices/" +
+        (mgmt ? dev.mgmt_name : dev.user_name) + "/";
+
+    if (!subDevName.empty()) {
+        path += getSubdevDirName(path, subDevName);
+        path += "/";
+    }
+
+    return std::ifstream(path + entry);
+}
+
+/*
+ * xclSysfsGetInts()
+ * Obtain an array of integers from a device sysfs entry
+ * All integers in sysfs entry are separated by '\n'.
+ */
+std::vector<unsigned long long> xocl::XOCLShim::xclSysfsGetInts(bool mgmt,
+    const std::string subDevName, const std::string entry)
+{
+    std::vector<unsigned long long> iv;
+    std::ifstream ifs = xclSysfsOpen(mgmt, subDevName, entry);
+    std::string line;
+
+    if (ifs.is_open()) {
+        while (std::getline(ifs, line)) {
+            iv.push_back(std::stoull(line, nullptr, 0));
+        }
+    }
+
+    return iv;
+}
+
+/*
+ * xclSysfsGetStrings()
+ * Obtain an array of strings from a device sysfs entry
+ * All strings in sysfs entry are separated by '\n'.
+ */
+std::vector<std::string> xocl::XOCLShim::xclSysfsGetStrings(bool mgmt,
+    const std::string subDevName, const std::string entry)
+{
+    std::vector<std::string> sv;
+    std::ifstream ifs = xclSysfsOpen(mgmt, subDevName, entry);
+    std::string line;
+
+    if (ifs.is_open()) {
+        while (std::getline(ifs, line)) {
+            sv.push_back(line);
+        }
+    }
+
+    return sv;
+}
+
+/*
+ * xclSysfsGetString()
+ * Obtain content string from a device sysfs entry
+ */
+std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
+    const std::string subDevName, const std::string entry)
+{
+    std::string s;
+    auto v = xclSysfsGetStrings(mgmt, subDevName, entry);
+
+    if (!v.empty()) {
+        s = v[0];
+    } else {
+        std::cerr << __func__ << " ERROR: Failed to read string from ";
+        std::cerr << (mgmt ? "mgmt" : "user") << " sysfs ";
+        std::cerr << (!subDevName.empty() ? subDevName + "/" : "") + entry;
+        std::cerr << " entry" << std::endl;
+    }
+
+    return s;
+}
+
+/*
+ * xclSysfsGetInt()
+ * Obtain a single integer from a device sysfs entry
+ */
+unsigned long long xocl::XOCLShim::xclSysfsGetInt(bool mgmt,
+    const std::string subDevName, const std::string entry)
+{
+    unsigned long long l = 0;
+    auto v = xclSysfsGetInts(mgmt, subDevName, entry);
+
+    if (!v.empty()) {
+        l = v[0];
+    } else {
+        std::cerr << __func__ << " ERROR: Failed to read integer from ";
+        std::cerr << (mgmt ? "mgmt" : "user") << " sysfs ";
+        std::cerr << (!subDevName.empty() ? subDevName + "/" : "") + entry;
+        std::cerr << " entry" << std::endl;
+    }
+
+    return l;
+}
+
+/*
+ * xclWriteQueue()
+ */
+ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
+{
+    ssize_t rc = 0;
+    const void *buf;
+
+    for (unsigned i = 0; i < wr->buf_num; i++) {
+        buf = (const void *)wr->bufs[i].va;
+        rc = write((int)q_hdl, buf, wr->bufs[i].len);
+    }
+    return rc;
+}
+
+/*
+ * xclReadQueue()
+ */
+ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
+{
+    ssize_t rc = 0;
+    void *buf;
+
+    for (unsigned i = 0; i < wr->buf_num; i++) {
+        buf = (void *)wr->bufs[i].va;
+        rc = read((int)q_hdl, buf, wr->bufs[i].len);
+    }
+    return rc;
+
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -1461,7 +1767,7 @@ int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
     return drv ? drv->xclGetUsageInfo(info) : -ENODEV;
 }
 
-int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size, 
+int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size,
 	enum axlf_section_kind kind, int index)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
@@ -1484,11 +1790,6 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
-}
-
-int xclXbsak(int argc, char *argv[])
-{
-    return xcldev::xclXbsak(argc, argv);
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
@@ -1520,4 +1821,28 @@ int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
+}
+
+void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+}
+
+int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
+}
+
+ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
+}
+
+ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }

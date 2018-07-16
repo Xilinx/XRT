@@ -1,0 +1,18 @@
+Running 10 seconds
+
+% runme.sh |& tee run.log
+% grep kds run.log
+% grep ert run.log
+
+Each job is 8 commands
+
+4/24/2018: xilinx_vcu1525_dynamic_5_1
+           kds             --ert        
+jobs            --wl            --wl
+1       73757   92218   35461   46362 
+2       65494   109465  36250   92892 
+4       67768   109989  36072   141077
+8       68864   109823  37480   154121
+16      70752   109567  36656   158026
+32      69568   108257  37248   159551
+64      67648   106648  36352   159048

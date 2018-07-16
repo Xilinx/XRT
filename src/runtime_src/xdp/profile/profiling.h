@@ -67,6 +67,15 @@ namespace Profiling {
     static Profiler* mRTInstance;
 
   };
+  /*
+   * Callback functions called from xocl
+   */
+  void cb_get_device_trace (bool forceReadTrace);
+  void cb_get_device_counters (bool firstReadAfterProgram, bool forceReadCounters);
+  void cb_start_device_profiling(size_t numComputeUnits);
+  void cb_reset_device_profiling();
+  void cb_end_device_profiling();
+
 };
 
 #endif

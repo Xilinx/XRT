@@ -112,7 +112,7 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
 
   auto handle = handle_type(dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
   if (!handle)
-    throw std::runtime_error("Failed to open HAL driver '" + dll + "'");
+    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + dlerror());
 
   typedef unsigned int (* probeFuncType)();
 
@@ -149,7 +149,11 @@ loadHalDevices(hal::device_list& devices, const bfs::path& dir)
   for (bfs::directory_iterator itr(dir);itr!=end;++itr) {
     bfs::path file(itr->path());
     if (isDLL(file))
+    {
+      if (!file.filename().compare("libhw_em.so") || !file.filename().compare("libcpu_em.so") || !file.filename().compare("libcommon_em.so"))
+        continue;
       createHalDevices(devices,file.string());
+    }
   }
 }
 
@@ -219,7 +223,13 @@ loadDevices()
     bfs::path em_platform = (strcmp(getPlatform(),"aarch64") == 0) ? "zynqu" : (((strcmp(getPlatform(),"arm64")==0) ? "zynq":"generic_pcie")) ;
     // Load emulation HAL
     bfs::path hw_em(sdaccel / "data/emulation/unified/hw_em" / em_platform / "driver/libhw_em.so");
-    
+    if(!xrt.empty()) {
+      bfs::path hw_em_from_xrt (xrt / "lib/libhw_em.so");
+      if (isDLL(hw_em_from_xrt)) {
+        hw_em = hw_em_from_xrt;
+      }
+    }
+
     //give high priority to the driver provided in sdaccel.ini
     std::string hw_em_driver_path = xrt::config::get_hw_em_driver();
     if (!hw_em_driver_path.compare("null"))
@@ -237,7 +247,13 @@ loadDevices()
 
     if(!is_singleprocess_cpu_em()) {
      bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
-     
+     if(!xrt.empty()) {
+       bfs::path sw_em_from_xrt (xrt / "lib/libcpu_em.so");
+       if (isDLL(sw_em_from_xrt)) {
+         sw_em = sw_em_from_xrt;
+       }
+     }
+
      //give high priority to the driver provided in sdaccel.ini
      std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
      if (!sw_em_driver_path.compare("null"))
@@ -266,5 +282,3 @@ loadDevices()
 }
 
 }} // hal,xcl
-
-

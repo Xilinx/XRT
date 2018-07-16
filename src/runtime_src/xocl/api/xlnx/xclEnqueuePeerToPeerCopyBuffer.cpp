@@ -29,8 +29,8 @@
 
 #include "api.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
+#include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace xocl {
 
@@ -43,12 +43,12 @@ getDeviceMemBaseAddrAlign(cl_device_id device)
 }
 
 static void
-validOrError(cl_command_queue    command_queue, 
+validOrError(cl_command_queue    command_queue,
              cl_mem              src_buffer,
-             cl_mem              dst_buffer, 
+             cl_mem              dst_buffer,
              size_t              src_offset,
              size_t              dst_offset,
-             size_t              size, 
+             size_t              size,
              cl_uint             num_events_in_wait_list,
              const cl_event *    event_wait_list,
              cl_event *          event_parameter)
@@ -109,11 +109,11 @@ validOrError(cl_command_queue    command_queue,
   // regions overlap if src_offset ≤ dst_offset ≤ src_offset + size -
   // 1, or if dst_offset ≤ src_offset ≤ dst_offset + size - 1.
   if ((src_buffer==dst_buffer) &&
-      (( (src_offset<=dst_offset) && (dst_offset<=src_offset+size-1) ) || 
+      (( (src_offset<=dst_offset) && (dst_offset<=src_offset+size-1) ) ||
        ( (dst_offset<=src_offset) && (src_offset<=dst_offset+size-1) )
       ))
     throw xocl::error(CL_MEM_COPY_OVERLAP,"xclEnqueuePeerToPeerCopyBuffer mem copy overlap");
-  
+
   // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
   // allocate memory for data store associated with src_buffer or
   // dst_buffer.
@@ -126,12 +126,12 @@ validOrError(cl_command_queue    command_queue,
 }
 
 static cl_int
-xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue, 
+xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
                     cl_mem              src_buffer,
-                    cl_mem              dst_buffer, 
+                    cl_mem              dst_buffer,
                     size_t              src_offset,
                     size_t              dst_offset,
-                    size_t              size, 
+                    size_t              size,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event_parameter)
@@ -143,8 +143,8 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
     (command_queue,CL_COMMAND_COPY_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_copy_p2p_buffer,src_buffer,dst_buffer,src_offset,dst_offset,size);
-  appdebug::set_event_action
-    (uevent.get(),appdebug::action_copybuf,src_buffer,dst_buffer,src_offset,dst_offset,size);
+  xocl::appdebug::set_event_action
+    (uevent.get(),xocl::appdebug::action_copybuf,src_buffer,dst_buffer,src_offset,dst_offset,size);
 
   uevent->queue();
   xocl::assign(event_parameter,uevent.get());
@@ -154,12 +154,12 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 } // xocl
 
 cl_int
-xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue, 
+xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
                     cl_mem              src_buffer,
-                    cl_mem              dst_buffer, 
+                    cl_mem              dst_buffer,
                     size_t              src_offset,
                     size_t              dst_offset,
-                    size_t              size, 
+                    size_t              size,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event_parameter)
@@ -179,5 +179,3 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
