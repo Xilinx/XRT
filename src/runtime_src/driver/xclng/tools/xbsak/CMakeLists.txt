@@ -12,13 +12,14 @@ file(GLOB XBSAK_FILES
 
 set(XBSAK_SRC ${XBSAK_FILES})
 
-add_executable(xbsak ${XBSAK_SRC})
+add_executable(xbutil ${XBSAK_SRC})
 
-target_link_libraries(xbsak
+target_link_libraries(xbutil
   xrtcorestatic
   pthread
   rt
   ${CURSES_LIBRARIES}
   )
 
-install (TARGETS xbsak RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS xbutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (PROGRAMS "xbsak.sh" DESTINATION ${XRT_INSTALL_DIR}/bin RENAME "xbsak")

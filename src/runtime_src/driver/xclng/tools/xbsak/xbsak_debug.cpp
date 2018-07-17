@@ -268,7 +268,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
-    std::cout << "Run 'xbsak status' with option --<ipname> to get more information about the IP" << std::endl;
+    std::cout << "Run 'xbutil status' with option --<ipname> to get more information about the IP" << std::endl;
     return 0;
 }
 

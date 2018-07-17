@@ -1,4 +1,4 @@
-EXENAME := xbsak
+EXENAME := xbutil
 
 CXX_EXT := cpp
 CL_EXT := cl
