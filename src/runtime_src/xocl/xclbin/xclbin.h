@@ -29,7 +29,7 @@
 #include <array>
 #include <bitset>
 
-namespace xocl { 
+namespace xocl {
 
 class device;
 class kernel;
@@ -47,7 +47,7 @@ class kernel;
  *          uses                          uses    uses
  *           |                             |       |
  *         [xocl]                        [xrt]    [hal]
- *     
+ *
  */
 class xclbin
 {
@@ -128,7 +128,7 @@ public:
     std::string hash;                // kernel conformance hash
     std::string controlport;         // kernel axi slave control port
     size_t workgroupsize = 0;
-    size_t compileworkgroupsize[3] = {0};   // 
+    size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
@@ -143,6 +143,7 @@ public:
    * The underlying binary type that represents the raw
    * binary xclbin file per xclBin structs.
    */
+  // implicit
   xclbin(std::vector<char>&& xb);
   xclbin(xclbin&& rhs);
 
@@ -152,12 +153,12 @@ public:
   xclbin&
   operator=(const xclbin& rhs);
 
-  bool 
+  bool
   operator==(const xclbin& rhs) const;
 
   /**
    * Access the raw binary xclbin
-   * 
+   *
    * The binary type API conforms to the xclBin struct interface
    */
   using binary_type = ::xclbin::binary;
@@ -249,7 +250,7 @@ public:
   /**
    * Get the list of profilers
    *
-   * @return 
+   * @return
    *  Vector of profiler struct objects constructed from the xclbin meta data.
    */
   using profilers_type = std::vector<profiler>;
@@ -259,7 +260,7 @@ public:
   /**
    * Get the clock frequency sections in xclbin
    */
-  const clock_freq_topology* 
+  const clock_freq_topology*
   get_clk_freq_topology() const;
 
   /**
@@ -316,7 +317,7 @@ public:
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const;
 
   /**
-   * @return 
+   * @return
    *   Memory connection indeces as the union of connections for all
    *   arguments of CU as specified address.
    */
@@ -355,7 +356,7 @@ public:
    */
   std::string
   memidx_to_banktag(memidx_type memidx) const;
-    
+
   /**
    * Get the memory index with the specified tag.
    *
@@ -380,5 +381,3 @@ public:
 } // xocl
 
 #endif
-
-

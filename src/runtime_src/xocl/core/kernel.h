@@ -355,7 +355,7 @@ public:
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
-  kernel(program* prog);
+  explicit kernel(program* prog);
 
 public:
   virtual ~kernel();

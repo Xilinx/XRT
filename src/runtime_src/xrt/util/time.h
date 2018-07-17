@@ -34,6 +34,7 @@ class time_guard
   unsigned long zero = 0;
   unsigned long& tally;
 public:
+  explicit
   time_guard(unsigned long& t)
     : zero(time_ns()), tally(t)
   {}
@@ -47,5 +48,3 @@ public:
 } // xocl
 
 #endif
-
-

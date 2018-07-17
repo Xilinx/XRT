@@ -101,7 +101,7 @@ clCreateKernel(cl_program      program,
     std::string fnm;
     for (unsigned int idx=0; ; ++idx) {
       char ext[4];
-      sprintf(ext,"%03d",idx);
+      sprintf(ext,"%03u",idx);
       auto path = bfs::path(kernel_name);
       // path.append("_").append(ext).append(".cl");
       // Changed to use /= since boost 1.53.0 path::append() which
@@ -182,5 +182,3 @@ clCreateKernel(cl_program      program,
   }
   return nullptr;
 }
-
-
