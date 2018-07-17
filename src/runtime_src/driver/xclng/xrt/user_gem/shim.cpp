@@ -369,10 +369,10 @@ size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hos
  */
 unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
 {
-    std::cout << "alloc bo with combined flags " << std::hex << flags ;
+    //std::cout << "alloc bo with combined flags " << std::hex << flags ;
     unsigned flag = flags & 0xFFFFFFFFLL;
     unsigned type =  (unsigned)(flags >> 32);
-    std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
+    //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
     drm_xocl_create_bo info = {size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
     return result ? mNullBO : info.handle;
@@ -383,10 +383,10 @@ unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t 
  */
 unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
 {
-    std::cout << "User alloc bo with combined flags " << flags ;
+    //std::cout << "User alloc bo with combined flags " << flags ;
     unsigned flag = flags & 0xFFFFFFFFLL;
     unsigned type =  (unsigned)(flags >> 32);
-    std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
+    //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
     drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
     return result ? mNullBO : user.handle;
