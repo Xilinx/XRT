@@ -34,6 +34,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <queue>
 
 namespace XCL {
   class WriterI;
@@ -296,6 +297,7 @@ namespace XCL {
     PerformanceCounter PerfCounters;
     std::set<std::thread::id> ThreadIdSet;
     std::map<int, std::string> SlotComputeUnitNameMap;
+    std::map<std::string, std::queue<double>> KernelStartsMap;
     std::map<std::string, std::string> ComputeUnitKernelNameMap;
     std::map<std::string, std::string> ComputeUnitKernelTraceMap;
     std::map<std::string, xclCounterResults> FinalCounterResultsMap;
