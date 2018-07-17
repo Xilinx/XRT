@@ -18,13 +18,13 @@
 #include <linux/pci.h>
 #include <linux/aer.h>
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
-#include <linux/memremap.h>
-#endif
 #include "../xocl_drv.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
 #include "xocl_drm.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#include <linux/memremap.h>
+#endif
 
 struct xocl_xdma_dev {
 	struct xocl_dev		ocl_dev;
@@ -83,12 +83,17 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 static void xocl_dev_percpu_release(struct percpu_ref *ref)
 {
-	/*dummy, do nothing*/
+	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
+
+	complete(&xdev->cmp);
 }
 
 static void xocl_dev_percpu_exit(void *data)
 {
 	struct percpu_ref *ref = data;
+	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
+
+	wait_for_completion(&xdev->cmp);
 	percpu_ref_exit(ref);
 }
 
@@ -124,6 +129,9 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+
+	init_completion(&xdev->cmp);
+
 	ret = percpu_ref_init(&xdev->ref, xocl_dev_percpu_release, 0,
 			GFP_KERNEL);
 	if (ret)

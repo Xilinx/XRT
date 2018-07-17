@@ -34,6 +34,7 @@ class memory : public refcount, public _cl_mem
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
   using pipe_property_type = property_object<cl_pipe_attributes>;
@@ -42,6 +43,9 @@ protected:
   using bomap_value_type = bomap_type::value_type;
   using bomap_iterator_type = bomap_type::iterator;
 public:
+  using memory_callback_type = std::function<void (memory*)>;
+  using memory_callback_list = std::vector<memory_callback_type>;
+
   memory(context* cxt, cl_mem_flags flags);
   virtual ~memory();
 
@@ -410,12 +414,26 @@ public:
   void
   add_dtor_notify(std::function<void()> fcn);
 
+  /**
+   * Register callback function for memory construction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void register_constructor_callbacks(memory_callback_type&& aCallback);
+
+  /**
+   * Register callback function for memory destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void register_destructor_callbacks(memory_callback_type&& aCallback);
+
 private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
 
-  memory_flags_type m_flags = 0;
-  memory_extension_flags_type m_ext_flags = 0;
+  memory_flags_type m_flags {0};
+  memory_extension_flags_type m_ext_flags {0};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
@@ -564,20 +582,15 @@ class image : public buffer
 
 public:
   image(context* ctx,cl_mem_flags flags, size_t sz,
-	  size_t w, size_t h, size_t depth,
-	  size_t row_pitch, size_t slice_pitch,
-	  uint32_t bpp, cl_mem_object_type type,
-	  cl_image_format fmt, void* host_ptr)
+        size_t w, size_t h, size_t d,
+        size_t row_pitch, size_t slice_pitch,
+        uint32_t bpp, cl_mem_object_type type,
+        cl_image_format fmt, void* host_ptr)
     : buffer(ctx,flags,sz+sizeof(image_info), host_ptr)
+    , m_width(w), m_height(h), m_depth(d)
+    , m_row_pitch(row_pitch), m_slice_pitch(slice_pitch)
+    , m_bpp(bpp), m_image_type(type), m_format(fmt)
   {
-      m_width = w;
-      m_height = h;
-      m_depth = depth;
-      m_row_pitch = row_pitch;
-      m_slice_pitch = slice_pitch;
-      m_bpp = bpp;
-      m_image_type = type;
-      m_format = fmt;
   }
 
   virtual cl_mem_object_type

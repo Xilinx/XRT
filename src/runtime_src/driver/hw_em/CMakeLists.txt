@@ -16,7 +16,7 @@ file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.cxx"
   )
 
-add_definitions(-DUSE_HAL2 -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
+add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(hw_em_objects OBJECT ${EM_SRC_FILES})
 
 set(CURR_SOURCE "")

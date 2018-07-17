@@ -23,9 +23,8 @@
 #include "xocl/core/platform.h"
 #include "detail/device.h"
 
-#include "profile.h"
-
 #include <limits>
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

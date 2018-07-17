@@ -37,6 +37,7 @@ struct xclbin2 : public binary::impl
   const axlf* m_axlf = nullptr;
   const axlf_header* m_header = nullptr;
 
+  explicit
   xclbin2(std::vector<char>&& xb)
     : m_xclbin(std::move(xb)), m_raw(&m_xclbin[0])
     , m_axlf(reinterpret_cast<const axlf*>(m_raw))
@@ -152,7 +153,7 @@ create_xclbin2(std::vector<char>&& xb)
   if (xb.size() < hdr->m_length)
     throw error ("axlf length mismatch");
 
-  // Ok we are probably good, any throws now breaks 
+  // Ok we are probably good, any throws now breaks
   // strong exception safety guarantee as xb is being
   // moved
   return xrt::make_unique<xclbin2>(std::move(xb));
@@ -160,6 +161,3 @@ create_xclbin2(std::vector<char>&& xb)
 
 
 }
-
-
-

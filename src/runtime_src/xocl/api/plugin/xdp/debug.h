@@ -14,10 +14,29 @@
  * under the License.
  */
 
-#ifndef xocl_api_appdebug_h
-#define xocl_api_appdebug_h
+#ifndef xocl_api_debug_h
+#define xocl_api_debug_h
+#include <functional>
+/**
+ * This file contains the API for adapting the xocl data structures to
+ * the infrastructure for debugging of the binary.
+ */
 
-#include "xdp/appdebug/appdebug.h"
+namespace xocl { 
+
+class xclbin;
+
+namespace debug {
+
+using cb_reset_type = std::function<void (const xocl::xclbin& xclbin)>;
+
+void
+register_cb_reset (cb_reset_type && cb);
+
+void
+reset(const xocl::xclbin& xclbin);
+
+}} // debug,xocl
 
 #endif
 

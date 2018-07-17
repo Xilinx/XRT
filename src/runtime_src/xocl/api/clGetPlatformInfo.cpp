@@ -21,8 +21,8 @@
 #include "xocl/core/platform.h"
 #include "detail/platform.h"
 
-#include "profile.h"
 #include "xocl/config.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

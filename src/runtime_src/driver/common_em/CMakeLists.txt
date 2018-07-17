@@ -30,7 +30,7 @@ file(GLOB COMMON_EM_SRC_FILES
   "${CMAKE_CURRENT_BINARY_DIR}/*.cc"
   )
 
-add_definitions(-DUSE_HAL2 -DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
+add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(common_em_objects OBJECT ${COMMON_EM_SRC_FILES})
 
 set(CURR_SOURCE "")

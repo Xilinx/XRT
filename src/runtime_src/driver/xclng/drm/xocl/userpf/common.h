@@ -106,6 +106,7 @@ struct xocl_dev	{
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
 	struct percpu_ref ref;
+  struct completion cmp;
 #endif
 	/*should be removed after mailbox is supported */
 	u64			        unique_id_last_bitstream;
