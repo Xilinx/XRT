@@ -432,8 +432,8 @@ private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
 
-  memory_flags_type m_flags = 0;
-  memory_extension_flags_type m_ext_flags = 0;
+  memory_flags_type m_flags {0};
+  memory_extension_flags_type m_ext_flags {0};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
@@ -582,20 +582,15 @@ class image : public buffer
 
 public:
   image(context* ctx,cl_mem_flags flags, size_t sz,
-	  size_t w, size_t h, size_t depth,
-	  size_t row_pitch, size_t slice_pitch,
-	  uint32_t bpp, cl_mem_object_type type,
-	  cl_image_format fmt, void* host_ptr)
+        size_t w, size_t h, size_t d,
+        size_t row_pitch, size_t slice_pitch,
+        uint32_t bpp, cl_mem_object_type type,
+        cl_image_format fmt, void* host_ptr)
     : buffer(ctx,flags,sz+sizeof(image_info), host_ptr)
+    , m_width(w), m_height(h), m_depth(d)
+    , m_row_pitch(row_pitch), m_slice_pitch(slice_pitch)
+    , m_bpp(bpp), m_image_type(type), m_format(fmt)
   {
-      m_width = w;
-      m_height = h;
-      m_depth = depth;
-      m_row_pitch = row_pitch;
-      m_slice_pitch = slice_pitch;
-      m_bpp = bpp;
-      m_image_type = type;
-      m_format = fmt;
   }
 
   virtual cl_mem_object_type

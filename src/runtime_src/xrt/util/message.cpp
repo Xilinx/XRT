@@ -72,7 +72,7 @@ private:
 class syslog_dispatch : public message_dispatch
 {
 public:
-  syslog_dispatch(); 
+  syslog_dispatch();
   virtual ~syslog_dispatch();
   virtual void send(severity_level l, const char* msg) override;
 private:
@@ -93,9 +93,10 @@ private:
 class file_dispatch : public message_dispatch
 {
 public:
-  file_dispatch(const std::string& file); 
+  explicit
+  file_dispatch(const std::string& file);
   virtual ~file_dispatch();
-  virtual void send(severity_level l, const char* msg) override; 
+  virtual void send(severity_level l, const char* msg) override;
 private:
   std::ofstream handle;
   std::map<severity_level, const char*> severityMap = {
@@ -126,9 +127,9 @@ message_dispatch::make_dispatcher(const std::string& choice)
       std::string file = choice;
       file.erase(0, 1);
       file.erase(file.size()-1);
-      return new file_dispatch(file); 
+      return new file_dispatch(file);
     }else
-      return new file_dispatch(choice); 
+      return new file_dispatch(choice);
   }
   return nullptr;
 }
@@ -142,7 +143,7 @@ syslog_dispatch::~syslog_dispatch() {
   closelog();
 }
 
-void 
+void
 syslog_dispatch::send(severity_level l, const char* msg) {
   syslog(severityMap[l], "%s", msg);
 }
@@ -156,13 +157,13 @@ file_dispatch::~file_dispatch() {
   handle.close();
 }
 
-void 
+void
 file_dispatch::send(severity_level l, const char* msg) {
   handle << severityMap[l] << msg << std::endl;
 }
 
 //console ops
-void 
+void
 console_dispatch::send(severity_level l, const char* msg) {
   std::cout << severityMap[l]  << msg << std::endl;
 }
@@ -171,7 +172,7 @@ console_dispatch::send(severity_level l, const char* msg) {
 
 namespace xrt { namespace message {
 
-void 
+void
 send(severity_level l, const char* msg)
 {
   static const std::string logger =  xrt::config::get_logging();
@@ -180,5 +181,3 @@ send(severity_level l, const char* msg)
 }
 
 }} // message,xrt
-
-

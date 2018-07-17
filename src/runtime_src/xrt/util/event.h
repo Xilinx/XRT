@@ -19,7 +19,7 @@
 
 #include "xrt/util/error.h"
 
-namespace xrt { 
+namespace xrt {
 
 /**
  * Event class providing an abstraction over different event implementations.
@@ -28,11 +28,11 @@ namespace xrt {
  * providing a consistent API (wait(), ready()) to clients.
  *
  * The enclosed concrete event types must define
- *   value_type: 
+ *   value_type:
  *     type of the value encapsulated by the event
- *   value_type wait() const: 
+ *   value_type wait() const:
  *     waits on the event and returns its value
- *   bool ready() const: 
+ *   bool ready() const:
  *     returns immediately with true if event is ready, false otherwise
  *
  * A sample event class that fits the above requirements is:
@@ -110,11 +110,11 @@ class event
   {
     return dynamic_cast<value_holder<ValueType>*>(m_content.get());
   }
-  
+
 
 public:
 
-  event() 
+  event()
     : m_content(nullptr)
   {}
 
@@ -140,7 +140,7 @@ public:
   bool
   ready() const
   {
-    return m_content 
+    return m_content
       ? m_content->ready()
       : true;
   }
@@ -153,7 +153,7 @@ public:
   }
 
   template <typename ValueType>
-  ValueType 
+  ValueType
   get() const
   {
     value_holder<ValueType>* vt = value_cast<ValueType>();
@@ -173,6 +173,7 @@ class typed_event
 public:
   typedef T value_type;
 
+  explicit
   typed_event(T&& t) : m_value(std::move(t)) {}
 
   T wait() const { return m_value; }
@@ -191,5 +192,3 @@ public:
 } // xrt
 
 #endif
-
-

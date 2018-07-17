@@ -40,8 +40,8 @@ class param_buffer
     void* m_buffer;    // user supplied buffer to write to
     size_t m_size;     // size of buffer
 
-    buffer(void* buffer, size_t size) 
-      : m_buffer(buffer), m_size(size) 
+    buffer(void* buffer, size_t size)
+      : m_buffer(buffer), m_size(size)
     {}
   };
 
@@ -74,6 +74,7 @@ class param_buffer
     typedef T value_type;
     param_buffer& m_host;
 
+    // implicit
     assignee(param_buffer& pb)
       : m_host(pb)
     {}
@@ -99,7 +100,7 @@ class param_buffer
         }
       };
 
-      static size_t 
+      static size_t
       write(buffer& b, S t)
       {
         return writer_helper<T,std::is_scalar<T>::value>::write(b,t);
@@ -127,7 +128,7 @@ class param_buffer
       static_assert(std::is_convertible<char,T>::value,"type mismatch: cannot convert char to T");
 
       static size_t
-      write(buffer& b, const char* str) 
+      write(buffer& b, const char* str)
       {
         size_t l = std::strlen(str);
         auto buffer = allocator<T>::get(b,l+1);
@@ -146,7 +147,7 @@ class param_buffer
       static_assert(std::is_convertible<char,T>::value,"type mismatch: cannot convert char to T");
 
       static size_t
-      write(buffer& b, const std::string& str) 
+      write(buffer& b, const std::string& str)
       {
         size_t l = str.length();
         auto buffer = allocator<T>::get(b,l+1);
@@ -274,5 +275,3 @@ public:
 } // xocl
 
 #endif
-
-
