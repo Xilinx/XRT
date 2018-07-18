@@ -5,14 +5,14 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
   )
 
-file(GLOB XBSAK_FILES
+file(GLOB XBUTIL_FILES
   "*.h"
   "*.cpp"
   )
 
-set(XBSAK_SRC ${XBSAK_FILES})
+set(XBUTIL_SRC ${XBUTIL_FILES})
 
-add_executable(xbutil ${XBSAK_SRC})
+add_executable(xbutil ${XBUTIL_SRC})
 
 target_link_libraries(xbutil
   xrtcorestatic

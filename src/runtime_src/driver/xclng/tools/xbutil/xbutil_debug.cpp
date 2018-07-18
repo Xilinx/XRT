@@ -31,7 +31,7 @@
 
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "xbsak.h"
+#include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;

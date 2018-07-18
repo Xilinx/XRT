@@ -20,11 +20,11 @@
 #include <chrono>
 #include <curses.h>
 
-#include "xbsak.h"
+#include "xbutil.h"
 #include "shim.h"
 #include <linux/limits.h>
 
-int xcldev::xclXbsak(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
@@ -71,7 +71,7 @@ int xcldev::xclXbsak(int argc, char *argv[])
     } /* end of call to xbflash */
 
     if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
-        return xclTop(argc - 1, &argv[1]);
+        return xcldev::xclTop(argc - 1, &argv[1]);
     }
 
     argv++;
