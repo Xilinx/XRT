@@ -20,6 +20,7 @@
 #include "compute_unit.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
@@ -947,6 +948,19 @@ load_program(program* program)
   auto binary = m_xclbin.binary(); // ::xclbin::binary
   auto binary_data = binary.binary_data();
   auto binary_size = binary_data.second - binary_data.first;
+
+  //Kernel debug is enabled based on if there is debug_data in the binary
+  //it does not have sdaccel.ini attribute
+  //If there is debug_data then make sure xdp is loaded
+  auto dbg_data = binary.debug_data();
+
+  //This call occurs if there is debug_data and it occurs one per xclbin
+  if (dbg_data.first != nullptr) {
+    xrt::hal::load_xdp();
+  }
+
+  xocl::debug::reset(m_xclbin);
+  xocl::profile::reset(m_xclbin);
 
   // validatate target binary for target device and set the xrt device
   // according to target binary this is likely temp code that is

@@ -11,8 +11,12 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
   $<TARGET_OBJECTS:impl>
-  $<TARGET_OBJECTS:xdp>
   )
+
+add_library(xdp SHARED ${OPENCL_SRC}
+  $<TARGET_OBJECTS:xdpobj>
+  )
+add_dependencies(xdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -52,7 +56,7 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-install (TARGETS xilinxopencl LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xilinxopencl xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 SET (ICD_FILE_NAME "xilinx.icd")
 
