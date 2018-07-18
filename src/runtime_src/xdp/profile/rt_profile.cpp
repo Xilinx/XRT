@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <ctime>
 #include <cassert>
+#include <stdlib.h>
 
 // Uncomment to use device-based timestamps in timeline trace
 //#define USE_DEVICE_TIMELINE
@@ -52,7 +53,8 @@ namespace XCL {
     MigrateMemCalls(0),
     FunctionStartLogged(false),
     DeviceTraceOption(DEVICE_TRACE_OFF),
-    StallTraceOption(STALL_TRACE_OFF)
+    StallTraceOption(STALL_TRACE_OFF),
+	sample_power(false)
   {
     // Create device profiler (may or may not be used during given run)
     DeviceProfile = new RTProfileDevice();
@@ -1714,6 +1716,55 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       }
       traceString = std::string();
     }
+  }
+
+  //function implementations related to POWER_PROFILING
+  void RTProfile::launchPowerSamplingThread() {
+	  power_dump_file.open("power_data_dump.csv");
+	  power_dump_file << "Timestamp,";
+	  power_dump_file << "Average,";
+	  power_dump_file << "Peak,";
+	  power_dump_file << "Inst\n";
+	  power_guard.lock();
+	  sample_power = true;
+	  power_guard.unlock();
+	  power_sampling_thread = std::thread(&RTProfile::samplePowerThread, this);
+  }
+
+  void RTProfile::terminatePowerSamplingThread() {
+	  power_guard.lock();
+	  sample_power = false;
+	  power_guard.unlock();
+	  power_sampling_thread.join();
+  }
+
+  void RTProfile::sampleowerOnce() {
+	  int HI = 5;
+	  int LO = 2;
+	  auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+	  float avgPowerConsumption = LO+static_cast<float>(rand())/(static_cast<float>(RAND_MAX/(HI-LO)));
+	  float peakPowerConsumption = LO+static_cast<float>(rand())/(static_cast<float>(RAND_MAX/(HI-LO)));
+	  float instPowerConsumption = LO+static_cast<float>(rand())/(static_cast<float>(RAND_MAX/(HI-LO)));
+	  power_dump_file << timestamp << ",";
+	  power_dump_file << avgPowerConsumption << ",";
+	  power_dump_file << peakPowerConsumption << ",";
+	  power_dump_file << instPowerConsumption << "\n";
+  }
+
+  void RTProfile::samplePowerThread() {
+	  while (true) {
+		  power_guard.lock();
+		  bool sample = sample_power;
+		  power_guard.unlock();
+		  if (sample) {
+			  sampleowerOnce();
+		  } else {
+			  break;
+		  }
+		  std::this_thread::sleep_for (std::chrono::microseconds(100000));
+	  }
+	  std::cout << "writing all data to csv file" << std::endl;
+	  power_dump_file.close();
   }
 }
 

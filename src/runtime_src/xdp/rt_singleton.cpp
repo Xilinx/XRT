@@ -32,6 +32,7 @@
 #include <string>
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 namespace XCL {
 
@@ -81,10 +82,18 @@ namespace XCL {
 #endif
 
     gActive = true;
+
+    //ProfileMgr->launchPowerSamplingThread();
+    pm = new PowerMonitor();
+    pm->launch();
+
   };
 
   RTSingleton::~RTSingleton() {
     gActive = false;
+
+    //ProfileMgr->terminatePowerSamplingThread();
+    pm->terminate();
 
     endProfiling();
 

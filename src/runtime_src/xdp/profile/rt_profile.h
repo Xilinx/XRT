@@ -238,6 +238,13 @@ namespace XCL {
     }
 
   public:
+    //functions related to POWER_PROFILING
+    void launchPowerSamplingThread();
+	void terminatePowerSamplingThread();
+	void samplePowerThread();
+	void sampleowerOnce();
+
+  public:
     void addToActiveDevices(const std::string& deviceName);
     bool isDeviceActive(const std::string& deviceName) const;
     void setSlotComputeUnitName(int slotnum, const std::string& cuName);
@@ -309,6 +316,13 @@ namespace XCL {
     std::mutex LogMutex;
     RTProfileDevice* DeviceProfile;
     ProfileRuleChecks* RuleChecks;
+
+  private:
+  	//variables related to POWER_PROFILING
+  	std::mutex power_guard;
+  	bool sample_power;
+  	std::thread power_sampling_thread;
+  	std::ofstream power_dump_file;
 
   private:
     std::vector<WriterI*> Writers;

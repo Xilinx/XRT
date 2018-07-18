@@ -18,6 +18,7 @@
 #ifndef __XILINX_RT_SINGLETON_H
 #define __XILINX_RT_SINGLETON_H
 
+#include <mutex>
 #include <CL/opencl.h>
 #include <string>
 #include <map>
@@ -25,6 +26,8 @@
 #include "xdp/debug/rt_debug.h"
 #include "driver/include/xclperf.h"
 #include "xocl/core/platform.h"
+
+#include "xdp/profile/continuous_profile.h"
 
 // Use XCL::RTSingleton::Instance() to get to the singleton runtime object
 // Runtime code base can now get access to the singleton and make certain
@@ -145,6 +148,8 @@ namespace XCL {
     bool OclProfilingOn = true;
     int ProfileFlags;
     std::map<unsigned, e_ocl_profile_mode> OclProfileMode;
+
+    PowerMonitor* pm;
   };
 };
 
