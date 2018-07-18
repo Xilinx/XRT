@@ -83,7 +83,6 @@ namespace XCL {
 
     gActive = true;
 
-    //ProfileMgr->launchPowerSamplingThread();
     pm = new PowerMonitor();
     pm->launch();
 
@@ -92,7 +91,6 @@ namespace XCL {
   RTSingleton::~RTSingleton() {
     gActive = false;
 
-    //ProfileMgr->terminatePowerSamplingThread();
     pm->terminate();
 
     endProfiling();

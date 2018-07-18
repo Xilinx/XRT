@@ -60,13 +60,11 @@ void SamplingMonitor::thread_func(int id) {
 }
 
 void PowerMonitor::sampleOnce() {
-	std::cout << "sampling..." << std::endl;
 	auto status = readPowerStatus();
 	outputPowerStatus(status);
 }
 
 void PowerMonitor::didTerminate() {
-	std::cout << "writing results to csv..." << std::endl;
 	power_dump_file.close();
 }
 
@@ -94,7 +92,7 @@ std::unordered_map<std::string, float> PowerMonitor::readPowerStatus() {
 
 void PowerMonitor::outputPowerStatus(std::unordered_map<std::string, float>& status) {
 	float FPGA_power = status["VCCINT"];
-	float board_power = status["VCC12V"] + status["VCC12V_AUX"] + status["V3_AUX"];
+	float board_power = status["VCC12V"] + status["VCC12V_AUX"] + status["V3_AUX"] + FPGA_power;
 	auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
 	power_dump_file << timestamp << "," << FPGA_power << "," << board_power << std::endl;
 }
