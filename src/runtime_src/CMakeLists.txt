@@ -68,5 +68,3 @@ set(OCL_ICD_INSTALL_PREFIX "/etc/OpenCL/vendors")
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${ICD_FILE_NAME} DESTINATION ${OCL_ICD_INSTALL_PREFIX})
 
 add_subdirectory(driver)
-
-include (dkms.cmake)

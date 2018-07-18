@@ -112,7 +112,7 @@ class RangeTable
     std::map<AddressRange, std::pair<unsigned, char *>> mTable;
     mutable std::mutex mMutex;
 public:
-    void insert(uint64_t addr, size_t size, std::pair<unsigned, char *> bo) {
+    void insert(uint64_t addr, size_t size, const std::pair<unsigned, char *> &bo) {
         // assert(find(addr) == 0xffffffff);
         std::lock_guard<std::mutex> lock(mMutex);
         mTable[AddressRange(addr, size)] = bo;
