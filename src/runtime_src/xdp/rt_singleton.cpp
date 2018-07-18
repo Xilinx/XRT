@@ -69,7 +69,6 @@ namespace XCL {
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
-    std::cout << "PC: RTSingleton" << std::endl;
     if (xrt::config::get_app_debug()) {
       appdebug::register_xocl_appdebug_callbacks();
     }
