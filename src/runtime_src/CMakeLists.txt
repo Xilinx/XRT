@@ -58,17 +58,4 @@ target_link_libraries(xilinxopencl
 
 install (TARGETS xilinxopencl xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-SET (ICD_FILE_NAME "xilinx.icd")
-
-message("-- Preparing OpenCL ICD ${ICD_FILE_NAME}")
-
-configure_file (
-  "${ICD_FILE_NAME}.in"
-  ${ICD_FILE_NAME}
-  )
-
-set(OCL_ICD_INSTALL_PREFIX "/etc/OpenCL/vendors")
-
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${ICD_FILE_NAME} DESTINATION ${OCL_ICD_INSTALL_PREFIX})
-
 add_subdirectory(driver)
