@@ -31,7 +31,7 @@
 
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "xbsak.h"
+#include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
@@ -268,7 +268,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
-    std::cout << "Run 'xbsak status' with option --<ipname> to get more information about the IP" << std::endl;
+    std::cout << "Run 'xbutil status' with option --<ipname> to get more information about the IP" << std::endl;
     return 0;
 }
 
