@@ -946,18 +946,12 @@ load_program(program* program)
 
   m_xclbin = program->get_xclbin(this);
   auto binary = m_xclbin.binary(); // ::xclbin::binary
-  auto binary_data = binary.binary_data();
-  auto binary_size = binary_data.second - binary_data.first;
 
-  //Kernel debug is enabled based on if there is debug_data in the binary
-  //it does not have sdaccel.ini attribute
-  //If there is debug_data then make sure xdp is loaded
-  auto dbg_data = binary.debug_data();
-
-  //This call occurs if there is debug_data and it occurs one per xclbin
-  if (dbg_data.first != nullptr) {
+  // Kernel debug is enabled based on if there is debug_data in the
+  // binary it does not have sdaccel.ini attribute. If there is
+  // debug_data then make sure xdp is loaded
+  if (binary.debug_data().first)
     xrt::hal::load_xdp();
-  }
 
   xocl::debug::reset(m_xclbin);
   xocl::profile::reset(m_xclbin);
@@ -968,6 +962,8 @@ load_program(program* program)
   // up front
   set_xrt_device(m_xclbin);
 
+  auto binary_data = binary.binary_data();
+  auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
     return;
 

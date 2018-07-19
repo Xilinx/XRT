@@ -607,9 +607,6 @@ device_list
 loadDevices();
 
 void
-load_xdp_dll();
-
-void
 load_xdp();
 } // namespace hal
 
