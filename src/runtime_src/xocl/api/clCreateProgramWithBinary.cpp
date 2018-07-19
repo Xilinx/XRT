@@ -34,7 +34,6 @@
 #include <string>
 #include <algorithm>
 
-#include "plugin/xdp/debug.h"
 #include "plugin/xdp/profile.h"
 
 namespace {
@@ -42,11 +41,6 @@ namespace {
 static void
 loadProgramBinary(xocl::program* program, xocl::device* device)
 {
-  auto xclbin = program->get_xclbin(device);
-
-  xocl::debug::reset(xclbin);
-  xocl::profile::reset(xclbin);
-
   device->load_program(program);
 }
 
