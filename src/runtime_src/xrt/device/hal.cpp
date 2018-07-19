@@ -285,7 +285,6 @@ loadDevices()
 // Call to load_xdp comes from two places, but the dll should be loaded only once.
 // It is called from function_logger once per application run if app_debug or profile is enabled.
 // It is called from device once per xclbin load, if xclbin has debug_data in it.
-// Locking below happens atmost 1+number of debug xclbins
 void
 load_xdp()
 {
