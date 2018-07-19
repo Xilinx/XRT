@@ -1,8 +1,17 @@
 #!/bin/csh -f
 
 set called=($_)
-set script_path=`readlink -f $called[2]`
-set xrt_dir=`dirname $script_path`
+set script_path=""
+set xrt_dir=""
+
+# look for the right cmd component that contains setup.csh
+foreach x ($called)
+    if ( $x =~ *setup.csh ) then
+        set script_path=`readlink -f $x`
+        set xrt_dir=`dirname $script_path`
+    endif
+    if ( $xrt_dir =~ */opt/xilinx/xrt ) break
+end
 
 if ( $xrt_dir !~ */opt/xilinx/xrt ) then
     echo "Invalid location: $xrt_dir"
