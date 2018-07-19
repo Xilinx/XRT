@@ -16,9 +16,9 @@ RH_LIST=(\
      gdb \
      git \
      gnuplot \
-     gnutls-devel \
-     kernel-devel \
-     kernel-headers \
+     gnutls-devel48508
+     kernel-devel 
+     kernel-headers 
 #     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
