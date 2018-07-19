@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
- * 		Min Ma <min.ma@xilinx.com>
+ *        Min Ma <min.ma@xilinx.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,7 +18,7 @@
 
 int zocl_ert_irq_handler_register(struct platform_device *pdev, unsigned int irq, irq_handler_t handler)
 {
-	zocl_info(&pdev->dev, "irq %d handler %p\n", irq, handler); 
+	zocl_info(&pdev->dev, "irq %d handler %p\n", irq, handler);
 	return 0;
 }
 
@@ -40,7 +40,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	zocl_info(&pdev->dev, "Probing for %s\n", id->compatible);
 
 	ert = devm_kzalloc(&pdev->dev, sizeof(*ert), GFP_KERNEL);
-	ert->pdev = pdev;	
+	ert->pdev = pdev;
 	ert->register_irq_handler = zocl_ert_irq_handler_register;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, ZOCL_ERT_HW_RES);

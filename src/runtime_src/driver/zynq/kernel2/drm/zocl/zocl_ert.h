@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
- * 		Min Ma <min.ma@xilinx.com>
+ *        Min Ma <min.ma@xilinx.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,17 +27,17 @@
 
 /* DSA and/or Device tree related */
 #define ZOCL_ERT_IRQ_NUMBER 2
-#define ZOCL_ERT_CQ_IRQ 	  0
-#define ZOCL_ERT_CU_IRQ 		1
-#define ZOCL_ERT_HW_RES 	  0
-#define ZOCL_ERT_CQ_RES 	  1
+#define ZOCL_ERT_CQ_IRQ     0
+#define ZOCL_ERT_CU_IRQ     1
+#define ZOCL_ERT_HW_RES     0
+#define ZOCL_ERT_CQ_RES     1
 
 /**
  * The STATUS REGISTER is for communicating completed CQ slot indices
  * MicroBlaze write, host reads.  MB(W) / HOST(COR)
  */
 #define ERT_STATUS_REG          0x0
-#define ERT_STATUS_REG0         0x0    
+#define ERT_STATUS_REG0         0x0
 #define ERT_STATUS_REG1         0x4
 #define ERT_STATUS_REG2         0x8
 #define ERT_STATUS_REG3         0xC
@@ -45,7 +45,7 @@
 /**
  * The CU DMA REGISTER is for communicating which CQ slot is to be started
  * on a specific CU.  MB selects a free CU on which the command can
- * run, then writes the 1<<CU back to the command slot CU mask and 
+ * run, then writes the 1<<CU back to the command slot CU mask and
  * writes the slot index to the CU DMA REGISTER.  HW is notified when
  * the register is written and now does the DMA transfer of CU regmap
  * map from command to CU, while MB continues its work. MB(W) / HW(R)
@@ -68,10 +68,10 @@
  * example a 64K regmap is 2^16 so 16 is written to the CU_OFFSET_ADDR.
  * MB(W) / HW(R)
  */
-#define ERT_CU_OFFSET_REG		    0x30
+#define ERT_CU_OFFSET_REG       0x30
 
 /**
- * The number of slots is command_queue_size / slot_size.  
+ * The number of slots is command_queue_size / slot_size.
  * MB(W) / HW(R)
  */
 #define ERT_CQ_NUM_OF_SLOTS_REG 0x34
@@ -82,7 +82,7 @@
  */
 #define ERT_CU_BASE_ADDR_REG    0x38
 
-/** 
+/**
  * The CQ_BASE_ADDRESS is the base address of the command queue.
  * MB(W) / HW(R)
  */
@@ -120,7 +120,7 @@
  */
 #define ERT_NUM_OF_CU_REG       0x68
 
-/** 
+/**
  * Enable global interrupts from MB to HOST on command completion.
  * When enabled writing to STATUS_REGISTER causes an interrupt in HOST.
  * MB(W)
@@ -133,12 +133,12 @@
 extern struct platform_driver zocl_ert_driver;
 
 struct zocl_ert_dev {
-	struct platform_device		*pdev;
-	void __iomem						  *hw_ioremap;
-	void __iomem						  *cq_ioremap;
-	unsigned int							irq[ZOCL_ERT_IRQ_NUMBER];
-	int (*register_irq_handler)(struct platform_device *pdev, unsigned int irq,
-															irq_handler_t handler);
+	struct platform_device *pdev;
+	void __iomem           *hw_ioremap;
+	void __iomem           *cq_ioremap;
+	unsigned int            irq[ZOCL_ERT_IRQ_NUMBER];
+	int (*register_irq_handler)(struct platform_device *pdev,
+			unsigned int irq, irq_handler_t handler);
 };
 
-#endif //_ZOCL_ERT_H_
+#endif

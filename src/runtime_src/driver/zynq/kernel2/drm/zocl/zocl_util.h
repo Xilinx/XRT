@@ -2,7 +2,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
- * 		Min Ma <min.ma@xilinx.com>
+ *        Min Ma <min.ma@xilinx.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -18,22 +18,22 @@
 #define _ZOCL_UTIL_H_
 
 #define zocl_err(dev, fmt, args...)     \
-  dev_err(dev, "%s: "fmt, __func__, ##args)
-#define zocl_info(dev, fmt, args...)     \
-  dev_info(dev, "%s: "fmt, __func__, ##args)
+	dev_err(dev, "%s: "fmt, __func__, ##args)
+#define zocl_info(dev, fmt, args...)    \
+	dev_info(dev, "%s: "fmt, __func__, ##args)
 #define zocl_dbg(dev, fmt, args...)     \
-  dev_dbg(dev, "%s: "fmt, __func__, ##args)
+	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
-#define CLEAR(x)			\
+#define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
 
 struct zocl_mem_topology {
-	//TODO : check the first 4 entries - remove unneccessary ones.
-	u32             			bank_count;
-	struct mem_data 		 *m_data;
-	u32             			m_data_length; /* length of the mem_data section */
-	u64             			bank_size; /* in KB. Currently only fixed sizes are supported. */
-	u64                 	size;
+	u32                  bank_count;
+	struct mem_data      *m_data;
+	u32                  m_data_length; /* length of the mem_data section */
+	/* Bank size in KB. Only fixed sizes are supported. */
+	u64                  bank_size;
+	u64                  size;
 	struct mem_topology  *topology;
 };
 
@@ -61,14 +61,13 @@ struct drm_zocl_dev {
 	phys_addr_t              res_start;
 	resource_size_t          res_len;
 	unsigned int             irq;
-  struct sched_exec_core  *exec;
+	struct sched_exec_core  *exec;
 
-  struct zocl_mem_topology topology;
-  struct zocl_layout       layout;
-  struct zocl_debug_layout debug_layout;
-  struct zocl_connectivity connectivity;
-  u64                      unique_id_last_bitstream;
-	//xuid_t									 xclbin_id;
+	struct zocl_mem_topology topology;
+	struct zocl_layout       layout;
+	struct zocl_debug_layout debug_layout;
+	struct zocl_connectivity connectivity;
+	u64                      unique_id_last_bitstream;
 };
 
-#endif //_ZOCL_UTIL_H_
+#endif
