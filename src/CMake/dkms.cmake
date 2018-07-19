@@ -1,21 +1,26 @@
+# Custom variables imported by this CMake stub which should be defined by parent CMake:
+# XRT_DKMS_DRIVER_SRC_BASE_DIR
+
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+
+message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
 
 SET (DKMS_FILE_NAME "dkms.conf")
 SET (DKMS_POSTINST "postinst")
 SET (DKMS_PRERM "prerm")
 
 configure_file (
-  "${DKMS_FILE_NAME}.in"
+  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   )
 
 configure_file (
-  "${DKMS_POSTINST}.in"
+  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   ${DKMS_POSTINST}
   )
 
 configure_file (
-  "${DKMS_PRERM}.in"
+  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   ${DKMS_PRERM}
   )
 
@@ -110,8 +115,8 @@ SET (XRT_DKMS_ABS_SRCS)
 
 foreach (DKMS_FILE ${XRT_DKMS_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install (FILES ${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR}/${DKMS_DIR})
-  list (APPEND XRT_DKMS_ABS_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${DKMS_FILE})
+  install (FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR}/${DKMS_DIR})
+  list (APPEND XRT_DKMS_ABS_SRCS ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
