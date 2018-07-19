@@ -22,7 +22,7 @@
 #include "../lib/libxdma_api.h"
 #include "common.h"
 #include "xocl_drm.h"
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 #include <linux/memremap.h>
 #endif
 
@@ -80,7 +80,7 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 static void xocl_dev_percpu_release(struct percpu_ref *ref)
 {
 	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
@@ -113,7 +113,7 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 	struct resource res;
 	uint32_t p2p_bar_idx;
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	int32_t ret;
 #endif
 
@@ -128,7 +128,7 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 	res.flags = IORESOURCE_MEM;
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 
 	init_completion(&xdev->cmp);
 
@@ -149,7 +149,7 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
 	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res);
 
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res
 						   , &xdev->ref, NULL);
 
@@ -160,7 +160,7 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 #endif
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
 	if(!xdev->bypass_bar_addr)
 		return -ENOMEM;;
 #endif
