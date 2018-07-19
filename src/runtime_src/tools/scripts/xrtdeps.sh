@@ -16,9 +16,9 @@ RH_LIST=(\
      gdb \
      git \
      gnuplot \
-     gnutls-devel48508
-     kernel-devel 
-     kernel-headers 
+     gnutls-devel \
+     kernel-devel \
+     kernel-headers \
 #     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
@@ -46,7 +46,6 @@ RH_LIST=(\
      protobuf-static \
      ncurses-devel \
      cppcheck \
-     )
 
 UB_LIST=(\
      cmake \
