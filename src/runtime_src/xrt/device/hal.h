@@ -152,7 +152,7 @@ public:
   close() = 0;
 
   // Hack to copy hw_em device info to sw_em device info
-  // Should not be necessary when we move to cpu_em
+  // Should not be necessary when we move to sw_emu
   virtual void
   copyDeviceInfo(const device* src) {}
 

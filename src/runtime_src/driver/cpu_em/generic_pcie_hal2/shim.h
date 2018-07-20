@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef _CPU_EM_SHIM_H_
-#define _CPU_EM_SHIM_H_
+#ifndef _SW_EMU_SHIM_H_
+#define _SW_EMU_SHIM_H_
 
 #include "unix_socket.h"
 #include "config.h"

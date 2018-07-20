@@ -51,7 +51,7 @@ namespace xclcpuemhal2 {
     buf_size = 0;
     
     deviceName = "device"+std::to_string(deviceIndex); 
-    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/cpu_em/"+deviceName;
+    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/sw_emu/"+deviceName;
     simulator_started = false;
     mVerbosity = XCL_INFO;
 
@@ -59,7 +59,7 @@ namespace xclcpuemhal2 {
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
-    char* pack_size = getenv("CPU_EM_PACKET_SIZE");
+    char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
       unsigned int messageSize = strtoll(pack_size,NULL,0);
@@ -827,14 +827,14 @@ namespace xclcpuemhal2 {
 
     for(int i = binaryCounter-1; i >= 0; i--)
     {
-      std::stringstream cpu_em_folder;
-      cpu_em_folder <<deviceDirectory<<"/binary_"<<i;
+      std::stringstream sw_emu_folder;
+      sw_emu_folder <<deviceDirectory<<"/binary_"<<i;
       char path[FILENAME_MAX];
       size_t size = PATH_MAX;
       char* pPath = GetCurrentDir(path,size);
       if(pPath)
       {
-        std::string debugFilePath = cpu_em_folder.str()+"/genericpcieoutput";
+        std::string debugFilePath = sw_emu_folder.str()+"/genericpcieoutput";
         std::string destPath = std::string(path) + "/genericpcieoutput_device"+ std::to_string(mDeviceIndex) + "_"+std::to_string(i);
         systemUtil::makeSystemCall(debugFilePath, systemUtil::systemOperation::COPY,destPath);
       }

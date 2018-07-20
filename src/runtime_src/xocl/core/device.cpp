@@ -134,14 +134,6 @@ is_sw_emulation()
   return swem;
 }
 
-static bool
-is_singleprocess_cpu_em()
-{
-  static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return single_process_cpu_em;
-}
-
 static void
 init_scheduler(xocl::device* device)
 {
@@ -276,10 +268,6 @@ device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::de
       log.append(".hw_em");
     open_or_error(m_hwem_device,log);
   }
-
-  // Hack to accomodate missing sw_em device info.
-  if (m_hwem_device && m_swem_device && is_singleprocess_cpu_em())
-    m_swem_device->copyDeviceInfo(m_hwem_device);
 
   if (m_hw_device)
     open_or_error(m_hw_device,hallog);
