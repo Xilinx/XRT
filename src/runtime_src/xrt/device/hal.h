@@ -606,6 +606,8 @@ loadDevices(const std::string& dirName);
 device_list
 loadDevices();
 
+void
+load_xdp();
 } // namespace hal
 
 namespace hal2 {

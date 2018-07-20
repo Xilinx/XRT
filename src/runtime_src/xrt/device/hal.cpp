@@ -264,4 +264,45 @@ loadDevices()
   return devices;
 }
 
+
+// Call to load_xdp comes from two places, but the dll should be loaded only once.
+// It is called from function_logger once per application run if app_debug or profile is enabled.
+// It is called from device once per xclbin load, if xclbin has debug_data in it.
+void
+load_xdp()
+{
+  struct xdp_once_loader
+  {
+    xdp_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      bfs::path libname ("libxdp.so");
+      if (xrt.empty()) {
+        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+      }
+      bfs::path p(xrt / "lib");
+      directoryOrError(p);
+      p /= libname;
+      if (!isDLL(p)) {
+        throw std::runtime_error("Library " + p.string() + " not found!");
+      }
+      auto handle = dlopen(p.string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initXDPLib";
+      auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_once_loader xdp_loaded;
+}
+
 }} // hal,xcl

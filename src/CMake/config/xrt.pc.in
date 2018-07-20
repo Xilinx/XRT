@@ -1,0 +1,10 @@
+prefix=@XRT_INSTALL_DIR@/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: XRT
+Description: Xilinx RunTime
+Version: @XRT_VERSION_STRING@
+Libs: -L${libdir} -lxrtcore
+Cflags: -I${includedir}

@@ -87,7 +87,8 @@ struct xclbin2 : public binary::impl
       auto begin = m_raw + header->m_sectionOffset ;
       return std::make_pair(begin, begin + header->m_sectionSize) ;
     }
-    throw error("axlf contains no debug data section") ;
+    //throw error("axlf contains no debug data section") ;
+    return std::make_pair(nullptr,nullptr);
   }
 
   data_range
