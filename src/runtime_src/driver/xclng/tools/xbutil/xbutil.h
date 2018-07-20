@@ -291,8 +291,8 @@ public:
 
         ostr << "\nTotal DMA Transfer Metrics:" << "\n";
         for (unsigned i = 0; !result & (i < 2); i++) {
-            ostr << "  Chan[" << i << "].h2c:  0x" << std::hex << devstat.h2c[i] / 1024 << std::dec << " KB\n";
-            ostr << "  Chan[" << i << "].c2h:  0x" << std::hex << devstat.c2h[i] / 1024 << std::dec << " KB\n";
+            ostr << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
+            ostr << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i])  << "\n";
         }
 
 #ifdef AXI_FIREWALL

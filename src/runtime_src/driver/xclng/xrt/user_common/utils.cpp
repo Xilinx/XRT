@@ -122,3 +122,16 @@ std::string parseFirewallStatus(unsigned val)  {
 }
 
 
+std::string unitConvert(size_t size){
+    int i = 0;
+    std::string ret, unit[8]={"Byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"};
+    if(!size)
+        return "0 "+unit[i];
+    while( (size>>6) !=0 && i<8){
+        ret = std::to_string(size);
+        size >>= 10;
+        i++;
+    }
+    return ret+" "+unit[i-1];
+
+}
