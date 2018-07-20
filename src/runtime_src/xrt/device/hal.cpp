@@ -150,19 +150,11 @@ loadHalDevices(hal::device_list& devices, const bfs::path& dir)
     bfs::path file(itr->path());
     if (isDLL(file))
     {
-      if (!file.filename().compare("libhw_em.so") || !file.filename().compare("libcpu_em.so") || !file.filename().compare("libcommon_em.so"))
+      if (!file.filename().compare("libxrt_hwemu.so") || !file.filename().compare("libxrt_swemu.so") || !file.filename().compare("libcommon_em.so"))
         continue;
       createHalDevices(devices,file.string());
     }
   }
-}
-
-static bool
-is_singleprocess_cpu_em()
-{
-  static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return single_process_cpu_em;
 }
 
 } // namespace
@@ -224,7 +216,7 @@ loadDevices()
     // Load emulation HAL
     bfs::path hw_em(sdaccel / "data/emulation/unified/hw_em" / em_platform / "driver/libhw_em.so");
     if(!xrt.empty()) {
-      bfs::path hw_em_from_xrt (xrt / "lib/libhw_em.so");
+      bfs::path hw_em_from_xrt (xrt / "lib/libxrt_hwemu.so");
       if (isDLL(hw_em_from_xrt)) {
         hw_em = hw_em_from_xrt;
       }
@@ -245,34 +237,25 @@ loadDevices()
       numHwEm = devices.size() - numHwEm;
     }
 
-    if(!is_singleprocess_cpu_em()) {
-     bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
-     if(!xrt.empty()) {
-       bfs::path sw_em_from_xrt (xrt / "lib/libcpu_em.so");
-       if (isDLL(sw_em_from_xrt)) {
-         sw_em = sw_em_from_xrt;
-       }
-     }
-
-     //give high priority to the driver provided in sdaccel.ini
-     std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
-     if (!sw_em_driver_path.compare("null"))
-       sw_em_driver_path.clear();
-
-     if(sw_em_driver_path.size())
-       sw_em = sw_em_driver_path;
-
-      if (isDLL(sw_em))
-        // cpu_em uses the json file used to by hwem so sw-em will match hw-em
-        createHalDevices(devices,sw_em.string());
+    bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
+    if(!xrt.empty()) {
+      bfs::path sw_em_from_xrt (xrt / "lib/libxrt_swemu.so");
+      if (isDLL(sw_em_from_xrt)) {
+        sw_em = sw_em_from_xrt;
+      }
     }
-    else {
-     bfs::path sw_em (sdaccel / "data/sw_em" / em_platform / "driver/libsw_em.so");
-      if (isDLL(sw_em))
-        // Construct same number of swem devices as hwem devices
-        // Should swem xclProbe use the json file that is used by hwem xclProbe?
-        createHalDevices(devices,sw_em.string(),numHwEm);
-    }
+
+    //give high priority to the driver provided in sdaccel.ini
+    std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
+    if (!sw_em_driver_path.compare("null"))
+      sw_em_driver_path.clear();
+
+    if(sw_em_driver_path.size())
+      sw_em = sw_em_driver_path;
+
+    if (isDLL(sw_em))
+      // sw_emu uses the json file used to by hwem so sw-em will match hw-em
+      createHalDevices(devices,sw_em.string());
   }
 
   if (xrt.empty() && sdaccel.empty() && opencl.empty())

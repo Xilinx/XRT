@@ -120,9 +120,9 @@ public:
     for (auto& dev : m_all) {
       std::string driverLibraryName = dev.getDriverLibraryName();
       if (driverLibraryName.find("sw_em.so") != std::string::npos
-          || driverLibraryName.find("cpu_em.so") != std::string::npos)
+          || driverLibraryName.find("swemu.so") != std::string::npos)
         m_swem.push_back(&dev);
-      else if (driverLibraryName.find("hw_em.so") != std::string::npos)
+      else if (driverLibraryName.find("hwemu.so") != std::string::npos)
         m_hwem.push_back(&dev);
       else
         m_hw.push_back(&dev);
