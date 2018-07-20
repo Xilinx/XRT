@@ -265,7 +265,7 @@ public:
         ostr << "Device:         " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
         ostr << "SDevice:        " << std::hex << m_devinfo.mSubsystemId << std::dec << "\n";
         ostr << "SVendor:        " << std::hex << m_devinfo.mSubsystemVendorId << std::dec << "\n";
-        ostr << "DDR size:       " << "0x" << std::hex << m_devinfo.mDDRSize/1024 << std::dec << " KB\n";
+        ostr << "DDR size:       " << unitConvert(m_devinfo.mDDRSize)<<"\n";
 
         ostr << "DDR count:      " << numDDR << "\n";
         ostr << "OnChip Temp:    " << m_devinfo.mOnChipTemp << " C\n";
@@ -364,7 +364,7 @@ public:
             mem_topology *map;
             map = (mem_topology *)buffer;
             ostr << "\nMem Topology:\n";
-            ostr << "     Tag" << "       Type" << "          Base Address" << "  Size (KB)\n";
+            ostr << "     Tag" << "       Type" << "          Base Address" << "  Size \n";
             numDDR = map->m_count;
             if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
                 numSupportedMems = numDDR;
@@ -393,7 +393,7 @@ public:
                 ss << "0x" << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
                 ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w );
                 ss.str( "" );
-                ss << "0x" << std::hex << map->m_mem_data[ i ].m_size;                 // print size
+                ss << unitConvert(map->m_mem_data[ i ].m_size<<10);                 // print size
                 ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w ) << std::endl;
             }
             delete[] buffer;
