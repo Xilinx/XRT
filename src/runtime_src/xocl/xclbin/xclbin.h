@@ -56,7 +56,8 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  using memidx_bitmask_type = std::bitset<24>;
+  //Max 64 mem banks for now.
+  using memidx_bitmask_type = std::bitset<64>;
   using memidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
