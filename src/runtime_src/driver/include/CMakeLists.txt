@@ -6,6 +6,7 @@ set(XRT_HEADER_SRC
   xclfeatures.h
   xclhal2.h
   xcl_macros.h
+  xcl_app_debug.h
   xclperf.h)
 
 message("-- XRT header files")
