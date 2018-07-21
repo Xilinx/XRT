@@ -1,7 +1,17 @@
 #!/bin/sh
 
+if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
+   echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+   dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+   find /lib/modules -type f -name xocl.ko -delete
+   find /lib/modules -type f -name xclmgmt.ko -delete
+   find /lib/modules -type f -name xocl.ko.kz -delete
+   find /lib/modules -type f -name xclmgmt.ko.kz -delete
+   depmod -A
+fi
+
 if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
-    echo "Registering XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
+    echo "Registering new XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
     dkms add -m xrt -v "@XRT_VERSION_STRING@"
 fi
 
