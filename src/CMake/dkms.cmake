@@ -102,8 +102,6 @@ SET (XRT_DKMS_SRCS
   driver/xclng/include/mgmt-reg.h
   driver/xclng/include/mgmt-ioctl.h
   driver/xclng/include/qdma_ioctl.h
-  driver/xclng/include/drm/drm.h
-  driver/xclng/include/drm/drm_mode.h
   driver/xclng/include/devices.h
   driver/include/ert.h
   driver/include/xclfeatures.h
