@@ -48,7 +48,7 @@ RH_LIST=(\
      cppcheck \
      )
      
-# test comment
+# to be deleted
 UB_LIST=(\
      cmake \
      dkms \
