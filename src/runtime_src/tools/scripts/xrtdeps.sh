@@ -47,6 +47,8 @@ RH_LIST=(\
      ncurses-devel \
      cppcheck \
      )
+     
+# test comment
 UB_LIST=(\
      cmake \
      dkms \
