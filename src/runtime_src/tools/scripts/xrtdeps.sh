@@ -46,8 +46,7 @@ RH_LIST=(\
      protobuf-static \
      ncurses-devel \
      cppcheck \
-     )
-
+  
 UB_LIST=(\
      cmake \
      dkms \
