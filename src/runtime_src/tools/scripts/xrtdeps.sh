@@ -48,6 +48,7 @@ RH_LIST=(\
      cppcheck \
     )
 
+#test
 UB_LIST=(\
      cmake \
      dkms \
