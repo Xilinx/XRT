@@ -985,6 +985,30 @@ public:
 #endif
   }
 
+  size_t
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+  {
+    if (!is_valid())
+      return -1;
+
+    for (int32_t i=0; i<m_con->m_count; ++i) {
+      if (m_con->m_connection[i].arg_index!=arg)
+        continue;
+      //ip_layout section has format : kernel_name:cu_name
+      auto ipidx = m_con->m_connection[i].m_ip_layout_index;
+      const char *ip_name = reinterpret_cast<const char*>(m_ip->m_ip_data[ipidx].m_name);
+      std::cout << ip_name << " " << kernel_name.c_str() << std::endl;
+      const char* sub = strstr(ip_name,kernel_name.c_str());
+      if (sub!=ip_name)
+        continue;
+      // found the connection that match cuaddr,arg
+      size_t memidx = m_con->m_connection[i].mem_data_index;
+      assert(m_mem->m_mem_data[memidx].m_used);
+      return memidx;
+    }
+    return -1;
+  }
+
   const clock_freq_topology*
   get_clk_freq_topology() const
   {
@@ -1206,6 +1230,10 @@ struct xclbin::impl
   banktag_to_memidx(const std::string& banktag) const
   { return m_sections.banktag_to_memidx(banktag); }
 
+  size_t
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+  { return m_sections.get_memidx_from_arg(kernel_name, arg); }
+
   unsigned int
   conformance_rename_kernel(const std::string& hash)
   { return m_xml.conformance_rename_kernel(hash); }
@@ -1420,6 +1448,13 @@ xclbin::
 banktag_to_memidx(const std::string& tag) const
 {
   return m_impl->banktag_to_memidx(tag);
+}
+
+size_t
+xclbin::
+get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+{
+  return m_impl->get_memidx_from_arg(kernel_name, arg);
 }
 
 unsigned int

@@ -431,8 +431,15 @@ allocate_buffer_object(memory* mem)
     //Rest 24 bits directly indexes into mem topology section OR.
     //have legacy one-hot encoding.
     auto flag = mem->get_ext_flags();
+    auto param = mem->get_param();
     int32_t memidx = 0;
-    if(flag & XCL_MEM_TOPOLOGY) {
+    if(param) {
+      //param<==>kernel; flag<==>arg_index
+      flag = flag & 0xffffff;
+      const cl_kernel kernel = (const cl_kernel)(param);
+      const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
+      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag);
+    } else if(flag & XCL_MEM_TOPOLOGY) {
       memidx = flag & 0xffffff;
     }else {
       flag = flag & 0xffffff;
@@ -1055,10 +1062,6 @@ load_program(program* program)
 //
 //      if (rv.valid() && rv.get())
 //	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
-//    }
-//  }
-
-
   // programmming
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
