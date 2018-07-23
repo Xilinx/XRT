@@ -232,7 +232,7 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		qconf.c2h = write ? 0 : 1;
 		qconf.qidx = qidx;
 		ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
-			&chan->queue);
+			&chan->queue, 0);
 		if (ret) {
 			goto failed_create_queue;
 		}

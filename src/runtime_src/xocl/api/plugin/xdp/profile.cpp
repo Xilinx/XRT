@@ -373,6 +373,17 @@ function_call_logger::
 function_call_logger(const char* function, long long address)
   : m_name(function), m_address(address)
 {
+  static bool s_load_xdp = false;
+
+  //If this is the first API called, then we should attempt loading dll
+  //This call here should occur just once per application run
+  if (!s_load_xdp) {
+    s_load_xdp = true;
+    if (xrt::config::get_app_debug() || xrt::config::get_profile()) {
+      xrt::hal::load_xdp();
+    }
+  }
+
   if (cb_log_function_start)
     cb_log_function_start(m_name, m_address);
 }

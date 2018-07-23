@@ -118,7 +118,7 @@ public:
   mpmcqueue()
   {}
 
-  mpmcqueue(bool dbg)
+  explicit mpmcqueue(bool dbg)
     : debug(dbg)
   {}
 

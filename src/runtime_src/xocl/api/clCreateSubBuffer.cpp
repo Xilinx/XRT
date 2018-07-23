@@ -100,15 +100,15 @@ clCreateSubBuffer(cl_mem                   parentbuffer,
 
   // Inherit device access flags from parent buffer if not specified
   auto device_access_flags = (CL_MEM_READ_WRITE | CL_MEM_READ_ONLY | CL_MEM_WRITE_ONLY);
-  flags = (flags | (flags & device_access_flags ? 0 : pflags & device_access_flags));
+  flags = (flags | ((flags & device_access_flags) ? 0 : (pflags & device_access_flags)));
 
   // Inherit host ptr flags from parent buffer
   auto host_ptr_flags = (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR);
   flags = (flags | (pflags & host_ptr_flags));
-  
+
   // Inherit host access flags from parent buffer if not specified
   auto host_access_flags = (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS);
-  flags = (flags | (flags & host_access_flags ? 0 : pflags & host_access_flags));
+  flags = (flags | ((flags & host_access_flags) ? 0 : (pflags & host_access_flags)));
 
   size_t sz = 0;
   size_t offset = 0;
@@ -116,7 +116,7 @@ clCreateSubBuffer(cl_mem                   parentbuffer,
     auto region = reinterpret_cast<const cl_buffer_region*>(buffer_create_info);
     sz = region->size;
     offset = region->origin;
-  } 
+  }
 
   auto usb = xrt::make_unique<sub_buffer>(xocl(parentbuffer),flags,offset,sz);
 
@@ -148,6 +148,3 @@ clCreateSubBuffer(cl_mem                   parentbuffer,
   }
   return nullptr;
 }
-
-
-

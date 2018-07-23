@@ -132,7 +132,7 @@ allocExecBuffer(size_t sz)
 
   auto ubo = xrt::make_unique<ExecBufferObject>();
   //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
-  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<63));  // 1<<31 xocl_ioctl.h
+  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
@@ -224,8 +224,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     uint64_t flags = memory_index;
     xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
     if(domain==Domain::XRT_DEVICE_P2P_RAM) {
-      //flags |= (1<<30);
-      flags |= (((uint64_t)1)<<62);
+      flags |= (1<<30);
     }
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);

@@ -72,11 +72,7 @@
 
 #include "system_utils.h"
 #include "em_defines.h"
-#ifdef USE_HAL2
 #include "xclhal2.h"
-#else
-#include "xclhal.h"
-#endif
 
 class unix_socket {
   private:

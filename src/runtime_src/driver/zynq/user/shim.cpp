@@ -177,13 +177,10 @@ size_t ZYNQShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, 
   return -1;
 }
 
-unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags) {
+unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags) {
   // TODO: unify xocl and zocl flags.
   //drm_zocl_create_bo info = { size, 0xffffffff, DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA };
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  drm_zocl_create_bo info = { size, 0xffffffff, flag};
+  drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
   if (mVerbosity == XCL_INFO) {
     std::cout  << "xclAllocBO result = " << result << std::endl;
@@ -192,7 +189,7 @@ unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
   return info.handle;
 }
 
-unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags) {
+unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags) {
     (void)flags;
     drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
     int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
@@ -483,7 +480,7 @@ void xclClose(xclDeviceHandle handle)
   }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
 {
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
@@ -495,7 +492,7 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, u
   return drv->xclAllocBO(size, domain, flags);
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, uint64_t flags)
+unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
   //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);

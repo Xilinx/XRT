@@ -150,19 +150,11 @@ loadHalDevices(hal::device_list& devices, const bfs::path& dir)
     bfs::path file(itr->path());
     if (isDLL(file))
     {
-      if (!file.filename().compare("libhw_em.so") || !file.filename().compare("libcpu_em.so") || !file.filename().compare("libcommon_em.so"))
+      if (!file.filename().compare("libxrt_hwemu.so") || !file.filename().compare("libxrt_swemu.so") || !file.filename().compare("libcommon_em.so"))
         continue;
       createHalDevices(devices,file.string());
     }
   }
-}
-
-static bool
-is_singleprocess_cpu_em()
-{
-  static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return single_process_cpu_em;
 }
 
 } // namespace
@@ -224,7 +216,7 @@ loadDevices()
     // Load emulation HAL
     bfs::path hw_em(sdaccel / "data/emulation/unified/hw_em" / em_platform / "driver/libhw_em.so");
     if(!xrt.empty()) {
-      bfs::path hw_em_from_xrt (xrt / "lib/libhw_em.so");
+      bfs::path hw_em_from_xrt (xrt / "lib/libxrt_hwemu.so");
       if (isDLL(hw_em_from_xrt)) {
         hw_em = hw_em_from_xrt;
       }
@@ -245,40 +237,72 @@ loadDevices()
       numHwEm = devices.size() - numHwEm;
     }
 
-    if(!is_singleprocess_cpu_em()) {
-     bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
-     if(!xrt.empty()) {
-       bfs::path sw_em_from_xrt (xrt / "lib/libcpu_em.so");
-       if (isDLL(sw_em_from_xrt)) {
-         sw_em = sw_em_from_xrt;
-       }
-     }
-
-     //give high priority to the driver provided in sdaccel.ini
-     std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
-     if (!sw_em_driver_path.compare("null"))
-       sw_em_driver_path.clear();
-
-     if(sw_em_driver_path.size())
-       sw_em = sw_em_driver_path;
-
-      if (isDLL(sw_em))
-        // cpu_em uses the json file used to by hwem so sw-em will match hw-em
-        createHalDevices(devices,sw_em.string());
+    bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
+    if(!xrt.empty()) {
+      bfs::path sw_em_from_xrt (xrt / "lib/libxrt_swemu.so");
+      if (isDLL(sw_em_from_xrt)) {
+        sw_em = sw_em_from_xrt;
+      }
     }
-    else {
-     bfs::path sw_em (sdaccel / "data/sw_em" / em_platform / "driver/libsw_em.so");
-      if (isDLL(sw_em))
-        // Construct same number of swem devices as hwem devices
-        // Should swem xclProbe use the json file that is used by hwem xclProbe?
-        createHalDevices(devices,sw_em.string(),numHwEm);
-    }
+
+    //give high priority to the driver provided in sdaccel.ini
+    std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
+    if (!sw_em_driver_path.compare("null"))
+      sw_em_driver_path.clear();
+
+    if(sw_em_driver_path.size())
+      sw_em = sw_em_driver_path;
+
+    if (isDLL(sw_em))
+      // sw_emu uses the json file used to by hwem so sw-em will match hw-em
+      createHalDevices(devices,sw_em.string());
   }
 
   if (xrt.empty() && sdaccel.empty() && opencl.empty())
     throw std::runtime_error("Either XILINX_OPENCL or XILINX_SDX must be set");
 
   return devices;
+}
+
+
+// Call to load_xdp comes from two places, but the dll should be loaded only once.
+// It is called from function_logger once per application run if app_debug or profile is enabled.
+// It is called from device once per xclbin load, if xclbin has debug_data in it.
+void
+load_xdp()
+{
+  struct xdp_once_loader
+  {
+    xdp_once_loader()
+    {
+      bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+      bfs::path libname ("libxdp.so");
+      if (xrt.empty()) {
+        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+      }
+      bfs::path p(xrt / "lib");
+      directoryOrError(p);
+      p /= libname;
+      if (!isDLL(p)) {
+        throw std::runtime_error("Library " + p.string() + " not found!");
+      }
+      auto handle = dlopen(p.string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
+      if (!handle)
+        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + dlerror());
+
+      typedef void (* xdpInitType)();
+
+      const std::string s = "initXDPLib";
+      auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
+      if (!initFunc)
+        throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
+
+      initFunc();
+    }
+  };
+
+  // 'magic static' is thread safe per C++11
+  static xdp_once_loader xdp_loaded;
 }
 
 }} // hal,xcl

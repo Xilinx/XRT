@@ -126,16 +126,6 @@ program::
   global::remove(this);
 }
 
-program&
-program::
-operator=(const program& rhs)
-{
-  m_context = rhs.m_context;
-  m_devices = rhs.m_devices;
-  return *this;
-}
-
-
 void
 program::
 add_device(device* d)

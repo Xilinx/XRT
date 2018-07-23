@@ -270,7 +270,7 @@ version: $version
 release: $revision
 license: apache
 vendor: Xilinx Inc
-
+autoreqprov: no
 requires: xrt >= $opt_xrt
 
 %description

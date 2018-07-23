@@ -91,6 +91,16 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_XILINX_VEN		0x10EE
 #define	XOCL_CHARDEV_REG_COUNT	16
 
+#ifdef RHEL_RELEASE_VERSION
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)       
+#define RHEL_P2P_SUPPORT  1         
+#else
+#define RHEL_P2P_SUPPORT  0
+#endif    
+#else
+#define RHEL_P2P_SUPPORT  0 
+#endif
+	
 extern struct class *xrt_class;
 
 struct xocl_dev;

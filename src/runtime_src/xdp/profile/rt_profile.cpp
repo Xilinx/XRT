@@ -406,12 +406,18 @@ namespace XCL {
       // NOTE: create unique kernel name using object ID
       std::string newKernelName = kernelName + "|" + std::to_string(objId) + "|"  + std::to_string(programId);
       if (objStage == START) {
+        // Queue STARTS because events come in async order
+        KernelStartsMap[newKernelName].push(deviceTimeStamp);
         XOCL_DEBUGF("logKernelExecution: kernel START @ %.3f msec for %s\n", deviceTimeStamp, newKernelName.c_str());
-        PerfCounters.logKernelExecutionStart(newKernelName, newDeviceName, deviceTimeStamp);
       }
       else if (objStage == END) {
-        XOCL_DEBUGF("logKernelExecution: kernel END @ %.3f msec for %s\n", deviceTimeStamp, newKernelName.c_str());
-        PerfCounters.logKernelExecutionEnd(newKernelName, newDeviceName, deviceTimeStamp);
+        auto it = KernelStartsMap.find(newKernelName);
+        if (it != KernelStartsMap.end() && !it->second.empty()) {
+          XOCL_DEBUGF("logKernelExecution: kernel END @ %.3f msec for %s\n", deviceTimeStamp, newKernelName.c_str());
+          PerfCounters.logKernelExecutionStart(newKernelName, newDeviceName, it->second.front());
+          PerfCounters.logKernelExecutionEnd(newKernelName, newDeviceName, deviceTimeStamp);
+          it->second.pop();
+        }
       }
 
       // Collect trace objects

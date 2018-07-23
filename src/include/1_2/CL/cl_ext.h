@@ -374,7 +374,7 @@ typedef struct{
 
 //-- 8 reserved bits of flags in cl_mem_ext_ptr_t
 #define XCL_MEM_LEGACY                  0x0
-#define XCL_MEM_TOPOLOGY                (1<<31)
+#define XCL_MEM_TOPOLOGY                (1<<24)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
 
 //cl_program_info
