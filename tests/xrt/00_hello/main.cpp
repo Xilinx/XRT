@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     unsigned index = 0;
     unsigned cu_index = 0;
     bool verbose = false;
-    bool ert = false;
+    //bool ert = false;
     int c;
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
     {
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 		if (long_options[option_index].flag != 0)
 		    break;
 	    case 1:
-		ert = true;
+		//ert = true;
 		break;
 	    case 'k':
 		bitstreamFile = optarg;
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 
 	//Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
+    //void* execData = xclMapBO(handle, execHandle, true);
 
 	//Get the output;
 	if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, false))
