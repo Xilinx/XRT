@@ -79,6 +79,18 @@ public:
     return m_ext_flags |= flags;
   }
 
+  void
+  add_param(void* parameter)
+  {
+    param = parameter;
+  }
+
+  const void*
+  get_param()
+  {
+    return param;
+  }
+
   context*
   get_context() const
   {
@@ -434,6 +446,7 @@ private:
 
   memory_flags_type m_flags {0};
   memory_extension_flags_type m_ext_flags {0};
+  void *param {nullptr};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
