@@ -914,7 +914,7 @@ static int engine_service_cyclic_polled(struct xdma_engine *engine)
 
 		/* Monitor descriptor writeback address for errors */
 		if ((writeback_data->completed_desc_count) & WB_ERR_MASK) {
-			rc = -1;
+			rc = -EINVAL;
 			break;
 		}
 
@@ -1049,7 +1049,7 @@ static int engine_service(struct xdma_engine *engine, int desc_writeback)
 
 	/* If polling detected an error, signal to the caller */
 	if (err_flag)
-		rv = -1;
+		rv = -EINVAL;
 
 	/* Service the engine */
 	if (!engine->running) {
@@ -1231,7 +1231,7 @@ static int engine_service_poll(struct xdma_engine *engine,
 
 	if ((expected_desc_count & WB_COUNT_MASK) != expected_desc_count) {
 		dbg_tfr("Queued descriptor count is larger than supported\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	/*
@@ -1483,7 +1483,7 @@ static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
 
 	if (!xdev->bar[idx]) {
 		pr_info("Could not map BAR %d.\n", idx);
-		return -1;
+		return -EINVAL;
 	}
 
 	pr_info("BAR%d at 0x%llx mapped at 0x%p, length=%llu(/%llu)\n", idx,

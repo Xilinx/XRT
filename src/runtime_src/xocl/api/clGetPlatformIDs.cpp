@@ -21,7 +21,6 @@
 
 #include "detail/platform.h"
 
-#include "xdp/profile/profile.h"   //TODO: This should be removed once we have a way to load xdp
 #include "plugin/xdp/profile.h"
 
 namespace xocl {
@@ -43,10 +42,6 @@ clGetPlatformIDs(cl_uint          num_entries,
                  cl_uint *        num_platforms)
 {
   validOrError(num_entries,platforms,num_platforms);
-
-  // Assumes that clGetPlatformIDs is the primary entry point to OCL
-  XCL::register_xocl_profile_callbacks();  //TODO: This should be removed once we have a way to load xdp
-  profile::init();
 
   auto platform = get_global_platform();
   if (num_entries)

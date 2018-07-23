@@ -72,20 +72,20 @@ run_verify() {
     return $RET
 }
 
-run_xbsak() {
+run_xbutil() {
     OPTIONS=$1
     RET=0
-    xbrecover_echo "=======Running xbsak with $OPTIONS ================="
-    xbsak $1 2>&1 >/dev/null
+    xbrecover_echo "=======Running xbutil with $OPTIONS ================="
+    xbutil $1 2>&1 >/dev/null
     if [ $? == 0 ]; then
-       xbrecover_echo "Running xbsak with $OPTIONS passed. "
+       xbrecover_echo "Running xbutil with $OPTIONS passed. "
        RET=0
     else 
-       xbrecover_echo "Running xbsak with $OPTIONS failed. "
+       xbrecover_echo "Running xbutil with $OPTIONS failed. "
        RET=1
     fi
      
-    xbrecover_echo "=======Running xbsak with $OPTIONS done============="
+    xbrecover_echo "=======Running xbutil with $OPTIONS done============="
     return $RET
 }
 
@@ -125,9 +125,9 @@ is_verify_validate_good() {
 	   err=1
 	fi
 	
-	run_xbsak "validate"
+	run_xbutil "validate"
 	RET=$?
-	xbrecover_echo "xbsak validate return code is $ret"
+	xbrecover_echo "xbutil validate return code is $ret"
 	if [ $RET -ne 0 ]; then
 	   err=1
 	fi
@@ -168,9 +168,9 @@ fi
 
 #=====================================================
 #Step 2: Now try reset and then see if that helps 
-run_xbsak "reset -h"
+run_xbutil "reset -h"
 ret=$?
-xbrecover_echo "run_xbsak_hotreset return code is $ret"
+xbrecover_echo "run_xbutil_hotreset return code is $ret"
 
 is_verify_validate_good
 ret=$?
@@ -181,9 +181,9 @@ fi
 
 #=====================================================
 #Step 3: Now try reset, re-install the drivers and then see if that helps 
-run_xbsak "reset -h"
+run_xbutil "reset -h"
 ret=$?
-xbrecover_echo "run_xbsak_hotreset return code is $ret"
+xbrecover_echo "run_xbutil_hotreset return code is $ret"
 
 reinstall_drivers
 ret=$?

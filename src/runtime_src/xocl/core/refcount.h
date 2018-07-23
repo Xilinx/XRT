@@ -27,7 +27,7 @@ namespace xocl {
 
 /**
  * Base class for reference counted xocl objects.
- * 
+ *
  * Too bad that OpenCL API pointer objects cannot be redefined as
  * some smart pointer type. E.g. not much to do about
  * cl.h: typedef _cl_program* cl_program;
@@ -36,33 +36,33 @@ namespace xocl {
  * implementation to use the count appropriately via the
  * implementation of CL API methods clRetain... and clRelease...
  */
-class refcount 
+class refcount
 {
   std::atomic<unsigned int> m_refcount;
  public:
   refcount() : m_refcount(1) {}
-  
+
   /**
    * Increment refcount.
    */
   void
-  retain() 
-  { 
+  retain()
+  {
     assert(m_refcount>0);  // retaining a floating object
-    ++m_refcount; 
+    ++m_refcount;
   }
 
   /**
    * Decrement refcount.
    *
-   * @return 
+   * @return
    *   true of refcount reaches zero, false otherwise
    */
   bool
-  release() 
-  { 
+  release()
+  {
     assert(m_refcount>0);
-    return (--m_refcount)==0; 
+    return (--m_refcount)==0;
   }
 
   /**
@@ -80,7 +80,7 @@ class refcount
  *
  * This pointer class is used to retain ownership of a CL object.  When
  * the pointer object goes out of scope the object is released and if
- * the resulting reference count is zero, the object is deleted.  
+ * the resulting reference count is zero, the object is deleted.
  *
  * The pointer class is used in the core implementation to represent the
  * OpenCL object model.
@@ -92,6 +92,7 @@ class shared_ptr
 public:
   typedef T* value_type;
 
+  // implicit
   shared_ptr(T* t=nullptr) : m_t(t)
   {
     if (m_t)
@@ -102,7 +103,7 @@ public:
     if (m_t && m_t->release())
       delete m_t;
   }
-  
+
   shared_ptr(shared_ptr&& rhs)
     : m_t(rhs.m_t)
   {
@@ -116,7 +117,7 @@ public:
       m_t->retain();
   }
 
-  shared_ptr& 
+  shared_ptr&
   operator= (shared_ptr rhs)
   {
     std::swap(m_t,rhs.m_t);
@@ -129,12 +130,12 @@ public:
     return m_t == rhs;
   }
 
-  bool 
+  bool
   operator==(const shared_ptr& rhs) const
   {
     return m_t == rhs.m_t;
   }
-  
+
   T* operator->() const
   {
     return m_t;
@@ -169,7 +170,7 @@ using ptr = shared_ptr<T>;
  *  device* dev = *(dr.begin());
  * \code
  *
- * This iterator is in particular relied upon when ranges are 
+ * This iterator is in particular relied upon when ranges are
  * assigned to a param_buffer in clGetXInfo() calls.
  */
 template <typename Iterator>
@@ -179,6 +180,7 @@ struct ptr_iterator : public Iterator
   using value_type = typename iterator_value_type::value_type;
   static_assert(std::is_pointer<value_type>::value,"Only pointer type support");
 
+  // implicit
   ptr_iterator(Iterator itr)
     : Iterator(itr)
   {}
@@ -193,5 +195,3 @@ struct ptr_iterator : public Iterator
 } // xocl
 
 #endif
-
-

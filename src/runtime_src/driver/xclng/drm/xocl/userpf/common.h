@@ -104,8 +104,9 @@ struct xocl_dev	{
 
 	void * __iomem bypass_bar_addr;
 	/*should be removed after mailbox is supported */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	struct percpu_ref ref;
+  struct completion cmp;
 #endif
 	/*should be removed after mailbox is supported */
 	u64			        unique_id_last_bitstream;

@@ -17,20 +17,19 @@
 
 #include "zocl_drv.h"
 
-//-xclbinid--
 static ssize_t xclbinid_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%llx\n", zdev->unique_id_last_bitstream);
 }
 
 static DEVICE_ATTR_RO(xclbinid);
 
 #if 0
-//-Base address--
 static ssize_t dr_base_addr_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%u\n", 0);
 }
@@ -38,10 +37,8 @@ static ssize_t dr_base_addr_show(struct device *dev,
 static DEVICE_ATTR_RO(dr_base_addr);
 #endif
 
-
-//-Mem_topology--
 static ssize_t mem_topology_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
@@ -52,9 +49,8 @@ static ssize_t mem_topology_show(struct device *dev,
 
 static DEVICE_ATTR_RO(mem_topology);
 
-//-Connectivity--
 static ssize_t connectivity_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
@@ -65,9 +61,8 @@ static ssize_t connectivity_show(struct device *dev,
 
 static DEVICE_ATTR_RO(connectivity);
 
-//-IP_layout--
 static ssize_t ip_layout_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
@@ -78,24 +73,23 @@ static ssize_t ip_layout_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ip_layout);
 
-//- Debug IP_layout--
 static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= zdev->debug_layout.size)
+	if (off >= zdev->debug_layout.size)
 		return 0;
 
-	if (count < zdev->debug_layout.size - offset)
+	if (count < zdev->debug_layout.size - off)
 		nread = count;
 	else
-		nread = zdev->debug_layout.size - offset;
+		nread = zdev->debug_layout.size - off;
 
-	memcpy(buffer, ((char *)zdev->debug_layout.layout) + offset, nread);
+	memcpy(buf, ((char *)zdev->debug_layout.layout) + off, nread);
 
 	return nread;
 }
@@ -110,43 +104,42 @@ static struct bin_attribute debug_ip_layout_attrs = {
 	.size = 0
 };
 
-//---
 int zocl_init_sysfs(struct device *dev)
 {
 	int ret;
 
 	ret = device_create_file(dev, &dev_attr_xclbinid);
-	if(ret)
-    goto out0;
+	if (ret)
+		goto out0;
 
 	ret = device_create_file(dev, &dev_attr_connectivity);
-	if(ret)
-    goto out1;
+	if (ret)
+		goto out1;
 
 	ret = device_create_file(dev, &dev_attr_ip_layout);
-	if(ret)
-    goto out2;
+	if (ret)
+		goto out2;
 
 	ret = device_create_file(dev, &dev_attr_mem_topology);
-	if(ret)
-    goto out3;
+	if (ret)
+		goto out3;
 
 	ret = device_create_bin_file(dev, &debug_ip_layout_attrs);
-	if(ret)
-    goto out4;
-		
+	if (ret)
+		goto out4;
+
 	return ret;
 
 out4:
-		device_remove_file(dev, &dev_attr_mem_topology);
+	device_remove_file(dev, &dev_attr_mem_topology);
 out3:
-		device_remove_file(dev, &dev_attr_ip_layout);
+	device_remove_file(dev, &dev_attr_ip_layout);
 out2:
-		device_remove_file(dev, &dev_attr_connectivity);
+	device_remove_file(dev, &dev_attr_connectivity);
 out1:
-		device_remove_file(dev, &dev_attr_xclbinid);
+	device_remove_file(dev, &dev_attr_xclbinid);
 out0:
-  return ret;
+	return ret;
 }
 
 void zocl_fini_sysfs(struct device *dev)

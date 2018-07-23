@@ -38,4 +38,4 @@ set(XRT_XDP_ALL_SRC
   ${XRT_XDP_FILES}
   )
 
-add_library(xdp OBJECT ${XRT_XDP_ALL_SRC})
+add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})

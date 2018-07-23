@@ -20,6 +20,7 @@
 #include "compute_unit.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
@@ -131,14 +132,6 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
   return swem;
-}
-
-static bool
-is_singleprocess_cpu_em()
-{
-  static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return single_process_cpu_em;
 }
 
 static void
@@ -275,10 +268,6 @@ device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::de
       log.append(".hw_em");
     open_or_error(m_hwem_device,log);
   }
-
-  // Hack to accomodate missing sw_em device info.
-  if (m_hwem_device && m_swem_device && is_singleprocess_cpu_em())
-    m_swem_device->copyDeviceInfo(m_hwem_device);
 
   if (m_hw_device)
     open_or_error(m_hw_device,hallog);
@@ -569,7 +558,10 @@ device::
 get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
 {
   auto addr = get_boh_addr(boh);
-  return m_xclbin.mem_address_to_memidx(addr);
+  auto bset = m_xclbin.mem_address_to_memidx(addr);
+  if (bset.none() && is_sw_emulation())
+    bset.set(0); // default bank in sw_emu
+  return bset;
 }
 
 std::string
@@ -945,8 +937,15 @@ load_program(program* program)
 
   m_xclbin = program->get_xclbin(this);
   auto binary = m_xclbin.binary(); // ::xclbin::binary
-  auto binary_data = binary.binary_data();
-  auto binary_size = binary_data.second - binary_data.first;
+
+  // Kernel debug is enabled based on if there is debug_data in the
+  // binary it does not have sdaccel.ini attribute. If there is
+  // debug_data then make sure xdp is loaded
+  if (binary.debug_data().first)
+    xrt::hal::load_xdp();
+
+  xocl::debug::reset(m_xclbin);
+  xocl::profile::reset(m_xclbin);
 
   // validatate target binary for target device and set the xrt device
   // according to target binary this is likely temp code that is
@@ -954,6 +953,8 @@ load_program(program* program)
   // up front
   set_xrt_device(m_xclbin);
 
+  auto binary_data = binary.binary_data();
+  auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
     return;
 

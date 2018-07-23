@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 # Script to install XRT dependencies
 # Note all packages listed here are required for XRT. Some of them like jpeg, png, tiff, etc are used by applications
 RH_LIST=(\
@@ -44,6 +45,7 @@ RH_LIST=(\
      protobuf-compiler \
      protobuf-static \
      ncurses-devel \
+     cppcheck \
      )
 
 UB_LIST=(\
@@ -84,6 +86,7 @@ UB_LIST=(\
      libprotoc-dev \
      protobuf-compiler \
      libncurses5-dev \
+     cppcheck \
 )
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`

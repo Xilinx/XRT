@@ -22,6 +22,7 @@
 #include "xocl/core/range.h"
 #include "xocl/core/property.h"
 #include <vector>
+#include <functional>
 
 namespace xocl {
 

@@ -45,6 +45,7 @@ public:
   using queue_type = hal::queue_type;
   using stream_handle = hal::StreamHandle;
 
+  explicit
   device(std::unique_ptr<hal::device>&& hal)
     : m_hal(std::move(hal)), m_setup_done(false)
   {
@@ -103,7 +104,7 @@ public:
   }
 
   /**
-   * @return 
+   * @return
    *   List of clock frequency from device info
    */
   range<const unsigned short*>
@@ -177,7 +178,7 @@ public:
    * @param bo
    *  The existing buffer object from which the new one will be created
    * @param sz
-   *  The size to carve out of the existing buffer object when 
+   *  The size to carve out of the existing buffer object when
    *  creating the new one
    * @param offset
    *  The offset to add to existing buffer object when creating
@@ -340,7 +341,7 @@ public:
   exec_buf(const ExecBufferObjectHandle& bo)
   { return m_hal->exec_buf(bo); }
 
-  int 
+  int
   exec_wait(int timeout_ms) const
   { return m_hal->exec_wait(timeout_ms); }
 
@@ -819,5 +820,3 @@ loadDevices()
 } // xrt
 
 #endif
-
-

@@ -6,7 +6,7 @@ Linux Sys FileSystem Nodes
 xocl
 ~~~~
 
-xocl driver exposes various sections of xclbin image including the xclbin Id on sysfs. This makes it very convenient for tools (such as *xbsak*) to discover characteristics of image currently loaded on the FPGA. The data layout of xclbin sections are defined in file *xclbin.h* which can be found under ``runtime/driver/include directory``.
+xocl driver exposes various sections of xclbin image including the xclbin Id on sysfs. This makes it very convenient for tools (such as *xbutil*) to discover characteristics of image currently loaded on the FPGA. The data layout of xclbin sections are defined in file *xclbin.h* which can be found under ``runtime/driver/include directory``.
 
 1. ip_layout
    Exposes IP LAYOUT section of xclbin

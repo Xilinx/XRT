@@ -81,7 +81,7 @@ failed:
 }
 
 int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
-	struct qdma_wq *queue)
+	struct qdma_wq *queue, u32 priv_data_len)
 {
 	int	i, ret;
 
@@ -120,12 +120,14 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	}
 
 	queue->wq_len = queue->qlen << 3 ;
-	queue->wq = vzalloc(sizeof (*queue->wq) * queue->wq_len);
+	queue->wqe_sz = roundup(sizeof (*queue->wq) + priv_data_len, 8);
+	queue->wq = vzalloc(queue->wqe_sz * queue->wq_len);
 	if (!queue->wq) {
 		pr_err("Alloc wq failed");
 		ret = -ENOMEM;
 		goto failed;
 	}
+	queue->priv_data_len = priv_data_len;
 
 	for (i = 0; i < queue->wq_len; i++) {
 		queue->wq[i].queue = queue;
@@ -176,7 +178,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	wqe->state = QDMA_WQE_STATE_PENDING;
 	sg = wqe->unproc_sg;
 	for(i = 0; i < wqe->unproc_sg_num; i++, sg = next) {
-		off = sg->offset;
+		off = 0;
 		len = sg->length;
 		if (wqe->unproc_sg_off) {
 			off += wqe->unproc_sg_off;
@@ -257,7 +259,7 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	wqe->state = QDMA_WQE_STATE_PENDING;
 	sg = wqe->unproc_sg;
 	for(i = 0; i < wqe->unproc_sg_num; i++, sg = next) {
-		off = sg->offset;
+		off = 0;
 		len = sg->length;
 		if (wqe->unproc_sg_off) {
 			off += wqe->unproc_sg_off;
@@ -403,8 +405,9 @@ static void descq_proc_req(struct qdma_wq *queue)
 static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	int err)
 {
-	struct qdma_wqe		*wqe;
-	struct qdma_wq		*queue;
+	struct qdma_wqe			*wqe;
+	struct qdma_wq			*queue;
+	struct qdma_complete_event	compl_evt;
 
 	wqe = container_of(req, struct qdma_wqe, wr.req);
 	queue = wqe->queue;
@@ -413,12 +416,17 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	wqe->done_bytes += bytes_done;
 	queue->sgc_avail += req->sgcnt;
 	if (wqe->done_bytes == wqe->wr.len) {
-		wqe->state = QDMA_WQE_STATE_DONE;
 		if (wqe->wr.block) {
 			wake_up(&wqe->req_comp);
 		} else {
-			queue->fp_done(wqe);
+			compl_evt.done_bytes = wqe->done_bytes;
+			compl_evt.error =0;
+			compl_evt.req_priv = wqe->priv_data;
+			mutex_unlock(&queue->wq_lock);
+			wqe->wr.complete(&compl_evt);
+			mutex_lock(&queue->wq_lock);
 		}
+		wqe->state = QDMA_WQE_STATE_DONE;
 		wqe = wq_next_pending(queue);
 	}
 
@@ -466,6 +474,10 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 	wqe->unproc_sg_off = off;
 	wqe->wr.req.fp_done = qdma_wqe_complete;
 	wqe->wr.req.write = wr->write;
+
+	if (wr->priv_data) {
+		memcpy(wqe->priv_data, wr->priv_data, queue->priv_data_len);
+	}
 
 	cb = qdma_req_cb_get(&wqe->wr.req);
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);

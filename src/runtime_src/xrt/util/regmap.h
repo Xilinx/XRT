@@ -49,7 +49,7 @@ private:
   __attribute__((aligned(Align))) regmap_t m_regmap {{0}};
 #else
   // gcc supports upto 128 only with alignas
-  alignas(Align) regmap_t m_regmap {{0}}; 
+  alignas(Align) regmap_t m_regmap {{0}};
 #endif
   std::size_t m_size {0};
 public:
@@ -66,7 +66,7 @@ public:
     return m_regmap.at(idx);
   }
 
-  bool 
+  bool
   operator==(const regmap& rhs) const
   {
     if (m_size != rhs.m_size)
@@ -139,10 +139,12 @@ private:
   value_type* m_regmap = nullptr;
   std::size_t m_size {0};
 public:
+  explicit
   regmap_placed(value_type* data)
     : m_regmap(data)
   {}
 
+  explicit
   regmap_placed(void* data)
     : regmap_placed(static_cast<value_type*>(data))
   {}
@@ -160,7 +162,7 @@ public:
     return m_regmap[idx];
   }
 
-  bool 
+  bool
   operator==(const regmap_placed& rhs) const
   {
     if (m_size != rhs.m_size)
@@ -232,5 +234,3 @@ public:
 } // xrt
 
 #endif
-
-

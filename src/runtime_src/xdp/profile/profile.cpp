@@ -589,5 +589,11 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_end_device_profiling(Profiling::cb_end_device_profiling);
 }
 }
+extern "C"
+void
+initXDPLib()
+{
+  (void)XCL::RTSingleton::Instance();
+}
 
 
