@@ -369,7 +369,7 @@ public:
    *   Memory idx
    */
   size_t 
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const;
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
 
   /**
    * Get the memory index with the specified tag.

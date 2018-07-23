@@ -953,6 +953,7 @@ class xclbin_data_sections
   std::vector<membank> m_membanks;
 
 public:
+  std::vector<int> m_used_connections;
   explicit
   xclbin_data_sections(const xocl::xclbin::binary_type& binary)
     : m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
@@ -986,7 +987,7 @@ public:
   }
 
   size_t
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
   {
     if (!is_valid())
       return -1;
@@ -997,15 +998,21 @@ public:
       //ip_layout section has format : kernel_name:cu_name
       auto ipidx = m_con->m_connection[i].m_ip_layout_index;
       const char *ip_name = reinterpret_cast<const char*>(m_ip->m_ip_data[ipidx].m_name);
-      std::cout << ip_name << " " << kernel_name.c_str() << std::endl;
       const char* sub = strstr(ip_name,kernel_name.c_str());
       if (sub!=ip_name)
         continue;
-      // found the connection that match cuaddr,arg
+      if(std::find(m_used_connections.begin(), m_used_connections.end(), i)
+	     != m_used_connections.end()) {
+	  //This connection already has a device storage allocated.
+	  continue;
+      }
+      // found the connection that match kernel_name,arg
       size_t memidx = m_con->m_connection[i].mem_data_index;
       assert(m_mem->m_mem_data[memidx].m_used);
+      m_used_connections.push_back(i);
       return memidx;
     }
+    throw std::runtime_error("did not find mem index for (kernel_name,arg):" + kernel_name + "," + std::to_string(arg));
     return -1;
   }
 
@@ -1231,7 +1238,7 @@ struct xclbin::impl
   { return m_sections.banktag_to_memidx(banktag); }
 
   size_t
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
   { return m_sections.get_memidx_from_arg(kernel_name, arg); }
 
   unsigned int
@@ -1452,7 +1459,7 @@ banktag_to_memidx(const std::string& tag) const
 
 size_t
 xclbin::
-get_memidx_from_arg(const std::string& kernel_name, int32_t arg) const
+get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
 {
   return m_impl->get_memidx_from_arg(kernel_name, arg);
 }
