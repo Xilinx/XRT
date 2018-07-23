@@ -633,9 +633,14 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh;
 
+  // If map_flags set as CL_MAP_READ, we only sync the portion of BO for mapping
+  if ((map_flags & CL_MAP_READ) && buffer->is_resident(this)) {
+    boh = buffer->get_buffer_object_or_error(this);
+    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
+  }
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
-  if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
+  else if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
     boh = buffer->get_buffer_object_or_error(this);
     xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
   }
