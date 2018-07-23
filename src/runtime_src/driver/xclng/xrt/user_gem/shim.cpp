@@ -367,12 +367,13 @@ size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hos
  *
  * Assume that the memory is always created for the device ddr for now. Ignoring the flags as well.
  */
-unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
     //std::cout << "alloc bo with combined flags " << std::hex << flags ;
-    unsigned flag = flags & 0xFFFFFFFFLL;
-    unsigned type =  (unsigned)(flags >> 32);
-    //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
+    unsigned flag = flags & 0xFFFFFFLL;
+    unsigned type = flags & 0xFF000000LL ;
+    std::cout << "git: alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
+    
     drm_xocl_create_bo info = {size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
     return result ? mNullBO : info.handle;
@@ -381,11 +382,13 @@ unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t 
 /*
  * xclAllocUserPtrBO()
  */
-unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
     //std::cout << "User alloc bo with combined flags " << flags ;
-    unsigned flag = flags & 0xFFFFFFFFLL;
-    unsigned type =  (unsigned)(flags >> 32);
+    unsigned flag = flags & 0xFFFFFFLL;
+    unsigned type = flags & 0xFF000000LL ;
+    std::cout << "git: user alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
+    
     //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
     drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
@@ -1534,13 +1537,13 @@ unsigned int xclVersion ()
     return 2;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, uint64_t flags)
+unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;

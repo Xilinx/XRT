@@ -1015,18 +1015,14 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
@@ -1034,18 +1030,14 @@ unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
