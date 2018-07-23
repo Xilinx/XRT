@@ -60,6 +60,10 @@ validOrError(cl_context context,
 
   if (!mem)
     throw error(CL_INVALID_VALUE,"mem can not be nullptr. It must be address of variable that will get cl_mem pointer");
+
+  if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
+    throw error(CL_INVALID_VALUE, "clGetMemObjectFromFd: unsupported host_ptr flags");
+
 }
 
 static cl_int
