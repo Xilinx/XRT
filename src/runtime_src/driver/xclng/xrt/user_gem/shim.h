@@ -23,11 +23,11 @@
  */
 
 #include "driver/include/xclhal2.h"
-#include "driver/xclng/include/drm/drm.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/qdma_ioctl.h"
+#include <libdrm/drm.h>
 #include <mutex>
 #include <cstdint>
 #include <fstream>
@@ -163,8 +163,8 @@ public:
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
-    unsigned int xclAllocBO(size_t size, xclBOKind domain, uint64_t flags);
-    unsigned int xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags);
+    unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+    unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
     void xclFreeBO(unsigned int boHandle);
     int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
     int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);

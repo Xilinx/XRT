@@ -558,7 +558,10 @@ device::
 get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
 {
   auto addr = get_boh_addr(boh);
-  return m_xclbin.mem_address_to_memidx(addr);
+  auto bset = m_xclbin.mem_address_to_memidx(addr);
+  if (bset.none() && is_sw_emulation())
+    bset.set(0); // default bank in sw_emu
+  return bset;
 }
 
 std::string
