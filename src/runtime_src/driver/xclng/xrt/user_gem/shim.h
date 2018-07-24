@@ -23,11 +23,11 @@
  */
 
 #include "driver/include/xclhal2.h"
-#include "driver/xclng/include/drm/drm.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/qdma_ioctl.h"
+#include <libdrm/drm.h>
 #include <mutex>
 #include <cstdint>
 #include <fstream>
