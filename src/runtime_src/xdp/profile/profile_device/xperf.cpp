@@ -25,8 +25,8 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include "xmaperf.h"
 #include <unistd.h>
+#include "xperf.h"
 
 // *****************************************************************************
 //                               Helper Functions
@@ -45,6 +45,7 @@ time_ns()
 //
 // XDP: Helpers, classes, & members
 //
+
 // TODO: replace these with functions in XDP library
 namespace XDP {
   // Classes
@@ -763,13 +764,14 @@ namespace XDP {
   }
 
 } // XDP namespace
+XDP::DeviceTrace* XDP::DeviceTrace::RecycleHead = nullptr;
 
 // *****************************************************************************
 //                              Profile Counters
 // *****************************************************************************
 
 void
-xma_plg_start_profile(xclDeviceHandle s_handle)
+profile_start_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
   printf("xma_plg_start_profile: dev_handle=%p\n", dev_handle);
@@ -785,7 +787,7 @@ xma_plg_start_profile(xclDeviceHandle s_handle)
 }
 
 void
-xma_plg_read_profile(xclDeviceHandle s_handle)
+profile_read_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
   printf("xma_plg_read_profile: dev_handle=%p\n", dev_handle);
@@ -800,7 +802,7 @@ xma_plg_read_profile(xclDeviceHandle s_handle)
 }
 
 void
-xma_plg_end_profile(xclDeviceHandle s_handle)
+profile_end_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
   printf("xma_plg_end_profile: dev_handle=%p\n", dev_handle);
@@ -826,7 +828,7 @@ xma_plg_end_profile(xclDeviceHandle s_handle)
 // *****************************************************************************
 
 void
-xma_plg_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace, const std::string stall_trace)
+profile_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace, const std::string stall_trace)
 {
   // Evaluate arguments
   XDP::mDataTransferTrace = data_transfer_trace;
@@ -868,7 +870,7 @@ xma_plg_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_tr
 }
 
 void
-xma_plg_read_trace(xclDeviceHandle s_handle)
+profile_read_trace(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
   printf("xma_plg_read_trace: dev_handle=%p\n", dev_handle);
@@ -898,7 +900,7 @@ xma_plg_read_trace(xclDeviceHandle s_handle)
 }
 
 void
-xma_plg_end_trace(xclDeviceHandle s_handle)
+profile_end_trace(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
   printf("xma_plg_end_trace: dev_handle=%p\n", dev_handle);
@@ -912,7 +914,7 @@ xma_plg_end_trace(xclDeviceHandle s_handle)
   xclGetDeviceInfo2(dev_handle, &deviceInfo);
 
   // Final read of trace
-  xma_plg_read_trace(s_handle);
+  profile_read_trace(s_handle);
 
   // Stop trace
   xclPerfMonStopTrace(dev_handle, XCL_PERF_MON_MEMORY);

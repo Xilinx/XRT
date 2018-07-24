@@ -54,7 +54,7 @@ extern "C" {
  *  @param s_handle  The session handle associated with this plugin instance
  *
  */
-void xma_plg_start_profile(xclDeviceHandle s_handle);
+void profile_start_summary(xclDeviceHandle s_handle);
 
 /**
  *  @brief Read profile counters
@@ -65,7 +65,7 @@ void xma_plg_start_profile(xclDeviceHandle s_handle);
  *  @param s_handle  The session handle associated with this plugin instance
  *
  */
-void xma_plg_read_profile(xclDeviceHandle s_handle);
+void profile_read_summary(xclDeviceHandle s_handle);
 
 /**
  *  @brief End profile counters
@@ -75,7 +75,7 @@ void xma_plg_read_profile(xclDeviceHandle s_handle);
  *  @param s_handle  The session handle associated with this plugin instance
  *
  */
-void xma_plg_end_profile(xclDeviceHandle s_handle);
+void profile_end_summary(xclDeviceHandle s_handle);
 
 /**
  *  @brief Start timeline trace
@@ -87,7 +87,7 @@ void xma_plg_end_profile(xclDeviceHandle s_handle);
  *  @param stall_transfer       Stall trace setting (options: memory|dataflow|pipe|all|off)
  *
  */
-void xma_plg_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace = "off",
+void profile_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace = "off",
                          const std::string stall_trace = "off");
 
 /**
@@ -98,7 +98,7 @@ void xma_plg_start_trace(xclDeviceHandle s_handle, const std::string data_transf
  *  @param s_handle  The session handle associated with this plugin instance
  *
  */
-void xma_plg_read_trace(xclDeviceHandle s_handle);
+void profile_read_trace(xclDeviceHandle s_handle);
 
 /**
  *  @brief End timeline trace
@@ -108,7 +108,7 @@ void xma_plg_read_trace(xclDeviceHandle s_handle);
  *  @param s_handle  The session handle associated with this plugin instance
  *
  */
-void xma_plg_end_trace(xclDeviceHandle s_handle);
+void profile_end_trace(xclDeviceHandle s_handle);
 
 #ifdef __cplusplus
 }
