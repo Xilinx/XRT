@@ -22,7 +22,7 @@
 
 std::string parseCUStatus(unsigned val);
 std::string parseFirewallStatus(unsigned val);
-
+std::string unitConvert(size_t size);
 #endif /* _COMMON_UTILS_H_ */
 
 
