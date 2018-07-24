@@ -24,40 +24,42 @@ find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS "./")
 
 find_program(SPHINX_EXECUTABLE sphinx-build)
 
-add_custom_command(OUTPUT core/mgmt-ioctl.rst
-  COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MGMT_IOCTL_H} > core/mgmt-ioctl.rst
-  DEPENDS ${XRT_MGMT_IOCTL_H}
-  VERBATIM
-  )
+if (NOT KERNELDOC_EXECUTABLE OR NOT SPHINX_EXECUTABLE)
+  MESSAGE (WARNING "kernel-doc or Sphinx not found, XRT documentation build disabled")
+else ()
+  add_custom_command(OUTPUT core/mgmt-ioctl.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MGMT_IOCTL_H} > core/mgmt-ioctl.rst
+    DEPENDS ${XRT_MGMT_IOCTL_H}
+    VERBATIM
+    )
 
-add_custom_command(OUTPUT core/xocl_ioctl.rst
-  COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XOCL_IOCTL_H} > core/xocl_ioctl.rst
-  DEPENDS ${XRT_XOCL_IOCTL_H}
-  VERBATIM
-  )
+  add_custom_command(OUTPUT core/xocl_ioctl.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XOCL_IOCTL_H} > core/xocl_ioctl.rst
+    DEPENDS ${XRT_XOCL_IOCTL_H}
+    VERBATIM
+    )
 
-add_custom_command(OUTPUT core/xclhal2.rst
-  COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XCLHAL2_H} > core/xclhal2.rst
-  DEPENDS ${XRT_XCLHAL2_H}
-  VERBATIM
-  )
+  add_custom_command(OUTPUT core/xclhal2.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XCLHAL2_H} > core/xclhal2.rst
+    DEPENDS ${XRT_XCLHAL2_H}
+    VERBATIM
+    )
 
-add_custom_command(OUTPUT core/ert.rst
-  COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ERT_H} > core/ert.rst
-  DEPENDS ${XRT_ERT_H}
-  VERBATIM
-  )
+  add_custom_command(OUTPUT core/ert.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ERT_H} > core/ert.rst
+    DEPENDS ${XRT_ERT_H}
+    VERBATIM
+    )
 
-set(HTML_FILES "html/*")
-
-add_custom_target(
-  xrt_doc ALL
-  DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
-  COMMENT "Generating documentation with Sphinx"
-  COMMAND mkdir -p html
-  COMMAND ${SPHINX_EXECUTABLE} ${DOC_TOC_DIR} html
-  COMMAND rm -rf ${XRT_RUNTIME_SRC_DIR}/../../docs/
-  COMMAND /bin/cp -rf html/ ${XRT_RUNTIME_SRC_DIR}/../../docs/
-  COMMAND touch ${XRT_RUNTIME_SRC_DIR}/../../docs/.nojekyll
-  VERBATIM
-  )
+  add_custom_target(
+    xrt_doc ALL
+    DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
+    COMMENT "Generating documentation with Sphinx"
+    COMMAND mkdir -p html
+    COMMAND ${SPHINX_EXECUTABLE} ${DOC_TOC_DIR} html
+    COMMAND rm -rf ${XRT_RUNTIME_SRC_DIR}/../../docs/
+    COMMAND /bin/cp -rf html/ ${XRT_RUNTIME_SRC_DIR}/../../docs/
+    COMMAND touch ${XRT_RUNTIME_SRC_DIR}/../../docs/.nojekyll
+    VERBATIM
+    )
+endif ()
