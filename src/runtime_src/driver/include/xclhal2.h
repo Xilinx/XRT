@@ -223,12 +223,42 @@ struct xclBOProperties {
     xclBOKind domain; // not implemented
 };
 
+#define XCL_CONTEXT_SHARED 0
+#define XCL_CONTEXT_EXCLUSIVE 1
+/**
+ * struct xclContextProperties - XRT context structure
+ *
+ * This structure represents a context on compute unit. The context may be
+ * shared or exclusive.
+ */
+
 struct xclContextProperties {
-    uuid_t   xclbinId;
-    uint32_t cuBitmap[4];
-    uint32_t flags;
-    bool     exclusive;
-    uint32_t handle;
+    /**
+     * @xclbinId:
+     *
+     * UUID of a previously loaded xclbin
+     */
+    uuid_t xclbinId;
+    /**
+     * @ipIndex:
+     *
+     * Index of the compute unit in the IP TOPOLOGY section of xclbin
+     */
+    unsigned int ipIndex;
+    /**
+     * @flags:
+     *
+     * bitmap of request properties sent to the driver. Currently only XCL_CONTEXT_SHARED
+     * or XCL_CONTEXT_EXCLUSIVE is supported.
+     * supported.
+     */
+    unsigned int flags;
+    /**
+     * @handle:
+     *
+     * unused
+     */
+    unsigned int handle;
 };
 
 /**
@@ -369,7 +399,7 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * xclOpenContext() - Create shared/exclusive context on compute units
  *
  * @handle:        Device handle
- * @context:       context properties object populated by caller
+ * @context:       Context object populated by the caller as defined above
  * Return:         0 on success or appropriate error number
  *
  * The context is necessary before submitting execution jobs using xclExecBO(). Contexts may be
@@ -378,6 +408,17 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
 XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context);
+
+/**
+ * xclCloseContext() - Close previously opened context
+ *
+ * @handle:        Device handle
+ * @context:       Context object populated by the caller as defined above
+ * Return:         0 on success or appropriate error number
+ *
+ * Close a previously allocated shared/exclusive context for a compute unit.
+ */
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, xclContextProperties *context);
 
 /*
  * Update the device BPI PROM with new image
