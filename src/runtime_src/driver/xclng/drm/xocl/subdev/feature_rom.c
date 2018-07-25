@@ -29,6 +29,7 @@ struct feature_rom {
 	bool			unified;
 	bool			mb_mgmt_enabled;
 	bool			mb_sche_enabled;
+	bool			cdma_enabled;
 	bool			are_dev;
 	bool			aws_dev;
 };
@@ -145,6 +146,16 @@ static bool mb_sched_on(struct platform_device *pdev)
 	return rom->mb_sche_enabled;
 }
 
+static bool cdma_on(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->cdma_enabled;
+}
+
 static u16 get_ddr_channel_count(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
@@ -220,6 +231,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
 	.mb_sched_on = mb_sched_on,
+	.cdma_on = cdma_on,
 	.get_ddr_channel_count = get_ddr_channel_count,
 	.get_ddr_channel_size = get_ddr_channel_size,
 	.is_are = is_are,
@@ -259,7 +271,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 			/*
  			 * This is AWS device. Fill the FeatureROM struct.
  			 * Right now it doesn't have FeatureROM
- 			 */ 
+ 			 */
 			memset(rom->header.EntryPointString, 0,
 				sizeof(rom->header.EntryPointString));
 			strncpy(rom->header.EntryPointString, "xlnx", 4);
@@ -306,6 +318,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->dsa_version = 51;
 	else if (strstr(rom->header.VBNVName,"5_2"))
 		rom->dsa_version = 52;
+	else if (strstr(rom->header.VBNVName,"5_3"))
+		rom->dsa_version = 53;
 
 	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM) {
 		rom->unified = true;
@@ -317,6 +331,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	    && !strstr(rom->header.VBNVName,"kcu1500")) {
 		rom->mb_sche_enabled = true;
 	}
+	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
+	    rom->cdma_enabled = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
