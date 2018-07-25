@@ -40,6 +40,14 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
     : 0;
 }
 
+inline const void*
+get_param(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->param
+    : 0;
+}
+
 inline unsigned int
 get_ocl_flags(cl_mem_flags flags)
 {
@@ -130,11 +138,14 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
   if ( bool(ubuf) != bool(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) )
     throw error(CL_INVALID_HOST_PTR,"bad host_ptr of mem use flags");
 
-  if (auto xlnx_ext_flags = get_xlnx_ext_flags(flags,host_ptr)) {
-    auto ddr_bank_mask = XCL_MEM_DDR_BANK0 | XCL_MEM_DDR_BANK1 | XCL_MEM_DDR_BANK2 | XCL_MEM_DDR_BANK3;
-    // Test that only one bank flag is set
-    if (std::bitset<12>(xlnx_ext_flags & ddr_bank_mask).count() > 1)
-      throw xocl::error(CL_INVALID_VALUE,"Multiple bank flags specified");
+  if (auto ext_flags = get_xlnx_ext_flags(flags,host_ptr)) {
+    return;
+    if(get_param(ext_flags,host_ptr)&&!(ext_flags&XCL_MEM_TOPOLOGY)) {
+      auto ddr_bank_mask = XCL_MEM_DDR_BANK0 | XCL_MEM_DDR_BANK1 | XCL_MEM_DDR_BANK2 | XCL_MEM_DDR_BANK3;
+      // Test that only one bank flag is set
+      if (std::bitset<12>(ext_flags & ddr_bank_mask).count() > 1)
+       throw xocl::error(CL_INVALID_VALUE,"Multiple bank flags specified");
+    }
   }
 }
 
