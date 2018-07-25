@@ -30,7 +30,8 @@
 //#include "xma.h"
 //#include "lib/xmahw.h"
 //#include "lib/xmahw_hal.h"
-#include "driver/include/xclhal2.h"
+//#include "driver/include/xclhal2.h"
+#include "xclhal2.h"
 
 /**
  *  @file
