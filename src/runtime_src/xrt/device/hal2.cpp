@@ -157,7 +157,7 @@ alloc(size_t sz)
   };
 
   xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
-  uint64_t flags = 0xFFFFFFFF; //TODO: check default, any bank.
+  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
   if (ubo->handle == 0xffffffff)
@@ -182,7 +182,7 @@ alloc(size_t sz,void* userptr)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFFFFFF; //TODO:check default
+  uint64_t flags = 0xFFFFFF; //TODO:check default
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
