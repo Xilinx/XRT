@@ -76,7 +76,8 @@ RH_LIST=(\
      strace \
      unzip \
      )
-
+     
+# test comment : to be deleted
 UB_LIST=(\
      cmake \
      cppcheck \
