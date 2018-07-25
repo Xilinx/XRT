@@ -46,9 +46,9 @@ RH_LIST=(\
      protobuf-static \
      ncurses-devel \
      cppcheck \
-     )
-     
+  )
 # test comment : to be deleted
+
 UB_LIST=(\
      cmake \
      dkms \
