@@ -86,7 +86,6 @@
 
 /************************ SDx Accelerator Monitor(SPM) ************************/
 
-#define XSAM_VERSION_OFFSET							 0x00
 #define XSAM_CONTROL_OFFSET                          0x08
 #define XSAM_TRACE_CTRL_OFFSET                       0x10
 #define XSAM_SAMPLE_OFFSET                           0x20
@@ -97,7 +96,6 @@
 #define XSAM_ACCEL_STALL_EXT_OFFSET                  0x90
 #define XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
 #define XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
-#define XSAM_ACCEL_START_COUNT_OFFSET				 0x9c
 
 /* SAM Trace Control Masks */
 #define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c

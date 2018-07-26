@@ -49,3 +49,4 @@ add_library(xdpskinny SHARED ${XRT_XDP_PROFILE_DEVICE_FILES})
 install (TARGETS xdpskinny LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 install (FILES "${XRT_XDP_PROFILE_DEVICE_DIR}/xperf.h" DESTINATION ${XRT_INSTALL_DIR}/include)
+

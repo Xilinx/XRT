@@ -29,70 +29,12 @@
 #include <unistd.h>
 #include <sys/file.h>
 
-#include <thread>
-#include <chrono>
-#include <bitset>
-
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
-
-xcldev::device::InstPowerStatus xcldev::device::readPowerStatus() {
-	std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-	std::ifstream ifs(path.c_str(), std::ifstream::binary);
-	xcldev::device::InstPowerStatus current_power_status;
-	const int power_status_size = 3 * sizeof(float);
-	char buffer[power_status_size];
-	if( ifs.good() ) {
-		ifs.read(buffer, power_status_size);
-		if (ifs.gcount() > 0) {
-			auto buffer_power_status = reinterpret_cast<xcldev::device::InstPowerStatus*>(buffer);
-			current_power_status.avgPowerConsumption = buffer_power_status->avgPowerConsumption;
-			current_power_status.instPowerConsumption = buffer_power_status->instPowerConsumption;
-			current_power_status.peakPowerConsumption = buffer_power_status->peakPowerConsumption;
-		}
-		ifs.close();
-	} else {
-		std::cout <<  "ERROR: Failed to read power information. \n";
-		current_power_status = {-1.0, -1.0, -1.0};
-	}
-	return current_power_status;
-}
-
-int xcldev::device::readPowerOnce() {
-	auto currentPowerStatus = xcldev::device::readPowerStatus();
-	std::cout << "Reading current power consumption status: " << std::endl;
-	std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
-	std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
-	std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
-	return 0;
-}
-
-int xcldev::device::readPowerTrace(int sampleFreq, std::string filename) {
-	std::ofstream dump_file;
-	dump_file.open(filename, std::ios_base::app);
-	int interval = 1e6 / sampleFreq;
-	std::cout << "Reading power consumption time-trace at frequency " << sampleFreq << " Hz: " << std::endl;
-	while (true) {
-		auto currentPowerStatus = xcldev::device::readPowerStatus();
-		auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
-		std::cout << std::endl;
-		std::cout << "Timestamp: " << timestamp << std::endl;
-		std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
-		std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
-		std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
-		dump_file << timestamp << ",";
-		dump_file << currentPowerStatus.avgPowerConsumption << ",";
-		dump_file << currentPowerStatus.peakPowerConsumption << ",";
-		dump_file << currentPowerStatus.instPowerConsumption << "\n";
-		dump_file.flush();
-		std::this_thread::sleep_for (std::chrono::microseconds(interval));
-	}
-	return 0;
-}
 
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;
@@ -200,96 +142,6 @@ int xcldev::device::readSPMCounters() {
             << std::endl;
     }
     return 0;
-}
-
-int xcldev::device::readSAMCounters() {
-	xclDebugSAMCounterResults samResult = {0};
-	std::vector<std::string> slotNames;
-	std::vector< std::pair<std::string, std::string> > cuNameportNames;
-	unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, nullptr, &slotNames);
-	if (numSlots == 0) {
-		std::cout << "ERROR: SAM IP does not exist on the platform" << std::endl;
-		return 0;
-	}
-	xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SAM, &samResult);
-	std::cout << "SDx Accel Monitor Counters\n";
-	auto longest_krnl_name_len = std::max_element(slotNames.begin(), slotNames.end(), [](std::string lhs, std::string rhs) {return lhs.length() < rhs.length();})->length();
-	int col1 = std::max(longest_krnl_name_len, strlen("CU Name")) + 4;
-	int col_width = 20;
-	if (samResult.Version[0] <= 0xdeaf0100) {
-		std::cout << std::left
-			<< std::setw(col1) << "CU Name"
-			<< "  " << std::setw(col_width)  << "CU Exec Cnt"
-			<< "  " << std::setw(col_width)  << "Total CU Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Total Int Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Str Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Ext Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Min Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Max Exec Cycl"
-			<< std::endl;
-		for (size_t i = 0; i<samResult.NumSlots; ++i) {
-			std::cout << std::left
-				<< std::setw(col1) << slotNames[i]
-				<< "  " << std::setw(col_width) << samResult.CUExecutionCount[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUExecutionCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalIntStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalStrStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalExtStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.MinExecutionTime[i]
-				<< "  " << std::setw(col_width) << samResult.MaxExecutionTime[i]
-				<< std::endl;
-		}
-	}
-	if (samResult.Version[0] > 0xdeaf0100) {
-		std::cout << std::left
-			<< std::setw(col1) << "CU Name"
-			<< "  " << std::setw(col_width)  << "CU Starts"
-			<< "  " << std::setw(col_width)  << "CU Ends"
-			<< "  " << std::setw(col_width)  << "Total CU Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Total Int Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Str Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Ext Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Min Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Max Exec Cycl"
-			<< std::endl;
-		for (size_t i = 0; i<samResult.NumSlots; ++i) {
-			std::cout << std::left
-				<< std::setw(col1) << slotNames[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUStarts[i]
-				<< "  " << std::setw(col_width) << samResult.CUExecutionCount[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUExecutionCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalIntStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalStrStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalExtStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.MinExecutionTime[i]
-				<< "  " << std::setw(col_width) << samResult.MaxExecutionTime[i]
-				<< std::endl;
-		}
-	}
-	return 0;
-}
-
-int xcldev::device::readBarCounters(unsigned int base, unsigned int size, std::string filename, bool output) {
-	xclDebugBarCounterResults barResult = {1};
-	barResult.base = base;
-	barResult.size = size*sizeof(int);
-	xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_BAR, &barResult);
-	if (output) {
-		std::cout << "writing result to " << filename << " ..." << std::endl;
-		std::ofstream dump_file;
-		dump_file.open(filename, std::ios_base::app);
-		for (unsigned int i = 0; i < size; i++) {
-			dump_file << "0x" << std::hex << barResult.buffer[i] << std::endl;
-		}
-		dump_file.flush();
-		dump_file.close();
-	} else {
-		std::cout << "Reading memory from address 0x" << std::hex << base << ": " << std::endl;
-		for (unsigned int i = 0; i < size; i++) {
-			std::cout << std::dec << i+1 << '\t' << "0x" << std::hex << barResult.buffer[i] << std::endl;
-		}
-	}
-	return 0;
 }
 
 int xcldev::device::readLAPCheckers(int aVerbose) {

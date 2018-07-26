@@ -228,10 +228,6 @@ public:
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
 
-    size_t xclDebugReadSAMCounters(xclDebugSAMCounterResults* samResult);
-    size_t xclDebugReadBarCounters(xclDebugBarCounterResults* barResult);
-
-
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t xclPerfMonStopTrace(xclPerfMonType type);
