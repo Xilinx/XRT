@@ -368,7 +368,7 @@ public:
    * @return
    *   Memory idx
    */
-  size_t 
+  memidx_type
   get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
 
   /**

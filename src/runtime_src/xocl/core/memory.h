@@ -80,15 +80,15 @@ public:
   }
 
   void
-  add_param(void* parameter)
+  add_xlnx_ext_param(void* param)
   {
-    param = parameter;
+    xlnx_ext_param = param;
   }
 
   const void*
-  get_param()
+  get_xlnx_ext_param()
   {
-    return param;
+    return xlnx_ext_param;
   }
 
   context*
@@ -446,7 +446,7 @@ private:
 
   memory_flags_type m_flags {0};
   memory_extension_flags_type m_ext_flags {0};
-  void *param {nullptr};
+  void* xlnx_ext_param {nullptr};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.

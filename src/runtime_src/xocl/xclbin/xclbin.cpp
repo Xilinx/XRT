@@ -951,9 +951,9 @@ class xclbin_data_sections
   };
 
   std::vector<membank> m_membanks;
+  std::vector<int> m_used_connections;
 
 public:
-  std::vector<int> m_used_connections;
   explicit
   xclbin_data_sections(const xocl::xclbin::binary_type& binary)
     : m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
@@ -986,7 +986,7 @@ public:
 #endif
   }
 
-  size_t
+  xocl::xclbin::memidx_type
   get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
   {
     if (!is_valid())
@@ -1001,9 +1001,13 @@ public:
       const char* sub = strstr(ip_name,kernel_name.c_str());
       if (sub!=ip_name)
         continue;
+
+      //This connection already has a device storage allocated, so skip to 
+      //the next connection in the connection range which matches the 
+      //criteria - multiple cu case. 
+      //TODO: Check if this is ever hit. 
       if(std::find(m_used_connections.begin(), m_used_connections.end(), i)
 	     != m_used_connections.end()) {
-	  //This connection already has a device storage allocated.
 	  continue;
       }
       // found the connection that match kernel_name,arg
@@ -1237,7 +1241,7 @@ struct xclbin::impl
   banktag_to_memidx(const std::string& banktag) const
   { return m_sections.banktag_to_memidx(banktag); }
 
-  size_t
+  memidx_type
   get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
   { return m_sections.get_memidx_from_arg(kernel_name, arg); }
 
@@ -1457,7 +1461,7 @@ banktag_to_memidx(const std::string& tag) const
   return m_impl->banktag_to_memidx(tag);
 }
 
-size_t
+xclbin::memidx_type
 xclbin::
 get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
 {

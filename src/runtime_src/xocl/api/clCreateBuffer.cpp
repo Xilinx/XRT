@@ -46,7 +46,7 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
 }
 
 inline void*
-get_param(cl_mem_flags flags, void* host_ptr)
+get_xlnx_ext_param(cl_mem_flags flags, void* host_ptr)
 {
   return (flags & CL_MEM_EXT_PTR_XILINX)
     ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->param
@@ -141,7 +141,7 @@ clCreateBuffer(cl_context   context,
 
   // set fields in cl_buffer
   buffer->add_ext_flags(get_xlnx_ext_flags(flags,host_ptr));
-  buffer->add_param(get_param(flags,host_ptr));
+  buffer->add_xlnx_ext_param(get_xlnx_ext_param(flags,host_ptr));
 
   // allocate device buffer object if context has only one device
   // and if this is not a progvar (clCreateProgramWithBinary)

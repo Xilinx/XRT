@@ -431,7 +431,7 @@ allocate_buffer_object(memory* mem)
     //Rest 24 bits directly indexes into mem topology section OR.
     //have legacy one-hot encoding.
     auto flag = mem->get_ext_flags();
-    auto param = mem->get_param();
+    auto param = mem->get_xlnx_ext_param();
     int32_t memidx = 0;
     if(param) {
       //param<==>kernel; flag<==>arg_index
@@ -458,26 +458,6 @@ allocate_buffer_object(memory* mem)
     catch (const std::bad_alloc&) {
     }
   }
-
-//  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
-//  auto flag = (mem->get_ext_flags()) & 0xffffff;
-//  if (flag && xdevice->hasBankAlloc()) {
-//    auto bank = myctz(flag);
-//    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-//
-//    // HBM support does not use bank tag, host code must use proper enum value
-//    if(memidx==-1)
-//      memidx = bank;
-//
-//    // Determine the bank number for the buffers
-//    try {
-//      auto boh = alloc(mem,memidx);
-//      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
-//      return boh;
-//    }
-//    catch (const std::bad_alloc&) {
-//    }
-//  }
 
   // If buffer could not be allocated on the requested bank,
   // or if no bank was specified, then allocate on the bank
@@ -997,10 +977,6 @@ load_program(program* program)
       for (auto& clock : sclocks)
 	target_freqs[idx++] = clock.frequency;
 
-//      for(int i = 0; i < 4; ++i) {
-//	std::cout << "Original frequency calc: " << i  << "\t" << target_freqs[i] << std::endl;
-//      }
-
       auto rv = xdevice->reClock2(0,target_freqs);
 
       if (rv.valid() && rv.get())
@@ -1009,59 +985,6 @@ load_program(program* program)
   }
 
 
-//  // reclocking - new
-//  if (xrt::config::get_frequency_scaling())
-//  {
-//    unsigned short idx = 0;
-//    unsigned short target_freqs[4] = {0};
-//    const clock_freq_topology* freqs = m_xclbin.get_clk_freq_topology();
-//    if (freqs)
-//    {
-//      int16_t count = 0;
-//      std::vector<const clock_freq*> data_clks;
-//      std::vector<const clock_freq*> kernel_clks;
-//      std::vector<const clock_freq*> system_clks;
-//
-//      while (count < freqs->m_count)
-//      {
-//	  const clock_freq* freq = &(freqs->m_clock_freq[count++]);
-//	  if(freq->m_type == CT_DATA)
-//	    data_clks.emplace_back(freq);
-//	  else if(freq->m_type == CT_KERNEL)
-//	    kernel_clks.emplace_back(freq);
-//	  else if(freq->m_type == CT_SYSTEM)
-//	    system_clks.emplace_back(freq);
-//	  else
-//	    throw xocl::error(CL_INVALID_PROGRAM,"Unknown clock type in xclbin");
-//      }
-//
-//      if(data_clks.size() !=1)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Data clocks not found in xclbin");
-//      if(kernel_clks.size() !=1)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Kernel clocks not found in xclbin");
-//      if(system_clks.size() > 2)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
-//
-//
-//      target_freqs[0] = data_clks.at(0)->m_freq_Mhz;
-//      target_freqs[1] = kernel_clks.at(0)->m_freq_Mhz;
-//      idx = 2;
-//      for(auto & sys_clks: system_clks) {
-//	target_freqs[idx] = sys_clks->m_freq_Mhz;
-//	idx++;
-//      }
-//
-//      std::string device_name = get_unique_name();
-//      profile::set_kernel_clock_freq(device_name, target_freqs[0]);
-//
-////      for(int i = 0; i < 4; ++i) {
-////	  std::cout << "New section based frequency: " << i << "\t" << target_freqs[i] << std::endl;
-////      }
-//
-//      auto rv = xdevice->reClock2(0,target_freqs);
-//
-//      if (rv.valid() && rv.get())
-//	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
   // programmming
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
