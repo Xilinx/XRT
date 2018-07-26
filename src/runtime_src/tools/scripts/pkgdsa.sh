@@ -154,7 +154,16 @@ doxbinst()
         /bin/rm -rf $opt_pkgdir/xbinst/$opt_dsa
     fi
     $opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa
+    test=$?
     popd >/dev/null
+    if [ "$test" != 0 ]; then
+	echo
+	echo
+	echo "There was an unexpected ERROR executing: "
+	echo "$opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa"
+	echo "################ xbinst failed! ###############"
+	exit $test
+    fi
 }
 
 dodebdev()
