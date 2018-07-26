@@ -195,6 +195,53 @@ namespace xocl {
     return size;
   }
 
+  size_t XOCLShim::xclDebugReadSAMCounters(xclDebugSAMCounterResults* samResult) {
+	  if (mLogStream.is_open()) {
+		mLogStream << __func__ << ", " << std::this_thread::get_id()
+		<< ", " << XCL_PERF_MON_ACCEL << ", " << samResult
+		<< ", Read device counters..." << std::endl;
+	  }
+	  size_t size = 0;
+	  uint64_t sam_offsets[] = {
+	  	 XSAM_VERSION_OFFSET,
+		 XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
+		 XSAM_ACCEL_EXECUTION_CYCLES_OFFSET,
+		 XSAM_ACCEL_STALL_INT_OFFSET,
+		 XSAM_ACCEL_STALL_STR_OFFSET,
+		 XSAM_ACCEL_STALL_EXT_OFFSET,
+		 XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
+		 XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
+		 XSAM_ACCEL_START_COUNT_OFFSET
+	  };
+	  uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
+	  uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, nullptr, XSAM_MAX_NUMBER_SLOTS);
+	  uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+	  samResult->NumSlots = numSlots;
+	  for (uint32_t s=0; s < numSlots; s++) {
+		  uint32_t sampleInterval;
+		  size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_SAMPLE_OFFSET, &sampleInterval, 4);
+		  for (int c=0; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+			  size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
+		  }
+		  samResult->Version[s] 					= temp[0];
+		  samResult->CUExecutionCount[s] 			= temp[1];
+		  samResult->TotalCUExecutionCycles[s] 		= temp[2];
+		  samResult->TotalIntStallCycles[s] 		= temp[3];
+		  samResult->TotalStrStallCycles[s] 		= temp[4];
+		  samResult->TotalExtStallCycles[s]			= temp[5];
+		  samResult->MinExecutionTime[s] 			= (temp[6] == 4294967295) ? 0 : temp[6];
+		  samResult->MaxExecutionTime[s] 			= temp[7];
+		  samResult->TotalCUStarts[s] 				= temp[8];
+	  }
+	  return size;
+  }
+
+  size_t XOCLShim::xclDebugReadBarCounters(xclDebugBarCounterResults* barResult) {
+	  size_t size = 0;
+	  size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, barResult->base, &barResult->buffer[0], barResult->size);
+	  return size;
+  }
+
   // Read APM performance counters
   
   size_t XOCLShim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
@@ -261,6 +308,10 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+    case XCL_DEBUG_READ_TYPE_SAM:
+      return drv->xclDebugReadSAMCounters(reinterpret_cast<xclDebugSAMCounterResults*>(debugResults));
+    case XCL_DEBUG_READ_TYPE_BAR:
+      return drv->xclDebugReadBarCounters(reinterpret_cast<xclDebugBarCounterResults*>(debugResults));
     default:
       ;
   };

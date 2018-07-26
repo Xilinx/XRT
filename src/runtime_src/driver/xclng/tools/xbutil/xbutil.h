@@ -84,19 +84,32 @@ enum command {
     DD,
     STATUS,
     VALIDATE,
-    CMD_MAX
+    CMD_MAX,
+	POWER
 };
 enum subcommand {
     MEM_READ = 0,
     MEM_WRITE,
     STATUS_SPM,
     STATUS_LAPC,
-    STATUS_UNSUPPORTED
+	STATUS_SAM,
+	STATUS_BAR,
+    STATUS_UNSUPPORTED,
+	POWER_ONCE,
+	POWER_TRACE
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
-    STATUS_LAPC_MASK = 0x2
+    STATUS_LAPC_MASK = 0x2,
+	STATUS_SAM_MASK = 0x4,
+	STATUS_BAR_MASK = 0x8
+};
+
+enum powermask {
+	POWER_NONE_MASK = 0x0,
+	POWER_ONCE_MASK = 0x1,
+	POWER_TRACE_MASK = 0x2
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -115,14 +128,19 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("validate", VALIDATE)
+    std::make_pair("validate", VALIDATE),
+	std::make_pair("power", POWER)
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("read", MEM_READ),
     std::make_pair("write", MEM_WRITE),
     std::make_pair("spm", STATUS_SPM),
-    std::make_pair("lapc", STATUS_LAPC)
+	std::make_pair("sam", STATUS_SAM),
+    std::make_pair("lapc", STATUS_LAPC),
+	std::make_pair("bar", STATUS_BAR),
+	std::make_pair("once", POWER_ONCE),
+	std::make_pair("trace", POWER_TRACE)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -705,9 +723,21 @@ public:
    //Debug related functionality.
     uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
 
+    struct InstPowerStatus {
+    	float avgPowerConsumption;
+    	float instPowerConsumption;
+    	float peakPowerConsumption;
+    };
+
+    InstPowerStatus readPowerStatus();
+    int readPowerOnce();
+    int readPowerTrace(int sampleFreq, std::string filename);
+
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
     int readSPMCounters();
+    int readSAMCounters();
+    int readBarCounters(unsigned int base, unsigned int size, std::string filename, bool output);
     int readLAPCheckers(int aVerbose);
     int print_debug_ip_list (int aVerbose);
 
