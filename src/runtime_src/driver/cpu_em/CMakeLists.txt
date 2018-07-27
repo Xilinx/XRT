@@ -26,8 +26,8 @@ add_library(xrt_swemu SHARED ${CURR_SOURCE}
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
-set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+#set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
+#  SOVERSION ${XRT_VERSION_MAJOR})
 
 target_link_libraries(xrt_swemu
   ${BOOST_FILESYSTEM_LIBRARY}
@@ -38,4 +38,3 @@ target_link_libraries(xrt_swemu
   )
 
 install (TARGETS xrt_swemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
-
