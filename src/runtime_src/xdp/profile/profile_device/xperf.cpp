@@ -26,6 +26,9 @@
 #include <cstring>
 #include <ctime>
 #include <unistd.h>
+#include <vector>
+#include <queue>
+
 #include "xperf.h"
 
 // *****************************************************************************
@@ -828,19 +831,22 @@ profile_end_summary(xclDeviceHandle s_handle)
 // *****************************************************************************
 
 void
-profile_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace, const std::string stall_trace)
+profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, const char* stall_trace)
 {
   // Evaluate arguments
   XDP::mDataTransferTrace = data_transfer_trace;
   XDP::mStallTrace = stall_trace;
   xclDeviceHandle dev_handle = s_handle;
-  uint32_t traceOption = (data_transfer_trace == "coarse") ? 0x1 : 0x0;
-  if (stall_trace == "dataflow")    traceOption |= (0x1 << 2);
-  else if (stall_trace == "pipe")   traceOption |= (0x1 << 3);
-  else if (stall_trace == "memory") traceOption |= (0x1 << 4);
-  else if (stall_trace == "all")    traceOption |= (0x7 << 2);
-  else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", stall_trace);
+  uint32_t traceOption = (XDP::mDataTransferTrace == "coarse") ? 0x1 : 0x0;
+  if (XDP::mStallTrace == "dataflow")    traceOption |= (0x1 << 2);
+  else if (XDP::mStallTrace == "pipe")   traceOption |= (0x1 << 3);
+  else if (XDP::mStallTrace == "memory") traceOption |= (0x1 << 4);
+  else if (XDP::mStallTrace == "all")    traceOption |= (0x7 << 2);
+  else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
   printf("xma_plg_start_trace: dev_handle=%p, traceOption=%d\n", dev_handle, traceOption);
+
+  //Make an initialization call for time
+  time_ns();
 
   // Start trace (also reads debug_ip_layout)
   xclPerfMonStartTrace(dev_handle, XCL_PERF_MON_MEMORY, traceOption);

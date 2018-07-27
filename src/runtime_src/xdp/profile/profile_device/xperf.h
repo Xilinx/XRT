@@ -17,20 +17,6 @@
 #ifndef _XMA_PROFILE_H_
 #define _XMA_PROFILE_H_
 
-#ifdef __cplusplus
-#include <cstdint>
-#else
-#include <stdint.h>
-#include <stdbool.h>
-#endif
-
-#include <stddef.h>
-#include <fstream>
-#include <queue>
-//#include "xma.h"
-//#include "lib/xmahw.h"
-//#include "lib/xmahw_hal.h"
-//#include "driver/include/xclhal2.h"
 #include "xclhal2.h"
 
 /**
@@ -88,8 +74,7 @@ void profile_end_summary(xclDeviceHandle s_handle);
  *  @param stall_transfer       Stall trace setting (options: memory|dataflow|pipe|all|off)
  *
  */
-void profile_start_trace(xclDeviceHandle s_handle, const std::string data_transfer_trace = "off",
-                         const std::string stall_trace = "off");
+void profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, const char* stall_trace);
 
 /**
  *  @brief Read timeline trace
