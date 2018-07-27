@@ -50,4 +50,5 @@ cd $BUILDDIR
 cd Release
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 make -j4 DESTDIR=$PWD install
+make package
 cd $here
