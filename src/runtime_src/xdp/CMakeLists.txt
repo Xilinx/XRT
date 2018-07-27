@@ -44,9 +44,9 @@ set(XRT_XDP_ALL_SRC
   )
 
 add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})
-add_library(xdpskinny SHARED ${XRT_XDP_PROFILE_DEVICE_FILES})
+add_library(xdp SHARED ${XRT_XDP_PROFILE_DEVICE_FILES})
 
-install (TARGETS xdpskinny LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 install (FILES "${XRT_XDP_PROFILE_DEVICE_DIR}/xperf.h" DESTINATION ${XRT_INSTALL_DIR}/include)
 
