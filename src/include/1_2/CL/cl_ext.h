@@ -294,10 +294,125 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 // -- Work in progress - new QDMA APIs
 //
 //struct rte_mbuf;
+/*
+ * DOC: OpenCL Stream Queue APIs
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * These structs and functions are used for the new DMA engine QDMA.
+ */
+#if 0
+/**
+ * cl_queue_flags. Type of the queue , eg set to CL_QUEUE_READ_ONLY for 
+ * read only. Used in clCreateQueue()
+ */
+typedef cl_bitfield         cl_queue_flags;
+#define CL_QUEUE_READ_ONLY			    (1 << 0)
+#define CL_QUEUE_WRITE_ONLY                         (1 << 1)
+
+/**
+ * cl_queue_attributes. eg set it to CL_QUEUE_STREAM for stream mode. Used
+ * in clCreateQueue()
+ */
+typedef cl_uint             cl_queue_attributes;
+#define CL_QUEUE_STREAM                             (1 << 0)
+#define CL_QUEUE_PACKET                             (1 << 1)
+
+/**
+ * cl_queue_attributes. eg set it to CL_QUEUE_CDH for customer defined header.
+ * Used in clReadQueue() and clWriteQueue()
+ */
+typedef cl_uint             cl_queue_xfer_req;
+#define CL_QUEUE_CDH                                (1 << 0)
+#define CL_QUEUE_PARTIAL                            (1 << 1)
+`
+typedef struct _cl_queue*      cl_queue;
+typedef struct _cl_queue_mem*  cl_queue_mem;
+
+/**
+ * clCreateQueue - create the queue for reading or writing.
+ * @device_id   : The device handle on which queue is to be created.
+ * @flags       : The cl_queue_flags
+ * @attributes  : The attributes of the requested queue.
+ * @errcode_ret : The return value eg CL_SUCCESS
+ */
+extern CL_API_ENTRY cl_queue CL_API_CALL 
+clCreateQueue(cl_device_id         /* device_id */,
+	cl_queue_flags flags,      /* flags */
+	const cl_queue_attributes*,/* attributes*/
+	cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clReleaseQueue - Once done with the queue, release it and its associated
+ * objects
+ * @queue : The queue to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL 
+clReleaseQueue(cl_queue /*queue*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clWriteQueue - write data to queue
+ * @device_id : The device
+ * @queue     : The queue
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clWriteQueue(cl_device_id     /* device_id*/,
+	cl_queue              /* queue*/
+	const void *          /* ptr */,
+	size_t                /* offset */,
+	size_t                /* size */,
+	cl_queue_xfer_req     /* req_type*/,
+	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clWriteQueue - write data to queue
+ * @device_id : The device
+ * @queue     : The queue
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReadQueue(cl_device_id      /* device_id*/,
+	cl_queue              /* queue*/
+	const void *          /* ptr */,
+	size_t                /* offset */,
+	size_t                /* size */,
+	cl_queue_xfer_req     /* buffer */,
+	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clCreateQueueBuffer - Alloc buffer used for read and write.
+ * @queue      : The queue to associate the buffer with
+ * @size       : The size of the buffer
+ * errcode_ret : The return value, eg CL_SUCCESS
+ * Returns cl_queue_mem
+ */
+extern CL_API_ENTRY cl_queue_mem CL_API_CALL 
+clCreateQueueBuffer(cl_device_id device,
+	cl_queue              /* queue*/,
+	size_t                /* size*/,
+	cl_int *              /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clReleaseQueueBuffer - Release the buffer created.
+ * @cl_queue_mem : The queue memory to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReleaseQueueBuffer(cl_queue_mem /*queue memobj */) CL_API_SUFFIX__VERSION_1_0;
+
+#endif
+//End QDMA APIs
+
 typedef struct _cl_mem * rte_mbuf;
 typedef struct _cl_pipe * cl_pipe;
-
-
 /* New flag RTE_MBUF_READ_ONLY or RTE_MBUF_WRITE_ONLY
  * OpenCL runtime will use rte_eth_rx_queue_setup to create DPDK RX Ring. The API will return cl_pipe object.
  * OpenCL runtime will use rte_eth_tx_queue_setup to create DPDK TX Ring. The API will return cl_pipe object.

@@ -410,6 +410,15 @@ public:
   }
 
   /**
+   * @return
+   *   Name of kernel
+   */
+  const std::string&
+  get_name_from_constructor() const
+  {
+    return m_name;
+  }
+  /**
    * Return list of instances (CUs) in this kernel
    *
    * This function directly access the kernel symbol to
