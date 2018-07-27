@@ -738,12 +738,14 @@ namespace XDP {
       if (tr.Type == "Kernel") {
         std::string workGroupSize;
         // TODO: get trace string (we don't know the CU name or the work group size)
-        traceName = "KERNEL|" + deviceName + "|" + binaryName + "|" + cuName + "|1:1:1";
+        traceName = "KERNEL|" + deviceName + "|" + binaryName + "|" + "kernel" + "|1:1:1|" + cuName ;
         //rts->getProfileManager()->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
         if (traceName.empty()) continue;
-        size_t pos = traceName.find_last_of("|");
-        workGroupSize = traceName.substr(pos + 1);
-        traceName = traceName.substr(0, pos);
+
+        //size_t pos = traceName.find_last_of("|");
+        //workGroupSize = traceName.substr(pos + 1);
+        //traceName = traceName.substr(0, pos);
+        workGroupSize = "1";
 
         writeTableRowStart(ofs);
         writeTableCells(ofs, startStr.str(), traceName, "START", "", workGroupSize);
@@ -896,7 +898,7 @@ profile_read_trace(xclDeviceHandle s_handle)
   std::string binaryName = "binary";
 
   // Data transfers
-  xclTraceResultsVector traceVector;
+  xclTraceResultsVector traceVector = {0};
   xclPerfMonReadTrace(dev_handle, XCL_PERF_MON_MEMORY, traceVector);
   XDP::logTrace(XCL_PERF_MON_MEMORY, deviceName, binaryName, traceVector, XDP::mTraceStream);
 
