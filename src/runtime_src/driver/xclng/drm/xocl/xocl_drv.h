@@ -126,11 +126,6 @@ struct xocl_connectivity {
         struct connectivity     *connections;
 };
 
-struct xocl_layout {
-        u64                     size;
-        struct ip_layout        *layout;
-};
-
 struct xocl_debug_layout {
         u64                     size;
         struct debug_ip_layout  *layout;
@@ -597,4 +592,10 @@ void xocl_fini_str_qdma(void);
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);
 
+/* xclbin helpers */
+
+static inline size_t sizeof_ip_layout(const struct ip_layout *layout)
+{
+	return layout ? offsetof(struct ip_layout, m_ip_data) + layout->m_count * sizeof(struct ip_data) : 0;
+}
 #endif

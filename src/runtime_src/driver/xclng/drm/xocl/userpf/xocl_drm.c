@@ -493,29 +493,29 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
-        struct xocl_mem_topology *topology;
-        u16 i, ddr;
+	struct xocl_mem_topology *topology;
+	u16 i, ddr;
 
-        topology = &xdev->topology;
+	topology = &xdev->topology;
 
-        ddr = topology->bank_count;
-        for (i = 0; i < ddr; i++) {
-                if(topology->m_data[i].m_used) {
-                        userpf_info(xdev, "Taking down DDR : %d",
-                                ddr);
-                        drm_mm_takedown(&xdev->mm[i]);
-                }
-        }
+	ddr = topology->bank_count;
+	for (i = 0; i < ddr; i++) {
+		if(topology->m_data[i].m_used) {
+			userpf_info(xdev, "Taking down DDR : %d",
+				ddr);
+			drm_mm_takedown(&xdev->mm[i]);
+		}
+	}
 
-        vfree(topology->m_data);
-        vfree(topology->topology);
-        memset(topology, 0, sizeof(struct xocl_mem_topology));
-        vfree(xdev->connectivity.connections);
-        memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
-        vfree(xdev->layout.layout);
-        memset(&xdev->layout, 0, sizeof(xdev->layout));
-        vfree(xdev->debug_layout.layout);
-        memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
+	vfree(topology->m_data);
+	vfree(topology->topology);
+	memset(topology, 0, sizeof(struct xocl_mem_topology));
+	vfree(xdev->connectivity.connections);
+	memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
+	vfree(xdev->layout);
+	xdev->layout = NULL;
+	vfree(xdev->debug_layout.layout);
+	memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
