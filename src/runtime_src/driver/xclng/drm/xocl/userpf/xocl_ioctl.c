@@ -189,7 +189,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 					       pid_nr(task_tgid(current)));
 
 	if (ret) {
-                // Locking of xclbin failed, give up our context
+        // Locking of xclbin failed, give up our context
 		clear_bit(args->cu_index, client->cu_bitmap);
 		goto out;
 	}
