@@ -91,7 +91,7 @@ struct xocl_dev	{
 	struct mutex			stat_lock;
 
 	struct xocl_mem_topology	topology;
-        struct xocl_layout		layout;
+        struct ip_layout	       *layout;
         struct xocl_debug_layout	debug_layout;
         struct xocl_connectivity	connectivity;
 
