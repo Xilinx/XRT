@@ -320,8 +320,9 @@ enum drm_xocl_ctx_code {
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
         xuid_t   xclbin_id;
-        uint32_t cu_bitmap[4];
+        uint32_t cu_index;
         uint32_t flags;
+        // unused
         uint32_t handle;
 };
 

@@ -132,20 +132,20 @@ static struct bin_attribute debug_ip_layout_attr = {
 static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct xocl_dev *xdev;
+	const struct xocl_dev *xdev;
 	u32 nread = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->layout.size)
+	if (offset >= sizeof_ip_layout(xdev->layout))
 		return 0;
 
-	if (count < xdev->layout.size - offset)
+	if (count < sizeof_ip_layout(xdev->layout) - offset)
 		nread = count;
 	else
-		nread = xdev->layout.size - offset;
+		nread = sizeof_ip_layout(xdev->layout) - offset;
 
-	memcpy(buffer, ((char *)xdev->layout.layout) + offset, nread);
+	memcpy(buffer, ((char *)xdev->layout) + offset, nread);
 
 	return nread;
 }

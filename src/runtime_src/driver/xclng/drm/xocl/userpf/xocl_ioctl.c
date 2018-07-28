@@ -142,12 +142,17 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
-		ret = -EPERM;
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if (args->cu_index >= xdev->layout->m_count) {
+		ret = -EFAULT;
 		goto out;
 	}
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		bitmap_zero(client->cu_bitmap, MAX_CUS);
+		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EFAULT;
 		goto out;
 	}
 
@@ -156,12 +161,11 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	if (!bitmap_empty(client->cu_bitmap, MAX_CUS)) {
-		ret = -EBUSY;
+	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
+		ret = -EPERM;
 		goto out;
 	}
 
-	bitmap_copy(client->cu_bitmap, (const long unsigned int *)args->cu_bitmap, MAX_CUS);
 	xocl_info(dev->dev, "CTX ioctl");
 out:
 	mutex_unlock(&xdev->ctx_list_lock);
@@ -256,6 +260,46 @@ static uint live_client_size(struct xocl_dev *xdev)
 		count++;
 	}
 	return count;
+}
+
+static int xocl_read_ip_layout(struct xocl_dev *xdev, const struct axlf* copy_buffer, char __user *buffer)
+{
+	int err = 0;
+	const struct axlf_section_header *memHeader = get_axlf_section(copy_buffer, IP_LAYOUT);
+	printk(KERN_INFO "Finding IP_LAYOUT section\n");
+
+	if (memHeader == 0) {
+		printk(KERN_INFO "Did not find IP_LAYOUT section.\n");
+		return 0;
+	}
+
+	printk(KERN_INFO "%s XOCL: IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, copy_buffer->m_header.m_length);
+
+	if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > copy_buffer->m_header.m_length) {
+		printk(KERN_INFO "%s XOCL: IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, copy_buffer->m_header.m_length);
+		err = -EINVAL;
+		goto error_out;
+	}
+	printk(KERN_INFO "XOCL: Marker 5.1\n");
+	buffer += memHeader->m_sectionOffset;
+	xdev->layout = vmalloc(memHeader->m_sectionSize);
+	err = copy_from_user(xdev->layout, buffer, memHeader->m_sectionSize);
+	if (sizeof_ip_layout(xdev->layout) > memHeader->m_sectionSize) {
+		err = -EINVAL;
+		goto error_out;
+	}
+
+	printk(KERN_INFO "XOCL: Marker 5.2\n");
+	if (err)
+		goto error_out;
+	printk(KERN_INFO "XOCL: Marker 5.3\n");
+	return 0;
+
+error_out:
+	if (xdev->layout)
+		vfree(xdev->layout);
+	xdev->layout = NULL;
+	return err;
 }
 
 static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
@@ -363,29 +407,9 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	}
 
 	//----
-	printk(KERN_INFO "Finding IP_LAYOUT section\n");
-	memHeader = get_axlf_section(copy_buffer, IP_LAYOUT);
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find IP_LAYOUT section.\n");
-	} else {
-		printk(KERN_INFO "%s XOCL: IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, bin_obj.m_header.m_length);
-
-		if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > bin_obj.m_header.m_length) {
-			printk(KERN_INFO "%s XOCL: IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, bin_obj.m_header.m_length);
-			err = -EINVAL;
-			goto done;
-		}
-		printk(KERN_INFO "XOCL: Marker 5.1\n");
-		buffer += memHeader->m_sectionOffset;
-		xdev->layout.layout = vmalloc(memHeader->m_sectionSize);
-		err = copy_from_user(xdev->layout.layout, buffer, memHeader->m_sectionSize);
-		printk(KERN_INFO "XOCL: Marker 5.2\n");
-		if (err)
-			goto done;
-		xdev->layout.size = memHeader->m_sectionSize;
-		printk(KERN_INFO "XOCL: Marker 5.3\n");
-	}
-
+	err = xocl_read_ip_layout(xdev, copy_buffer, (char __user *)axlf_obj_ptr->xclbin);
+	if (err)
+		goto done;
 	//----
 	printk(KERN_INFO "Finding DEBUG_IP_LAYOUT section\n");
 	memHeader = get_axlf_section(copy_buffer, DEBUG_IP_LAYOUT);
@@ -410,6 +434,7 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 		xdev->debug_layout.size = memHeader->m_sectionSize;
 		printk(KERN_INFO "XOCL: Marker 6.3\n");
 	}
+
 
 	//---
 	printk(KERN_INFO "Finding CONNECTIVITY section\n");
@@ -533,13 +558,16 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
-	if (err != 0)
+	if (err != 0) {
 		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 			pid_nr(task_tgid(current)));
+		if (xdev->layout)
+			vfree(xdev->layout);
+		xdev->layout = NULL;
+	}
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(copy_buffer);
 	return err;
-
 }
 
 int xocl_read_axlf_ioctl(struct drm_device *dev,
