@@ -92,15 +92,15 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)       
-#define RHEL_P2P_SUPPORT  1         
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
+#define RHEL_P2P_SUPPORT  1
 #else
 #define RHEL_P2P_SUPPORT  0
-#endif    
-#else
-#define RHEL_P2P_SUPPORT  0 
 #endif
-	
+#else
+#define RHEL_P2P_SUPPORT  0
+#endif
+
 extern struct class *xrt_class;
 
 struct xocl_dev;
@@ -124,11 +124,6 @@ struct xocl_mem_topology {
 struct xocl_connectivity {
         u64                     size;
         struct connectivity     *connections;
-};
-
-struct xocl_layout {
-        u64                     size;
-        struct ip_layout        *layout;
 };
 
 struct xocl_debug_layout {
@@ -594,4 +589,10 @@ void xocl_fini_str_qdma(void);
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);
 
+/* xclbin helpers */
+
+static inline size_t sizeof_ip_layout(const struct ip_layout *layout)
+{
+	return layout ? offsetof(struct ip_layout, m_ip_data) + layout->m_count * sizeof(struct ip_data) : 0;
+}
 #endif
