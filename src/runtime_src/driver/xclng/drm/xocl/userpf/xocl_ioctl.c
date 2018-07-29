@@ -135,6 +135,7 @@ out:
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		   struct drm_file *filp)
 {
+	bool acquire_lock = false;
 	struct drm_xocl_ctx *args = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
@@ -153,6 +154,14 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
 		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EFAULT;
+		if (ret) // No context was previously allocated for the this CU
+			goto out;
+
+		xdev->ip_reference[args->cu_index]--;
+		if (bitmap_empty(client->cu_bitmap, MAX_CUS)) // If no context exists for any CU, give up the xclbin lock
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
+							 pid_nr(task_tgid(current)));
+		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
 		goto out;
 	}
 
@@ -161,12 +170,32 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
+	if ((args->flags & XOCL_CTX_SHARED) != 0x0) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+		acquire_lock = true;
+
 	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
+		// Context was previously allocated for the same CU, cannot allocate again
 		ret = -EPERM;
 		goto out;
 	}
 
-	xocl_info(dev->dev, "CTX ioctl");
+	if (acquire_lock) // Now we have 1 context on a CU, lock the xclbin
+		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
+					       pid_nr(task_tgid(current)));
+
+	if (ret) {
+                // Locking of xclbin failed, give up our context
+		clear_bit(args->cu_index, client->cu_bitmap);
+		goto out;
+	}
+
+	xdev->ip_reference[args->cu_index]++;
+	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
 out:
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;
