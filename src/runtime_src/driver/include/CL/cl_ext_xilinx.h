@@ -42,7 +42,6 @@ extern "C" {
 /**************************
 * Xilinx vendor extensions*
 **************************/
-
 #define CL_XILINX_UNIMPLEMENTED  -20
 
 /* New flags for cl_queue */
@@ -130,6 +129,14 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 typedef struct _cl_mem * rte_mbuf;
 typedef struct _cl_pipe * cl_pipe;
 
+// incorrectly placed in cl.h
+typedef cl_uint cl_pipe_attributes;
+typedef struct _cl_image_filler_xilinx {
+    cl_uint                 t0;
+    cl_uint                 t1;
+    cl_uint                 t2;
+    cl_uint                 t3;
+} cl_image_fillier_xilinx;
 
 /* New flag RTE_MBUF_READ_ONLY or RTE_MBUF_WRITE_ONLY
  * OpenCL runtime will use rte_eth_rx_queue_setup to create DPDK RX Ring. The API will return cl_pipe object.
@@ -227,6 +234,7 @@ typedef cl_uint cl_program_target_type;
 #define CL_PROGRAM_TARGET_TYPE_HW       0x1
 #define CL_PROGRAM_TARGET_TYPE_SW_EMU   0x2
 #define CL_PROGRAM_TARGET_TYPE_HW_EMU   0x4
+
 
 #ifdef __cplusplus
 }
