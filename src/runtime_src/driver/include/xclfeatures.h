@@ -95,6 +95,8 @@ enum FeatureBitMask
    ,PEER_TO_PEER         =   0x0000000000010000       /* bits 17  : Bar 2 is a peer to peer bar*/
    ,UUID                 =   0x0000000000020000       /* bits 18  : UUID enabled. uuid[16] field is valid*/
    ,HBM                  =   0x0000000000040000       /* bits 19  : Device has HBM's. HBMCount/Size fields are valid*/
+   ,CDMA                 =   0x0000000000080000       /* bits 21  : Device has CDMA*/
+   ,QDMA                 =   0x0000000000100000       /* bits 20  : Device has QDMA*/
 
    //....more
 };
@@ -126,8 +128,13 @@ struct FeatureRomHeader {
   unsigned char uuid[16];             // UUID of the DSA.
   uint8_t HBMCount;                   // Number of HBMs
   uint8_t HBMSize;                    // Size of (each) HBM in GB
+  uint16_t CDMAStructOffset;          // offset to the first CDMA struct (laid out one after another) 
 };
 
+struct CDMA {
+  uint8_t   CDMACount;                // Number of CDMA
+  uint64_t  CDMABaseAddress;          // Base address of each CDMA)
+};
 
 #endif // xclfeatures_h_
 
