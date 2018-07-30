@@ -779,6 +779,7 @@ configure(struct xocl_cmd *xcmd)
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	bool ert = xocl_mb_sched_on(xdev);
+	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
 	int i;
@@ -814,12 +815,19 @@ configure(struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
 	}
 
+	if (cdma) {
+		exec->cu_addr_map[exec->num_cus] = 0x250000;
+		SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",exec->num_cus,exec->cu_addr_map[exec->num_cus]);
+		exec->num_cus = ++cfg->num_cus;
+	}
+
 	if (ert && cfg->ert) {
 		SCHED_DEBUG("++ configuring embedded scheduler mode\n");
 		exec->ops = &mb_ops;
 		exec->polling_mode = cfg->polling;
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
+		cfg->cdma = cdma ? 1 : 0;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -827,11 +835,12 @@ configure(struct xocl_cmd *xcmd)
 		exec->polling_mode = 1;
 	}
 
-	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
+	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
 		 ,is_ert(exec)
 		 ,exec->num_slots
 		 ,cfg->cu_dma ? 1 : 0
 		 ,cfg->cu_isr ? 1 : 0
+		 ,cfg->cdma ? 1 : 0
 		 ,exec->num_cus
 		 ,exec->cu_shift_offset
 		 ,exec->cu_base_addr

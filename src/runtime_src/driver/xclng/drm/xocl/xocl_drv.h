@@ -92,15 +92,15 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)       
-#define RHEL_P2P_SUPPORT  1         
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
+#define RHEL_P2P_SUPPORT  1
 #else
 #define RHEL_P2P_SUPPORT  0
-#endif    
-#else
-#define RHEL_P2P_SUPPORT  0 
 #endif
-	
+#else
+#define RHEL_P2P_SUPPORT  0
+#endif
+
 extern struct class *xrt_class;
 
 struct xocl_dev;
@@ -223,6 +223,7 @@ struct xocl_rom_funcs {
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
+	bool (*cdma_on)(struct platform_device *pdev);
 	u16 (*get_ddr_channel_count)(struct platform_device *pdev);
 	u64 (*get_ddr_channel_size)(struct platform_device *pdev);
 	bool (*is_are)(struct platform_device *pdev);
@@ -243,6 +244,8 @@ struct xocl_rom_funcs {
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_mgmt_on(ROM_DEV(xdev)) : false)
 #define	xocl_mb_sched_on(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
+#define	xocl_cdma_on(xdev)		\
+	(ROM_DEV(xdev) ? ROM_OPS(xdev)->cdma_on(ROM_DEV(xdev)) : false)
 #define	xocl_get_ddr_channel_count(xdev) \
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->get_ddr_channel_count(ROM_DEV(xdev)) :\
 	0)
