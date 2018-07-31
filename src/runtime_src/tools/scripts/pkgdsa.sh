@@ -464,6 +464,16 @@ maintainer: soren.soe@xilinx.com
 
 EOF
 
+cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
+
+#!/bin/bash
+echo "Looking for boards whose DSA needs updating..."
+/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa}
+exit 0
+
+EOF
+    chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
+
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
@@ -505,6 +515,11 @@ requires: $dsa >= $version
 Xilinx development DSA.
 
 %prep
+
+%post
+echo "Looking for boards whose DSA needs updating..."
+/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa}
+exit 0
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw

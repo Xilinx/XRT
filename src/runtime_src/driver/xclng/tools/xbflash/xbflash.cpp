@@ -28,7 +28,7 @@ const char* UsageMessages[] = {
     "xbflash [-d device] -p msp432_firmware",
     "xbflash [-d device] -a dsa",
 };
-const char* SudoMessage = "ERROR: XBFLASH requires root privileges.";
+const char* SudoMessage = "ERROR: root privileges required.";
 int scanDevices( void );
 int startIdx = 0;
 
