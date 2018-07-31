@@ -968,16 +968,12 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  */
 
 struct xclQueueContext {
-	uint32_t	type;		/* stream or packet Queue, read or write Queue*/
-	uint32_t	state;		/* initialized, running */
-
-	uint64_t	rid;		/* rid potentially specified in xclbin */
-
-	uint32_t	qsize;	/* number of descriptors */
-
-	uint32_t	desc_size;	/* this might imply max inline msg size */
-
-	uint64_t	flags;		/* isr en, wb en, etc */
+    uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
+    uint32_t	state;	   /* initialized, running */
+    uint64_t	rid;	   /* rid potentially specified in xclbin */
+    uint32_t	qsize;	   /* number of descriptors */
+    uint32_t	desc_size; /* this might imply max inline msg size */
+    uint64_t	flags;	   /* isr en, wb en, etc */
 };
 
 /**
@@ -1054,27 +1050,44 @@ XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
 /**
  * struct xclWRBuffer
- *
  */
 struct xclWRBuffer {
-	uint64_t	va;	 // could be pointer or offset
-	uint64_t	len;
-	uint64_t	buf_hdl; // could be NULL when va is buffer pointer
+    union {
+	char*    buf;    // ptr or,
+	uint64_t va;	 // offset
+    };
+    uint64_t  len;
+    uint64_t  buf_hdl;   // NULL when first field is buffer pointer
+};
+
+/**
+ * enum xclQueueRequestKind - request type.
+ */
+enum xclQueueRequestKind {
+    XCL_QUEUE_WRITE = 0,
+    XCL_QUEUE_READ  = 1,
+    //More, in-line etc.
+};
+
+/**
+ * enum xclQueueRequestFlag - flags associated with the request.
+ */
+enum xclQueueRequestFlag {
+    XCL_QUEUE_DEFAULT,
+    XCL_QUEUE_BLOCKING,
+    XCL_QUEUE_PARTIAL
 };
 
 /**
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-	uint32_t	op_code;//Write, Read, Write in-line, etc.
-
-	struct xclWRBuffer	*bufs;
-        uint32_t		buf_num;
-
-	void		*cdh;
-	uint32_t	cdh_len;
-
-	uint64_t	flag; //blocking, partial, etc.
+    xclQueueRequestKind op_code;  
+    xclWRBuffer*        bufs;
+    uint32_t	        buf_num;
+    char*               cdh;
+    uint32_t	        cdh_len;
+    xclQueueRequestFlag flag;     
 };
 
 /**
