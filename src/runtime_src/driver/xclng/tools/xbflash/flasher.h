@@ -29,7 +29,8 @@
 #include <sys/stat.h>
 #include <vector>
 
-#define DRIVERLESS 1
+#define FIRMWARE_DIR "/lib/firmware/xilinx" // directory where all MCS files are saved
+#define DSA_FILE_SUFFIX "mcs"
 
 class Flasher
 {
@@ -38,14 +39,14 @@ public:
         UNSET,
         SPI,
         BPI,
-        MSP432
     };
-    const char *E_FlasherTypeStrings[4] = { "UNSET", "SPI", "BPI", "MSP432" };
+    const char *E_FlasherTypeStrings[3] = { "UNSET", "SPI", "BPI" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
 
     Flasher(unsigned int index, E_FlasherType flasherType=UNSET);
     ~Flasher();
     int upgradeFirmware( const char *f1, const char *f2 );
+    int upgradeBMCFirmware(const char *f1);
     bool isValid( void ) { return mIsValid; }
 
     /* public to XSPI_Flasher and BPI_Flasher */
@@ -60,7 +61,6 @@ private:
     unsigned int mIdx;
     XSPI_Flasher *mXspi;
     BPI_Flasher  *mBpi;
-    MSP432_Flasher  *mMsp;
     bool mIsValid;
 
     int mapDevice(unsigned int devIdx);
@@ -92,6 +92,7 @@ public:
     std::string sGetDBDF() { return mDBDF; }
     std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
     std::string sGetDSAName() { return std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); }
+    std::vector<std::string> sGetInstalledDSA();
 };
 
 #endif // FLASHER_H

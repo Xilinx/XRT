@@ -428,8 +428,12 @@ bool xcldev::pci_device_scanner::get_mgmt_device_name(std::string &devName , uns
     return retVal;
 }
 
-int xcldev::pci_device_scanner::scan_without_driver( void )
+int xcldev::pci_device_scanner::scan_without_driver()
 {
+    if (!device_list.empty()) {
+        return 0;
+    }
+
     // need to clear the following lists: mgmt_devices, user_devices, xcldev::device_list
     mgmt_devices.clear();
     user_devices.clear();

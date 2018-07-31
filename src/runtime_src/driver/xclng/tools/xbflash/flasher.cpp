@@ -26,8 +26,10 @@
 #include <stddef.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <cassert>
 #include <cstring>
+#include <vector>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -41,7 +43,6 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
     mMgmtMap = nullptr;
     mXspi = nullptr;
     mBpi  = nullptr;
-    mMsp = nullptr;
     mFd = 0;
     mIsValid = false;
     memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
@@ -57,7 +58,7 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
     // that EntryPointString starts with magic char sequence "xlnx".
     if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
     {
-        std::cout << "ERROR: EntryPointString mismatch:" << mFRHeader.EntryPointString << std::endl;
+        std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
         return;
     }
 
@@ -76,10 +77,6 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
         mBpi = new BPI_Flasher( mIdx, mMgmtMap );
         mIsValid = true;
         break;
-    case MSP432:
-        mMsp = new MSP432_Flasher( mIdx, mMgmtMap );
-        mIsValid = true;
-        break;
     default:
         break;
     }
@@ -95,9 +92,6 @@ Flasher::~Flasher()
 
     delete mBpi;
     mBpi = nullptr;
-
-    delete mMsp;
-    mMsp = nullptr;
 
     if( mMgmtMap != nullptr )
     {
@@ -138,21 +132,21 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
             retVal = mBpi->xclUpgradeFirmware( f1 );
         }
         break;
-    case MSP432:
-        if( f2 != nullptr )
-        {
-            std::cout << "ERROR: Only need firmware image file for flashing MSP432 chip." << std::endl;
-        }
-        else
-        {
-            retVal = mMsp->xclUpgradeFirmware( f1 );
-        }
-        break;
     default:
         std::cout << "ERROR: Invalid programming type." << std::endl;
         break;
     }
     return retVal;
+}
+
+int Flasher::upgradeBMCFirmware(const char *f1)
+{
+    int ret;
+
+    MSP432_Flasher *flasher = new MSP432_Flasher(mIdx, mMgmtMap);
+    ret = flasher->xclUpgradeFirmware(f1);
+    delete flasher;
+    return ret;
 }
 
 /*
@@ -161,7 +155,6 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
 int Flasher::mapDevice(unsigned int devIdx)
 {
     xcldev::pci_device_scanner scanner;
-#if DRIVERLESS
     scanner.scan_without_driver();
 
     if( devIdx >= scanner.device_list.size() ) {
@@ -174,16 +167,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", dev.domain, dev.bus, dev.device, dev.mgmt_func );
     mDBDF = std::string( cDBDF );
     std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
-#else
-    scanner.scan( false );
-    std::string mgmtDeviceName;
-    if( !scanner.get_mgmt_device_name( mgmtDeviceName, devIdx ) )
-    {
-        std::cout << "ERROR: Cannot find mgmt device." << std::endl;
-        return -EBUSY;
-    }
-    std::string devPath = "/sys/bus/pci/devices/" + mgmtDeviceName;
-#endif
+
     char bar[5];
     snprintf(bar, sizeof (bar) - 1, "%d", dev.user_bar);
     std::string resourcePath = devPath + "/resource" + bar;
@@ -290,4 +274,70 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
         return -EINVAL;
     }
     return 0;
+}
+
+/*
+ * Helper to parse DSA name string and retrieve all tokens
+ * The DSA name string is passed in by value since it'll be modified inside.
+ */
+std::vector<std::string> DSANameParser(std::string name)
+{
+    std::vector<std::string> tokens;
+    std::string delimiter = "_";
+
+    size_t pos = 0;
+    std::string token;
+    while ((pos = name.find(delimiter)) != std::string::npos)
+    {
+        token = name.substr(0, pos);
+        tokens.push_back(token);
+        name.erase(0, pos + delimiter.length());
+    }
+    tokens.push_back(name);
+    return tokens;
+}
+
+/*
+ * Obtain all DSA installed on the system for this board
+ */
+std::vector<std::string> Flasher::sGetInstalledDSA()
+{
+    std::vector<std::string> DSAs;
+    std::vector<std::string> tokens = DSANameParser(sGetDSAName());
+    struct dirent *entry;
+    DIR *dp;
+    std::string nm;
+
+    // At least, we need vendor.board.dsa
+    if (tokens.size() < 3)
+        return DSAs;
+
+    dp = opendir(FIRMWARE_DIR);
+    if (dp)
+    {
+        while ((entry = readdir(dp)))
+        {
+            std::string e(entry->d_name);
+
+            // Looking for ".mcs" file
+            size_t pos = e.find_last_of(".");
+            if (pos == 0 || pos == std::string::npos ||
+                e.substr(pos + 1).compare(DSA_FILE_SUFFIX) != 0)
+                continue;
+
+            // Matching vendor.board token in the file name
+            std::string dsa = e.substr(0, pos);
+            std::vector<std::string> t = DSANameParser(dsa);
+            if (t.back().compare("secondary") == 0 || t[0] != tokens[0] || t[1] != tokens[1])
+                continue;
+
+            // Take it
+            if (t.back().compare("primary") == 0)
+                dsa.erase(dsa.rfind("primary") - 1);
+            DSAs.push_back(dsa);
+        }
+        closedir(dp);
+    }
+
+    return DSAs;
 }
