@@ -139,7 +139,7 @@ allocExecBuffer(size_t sz)
   ubo->size = sz;
   ubo->owner = m_handle;
   ubo->data = m_ops->mMapBO(m_handle,ubo->handle, true /* write */);
-  if (ubo->data == (void*)(-1)) 
+  if (ubo->data == (void*)(-1))
     throw std::runtime_error(std::string("map failed: ") + std::strerror(errno));
   return ExecBufferObjectHandle(ubo.release(),delBufferObject);
 }
@@ -263,7 +263,8 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->handle = bo->handle;
   ubo->deviceAddr = bo->deviceAddr+offset;
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
-  ubo->size = bo->size;
+  ubo->size = sz;
+  ubo->offset = offset;
   ubo->kind = bo->kind;
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
@@ -342,7 +343,7 @@ device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction 
     auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;
     return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offset));
   }
-  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset)));
+  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset+bo->offset)));
 }
 
 event
@@ -443,7 +444,7 @@ getDeviceAddr(const BufferObjectHandle& boh)
 
 int
 device::
-getMemObjectFd(const BufferObjectHandle& boh) 
+getMemObjectFd(const BufferObjectHandle& boh)
 {
   if (!m_ops->mExportBO)
     throw std::runtime_error("ExportBO function not found in FPGA driver. Please install latest driver");
@@ -531,6 +532,3 @@ createDevices(hal::device_list& devices,
 
 
 }} // hal2,xrt
-
-
-
