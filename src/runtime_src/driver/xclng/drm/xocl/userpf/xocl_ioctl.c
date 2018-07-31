@@ -154,7 +154,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
 		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EFAULT;
-		if (ret) // No context was previously allocated for the this CU
+		if (ret) // No context was previously allocated for this CU
 			goto out;
 
 		xdev->ip_reference[args->cu_index]--;
@@ -196,6 +196,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	xdev->ip_reference[args->cu_index]++;
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
+
 out:
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;

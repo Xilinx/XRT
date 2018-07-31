@@ -97,3 +97,6 @@ include (CMake/dkms.cmake)
 include (CMake/icd.cmake)
 
 include (CMake/pkgconfig.cmake)
+
+set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
+include (CMake/tags.cmake)
