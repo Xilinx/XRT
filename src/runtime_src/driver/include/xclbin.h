@@ -152,7 +152,8 @@ extern "C" {
         IP_LAYOUT,
         DEBUG_IP_LAYOUT,
         DESIGN_CHECK_POINT,
-        CLOCK_FREQ_TOPOLOGY
+        CLOCK_FREQ_TOPOLOGY,
+        MCS
     };
 
     enum MEM_TYPE {
@@ -301,8 +302,7 @@ extern "C" {
         struct debug_ip_data m_debug_ip_data[1];
     };
 
-    enum CLOCK_TYPE                        /* Supported clock frequency types */
-    {
+    enum CLOCK_TYPE {                      /* Supported clock frequency types */
         CT_UNUSED = 0,                     /* Initialized value */
         CT_DATA   = 1,                     /* Data clock */
         CT_KERNEL = 2,                     /* Kernel clock */
@@ -321,7 +321,24 @@ extern "C" {
         struct clock_freq m_clock_freq[1]; /* Clock array */
     };
 
+    enum MCS_TYPE {                        /* Supported MCS file types */
+        MCS_UNKNOWN = 0,                   /* Initialized value */
+        MCS_PRIMARY = 1,                   /* The primary mcs file data */
+        MCS_SECONDARY = 2,                 /* The secondary mcs file data */
+    };
 
+    struct mcs_chunk {                     /* One chunk of MCS data */
+        uint8_t m_type;                    /* MCS data type */
+        uint8_t m_unused[7];               /* padding */
+        uint64_t m_offset;                 /* data offset from the start of the section */
+        uint64_t m_size;                   /* data size */
+    };
+
+    struct mcs {                           /* MCS data section */
+        int8_t m_count;                    /* Number of chunks */
+        int8_t m_unused[7];                /* padding */
+        struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
+    };
 
     /**** END : Xilinx internal section *****/
 
