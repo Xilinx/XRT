@@ -452,7 +452,7 @@ allocate_buffer_object(memory* mem)
 
     try {
       auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
+      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
       return boh;
     }
     catch (const std::bad_alloc&) {
@@ -493,7 +493,7 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
   }
 
   auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc()) {
+  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation()) {
     auto bank = myctz(flag);
     auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
     if (midx==-1)
