@@ -80,7 +80,7 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	 * This adds a reference to the gem object.  The refernece is
 	 * passed to kds or released here if errors occur.
 	 */
-	obj =xocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
+	obj = xocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
 			args->exec_bo_handle);
@@ -88,9 +88,15 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	}
 
 	/* Convert gem object to xocl_bo extension */
-	xobj =to_xocl_bo(obj);
+	xobj = to_xocl_bo(obj);
 	if (!xocl_bo_execbuf(xobj)) {
 		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = xocl_exec_validate(xdev, client, xobj);
+	if (ret) {
+		userpf_err(xdev, "Exec buffer validation failed\n");
 		goto out;
 	}
 
@@ -154,7 +160,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
 		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EFAULT;
-		if (ret) // No context was previously allocated for the this CU
+		if (ret) // No context was previously allocated for this CU
 			goto out;
 
 		xdev->ip_reference[args->cu_index]--;
@@ -196,7 +202,9 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	xdev->ip_reference[args->cu_index]++;
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
+
 out:
+	uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;
 }

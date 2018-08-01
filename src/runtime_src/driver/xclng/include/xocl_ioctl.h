@@ -317,6 +317,9 @@ enum drm_xocl_ctx_code {
         XOCL_CTX_OP_FREE_CTX
 };
 
+#define XOCL_CTX_SHARED    0x0
+#define XOCL_CTX_EXCLUSIVE 0x1
+
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
         xuid_t   xclbin_id;
