@@ -217,7 +217,7 @@ load_xdp()
       if (!isDLL(p)) {
         throw std::runtime_error("Library " + p.string() + " not found!");
       }
-      auto handle = dlopen(p.string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
+      auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
         throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + dlerror());
 

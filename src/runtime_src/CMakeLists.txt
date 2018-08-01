@@ -47,6 +47,10 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_VERSION_MAJOR})
 
+target_link_libraries(xdp
+  xilinxopencl
+  )
+
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
