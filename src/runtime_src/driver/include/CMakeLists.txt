@@ -5,6 +5,7 @@ set(XRT_HEADER_SRC
   xclerr.h
   xclfeatures.h
   xclhal2.h
+  xcl_app_debug.h
   xcl_macros.h
   xclperf.h)
 
