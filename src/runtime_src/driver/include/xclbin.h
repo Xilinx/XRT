@@ -338,7 +338,7 @@ extern "C" {
 
     struct mcs {                           /* MCS data section */
         int8_t m_count;                    /* Number of chunks */
-        int8_t m_unsed[7];                 /* padding */
+        int8_t m_unused[7];                 /* padding */
         struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
     };
 
