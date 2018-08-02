@@ -33,7 +33,8 @@
 #ifndef __CL_EXT_XILINX_H
 #define __CL_EXT_XILINX_H
 
-#include <CL/cl_ext.h>
+// Do *not* include cl_ext.h from this directory
+#include_next <CL/cl_ext.h>
 
 #ifdef __cplusplus
 extern "C" {
