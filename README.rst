@@ -2,6 +2,8 @@
 Xilinx Runtime
 ==============
 
+|build-status|
+
 Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel
 driver components. XRT which supports both PCIe based boards and Zynq/MPSoC
 provides software interface to Xilinx FPGA. The key user APIs are defined in
@@ -17,6 +19,3 @@ Hello
 `Test Instructions <src/runtime_src/doc/toc/test.rst>`_
 
 Comprehensive documentation on `xilinx.github.io/XRT <https://xilinx.github.io/XRT>`_
-
-#test
-#t
