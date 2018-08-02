@@ -2,8 +2,6 @@
 Xilinx Runtime
 ==============
 
-[![Build Status](http://xcoengvm229200:8080/job/Test_Pipelines/XRT/XRT_Pipeline_RPM_DEB-abalasaXRTrepo/badge/icon)](http://xcoengvm229200:8080/job/Test_Pipelines/XRT/XRT_Pipeline_RPM_DEB-abalasaXRTrepo)
-
 Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel
 driver components. XRT which supports both PCIe based boards and Zynq/MPSoC
 provides software interface to Xilinx FPGA. The key user APIs are defined in
