@@ -430,6 +430,7 @@ bool xcldev::pci_device_scanner::get_mgmt_device_name(std::string &devName , uns
 
 int xcldev::pci_device_scanner::scan_without_driver()
 {
+    // device_list is static member, no need to scan again if it's already populated.
     if (!device_list.empty()) {
         return 0;
     }

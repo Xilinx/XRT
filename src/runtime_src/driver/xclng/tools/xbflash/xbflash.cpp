@@ -125,7 +125,7 @@ int updateDSAOnBoards(unsigned idx, std::string& dsa, bool dryrun, bool *update)
         if (installedDSA.size() > 1)
         {
             std::cout << "Multiple types of DSA installed for board." << std::endl;
-            std::cout << "Run xbutil flash list to obtain detailed information." << std::endl;
+            std::cout << "Run xbutil flash scan to obtain detailed information." << std::endl;
             std::cout << "Run xbutil flash -a <dsa name> to pick one to flash." << std::endl;
             return -EINVAL;
         }
@@ -210,7 +210,7 @@ int main( int argc, char *argv[] )
         }
 
         // argc > (startIdx+1)
-        if( std::string( argv[ (startIdx+1) ] ).compare( "list" ) == 0 ) {
+        if( std::string( argv[ (startIdx+1) ] ).compare( "scan" ) == 0 ) {
             sudoOrDie();
             return scanDevices();
         } else if ( std::string( argv[ (startIdx+1) ] ).compare( "help" ) == 0 ) {
