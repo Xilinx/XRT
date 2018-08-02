@@ -143,10 +143,8 @@ int Flasher::upgradeBMCFirmware(const char *f1)
 {
     int ret;
 
-    MSP432_Flasher *flasher = new MSP432_Flasher(mIdx, mMgmtMap);
-    ret = flasher->xclUpgradeFirmware(f1);
-    delete flasher;
-    return ret;
+    MSP432_Flasher flasher(mIdx, mMgmtMap);
+    return flasher.xclUpgradeFirmware(f1);
 }
 
 /*
