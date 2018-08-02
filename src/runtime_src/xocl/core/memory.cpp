@@ -88,7 +88,7 @@ void
 memory::
 update_buffer_object_map(device* device, buffer_object_handle boh)
 {
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
   if (m_bomap.size() == 0) {
     m_bomap[device] = std::move(boh);
   } else {
@@ -103,7 +103,7 @@ get_buffer_object(device* device, xrt::device::memoryDomain domain, uint64_t mem
   // for progvar only
   assert(domain==xrt::device::memoryDomain::XRT_DEVICE_PREALLOCATED_BRAM);
 
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
   return (itr==m_bomap.end())
     ? (m_bomap[device] = device->allocate_buffer_object(this,domain,memidx,nullptr))
@@ -114,7 +114,7 @@ memory::buffer_object_handle
 memory::
 get_buffer_object(device* device)
 {
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
 
   // Maybe import from XARE device
@@ -139,6 +139,8 @@ get_buffer_object(kernel* kernel, unsigned long argidx)
     // device for the kernel
     auto cu_memidx_mask = device->get_cu_memidx(kernel,argidx);
 
+    // The boh may not be created by other thread simultanously
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     auto memidx_mask = get_memidx(device);
     if (memidx_mask.any()) {
       // "this" buffer is already allocated on device, verify that
@@ -155,7 +157,6 @@ get_buffer_object(kernel* kernel, unsigned long argidx)
       for (size_t idx=0; idx<cu_memidx_mask.size(); ++idx) {
         if (cu_memidx_mask.test(idx)) {
           try {
-            std::lock_guard<std::mutex> lk(m_boh_mutex);
             return (m_bomap[device] = device->allocate_buffer_object(this,idx));
           }
           catch (const std::bad_alloc&) {
@@ -172,7 +173,7 @@ memory::buffer_object_handle
 memory::
 get_buffer_object_or_error(const device* device) const
 {
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
   if (itr==m_bomap.end())
     throw std::runtime_error("Internal error. cl_mem doesn't map to buffer object");
@@ -183,7 +184,7 @@ memory::buffer_object_handle
 memory::
 get_buffer_object_or_null(const device* device) const
 {
-  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
   return itr==m_bomap.end()
     ? nullptr
@@ -195,7 +196,7 @@ memory::buffer_object_handle
 memory::
 try_get_buffer_object_or_error(const device* device) const
 {
-  std::unique_lock<std::mutex> lk(m_boh_mutex, std::defer_lock);
+  std::unique_lock<std::recursive_mutex> lk(m_boh_mutex, std::defer_lock);
   if (!lk.try_lock())
     throw xocl::error(DBG_EXCEPT_LOCK_FAILED, "Failed to secure lock on buffer object");
   auto itr = m_bomap.find(device);

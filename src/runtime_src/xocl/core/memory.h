@@ -372,7 +372,7 @@ public:
   virtual bool
   is_resident() const
   {
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     return m_resident.size();
   }
 
@@ -382,7 +382,7 @@ public:
   virtual bool
   is_resident(const device* device) const
   {
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     return (std::find(m_resident.begin(),m_resident.end(),device) != m_resident.end());
   }
 
@@ -392,7 +392,7 @@ public:
   virtual const device*
   get_resident_device() const
   {
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     auto sz = m_resident.size();
     if (!sz || sz>1)
       return nullptr;
@@ -405,7 +405,7 @@ public:
   void
   set_resident(const device* device)
   {
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     if (std::find(m_resident.begin(),m_resident.end(),device) == m_resident.end())
       m_resident.push_back(device);
   }
@@ -416,7 +416,7 @@ public:
   void
   clear_resident()
   {
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
+    std::lock_guard<std::recursive_mutex> lk(m_boh_mutex);
     m_resident.clear();
   }
 
@@ -452,7 +452,7 @@ private:
   // allocation unless needed.
   std::unique_ptr<std::vector<std::function<void()>>> m_dtor_notify;
 
-  mutable std::mutex m_boh_mutex;
+  mutable std::recursive_mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
 };
