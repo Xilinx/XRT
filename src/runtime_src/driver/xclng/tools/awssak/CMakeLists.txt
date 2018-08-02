@@ -2,7 +2,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../xrt/user_aws
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-  ../../../../../../../aws-fpga-staging/sdk/userspace/include/ # path to fpga_mgmt.h
+  ../../../../../../../sdk/userspace/include/ # path to fpga_mgmt.h
   )
 
 file(GLOB AWSSAK_FILES
