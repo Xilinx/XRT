@@ -633,16 +633,11 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh;
 
-  // If map_flags set as CL_MAP_READ, we only sync the portion of BO for mapping
-  if ((map_flags & CL_MAP_READ) && buffer->is_resident(this)) {
-    boh = buffer->get_buffer_object_or_error(this);
-    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
-  }
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
-  else if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
+  if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
     boh = buffer->get_buffer_object_or_error(this);
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
 
   if (!boh)
@@ -654,8 +649,11 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
     auto hbuf = xdevice->map(boh);
     xdevice->unmap(boh);
     assert(ubuf!=hbuf);
-    if (ubuf)
-      memcpy(ubuf,hbuf,buffer->get_size());
+    if (ubuf) {
+      auto dst = static_cast<char*>(ubuf) + offset;
+      auto src = static_cast<char*>(hbuf) + offset;
+      memcpy(dst,src,size);
+    }
     else
       ubuf = hbuf;
   }
@@ -666,10 +664,15 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   // If this buffer is being mapped for writing, then a following
   // unmap will have to sync the data to device, so record this.  We
   // will not enforce that map is followed by unmap, so two maps of
-  // same buffer for write without corresponding unmaps is not an
-  // and will simply override previous map value.
+  // same buffer for write without corresponding unmaps will simply
+  // override previous map value.  We do however keep track of the
+  // map with largest size to subsume small maps into the largest.
+  // That way largest chunk is synced to device if necessary.
   std::lock_guard<std::mutex> lk(m_mutex);
-  m_mapped[result] = map_flags;
+  auto& mapinfo = m_mapped[result];
+  mapinfo.flags = map_flags;
+  mapinfo.offset = offset;
+  mapinfo.size = std::max(mapinfo.size,size);
   return result;
 }
 
@@ -677,14 +680,18 @@ void
 device::
 unmap_buffer(memory* buffer, void* mapped_ptr)
 {
-  cl_map_flags flags = 0;
+  cl_map_flags flags = 0; // flags of mapped_ptr
+  size_t offset = 0;      // offset of mapped_ptr wrt BO
+  size_t size = 0;        // size of mapped_ptr
   {
     // There is no checking that map/unmap match.  Only one active
     // map of a mapped_ptr is maintained and is erased on first unmap
     std::lock_guard<std::mutex> lk(m_mutex);
     auto itr = m_mapped.find(mapped_ptr);
     if (itr!=m_mapped.end()) {
-      flags = (*itr).second;
+      flags = (*itr).second.flags;
+      offset = (*itr).second.offset;
+      size = (*itr).second.size;
       m_mapped.erase(itr);
     }
   }
@@ -694,10 +701,10 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
 
   // Sync data to boh if write flags, and sync to device if resident
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-    if (auto ubuf = buffer->get_host_ptr())
-      xdevice->write(boh,ubuf,buffer->get_size(),0,false);
+    if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
+      xdevice->write(boh,ubuf+offset,size,offset,false);
     if (buffer->is_resident(this))
-      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::HOST2DEVICE,false);
+      xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
