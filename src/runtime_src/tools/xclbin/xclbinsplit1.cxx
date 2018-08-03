@@ -60,7 +60,6 @@ namespace xclbinsplit1 {
   OptionParser::parse( int argc, char** argv )
   {
     int optCode;
-    int returnCode = 0;
     int optionIndex = 0;
     static struct option longOptions[] = 
     {
@@ -175,7 +174,7 @@ namespace xclbinsplit1 {
 
     if ( parser.m_verbose ) {
       std::cout << "Command line: " << argv[ 0 ];
-      for ( size_t i = 1; i < argc; i++ )
+      for ( int i = 1; i < argc; i++ )
         std::cout << " " << argv[ i ];
       std::cout << "\n";
       std::cout << "STARTED '" << argv[ 0 ] << "' at: '" << XclBinUtil::getCurrentTimeStamp().c_str() << "'\n";

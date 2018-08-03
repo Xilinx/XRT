@@ -37,8 +37,8 @@ class OptionParser {
     int parse( int argc, char** argv );
     void printHelp( char* program );
 
-    std::string m_input;
     std::string m_output;
+    std::string m_input;
     std::string m_binaryHeader;
     bool m_verbose;
     bool m_help;

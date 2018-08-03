@@ -32,9 +32,9 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 add_subdirectory(xdp)
-add_subdirectory(tools/xclbin)
 
 add_compile_options("-Wall" "-Werror")
+add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
@@ -62,4 +62,4 @@ target_link_libraries(xilinxopencl
 
 install (TARGETS xilinxopencl xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-#add_subdirectory(driver)
+add_subdirectory(driver)

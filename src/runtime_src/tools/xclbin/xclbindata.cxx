@@ -540,6 +540,12 @@ XclBinData::kindToString( axlf_section_kind kind )
     case CLOCK_FREQ_TOPOLOGY:
       type = "CLOCK_FREQ_TOPOLOGY";
       break;
+    case DESIGN_CHECK_POINT:
+      type = "DESIGN_CHECK_POINT";
+      break;
+    case MCS:
+      type = "MCS";
+      break;
     default:
       break;
   }
@@ -776,7 +782,7 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
   }
 
   // -- The counts should match --
-  if ( count != memTopologyHdr.m_count  ) {
+  if ( count != (unsigned int) memTopologyHdr.m_count  ) {
     std::string errMsg = XclBinUtil::format("ERROR: Number of mem_data sections (%d) does not match expected encoded value: %d", 
                                       (unsigned int) count, (unsigned int) memTopologyHdr.m_count);
     throw std::runtime_error(errMsg);
@@ -828,7 +834,7 @@ XclBinData::createConnectivityBinaryImage( boost::property_tree::ptree &_pt,
   }
 
   // -- The counts should match --
-  if ( count != connectivityHdr.m_count  ) {
+  if ( count != (unsigned int) connectivityHdr.m_count  ) {
     std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
                                       (unsigned int) count, (unsigned int) connectivityHdr.m_count);
     throw std::runtime_error(errMsg);
@@ -909,7 +915,7 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
   }
 
   // -- The counts should match --
-  if ( count != ipLayoutHdr.m_count  ) {
+  if ( count != (unsigned int) ipLayoutHdr.m_count  ) {
     std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
                                       (unsigned int) count, (unsigned int) ipLayoutHdr.m_count);
     throw std::runtime_error(errMsg);
@@ -1093,7 +1099,7 @@ XclBinData::createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt
   }
 
   // -- The counts should match --
-  if ( count != clockFreqTopologyHdr.m_count  ) {
+  if ( count != (unsigned int) clockFreqTopologyHdr.m_count  ) {
     std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
                                       (unsigned int) count, (unsigned int) clockFreqTopologyHdr.m_count);
     throw std::runtime_error(errMsg);

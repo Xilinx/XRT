@@ -215,7 +215,6 @@ namespace xclbincat1 {
   OptionParser::parse( int argc, char** argv )
   {
     int optCode;
-    int returnCode = 0;
     int optionIndex = 0;
     bool bDisablePositionalArguments = false;
     static struct option longOptions[] = 
@@ -426,6 +425,8 @@ namespace xclbincat1 {
       case IP_LAYOUT: return "IP_LAYOUT";
       case DEBUG_IP_LAYOUT: return "DEBUG_IP_LAYOUT";
       case CLOCK_FREQ_TOPOLOGY: return "CLOCK_FREQ_TOPOLOGY";
+      case DESIGN_CHECK_POINT: return "DESIGN_CHECK_POINT";
+      case MCS: return "MCS";
         break;
     }
 
@@ -699,7 +700,7 @@ namespace xclbincat1 {
     {
       std::ostringstream buf; 
       buf << "Command line: " << argv[ 0 ];
-      for ( size_t i = 1; i < argc; i++ )
+      for ( int i = 1; i < argc; i++ )
         buf << " " << argv[ i ];
 
       if ( parser.isVerbose() )
