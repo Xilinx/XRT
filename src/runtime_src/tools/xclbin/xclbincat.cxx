@@ -21,7 +21,6 @@
 // File Name: xclbincat.cxx
 // ============================================================================
 
-//#include "xclbincat0.h"
 #include "xclbincat1.h"
 #include "xclbinutil.h"
 #include <cstdlib>

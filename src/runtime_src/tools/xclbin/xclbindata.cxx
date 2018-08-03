@@ -34,7 +34,6 @@
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 
 
-
 void printTree (boost::property_tree::ptree &pt, std::ostream &_buf = std::cout, int level = 0);
 
 
@@ -124,7 +123,7 @@ XclBinData::align()
   if( hole ) {
     m_xclbinFile.write( holePack, hole ); 
     m_xclBinHead.m_header.m_length += hole;
-    TRACE(str(boost::format("Aligning by %d bytes.") % hole ));
+    TRACE(XclBinUtil::format("Aligning by %d bytes.", hole ));
   }
 }
 
@@ -705,8 +704,8 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
    // Read, store, and report mem_topology data
    memTopologyHdr.m_count = _pt.get<uint32_t>("m_count");
 
-   TRACE(str(boost::format("MEM_TOPOLOGY")));
-   TRACE(str(boost::format("m_count: %d") % memTopologyHdr.m_count));
+   TRACE("MEM_TOPOLOGY");
+   TRACE(XclBinUtil::format("m_count: %d", memTopologyHdr.m_count));
 
    if ( memTopologyHdr.m_count == 0) {
      std::cout << "WARNING: Skipping MEM_TOPOLOGY section for count size is zero." << std::endl;
@@ -734,16 +733,16 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
      if ( sizeBytes.is_initialized() ) {
        memData.m_size = XclBinUtil::stringToUInt64(static_cast<std::string>(sizeBytes.get()));
        if ( (memData.m_size % 1024) != 0 )
-          throw std::runtime_error(str(boost::format("ERROR: The memory size (%ld) does not align to a 1K (1024 bytes) boundary.") % memData.m_size));
+          throw std::runtime_error(XclBinUtil::format("ERROR: The memory size (%ld) does not align to a 1K (1024 bytes) boundary.", memData.m_size));
 
        memData.m_size = memData.m_size / (uint64_t) 1024;
      }
 
      boost::optional<std::string> sizeKB = ptMemData.get_optional<std::string>("m_sizeKB");
      if ( sizeBytes.is_initialized() && sizeKB.is_initialized() ) 
-       throw std::runtime_error(str(boost::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.") 
-                                    % static_cast<std::string>(sizeBytes.get())
-                                    % static_cast<std::string>(sizeKB.get())));
+       throw std::runtime_error(XclBinUtil::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.", 
+                                    static_cast<std::string>(sizeBytes.get()),
+                                    static_cast<std::string>(sizeKB.get())));
 
      if ( sizeKB.is_initialized() ) 
        memData.m_size = XclBinUtil::stringToUInt64(static_cast<std::string>(sizeKB.get()));
@@ -751,8 +750,8 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
      
      std::string sm_tag = ptMemData.get<std::string>("m_tag");
      if ( sm_tag.length() >= sizeof(mem_data::m_tag) ) {
-       std::string errMsg = str(boost::format("ERROR: The m_tag entry length (%d), exceeds the allocated space (%d).  Name: '%s'") %
-                               (unsigned int) sm_tag.length() % (unsigned int) sizeof(mem_data::m_tag) % sm_tag);
+       std::string errMsg = XclBinUtil::format("ERROR: The m_tag entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                         (unsigned int) sm_tag.length(), (unsigned int) sizeof(mem_data::m_tag), sm_tag);
        throw std::runtime_error(errMsg);
      }
 
@@ -762,13 +761,13 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
      std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
      memData.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
 
-     TRACE(str(boost::format("[%d]: m_type: %d, m_used: %d, m_size: 0x%lx, m_tag: '%s', m_base_address: 0x%lx") 
-               % count 
-               % (unsigned int) memData.m_type 
-               % (unsigned int) memData.m_used 
-               % memData.m_size 
-               % memData.m_tag
-               % memData.m_base_address));
+     TRACE(XclBinUtil::format("[%d]: m_type: %d, m_used: %d, m_size: 0x%lx, m_tag: '%s', m_base_address: 0x%lx",
+               count,
+               (unsigned int) memData.m_type,
+               (unsigned int) memData.m_used, 
+               memData.m_size, 
+               memData.m_tag,
+               memData.m_base_address));
 
      // Write out the entire structure 
      TRACE_BUF("mem_data", reinterpret_cast<const char*>(&memData), sizeof(mem_data));
@@ -778,8 +777,8 @@ XclBinData::createMemTopologyBinaryImage( boost::property_tree::ptree &_pt,
 
   // -- The counts should match --
   if ( count != memTopologyHdr.m_count  ) {
-    std::string errMsg = str(boost::format("ERROR: Number of mem_data sections (%d) does not match expected encoded value: %d") 
-                             % (unsigned int) count % (unsigned int) memTopologyHdr.m_count);
+    std::string errMsg = XclBinUtil::format("ERROR: Number of mem_data sections (%d) does not match expected encoded value: %d", 
+                                      (unsigned int) count, (unsigned int) memTopologyHdr.m_count);
     throw std::runtime_error(errMsg);
   }
 }
@@ -793,8 +792,8 @@ XclBinData::createConnectivityBinaryImage( boost::property_tree::ptree &_pt,
    // Read, store, and report mem_topology data
    connectivityHdr.m_count = _pt.get<uint32_t>("m_count");
 
-   TRACE(str(boost::format("CONNECTIVITY")));
-   TRACE(str(boost::format("m_count: %d") % connectivityHdr.m_count));
+   TRACE("CONNECTIVITY");
+   TRACE(XclBinUtil::format("m_count: %d", connectivityHdr.m_count));
 
    if ( connectivityHdr.m_count == 0) {
      std::cout << "WARNING: Skipping CONNECTIVITY section for count size is zero." << std::endl;
@@ -817,9 +816,9 @@ XclBinData::createConnectivityBinaryImage( boost::property_tree::ptree &_pt,
      connectionHdr.m_ip_layout_index = ptConnection.get<int32_t>("m_ip_layout_index");
      connectionHdr.mem_data_index = ptConnection.get<int32_t>("mem_data_index");
 
-     TRACE(str(boost::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d") %
-               count % (unsigned int) connectionHdr.arg_index % 
-               (unsigned int) connectionHdr.m_ip_layout_index % 
+     TRACE(XclBinUtil::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d",
+               count, (unsigned int) connectionHdr.arg_index, 
+               (unsigned int) connectionHdr.m_ip_layout_index,
                (unsigned int) connectionHdr.mem_data_index));
 
      // Write out the entire structure 
@@ -830,8 +829,8 @@ XclBinData::createConnectivityBinaryImage( boost::property_tree::ptree &_pt,
 
   // -- The counts should match --
   if ( count != connectivityHdr.m_count  ) {
-    std::string errMsg = str(boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d") %
-                                          (unsigned int) count % (unsigned int) connectivityHdr.m_count);
+    std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
+                                      (unsigned int) count, (unsigned int) connectivityHdr.m_count);
     throw std::runtime_error(errMsg);
   }
 }
@@ -862,8 +861,8 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     return;
   }
 
-  TRACE(str(boost::format("IP_LAYOUT")));
-  TRACE(str(boost::format("m_count: %d") % ipLayoutHdr.m_count));
+  TRACE("IP_LAYOUT");
+  TRACE(XclBinUtil::format("m_count: %d", ipLayoutHdr.m_count));
 
   // Write out the entire structure except for the mem_data structure
   TRACE_BUF("ip_layout - minus ip_data", reinterpret_cast<const char*>(&ipLayoutHdr), (sizeof(ip_layout) - sizeof(ip_data)));
@@ -888,20 +887,20 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(ip_data::m_name) ) {
-      std::string errMsg = str(boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'") %
-                              (unsigned int) sm_name.length() % (unsigned int) sizeof(ip_data::m_name) % sm_name);
+      std::string errMsg = XclBinUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                        (unsigned int) sm_name.length(), (unsigned int) sizeof(ip_data::m_name), sm_name);
       throw std::runtime_error(errMsg);
     }
 
     // We already know that there is enough room for this string
     memcpy( ipDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(str(boost::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'") 
-              % count 
-              % (unsigned int) ipDataHdr.m_type 
-              % (unsigned int) ipDataHdr.properties 
-              % ipDataHdr.m_base_address 
-              % ipDataHdr.m_name));
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
+              count,
+              (unsigned int) ipDataHdr.m_type,
+              (unsigned int) ipDataHdr.properties,
+              ipDataHdr.m_base_address,
+              ipDataHdr.m_name));
 
     // Write out the entire structure 
     TRACE_BUF("ip_data", reinterpret_cast<const char*>(&ipDataHdr), sizeof(ip_data));
@@ -911,8 +910,8 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
   // -- The counts should match --
   if ( count != ipLayoutHdr.m_count  ) {
-    std::string errMsg = str(boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d") %
-                                          (unsigned int) count % (unsigned int) ipLayoutHdr.m_count);
+    std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
+                                      (unsigned int) count, (unsigned int) ipLayoutHdr.m_count);
     throw std::runtime_error(errMsg);
   }
 }
@@ -959,8 +958,8 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
   // Read, store, and report mem_topology data
   debugIpLayoutHdr.m_count = _pt.get<uint16_t>("m_count");
 
-  TRACE(str(boost::format("DEBUG_IP_LAYOUT")));
-  TRACE(str(boost::format("m_count: %d") % debugIpLayoutHdr.m_count));
+  TRACE("DEBUG_IP_LAYOUT");
+  TRACE(XclBinUtil::format("m_count: %d", debugIpLayoutHdr.m_count));
 
   if ( debugIpLayoutHdr.m_count == 0) {
     std::cout << "WARNING: Skipping DEBUG_IP_LAYOUT section for count size is zero." << std::endl;
@@ -988,21 +987,21 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
     std::string sm_name = ptDebugIPData.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(debug_ip_data::m_name) ) {
-      std::string errMsg = str(boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'") %
-                              (unsigned int) sm_name.length() % (unsigned int) sizeof(debug_ip_data::m_name) % sm_name);
+      std::string errMsg = XclBinUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                              (unsigned int) sm_name.length(), (unsigned int) sizeof(debug_ip_data::m_name), sm_name);
       throw std::runtime_error(errMsg);
     }
 
     // We already know that there is enough room for this string
     memcpy( debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(str(boost::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_base_address: 0x%lx, m_name: '%s'") 
-              % count 
-              % (unsigned int) debugIpDataHdr.m_type 
-              % (unsigned int) debugIpDataHdr.m_index 
-              % (unsigned int) debugIpDataHdr.m_properties
-              % debugIpDataHdr.m_base_address 
-              % debugIpDataHdr.m_name));
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_base_address: 0x%lx, m_name: '%s'", 
+              count,
+              (unsigned int) debugIpDataHdr.m_type,
+              (unsigned int) debugIpDataHdr.m_index,
+              (unsigned int) debugIpDataHdr.m_properties,
+              debugIpDataHdr.m_base_address,
+              debugIpDataHdr.m_name));
 
     // Write out the entire structure 
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&debugIpDataHdr), sizeof(debug_ip_data));
@@ -1012,8 +1011,8 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
   // -- The counts should match --
   if ( count != debugIpLayoutHdr.m_count  ) {
-    std::string errMsg = str(boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d") %
-                                          (unsigned int) count % (unsigned int) debugIpLayoutHdr.m_count);
+    std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
+                                      (unsigned int) count, (unsigned int) debugIpLayoutHdr.m_count);
     throw std::runtime_error(errMsg);
   }
 }
@@ -1048,8 +1047,8 @@ XclBinData::createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt
   // Read, store, and report clock frequency topology data
   clockFreqTopologyHdr.m_count = _pt.get<uint16_t>("m_count");
 
-  TRACE(str(boost::format("CLOCK_FREQ_TOPOLOGY")));
-  TRACE(str(boost::format("m_count: %d") % clockFreqTopologyHdr.m_count));
+  TRACE("CLOCK_FREQ_TOPOLOGY");
+  TRACE(XclBinUtil::format("m_count: %d", clockFreqTopologyHdr.m_count));
 
   if ( clockFreqTopologyHdr.m_count == 0) {
     std::cout << "WARNING: Skipping CLOCK_FREQ_TOPOLOGY section for count size is zero." << std::endl;
@@ -1073,19 +1072,19 @@ XclBinData::createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt
 
     std::string sm_name = ptClockFreq.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(clock_freq::m_name) ) {
-      std::string errMsg = str(boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'") %
-                              (unsigned int) sm_name.length() % (unsigned int) sizeof(clock_freq::m_name) % sm_name);
+      std::string errMsg = XclBinUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                        (unsigned int) sm_name.length(), (unsigned int) sizeof(clock_freq::m_name), sm_name);
       throw std::runtime_error(errMsg);
     }
 
     // We already know that there is enough room for this string
     memcpy( clockFreqHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(str(boost::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'") 
-              % count 
-              % (unsigned int) clockFreqHdr.m_freq_Mhz 
-              % (unsigned int) clockFreqHdr.m_type
-              % clockFreqHdr.m_name));
+    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'", 
+              count,
+              (unsigned int) clockFreqHdr.m_freq_Mhz,
+              (unsigned int) clockFreqHdr.m_type,
+              clockFreqHdr.m_name));
 
     // Write out the entire structure 
     TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&clockFreqHdr), sizeof(clock_freq));
@@ -1095,8 +1094,8 @@ XclBinData::createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt
 
   // -- The counts should match --
   if ( count != clockFreqTopologyHdr.m_count  ) {
-    std::string errMsg = str(boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d") %
-                                          (unsigned int) count % (unsigned int) clockFreqTopologyHdr.m_count);
+    std::string errMsg = XclBinUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
+                                      (unsigned int) count, (unsigned int) clockFreqTopologyHdr.m_count);
     throw std::runtime_error(errMsg);
   }
 }
@@ -1131,7 +1130,7 @@ XclBinData::createBinaryImages()
       if ( ptSegment->first == "mem_topology" ) {
         // Check to see if there are any before us
         if ( m_memTopologyBuf.tellp() > 0 ) {
-          throw std::runtime_error(str(boost::format("ERROR: Only 1 MEM_TOPOLOGY segment permitted.")));
+          throw std::runtime_error("ERROR: Only 1 MEM_TOPOLOGY segment permitted.");
         }
 
         TRACE("Examining MEM_TOPOLOGY section in the JSON file: '" + x.first + "'");
@@ -1144,7 +1143,7 @@ XclBinData::createBinaryImages()
       if ( ptSegment->first == "connectivity" ) {
         // Check to see if there are any before us
         if ( m_connectivityBuf.tellp() > 0 ) {
-          throw std::runtime_error(str(boost::format("ERROR: Only 1 CONNECTIVITY segment permitted.")));
+          throw std::runtime_error("ERROR: Only 1 CONNECTIVITY segment permitted.");
         }
 
         TRACE("Examining CONNECTIVITY section in the JSON file: '" + x.first + "'");
@@ -1157,7 +1156,7 @@ XclBinData::createBinaryImages()
       if ( ptSegment->first == "ip_layout" ) {
         // Check to see if there are any before us
         if ( m_ipLayoutBuf.tellp() > 0 ) {
-          throw std::runtime_error(str(boost::format("ERROR: Only 1 IP_LAYOUT segment permitted.")));
+          throw std::runtime_error("ERROR: Only 1 IP_LAYOUT segment permitted.");
         }
 
         TRACE("Examining IP_LAYOUT section in the JSON file: '" + x.first + "'");
@@ -1170,7 +1169,7 @@ XclBinData::createBinaryImages()
       if ( ptSegment->first == "debug_ip_layout" ) {
         // Check to see if there are any before us
         if ( m_debugIpLayoutBuf.tellp() > 0 ) {
-          throw std::runtime_error(str(boost::format("ERROR: Only 1 DEBUG_IP_LAYOUT segment permitted.")));
+          throw std::runtime_error("ERROR: Only 1 DEBUG_IP_LAYOUT segment permitted.");
         }
 
         TRACE("Examining DEBUG_IP_LAYOUT section in the JSON file: '" + x.first + "'");
@@ -1183,7 +1182,7 @@ XclBinData::createBinaryImages()
       if ( ptSegment->first == "clock_freq_topology" ) {
         // Check to see if there are any before us
         if ( m_clockFreqTopologyBuf.tellp() > 0 ) {
-          throw std::runtime_error(str(boost::format("ERROR: Only 1 CLOCK_FREQ_TOPOLOGY segment permitted.")));
+          throw std::runtime_error("ERROR: Only 1 CLOCK_FREQ_TOPOLOGY segment permitted.");
         }
 
         TRACE("Examining CLOCK_FREQ_TOPOLOGY section in the JSON file: '" + x.first + "'");
@@ -1206,14 +1205,14 @@ XclBinData::addPTreeSchemaVersion( boost::property_tree::ptree &_pt, SchemaVersi
 
   boost::property_tree::ptree pt_schemaVersion;
 
-  TRACE(str(boost::format("major: %d, minor: %d, patch: %d") 
-            % _schemaVersion.major 
-            % _schemaVersion.minor 
-            % _schemaVersion.patch));
+  TRACE(XclBinUtil::format("major: %d, minor: %d, patch: %d", 
+                     _schemaVersion.major, 
+                     _schemaVersion.minor, 
+                     _schemaVersion.patch));
 
-  pt_schemaVersion.put("major", str(boost::format("%d") % _schemaVersion.major));
-  pt_schemaVersion.put("minor", str(boost::format("%d") % _schemaVersion.minor));
-  pt_schemaVersion.put("patch", str(boost::format("%d") % _schemaVersion.patch));
+  pt_schemaVersion.put("major", XclBinUtil::format("%d", _schemaVersion.major));
+  pt_schemaVersion.put("minor", XclBinUtil::format("%d", _schemaVersion.minor));
+  pt_schemaVersion.put("patch", XclBinUtil::format("%d", _schemaVersion.patch));
   _pt.add_child("schema_version", pt_schemaVersion);
 }
 
@@ -1221,16 +1220,16 @@ XclBinData::addPTreeSchemaVersion( boost::property_tree::ptree &_pt, SchemaVersi
 void
 XclBinData::getSchemaVersion(boost::property_tree::ptree &_pt, SchemaVersion &_schemaVersion)
 {
-  TRACE(str(boost::format("SchemaVersion")));
+  TRACE("SchemaVersion");
 
   _schemaVersion.major = _pt.get<unsigned int>("major");
   _schemaVersion.minor = _pt.get<unsigned int>("minor");
   _schemaVersion.patch = _pt.get<unsigned int>("patch");
 
-  TRACE(str(boost::format("major: %d, minor: %d, patch: %d") 
-            % _schemaVersion.major 
-            % _schemaVersion.minor 
-            % _schemaVersion.patch));
+  TRACE(XclBinUtil::format("major: %d, minor: %d, patch: %d", 
+                     _schemaVersion.major,
+                     _schemaVersion.minor,
+                     _schemaVersion.patch));
 }
 
 unsigned int 
@@ -1271,7 +1270,7 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
     case MEM_ARE: return "MEM_ARE";
   }
 
-  return str(boost::format("UNKNOWN (%d)") % (unsigned int) _memType);
+  return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);
 }
 
 void 
@@ -1285,46 +1284,46 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
   
   // Do we have enough room to overlay the header structure
   if ( _segmentSize < sizeof(mem_topology) ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) is smaller than the size of the mem_topology structure (%d)") 
-                                 % _segmentSize % sizeof(mem_topology)));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the mem_topology structure (%d)", 
+                                          _segmentSize, sizeof(mem_topology)));
   }
 
   mem_topology *pHdr = (mem_topology *)_pDataSegment;
   boost::property_tree::ptree mem_topology;
 
-  TRACE(str(boost::format("m_count: %d") % pHdr->m_count));
+  TRACE(XclBinUtil::format("m_count: %d", pHdr->m_count));
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr);
-  mem_topology.put("m_count", str(boost::format("%d") % (unsigned int) pHdr->m_count));
+  mem_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr)  + (sizeof(mem_data) * pHdr->m_count);
 
   if ( _segmentSize != expectedSize ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) does not match expected segments size (%d).") 
-                                 % _segmentSize % expectedSize));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) does not match expected segments size (%d).", 
+                                          _segmentSize, expectedSize));
   }
 
   boost::property_tree::ptree m_mem_data;
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree mem_data;
 
-    TRACE(str(boost::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx") 
-              % index 
-              % getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type) 
-              % (unsigned int) pHdr->m_mem_data[index].m_used 
-              % pHdr->m_mem_data[index].m_size
-              % pHdr->m_mem_data[index].m_tag
-              % pHdr->m_mem_data[index].m_base_address));
+    TRACE(XclBinUtil::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx", 
+                       index,
+                       getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type),
+                       (unsigned int) pHdr->m_mem_data[index].m_used,
+                       pHdr->m_mem_data[index].m_size,
+                       pHdr->m_mem_data[index].m_tag,
+                       pHdr->m_mem_data[index].m_base_address));
 
     // Write out the entire structure 
     TRACE_BUF("mem_data", reinterpret_cast<const char*>(&(pHdr->m_mem_data[index])), sizeof(mem_data));
 
     mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type));
-    mem_data.put("m_used", str(boost::format("%d") % (unsigned int) pHdr->m_mem_data[index].m_used));
-    mem_data.put("m_sizeKB", str(boost::format("0x%lx") % pHdr->m_mem_data[index].m_size));
-    mem_data.put("m_tag", str(boost::format("%s") % pHdr->m_mem_data[index].m_tag));
-    mem_data.put("m_base_address", str(boost::format("0x%lx") % pHdr->m_mem_data[index].m_base_address));
+    mem_data.put("m_used", XclBinUtil::format("%d", (unsigned int) pHdr->m_mem_data[index].m_used));
+    mem_data.put("m_sizeKB", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_size));
+    mem_data.put("m_tag", XclBinUtil::format("%s", pHdr->m_mem_data[index].m_tag));
+    mem_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address));
 
     m_mem_data.add_child("mem_data", mem_data);
   }
@@ -1347,24 +1346,24 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
 
   // Do we have enough room to overlay the header structure
   if ( _segmentSize < sizeof(connectivity) ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) is smaller than the size of the connectivity structure (%d)") 
-                                 % _segmentSize % sizeof(connectivity)));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the connectivity structure (%d)",
+                                          _segmentSize, sizeof(connectivity)));
   }
 
   connectivity *pHdr = (connectivity *) _pDataSegment;
   boost::property_tree::ptree connectivity;
 
-  TRACE(str(boost::format("m_count: %d") % (unsigned int) pHdr->m_count));
+  TRACE(XclBinUtil::format("m_count: %d", (unsigned int) pHdr->m_count));
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr);
-  connectivity.put("m_count", str(boost::format("%d") % (unsigned int) pHdr->m_count));
+  connectivity.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr)  + (sizeof(connection) * pHdr->m_count);
 
   if ( _segmentSize != expectedSize ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) does not match expected segments size (%d).") 
-                                 % _segmentSize % expectedSize));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) does not match expected segments size (%d).",
+                                          _segmentSize, expectedSize));
   }
 
   boost::property_tree::ptree m_connection;
@@ -1372,18 +1371,18 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
     boost::property_tree::ptree connection;
 
 
-     TRACE(str(boost::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d") 
-               % index 
-               % (unsigned int) pHdr->m_connection[index].arg_index  
-               % (unsigned int) pHdr->m_connection[index].m_ip_layout_index 
-               % (unsigned int) pHdr->m_connection[index].mem_data_index));
+     TRACE(XclBinUtil::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d",
+               index,
+               (unsigned int) pHdr->m_connection[index].arg_index,
+               (unsigned int) pHdr->m_connection[index].m_ip_layout_index,
+               (unsigned int) pHdr->m_connection[index].mem_data_index));
 
     // Write out the entire structure 
     TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));
 
-    connection.put("arg_index", str(boost::format("%d") % (unsigned int) pHdr->m_connection[index].arg_index));
-    connection.put("m_ip_layout_index", str(boost::format("%d") % (unsigned int) pHdr->m_connection[index].m_ip_layout_index));
-    connection.put("mem_data_index", str(boost::format("%d") % (unsigned int) pHdr->m_connection[index].mem_data_index));
+    connection.put("arg_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].arg_index));
+    connection.put("m_ip_layout_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].m_ip_layout_index));
+    connection.put("mem_data_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].mem_data_index));
 
     m_connection.add_child("connection", connection);
   }
@@ -1402,7 +1401,7 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
     case IP_KERNEL: return "IP_KERNEL";
   }
 
-  return str(boost::format("UNKNOWN (%d)") % (unsigned int) _ipType);
+  return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);
 }
 
 
@@ -1417,44 +1416,44 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
   // Do we have enough room to overlay the header structure
   if ( _segmentSize < sizeof(ip_layout) ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) is smaller than the size of the ip_layout structure (%d)") 
-                                 % _segmentSize % sizeof(ip_layout)));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the ip_layout structure (%d)",
+                                          _segmentSize, sizeof(ip_layout)));
   }
 
   ip_layout *pHdr = (ip_layout *)_pDataSegment;
   boost::property_tree::ptree ip_layout;
 
-  TRACE(str(boost::format("m_count: %d") % pHdr->m_count));
+  TRACE(XclBinUtil::format("m_count: %d", pHdr->m_count));
 
    // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr);
-  ip_layout.put("m_count", str(boost::format("%d") % (unsigned int) pHdr->m_count));
+  ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr)  + (sizeof(ip_data) * pHdr->m_count);
 
   if ( _segmentSize != expectedSize ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) does not match expected segments size (%d).") 
-                                 % _segmentSize % expectedSize));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) does not match expected segments size (%d).",
+                                          _segmentSize, expectedSize));
   }
 
   boost::property_tree::ptree m_ip_data;
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree ip_data;
 
-    TRACE(str(boost::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'") 
-              % index
-              % getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type) 
-              % pHdr->m_ip_data[index].properties 
-              % pHdr->m_ip_data[index].m_base_address 
-              % pHdr->m_ip_data[index].m_name));
+    TRACE(XclBinUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
+                       index,
+                       getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type),
+                       pHdr->m_ip_data[index].properties,
+                       pHdr->m_ip_data[index].m_base_address,
+                       pHdr->m_ip_data[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type));
-    ip_data.put("properties", str(boost::format("0x%x") % pHdr->m_ip_data[index].properties));
-    ip_data.put("m_base_address", str(boost::format("0x%lx") %  pHdr->m_ip_data[index].m_base_address));
-    ip_data.put("m_name", str(boost::format("%s") % pHdr->m_ip_data[index].m_name));
+    ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties));
+    ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address));
+    ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name));
 
     m_ip_data.add_child("ip_data", ip_data);
   }
@@ -1479,7 +1478,7 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
   }
 
-  return str(boost::format("UNKNOWN (%d)") % (unsigned int) _debugIpType);
+  return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _debugIpType);
 }
 
 
@@ -1494,30 +1493,30 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
 
   // Do we have enough room to overlay the header structure
   if ( _segmentSize < sizeof(debug_ip_layout) ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) is smaller than the size of the debug_ip_layout structure (%d)") 
-                                 % _segmentSize % sizeof(debug_ip_layout)));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the debug_ip_layout structure (%d)", 
+                                                _segmentSize, sizeof(debug_ip_layout)));
   }
 
   debug_ip_layout *pHdr = (debug_ip_layout *)_pDataSegment;
   boost::property_tree::ptree debug_ip_layout;
 
-  TRACE(str(boost::format("m_count: %d") % (uint32_t) pHdr->m_count));
+  TRACE(XclBinUtil::format("m_count: %d", (uint32_t) pHdr->m_count));
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_debug_ip_data[0]) - (unsigned long) pHdr);
-  debug_ip_layout.put("m_count", str(boost::format("%d") % (unsigned int) pHdr->m_count));
+  debug_ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
 
   debug_ip_data mydata = (debug_ip_data){0};
   
 
-  TRACE(str(boost::format("Size of debug_ip_data: %d\nSize of mydata: %d") 
-                           % sizeof(debug_ip_data)
-                           % sizeof(mydata)));
+  TRACE(XclBinUtil::format("Size of debug_ip_data: %d\nSize of mydata: %d", 
+                           sizeof(debug_ip_data),
+                           sizeof(mydata)));
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_debug_ip_data[0]) - (unsigned long) pHdr)  + (sizeof(debug_ip_data) * (uint32_t) pHdr->m_count);
 
   if ( _segmentSize != expectedSize ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) does not match expected segments size (%d).") 
-                                 % _segmentSize % expectedSize));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) does not match expected segments size (%d).", 
+                                                _segmentSize, expectedSize));
   }
 
 
@@ -1525,21 +1524,21 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    TRACE(str(boost::format("[%d]: m_type: %d, m_index: %d, m_base_address: 0x%lx, m_name: '%s'") 
-              % index
-              % getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type) 
-              % (unsigned int) pHdr->m_debug_ip_data[index].m_index 
-              % pHdr->m_debug_ip_data[index].m_base_address 
-              % pHdr->m_debug_ip_data[index].m_name));
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_base_address: 0x%lx, m_name: '%s'", 
+                             index,
+                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type),
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             pHdr->m_debug_ip_data[index].m_base_address,
+                             pHdr->m_debug_ip_data[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
     debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type));
-    debug_ip_data.put("m_index", str(boost::format("%d") % (unsigned int) pHdr->m_debug_ip_data[index].m_index));
-    debug_ip_data.put("m_properties", str(boost::format("%d") % (unsigned int) pHdr->m_debug_ip_data[index].m_properties));
-    debug_ip_data.put("m_base_address", str(boost::format("0x%lx") %  pHdr->m_debug_ip_data[index].m_base_address));
-    debug_ip_data.put("m_name", str(boost::format("%s") % pHdr->m_debug_ip_data[index].m_name));
+    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index));
+    debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties));
+    debug_ip_data.put("m_base_address", XclBinUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address));
+    debug_ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_debug_ip_data[index].m_name));
 
     m_debug_ip_data.add_child("debug_ip_data", debug_ip_data);
   }
@@ -1560,7 +1559,7 @@ XclBinData::getClockTypeStr(enum CLOCK_TYPE _clockType) const
     case CT_SYSTEM: return "SYSTEM";
   }
 
-  return str(boost::format("UNKNOWN (%d) CLOCK_TYPE") % (unsigned int) _clockType);
+  return XclBinUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int) _clockType);
 }
 
 
@@ -1575,29 +1574,29 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
 
   // Do we have enough room to overlay the header structure
   if ( _segmentSize < sizeof(clock_freq_topology) ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) is smaller than the size of the clock_freq_topology structure (%d)") 
-                                 % _segmentSize % sizeof(clock_freq_topology)));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the clock_freq_topology structure (%d)",
+                                                _segmentSize, sizeof(clock_freq_topology)));
   }
 
   clock_freq_topology *pHdr = (clock_freq_topology *) _pDataSegment;
   boost::property_tree::ptree clock_freq_topology;
 
-  TRACE(str(boost::format("m_count: %d") % (uint32_t) pHdr->m_count));
+  TRACE(XclBinUtil::format("m_count: %d", (uint32_t) pHdr->m_count));
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_clock_freq[0]) - (unsigned long) pHdr);
-  clock_freq_topology.put("m_count", str(boost::format("%d") % (unsigned int) pHdr->m_count));
+  clock_freq_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
 
   clock_freq mydata = (clock_freq){0};
   
-  TRACE(str(boost::format("Size of clock_freq: %d\nSize of mydata: %d") 
-                           % sizeof(clock_freq)
-                           % sizeof(mydata)));
+  TRACE(XclBinUtil::format("Size of clock_freq: %d\nSize of mydata: %d", 
+                            sizeof(clock_freq),
+                            sizeof(mydata)));
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_clock_freq[0]) - (unsigned long) pHdr)  + (sizeof(clock_freq) * (uint32_t) pHdr->m_count);
 
   if ( _segmentSize != expectedSize ) {
-    throw std::runtime_error(str(boost::format("ERROR: Segment size (%d) does not match expected segments size (%d).") 
-                                 % _segmentSize % expectedSize));
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) does not match expected segments size (%d).", 
+                                                _segmentSize, expectedSize));
   }
 
 
@@ -1605,18 +1604,18 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree clock_freq;
 
-    TRACE(str(boost::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'") 
-              % index
-              % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz 
-              % getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type) 
-              % pHdr->m_clock_freq[index].m_name));
+    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'", 
+                             index,
+                             (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz,
+                             getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type),
+                             pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
-    clock_freq.put("m_freq_Mhz", str(boost::format("%d") % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz));
+    clock_freq.put("m_freq_Mhz", XclBinUtil::format("%d", (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz));
     clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type));
-    clock_freq.put("m_name", str(boost::format("%s") % pHdr->m_clock_freq[index].m_name));
+    clock_freq.put("m_name", XclBinUtil::format("%s", pHdr->m_clock_freq[index].m_name));
 
     m_clock_freq.add_child("clock_freq", clock_freq);
   }
