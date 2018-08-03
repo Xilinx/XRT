@@ -76,9 +76,9 @@ class OptionParser {
     std::vector< std::string > m_clockFreqTopology;
     std::vector< std::string > m_metadata;
     std::map< std::string, std::string > m_keyValuePairs;
+    bool m_help;
     std::string m_binaryHeader;
     std::string m_output;
-    bool m_help;
     void printHelp( char* program );
 
   private:

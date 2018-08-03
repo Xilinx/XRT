@@ -117,10 +117,10 @@ class XclBinData
     void align(); // Will align m_xclbinFile to 8 byte boundary.
 
   private:
-    bool m_trace;
     FileMode m_mode;
+    unsigned int m_numSections;
+    bool m_trace;
     std::fstream m_xclbinFile;
-    int m_numSections;
     axlf m_xclBinHead;
     std::vector< axlf_section_header > m_sections;
     std::map< /*axlf_section_kind*/ uint32_t, int > m_sectionCounts;

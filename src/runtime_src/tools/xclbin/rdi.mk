@@ -1,3 +1,4 @@
+# Please remove this file
 include $(RDI_MAKEROOT)/top.mk
 
 TOOLSET_HOST := lnx64
