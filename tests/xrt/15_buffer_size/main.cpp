@@ -142,8 +142,8 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
         return 1;
 
       //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
+    //unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
+    //void* execData = xclMapBO(handle, execHandle, true);
 
         //Get the output;
         if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)) {
@@ -208,8 +208,8 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
         return 1;
 
       //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
+    //unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
+    //void* execData = xclMapBO(handle, execHandle, true);
      //Get the output;
         if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)) {
             std::cout << "FAILED TEST\n";
@@ -354,7 +354,7 @@ int main(int argc, char** argv)
 
         // Try to fill half the DDR (8 GB); filling all 16 GB puts enormous
         // memory pressure due to backing pages on host RAM
-       printf("val = 0x%llx\n", info.mDDRSize/4);
+       //printf("val = 0x%llx\n", info.mDDRSize/4);
  
         if (bufferSizeTest(handle, info.mDDRSize / 4)) { //2
             std::cout << "FAILED TEST\n";

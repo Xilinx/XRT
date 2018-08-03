@@ -79,7 +79,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 	xclBOProperties p;
 	uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
-	if((bodevAddr == -1))
+	if((bodevAddr == uint64_t (-1)))
 	    return 1;
 
 	//Allocate the exec_bo
