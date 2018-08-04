@@ -1,0 +1,10 @@
+#!/bin/bash
+
+XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+XRT_ROOT=$(readlink -f $(dirname ${XRTBUILD}))
+
+export RDI_ROOT=$XRT_ROOT
+export RDI_BUILDROOT=$XRTBUILD
+export RDI_CCACHEROOT=/proj/rdi-xsj/scratch/ccache/soeren
+
+make $*
