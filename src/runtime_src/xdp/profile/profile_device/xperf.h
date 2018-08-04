@@ -65,6 +65,17 @@ void profile_read_summary(xclDeviceHandle s_handle);
 void profile_end_summary(xclDeviceHandle s_handle);
 
 /**
+ *  @brief Profile initialization function
+ *
+ *  This function does the necessary initial setup
+ *
+ *  @param s_handle             The session handle associated with this plugin instance
+ *  @param trace_file_name  Name of the output timeline trace csv file
+ *
+ **/
+void
+profile_initialize(xclDeviceHandle s_handle, const char* trace_file_name);
+/**
  *  @brief Start timeline trace
  *
  *  This function starts the timeline trace.
@@ -96,6 +107,16 @@ void profile_read_trace(xclDeviceHandle s_handle);
  */
 void profile_end_trace(xclDeviceHandle s_handle);
 
+/**
+ *  @brief SyncBO with profiling enabled
+ *
+ *  This function calls xclSyncBO, in addition enables profiling to capture timeline trace.
+ *
+ *  @param s_handle  The session handle associated with this plugin instance
+ *
+ */
+int xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
+                                  size_t size, size_t offset);
 #ifdef __cplusplus
 }
 #endif

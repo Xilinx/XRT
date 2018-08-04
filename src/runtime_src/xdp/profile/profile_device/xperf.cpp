@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <vector>
 #include <queue>
+#include <thread>
+#include <boost/format.hpp>
 
 #include "xperf.h"
 
@@ -35,22 +37,31 @@
 //                               Helper Functions
 // *****************************************************************************
 
-unsigned long
-time_ns()
-{
- static auto zero = std::chrono::high_resolution_clock::now();
- auto now = std::chrono::high_resolution_clock::now();
- auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
- return integral_duration;
-}
-
-
 //
 // XDP: Helpers, classes, & members
 //
 
 // TODO: replace these with functions in XDP library
 namespace XDP {
+
+  unsigned long
+  time_ns()
+  {
+    static auto zero = std::chrono::high_resolution_clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
+    auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
+    return integral_duration;
+  }
+
+  double getTimestampMsec(uint64_t timeNsec) {
+    return (timeNsec / 1.0e6);
+  }
+
+  double getTraceTime() {
+    auto nsec = XDP::time_ns();
+    return getTimestampMsec(nsec);
+  }
+
   // Classes
   // Class to store time trace of kernel execution, buffer read, or buffer write
   // Timestamp is in double precision value of unit ms
@@ -182,6 +193,7 @@ namespace XDP {
   }
 
   // Members
+  std::string deviceName;
   unsigned short mKernelClockFreq;
   std::string mDataTransferTrace;
   std::string mStallTrace;
@@ -328,7 +340,7 @@ namespace XDP {
     if (!ofs.is_open())
       return;
 
-    ofs << "XMA Timeline Trace" << std::endl;
+    ofs << "SDAccel Timeline Trace" << std::endl;
     ofs << "Generated on: " << XDP::getCurrentDateTime() << "\n";
     ofs << "Msec since Epoch: " << XDP::getCurrentTimeMsec() << "\n";
     if (!XDP::getCurrentExecutableName().empty())
@@ -361,8 +373,8 @@ namespace XDP {
 
     // Platform/device info
     std::string deviceName = deviceInfo.mName;
-    ofs << "Platform," << deviceName << ",\n";
-    ofs << "Device," << deviceName << ",begin\n";
+    ofs << "Platform," << XDP::deviceName << ",\n";
+    ofs << "Device," << XDP::deviceName << ",begin\n";
 
     // DDR Bank addresses
     // TODO: this assumes start address of 0x0 and evenly divided banks
@@ -374,7 +386,7 @@ namespace XDP {
     for (int b=0; b < ddrBanks; ++b)
       ofs << "Bank," << std::dec << b << ",0X" << std::hex << (b * bankSize) << std::endl;
     ofs << "DDR Banks,end\n";
-    ofs << "Device," << deviceName << ",end\n";
+    ofs << "Device," << XDP::deviceName << ",end\n";
 
     // TODO: Unused CUs
 
@@ -407,7 +419,7 @@ namespace XDP {
   void logTrace(xclPerfMonType type, const std::string deviceName, std::string binaryName,
                 xclTraceResultsVector& traceVector, std::ofstream& ofs)
   {
-    printf("[logTrace] Logging %u device trace samples...\n", traceVector.mLength);
+    //printf("[logTrace] Logging %u device trace samples...\n", traceVector.mLength);
 
     // Log device trace results: store in queues and report events as they are completed
     bool isHwEmu = false;
@@ -427,7 +439,7 @@ namespace XDP {
     //
     for (int i=0; i < traceVector.mLength; i++) {
       xclTraceResults trace = traceVector.mArray[i];
-      printf("[logTrace] Parsing trace sample %d...\n", i);
+      //printf("[logTrace] Parsing trace sample %d...\n", i);
 
       // ***************
       // Clock Training
@@ -768,6 +780,70 @@ namespace XDP {
     }
   }
 
+
+  // Get a device timestamp
+  double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName)
+  {
+    double deviceTimeStamp = hostTimeStamp;
+
+    /*
+    // In HW emulation, use estimated host timestamp based on device clock cycles (in psec from HAL)
+    if (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM) {
+      size_t dts = XCL::RTSingleton::Instance()->getDeviceTimestamp(deviceName);
+      deviceTimeStamp = dts / 1000000.0;
+    }
+    */
+    return deviceTimeStamp;
+  }
+
+
+  void writeDataTransferTrace(double traceTime, const std::string& commandString,
+            const std::string& stageString, const std::string& eventString,
+            const std::string& dependString, size_t size, uint64_t address,
+            const std::string& bank, std::thread::id threadId,  std::ofstream& ofs)
+  {
+    if (!ofs.is_open())
+      return;
+
+    std::stringstream timeStr;
+    timeStr << std::setprecision(10) << traceTime;
+
+    // Write out DDR physical address and bank
+    // NOTE: thread ID is only valid for START and END
+    std::stringstream strAddress;
+    strAddress << (boost::format("0X%09x") % address) << "|" << std::dec << bank;
+    //strAddress << std::showbase << std::hex << std::uppercase << address
+    //		   << "|" << std::dec << bank;
+    if (stageString == "START" || stageString == "END")
+      strAddress << "|" << std::showbase << std::hex << std::uppercase << threadId;
+
+    writeTableRowStart(ofs);
+  #ifndef _WINDOWS
+    // TODO: Windows build support
+    //    Variadic Template is not supported
+    writeTableCells(ofs, timeStr.str(), commandString,
+        stageString, strAddress.str(), size, "", "", "", "", "", "",
+        eventString, dependString);
+  #endif
+    writeTableRowEnd(ofs);
+  }
+
+  void logDataTransfer(uint64_t objId, const std::string commandString,
+      const std::string stageString, size_t objSize, uint32_t contextId,
+      uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
+      uint64_t address, const std::string& bank, std::thread::id threadId,
+      const std::string eventString, const std::string dependString, double timestampMsec, std::ofstream& ofs)
+  {
+    double timeStamp = (timestampMsec > 0.0) ? timestampMsec : getTraceTime();
+    double deviceTimeStamp = getDeviceTimeStamp(timeStamp, deviceName);
+#ifdef USE_DEVICE_TIMELINE
+    timeStamp = deviceTimeStamp;
+#endif
+
+    std::cout << "logDataTransfer: " << commandString << std::endl;
+    writeDataTransferTrace(timeStamp, commandString, stageString, eventString, dependString,
+                       objSize, address, bank, threadId, ofs);
+  }
 } // XDP namespace
 XDP::DeviceTrace* XDP::DeviceTrace::RecycleHead = nullptr;
 
@@ -833,6 +909,25 @@ profile_end_summary(xclDeviceHandle s_handle)
 // *****************************************************************************
 
 void
+profile_initialize(xclDeviceHandle s_handle, const char* trace_file_name)
+{
+  // Open timeline trace file
+  XDP::mTraceStream.open(trace_file_name);
+
+  //Make an initialization call for time
+  XDP::time_ns();
+
+  // Write header
+  XDP::writeTraceHeader(XDP::mTraceStream);
+
+  xclDeviceInfo2 deviceInfo;
+  xclGetDeviceInfo2(s_handle, &deviceInfo);
+  XDP::mKernelClockFreq = deviceInfo.mOCLFrequency[0];
+  XDP::deviceName = deviceInfo.mName;
+
+}
+
+void
 profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, const char* stall_trace)
 {
   // Evaluate arguments
@@ -846,9 +941,6 @@ profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, c
   else if (XDP::mStallTrace == "all")    traceOption |= (0x7 << 2);
   else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
   printf("xma_plg_start_trace: dev_handle=%p, traceOption=%d\n", dev_handle, traceOption);
-
-  //Make an initialization call for time
-  time_ns();
 
   // Start trace (also reads debug_ip_layout)
   xclPerfMonStartTrace(dev_handle, XCL_PERF_MON_MEMORY, traceOption);
@@ -870,11 +962,6 @@ profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, c
 	XDP::mAccelPortNames[i] = name;
   }
 
-  // Open timeline trace file
-  XDP::mTraceStream.open("xma_timeline_trace.csv");
-
-  // Write header
-  XDP::writeTraceHeader(XDP::mTraceStream);
 }
 
 void
@@ -890,21 +977,23 @@ profile_read_trace(xclDeviceHandle s_handle)
 
   // Get device level info
   // TODO; instead of calling this multiple times, we should run once then store the whole thing
+  /*
   xclDeviceInfo2 deviceInfo;
   xclGetDeviceInfo2(dev_handle, &deviceInfo);
   XDP::mKernelClockFreq = deviceInfo.mOCLFrequency[0];
   std::string deviceName = deviceInfo.mName;
   // TODO: do we know this?
+   */
   std::string binaryName = "binary";
 
   // Data transfers
   xclTraceResultsVector traceVector = {0};
   xclPerfMonReadTrace(dev_handle, XCL_PERF_MON_MEMORY, traceVector);
-  XDP::logTrace(XCL_PERF_MON_MEMORY, deviceName, binaryName, traceVector, XDP::mTraceStream);
+  XDP::logTrace(XCL_PERF_MON_MEMORY, XDP::deviceName, binaryName, traceVector, XDP::mTraceStream);
 
   // Accelerators
   xclPerfMonReadTrace(dev_handle, XCL_PERF_MON_ACCEL, traceVector);
-  XDP::logTrace(XCL_PERF_MON_ACCEL, deviceName, binaryName, traceVector, XDP::mTraceStream);
+  XDP::logTrace(XCL_PERF_MON_ACCEL, XDP::deviceName, binaryName, traceVector, XDP::mTraceStream);
 }
 
 void
@@ -931,5 +1020,49 @@ profile_end_trace(xclDeviceHandle s_handle)
   // Write footer & close
   XDP::writeTraceFooter(deviceInfo, XDP::mTraceStream);
   XDP::mTraceStream.close();
+}
+
+int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
+        size_t size, size_t offset)
+{
+  int rc;
+
+  XDP::logDataTransfer (
+    static_cast<uint64_t>(boHandle)
+     ,((dir == XCL_BO_SYNC_BO_TO_DEVICE) ? "WRITE_BUFFER" : "READ_BUFFER")
+     ,"START"
+     ,size
+     ,0
+     ,1
+     ,XDP::deviceName
+     ,0
+     ,-1
+     ,"Unknown"
+     ,std::this_thread::get_id()
+     ,""
+     ,""
+     ,0
+     ,XDP::mTraceStream);
+
+  rc = xclSyncBO(handle, boHandle, dir, size, offset);
+
+  XDP::logDataTransfer (
+    static_cast<uint64_t>(boHandle)
+     ,((dir == XCL_BO_SYNC_BO_TO_DEVICE) ? "WRITE_BUFFER" : "READ_BUFFER")
+     ,"END"
+     ,size
+     ,0
+     ,1
+     ,XDP::deviceName
+     ,0
+     ,-1
+     ,"Unknown"
+     ,std::this_thread::get_id()
+     ,""
+     ,""
+     ,0
+     ,XDP::mTraceStream);
+
+  return rc;
 }
 
