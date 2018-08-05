@@ -184,7 +184,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     p = mmap( addr, mSb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, mFd, 0 );
     if( p == MAP_FAILED )
     {
-        std::cout << "mmap failed : " << errno << std::endl;
+        std::cout << "mmap failed: " << errno << std::endl;
         perror( "mmap" );
         close( mFd );
         return errno;
@@ -289,7 +289,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
     // Obtain installed DSA info.
     auto installedDSAs = firmwareImage::getIntalledDSAs();
-    for (auto dsa : installedDSAs)
+    for (DSAInfo& dsa : installedDSAs)
     {
         if (onBoard.vendor != dsa.vendor || onBoard.board != dsa.board)
             continue;
