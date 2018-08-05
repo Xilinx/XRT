@@ -45,8 +45,8 @@ set(XRT_XDP_ALL_SRC
 
 add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})
 add_library(xdp SHARED ${XRT_XDP_PROFILE_DEVICE_FILES})
-add_dependencies(xdp xrtcore)
-target_link_libraries (xdp xrtcore)
+add_dependencies(xdp xrt_core)
+target_link_libraries (xdp xrt_core)
 
 install (TARGETS xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
