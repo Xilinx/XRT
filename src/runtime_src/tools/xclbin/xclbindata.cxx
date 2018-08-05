@@ -1683,7 +1683,7 @@ XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS
       fs.seekg( 0, fs.end );
       mcsChunk.m_size = fs.tellg();
       mcsChunk.m_offset = currentOffset;
-      currentOffset = mcsChunk.m_size;
+      currentOffset += mcsChunk.m_size;
 
       if ( ! fs.is_open() ) {
         std::string errMsg = "ERROR: Could not open the file for reading: '" + mcsEntry.first + "'";
@@ -1737,7 +1737,6 @@ XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS
                                mcsSize,
                                mcsEntry.first.c_str()));
       m_mcsBuf.write(reinterpret_cast<const char*>(memBuffer.get()), mcsSize );
-      ++index;
     }
   }
 }
