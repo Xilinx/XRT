@@ -24,9 +24,8 @@
 #include "mgmt-reg.h"
 #include <sys/mman.h>
 #include <stddef.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <dirent.h>
+#include <fcntl.h>
 #include <cassert>
 #include <cstring>
 #include <vector>
@@ -107,29 +106,30 @@ Flasher::~Flasher()
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(const char *f1, const char *f2)
+int Flasher::upgradeFirmware(std::shared_ptr<firmwareImage> primary,
+        std::shared_ptr<firmwareImage> secondary)
 {
     int retVal = -EINVAL;
     switch( mType )
     {
     case SPI:
-        if( f2 == nullptr )
+        if(secondary == nullptr)
         {
-            retVal = mXspi->xclUpgradeFirmwareXSpi( f1 );
+            retVal = mXspi->xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
-            retVal = mXspi->xclUpgradeFirmware2( f1, f2 );
+            retVal = mXspi->xclUpgradeFirmware2(*primary, *secondary);
         }
         break;
     case BPI:
-        if( f2 != nullptr )
+        if(secondary != nullptr)
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
         }
         else
         {
-            retVal = mBpi->xclUpgradeFirmware( f1 );
+            retVal = mBpi->xclUpgradeFirmware(*primary);
         }
         break;
     default:
@@ -139,12 +139,10 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
     return retVal;
 }
 
-int Flasher::upgradeBMCFirmware(const char *f1)
+int Flasher::upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc)
 {
-    int ret;
-
     MSP432_Flasher flasher(mIdx, mMgmtMap);
-    return flasher.xclUpgradeFirmware(f1);
+    return flasher.xclUpgradeFirmware(*bmc);
 }
 
 /*
@@ -268,74 +266,41 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     }
     if( !typeFound )
     {
-        std::cout << "ERROR: failed to determine DSA type, unable to flash device." << std::endl;
+        std::cout << "ERROR: failed to determine DSA type." << std::endl;
         return -EINVAL;
     }
     return 0;
 }
 
 /*
- * Helper to parse DSA name string and retrieve all tokens
- * The DSA name string is passed in by value since it'll be modified inside.
- */
-std::vector<std::string> DSANameParser(std::string name)
-{
-    std::vector<std::string> tokens;
-    std::string delimiter = "_";
-
-    size_t pos = 0;
-    std::string token;
-    while ((pos = name.find(delimiter)) != std::string::npos)
-    {
-        token = name.substr(0, pos);
-        tokens.push_back(token);
-        name.erase(0, pos + delimiter.length());
-    }
-    tokens.push_back(name);
-    return tokens;
-}
-
-/*
  * Obtain all DSA installed on the system for this board
  */
-std::vector<std::string> Flasher::sGetInstalledDSA()
+std::vector<DSAInfo> Flasher::getInstalledDSA()
 {
-    std::vector<std::string> DSAs;
-    std::vector<std::string> tokens = DSANameParser(sGetDSAName());
-    struct dirent *entry;
-    DIR *dp;
-    std::string nm;
+    std::vector<DSAInfo> DSAs;
 
-    // At least, we need vendor.board.dsa
-    if (tokens.size() < 3)
-        return DSAs;
-
-    dp = opendir(FIRMWARE_DIR);
-    if (dp)
+    // Obtain board info.
+    DSAInfo onBoard = getOnBoardDSA();
+    if (onBoard.vendor.empty() || onBoard.board.empty())
     {
-        while ((entry = readdir(dp)))
-        {
-            std::string e(entry->d_name);
+        std::cout << "Onboard DSA is unknown" << std::endl;
+        return DSAs;
+    }
 
-            // Looking for ".mcs" file
-            size_t pos = e.find_last_of(".");
-            if (pos == 0 || pos == std::string::npos ||
-                e.substr(pos + 1).compare(DSA_FILE_SUFFIX) != 0)
-                continue;
-
-            // Matching vendor.board token in the file name
-            std::string dsa = e.substr(0, pos);
-            std::vector<std::string> t = DSANameParser(dsa);
-            if (t.back().compare("secondary") == 0 || t[0] != tokens[0] || t[1] != tokens[1])
-                continue;
-
-            // Take it
-            if (t.back().compare("primary") == 0)
-                dsa.erase(dsa.rfind("primary") - 1);
-            DSAs.push_back(dsa);
-        }
-        closedir(dp);
+    // Obtain installed DSA info.
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    for (auto dsa : installedDSAs)
+    {
+        if (onBoard.vendor != dsa.vendor || onBoard.board != dsa.board)
+            continue;
+        DSAs.push_back(dsa);
     }
 
     return DSAs;
+}
+
+DSAInfo Flasher::getOnBoardDSA()
+{
+    return DSAInfo(std::string( reinterpret_cast<char *>(mFRHeader.VBNVName)),
+        mFRHeader.TimeSinceEpoch);
 }

@@ -75,13 +75,13 @@ class MSP432_Flasher
 public:
     MSP432_Flasher( unsigned int device_index, char *inMap );
     ~MSP432_Flasher();
-    int xclUpgradeFirmware(const char *fileName);
+    int xclUpgradeFirmware(std::istream& tiTxtStream);
 
 private:
     char *mMgmtMap;
     unsigned mPktBufOffset;
     struct xmcPkt mPkt;
-    int program(std::ifstream& tiTxtStream, const ELARecord& record);
+    int program(std::istream& tiTxtStream, const ELARecord& record);
     int sendPkt();
     int waitTillIdle();
     unsigned readReg(unsigned RegOffset);

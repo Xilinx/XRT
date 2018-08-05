@@ -20,20 +20,21 @@
 #include <fstream>
 #include <unistd.h>
 #include <getopt.h>
+#include <memory>
 #include "flasher.h"
 #include "scan.h"
+#include "firmware_image.h"
 
 const char* UsageMessages[] = {
-    "xbflash [-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
-    "xbflash [-d device] -p msp432_firmware",
-    "xbflash [-d device] -a dsa",
+    "[-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
+    "[-d device] -p msp432_firmware",
+    "[-d device] -a dsa",
 };
 const char* SudoMessage = "ERROR: root privileges required.";
 int scanDevices( void );
-int startIdx = 0;
 
 void usage() {
-    std::cout << "Usage:" << std::endl;
+    std::cout << "Available options:" << std::endl;
     for (unsigned i = 0; i < (sizeof(UsageMessages) / sizeof(UsageMessages[0])); i++)
         std::cout << "\t" << UsageMessages[i] << std::endl;
 }
@@ -56,107 +57,78 @@ void notSeenOrDie(bool& seen_opt) {
 struct T_Arguments
 {
     unsigned devIdx = UINT_MAX;
-    char *file1 = nullptr;
-    char *file2 = nullptr;
-    char *bmcfile = nullptr;
+    std::shared_ptr<firmwareImage> primary;
+    std::shared_ptr<firmwareImage> secondary;
+    std::shared_ptr<firmwareImage> bmc;
     Flasher::E_FlasherType flasherType = Flasher::E_FlasherType::UNSET;
-    bool isValid = true;
     std::string dsa;
+    uint64_t timestamp = ULLONG_MAX;
 };
 
-void addDsaFile(std::vector<std::string>& dsafiles, std::string dsafile)
+int flashDSA(Flasher& f, DSAInfo& dsa)
 {
-    // Make sure file exists before add to the list.
-    std::ifstream f(dsafile.c_str());
-    if (f.good())
-        dsafiles.push_back(dsafile);
-}
+    std::shared_ptr<firmwareImage> primary;
+    std::shared_ptr<firmwareImage> secondary;
 
-std::vector<std::string> dsa2files(std::string& dsa)
-{
-    std::vector<std::string> files;
-    std::string file;
+    primary = std::make_shared<firmwareImage>(dsa.file.c_str(), MCS_FIRMWARE_PRIMARY);
 
-    file += FIRMWARE_DIR "/";
-    file += dsa;
-
-    // kcu1500 has two dsa files in below order.
-    size_t pos = dsa.find("kcu1500");
+    size_t pos = dsa.file.rfind("primary");
     if (pos != std::string::npos)
     {
-        addDsaFile(files, file + "_primary." DSA_FILE_SUFFIX);
-        addDsaFile(files, file + "_secondary." DSA_FILE_SUFFIX);
-    }
-    else
-    {
-        addDsaFile(files, file + "." DSA_FILE_SUFFIX);
+        std::string sec = dsa.file.substr(0, pos);
+        sec += "secondary" "." DSA_FILE_SUFFIX;
+        secondary = std::make_shared<firmwareImage>(sec.c_str(), MCS_FIRMWARE_SECONDARY);
     }
 
-    return files;
+    if (primary->fail() || (secondary != nullptr && secondary->fail()))
+        return -EINVAL;
+
+    return f.upgradeFirmware(primary, secondary);
 }
 
-int flashDSA(Flasher& f, std::string& dsa)
-{
-    std::vector<std::string> files = dsa2files(dsa);
-
-    if (files.empty())
-        return -ENOENT;
-    if (files.size() == 1)
-        return f.upgradeFirmware(files[0].c_str(), nullptr);
-    if (files.size() == 2)
-        return f.upgradeFirmware(files[0].c_str(), files[1].c_str());
-    return -EINVAL;
-}
-
-int updateDSAOnBoards(unsigned idx, std::string& dsa, bool dryrun, bool *update)
+int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
 {
     Flasher flasher(idx);
     if(!flasher.isValid())
-    {
         return -EINVAL;
-    }
 
-    std::vector<std::string> installedDSA = flasher.sGetInstalledDSA();
-    std::string currentDSA = flasher.sGetDSAName();
+    std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
+    DSAInfo currentDSA = flasher.getOnBoardDSA();
+    unsigned int candidateDSAIndex = UINT_MAX;
 
-    // Bring DSA in-sync w/ installed ones
+    // Find candidate DSA from installed DSA list.
     if (dsa.compare("all") == 0)
     {
         if (installedDSA.size() > 1)
-        {
-            std::cout << "Multiple types of DSA installed for board." << std::endl;
-            std::cout << "Run xbutil flash scan to obtain detailed information." << std::endl;
-            std::cout << "Run xbutil flash -a <dsa name> to pick one to flash." << std::endl;
-            return -EINVAL;
-        }
-        *update = (installedDSA[0].compare(currentDSA) != 0);
-
-        if (update && !dryrun)
-        {
-            return flashDSA(flasher, installedDSA[0]);
-        }
+            return -ENOTUNIQ;
+        else
+            candidateDSAIndex = 0;
     }
-    // Flash specified DSA
     else
     {
-        *update = false;
-        if (dsa.compare(currentDSA) != 0)
+        for (unsigned int i = 0; i < installedDSA.size(); i++)
         {
-            for (unsigned d = 0; d < installedDSA.size(); d++)
-            {
-                if (dsa.compare(installedDSA[d]) == 0)
-                {
-                    *update = true;
-                    break;
-                }
-            }
-
-            if (update && !dryrun)
-            {
-                return flashDSA(flasher, dsa);
-            }
+            DSAInfo& idsa = installedDSA[i];
+            if (dsa != idsa.name)
+                continue;
+            if (ts != ULLONG_MAX && ts != idsa.timestamp)
+                continue;
+            if (candidateDSAIndex != UINT_MAX)
+                return -ENOTUNIQ;
+            candidateDSAIndex = i;
         }
     }
+
+    if (candidateDSAIndex == UINT_MAX)
+        return -ENOENT;
+    DSAInfo& candidate = installedDSA[candidateDSAIndex];
+
+    if (candidate.name == currentDSA.name &&
+        candidate.timestamp == currentDSA.timestamp)
+        return -EALREADY;
+
+    if (!dryrun)
+        return flashDSA(flasher, candidate);
 
     return 0;
 }
@@ -194,32 +166,37 @@ int main( int argc, char *argv[] )
     }
 
     // launched from xbutil
-    if( std::string( argv[ (startIdx+1) ] ).compare( "flash" ) == 0 )
+    if(std::string(argv[0]).rfind("xbutil") != std::string::npos)
     {
-        startIdx++;
+        optind = 2;
     }
     else
     {
         std::cout <<"XBFLASH -- Xilinx Board Flash Utility" << std::endl;
     }
 
-    if( argc <= (startIdx+2) ) // not a valid flash program scenario
-    {
-        if( argc <= (startIdx+1) ) {
-            usageAndDie();
-        }
+    if( argc <= optind )
+        usageAndDie();
 
-        // argc > (startIdx+1)
-        if( std::string( argv[ (startIdx+1) ] ).compare( "scan" ) == 0 ) {
-            sudoOrDie();
-            return scanDevices();
-        } else if ( std::string( argv[ (startIdx+1) ] ).compare( "help" ) == 0 ) {
-            usage();
-            return 0;
-        } else {
+    // Non-flash use case with subcommands.
+    std::string subcmd(argv[optind]);
+    if(subcmd.compare("scan") == 0 )
+    {
+        if (argc != optind + 1)
             usageAndDie();
-        }
+
+        sudoOrDie();
+        return scanDevices();
+    } else if (subcmd.compare("help") == 0)
+    {
+        if (argc != optind + 1)
+            usageAndDie();
+
+        usage();
+        return 0;
     }
+
+    // Flash use case without subcommands.
 
     sudoOrDie();
 
@@ -229,11 +206,11 @@ int main( int argc, char *argv[] )
     bool seen_n = false;
     bool seen_o = false;
     bool seen_p = false;
+    bool seen_t = false;
     T_Arguments args;
 
-    // argc > (startIdx+2)
     int opt;
-    while( ( opt = getopt( argc, argv, "a:d:m:n:o:p:" ) ) != -1 ) // adjust offset?
+    while( ( opt = getopt( argc, argv, "a:d:m:n:o:p:t:" ) ) != -1 )
     {
         switch( opt )
         {
@@ -244,58 +221,65 @@ int main( int argc, char *argv[] )
         case 'd':
             notSeenOrDie(seen_d);
             args.devIdx = atoi( optarg );
-            std::cout << "    device index: " << args.devIdx << std::endl;
             break;
         case 'm':
             notSeenOrDie(seen_m);
-            args.file1 = optarg;
-            std::cout << "    primary mcs: " << args.file1 << std::endl;
+            args.primary = std::make_shared<firmwareImage>(optarg, MCS_FIRMWARE_PRIMARY);
+            if (args.primary->fail())
+                exit(-EINVAL);
             break;
         case 'n': // optional
             notSeenOrDie(seen_n);
-            args.file2 = optarg;
-            std::cout << "    secondary mcs: " << args.file2 << std::endl;
+            args.secondary = std::make_shared<firmwareImage>(optarg, MCS_FIRMWARE_SECONDARY);
+            if (args.secondary->fail())
+                exit(-EINVAL);
             break;
         case 'o': // optional
-          {
             notSeenOrDie(seen_o);
-            std::cout << "CAUTION: Overrideing flash programming mode is not recommended. You may damage your device with this option." << std::endl;
+            std::cout << "CAUTION: Overrideing flash programming mode is not recommended. "
+                << "You may damage your device with this option." << std::endl;
             if(!canProceed())
-                return -ECANCELED;
+                exit(-ECANCELED);
 
             if( std::string( optarg ).compare( "spi" ) == 0 ) {
                 args.flasherType = Flasher::E_FlasherType::SPI;
             } else if( std::string( optarg ).compare( "bpi" ) == 0 ) {
                 args.flasherType = Flasher::E_FlasherType::BPI;
             } else {
-                args.isValid = false;
-                std::cout << "Invalid programming mode '" << optarg
-                          << "', must be either 'spi' or 'bpi'." << std::endl;
+                std::cout << "Invalid programming mode '" << optarg << "', "
+                    << "must be either 'spi' or 'bpi'." << std::endl;
+                usageAndDie();
                 break;
             }
-            std::cout << "    flash mode: " << optarg << std::endl;
             break;
-          }
         case 'p':
             notSeenOrDie(seen_p);
-            args.bmcfile = optarg;
-            std::cout << "    MSP432 firmware image: " << args.bmcfile << std::endl;
+            args.bmc = std::make_shared<firmwareImage>(optarg, BMC_FIRMWARE);
+            if (args.bmc->fail())
+                exit(-EINVAL);
+            break;
+        case 't':
+            notSeenOrDie(seen_t);
+            args.timestamp = strtoull(optarg, nullptr, 16);
             break;
         default:
-            args.isValid = false;
+            usageAndDie();
             break;
         }
     }
 
-    if( !args.isValid ||
-        (seen_p && (seen_m || seen_n || seen_o)) ||
-        (seen_a && (seen_m || seen_n || seen_o)))
+    if(argc > optind || // More options than expected.
+        // Combination of options not expected.
+        (seen_p && (seen_m || seen_n || seen_o))    ||
+        (seen_a && (seen_m || seen_n || seen_o))    ||
+        (seen_t && (!seen_a || args.dsa.compare("all") == 0)))
     {
         usageAndDie();
     }
 
     int ret = 0;
 
+    // Manually specify DSA/BMC files.
     if (args.dsa.empty())
     {
         if (args.devIdx == UINT_MAX)
@@ -305,82 +289,103 @@ int main( int argc, char *argv[] )
 
         if(!flasher.isValid())
             ret = -EINVAL;
-        else if (args.bmcfile)
-            ret = flasher.upgradeBMCFirmware(args.bmcfile);
+        else if (args.bmc != nullptr)
+            ret = flasher.upgradeBMCFirmware(args.bmc);
         else
-            ret = flasher.upgradeFirmware(args.file1, args.file2);
+            ret = flasher.upgradeFirmware(args.primary, args.secondary);
     }
+    // Automatically choose DSA/BMC files.
     else
     {
-        bool needed;
-        std::vector<unsigned int> boards;
+        bool foundDSA = false;
+        bool multiDSA = false;
+        std::vector<unsigned int> boardsToCheck;
+        std::vector<unsigned int> boardsToUpdate;
+        xcldev::pci_device_scanner scanner;
+        scanner.scan_without_driver();
 
-        // Make sure input DSA is valid
-        if (args.dsa.compare("all") != 0)
-        {
-            std::vector<std::string> f = dsa2files(args.dsa);
-            if (f.empty())
-            {
-                std::cout << "DSA " << args.dsa << " is not found" << std::endl;
-                return -ENOENT;
-            }
-        }
-
-        // Collecting all indexes of boards need updating
+        // Collect all indexes of boards need checking
         if (args.devIdx == UINT_MAX)
         {
-            xcldev::pci_device_scanner scanner;
-            scanner.scan_without_driver();
-
-            // Find out which boards to flash
             for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
-            {
-                ret = updateDSAOnBoards(i, args.dsa, true, &needed);
-                if (ret != 0)
-                    break;
-
-                if (needed)
-                {
-                    boards.push_back(i);
-                }
-            }
+                boardsToCheck.push_back(i);
         }
         else
         {
-            ret = updateDSAOnBoards(args.devIdx, args.dsa, true, &needed);
-            if (ret == 0 && needed)
+            if (args.devIdx < xcldev::pci_device_scanner::device_list.size())
+                boardsToCheck.push_back(args.devIdx);
+        }
+        if (boardsToCheck.empty())
+        {
+            std::cout << "Board(s) not found!" << std::endl;
+            exit(-ENOENT);
+        }
+
+        // Collect all indexes of boards need updating
+        for (unsigned int i : boardsToCheck)
+        {
+            ret = updateDSA(i, args.dsa, args.timestamp, true);
+            switch (ret)
             {
-                boards.push_back(args.devIdx);
+            case 0:
+                foundDSA = true;
+                boardsToUpdate.push_back(i);
+                break;
+            case -ENOTUNIQ:
+                foundDSA = true;
+                multiDSA = true;
+                break;
+            case -EALREADY:
+                foundDSA = true;
+                break;
+            default:
+                break;
             }
         }
 
-        // Updating DSA & MSP432 firmware
-        if (ret == 0)
+        // Check and quit on fatal errors.
+        if (!foundDSA)
         {
-            if (boards.empty())
+            std::cout << "DSA not found: " << args.dsa << std::endl;
+            exit (-ENOENT);
+        }
+        if (multiDSA)
+        {
+            std::cout << "Multiple applicable installed DSA found." << std::endl;
+            std::cout << "Run xbutil flash scan to obtain detailed info." << std::endl;
+            std::cout << "Use xbutil flash -a <dsa-name> [-t <timestamp>] "
+                << "to pick a specific one to flash" << std::endl;
+            exit (-ENOTUNIQ);
+        }
+
+        // Continue to flash whatever we have collected in boardsToUpdate.
+
+        // Update user about what boards will be updated and get permission.
+        if (boardsToUpdate.empty())
+        {
+            std::cout << "No board needs updating." << std::endl;
+            exit (0);
+        }
+        else
+        {
+            std::cout << "DSA on below boards will be updated:" << std::endl;
+            for (unsigned int i : boardsToUpdate)
             {
-                std::cout << "No board needs updating." << std::endl;
-                return 0;
+                std::cout << "Board [" << boardsToUpdate[i] << "]" << std::endl;
             }
-            else
+            if(!canProceed())
             {
-                std::cout << "DSA on below boards will be updated:" << std::endl;
-                for (unsigned i = 0; i < boards.size(); i++)
-                {
-                    std::cout << "Board [" << boards[i] << "]" << std::endl;
-                }
-                if(canProceed())
-                {
-                    for (unsigned i = 0; i < boards.size(); i++)
-                    {
-                        ret = updateDSAOnBoards(i, args.dsa, false, &needed);
-                    }
-                }
-                else
-                {
-                    ret = -ECANCELED;
-                }
+                std::cout << "Firmware updating is canceled." << std::endl;
+                exit(-ECANCELED);
             }
+        }
+
+        // Perform DSA and BMC updating
+        for (unsigned int i : boardsToUpdate)
+        {
+            ret = updateDSA(i, args.dsa, args.timestamp, false);
+            if (ret)
+                break;
         }
     }
 
@@ -390,7 +395,7 @@ int main( int argc, char *argv[] )
         {
             std::cout << "No devices found" << std::endl;
         }
-        else if (args.bmcfile)
+        else if (args.bmc != nullptr)
         {
             std::cout << "BMC firmware updated successfully" << std::endl;
         }
@@ -412,8 +417,6 @@ int main( int argc, char *argv[] )
  * scanDevices
  *
  * Uses pci_device_scanner to enumerate SDx devices and populates device_list.
- * TODO: Add error checking and return nonzero in the event of failure.
- * Returns 0 on success.
  */
 int scanDevices( void )
 {
@@ -427,22 +430,26 @@ int scanDevices( void )
 
     for( unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++ )
     {
+        std::cout << "Board [" << i << "]" << std::endl;
+
         Flasher f( i );
         if (!f.isValid())
             continue;
 
-        std::vector<std::string> installedDSA = f.sGetInstalledDSA();
-        std::cout << "Board [" << i << "]" << std::endl;
-        std::cout << "\tDevice BDF: " << f.sGetDBDF() << std::endl;
-        std::cout << "\tFlash type: " << f.sGetFlashType() << std::endl;
-        std::cout << "\tDSA on board:  " << f.sGetDSAName() << std::endl;
-        std::cout << "\tDSA installed: ";
+        DSAInfo board = f.getOnBoardDSA();
+        std::cout << "\tDevice type:\t" << board.board << std::endl;
+        std::cout << "\tDevice BDF:\t" << f.sGetDBDF() << std::endl;
+        std::cout << "\tFlash type:\t" << f.sGetFlashType() << std::endl;
+        std::cout << "\tDSA on board:\t" << board << std::endl;
+
+        std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+        std::cout << "\tDSA installed:\t";
         if (!installedDSA.empty())
         {
             std::cout << installedDSA[0] << std::endl;
             for (size_t d = 1; d < installedDSA.size(); d++)
             {
-                std::cout << "\t               " << installedDSA[d] << std::endl;
+                std::cout << "\t\t\t" << installedDSA[d] << std::endl;
             }
         }
         else

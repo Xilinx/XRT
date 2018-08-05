@@ -26,11 +26,10 @@
 #include "prom.h"
 #include "msp432.h"
 #include "xclfeatures.h"
+#include "firmware_image.h"
 #include <sys/stat.h>
 #include <vector>
-
-#define FIRMWARE_DIR "/lib/firmware/xilinx" // directory where all MCS files are saved
-#define DSA_FILE_SUFFIX "mcs"
+#include <memory>
 
 class Flasher
 {
@@ -45,16 +44,20 @@ public:
 
     Flasher(unsigned int index, E_FlasherType flasherType=UNSET);
     ~Flasher();
-    int upgradeFirmware( const char *f1, const char *f2 );
-    int upgradeBMCFirmware(const char *f1);
+    int upgradeFirmware(std::shared_ptr<firmwareImage> primary, std::shared_ptr<firmwareImage> secondary);
+    int upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc);
     bool isValid( void ) { return mIsValid; }
 
-    /* public to XSPI_Flasher and BPI_Flasher */
     static void* wordcopy(void *dst, const void* src, size_t bytes);
     static int flashRead(unsigned int pf_bar, unsigned long long offset, void *buffer, unsigned long long length);
     static int flashWrite(unsigned int pf_bar, unsigned long long offset, const void *buffer, unsigned long long length);
     static int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
     static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
+
+    std::string sGetDBDF() { return mDBDF; }
+    std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
+    DSAInfo getOnBoardDSA();
+    std::vector<DSAInfo> getInstalledDSA();
 
 private:
     E_FlasherType mType;
@@ -89,10 +92,6 @@ private:
     };
 
 public:
-    std::string sGetDBDF() { return mDBDF; }
-    std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
-    std::string sGetDSAName() { return std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); }
-    std::vector<std::string> sGetInstalledDSA();
 };
 
 #endif // FLASHER_H
