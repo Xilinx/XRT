@@ -29,7 +29,9 @@
 #include <vector>
 #include <queue>
 #include <thread>
+#include <atomic>
 #include <boost/format.hpp>
+
 
 #include "xperf.h"
 
@@ -1025,7 +1027,14 @@ profile_end_trace(xclDeviceHandle s_handle)
 int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
         size_t size, size_t offset)
 {
+  static std::atomic<int> id(0);
   int rc;
+
+
+  int localid = ++id;
+
+  xclBOProperties p;
+  uint64_t boAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
   XDP::logDataTransfer (
     static_cast<uint64_t>(boHandle)
@@ -1036,10 +1045,10 @@ int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSy
      ,1
      ,XDP::deviceName
      ,0
-     ,-1
+     ,boAddr
      ,"Unknown"
      ,std::this_thread::get_id()
-     ,""
+     ,std::to_string(localid)
      ,""
      ,0
      ,XDP::mTraceStream);
@@ -1055,10 +1064,10 @@ int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSy
      ,1
      ,XDP::deviceName
      ,0
-     ,-1
+     ,boAddr
      ,"Unknown"
      ,std::this_thread::get_id()
-     ,""
+     ,std::to_string(localid)
      ,""
      ,0
      ,XDP::mTraceStream);
