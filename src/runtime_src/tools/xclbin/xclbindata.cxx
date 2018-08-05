@@ -365,6 +365,10 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     ext = ".bin";
     extractClockFreqTopology((char*) data.get(), sectionSize, m_ptree_extract);
   }
+  else if ( header.m_sectionKind == MCS ) {
+    extractAndWriteMCSImages((char*) data.get(), sectionSize);
+    return true;
+  }
 
 
   std::string id = "";
@@ -1279,6 +1283,19 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);
 }
 
+const std::string 
+XclBinData::getMCSTypeStr(enum MCS_TYPE _mcsType) const
+{
+  switch ( _mcsType ) {
+    case MCS_PRIMARY:   return "MCS_PRIMARY";
+    case MCS_SECONDARY: return "MCS_SECONDARY";
+    case MCS_UNKNOWN:
+    default:
+      return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _mcsType);
+  }
+}
+
+
 void 
 XclBinData::extractMemTopologyData( char * _pDataSegment, 
                                     unsigned int _segmentSize,
@@ -1632,7 +1649,169 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
   TRACE("-----------------------------");
 }
 
+void
+XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs)
+{
+  // Must have something to work with
+  int count = _mcs.size();
+  if ( count == 0 )
+    return;
 
+  mcs mcsHdr = (mcs) {0};
+  mcsHdr.m_count = (int8_t) count;
+
+  TRACE("MCS");
+  TRACE(XclBinUtil::format("m_count: %d", (int) mcsHdr.m_count));
+
+  // Write out the entire structure except for the mcs structure
+  TRACE_BUF("mcs - minus mcs_chunk", reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)));
+  m_mcsBuf.write(reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)) );
+
+  // Calculate The mcs_chunks data
+  std::vector< mcs_chunk > mcsChunks;
+  {
+    uint64_t currentOffset = ((sizeof(mcs) - sizeof(mcs_chunk)) + 
+                              (sizeof(mcs_chunk) * count));
+
+    for ( auto mcsEntry : _mcs) {
+      mcs_chunk mcsChunk = (mcs_chunk) {0};
+      mcsChunk.m_type = mcsEntry.second;   // Record the MCS type
+
+      // -- Determine if the file can be opened and its size --
+      std::ifstream fs;
+      fs.open( mcsEntry.first.c_str(), std::ifstream::in | std::ifstream::binary );
+      fs.seekg( 0, fs.end );
+      mcsChunk.m_size = fs.tellg();
+      mcsChunk.m_offset = currentOffset;
+      currentOffset = mcsChunk.m_size;
+
+      if ( ! fs.is_open() ) {
+        std::string errMsg = "ERROR: Could not open the file for reading: '" + mcsEntry.first + "'";
+        throw std::runtime_error(errMsg);
+      }
+
+      fs.close();
+      mcsChunks.push_back(mcsChunk);
+    }
+  }
+
+  // Finish building the buffer
+  // First the array
+  {
+    int index = 0;
+    for (auto mcsChunk : mcsChunks) {
+      TRACE(XclBinUtil::format("[%d]: m_type: %d, m_offset: 0x%lx, m_size: 0x%lx",
+                               index++,
+                               mcsChunk.m_type,
+                               mcsChunk.m_offset,
+                               mcsChunk.m_size));
+      TRACE_BUF("mcs_chunk", reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
+      m_mcsBuf.write(reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk) );
+    }
+  }
+
+  // Second the data
+  {
+    int index = 0;
+    for ( auto mcsEntry : _mcs) {
+      // -- Determine if the file can be opened and its size --
+      std::ifstream fs;
+      fs.open( mcsEntry.first.c_str(), std::ifstream::in | std::ifstream::binary );
+      fs.seekg( 0, fs.end );
+      uint64_t mcsSize = fs.tellg();
+
+      if ( ! fs.is_open() ) {
+        std::string errMsg = "ERROR: Could not open the file for reading: '" + mcsEntry.first + "'";
+        throw std::runtime_error(errMsg);
+      }
+
+      // -- Read contents into memory buffer --
+      std::unique_ptr<unsigned char> memBuffer( new unsigned char[ mcsSize ] );
+      fs.clear();
+      fs.seekg( 0, fs.beg );
+      fs.read( (char*) memBuffer.get(), mcsSize );
+      fs.close();
+
+      TRACE(XclBinUtil::format("[%d]: Adding file - size: 0x%lx, file: %s",
+                               index++,
+                               mcsSize,
+                               mcsEntry.first.c_str()));
+      m_mcsBuf.write(reinterpret_cast<const char*>(memBuffer.get()), mcsSize );
+      ++index;
+    }
+  }
+}
+
+
+void 
+XclBinData::extractAndWriteMCSImages( char * _pDataSegment, 
+                                      unsigned int _segmentSize) 
+{
+  TRACE("");
+  TRACE("Extracting: MCS");
+
+  // Do we have enough room to overlay the header structure
+  if ( _segmentSize < sizeof(mcs) ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the mcs structure (%d)",
+                                                _segmentSize, sizeof(mcs)));
+  }
+
+  mcs *pHdr = (mcs *) _pDataSegment;
+
+  TRACE(XclBinUtil::format("m_count: %d", (uint32_t) pHdr->m_count));
+  TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_chunk[0]) - (unsigned long) pHdr);
+  
+  // Do we have something to extract.  Note: This should never happen.  
+  if ( pHdr->m_count == 0 ) {
+    TRACE("m_count is zero, nothing to extract");
+    return;
+  }
+
+  // Check to make sure that the array did not exceed its bounds
+  unsigned int arraySize = ((unsigned long) &(pHdr->m_chunk[0]) - (unsigned long) pHdr)  + (sizeof(mcs_chunk) * pHdr->m_count);
+
+  if ( arraySize > _segmentSize ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).", 
+                                            arraySize, _segmentSize));
+  }
+
+  // Examine and extract the data
+  for (int index = 0; index < pHdr->m_count; ++index) {
+    TRACE(XclBinUtil::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx", 
+                       index,
+                       getMCSTypeStr((enum MCS_TYPE) pHdr->m_chunk[index].m_type).c_str(),
+                       pHdr->m_chunk[index].m_offset,
+                       pHdr->m_chunk[index].m_size));
+
+    TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
+
+    std::string fileName;
+    switch ( pHdr->m_chunk[index].m_type ) {
+      case MCS_PRIMARY: fileName = "primary.mcs"; break;
+      case MCS_SECONDARY: fileName = "secondary.mcs"; break;
+      default: fileName = XclBinUtil::format("unknown_idx_%d.mcs", index);
+    }
+   
+    char * ptrImageBase = _pDataSegment + pHdr->m_chunk[index].m_offset;
+
+    // Check to make sure that the MCS image is partially looking good
+    if ( (unsigned long) ptrImageBase > ((unsigned long) _pDataSegment) + _segmentSize ) {
+      throw std::runtime_error(XclBinUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index));
+    }
+
+    if ( ((unsigned long) ptrImageBase) + pHdr->m_chunk[index].m_size > ((unsigned long) _pDataSegment) + _segmentSize ) {
+      throw std::runtime_error(XclBinUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index));
+    }
+
+    std::fstream fs;
+    fs.open( fileName, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc );
+    if ( ! fs.is_open() ) {
+      std::cerr << "ERROR: Could not open " << fileName << " for writing" << "\n";
+      continue;
+    }
+    fs.write( ptrImageBase, pHdr->m_chunk[index].m_size );
+  }
+}
 
 
 

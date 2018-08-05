@@ -70,6 +70,7 @@ class XclBinData
     unsigned int getJSONBufferSegmentCount();
     void enableTrace() { m_trace = true; };
     void createBinaryImages();
+    void createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs);
 
   
   private:
@@ -81,6 +82,7 @@ class XclBinData
     void TRACE_BUF(const std::string &_msg, const char * _pData, unsigned long _size);
     enum MEM_TYPE getMemType( std::string &_sMemType ) const;
     const std::string getMemTypeStr(enum MEM_TYPE _memType) const;
+    const std::string getMCSTypeStr(enum MCS_TYPE _mcsType) const;
     enum IP_TYPE getIPType( std::string &_sIPType ) const;
     enum DEBUG_IP_TYPE getDebugIPType( std::string &_sDebugIPType ) const;
     void createMemTopologyBinaryImage( boost::property_tree::ptree &_pt, std::ostringstream &_buf);
@@ -97,6 +99,7 @@ class XclBinData
     void createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt, std::ostringstream &_buf);
     const std::string getClockTypeStr(enum CLOCK_TYPE _clockFreqType) const;
     void extractClockFreqTopology( char * _pDataSegment, unsigned int _segmentSize,boost::property_tree::ptree & _ptree);
+    void extractAndWriteMCSImages( char * _pDataSegment, unsigned int _segmentSize);
 
   private:
     std::string kindToString( axlf_section_kind kind );
@@ -136,6 +139,8 @@ class XclBinData
     std::ostringstream m_ipLayoutBuf;
     std::ostringstream m_debugIpLayoutBuf;
     std::ostringstream m_clockFreqTopologyBuf;
+
+    std::ostringstream m_mcsBuf;
 
     SchemaVersion m_schemaVersion;
 
