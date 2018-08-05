@@ -154,7 +154,16 @@ doxbinst()
         /bin/rm -rf $opt_pkgdir/xbinst/$opt_dsa
     fi
     $opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa
+    test=$?
     popd >/dev/null
+    if [ "$test" != 0 ]; then
+	echo
+	echo
+	echo "There was an unexpected ERROR executing: "
+	echo "$opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa"
+	echo "################ xbinst failed! ###############"
+	exit $test
+    fi
 }
 
 dodebdev()
@@ -174,8 +183,10 @@ maintainer: soren.soe@xilinx.com
 EOF
 
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw
+    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw
     rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/
     rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw/
+    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw/
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
@@ -235,8 +246,10 @@ Xilinx development DSA.
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/hw
+mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/sw
 rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platform/$opt_dsa/
 rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platform/$opt_dsa/hw/
+rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platform/$opt_dsa/sw/
 
 %files
 %defattr(-,root,root,-)

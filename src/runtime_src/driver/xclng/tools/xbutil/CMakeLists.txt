@@ -15,7 +15,7 @@ set(XBUTIL_SRC ${XBUTIL_FILES})
 add_executable(xbutil ${XBUTIL_SRC})
 
 target_link_libraries(xbutil
-  xrtcorestatic
+  xrt_corestatic
   pthread
   rt
   ${CURSES_LIBRARIES}

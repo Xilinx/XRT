@@ -254,7 +254,7 @@ int main(int argc, char** argv)
     bool ert = false;
     int c;
     size_t n_elements = 16;
-    int cu = 0;
+    //int cu = 0;
     //findSharedLibrary(sharedLibrary);
 
      while ((c = getopt_long(argc, argv, "c:s:k:l:n:d:vh", long_options, &option_index)) != -1)
@@ -283,7 +283,7 @@ int main(int argc, char** argv)
             index = std::atoi(optarg);
             break;
         case 'c':
-            cu = std::atoi(optarg);
+            //cu = std::atoi(optarg);
             break;
         case 'n':
             n_elements = std::atoi(optarg);

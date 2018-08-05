@@ -5,7 +5,7 @@ set script_path=""
 set xrt_dir=""
 
 # revisit if there is a better way than lsof to obtain the script path
-# in non-interactive mode.  If lsof is needed, then revisit why 
+# in non-interactive mode.  If lsof is needed, then revisit why
 # why sbin need to be prepended looks like some environment issue in
 # user shell, e.g. /usr/local/bin/mis_env: No such file or directory.
 # is because user path contain bad directories that are searched when
@@ -58,11 +58,6 @@ if ( ! $?PATH ) then
 else
    setenv PATH $XILINX_XRT/bin:$PATH
 endif
-
-unsetenv XILINX_SDACCEL
-unsetenv XILINX_SDX
-unsetenv XILINX_OPENCL
-unsetenv XCL_EMULATION_MODE
 
 echo "XILINX_XRT      : $XILINX_XRT"
 echo "PATH            : $PATH"

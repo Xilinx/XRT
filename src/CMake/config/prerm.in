@@ -7,4 +7,8 @@ find /lib/modules -type f -name xclmgmt.ko -delete
 find /lib/modules -type f -name xocl.ko.kz -delete
 find /lib/modules -type f -name xclmgmt.ko.kz -delete
 depmod -A
+
+rm -f /etc/udev/rules.d/10-xocl.rules
+rm -f /etc/udev/rules.d/10-xclmgmt.rules
+
 exit 0

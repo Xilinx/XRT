@@ -41,6 +41,7 @@ directoryOrError(const bfs::path& path)
     throw std::runtime_error("No such directory '" + path.string() + "'");
 }
 
+XRT_UNUSED
 static const char*
 getPlatform()
 {
@@ -70,15 +71,6 @@ versionFunc()
   static std::string sVersionFunc = "xclVersion";
   return sVersionFunc;
 }
-
-//#ifdef PMD_OCL
-//static std::string&
-//pmdPropeFunc()
-//{
-//  static std::string sPropeFunc = "pmdProbe";
-//  return sPropeFunc;
-//}
-//#endif
 
 static boost::filesystem::path&
 dllExt()
@@ -141,22 +133,6 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
   }
 }
 
-static void
-loadHalDevices(hal::device_list& devices, const bfs::path& dir)
-{
-  // Iterator directory looking for driver dlls
-  bfs::directory_iterator end;
-  for (bfs::directory_iterator itr(dir);itr!=end;++itr) {
-    bfs::path file(itr->path());
-    if (isDLL(file))
-    {
-      if (!file.filename().compare("libxrt_hwemu.so") || !file.filename().compare("libxrt_swemu.so") || !file.filename().compare("libcommon_em.so"))
-        continue;
-      createHalDevices(devices,file.string());
-    }
-  }
-}
-
 } // namespace
 
 namespace xrt { namespace hal {
@@ -176,90 +152,45 @@ loadDevices()
 {
   hal::device_list devices;
 
-  bfs::path opencl(emptyOrValue(getenv("XILINX_OPENCL")));
-  if (!opencl.empty()) {
-    directoryOrError(opencl);
-    bfs::path path(opencl / "runtime/platforms");
-    bfs::directory_iterator end;
-    if(bfs::exists(path)) {
-     for (bfs::directory_iterator itr(path); itr!=end; ++itr) {
-       bfs::path p(itr->path());
-       if (!p.filename().compare("hw_em") || !p.filename().compare("sw_em") || isEmulationMode())
-         continue;
-       p /= "driver";
-       if (bfs::is_directory(p))
-         loadHalDevices(devices,p);
-     }
-    }
-  }
-
-  // [optional]/xrt
+  // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
   if (!xrt.empty() && !isEmulationMode()) {
     directoryOrError(xrt);
-    bfs::path p(xrt / "lib");
-    if (bfs::is_directory(p))
-      loadHalDevices(devices,p);
+    bfs::path p(xrt / "lib/libxrt_core.so");
+    if (isDLL(p))
+      createHalDevices(devices,p.string());
   }
 
-  bfs::path sdaccel(emptyOrValue(getenv("XILINX_SDX")));
-  if (xrt.empty() && !sdaccel.empty() && !isEmulationMode()) {
-    directoryOrError(sdaccel);
-    bfs::path p(sdaccel / "data/sdaccel/pcie");
-    p /= getPlatform();
-    if (bfs::is_directory(p))
-      loadHalDevices(devices,p);
+  if (!xrt.empty() && isEmulationMode()) {
+    directoryOrError(xrt);
+
+    auto hw_em_driver_path = xrt::config::get_hw_em_driver();
+    if (hw_em_driver_path == "null") {
+      bfs::path p(xrt / "lib/libxrt_hwemu.so");
+      if (isDLL(p))
+        hw_em_driver_path = p.string();
+    }
+
+    if (isDLL(hw_em_driver_path))
+      createHalDevices(devices,hw_em_driver_path);
   }
 
-  if (!sdaccel.empty() && isEmulationMode()) {
-    bfs::path em_platform = (strcmp(getPlatform(),"aarch64") == 0) ? "zynqu" : (((strcmp(getPlatform(),"arm64")==0) ? "zynq":"generic_pcie")) ;
-    // Load emulation HAL
-    bfs::path hw_em(sdaccel / "data/emulation/unified/hw_em" / em_platform / "driver/libhw_em.so");
-    if(!xrt.empty()) {
-      bfs::path hw_em_from_xrt (xrt / "lib/libxrt_hwemu.so");
-      if (isDLL(hw_em_from_xrt)) {
-        hw_em = hw_em_from_xrt;
-      }
+  if (!xrt.empty() && isEmulationMode()) {
+    directoryOrError(xrt);
+
+    auto sw_em_driver_path = xrt::config::get_sw_em_driver();
+    if (sw_em_driver_path == "null") {
+      bfs::path p(xrt / "lib/libxrt_swemu.so");
+      if (isDLL(p))
+        sw_em_driver_path = p.string();
     }
 
-    //give high priority to the driver provided in sdaccel.ini
-    std::string hw_em_driver_path = xrt::config::get_hw_em_driver();
-    if (!hw_em_driver_path.compare("null"))
-      hw_em_driver_path.clear();
-
-    if(hw_em_driver_path.size())
-      hw_em = hw_em_driver_path;
-
-    int numHwEm = 0;
-    if (isDLL(hw_em)) {
-      numHwEm = devices.size();
-      createHalDevices(devices,hw_em.string());
-      numHwEm = devices.size() - numHwEm;
-    }
-
-    bfs::path sw_em (sdaccel / "data/emulation/unified/cpu_em" / em_platform / "driver/libcpu_em.so");
-    if(!xrt.empty()) {
-      bfs::path sw_em_from_xrt (xrt / "lib/libxrt_swemu.so");
-      if (isDLL(sw_em_from_xrt)) {
-        sw_em = sw_em_from_xrt;
-      }
-    }
-
-    //give high priority to the driver provided in sdaccel.ini
-    std::string sw_em_driver_path = xrt::config::get_sw_em_driver();
-    if (!sw_em_driver_path.compare("null"))
-      sw_em_driver_path.clear();
-
-    if(sw_em_driver_path.size())
-      sw_em = sw_em_driver_path;
-
-    if (isDLL(sw_em))
-      // sw_emu uses the json file used to by hwem so sw-em will match hw-em
-      createHalDevices(devices,sw_em.string());
+    if (isDLL(sw_em_driver_path))
+      createHalDevices(devices,sw_em_driver_path);
   }
 
-  if (xrt.empty() && sdaccel.empty() && opencl.empty())
-    throw std::runtime_error("Either XILINX_OPENCL or XILINX_SDX must be set");
+  if (xrt.empty())
+    throw std::runtime_error("XILINX_XRT must be set");
 
   return devices;
 }
@@ -286,7 +217,7 @@ load_xdp()
       if (!isDLL(p)) {
         throw std::runtime_error("Library " + p.string() + " not found!");
       }
-      auto handle = dlopen(p.string().c_str(), RTLD_LAZY | RTLD_GLOBAL);
+      auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
         throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + dlerror());
 

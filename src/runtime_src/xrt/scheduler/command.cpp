@@ -62,6 +62,7 @@ static void
 free_buffer(xrt::device* device,buffer_type bo)
 {
   std::lock_guard<std::mutex> lk(s_mutex);
+  s_purged=false;
   sx.freelist[device].emplace_back(std::move(bo));
 }
 
@@ -71,7 +72,7 @@ namespace xrt {
 
 // Purge exec buffer freelist during static destruction.
 // Not safe to call outside of static descruction, can't lock
-// static mutex since it could have been descructed
+// static mutex since it could have been destructed
 void
 purge_command_freelist()
 {

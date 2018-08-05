@@ -32,9 +32,9 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 add_subdirectory(xdp)
-#add_subdirectory(tools/xclbin)
 
 add_compile_options("-Wall" "-Werror")
+add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
@@ -49,7 +49,7 @@ set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 target_link_libraries(oclxdp
   xilinxopencl
-  )
+ )
 
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}

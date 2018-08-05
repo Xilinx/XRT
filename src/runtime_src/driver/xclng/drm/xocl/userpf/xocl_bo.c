@@ -206,7 +206,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	u16 ddr_count;
 	unsigned ddr;
 
-	if (flags == 0xffffffff)
+	if (flags == 0xffffff)
 		return 0;
 	if (type == DRM_XOCL_BO_EXECBUF)
 		return 0;
@@ -224,7 +224,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if(ddr_count == 0)
 		return -EINVAL;
 	ddr = xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
+	if (ddr == 0xffffff)
 		return 0;
 	if (ddr >= ddr_count)
 		return -EINVAL;
@@ -304,7 +304,7 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	mutex_lock(&xdev->mm_lock);
-	if (ddr != 0xffffffff) {
+	if (ddr != 0xffffff) {
 		/* Attempt to allocate buffer on the requested DDR */
 		DRM_DEBUG("%s:%s:%d: %u\n", __FILE__, __func__, __LINE__, ddr);
 		if (user_type & DRM_XOCL_BO_P2P){

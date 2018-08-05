@@ -5,13 +5,14 @@ set(XRT_HEADER_SRC
   xclerr.h
   xclfeatures.h
   xclhal2.h
+  xcl_app_debug.h
   xcl_macros.h
   xcl_app_debug.h
   xclperf.h)
+
+install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_DIR}/include)
 
 message("-- XRT header files")
 foreach (header ${XRT_HEADER_SRC})
   message("-- ${header}")
 endforeach()
-
-install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_DIR}/include)

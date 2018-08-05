@@ -97,3 +97,5 @@ include (CMake/dkms.cmake)
 include (CMake/icd.cmake)
 
 include (CMake/pkgconfig.cmake)
+
+include (CMake/coverity.cmake)

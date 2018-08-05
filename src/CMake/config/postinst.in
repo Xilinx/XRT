@@ -20,6 +20,8 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     dkms build -m xrt -v "@XRT_VERSION_STRING@"
     echo "Installing XRT Linux kernel modules sources with dkms"
     dkms install -m xrt -v "@XRT_VERSION_STRING@" --force
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 else
     echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi
