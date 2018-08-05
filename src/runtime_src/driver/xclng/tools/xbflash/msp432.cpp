@@ -260,7 +260,7 @@ void describePkt(struct xmcPkt& pkt)
               << " payload_size=" << pkt.hdr.payloadSize
               << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
               << std::endl;
-#if 1
+#if 0
     uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
     std::cout << std::hex;
     int nbytes = 0;
@@ -292,20 +292,22 @@ int MSP432_Flasher::sendPkt()
     }
 
     // Flip pkt buffer ownership bit
-    writeReg(XMC_REG_OFF_PKT_STATUS, readReg(XMC_REG_OFF_CTL) & ~XMC_PKT_OWNER_MASK);
+    writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
 #endif
     return 0;
 }
 
 int MSP432_Flasher::waitTillIdle()
 {
-    // In total, wait for 50 * 10ms
+    // In total, wait for 500 * 10ms
     const timespec req = {0, 10 * 1000 * 1000}; // 10ms
-    int retry = 50;
+    int retry = 500;
     unsigned err = 0;
 
-    while ((retry-- > 0) && !(readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK))
+    std::cout << "INFO: Waiting until idle" << std::endl;
+    while ((retry-- > 0) && (readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK)){
         (void) nanosleep(&req, nullptr);
+    }
 
     if (retry == 0) {
         std::cout << "ERROR: Time'd out while waiting for XMC packet to be idle" << std::endl;
