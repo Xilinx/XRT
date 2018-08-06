@@ -70,7 +70,16 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-	/* If ctx xclbin uuid mismatch or no xclbin uuid then EPERM */
+	/* If ctx xclbin uuid mismatch then EPERM.
+         * Allow execBO when reusing xclbin already downloaded.
+         * When xclbin already present then do NOT need to contact
+         * xclbin_service on remote host to get xclbin info.
+	 */
+	if (uuid_is_null(&client->xclbin_id)) {
+                mutex_lock(&xdev->ctx_list_lock);
+                uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+                mutex_unlock(&xdev->ctx_list_lock);
+        }
 	if (uuid_is_null(&client->xclbin_id) || !uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
 		userpf_err(xdev, "Invalid xclbin for current process");
 		return -EPERM;
