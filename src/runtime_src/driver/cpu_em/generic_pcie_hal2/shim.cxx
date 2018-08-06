@@ -495,6 +495,7 @@ namespace xclcpuemhal2 {
       std::string tempdlopenfilename = binaryDirectory+"/dltmp"; 
       {
         bool tempfilecreated = false;
+        unsigned int counter = 0;
         while( !tempfilecreated ) {
           FILE *fp = fopen(tempdlopenfilename.c_str(),"rb");
           if(fp==NULL)
@@ -505,10 +506,9 @@ namespace xclcpuemhal2 {
           {
             fclose(fp);
             std::stringstream ss;
-            int r = rand();
-            r &= 0xf;
-            ss << std::hex << r;
+            ss << std::hex << counter;
             tempdlopenfilename+=ss.str();
+            counter = counter+1;
           }
         }
         FILE *fp = fopen(tempdlopenfilename.c_str(),"wb");
