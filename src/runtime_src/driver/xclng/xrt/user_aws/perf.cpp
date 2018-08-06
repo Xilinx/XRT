@@ -17,7 +17,7 @@
 
 #include "shim.h"
 #include "../user_common/perfmon_parameters.h"
-#include "driver/aws/kernel/include/xocl_ioctl.h"
+#include "driver/xclng/include/xocl_ioctl.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

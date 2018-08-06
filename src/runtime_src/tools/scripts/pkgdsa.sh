@@ -12,7 +12,7 @@
 #
 # Examples:
 #
-#  Package DSA from platform dir in default sdx install 
+#  Package DSA from platform dir in default sdx install
 #  % pkgdsa.sh \
 #       -dsa xilinx_vcu1525_dynamic_5_1 \
 #       -xrt 2.1.0 \
@@ -154,7 +154,16 @@ doxbinst()
         /bin/rm -rf $opt_pkgdir/xbinst/$opt_dsa
     fi
     $opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa
+    test=$?
     popd >/dev/null
+    if [ "$test" != 0 ]; then
+	echo
+	echo
+	echo "There was an unexpected ERROR executing: "
+	echo "$opt_sdx/bin/xbinst -f $opt_dsadir/$opt_dsa.xpfm -d $opt_pkgdir/xbinst/$opt_dsa"
+	echo "################ xbinst failed! ###############"
+	exit $test
+    fi
 }
 
 dodebdev()
@@ -174,8 +183,10 @@ maintainer: soren.soe@xilinx.com
 EOF
 
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw
+    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw
     rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/
     rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw/
+    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw/
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
@@ -202,6 +213,8 @@ EOF
 
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     rsync -avz $opt_pkgdir/xbinst/$opt_dsa/xbinst/firmware/ $opt_pkgdir/$dir/lib/firmware/xilinx
+    mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
+    rsync -avz $opt_pkgdir/xbinst/$opt_dsa/xbinst/test/ $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
@@ -226,15 +239,17 @@ vendor: Xilinx Inc
 
 requires: $dsa >= $version
 
-%description 
+%description
 Xilinx development DSA.
 
 %prep
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/hw
+mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/sw
 rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platform/$opt_dsa/
 rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platform/$opt_dsa/hw/
+rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platform/$opt_dsa/sw/
 
 %files
 %defattr(-,root,root,-)
@@ -268,10 +283,10 @@ version: $version
 release: $revision
 license: apache
 vendor: Xilinx Inc
-
+autoreqprov: no
 requires: xrt >= $opt_xrt
 
-%description 
+%description
 Xilinx deployment DSA.  This DSA depends on xrt >= $opt_xrt.
 
 %prep
@@ -279,10 +294,13 @@ Xilinx deployment DSA.  This DSA depends on xrt >= $opt_xrt.
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/xbinst/$opt_dsa/xbinst/firmware/* %{buildroot}/lib/firmware/xilinx
+mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+cp $opt_pkgdir/xbinst/$opt_dsa/xbinst/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
 
 %files
 %defattr(-,root,root,-)
 /lib/firmware/xilinx
+/opt/xilinx/dsa/$opt_dsa/test
 
 %changelog
 * Fri May 18 2018 Soren Soe <soren.soe@xilinx.com> - 5.1-1
@@ -317,5 +335,4 @@ if [ $FLAVOR == "ubuntu" ]; then
      doxbinst
      dodeb
  fi
-fi  
-
+fi

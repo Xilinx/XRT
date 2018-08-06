@@ -14,7 +14,7 @@ set(XBFLASH_SRC ${XBFLASH_FILES})
 add_executable(xbflash ${XBFLASH_SRC})
 
 target_link_libraries(xbflash
-  xrtcorestatic
+  xrt_corestatic
   pthread
   )
 

@@ -80,10 +80,17 @@ static ssize_t memstat_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return xocl_mm_sysfs_stat(xdev, buf);
+	return xocl_mm_sysfs_stat(xdev, buf, false);
 }
-
 static DEVICE_ATTR_RO(memstat);
+
+static ssize_t memstat_raw_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+    struct xocl_dev *xdev = dev_get_drvdata(dev);
+    return xocl_mm_sysfs_stat(xdev, buf, true);
+}
+static DEVICE_ATTR_RO(memstat_raw);
 
 /* - End attributes-- */
 
@@ -227,6 +234,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
+	&dev_attr_memstat_raw.attr,
 	NULL,
 };
 

@@ -18,7 +18,7 @@
 
 #include "xocl/core/error.h"
 #include "detail/device.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -34,6 +34,7 @@ validOrError(cl_device_id device)
 static cl_int 
 clRetainDevice(cl_device_id device)
 {
+  validOrError(device);
   // device is managed by platform
   return CL_SUCCESS;
 }

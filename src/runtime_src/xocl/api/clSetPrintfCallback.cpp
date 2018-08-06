@@ -20,7 +20,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -44,6 +44,7 @@ clSetPrintfCallback(cl_context           context ,
                                                       void *  user_data ),
                     void *               user_data )
 {
+  validOrError(context,pfn_notify,user_data);
   throw error(CL_XILINX_UNIMPLEMENTED);
 }
 

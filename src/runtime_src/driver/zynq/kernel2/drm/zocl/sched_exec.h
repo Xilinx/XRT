@@ -44,7 +44,7 @@ struct sched_dev;
 struct sched_ops;
 
 /**
- * Command state 
+ * Command state
  *
  * @CMD_STATE_NEW:      Set by host before submitting a command to scheduler
  * @CMD_STATE_QUEUED:   Internal scheduler state
@@ -54,12 +54,12 @@ struct sched_ops;
  * @CMD_STATE_ABORT:    Set by scheduler if command abort
  */
 enum cmd_state {
-  CMD_STATE_NEW = 1,
-  CMD_STATE_QUEUED = 2,
-  CMD_STATE_RUNNING = 3,
-  CMD_STATE_COMPLETED = 4,
-  CMD_STATE_ERROR = 5,
-  CMD_STATE_ABORT = 6,
+	CMD_STATE_NEW = 1,
+	CMD_STATE_QUEUED = 2,
+	CMD_STATE_RUNNING = 3,
+	CMD_STATE_COMPLETED = 4,
+	CMD_STATE_ERROR = 5,
+	CMD_STATE_ABORT = 6,
 };
 
 /**
@@ -70,11 +70,11 @@ enum cmd_state {
  * @OP_CONFIGURE:      configure command scheduler
  */
 enum cmd_opcode {
-  OP_START_CU     = 0,
-  OP_START_KERNEL = 0,
-  OP_CONFIGURE    = 2,
-  OP_STOP         = 3,
-  OP_ABORT        = 4,
+	OP_START_CU     = 0,
+	OP_START_KERNEL = 0,
+	OP_CONFIGURE    = 2,
+	OP_STOP         = 3,
+	OP_ABORT        = 4,
 };
 
 /**
@@ -88,17 +88,17 @@ enum cmd_opcode {
  * @data:    count number of words representing packet payload
  */
 struct sched_packet {
-  union {
-    struct {
-      uint32_t state:4;   /* [3-0]   */
-      uint32_t custom:8;  /* [11-4]  */
-      uint32_t count:11;  /* [22-12] */
-      uint32_t opcode:5;  /* [27-23] */
-      uint32_t type:4;    /* [31-27] */
-    };
-    uint32_t header;
-  };
-  uint32_t data[1];   /* count number of words */
+	union {
+		struct {
+			uint32_t state:4;   /* [3-0]   */
+			uint32_t custom:8;  /* [11-4]  */
+			uint32_t count:11;  /* [22-12] */
+			uint32_t opcode:5;  /* [27-23] */
+			uint32_t type:4;    /* [31-27] */
+		};
+		uint32_t header;
+	};
+	uint32_t data[1];   /* count number of words */
 };
 
 /**
@@ -118,21 +118,21 @@ struct sched_packet {
  * (count - (1 + extra_cu_masks)) uint32_t words.
  */
 struct start_kernel_cmd {
-  union {
-    struct {
-      uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:6;         /* [9-4]  */
-      uint32_t extra_cu_masks:2; /* [11-10]  */
-      uint32_t count:11;         /* [22-12] */
-      uint32_t opcode:5;         /* [27-23] */
-      uint32_t type:4;           /* [31-27] */
-    };
-    uint32_t header;
-  };
+	union {
+		struct {
+			uint32_t state:4;          /* [3-0]   */
+			uint32_t unused:6;         /* [9-4]  */
+			uint32_t extra_cu_masks:2; /* [11-10]  */
+			uint32_t count:11;         /* [22-12] */
+			uint32_t opcode:5;         /* [27-23] */
+			uint32_t type:4;           /* [31-27] */
+		};
+		uint32_t header;
+	};
 
-  /* payload */
-  uint32_t cu_mask;          /* mandatory cu mask */
-  uint32_t data[1];          /* count-1 number of words */
+	/* payload */
+	uint32_t cu_mask;          /* mandatory cu mask */
+	uint32_t data[1];          /* count-1 number of words */
 };
 
 /**
@@ -154,35 +154,35 @@ struct start_kernel_cmd {
  * @cu_isr:1         enable CUISR custom module for HW scheduler
  * @cq_int:1         enable interrupt from host to HW scheduler
  * @unused:26
- * @dsa52:1					 reserved for internal use
+ * @dsa52:1          reserved for internal use
  *
- * @data						 addresses of @num_cus_CUs
+ * @data             addresses of @num_cus_CUs
  */
 struct configure_cmd {
-  union {
-    struct {
-      uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:8;         /* [11-4]  */
-      uint32_t count:11;         /* [22-12] */
-      uint32_t opcode:5;         /* [27-23] */
-      uint32_t type:4;           /* [31-27] */
-    };
-    uint32_t header;
-  };
-  
-  /* payload */
-  uint32_t slot_size;
-  uint32_t num_cus;
-  uint32_t cu_shift;
-  uint32_t cu_base_addr;
+	union {
+		struct {
+			uint32_t state:4;          /* [3-0]   */
+			uint32_t unused:8;         /* [11-4]  */
+			uint32_t count:11;         /* [22-12] */
+			uint32_t opcode:5;         /* [27-23] */
+			uint32_t type:4;           /* [31-27] */
+		};
+		uint32_t header;
+	};
 
-  /* features */
-  uint32_t ert:1;
-  uint32_t polling:1;
-  uint32_t cu_dma:1;
-  uint32_t cu_isr:1;
-  uint32_t cq_int:1;
-  uint32_t unusedf:26;
+	/* payload */
+	uint32_t slot_size;
+	uint32_t num_cus;
+	uint32_t cu_shift;
+	uint32_t cu_base_addr;
+
+	/* features */
+	uint32_t ert:1;
+	uint32_t polling:1;
+	uint32_t cu_dma:1;
+	uint32_t cu_isr:1;
+	uint32_t cq_int:1;
+	uint32_t unusedf:26;
 	uint32_t dsa52:1;
 
 	/* cu addresses map size is num_cus */
@@ -195,16 +195,16 @@ struct configure_cmd {
  * @idx: The slot index of command to abort
  */
 struct abort_cmd {
-  union {
-    struct {
-      uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:11;        /* [14-4]  */
-      uint32_t idx:8;            /* [22-15] */
-      uint32_t opcode:5;         /* [27-23] */
-      uint32_t type:4;           /* [31-27] */
-    };
-    uint32_t header;
-  };
+	union {
+		struct {
+			uint32_t state:4;          /* [3-0]   */
+			uint32_t unused:11;        /* [14-4]  */
+			uint32_t idx:8;            /* [22-15] */
+			uint32_t opcode:5;         /* [27-23] */
+			uint32_t type:4;           /* [31-27] */
+		};
+		uint32_t header;
+	};
 };
 
 struct sched_client_ctx {
@@ -226,6 +226,7 @@ struct sched_client_ctx {
  * @cu_shift_offset: CU idx to CU address shift value
  * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
+ * @cq_interrupt: If set then X86 host will trigger interrupt to PS
  * @configured: Flag to indicate that the core data structure has been initialized
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
@@ -238,10 +239,11 @@ struct sched_client_ctx {
  * @ops: Scheduler operations vtable
  */
 struct sched_exec_core {
+	void __iomem               *base;
 	struct list_head           ctx_list;
-	spinlock_t	               ctx_list_lock;
+	spinlock_t                 ctx_list_lock;
 	wait_queue_head_t          poll_wait_queue;
-	
+
 	struct scheduler          *scheduler;
 
 	struct sched_cmd          *submitted_cmds[MAX_SLOTS];
@@ -251,6 +253,9 @@ struct sched_exec_core {
 	unsigned int               cu_shift_offset;
 	u32                        cu_base_addr;
 	unsigned int               polling_mode;
+	unsigned int               cq_interrupt;
+	unsigned int               cu_dma;
+	unsigned int               cu_isr;
 	unsigned int               configured;
 
 	/* Bitmap tracks busy(1)/free(0) slots in cmd_slots*/
@@ -261,7 +266,9 @@ struct sched_exec_core {
 	unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
 
 	/* Operations for dynamic indirection dependt on MB or kernel scheduler */
-	struct sched_ops* ops;
+	struct sched_ops          *ops;
+	struct task_struct        *hw_cq_check;
+	wait_queue_head_t          cq_wait_queue;
 };
 
 /**
@@ -276,42 +283,42 @@ struct sched_exec_core {
  * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
  */
-struct scheduler
-{
-  struct task_struct        *scheduler_thread;
-  unsigned int               use_count;
+struct scheduler {
+	struct task_struct        *scheduler_thread;
+	unsigned int               use_count;
 
-  wait_queue_head_t          wait_queue;
-  unsigned int               error;
-  unsigned int               stop;
+	wait_queue_head_t          wait_queue;
+	unsigned int               error;
+	unsigned int               stop;
 
-  struct list_head           command_queue;
-  unsigned int               poll; /* number of cmds to poll */
+	struct list_head           command_queue;
+	unsigned int               poll; /* number of cmds to poll */
 };
 
 /**
  * Command data used by scheduler
  *
  * @list: command object moves from list to list
- * @bo: underlying drm buffer object 
  * @exec: core data structure for scheduler
  * @state: state of command object per scheduling
  * @cu_idx: index of CU executing this cmd object; used in penguin mode only
  * @slot_idx: command queue index of this command object
+ * @buffer: underlying buffer (ex. drm buffer object)
  * @packet: mapped ert packet object from user space
  */
-struct sched_cmd
-{
-  struct list_head list;
-  struct drm_zocl_bo *bo;
-  struct drm_device *ddev;
-  struct scheduler *sched;
-  enum cmd_state state;
-  int cu_idx; /* running cu, initialized to -1 */
-  int slot_idx;
+struct sched_cmd {
+	struct list_head list;
+	struct drm_device *ddev;
+	struct scheduler *sched;
+	enum cmd_state state;
+	int cu_idx; /* running cu, initialized to -1 */
+	int slot_idx;
+	int cq_slot_idx;
+	void *buffer;
+	void (*free_buffer)(struct sched_cmd *xcmd);
 
-  /* The actual cmd object representation */
-  struct sched_packet *packet;
+	/* The actual cmd object representation */
+	struct sched_packet *packet;
 };
 
 /**
@@ -322,10 +329,9 @@ struct sched_cmd
  * meaning that one device can operate in ert mode while another can operate in
  * penguin mode.
  */
-struct sched_ops
-{
-  int (*submit) (struct sched_cmd *xcmd);
-  void (*query) (struct sched_cmd *xcmd);
+struct sched_ops {
+	int (*submit)(struct sched_cmd *xcmd);
+	void (*query)(struct sched_cmd *xcmd);
 };
 
 

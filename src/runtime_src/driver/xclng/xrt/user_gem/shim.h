@@ -23,11 +23,11 @@
  */
 
 #include "driver/include/xclhal2.h"
-#include "driver/xclng/include/drm/drm.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/qdma_ioctl.h"
+#include <libdrm/drm.h>
 #include <mutex>
 #include <cstdint>
 #include <fstream>
@@ -35,6 +35,7 @@
 #include <map>
 #include <utility>
 #include <cassert>
+#include <vector>
 
 namespace xocl {
 
@@ -111,7 +112,7 @@ class RangeTable
     std::map<AddressRange, std::pair<unsigned, char *>> mTable;
     mutable std::mutex mMutex;
 public:
-    void insert(uint64_t addr, size_t size, std::pair<unsigned, char *> bo) {
+    void insert(uint64_t addr, size_t size, const std::pair<unsigned, char *> &bo) {
         // assert(find(addr) == 0xffffffff);
         std::lock_guard<std::mutex> lock(mMutex);
         mTable[AddressRange(addr, size)] = bo;
@@ -222,7 +223,7 @@ public:
 
     //debug related
     uint32_t getCheckerNumberSlots(int type);
-    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames, 
+    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
@@ -248,6 +249,10 @@ public:
     int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclDestroyQueue(uint64_t q_hdl);
+    void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
+    int xclFreeQDMABuf(uint64_t buf_hdl);
+    ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -275,6 +280,20 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
+
+    std::ifstream xclSysfsOpen(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::string xclSysfsGetString(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    unsigned long long xclSysfsGetInt(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    std::vector<std::string> xclSysfsGetStrings(bool mgmt,
+        const std::string subDevName, const std::string entry);
+    void xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info);
+    void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
+    void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 
     // Upper two denote PF, lower two bytes denote BAR
     // USERPF == 0x0

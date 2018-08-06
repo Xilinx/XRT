@@ -27,6 +27,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "xclbin.h"
 
 namespace xclbincat1 {
 
@@ -57,6 +58,8 @@ class OptionParser {
       ST_DEBUG_DATA,
       ST_DEBUG_IP_LAYOUT,
       ST_CLOCK_FREQ_TOPOLOGY,
+      ST_MCS_PRIMARY,
+      ST_MCS_SECONDARY,
       ST_UNKNOWN                        
     } SegmentType;
 
@@ -74,11 +77,12 @@ class OptionParser {
     std::vector< std::string > m_ipLayout;
     std::vector< std::string > m_debugIpLayout;
     std::vector< std::string > m_clockFreqTopology;
+    std::vector< std::pair< std::string, enum MCS_TYPE> > m_mcs;
     std::vector< std::string > m_metadata;
     std::map< std::string, std::string > m_keyValuePairs;
+    bool m_help;
     std::string m_binaryHeader;
     std::string m_output;
-    bool m_help;
     void printHelp( char* program );
 
   private:

@@ -42,6 +42,7 @@
 
 #include <map>
 #include <sstream>
+#include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace {
 static const int debug_ip_layout_max_size = 65536;
@@ -131,6 +132,8 @@ void cb_scheduler_cmd_start (const xrt::command* aCommand, const xocl::execution
     }
   }
 }
+
+
 
 // Call back function to be called when a command is finished
 void cb_scheduler_cmd_done (const xrt::command* aCommand, const xocl::execution_context* aContext)
@@ -436,10 +439,7 @@ std::string kernel_debug_view::getstring(int aVerbose, int aQuotes)
  */
 static event_debug_view_base* global_return_edv;
 
-action_debug_type
-action_readwrite(cl_mem buffer,size_t offset, size_t size, const void* ptr)
-{
-  return [=](xocl::event* event) {
+void cb_action_readwrite (xocl::event* event, cl_mem buffer,size_t offset, size_t size, const void* ptr) {
     event_debug_view_readwrite *edv =  new event_debug_view_readwrite (
       (cl_event)event,
       event->get_uid(),
@@ -453,13 +453,11 @@ action_readwrite(cl_mem buffer,size_t offset, size_t size, const void* ptr)
       ptr
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_copybuf(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+void
+cb_action_copybuf(xocl::event* event, cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
 {
-  return [=](xocl::event* event) {
     event_debug_view_copy *edv =  new event_debug_view_copy (
       (cl_event)event,
       event->get_uid(),
@@ -474,13 +472,11 @@ action_copybuf(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t d
       size
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_fill_buffer(cl_mem buffer, const void* pattern, size_t pattern_size, size_t offset, size_t size)
+void
+cb_action_fill_buffer (xocl::event* event, cl_mem buffer, const void* pattern, size_t pattern_size, size_t offset, size_t size)
 {
-  return [=](xocl::event* event) {
     event_debug_view_fill *edv =  new event_debug_view_fill (
       (cl_event)event,
       event->get_uid(),
@@ -495,13 +491,11 @@ action_fill_buffer(cl_mem buffer, const void* pattern, size_t pattern_size, size
       size
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_map(cl_mem buffer,cl_map_flags map_flags)
+void
+cb_action_map (xocl::event* event, cl_mem buffer,cl_map_flags map_flag)
 {
-  return [=](xocl::event* event) {
     event_debug_view_map *edv =  new event_debug_view_map (
       (cl_event)event,
       event->get_uid(),
@@ -510,16 +504,14 @@ action_map(cl_mem buffer,cl_map_flags map_flags)
       event_commandstatus_to_string (event->try_get_status()),
       event_dependencies_to_string(event_chain_to_dependencies (event)),
       buffer,
-      map_flags
+      map_flag
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags)
+void
+cb_action_migrate (xocl::event* event, cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags)
 {
-  return [=](xocl::event* event) {
     event_debug_view_migrate *edv =  new event_debug_view_migrate (
       (cl_event)event,
       event->get_uid(),
@@ -532,16 +524,13 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
       flags
     );
     global_return_edv = edv;
-  };
-
 }
 
-action_debug_type
-action_ndrange_migrate(cl_event event, cl_kernel kernel)
+void
+cb_action_ndrange_migrate (xocl::event* event, cl_kernel kernel)
 {
-  std::string kname  = xocl::xocl(kernel)->get_name();
+    std::string kname  = xocl::xocl(kernel)->get_name();
 
-  return [kname, kernel](xocl::event* event) {
     event_debug_view_migrate *edv =  new event_debug_view_migrate (
       (cl_event)event,
       event->get_uid(),
@@ -552,19 +541,18 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
       kname
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_ndrange(cl_event event, cl_kernel kernel)
+void
+cb_action_ndrange (xocl::event* event, cl_kernel kernel)
 {
-  std::string kname  = xocl::xocl(kernel)->get_name();
-
-  return [kname, kernel](xocl::event* event) {
     //get cuname and workgroup information
     size_t nworkgroups = 0;
     bool issubmitted = false;
     cl_int evstatus = event->try_get_status();
+
+    std::string kname  = xocl::xocl(kernel)->get_name();
+
     if (evstatus == CL_SUBMITTED || evstatus == CL_RUNNING) {
       auto exctx = event->get_execution_context();
       nworkgroups = exctx->get_num_work_groups();
@@ -590,13 +578,10 @@ action_ndrange(cl_event event, cl_kernel kernel)
       issubmitted
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_unmap(cl_mem buffer)
+void cb_action_unmap (xocl::event* event, cl_mem buffer)
 {
-  return [=](xocl::event* event) {
     event_debug_view_unmap *edv =  new event_debug_view_unmap (
       (cl_event)event,
       event->get_uid(),
@@ -607,21 +592,11 @@ action_unmap(cl_mem buffer)
       buffer
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_barrier_marker(int num_events_in_wait_list, const cl_event* event_wait_list)
+void
+cb_action_barrier_marker(xocl::event* event)
 {
-/*
-  std::stringstream sstr;
-  auto makestr = [&sstr](cl_event ev) {sstr << xocl::xocl(ev)->get_uid() << " ";};
-
-  std::for_each(event_wait_list, (event_wait_list+num_events_in_wait_list-1), makestr);
-
-  sstr<<(xocl::xocl(*(event_wait_list+num_events_in_wait_list-1)))->get_uid();
-*/
-  return [](xocl::event* event) {
     event_debug_view_barrier_marker *edv =  new event_debug_view_barrier_marker (
       (cl_event)event,
       event->get_uid(),
@@ -631,13 +606,11 @@ action_barrier_marker(int num_events_in_wait_list, const cl_event* event_wait_li
       event_dependencies_to_string(event_chain_to_dependencies (event))
     );
     global_return_edv = edv;
-  };
 }
 
-action_debug_type
-action_readwrite_image(cl_mem image,const size_t* origin,const size_t* region, size_t row_pitch,size_t slice_pitch,const void* ptr)
+void
+cb_action_readwrite_image (xocl::event* event, cl_mem image,const size_t* origin,const size_t* region, size_t row_pitch,size_t slice_pitch,const void* ptr)
 {
-  return [=](xocl::event* event) {
     event_debug_view_readwrite_image *edv = new event_debug_view_readwrite_image (
       (cl_event)event,
       event->get_uid(),
@@ -653,9 +626,32 @@ action_readwrite_image(cl_mem image,const size_t* origin,const size_t* region, s
       ptr
     );
     global_return_edv = edv;
-  };
 }
 
+void register_xocl_appdebug_callbacks() {
+  /* event */
+  xocl::event::register_constructor_callbacks(appdebug::add_event);
+  xocl::event::register_destructor_callbacks(appdebug::remove_event);
+  /* command queue */
+  xocl::command_queue::register_constructor_callbacks(appdebug::add_command_queue);
+  xocl::command_queue::register_destructor_callbacks(appdebug::remove_command_queue);
+
+  /*cl_mem*/
+  xocl::memory::register_constructor_callbacks(appdebug::add_clmem);
+  xocl::memory::register_destructor_callbacks(appdebug::remove_clmem);
+
+  /*opencl api*/
+  xocl::appdebug::register_cb_action_readwrite (cb_action_readwrite);
+  xocl::appdebug::register_cb_action_copybuf (cb_action_copybuf);
+  xocl::appdebug::register_cb_action_fill_buffer (cb_action_fill_buffer);
+  xocl::appdebug::register_cb_action_map (cb_action_map);
+  xocl::appdebug::register_cb_action_migrate (cb_action_migrate);
+  xocl::appdebug::register_cb_action_ndrange_migrate (cb_action_ndrange_migrate);
+  xocl::appdebug::register_cb_action_ndrange (cb_action_ndrange);
+  xocl::appdebug::register_cb_action_unmap (cb_action_unmap);
+  xocl::appdebug::register_cb_action_barrier_marker (cb_action_barrier_marker);
+  xocl::appdebug::register_cb_action_readwrite_image (cb_action_readwrite_image);
+}
 
 inline
 void try_get_queue_sizes (cl_command_queue cq, size_t& nQueued, size_t& nSubmitted) {

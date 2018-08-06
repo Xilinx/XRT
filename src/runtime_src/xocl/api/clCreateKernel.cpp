@@ -27,20 +27,19 @@
 
 #include "detail/program.h"
 #include "api.h"
-#include "profile.h"
-
 #include "xrt/util/memory.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 
 #include <fstream>
+#include "plugin/xdp/profile.h"
 
 namespace bfs = boost::filesystem;
 
 namespace {
 
-static size_t
+XRT_UNUSED static size_t
 getDeviceMaxWorkGroupSize(cl_device_id device)
 {
   static size_t size = 0;
@@ -102,7 +101,7 @@ clCreateKernel(cl_program      program,
     std::string fnm;
     for (unsigned int idx=0; ; ++idx) {
       char ext[4];
-      sprintf(ext,"%03d",idx);
+      sprintf(ext,"%03u",idx);
       auto path = bfs::path(kernel_name);
       // path.append("_").append(ext).append(".cl");
       // Changed to use /= since boost 1.53.0 path::append() which
@@ -128,7 +127,7 @@ clCreateKernel(cl_program      program,
     ostr << newsrc;
 
     //fake kernel
-    auto platform = xocl::get_global_platform();
+    XRT_UNUSED auto platform = xocl::get_global_platform();
     auto kernel = xocl::xocl(program)->create_kernel("");
     assert(kernel->get_wg_size()==getDeviceMaxWorkGroupSize(platform->get_device_range()[0].get()));
     return kernel.release();
@@ -183,5 +182,3 @@ clCreateKernel(cl_program      program,
   }
   return nullptr;
 }
-
-

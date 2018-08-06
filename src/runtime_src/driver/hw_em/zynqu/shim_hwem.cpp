@@ -34,7 +34,7 @@ bool isRemotePortMapped = false;
 void * remotePortMappedPointer = NULL;
 bool initRemotePortMap() {
   int fd;
-  unsigned addr, page_addr, page_offset;
+  unsigned addr;//, page_addr , page_offset;
   unsigned page_size = sysconf(_SC_PAGESIZE);
 
   fd = open("/dev/mem", O_RDWR);
@@ -50,8 +50,8 @@ bool initRemotePortMap() {
   addr = PL_RP_ALLOCATED_ADD;
 #endif
 
-  page_addr = (addr & ~(page_size - 1));
-  page_offset = addr - page_addr;
+  //page_addr = (addr & ~(page_size - 1));
+  //page_offset = addr - page_addr;
 
   remotePortMappedPointer = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
   MAP_SHARED, fd, (addr & ~(page_size - 1)));

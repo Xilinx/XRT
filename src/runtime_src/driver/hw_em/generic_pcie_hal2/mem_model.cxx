@@ -16,7 +16,6 @@
 
 #include "mem_model.h"
 
-
 mem_model::~ mem_model()
 {
   serialize();
@@ -196,7 +195,8 @@ mem_model::mem_model(std::string deviceName):
    struct stat statBuf;
    if ( stat(file_path.c_str(), &statBuf) == -1 )
    {
-     system(mkdirCommand.str().c_str());
+     int rV = system(mkdirCommand.str().c_str());
+     if(rV == -1) {std::cout<<"unable to open/create mem file"<<std::endl;}
    }
     file_name = file_path + module_name + "_" + std::to_string(pageIdx);
 #ifdef DEBUGMSG

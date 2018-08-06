@@ -23,10 +23,9 @@
 #include "detail/validate.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
-
 #include <iostream>
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

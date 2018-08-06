@@ -1,5 +1,5 @@
 Multi-Process Support
---------------------
+---------------------
 
 Support for Multi-Process kernel execution is added in the 2018.2
 release as a preview feature.
@@ -14,7 +14,7 @@ Usage
 =====
 
 Processes share access to all device resources; as of 2018.2, there is
-no support for exclusive access to resources by any process.  
+no support for exclusive access to resources by any process.
 
 If two or more processes execute the same kernel, then these processes
 will acquire the kernel's compute units per the xocl kernel driver
@@ -44,6 +44,6 @@ Failure to pre-program the device results in the following error:
   ERROR: Failed to load xclbin
   Error: Failed to create compute program from binary -44!
 
-An xclbin is programmed explicitly by using xbsak::
+An xclbin is programmed explicitly by using xbutil::
 
-  xbsak program -p <xclbin>
+  xbutil program -p <xclbin>

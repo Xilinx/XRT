@@ -48,7 +48,7 @@ validOrError(cl_device_id device,
   if (!attributes)
     throw error(CL_INVALID_VALUE);
 
-  if (*attributes != CL_PIPE_ATTRIBUTE_DPDK_ID)
+  if (*attributes != static_cast<decltype(*attributes)>(CL_PIPE_ATTRIBUTE_DPDK_ID))
     throw error(CL_INVALID_VALUE);
 
 }

@@ -31,7 +31,7 @@ namespace xclbin {
 
 using data_range = std::pair<const char*, const char*>;
 
-inline bool 
+inline bool
 valid_range(const xclbin::data_range& range)
 {
   return (range.first!=nullptr && range.second!=nullptr && range.first < range.second);
@@ -39,9 +39,10 @@ valid_range(const xclbin::data_range& range)
 
 class error : public std::runtime_error
 {
- public:
+public:
+  explicit
   error(const std::string& what = "")
-    : std::runtime_error(what)
+  : std::runtime_error(what)
   {}
 };
 
@@ -49,10 +50,10 @@ class error : public std::runtime_error
  * An xcl binary is managed by the binary class.
  *
  * This class can present any binary xclbin version.  The class API
- * may have functions that are valid for a particular version of 
+ * may have functions that are valid for a particular version of
  * an xclbin only.  If an invalid function is called, it will throw
  * an xclbin::error exception.
- * 
+ *
  * Then entire xclbin binary data is copied into this class, any data
  * returned through APIs maybe referencing a range of the data
  * maintained by the class, so the binary object must stay alive while
@@ -84,7 +85,7 @@ public:
     : m_content(nullptr)
   {}
 
-  binary(const binary& rhs) 
+  binary(const binary& rhs)
     : m_content(rhs.m_content)
   {}
 
@@ -92,10 +93,11 @@ public:
    * Construct from xclbin in memory.
    *
    * The ownership of the data is transferred to this class object.
-   * 
+   *
    * @param xb
    *  xclbin file read into memory
    */
+  explicit
   binary(std::vector<char>&& xb);
 
   binary&
@@ -127,13 +129,13 @@ public:
   data_range
   connectivity_data() const { return m_content->connectivity_data(); }
 
-  data_range 
+  data_range
   mem_topology_data() const { return m_content->mem_topology_data(); }
 
-  data_range 
+  data_range
   ip_layout_data() const { return m_content->ip_layout_data(); }
 
-  data_range 
+  data_range
   clk_freq_data() const { return m_content->clk_freq_data(); }
 };
 
@@ -143,5 +145,3 @@ public:
 
 
 #endif
-
-

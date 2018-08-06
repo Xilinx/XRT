@@ -41,7 +41,7 @@
 #define	BO_DEBUG(fmt, args...)
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)
 {
 	kvfree(ptr);
@@ -53,6 +53,16 @@ static inline void *drm_malloc_ab(size_t nmemb, size_t size)
 }
 #endif
 
+static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+	release_pages(pages, nr);
+#else
+	release_pages(pages, nr, cold);
+#endif
+}
+
+
 static inline void __user *to_user_ptr(u64 address)
 {
 	return (void __user *)(uintptr_t)address;
@@ -63,7 +73,7 @@ static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 	uint64_t paddr = xobj->mm_node ? xobj->mm_node->start : 0xffffffffffffffffull;
 
 	//Sarab: Need to check for number of hops & size of DDRs
-	if (xobj->flags & XOCL_BO_ARE)
+	if (xobj->type & XOCL_BO_ARE)
 		paddr |= XOCL_ARE_HOP;
 	return paddr;
 }
@@ -76,7 +86,7 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 	unsigned userptr = xocl_bo_userptr(xobj) ? 1 : 0;
 
 	DRM_DEBUG("%p: H[%p] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u]\n",
-		  xobj, xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping, size_in_kb, 
+		  xobj, xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping, size_in_kb,
 			physical_addr, ddr, userptr, xobj->sgt->orig_nents);
 }
 
@@ -104,6 +114,8 @@ end:
 void xocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+	struct drm_device *ddev = xobj->base.dev;
+	struct xocl_dev *xdev = ddev->dev_private;
 	int npages = obj->size >> PAGE_SHIFT;
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
@@ -112,9 +124,18 @@ void xocl_free_bo(struct drm_gem_object *obj)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
 
+	if (xobj->dmabuf) {
+		unmap_mapping_range(xobj->dmabuf->file->f_mapping, 0, 0, 1);
+	}
+
+	if (xobj->dma_nsg) {
+		pci_unmap_sg(xdev->core.pdev, xobj->sgt->sgl, xobj->dma_nsg,
+			PCI_DMA_BIDIRECTIONAL);
+	}
+
 	if (xobj->pages) {
 		if (xocl_bo_userptr(xobj)) {
-			release_pages(xobj->pages, npages, 0);
+			xocl_release_pages(xobj->pages, npages, 0);
 			drm_free_large(xobj->pages);
 		}
 #ifdef XOCL_CMA_ALLOC
@@ -146,7 +167,7 @@ void xocl_free_bo(struct drm_gem_object *obj)
 	}
 	else {
 		DRM_DEBUG("Freeing imported buffer\n");
-		if (!(xobj->flags & XOCL_BO_ARE))
+		if (!(xobj->type & XOCL_BO_ARE))
 			xocl_free_mm_node(xobj);
 
 		if (obj->import_attach) {
@@ -178,29 +199,32 @@ void xocl_free_bo(struct drm_gem_object *obj)
 }
 
 
-static inline int check_bo_user_flags(const struct drm_device *dev, unsigned flags)
+static inline int check_bo_user_reqs(const struct drm_device *dev,
+	unsigned flags , unsigned type)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	u16 ddr_count;
 	unsigned ddr;
 
+	if (flags == 0xffffff)
+		return 0;
+	if (type == DRM_XOCL_BO_EXECBUF)
+		return 0;
+#ifdef XOCL_CMA_ALLOC
+	if (type == DRM_XOCL_BO_CMA)
+		return 0;
+#else
+	if (type == DRM_XOCL_BO_CMA)
+		return -EINVAL;
+#endif
+	//From "mem_topology" or "feature rom" depending on
+	//unified or non-unified dsa
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	if(ddr_count == 0)
 		return -EINVAL;
-	if (flags == 0xffffffff)
-		return 0;
-	if (flags == DRM_XOCL_BO_EXECBUF)
-		return 0;
-#ifdef XOCL_CMA_ALLOC
-	if (flags == DRM_XOCL_BO_CMA)
-		return 0;
-#else
-	if (flags == DRM_XOCL_BO_CMA)
-		return -EINVAL;
-#endif
 	ddr = xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
+	if (ddr == 0xffffff)
 		return 0;
 	if (ddr >= ddr_count)
 		return -EINVAL;
@@ -232,9 +256,10 @@ static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
 }
 
 
-static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
+struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 					  uint64_t unaligned_size,
-					  unsigned user_flags)
+					  unsigned user_flags,
+					  unsigned user_type)
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
 	struct drm_xocl_bo *xobj;
@@ -243,11 +268,13 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	u16 ddr_count = 0;
 	int err = 0;
 
+	BO_DEBUG("New create bo flags:%u type:%u", user_flags, user_type);
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
 	/* Either none or only one DDR should be specified */
-	if (check_bo_user_flags(dev, user_flags))
+	/* Check the type */
+	if (check_bo_user_reqs(dev, user_flags, user_type))
 		return ERR_PTR(-EINVAL);
 
 	xobj = kzalloc(sizeof(*xobj), GFP_KERNEL);
@@ -259,18 +286,18 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	if (err)
 		goto out3;
 
-	if (user_flags == DRM_XOCL_BO_EXECBUF) {
-		xobj->flags = XOCL_BO_EXECBUF;
+	if (user_type == DRM_XOCL_BO_EXECBUF) {
+		xobj->type = XOCL_BO_EXECBUF;
 		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
 		return xobj;
 	}
 
-	if (user_flags & DRM_XOCL_BO_P2P){
-		xobj->flags = XOCL_BO_P2P;
+	if (user_type & DRM_XOCL_BO_P2P){
+		xobj->type = XOCL_BO_P2P;
 	}
 #ifdef XOCL_CMA_ALLOC
-	if (user_flags == DRM_XOCL_BO_CMA) {
-		xobj->flags = XOCL_BO_CMA;
+	if (user_type == DRM_XOCL_BO_CMA) {
+		xobj->type = XOCL_BO_CMA;
 		return xobj;
 	}
 #endif
@@ -284,10 +311,10 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
 	mutex_lock(&xdev->mm_lock);
-	if (ddr != 0xffffffff) {
+	if (ddr != 0xffffff) {
 		/* Attempt to allocate buffer on the requested DDR */
 		DRM_DEBUG("%s:%s:%d: %u\n", __FILE__, __func__, __LINE__, ddr);
-		if (user_flags & DRM_XOCL_BO_P2P){
+		if (user_type & DRM_XOCL_BO_P2P){
 			err = xocl_check_p2p_mem_bank(xdev, ddr);
 			if (err)
 				goto out2;
@@ -305,7 +332,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		for (ddr = 0; ddr < ddr_count; ddr++) {
 			if  (!XOCL_IS_DDR_USED(xdev, ddr))
 				continue;
-			if (user_flags & DRM_XOCL_BO_P2P){
+			if (user_type & DRM_XOCL_BO_P2P){
 				err = xocl_check_p2p_mem_bank(xdev, ddr);
 				if (err)
 					goto out2;
@@ -328,7 +355,8 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_mm_update_usage_stat(xdev, ddr, xobj->base.size, 1);
 	mutex_unlock(&xdev->mm_lock);
 	/* Record the DDR we allocated the buffer on */
-	xobj->flags |= (1 << ddr);
+	//xobj->flags |= (1 << ddr);
+	xobj->flags = ddr;
 
 	return xobj;
 out2:
@@ -399,7 +427,8 @@ static struct drm_xocl_bo *xocl_create_bo_forARE(struct drm_device *dev,
 	}
 
 	/* Record that this buffer is on remote device to be access over ARE*/
-	xobj->flags = XOCL_BO_ARE;
+	//xobj->flags = XOCL_BO_ARE;
+	xobj->type |= XOCL_BO_ARE;
 	return xobj;
 out3:
 	kfree(xobj);
@@ -420,24 +449,27 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct page *cpages;
 #endif
 	struct drm_xocl_create_bo *args = data;
-	unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
-	unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
-	uint64_t base_addr_offset;
-	base_addr_offset = xdev->topology.topology->m_mem_data[0].m_base_address;
-	
-	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
-		if (hweight_long(ddr) > 1)
-			return -EINVAL;
-	}
+	//unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
+	unsigned ddr = args->flags;
+	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
+	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
+
+//	//Only one bit should be set in ddr. Other bits are now in "type"
+//	if (hweight_long(ddr) > 1)
+//		return -EINVAL;
+////	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
+//		if (hweight_long(ddr) > 1)
+//			return -EINVAL;
+//	}
 
 	if(bar_mapped){
 		if(!xdev->bypass_bar_addr){
 			DRM_ERROR("No P2P mem region available, Can't create p2p BO\n");
 			return -EINVAL;
 		}
-      	}
-        
-	xobj = xocl_create_bo(dev, args->size, args->flags);
+	}
+
+	xobj = xocl_create_bo(dev, args->size, args->flags, args->type);
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
@@ -460,92 +492,94 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	}
 
 #ifdef XOCL_CMA_ALLOC
-	if (args->flags == DRM_XOCL_BO_CMA) {
-		page_count = xobj->base.size >> PAGE_SHIFT;
-		xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
-		if (!xobj->pages) {
-			ret = -ENOMEM;
-			goto out_free;
-		}
-		cpages = cma_alloc(xdev->cma_blk, page_count, 0, GFP_KERNEL);
-		if (!cpages) {
-			ret = -ENOMEM;
-			goto out_free;
-		}
-		for (j = 0; j < page_count; j++)
-			xobj->pages[j] = cpages++;
-	}
-	else {
-		xobj->pages = drm_gem_get_pages(&xobj->base);
-	}
+	    //if (args->flags == DRM_XOCL_BO_CMA) {
+	    if (args->type == DRM_XOCL_BO_CMA) {
+		    page_count = xobj->base.size >> PAGE_SHIFT;
+		    xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
+		    if (!xobj->pages) {
+			    ret = -ENOMEM;
+			    goto out_free;
+		    }
+		    cpages = cma_alloc(xdev->cma_blk, page_count, 0, GFP_KERNEL);
+		    if (!cpages) {
+			    ret = -ENOMEM;
+			    goto out_free;
+		    }
+		    for (j = 0; j < page_count; j++)
+			    xobj->pages[j] = cpages++;
+	    }
+	    else {
+		    xobj->pages = drm_gem_get_pages(&xobj->base);
+	    }
 #else
 
-	if(bar_mapped){
-		xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
-	}
-	else{
-		xobj->pages = drm_gem_get_pages(&xobj->base);
-	}
+	    if(bar_mapped){
+		    xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
+	    }
+	    else{
+		    xobj->pages = drm_gem_get_pages(&xobj->base);
+	    }
 
 #endif
-	if (IS_ERR(xobj->pages)) {
-		ret = PTR_ERR(xobj->pages);
-		goto out_free;
-	}
+	    if (IS_ERR(xobj->pages)) {
+		    ret = PTR_ERR(xobj->pages);
+		    goto out_free;
+	    }
 
-	xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
-	if (IS_ERR(xobj->sgt)) {
-		ret = PTR_ERR(xobj->sgt);
-		goto out_free;
-	}
+	    xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+	    if (IS_ERR(xobj->sgt)) {
+		    ret = PTR_ERR(xobj->sgt);
+		    goto out_free;
+	    }
 
-	if(!bar_mapped){
-		xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
-		if (!xobj->vmapping) {
-			ret = -ENOMEM;
-			goto out_free;
-		}
-  }
+	    if(!bar_mapped){
+		    xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
+		    if (!xobj->vmapping) {
+			    ret = -ENOMEM;
+			    goto out_free;
+		    }
+	    }
 
-	ret = drm_gem_create_mmap_offset(&xobj->base);
-	if (ret < 0)
-		goto out_free;
-	ret = drm_gem_handle_create(filp, &xobj->base, &args->handle);
-	if (ret < 0)
-		goto out_free;
+	    ret = drm_gem_create_mmap_offset(&xobj->base);
+	    if (ret < 0)
+		    goto out_free;
+	    ret = drm_gem_handle_create(filp, &xobj->base, &args->handle);
+	    if (ret < 0)
+		    goto out_free;
 
-	xocl_describe(xobj);
-	drm_gem_object_unreference_unlocked(&xobj->base);
-	return ret;
+	    xocl_describe(xobj);
+	    drm_gem_object_unreference_unlocked(&xobj->base);
+	    return ret;
 
-out_free:
-	xocl_free_bo(&xobj->base);
-	return ret;
-}
+    out_free:
+	    xocl_free_bo(&xobj->base);
+	    return ret;
+    }
 
-int xocl_userptr_bo_ioctl(struct drm_device *dev,
-			  void *data,
-			  struct drm_file *filp)
-{
+    int xocl_userptr_bo_ioctl(struct drm_device *dev,
+			      void *data,
+			      struct drm_file *filp)
+    {
 	int ret;
 	struct drm_xocl_bo *xobj;
 	unsigned int page_count;
 	struct drm_xocl_userptr_bo *args = data;
-	unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
+	//unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
+	//unsigned ddr = args->flags;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
 
-	if (args->flags & DRM_XOCL_BO_EXECBUF)
+	if (args->type & DRM_XOCL_BO_EXECBUF)
 		return -EINVAL;
 
-	if (args->flags & DRM_XOCL_BO_CMA)
+	if (args->type & DRM_XOCL_BO_CMA)
 		return -EINVAL;
 
-	if (args->flags && (hweight_long(ddr) > 1))
-		return -EINVAL;
+//	if (args->flags && (hweight_long(ddr) > 1))
+//		return -EINVAL;
 
-	xobj = xocl_create_bo(dev, args->size, args->flags);
+	xobj = xocl_create_bo(dev, args->size, args->flags, args->type);
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
@@ -584,7 +618,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	if (ret)
 		goto out1;
 
-	xobj->flags |= XOCL_BO_USERPTR;
+	xobj->type |= XOCL_BO_USERPTR;
 	xocl_describe(xobj);
 	drm_gem_object_unreference_unlocked(&xobj->base);
 	return ret;
@@ -728,7 +762,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 		goto clear;
 	}
 	/* Now perform DMA */
-	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, xobj->base.size);
+	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, args->size);
 	if (ret >= 0)
 		ret = (ret == args->size) ? 0 : -EIO;
 	xocl_release_channel(xdev, dir, channel);
@@ -905,7 +939,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 		ret = -EINVAL;
 		goto out;
 	}
-	
+
 	DRM_DEBUG("dst_xobj %p, src_xobj %p", dst_xobj, src_xobj);
 	DRM_DEBUG("dst_xobj->sgt %p, src_xobj->sgt %p", dst_xobj->sgt, src_xobj->sgt);
 	sgt = dst_xobj->sgt;
@@ -922,7 +956,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 		goto out;
 	}
 
-	if (((args->src_offset + args->size) > src_gem_obj->size) || 
+	if (((args->src_offset + args->size) > src_gem_obj->size) ||
 			((args->dst_offset + args->size) > dst_gem_obj->size)) {
 		DRM_ERROR("offsize + sizes out of boundary, copy_bo abort");
 		ret = -EINVAL;
@@ -949,7 +983,7 @@ int xocl_copy_bo_ioctl(struct drm_device *dev,
 	}
 	/* Now perform DMA */
 	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel,
-		dst_gem_obj->size);
+		args->size);
 
 	if (ret >= 0)
 		ret = (ret == args->size) ? 0 : -EIO;
@@ -1022,7 +1056,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
         // ???? add flags to create_bo.. for DDR bank??
 
 	struct drm_xocl_bo *importing_xobj = exporting_xobj ? xocl_create_bo_forARE(dev, attach->dmabuf->size, exporting_xobj->mm_node) :
-		xocl_create_bo(dev, attach->dmabuf->size, 0);
+		xocl_create_bo(dev, attach->dmabuf->size, 0, 0);
 
 	BO_ENTER("xobj %p", importing_xobj);
 
@@ -1077,8 +1111,35 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 
-static int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr, uint64_t size,
-			   u32 write)
+int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
+{
+	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+	int ret;
+
+	BO_ENTER("obj %p", obj);
+	if (obj->size < vma->vm_end - vma->vm_start)
+		return -EINVAL;
+
+	if (!obj->filp)
+		return -ENODEV;
+
+	ret = obj->filp->f_op->mmap(obj->filp, vma);
+	if (ret)
+		return ret;
+
+	fput(vma->vm_file);
+	if (!IS_ERR(xobj->dmabuf)) {
+		vma->vm_file = get_file(xobj->dmabuf->file);
+		vma->vm_ops = xobj->dmabuf_vm_ops;
+		vma->vm_private_data = obj;
+		vma->vm_flags |= VM_MIXEDMAP;
+	}
+
+	return 0;
+}
+
+int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
+	uint64_t size, u32 write)
 {
 	int ret;
 	char __user *user_data = to_user_ptr(data_ptr);
@@ -1109,20 +1170,20 @@ static int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr, uint
 	return 0;
 
 clear_release:
-	release_pages(unmgd->pages, unmgd->npages, 0);
+	xocl_release_pages(unmgd->pages, unmgd->npages, 0);
 clear_pages:
 	drm_free_large(unmgd->pages);
 	unmgd->pages = NULL;
 	return ret;
 }
 
-static void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
+void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 {
 	if (!unmgd->pages)
 		return;
 	sg_free_table(unmgd->sgt);
 	kfree(unmgd->sgt);
-	release_pages(unmgd->pages, unmgd->npages, 0);
+	xocl_release_pages(unmgd->pages, unmgd->npages, 0);
 	drm_free_large(unmgd->pages);
 	unmgd->pages = NULL;
 }
@@ -1274,6 +1335,3 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 
 	return 0;
 }
-
-
-

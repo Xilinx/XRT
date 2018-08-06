@@ -40,6 +40,7 @@ AWSXCL_HAL_DRV_SRC := \
  driver/include/xclperf.h \
  driver/include/xclbin.h \
  driver/xclng/include/mgmt-ioctl.h \
+ driver/xclng/include/xocl_ioctl.h \
  driver/xclng/include/drm/drm.h \
  driver/xclng/include/drm/drm_mode.h \
  driver/xclng/xrt/user_aws/Makefile \
@@ -53,7 +54,6 @@ AWSXCL_HAL_DRV_SRC := \
  driver/xclng/xrt/user_aws/shim.cpp \
  driver/xclng/xrt/user_aws/shim.h \
  driver/xclng/xrt/user_aws/xclbin.cpp \
- driver/aws/kernel/include/xocl_ioctl.h \
  driver/xclng/tools/awssak/Makefile \
  driver/xclng/tools/awssak/main.cpp \
  driver/xclng/xrt/user_common/dd.cpp \
@@ -95,7 +95,7 @@ ifeq ($(RDI_PLATFORM),lnx64)
  AWSXCL_DRIVER_RELEASE_DIRS := \
   platforms/xilinx_aws-vu9p-f1_4ddr-xpr-2pr_5_0/sw/driver/gem \
   platforms/xilinx_aws-vu9p-f1_dynamic_5_0/sw/driver/gem \
-
+  platforms/xilinx_aws-vu9p-f1-04261818_dynamic_5_0/sw/driver/gem \
 
  # release driver to each driver release dir and data/sdaccel/pcie/x86_64
  $(foreach dir,$(AWSXCL_DRIVER_RELEASE_DIRS) data/sdaccel/pcie/x86_64,\

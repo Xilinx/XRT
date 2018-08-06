@@ -10,6 +10,7 @@ file(GLOB XRT_XDP_APPDEBUG_FILES
   "${XRT_XDP_APPDEBUG_DIR}/*.h"
   "${XRT_XDP_APPDEBUG_DIR}/*.cpp"
   )
+set_source_files_properties (${XRT_XDP_APPDEBUG_FILES} PROPERTIES COMPILE_FLAGS -g)
 
 file(GLOB XRT_XDP_DEBUG_FILES
   "${XRT_XDP_DEBUG_DIR}/*.h"
@@ -37,4 +38,4 @@ set(XRT_XDP_ALL_SRC
   ${XRT_XDP_FILES}
   )
 
-add_library(xdp OBJECT ${XRT_XDP_ALL_SRC})
+add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})

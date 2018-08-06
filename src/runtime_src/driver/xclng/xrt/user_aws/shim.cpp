@@ -342,7 +342,7 @@ namespace awsbwhal {
         return result;
 
       unsigned ddr = 1;
-      ddr <<= flags;
+      //ddr <<= flags;
       unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, ddr);
       if (boHandle == mNullBO)
         return result;
@@ -935,9 +935,11 @@ namespace awsbwhal {
 
     // Assume that the memory is always
     // created for the device ddr for now. Ignoring the flags as well.
-    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
     {
-      drm_xocl_create_bo info = {size, mNullBO, flags};
+      unsigned flag = flags & 0xFFFFFFLL;
+      unsigned type = flags & 0xFF000000LL ;
+      drm_xocl_create_bo info = {size, mNullBO, flag, type};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
       if (result) {
         std::cout << __func__ << " ERROR: AllocBO IOCTL failed" << std::endl;
@@ -945,9 +947,11 @@ namespace awsbwhal {
       return result ? mNullBO : info.handle;
     }
 
-    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
     {
-      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
+      unsigned flag = flags & 0xFFFFFFLL;
+      unsigned type = flags & 0xFF000000LL ;
+      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
       return result ? mNullBO : user.handle;
     }

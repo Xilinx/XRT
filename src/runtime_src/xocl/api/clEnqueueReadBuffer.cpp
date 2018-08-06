@@ -23,13 +23,12 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
-
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
 #include "detail/context.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -103,7 +102,7 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
     (command_queue,CL_COMMAND_READ_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_read_buffer,buffer,offset,size,ptr);
   xocl::profile::set_event_action(uevent.get(),xocl::profile::action_read,buffer);
-  appdebug::set_event_action(uevent.get(),appdebug::action_readwrite,buffer,offset,size,ptr);
+  xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();
   if (blocking)

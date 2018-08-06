@@ -67,6 +67,8 @@
  * 10   Obtain device usage statistics         DRM_IOCTL_XOCL_USAGE_STAT      drm_xocl_usage_stat
  * 11   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
+ * 12   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ *      buffer
  * ==== ====================================== ============================== ==================================
  */
 
@@ -88,6 +90,10 @@
 #if defined(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 typedef uuid_t xuid_t;
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#endif
 #else
 typedef uuid_le xuid_t;
 #endif
@@ -163,11 +169,13 @@ enum drm_xocl_sync_bo_dir {
  * @size:       Requested size of the buffer object
  * @handle:     bo handle returned by the driver
  * @flags:      DRM_XOCL_BO_XXX flags
+ * @type:       The type of bo
  */
 struct drm_xocl_create_bo {
 	uint64_t size;
 	uint32_t handle;
 	uint32_t flags;
+	uint32_t type;
 };
 
 /**
@@ -178,12 +186,14 @@ struct drm_xocl_create_bo {
  * @size:       Requested size of the buffer object
  * @handle:     bo handle returned by the driver
  * @flags:      DRM_XOCL_BO_XXX flags
+ * @type:       The type of bo
  */
 struct drm_xocl_userptr_bo {
 	uint64_t addr;
 	uint64_t size;
 	uint32_t handle;
 	uint32_t flags;
+	uint32_t type;
 };
 
 /**

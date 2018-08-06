@@ -27,12 +27,10 @@
 
 #include "xrt/util/memory.h"
 #include "api.h"
-#include "profile.h"
-
-// Must move out of impl
 #include "impl/cpu_pipes.h"
 
 #include <cstdlib>
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -101,7 +99,6 @@ clCreatePipe(cl_context                context,
   validOrError(context,flags,pipe_packet_size,pipe_max_packets,attributes,errcode_ret);
 
   auto upipe = xrt::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
-  cl_mem pipe = upipe.get();
 
   // TODO: here we allocate a pipe even if it isn't a memory mapped pipe,
   // it would be nice to not allocate the pipe if it's a hardware pipe.

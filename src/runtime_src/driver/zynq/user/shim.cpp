@@ -190,6 +190,7 @@ unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 }
 
 unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags) {
+    (void)flags;
     drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
     int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
     if (mVerbosity == XCL_INFO) {

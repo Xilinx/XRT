@@ -1,0 +1,8 @@
+digraph structs {
+        node[color=Red,fontname=Courier,shape=record];
+	edge [color=Blue];
+	struct4 [label="{OCL API|HAL API|{<f10> XOCL|<f11> XCLMGMT}}"];
+	struct5 [label="<f20> USER PF|<f21> MGMT PF"];
+        struct4:f10 -> struct5:f20;
+        struct4:f11 -> struct5:f21;
+}

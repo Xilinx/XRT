@@ -30,4 +30,10 @@ uint32_t xocl_mm_range_shared_with_ddr(struct xocl_dev *xdev, struct mem_data *m
 void xocl_cleanup_mem(struct xocl_dev *xdev);
 int xocl_check_topology(struct xocl_dev *xdev);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+int xocl_gem_fault(struct vm_fault *vmf);
+#else
+int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
+#endif
+
 #endif

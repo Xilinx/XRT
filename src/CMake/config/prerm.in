@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+find /lib/modules -type f -name xocl.ko -delete
+find /lib/modules -type f -name xclmgmt.ko -delete
+find /lib/modules -type f -name xocl.ko.kz -delete
+find /lib/modules -type f -name xclmgmt.ko.kz -delete
+depmod -A
+
+rm -f /etc/udev/rules.d/10-xocl.rules
+rm -f /etc/udev/rules.d/10-xclmgmt.rules
+
+exit 0

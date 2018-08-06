@@ -46,7 +46,7 @@ namespace xclhwemhal2 {
   class xocl_cmd
   {
     public:
-      drm_xocl_bo *bo;
+      xclemulation::drm_xocl_bo *bo;
       exec_core *exec;
       enum ert_cmd_state state;
       int cu_idx;
@@ -130,7 +130,7 @@ namespace xclhwemhal2 {
     void running_to_complete(xocl_cmd *xcmd) ;
     void complete_to_free(xocl_cmd *xcmd) { }
     xocl_cmd* get_free_xocl_cmd(void) ; 
-    int add_cmd(exec_core *exec, drm_xocl_bo* bo) ;
+    int add_cmd(exec_core *exec, xclemulation::drm_xocl_bo* bo) ;
     int scheduler_wait_condition() ;
     void scheduler_queue_cmds();
     void scheduler_iterate_cmds();
@@ -140,7 +140,7 @@ namespace xclhwemhal2 {
 
     int init_scheduler_thread(void) ;
     int fini_scheduler_thread(void) ;
-    int add_exec_buffer(exec_core *eCore , drm_xocl_bo *buf) ;
+    int add_exec_buffer(exec_core *eCore , xclemulation::drm_xocl_bo *buf) ;
 
     xocl_sched* mScheduler;
     MBScheduler(HwEmShim* _parent);
