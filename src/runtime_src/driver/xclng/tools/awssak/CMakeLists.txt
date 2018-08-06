@@ -15,6 +15,7 @@ set(AWSSAK_SRC ${AWSSAK_FILES})
 add_executable(awssak ${AWSSAK_SRC})
 
 if(${INTERNAL_TESTING})
+  add_definitions(-DINTERNAL_TESTING)
   target_link_libraries(awssak
     xrt-awsstatic
     pthread

@@ -1,3 +1,7 @@
+if(${INTERNAL_TESTING})
+  add_definitions(-DINTERNAL_TESTING)
+endif(${INTERNAL_TESTING})
+
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
