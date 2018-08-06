@@ -232,6 +232,10 @@ namespace xclhwemhal2 {
       return -1;
     }
 
+    if(!zipFile || !xmlFile)
+    {
+      return -1;
+    }
     int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize+1,xmlFile,xmlFileSize+1,debugFile,debugFileSize+1, memTopology, memTopologySize+1);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
@@ -593,7 +597,7 @@ namespace xclhwemhal2 {
           setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1) ;
         }
 
-        if (mLogStream.is_open())
+        if (mLogStream.is_open() && simMode)
           mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
 
         int r = execl(sim_file.c_str(),sim_file.c_str(),simMode,NULL);
@@ -858,7 +862,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if(!sock)
     {
-      if(mMemModel)
+      if(!mMemModel)
         mMemModel = new mem_model(deviceName);
       mMemModel->writeDevMem(dest,src,size);
       return size;
@@ -904,7 +908,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if(!sock)
     {
-      if(mMemModel)
+      if(!mMemModel)
         mMemModel = new mem_model(deviceName);
       mMemModel->readDevMem(src,dest,size);
       return size;
@@ -1771,6 +1775,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
+    return pBuf;
   }
   memset(pBuf, 0, bo->size);
   bo->buf = pBuf;
