@@ -66,9 +66,11 @@ if [[ $clean == 1 ]]; then
 fi
 
 if [[ $ccache == 1 ]]; then
-    export RDI_ROOT=unused
-    export RDI_BUILDROOT=unused
+    SRCROOT=`readlink -f $BUILDDIR/../src`
+    export RDI_ROOT=$SRCROOT
+    export RDI_BUILDROOT=$SRCROOT
     export RDI_CCACHEROOT=/scratch/ccache/$USER
+    mkdir -p $RDI_CCACHEROOT
     # Run cleanup script once a day
     # Clean cache dir for stale files older than 30 days
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
