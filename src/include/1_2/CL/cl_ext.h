@@ -295,64 +295,66 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 //
 //struct rte_mbuf;
 /*
- * DOC: OpenCL Stream Queue APIs
+ * DOC: OpenCL Stream APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  * These structs and functions are used for the new DMA engine QDMA.
  */
-#if 0
-/**
- * cl_queue_flags. Type of the queue , eg set to CL_QUEUE_READ_ONLY for 
- * read only. Used in clCreateQueue()
- */
-typedef cl_bitfield         cl_queue_flags;
-#define CL_QUEUE_READ_ONLY			    (1 << 0)
-#define CL_QUEUE_WRITE_ONLY                         (1 << 1)
+
 
 /**
- * cl_queue_attributes. eg set it to CL_QUEUE_STREAM for stream mode. Used
- * in clCreateQueue()
+ * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for 
+ * read only. Used in clCreateStream()
  */
-typedef cl_uint             cl_queue_attributes;
-#define CL_QUEUE_STREAM                             (1 << 0)
-#define CL_QUEUE_PACKET                             (1 << 1)
+typedef cl_bitfield         cl_stream_flags;
+#define CL_STREAM_READ_ONLY			    (1 << 0)
+#define CL_STREAM_WRITE_ONLY                        (1 << 1)
 
 /**
- * cl_queue_attributes. eg set it to CL_QUEUE_CDH for customer defined header.
- * Used in clReadQueue() and clWriteQueue()
+ * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
+ * in clCreateStream()
  */
-typedef cl_uint             cl_queue_xfer_req;
-#define CL_QUEUE_CDH                                (1 << 0)
-#define CL_QUEUE_PARTIAL                            (1 << 1)
-`
-typedef struct _cl_queue*      cl_queue;
-typedef struct _cl_queue_mem*  cl_queue_mem;
+typedef cl_uint             cl_stream_attributes;
+#define CL_STREAM                                   (1 << 0)
+#define CL_PACKET                                   (1 << 1)
 
 /**
- * clCreateQueue - create the queue for reading or writing.
- * @device_id   : The device handle on which queue is to be created.
- * @flags       : The cl_queue_flags
- * @attributes  : The attributes of the requested queue.
+ * cl_stream_attributes. 
+ * eg set it to CL_STREAM_CDH for Customer Defined Header.
+ * Used in clReadStream() and clWriteStream()
+ */
+typedef cl_uint             cl_stream_xfer_req;
+#define CL_STREAM_CDH                               (1 << 0)
+#define CL_STREAM_PARTIAL                           (1 << 1)
+
+typedef struct _cl_stream*      cl_stream;
+typedef struct _cl_stream_mem*  cl_stream_mem;
+
+/**
+ * clCreateStream - create the stream for reading or writing.
+ * @device_id   : The device handle on which stream is to be created.
+ * @flags       : The cl_stream_flags
+ * @attributes  : The attributes of the requested stream.
  * @errcode_ret : The return value eg CL_SUCCESS
  */
-extern CL_API_ENTRY cl_queue CL_API_CALL 
-clCreateQueue(cl_device_id         /* device_id */,
-	cl_queue_flags flags,      /* flags */
-	const cl_queue_attributes*,/* attributes*/
-	cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_stream CL_API_CALL 
+clCreateStream(cl_device_id                /* device_id */,
+	       cl_stream_flags             /* flags */,
+	       cl_stream_attributes*       /* attributes*/,
+	       cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
- * clReleaseQueue - Once done with the queue, release it and its associated
+ * clReleaseStream - Once done with the stream, release it and its associated
  * objects
- * @queue : The queue to be released.
+ * @stream: The stream to be released.
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL 
-clReleaseQueue(cl_queue /*queue*/) CL_API_SUFFIX__VERSION_1_0;
+clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
- * clWriteQueue - write data to queue
+ * clWriteStream - write data to stream
  * @device_id : The device
- * @queue     : The queue
+ * @stream    : The stream
  * @ptr       : The ptr to write from.
  * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
@@ -361,18 +363,18 @@ clReleaseQueue(cl_queue /*queue*/) CL_API_SUFFIX__VERSION_1_0;
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteQueue(cl_device_id     /* device_id*/,
-	cl_queue              /* queue*/
+clWriteStream(cl_device_id    /* device_id*/,
+	cl_stream             /* stream*/,
 	const void *          /* ptr */,
 	size_t                /* offset */,
 	size_t                /* size */,
-	cl_queue_xfer_req     /* req_type*/,
+	cl_stream_xfer_req    /* req_type*/,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
- * clWriteQueue - write data to queue
+ * clReadStream - write data to stream
  * @device_id : The device
- * @queue     : The queue
+ * @stream    : The stream
  * @ptr       : The ptr to write from.
  * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
@@ -381,34 +383,33 @@ clWriteQueue(cl_device_id     /* device_id*/,
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadQueue(cl_device_id      /* device_id*/,
-	cl_queue              /* queue*/
-	const void *          /* ptr */,
-	size_t                /* offset */,
-	size_t                /* size */,
-	cl_queue_xfer_req     /* buffer */,
-	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+clReadStream(cl_device_id     /* device_id*/,
+	     cl_stream             /* stream*/,
+	     void *                /* ptr */,
+	     size_t                /* offset */,
+	     size_t                /* size */,
+	     cl_stream_xfer_req*   /* attributes */,
+	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
-/* clCreateQueueBuffer - Alloc buffer used for read and write.
- * @queue      : The queue to associate the buffer with
+/* clCreateStreamBuffer - Alloc buffer used for read and write.
+ * @stream     : The stream to associate the buffer with
  * @size       : The size of the buffer
  * errcode_ret : The return value, eg CL_SUCCESS
- * Returns cl_queue_mem
+ * Returns cl_stream_mem
  */
-extern CL_API_ENTRY cl_queue_mem CL_API_CALL 
-clCreateQueueBuffer(cl_device_id device,
-	cl_queue              /* queue*/,
+extern CL_API_ENTRY cl_stream_mem CL_API_CALL 
+clCreateStreamBuffer(cl_device_id device,
+	cl_stream             /* stream*/,
 	size_t                /* size*/,
 	cl_int *              /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
-/* clReleaseQueueBuffer - Release the buffer created.
- * @cl_queue_mem : The queue memory to be released.
+/* clReleaseStreamBuffer - Release the buffer created.
+ * @cl_stream_mem : The stream memory to be released.
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseQueueBuffer(cl_queue_mem /*queue memobj */) CL_API_SUFFIX__VERSION_1_0;
+clReleaseStreamBuffer(cl_stream_mem /*stream memobj */) CL_API_SUFFIX__VERSION_1_0;
 
-#endif
 //End QDMA APIs
 
 typedef struct _cl_mem * rte_mbuf;
