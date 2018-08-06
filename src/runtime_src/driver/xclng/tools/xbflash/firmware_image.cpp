@@ -19,11 +19,11 @@
 #include <climits>
 #include <iomanip>
 #include <memory>
-#include "firmware_image.h"
-#include "xclbin.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include "firmware_image.h"
+#include "xclbin.h"
 
 /*
  * Helper to parse DSA name string and retrieve all tokens
