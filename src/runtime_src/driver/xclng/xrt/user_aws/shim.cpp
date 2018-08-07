@@ -56,15 +56,13 @@
 #include <mutex>
 
 #include "xclbin.h"
-#include "xocl_ioctl.h"
+#include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
 #include "awssak.h"
 
 #ifdef INTERNAL_TESTING
-#include "mgmt-ioctl.h"
+#include "driver/xclng/include/mgmt-ioctl.h"
 #else
-#define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS    3
 // TODO - define this in a header file
 extern char* get_afi_from_xclBin(const xclBin *);
 extern char* get_afi_from_axlf(const axlf *);
@@ -152,8 +150,10 @@ namespace awsbwhal {
           } 
           return retVal;
       } else {
-          char* afi_id = get_afi_from_xclBin(buffer);
-          return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          //char* afi_id = get_afi_from_xclBin(buffer);
+          //return fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+          std::cout << "get_afi_from_xclBin() has been deprecated" << std::endl;
+          return -1;
       }
 #endif
     }
@@ -610,10 +610,10 @@ namespace awsbwhal {
 
 
     int AwsXcl::pcieBarRead(int bar_num, unsigned long long offset, void* buffer, unsigned long long length) {
-        char *mem = 0;
         char *qBuf = (char *)buffer;
-        switch (bar_num) {
 #ifdef INTERNAL_TESTING
+        char *mem = 0;
+        switch (bar_num) {
         case 0:
         {
             if ((length + offset) > MMAP_SIZE_USER) {
@@ -621,6 +621,7 @@ namespace awsbwhal {
             }
             mem = mUserMap;
 #else
+        switch (bar_num) {
         case APP_PF_BAR0:
         {
 #endif
@@ -660,9 +661,9 @@ namespace awsbwhal {
 
     int AwsXcl::pcieBarWrite(int bar_num, unsigned long long offset, const void* buffer, unsigned long long length) {
         char *qBuf = (char *)buffer;
+#ifdef INTERNAL_TESTING
         char *mem = 0;
         switch (bar_num) {
-#ifdef INTERNAL_TESTING
         case 0:
         {
           if ((length + offset) > MMAP_SIZE_USER) {
@@ -670,6 +671,7 @@ namespace awsbwhal {
           }
           mem = mUserMap;
 #else
+        switch (bar_num) {
         case APP_PF_BAR0:
         {
 #endif
@@ -808,7 +810,7 @@ namespace awsbwhal {
     info->mPCIeLinkSpeed = 8000;
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    for (int i = 0; i < AWSMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
+    for (int i = 0; i < XCLMGMT_NUM_ACTUAL_CLOCKS; ++i) {
       info->mOCLFrequency[i] = imageInfo.metrics.clocks[i].frequency[0] / 1000000;
     }
     info->mMigCalib = true;
@@ -935,7 +937,7 @@ namespace awsbwhal {
 
     // Assume that the memory is always
     // created for the device ddr for now. Ignoring the flags as well.
-    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
     {
       unsigned flag = flags & 0xFFFFFFLL;
       unsigned type = flags & 0xFF000000LL ;
@@ -947,7 +949,7 @@ namespace awsbwhal {
       return result ? mNullBO : info.handle;
     }
 
-    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
     {
       unsigned flag = flags & 0xFFFFFFLL;
       unsigned type = flags & 0xFF000000LL ;
