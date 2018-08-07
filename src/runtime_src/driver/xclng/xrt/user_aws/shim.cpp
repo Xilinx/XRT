@@ -610,10 +610,10 @@ namespace awsbwhal {
 
 
     int AwsXcl::pcieBarRead(int bar_num, unsigned long long offset, void* buffer, unsigned long long length) {
-        char *mem = 0;
         char *qBuf = (char *)buffer;
-        switch (bar_num) {
 #ifdef INTERNAL_TESTING
+        char *mem = 0;
+        switch (bar_num) {
         case 0:
         {
             if ((length + offset) > MMAP_SIZE_USER) {
@@ -621,6 +621,7 @@ namespace awsbwhal {
             }
             mem = mUserMap;
 #else
+        switch (bar_num) {
         case APP_PF_BAR0:
         {
 #endif
@@ -660,9 +661,9 @@ namespace awsbwhal {
 
     int AwsXcl::pcieBarWrite(int bar_num, unsigned long long offset, const void* buffer, unsigned long long length) {
         char *qBuf = (char *)buffer;
+#ifdef INTERNAL_TESTING
         char *mem = 0;
         switch (bar_num) {
-#ifdef INTERNAL_TESTING
         case 0:
         {
           if ((length + offset) > MMAP_SIZE_USER) {
@@ -670,6 +671,7 @@ namespace awsbwhal {
           }
           mem = mUserMap;
 #else
+        switch (bar_num) {
         case APP_PF_BAR0:
         {
 #endif
@@ -808,7 +810,7 @@ namespace awsbwhal {
     info->mPCIeLinkSpeed = 8000;
     fpga_mgmt_image_info imageInfo;
     fpga_mgmt_describe_local_image( mBoardNumber, &imageInfo, 0 );
-    for (int i = 0; i < XCLMGMT_NUM_SUPPORTED_CLOCKS; ++i) {
+    for (int i = 0; i < XCLMGMT_NUM_ACTUAL_CLOCKS; ++i) {
       info->mOCLFrequency[i] = imageInfo.metrics.clocks[i].frequency[0] / 1000000;
     }
     info->mMigCalib = true;

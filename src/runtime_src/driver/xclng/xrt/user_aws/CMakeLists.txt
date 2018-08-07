@@ -1,11 +1,12 @@
 if(${INTERNAL_TESTING})
   add_definitions(-DINTERNAL_TESTING)
-endif(${INTERNAL_TESTING})
+else()
+  include_directories(../../../../../../../sdk/userspace/include/)
+endif()
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
-  ../../../../../../../sdk/userspace/include/
   )
 
 file(GLOB XRT_USER_AWS_FILES
