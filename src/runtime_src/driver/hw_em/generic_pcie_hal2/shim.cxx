@@ -158,6 +158,7 @@ namespace xclhwemhal2 {
 
   static void printMem(std::ofstream &os, int base, uint64_t offset, void* buf, unsigned int size )
   {
+    std::ios_base::fmtflags f( os.flags() );
     if(os.is_open())
     {
       for(uint64_t i = 0; i < size ; i = i + base)
@@ -168,6 +169,7 @@ namespace xclhwemhal2 {
         os << std::endl;
       }
     }
+    os.flags( f );
   }
 
   bool HwEmShim::isUltraScale() const
@@ -232,6 +234,35 @@ namespace xclhwemhal2 {
       return -1;
     }
 
+    if(!zipFile || !xmlFile)
+    {
+      //deallocate all allocated memories to fix memory leak
+      if(zipFile)
+      {
+        delete[] zipFile;
+        zipFile = nullptr;
+      }
+
+      if(debugFile)
+      {
+        delete[] debugFile;
+        debugFile = nullptr;
+      }
+
+      if(xmlFile)
+      {
+        delete[] xmlFile;
+        xmlFile = nullptr;
+      }
+      
+      if(memTopology)
+      {
+        delete[] memTopology;
+        memTopology = nullptr;
+      }
+
+      return -1;
+    }
     int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize+1,xmlFile,xmlFileSize+1,debugFile,debugFileSize+1, memTopology, memTopologySize+1);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
@@ -593,7 +624,7 @@ namespace xclhwemhal2 {
           setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1) ;
         }
 
-        if (mLogStream.is_open())
+        if (mLogStream.is_open() && simMode)
           mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
 
         int r = execl(sim_file.c_str(),sim_file.c_str(),simMode,NULL);
@@ -858,7 +889,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if(!sock)
     {
-      if(mMemModel)
+      if(!mMemModel)
         mMemModel = new mem_model(deviceName);
       mMemModel->writeDevMem(dest,src,size);
       return size;
@@ -904,7 +935,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if(!sock)
     {
-      if(mMemModel)
+      if(!mMemModel)
         mMemModel = new mem_model(deviceName);
       mMemModel->readDevMem(src,dest,size);
       return size;
@@ -1693,18 +1724,14 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
@@ -1712,18 +1739,14 @@ unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
@@ -1779,6 +1802,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
+    return pBuf;
   }
   memset(pBuf, 0, bo->size);
   bo->buf = pBuf;

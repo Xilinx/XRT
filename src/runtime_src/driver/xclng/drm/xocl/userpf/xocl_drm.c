@@ -24,8 +24,16 @@
 #include <drm/drm_mm.h>
 #include "../lib/libxdma_api.h"
 #include "common.h"
+#if RHEL_P2P_SUPPORT
+#include <linux/pfn_t.h>
+#endif
 
+#if defined(__PPC64__)
+#define XOCL_FILE_PAGE_OFFSET   0x10000
+#else
 #define XOCL_FILE_PAGE_OFFSET   0x100000
+#endif
+
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -122,13 +130,18 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	loff_t num_pages;
 	unsigned int page_offset;
 	int ret = 0;
+#if RHEL_P2P_SUPPORT
+	pfn_t pfn;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
-	page_offset = (vmf->address - vma->vm_start) >> PAGE_SHIFT;
+	unsigned long vmf_address = vmf->address;
 #else
-	page_offset = ((unsigned long)vmf->virtual_address - vma->vm_start) >>
-		PAGE_SHIFT;
+	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
 #endif
+
+	page_offset = (vmf_address - vma->vm_start) >> PAGE_SHIFT;
+
 
 	if (!xobj->pages)
 		return VM_FAULT_SIGBUS;
@@ -137,12 +150,17 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
-	ret = vm_insert_page(vma, vmf->address, xobj->pages[page_offset]);
+	if(xobj->type & XOCL_BO_P2P){
+#if RHEL_P2P_SUPPORT
+		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
+		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
-	ret = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
-		xobj->pages[page_offset]);
+		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
+  }
+  else{
+  	ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
+  }
 	switch (ret) {
 	case -EAGAIN:
 	case 0:

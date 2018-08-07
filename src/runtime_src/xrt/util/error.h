@@ -31,6 +31,7 @@ public:
     : std::runtime_error(what), m_code(ec)
   {}
 
+  explicit
   error(const std::string& what)
     : std::runtime_error(what), m_code(0)
   {}
@@ -57,5 +58,3 @@ send_exception_message(const char* msg)
 } // xrt
 
 #endif
-
-

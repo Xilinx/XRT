@@ -51,7 +51,7 @@ namespace xclcpuemhal2 {
     buf_size = 0;
     
     deviceName = "device"+std::to_string(deviceIndex); 
-    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/cpu_em/"+deviceName;
+    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/sw_emu/"+deviceName;
     simulator_started = false;
     mVerbosity = XCL_INFO;
 
@@ -59,7 +59,7 @@ namespace xclcpuemhal2 {
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
-    char* pack_size = getenv("CPU_EM_PACKET_SIZE");
+    char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
       unsigned int messageSize = strtoll(pack_size,NULL,0);
@@ -495,6 +495,7 @@ namespace xclcpuemhal2 {
       std::string tempdlopenfilename = binaryDirectory+"/dltmp"; 
       {
         bool tempfilecreated = false;
+        unsigned int counter = 0;
         while( !tempfilecreated ) {
           FILE *fp = fopen(tempdlopenfilename.c_str(),"rb");
           if(fp==NULL)
@@ -505,10 +506,9 @@ namespace xclcpuemhal2 {
           {
             fclose(fp);
             std::stringstream ss;
-            int r = rand();
-            r &= 0xf;
-            ss << std::hex << r;
+            ss << std::hex << counter;
             tempdlopenfilename+=ss.str();
+            counter = counter+1;
           }
         }
         FILE *fp = fopen(tempdlopenfilename.c_str(),"wb");
@@ -827,14 +827,14 @@ namespace xclcpuemhal2 {
 
     for(int i = binaryCounter-1; i >= 0; i--)
     {
-      std::stringstream cpu_em_folder;
-      cpu_em_folder <<deviceDirectory<<"/binary_"<<i;
+      std::stringstream sw_emu_folder;
+      sw_emu_folder <<deviceDirectory<<"/binary_"<<i;
       char path[FILENAME_MAX];
       size_t size = PATH_MAX;
       char* pPath = GetCurrentDir(path,size);
       if(pPath)
       {
-        std::string debugFilePath = cpu_em_folder.str()+"/genericpcieoutput";
+        std::string debugFilePath = sw_emu_folder.str()+"/genericpcieoutput";
         std::string destPath = std::string(path) + "/genericpcieoutput_device"+ std::to_string(mDeviceIndex) + "_"+std::to_string(i);
         systemUtil::makeSystemCall(debugFilePath, systemUtil::systemOperation::COPY,destPath);
       }
@@ -1015,18 +1015,14 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
@@ -1034,18 +1030,14 @@ unsigned int CpuemShim::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  unsigned flag = flags & 0xFFFFFFFFLL;
-  unsigned type =  (unsigned)(flags >> 32);
-  flag |= type;
-  std::cout  << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
   if (mLogStream.is_open()) 
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flag<< std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
-  xclemulation::xocl_create_bo info = {size, mNullBO, flag};
+  xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   int result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
