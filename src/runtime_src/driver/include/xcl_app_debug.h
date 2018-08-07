@@ -43,10 +43,6 @@ extern "C" {
 //debug is only interested in 4 metric counters: wb,wt,rb,rt,outstanding,lwa,lwd,lra,lrd
 #define XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
 
-#define XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT		9
-
-#define MAX_BAR_BUFFER_SIZE 					1024
-
 /*
  * LAPC related defs here
  */
