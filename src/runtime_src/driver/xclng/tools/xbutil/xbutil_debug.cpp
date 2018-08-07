@@ -31,7 +31,6 @@
 
 #include <thread>
 #include <chrono>
-#include <bitset>
 
 #include "driver/include/xclbin.h"
 #include "scan.h"
@@ -200,96 +199,6 @@ int xcldev::device::readSPMCounters() {
             << std::endl;
     }
     return 0;
-}
-
-int xcldev::device::readSAMCounters() {
-	xclDebugSAMCounterResults samResult = {0};
-	std::vector<std::string> slotNames;
-	std::vector< std::pair<std::string, std::string> > cuNameportNames;
-	unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, nullptr, &slotNames);
-	if (numSlots == 0) {
-		std::cout << "ERROR: SAM IP does not exist on the platform" << std::endl;
-		return 0;
-	}
-	xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SAM, &samResult);
-	std::cout << "SDx Accel Monitor Counters\n";
-	auto longest_krnl_name_len = std::max_element(slotNames.begin(), slotNames.end(), [](std::string lhs, std::string rhs) {return lhs.length() < rhs.length();})->length();
-	int col1 = std::max(longest_krnl_name_len, strlen("CU Name")) + 4;
-	int col_width = 20;
-	if (samResult.Version[0] <= 0xdeaf0100) {
-		std::cout << std::left
-			<< std::setw(col1) << "CU Name"
-			<< "  " << std::setw(col_width)  << "CU Exec Cnt"
-			<< "  " << std::setw(col_width)  << "Total CU Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Total Int Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Str Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Ext Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Min Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Max Exec Cycl"
-			<< std::endl;
-		for (size_t i = 0; i<samResult.NumSlots; ++i) {
-			std::cout << std::left
-				<< std::setw(col1) << slotNames[i]
-				<< "  " << std::setw(col_width) << samResult.CUExecutionCount[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUExecutionCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalIntStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalStrStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalExtStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.MinExecutionTime[i]
-				<< "  " << std::setw(col_width) << samResult.MaxExecutionTime[i]
-				<< std::endl;
-		}
-	}
-	if (samResult.Version[0] > 0xdeaf0100) {
-		std::cout << std::left
-			<< std::setw(col1) << "CU Name"
-			<< "  " << std::setw(col_width)  << "CU Starts"
-			<< "  " << std::setw(col_width)  << "CU Ends"
-			<< "  " << std::setw(col_width)  << "Total CU Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Total Int Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Str Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Total Ext Stall Cycl"
-			<< "  " << std::setw(col_width)  << "Min Exec Cycl"
-			<< "  " << std::setw(col_width)  << "Max Exec Cycl"
-			<< std::endl;
-		for (size_t i = 0; i<samResult.NumSlots; ++i) {
-			std::cout << std::left
-				<< std::setw(col1) << slotNames[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUStarts[i]
-				<< "  " << std::setw(col_width) << samResult.CUExecutionCount[i]
-				<< "  " << std::setw(col_width) << samResult.TotalCUExecutionCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalIntStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalStrStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.TotalExtStallCycles[i]
-				<< "  " << std::setw(col_width) << samResult.MinExecutionTime[i]
-				<< "  " << std::setw(col_width) << samResult.MaxExecutionTime[i]
-				<< std::endl;
-		}
-	}
-	return 0;
-}
-
-int xcldev::device::readBarCounters(unsigned int base, unsigned int size, std::string filename, bool output) {
-	xclDebugBarCounterResults barResult = {1};
-	barResult.base = base;
-	barResult.size = size*sizeof(int);
-	xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_BAR, &barResult);
-	if (output) {
-		std::cout << "writing result to " << filename << " ..." << std::endl;
-		std::ofstream dump_file;
-		dump_file.open(filename, std::ios_base::app);
-		for (unsigned int i = 0; i < size; i++) {
-			dump_file << "0x" << std::hex << barResult.buffer[i] << std::endl;
-		}
-		dump_file.flush();
-		dump_file.close();
-	} else {
-		std::cout << "Reading memory from address 0x" << std::hex << base << ": " << std::endl;
-		for (unsigned int i = 0; i < size; i++) {
-			std::cout << std::dec << i+1 << '\t' << "0x" << std::hex << barResult.buffer[i] << std::endl;
-		}
-	}
-	return 0;
 }
 
 int xcldev::device::readLAPCheckers(int aVerbose) {
