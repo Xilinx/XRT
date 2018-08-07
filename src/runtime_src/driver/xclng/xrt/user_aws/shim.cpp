@@ -935,7 +935,7 @@ namespace awsbwhal {
 
     // Assume that the memory is always
     // created for the device ddr for now. Ignoring the flags as well.
-    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, uint64_t flags)
+    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
     {
       unsigned flag = flags & 0xFFFFFFLL;
       unsigned type = flags & 0xFF000000LL ;
@@ -947,7 +947,7 @@ namespace awsbwhal {
       return result ? mNullBO : info.handle;
     }
 
-    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags)
+    unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
     {
       unsigned flag = flags & 0xFFFFFFLL;
       unsigned type = flags & 0xFF000000LL ;
