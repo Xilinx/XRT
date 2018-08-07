@@ -391,6 +391,7 @@ dodsabin()
        echo "Warning: Missing Platform VBNV value"
     fi
 
+
     # -- Mode Hardware PR --
     xclbinOpts+=" --kvp mode:hw_pr"
 
@@ -411,7 +412,12 @@ dodsabin()
 
     popd >/dev/null
 
-    dsa_timestamp=`basename \`ls $opt_pkgdir/xbinst/$opt_dsa/xbinst/firmware/*.dsabin\` | cut -d'.' -f 1 | cut -d'-' -f 4`
+    firmware_dir=$opt_pkgdir/xbinst/$opt_dsa/xbinst/firmware
+    /bin/ls $firmware_dir/*.mcs
+    if [ $? -ne 0 ]; then
+	    dsa_timestamp=`basename \`/bin/ls $firmware_dir/*.dsabin\` | cut -d'.' -f 1 | cut -d'-' -f 4`
+    fi
+
 }
 
 dodebdev()
