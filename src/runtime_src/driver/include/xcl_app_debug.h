@@ -83,25 +83,6 @@ typedef struct {
   char DevUserName[256];
 } xclDebugCountersResults;
 
-typedef struct {
-  unsigned int Version[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CUExecutionCount[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int TotalCUExecutionCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int TotalIntStallCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int TotalStrStallCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int TotalExtStallCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int MinExecutionTime[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int MaxExecutionTime[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int TotalCUStarts[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int NumSlots;
-} xclDebugSAMCounterResults;
-
-typedef struct {
-  unsigned int base;
-  unsigned int size;
-  unsigned int buffer[MAX_BAR_BUFFER_SIZE];
-} xclDebugBarCounterResults;
-
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,
 };
