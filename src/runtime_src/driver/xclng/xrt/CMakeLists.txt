@@ -15,8 +15,8 @@ add_library(xrt_corestatic STATIC ${XRT_SRC}
   $<TARGET_OBJECTS:user_gem>
   )
 
-set_target_properties(xrt_core PROPERTIES LINKER_LANGUAGE CXX)
 # Core XRT
+set_target_properties(xrt_core PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC" "-fvisibility=hidden")
 #set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
