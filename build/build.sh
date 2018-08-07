@@ -12,6 +12,7 @@ usage()
     echo "[clean|-clean]             Remove build directories"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
+    echo "[-verbose]                 Turn on verbosity when compiling"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
@@ -21,6 +22,7 @@ usage()
 clean=0
 covbuild=0
 ccache=0
+verbose=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -46,6 +48,10 @@ while [ $# -gt 0 ]; do
         -covpw)
             shift
             covpw=$1
+            shift
+            ;;
+        -verbose)
+            verbose="VERBOSE=1"
             shift
             ;;
         *)
@@ -98,11 +104,11 @@ fi
 mkdir -p Debug Release
 cd Debug
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 DESTDIR=$PWD install
+make -j4 $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 DESTDIR=$PWD install
+make -j4 $verbose DESTDIR=$PWD install
 make package
 cd $here
