@@ -132,14 +132,14 @@ allocExecBuffer(size_t sz)
 
   auto ubo = xrt::make_unique<ExecBufferObject>();
   //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
-  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<63));  // 1<<31 xocl_ioctl.h
+  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
   ubo->size = sz;
   ubo->owner = m_handle;
   ubo->data = m_ops->mMapBO(m_handle,ubo->handle, true /* write */);
-  if (ubo->data == (void*)(-1)) 
+  if (ubo->data == (void*)(-1))
     throw std::runtime_error(std::string("map failed: ") + std::strerror(errno));
   return ExecBufferObjectHandle(ubo.release(),delBufferObject);
 }
@@ -157,7 +157,7 @@ alloc(size_t sz)
   };
 
   xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
-  uint64_t flags = 0xFFFFFFFF; //TODO: check default, any bank.
+  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
   if (ubo->handle == 0xffffffff)
@@ -182,7 +182,7 @@ alloc(size_t sz,void* userptr)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFFFFFF; //TODO:check default
+  uint64_t flags = 0xFFFFFF; //TODO:check default
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
@@ -224,8 +224,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     uint64_t flags = memory_index;
     xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
     if(domain==Domain::XRT_DEVICE_P2P_RAM) {
-      //flags |= (1<<30);
-      flags |= (((uint64_t)1)<<62);
+      flags |= (1<<30);
     }
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
@@ -264,7 +263,8 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->handle = bo->handle;
   ubo->deviceAddr = bo->deviceAddr+offset;
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
-  ubo->size = bo->size;
+  ubo->size = sz;
+  ubo->offset = offset;
   ubo->kind = bo->kind;
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
@@ -343,7 +343,7 @@ device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction 
     auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;
     return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offset));
   }
-  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset)));
+  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset+bo->offset)));
 }
 
 event
@@ -444,7 +444,7 @@ getDeviceAddr(const BufferObjectHandle& boh)
 
 int
 device::
-getMemObjectFd(const BufferObjectHandle& boh) 
+getMemObjectFd(const BufferObjectHandle& boh)
 {
   if (!m_ops->mExportBO)
     throw std::runtime_error("ExportBO function not found in FPGA driver. Please install latest driver");
@@ -532,6 +532,3 @@ createDevices(hal::device_list& devices,
 
 
 }} // hal2,xrt
-
-
-

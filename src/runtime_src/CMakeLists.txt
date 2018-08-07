@@ -11,8 +11,12 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
   $<TARGET_OBJECTS:impl>
-  $<TARGET_OBJECTS:xdp>
   )
+
+add_library(xdp SHARED ${OPENCL_SRC}
+  $<TARGET_OBJECTS:xdpobj>
+  )
+add_dependencies(xdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -28,9 +32,9 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 add_subdirectory(xdp)
-#add_subdirectory(tools/xclbin)
 
 add_compile_options("-Wall" "-Werror")
+add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
@@ -43,6 +47,10 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_VERSION_MAJOR})
 
+target_link_libraries(xdp
+  xilinxopencl
+  )
+
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
@@ -52,21 +60,6 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-install (TARGETS xilinxopencl LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
-
-SET (ICD_FILE_NAME "xilinx.icd")
-
-message("-- Preparing OpenCL ICD ${ICD_FILE_NAME}")
-
-configure_file (
-  "${ICD_FILE_NAME}.in"
-  ${ICD_FILE_NAME}
-  )
-
-set(OCL_ICD_INSTALL_PREFIX "/etc/OpenCL/vendors")
-
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${ICD_FILE_NAME} DESTINATION ${OCL_ICD_INSTALL_PREFIX})
+install (TARGETS xilinxopencl xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(driver)
-
-include (dkms.cmake)

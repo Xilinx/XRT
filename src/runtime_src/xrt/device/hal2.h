@@ -74,6 +74,7 @@ class device : public xrt::hal::device
     uint64_t deviceAddr = 0xffffffffffffffff;
     void *hostAddr = nullptr;
     size_t size = 0;
+    size_t offset = 0;
     xclBOKind kind;
     unsigned int flags = 0;
     hal2::device_handle owner = nullptr;

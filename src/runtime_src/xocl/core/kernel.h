@@ -355,7 +355,7 @@ public:
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
-  kernel(program* prog);
+  explicit kernel(program* prog);
 
 public:
   virtual ~kernel();
@@ -409,6 +409,15 @@ public:
     return m_symbol.name;
   }
 
+  /**
+   * @return
+   *   Name of kernel
+   */
+  const std::string&
+  get_name_from_constructor() const
+  {
+    return m_name;
+  }
   /**
    * Return list of instances (CUs) in this kernel
    *

@@ -26,7 +26,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::strcpy(info.mName, "xilinx:pcie-hw-em:7v3:1.0");
   info.mMagic = 0X586C0C6C;
   info.mHALMajorVersion = XCLHAL_MAJOR_VER;
-  info.mHALMajorVersion = XCLHAL_MINOR_VER;
+  info.mHALMinorVersion = XCLHAL_MINOR_VER;
   info.mVendorId = 0x10ee;
   info.mDeviceId = 0x0000;
   info.mSubsystemVendorId = 0x0000;
@@ -265,27 +265,27 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
 
 double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  if (!drv)
-    return 0.0;
+//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+//  if (!drv)
+//    return 0.0;
   return 0.0;
 }
 
 
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  if (!drv)
-    return 0.0;
+//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+//  if (!drv)
+//    return 0.0;
   return 0.0;
 }
 
 
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  if (!drv)
-    return 0.0;
+//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+//  if (!drv)
+//    return 0.0;
   return 0.0;
 }
 
@@ -381,7 +381,7 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   return drv->xclReadBO(boHandle, dst, size, skip);
 }
 
-unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, uint64_t flags)
+unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -389,7 +389,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
   return drv->xclAllocUserPtrBO(userptr,size,flags); 
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -435,5 +435,5 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
+  return drv->xclGetBOProperties(boHandle, properties);
 }

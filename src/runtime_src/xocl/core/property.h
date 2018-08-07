@@ -47,6 +47,7 @@ public:
     : m_props(0)
   {}
 
+  // implicit
   property_object(Rep props)
     : m_props(props)
   {}
@@ -107,7 +108,7 @@ class property_list
       return reinterpret_cast<T>(m_value);
     }
 
-    bool operator< (const element& e) const 
+    bool operator< (const element& e) const
     {
       return m_key < e.m_key;
     }
@@ -121,7 +122,7 @@ public:
 
   property_list()
   {}
-  
+
   property_list(const Rep* props)
   {
     std::set<Rep> keys;
@@ -162,5 +163,3 @@ public:
 } // xocl
 
 #endif
-
-

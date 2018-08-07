@@ -1,9 +1,0 @@
-config DRM_ZOCLSVM
-	tristate "Xilinx Zynq SVM OpenCL"
-	depends on DRM && FPGA
-	select DRM_KMS_HELPER
-	select DRM_KMS_CMA_HELPER
-	select DRM_GEM_CMA_HELPER
-	select CONFIG_FPGA_MGR_ZYNQMP_FPGA
-	help
-	  Xilinx Zynq SVM OpenCL Manager

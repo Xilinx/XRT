@@ -32,10 +32,6 @@ fi
 export XILINX_XRT
 export LD_LIBRARY_PATH=$XILINX_XRT/lib:$LD_LIBRARY_PATH
 export PATH=$XILINX_XRT/bin:$PATH
-unset XILINX_SDACCEL
-unset XILINX_SDX
-unset XILINX_OPENCL
-unset XCL_EMULATION_MODE
 
 echo "XILINX_XRT      : $XILINX_XRT"
 echo "PATH            : $PATH"
