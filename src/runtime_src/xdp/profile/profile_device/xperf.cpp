@@ -857,7 +857,7 @@ void
 profile_start_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
-  printf("xma_plg_start_profile: dev_handle=%p\n", dev_handle);
+  //printf("xma_plg_start_profile: dev_handle=%p\n", dev_handle);
 
   // Start counters
   xclPerfMonStartCounters(dev_handle, XCL_PERF_MON_MEMORY);
@@ -873,7 +873,7 @@ void
 profile_read_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
-  printf("xma_plg_read_profile: dev_handle=%p\n", dev_handle);
+  //printf("xma_plg_read_profile: dev_handle=%p\n", dev_handle);
 
   // Read counters
   xclCounterResults counterResults;
@@ -888,10 +888,10 @@ void
 profile_end_summary(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
-  printf("xma_plg_end_profile: dev_handle=%p\n", dev_handle);
+  //printf("xma_plg_end_profile: dev_handle=%p\n", dev_handle);
 
   if (!XDP::mProfileStream.is_open()) {
-    printf("WARNING: Please run xma_plg_start_profile before starting application.");
+    printf("WARNING: Please run profile_initialize before starting application.");
     return;
   }
 
@@ -942,7 +942,7 @@ profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, c
   else if (XDP::mStallTrace == "memory") traceOption |= (0x1 << 4);
   else if (XDP::mStallTrace == "all")    traceOption |= (0x7 << 2);
   else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
-  printf("xma_plg_start_trace: dev_handle=%p, traceOption=%d\n", dev_handle, traceOption);
+  printf("profile_start_trace: dev_handle=%p, traceOption=%d\n", dev_handle, traceOption);
 
   // Start trace (also reads debug_ip_layout)
   xclPerfMonStartTrace(dev_handle, XCL_PERF_MON_MEMORY, traceOption);
@@ -970,7 +970,7 @@ void
 profile_read_trace(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
-  printf("xma_plg_read_trace: dev_handle=%p\n", dev_handle);
+  printf("profile_read_trace: dev_handle=%p\n", dev_handle);
 
   if (!XDP::mTraceStream.is_open()) {
     printf("WARNING: Please run xma_plg_start_trace before starting application.");
@@ -1002,7 +1002,7 @@ void
 profile_end_trace(xclDeviceHandle s_handle)
 {
   xclDeviceHandle dev_handle = s_handle;
-  printf("xma_plg_end_trace: dev_handle=%p\n", dev_handle);
+  printf("profile_end_trace: dev_handle=%p\n", dev_handle);
 
   if (!XDP::mTraceStream.is_open()) {
     printf("WARNING: Please run xma_plg_start_trace before starting application.");
