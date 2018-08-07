@@ -64,9 +64,7 @@ extern "C" {
 enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
-  XCL_DEBUG_READ_TYPE_SPM = 2,
-  XCL_DEBUG_READ_TYPE_SAM = 3,
-  XCL_DEBUG_READ_TYPE_BAR = 4
+  XCL_DEBUG_READ_TYPE_SPM = 2
 };
 
 /* Debug counter results */
