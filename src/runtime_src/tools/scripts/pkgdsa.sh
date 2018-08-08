@@ -175,6 +175,16 @@ pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
 
+# Post install script for deployment DSA package
+read -d '' post <<EOF
+echo "Looking for boards whose DSA needs updating..."
+/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp}
+if [ $? -ne 0 ]; then
+        echo "DSA on board is not updated"
+        echo "Please run xbutil flash -a all to update later"
+fi
+EOF
+
 createEntityAttributeArray ()
 {
   unset ENTITY_ATTRIBUTES_ARRAY
@@ -474,12 +484,7 @@ maintainer: soren.soe@xilinx.com
 EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-
-#!/bin/bash
-echo "Looking for boards whose DSA needs updating..."
-/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${dsa_timestamp}
-exit 0
-
+$post
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
 
@@ -526,9 +531,6 @@ Xilinx development DSA.
 %prep
 
 %post
-echo "Looking for boards whose DSA needs updating..."
-/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${dsa_timestamp}
-exit 0
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw
@@ -576,6 +578,9 @@ requires: xrt >= $opt_xrt
 Xilinx deployment DSA.  This DSA depends on xrt >= $opt_xrt.
 
 %prep
+
+%post
+$post
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx
