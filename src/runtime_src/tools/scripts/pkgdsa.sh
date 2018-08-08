@@ -45,7 +45,7 @@ usage()
     echo "-sdx <path>                Full path to SDx install (default: 2018.2_daily_latest)"
     echo "-xrt <version>             Requires xrt >= <version>"
     echo "-cl <changelist>           Changelist for package revision"
-    echo "[-dsadir <path>]           Full path to directory with platform (default: <sdx>/platform/<dsa>)"
+    echo "[-dsadir <path>]           Full path to directory with platforms (default: <sdx>/platforms/<dsa>)"
     echo "[-pkgdir <path>]           Full path to direcory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
     echo "[-dev]                     Build development package"
     echo "[-help]                    List this help"
@@ -416,11 +416,11 @@ maintainer: soren.soe@xilinx.com
 
 EOF
 
-    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw
-    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw
-    rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/
-    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/hw/
-    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platform/$opt_dsa/sw/
+    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw
+    mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw
+    rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/
+    rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw/
+    rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw/
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
@@ -479,11 +479,11 @@ Xilinx development DSA.
 %prep
 
 %install
-mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/hw
-mkdir -p %{buildroot}/opt/xilinx/platform/$opt_dsa/sw
-rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platform/$opt_dsa/
-rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platform/$opt_dsa/hw/
-rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platform/$opt_dsa/sw/
+mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw
+mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw
+rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/
+rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw/
+rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/
 
 %files
 %defattr(-,root,root,-)
