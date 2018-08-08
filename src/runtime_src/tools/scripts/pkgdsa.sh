@@ -260,6 +260,15 @@ readDsaMetaData()
       pci_device_id="${ENTITY_ATTRIBUTES_ARRAY[Device]}"
       pci_subsystem_id="${ENTITY_ATTRIBUTES_ARRAY[Subsystem]}"
     fi    
+
+    # FeatureRom Data
+    if [ "${ENTITY_NAME}" == "FeatureRom" ]; then
+      createEntityAttributeArray
+
+      # Overright previous value
+      featureRomTimestamp="${ENTITY_ATTRIBUTES_ARRAY[TimeSinceEpoch]}"
+    fi    
+
   done < "${dsaXmlFile}"
 }
 
@@ -379,7 +388,9 @@ dodsabin()
       localFeatureRomTimestamp="0"
     fi
 
-    dsabinOutputFile=$(printf "%s-%s-%s-%016d.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
+    # Build output file and lowercase the name
+    dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
+    dsabinOutputFile="${dsabinOutputFile,,}"
     xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"    
 
 
