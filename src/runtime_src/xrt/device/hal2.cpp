@@ -512,6 +512,77 @@ svm_bo_lookup(void* ptr)
     throw std::runtime_error("svm_bo_lookup: The SVM pointer is invalid.");
 }
 
+//Stream
+int 
+device::
+createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  return m_ops->mCreateWriteQueue(&ctx,stream);
+}
+
+int 
+device::
+createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  return m_ops->mCreateReadQueue(&ctx,stream);
+}
+
+int 
+device::
+closeStream(hal::StreamHandle stream) 
+{
+  return m_ops->mDestroyQueue(stream);
+}
+
+hal::StreamBuf
+device::
+allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
+{
+  return m_ops->mAllocQDMABuf(size,buf);
+}
+
+int 
+device::
+freeStreamBuf(hal::StreamBufHandle buf)
+{
+  return m_ops->mFreeQDMABuf(buf);
+}
+
+ssize_t 
+device::
+writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{
+  //TODO:
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+//  req,op_code = XCL_QUEUE_WRITE;
+//  req.bufs.buf = const_cast<char*>(ptr);
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mWriteQueue(stream,&req);
+}
+
+ssize_t 
+device::
+readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{ 
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+//  req,op_code = XCL_QUEUE_READ;
+//  req.bufs.buf = ptr;
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mReadQueue(stream,&req);
+}
+
 #ifdef PMD_OCL
 void
 createDevices(hal::device_list& devices,
