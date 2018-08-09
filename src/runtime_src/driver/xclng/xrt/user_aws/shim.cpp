@@ -34,6 +34,7 @@
 #endif
 
 /* Aligning access to FPGA DRAM space to 4096 Byte */
+//TODO : Should this be pagesize too ?
 #define DDR_BUFFER_ALIGNMENT   0x1000
 
 #include <sys/types.h>
