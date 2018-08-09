@@ -133,8 +133,11 @@ if [ "X${XILINX_XRT}" == "X" ]; then
 fi
 
 # get dsa, version, and revision
-dsa=$(echo ${opt_dsa:0:${#opt_dsa}-4} | tr '_' '-')
-version=$(echo ${opt_dsa:(-3)} | tr '_' '.')
+# Parse the platform into the basic parts
+#    Syntax: <vender>_<board>_<name>_<versionMajor>_<versionMinor>
+set -- `echo $opt_dsa | tr '_' ' '`
+dsa="${1}-${2}-${3}"
+version="${4}.${5}"
 revision=$opt_cl
 
 echo "================================================================"
