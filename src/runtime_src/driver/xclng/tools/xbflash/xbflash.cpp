@@ -31,7 +31,7 @@ const char* UsageMessages[] = {
     "[-d device] -a dsa",
 };
 const char* SudoMessage = "ERROR: root privileges required.";
-int scanDevices( void );
+int scanDevices(int argc, char *argv[]);
 
 void usage() {
     std::cout << "Available options:" << std::endl;
@@ -62,7 +62,7 @@ struct T_Arguments
     std::shared_ptr<firmwareImage> bmc;
     Flasher::E_FlasherType flasherType = Flasher::E_FlasherType::UNSET;
     std::string dsa;
-    uint64_t timestamp = ULLONG_MAX;
+    uint64_t timestamp = 0;
 };
 
 int flashDSA(Flasher& f, DSAInfo& dsa)
@@ -70,14 +70,23 @@ int flashDSA(Flasher& f, DSAInfo& dsa)
     std::shared_ptr<firmwareImage> primary;
     std::shared_ptr<firmwareImage> secondary;
 
-    primary = std::make_shared<firmwareImage>(dsa.file.c_str(), MCS_FIRMWARE_PRIMARY);
-
-    size_t pos = dsa.file.rfind("primary");
-    if (pos != std::string::npos)
+    if (dsa.file.rfind(DSABIN_FILE_SUFFIX) != std::string::npos)
     {
-        std::string sec = dsa.file.substr(0, pos);
-        sec += "secondary" "." DSA_FILE_SUFFIX;
-        secondary = std::make_shared<firmwareImage>(sec.c_str(), MCS_FIRMWARE_SECONDARY);
+        primary = std::make_shared<firmwareImage>(dsa.file.c_str(), MCS_FIRMWARE_PRIMARY);
+        secondary = std::make_shared<firmwareImage>(dsa.file.c_str(), MCS_FIRMWARE_SECONDARY);
+        if (secondary->fail())
+            secondary = nullptr;
+    }
+    else
+    {
+        primary = std::make_shared<firmwareImage>(dsa.file.c_str(), MCS_FIRMWARE_PRIMARY);
+        size_t pos = dsa.file.rfind("primary");
+        if (pos != std::string::npos)
+        {
+            std::string sec = dsa.file.substr(0, pos);
+            sec += "secondary" "." DSA_FILE_SUFFIX;
+            secondary = std::make_shared<firmwareImage>(sec.c_str(), MCS_FIRMWARE_SECONDARY);
+        }
     }
 
     if (primary->fail() || (secondary != nullptr && secondary->fail()))
@@ -93,7 +102,6 @@ int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
         return -EINVAL;
 
     std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
-    DSAInfo currentDSA = flasher.getOnBoardDSA();
     unsigned int candidateDSAIndex = UINT_MAX;
 
     // Find candidate DSA from installed DSA list.
@@ -111,7 +119,7 @@ int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
             DSAInfo& idsa = installedDSA[i];
             if (dsa != idsa.name)
                 continue;
-            if (ts != ULLONG_MAX && ts != idsa.timestamp)
+            if (ts != NULL_TIMESTAMP && ts != idsa.timestamp)
                 continue;
             if (candidateDSAIndex != UINT_MAX)
                 return -ENOTUNIQ;
@@ -123,9 +131,13 @@ int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
         return -ENOENT;
     DSAInfo& candidate = installedDSA[candidateDSAIndex];
 
-    if (candidate.name == currentDSA.name &&
-        candidate.timestamp == currentDSA.timestamp)
-        return -EALREADY;
+    DSAInfo currentDSA = flasher.getOnBoardDSA();
+    if (currentDSA.DSAValid)
+    {
+        if (candidate.name == currentDSA.name &&
+            candidate.timestamp == currentDSA.timestamp)
+            return -EALREADY;
+    }
 
     if (!dryrun)
         return flashDSA(flasher, candidate);
@@ -182,16 +194,12 @@ int main( int argc, char *argv[] )
     std::string subcmd(argv[optind]);
     if(subcmd.compare("scan") == 0 )
     {
-        if (argc != optind + 1)
-            usageAndDie();
-
         sudoOrDie();
-        return scanDevices();
+        return scanDevices(argc, argv);
     } else if (subcmd.compare("help") == 0)
     {
         if (argc != optind + 1)
             usageAndDie();
-
         usage();
         return 0;
     }
@@ -282,6 +290,7 @@ int main( int argc, char *argv[] )
     // Manually specify DSA/BMC files.
     if (args.dsa.empty())
     {
+        // By default, only flash the first board.
         if (args.devIdx == UINT_MAX)
             args.devIdx = 0;
 
@@ -301,24 +310,44 @@ int main( int argc, char *argv[] )
         bool multiDSA = false;
         std::vector<unsigned int> boardsToCheck;
         std::vector<unsigned int> boardsToUpdate;
-        xcldev::pci_device_scanner scanner;
-        scanner.scan_without_driver();
+
+        // Sanity check input dsa and timestamp.
+        if (args.dsa.compare("all") != 0)
+        {
+            auto installedDSAs = firmwareImage::getIntalledDSAs();
+            for (DSAInfo& dsa : installedDSAs)
+            {
+                if (args.dsa == dsa.name &&
+                    (args.timestamp == 0 || args.timestamp == dsa.timestamp))
+                {
+                    if (!foundDSA)
+                        foundDSA = true;
+                    else
+                        multiDSA = true;
+                }
+            }
+        }
 
         // Collect all indexes of boards need checking
-        if (args.devIdx == UINT_MAX)
+        if (foundDSA && !multiDSA)
         {
-            for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
-                boardsToCheck.push_back(i);
-        }
-        else
-        {
-            if (args.devIdx < xcldev::pci_device_scanner::device_list.size())
-                boardsToCheck.push_back(args.devIdx);
-        }
-        if (boardsToCheck.empty())
-        {
-            std::cout << "Board(s) not found!" << std::endl;
-            exit(-ENOENT);
+            xcldev::pci_device_scanner scanner;
+            scanner.scan_without_driver();
+            if (args.devIdx == UINT_MAX)
+            {
+                for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
+                    boardsToCheck.push_back(i);
+            }
+            else
+            {
+                if (args.devIdx < xcldev::pci_device_scanner::device_list.size())
+                    boardsToCheck.push_back(args.devIdx);
+            }
+            if (boardsToCheck.empty())
+            {
+                std::cout << "Board not found!" << std::endl;
+                exit(-ENOENT);
+            }
         }
 
         // Collect all indexes of boards need updating
@@ -346,7 +375,10 @@ int main( int argc, char *argv[] )
         // Check and quit on fatal errors.
         if (!foundDSA)
         {
-            std::cout << "DSA not found: " << args.dsa << std::endl;
+            if (boardsToCheck.empty())
+                std::cout << "Can't find DSA: " << args.dsa << std::endl;
+            else
+                std::cout << "Can't find board matching DSA: " << args.dsa << std::endl;
             exit (-ENOENT);
         }
         if (multiDSA)
@@ -363,7 +395,7 @@ int main( int argc, char *argv[] )
         // Update user about what boards will be updated and get permission.
         if (boardsToUpdate.empty())
         {
-            std::cout << "No board needs updating." << std::endl;
+            std::cout << "No DSA on board needs updating." << std::endl;
             exit (0);
         }
         else
@@ -391,11 +423,7 @@ int main( int argc, char *argv[] )
 
     if (ret == 0)
     {
-        if (xcldev::pci_device_scanner::device_list.size() == 0)
-        {
-            std::cout << "No devices found" << std::endl;
-        }
-        else if (args.bmc != nullptr)
+        if (args.bmc != nullptr)
         {
             std::cout << "BMC firmware updated successfully" << std::endl;
         }
@@ -418,8 +446,24 @@ int main( int argc, char *argv[] )
  *
  * Uses pci_device_scanner to enumerate SDx devices and populates device_list.
  */
-int scanDevices( void )
+int scanDevices(int argc, char *argv[])
 {
+    bool verbose = false;
+    int opt;
+
+    while((opt = getopt(argc, argv, "v")) != -1)
+    {
+        switch(opt)
+        {
+        case 'v':
+            verbose = true;
+            break;
+        default:
+            usageAndDie();
+            break;
+        }
+    }
+
     xcldev::pci_device_scanner scanner;
     scanner.scan_without_driver();
 
@@ -440,7 +484,10 @@ int scanDevices( void )
         std::cout << "\tDevice type:\t" << board.board << std::endl;
         std::cout << "\tDevice BDF:\t" << f.sGetDBDF() << std::endl;
         std::cout << "\tFlash type:\t" << f.sGetFlashType() << std::endl;
-        std::cout << "\tDSA on board:\t" << board << std::endl;
+        if (verbose)
+            std::cout << "\tDSA on board:\t" << board << std::endl;
+        else
+            std::cout << "\tDSA on board:\t" << board.name << std::endl;
 
         std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
         std::cout << "\tDSA installed:\t";
@@ -449,7 +496,10 @@ int scanDevices( void )
             std::cout << installedDSA[0] << std::endl;
             for (size_t d = 1; d < installedDSA.size(); d++)
             {
-                std::cout << "\t\t\t" << installedDSA[d] << std::endl;
+                if (verbose)
+                    std::cout << "\t\t\t" << installedDSA[d] << std::endl;
+                else
+                    std::cout << "\t\t\t" << installedDSA[d].name << std::endl;
             }
         }
         else

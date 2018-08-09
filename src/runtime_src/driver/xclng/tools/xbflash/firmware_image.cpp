@@ -131,7 +131,7 @@ DSAInfo::DSAInfo(std::string filename, uint64_t ts) :
     }
 }
 
-DSAInfo::DSAInfo(std::string filename) : DSAInfo(filename, ULLONG_MAX)
+DSAInfo::DSAInfo(std::string filename) : DSAInfo(filename, NULL_TIMESTAMP)
 {
 }
 
@@ -173,13 +173,13 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
     stream << dsa.name;
-    if (dsa.timestamp != ULLONG_MAX)
+    if (dsa.timestamp != NULL_TIMESTAMP)
         stream << "," << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
     return stream;
 }
 
 firmwareImage::firmwareImage(const char *file, imageType type) :
-        mType(type), mBuf(nullptr)
+    mType(type), mBuf(nullptr)
 {
     std::ifstream in(file, std::ios::binary | std::ios::ate);
     if (!in.is_open())
@@ -192,7 +192,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
     in.seekg(0);
 
     std::string fn(file);
-    if (fn.find(".dsabin") != std::string::npos)
+    if (fn.find("." DSABIN_FILE_SUFFIX) != std::string::npos)
     {
         // Read axlf from dsabin file to find out number of sections in total.
         axlf a;

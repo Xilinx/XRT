@@ -28,9 +28,11 @@
 #include <string>
 #include <vector>
 
-#define FIRMWARE_DIR "/lib/firmware/xilinx/" // directory where all MCS files are saved
-#define DSA_FILE_SUFFIX "mcs"
-#define DSABIN_FILE_SUFFIX "dsabin"
+// directory where all MCS files are saved
+#define FIRMWARE_DIR        "/lib/firmware/xilinx/"
+#define DSA_FILE_SUFFIX     "mcs"
+#define DSABIN_FILE_SUFFIX  "dsabin"
+#define NULL_TIMESTAMP      0
 
 class DSAInfo
 {
