@@ -168,6 +168,8 @@ alloc(size_t sz)
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -193,6 +195,8 @@ alloc(size_t sz,void* userptr)
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -244,6 +248,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   }
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
