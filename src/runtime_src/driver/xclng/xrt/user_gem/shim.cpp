@@ -372,7 +372,7 @@ unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned 
     //std::cout << "alloc bo with combined flags " << std::hex << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
-    std::cout << "git: alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
+    //std::cout << "git: alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
     
     drm_xocl_create_bo info = {size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
@@ -387,7 +387,7 @@ unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, unsig
     //std::cout << "User alloc bo with combined flags " << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
-    std::cout << "git: user alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
+    //std::cout << "git: user alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
     
     //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
     drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
@@ -578,7 +578,7 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mSubsystemId = obj.subsystem_device;
     info->mSubsystemVendorId = obj.subsystem_vendor;
     info->mDeviceVersion = obj.subsystem_device & 0x00ff;
-    info->mDataAlignment = KB(4);
+    info->mDataAlignment = getpagesize();
     info->mDDRSize = GB(obj.ddr_channel_size);
     info->mDDRBankCount = obj.ddr_channel_num;
     info->mDDRSize *= info->mDDRBankCount;

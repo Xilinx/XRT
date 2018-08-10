@@ -223,12 +223,42 @@ struct xclBOProperties {
     xclBOKind domain; // not implemented
 };
 
+#define XCL_CONTEXT_SHARED 0
+#define XCL_CONTEXT_EXCLUSIVE 1
+/**
+ * struct xclContextProperties - XRT context structure
+ *
+ * This structure represents a context on compute unit. The context may be
+ * shared or exclusive.
+ */
+
 struct xclContextProperties {
-    uuid_t   xclbinId;
-    uint32_t cuBitmap[4];
-    uint32_t flags;
-    bool     exclusive;
-    uint32_t handle;
+    /**
+     * @xclbinId:
+     *
+     * UUID of a previously loaded xclbin
+     */
+    uuid_t xclbinId;
+    /**
+     * @ipIndex:
+     *
+     * Index of the compute unit in the IP TOPOLOGY section of xclbin
+     */
+    unsigned int ipIndex;
+    /**
+     * @flags:
+     *
+     * bitmap of request properties sent to the driver. Currently only XCL_CONTEXT_SHARED
+     * or XCL_CONTEXT_EXCLUSIVE is supported.
+     * supported.
+     */
+    unsigned int flags;
+    /**
+     * @handle:
+     *
+     * unused
+     */
+    unsigned int handle;
 };
 
 /**
@@ -369,7 +399,7 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * xclOpenContext() - Create shared/exclusive context on compute units
  *
  * @handle:        Device handle
- * @context:       context properties object populated by caller
+ * @context:       Context object populated by the caller as defined above
  * Return:         0 on success or appropriate error number
  *
  * The context is necessary before submitting execution jobs using xclExecBO(). Contexts may be
@@ -378,6 +408,17 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
 XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context);
+
+/**
+ * xclCloseContext() - Close previously opened context
+ *
+ * @handle:        Device handle
+ * @context:       Context object populated by the caller as defined above
+ * Return:         0 on success or appropriate error number
+ *
+ * Close a previously allocated shared/exclusive context for a compute unit.
+ */
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, xclContextProperties *context);
 
 /*
  * Update the device BPI PROM with new image
@@ -927,16 +968,12 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  */
 
 struct xclQueueContext {
-	uint32_t	type;		/* stream or packet Queue, read or write Queue*/
-	uint32_t	state;		/* initialized, running */
-
-	uint64_t	rid;		/* rid potentially specified in xclbin */
-
-	uint32_t	qsize;	/* number of descriptors */
-
-	uint32_t	desc_size;	/* this might imply max inline msg size */
-
-	uint64_t	flags;		/* isr en, wb en, etc */
+    uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
+    uint32_t	state;	   /* initialized, running */
+    uint64_t	rid;	   /* rid potentially specified in xclbin */
+    uint32_t	qsize;	   /* number of descriptors */
+    uint32_t	desc_size; /* this might imply max inline msg size */
+    uint64_t	flags;	   /* isr en, wb en, etc */
 };
 
 /**
@@ -1013,27 +1050,44 @@ XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
 /**
  * struct xclWRBuffer
- *
  */
 struct xclWRBuffer {
-	uint64_t	va;	 // could be pointer or offset
-	uint64_t	len;
-	uint64_t	buf_hdl; // could be NULL when va is buffer pointer
+    union {
+	char*    buf;    // ptr or,
+	uint64_t va;	 // offset
+    };
+    uint64_t  len;
+    uint64_t  buf_hdl;   // NULL when first field is buffer pointer
+};
+
+/**
+ * enum xclQueueRequestKind - request type.
+ */
+enum xclQueueRequestKind {
+    XCL_QUEUE_WRITE = 0,
+    XCL_QUEUE_READ  = 1,
+    //More, in-line etc.
+};
+
+/**
+ * enum xclQueueRequestFlag - flags associated with the request.
+ */
+enum xclQueueRequestFlag {
+    XCL_QUEUE_DEFAULT,
+    XCL_QUEUE_BLOCKING,
+    XCL_QUEUE_PARTIAL
 };
 
 /**
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-	uint32_t	op_code;//Write, Read, Write in-line, etc.
-
-	struct xclWRBuffer	*bufs;
-        uint32_t		buf_num;
-
-	void		*cdh;
-	uint32_t	cdh_len;
-
-	uint64_t	flag; //blocking, partial, etc.
+    xclQueueRequestKind op_code;  
+    xclWRBuffer*        bufs;
+    uint32_t	        buf_num;
+    char*               cdh;
+    uint32_t	        cdh_len;
+    xclQueueRequestFlag flag;     
 };
 
 /**

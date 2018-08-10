@@ -80,6 +80,8 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
+include (CMake/ccache.cmake)
+
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
@@ -97,3 +99,5 @@ include (CMake/dkms.cmake)
 include (CMake/icd.cmake)
 
 include (CMake/pkgconfig.cmake)
+
+include (CMake/coverity.cmake)

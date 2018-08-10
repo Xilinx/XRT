@@ -139,23 +139,30 @@ get_buffer_object(kernel* kernel, unsigned long argidx)
     // device for the kernel
     auto cu_memidx_mask = device->get_cu_memidx(kernel,argidx);
 
-    auto memidx_mask = get_memidx(device);
-    if (memidx_mask.any()) {
-      // "this" buffer is already allocated on device, verify that
+    // Coarse scoped lock.
+    // The boh may not be created by other thread simultanously.
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+
+    // Is this memory object already allocated on device
+    // get_buffer_object_or_null can't be called because it obtains lock
+    auto itr = m_bomap.find(device);
+    auto boh = (itr==m_bomap.end()) ? nullptr : (*itr).second;
+    if (boh) {
+      // This buffer is already allocated on device, verify that
       // current bank match that reqired for kernel argument
-      if ((cu_memidx_mask & memidx_mask).none()) {
-        // revisit error code
-        throw std::runtime_error("Buffer is allocated in wrong memory bank\n");
-      }
-      return get_buffer_object_or_error(device);
+      auto memidx_mask = device->get_boh_memidx(boh);
+      if ((cu_memidx_mask & memidx_mask).any())
+        return boh;
+
+      // revisit error code
+      throw std::runtime_error("Buffer is allocated in wrong memory bank\n");
     }
     else {
-      // "this" buffer is not curently allocated on device, allocate
+      // This buffer is not currently allocated on device, allocate
       // in first available bank for argument
       for (size_t idx=0; idx<cu_memidx_mask.size(); ++idx) {
         if (cu_memidx_mask.test(idx)) {
           try {
-            std::lock_guard<std::mutex> lk(m_boh_mutex);
             return (m_bomap[device] = device->allocate_buffer_object(this,idx));
           }
           catch (const std::bad_alloc&) {

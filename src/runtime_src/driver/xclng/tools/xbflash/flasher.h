@@ -84,8 +84,8 @@ private:
         std::make_pair( "vcu1550",   SPI ),
         std::make_pair( "vcu1551",   SPI ),
         std::make_pair( "vega-4000", SPI ),
-        std::make_pair( "xbb200",    SPI ),
-        std::make_pair( "xbb250",    SPI )
+        std::make_pair( "u200",      SPI ),
+        std::make_pair( "u250",      SPI )
     };
 
 public:

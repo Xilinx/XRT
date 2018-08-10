@@ -45,6 +45,14 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
     : 0;
 }
 
+inline void*
+get_xlnx_ext_param(cl_mem_flags flags, void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->param
+    : 0;
+}
+
 // Hack to determine if a context is associated with exactly one
 // device.  Additionally, in emulation mode, the device must be
 // active, e.g. loaded through a call to loadBinary.
@@ -57,7 +65,7 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 XRT_UNUSED static xocl::device*
-singleContextDevice(cl_context context)
+singleContextDevice(cl_context context, cl_mem_flags flags)
 {
   auto device = xocl::xocl(context)->get_device_if_one();
   if (!device)
@@ -67,11 +75,17 @@ singleContextDevice(cl_context context)
     return nullptr;
 
   // check that all CUs in device has same single mem connectivity
-  xocl::device::memidx_bitmask_type ucon;
-  for (auto cu : device->get_cu_range())
-    ucon |= cu->get_memidx_union();
-  if (ucon.count() > 1)
-    return nullptr;
+  if(flags & CL_MEM_EXT_PTR_XILINX) {
+    //This should be treated as single device context.
+    //MLx use case.
+    //do nothing, proceed to returning the device.
+  } else {
+    xocl::device::memidx_bitmask_type ucon;
+    for (auto cu : device->get_cu_range())
+      ucon |= cu->get_memidx_union();
+    if (ucon.count() > 1)
+      return nullptr;
+  }
 
   XOCL_DEBUG(std::cout,"context(",xocl::xocl(context)->get_uid(),") has single device single connection\n");
   return device;
@@ -133,13 +147,13 @@ clCreateBuffer(cl_context   context,
 
   // set fields in cl_buffer
   buffer->add_ext_flags(get_xlnx_ext_flags(flags,host_ptr));
+  buffer->add_xlnx_ext_param(get_xlnx_ext_param(flags,host_ptr));
 
   // allocate device buffer object if context has only one device
   // and if this is not a progvar (clCreateProgramWithBinary)
   if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context)) {
+    if (auto device = singleContextDevice(context, flags)) 
       buffer->get_buffer_object(device);
-    }
   }
 
   xocl::assign(errcode_ret,CL_SUCCESS);

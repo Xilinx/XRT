@@ -25,6 +25,7 @@
 
 #include "xrt/device/device.h"
 
+#include <unistd.h>
 #include <map>
 
 namespace xocl {
@@ -77,6 +78,18 @@ public:
   add_ext_flags(memory_extension_flags_type flags)
   {
     return m_ext_flags |= flags;
+  }
+
+  void
+  add_xlnx_ext_param(void* param)
+  {
+    xlnx_ext_param = param;
+  }
+
+  const void*
+  get_xlnx_ext_param()
+  {
+    return xlnx_ext_param;
   }
 
   context*
@@ -434,6 +447,7 @@ private:
 
   memory_flags_type m_flags {0};
   memory_extension_flags_type m_ext_flags {0};
+  void* xlnx_ext_param {nullptr};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
@@ -451,7 +465,7 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = 4096;
+    const size_t alignment = getpagesize();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr

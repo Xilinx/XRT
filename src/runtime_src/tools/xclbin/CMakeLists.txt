@@ -3,20 +3,20 @@ include_directories(
   )
 
 file(GLOB XCLBINCAT_FILES
-  "xclbincat*.cxx"
-  "xclbincat*.h"
-  "xclbindata.*"
-  "xclbinutil.*"
+  "xclbincat.cxx"
+  "xclbincat1.cxx"
+  "xclbindata.cxx"
+  "xclbinutil.cxx"
   )
 
 set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 add_executable(xclbincat ${XCLBINCAT_SRC})
 
 file(GLOB XCLBINSPLIT_FILES
-  "xclbinsplit*.cxx"
-  "xclbinsplit*.h"
-  "xclbindata.*"
-  "xclbinutil.*"
+  "xclbinsplit.cxx"
+  "xclbinsplit1.cxx"
+  "xclbindata.cxx"
+  "xclbinutil.cxx"
   )
 
 set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})

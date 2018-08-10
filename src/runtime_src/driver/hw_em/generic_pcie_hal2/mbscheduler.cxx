@@ -135,10 +135,10 @@ namespace xclhwemhal2 {
     {
       mask = exec->slot_status[mask_idx];
       slot_idx = ffz_or_neg_one(mask);
-      if(slot_idx < 0)
-        continue;
       if (slot_idx_from_mask_idx(slot_idx,mask_idx)>=exec->num_slots)
         continue;
+      if(slot_idx > 31) //coverity slot_idx should be <=31
+        return -1;
       exec->slot_status[mask_idx] ^= (1<<slot_idx);
       int rSlot = slot_idx_from_mask_idx(slot_idx,mask_idx);
       return rSlot;

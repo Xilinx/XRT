@@ -125,10 +125,18 @@ validate()
 {
     if [ $FLAVOR == "ubuntu" ]; then
         apt -qq list "${UB_LIST[@]}"
+        if [ $? == 0 ] ; then
+	    # Validate we have OpenCL 2.X headers installed
+            dpkg-query -s opencl-headers | grep '^Version: 2\.'
+        fi
     fi
 
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
         rpm -q "${RH_LIST[@]}"
+        if [ $? == 0 ] ; then
+            # Validate we have OpenCL 2.X headers installed
+            rpm -q -i opencl-headers | grep '^Version' | grep ': 2\.'
+        fi
     fi
 }
 
