@@ -27,6 +27,8 @@ MSP432_Flasher::MSP432_Flasher(unsigned int device_index, char *inMap)
 {
     unsigned val;
     mMgmtMap = inMap;
+    mPktBufOffset = 0;
+    mPkt = {};
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
@@ -244,21 +246,17 @@ int MSP432_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
     }
 
     // Flush the last packet sent to XMC
-#if 1
     return waitTillIdle();
-#else
-    return 0;
-#endif
 }
 
 void describePkt(struct xmcPkt& pkt)
 {
+    std::ios::fmtflags f(std::cout.flags());
     uint32_t *h = reinterpret_cast<uint32_t *>(&pkt.hdr);
     std::cout << "opcode=" << static_cast<unsigned>(pkt.hdr.opCode)
               << " payload_size=" << pkt.hdr.payloadSize
               << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
               << std::endl;
-#if 1
     uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
     std::cout << std::hex;
     int nbytes = 0;
@@ -269,8 +267,8 @@ void describePkt(struct xmcPkt& pkt)
         if ((nbytes % 16) == 0)
             std::cout << std::endl;
     }
-    std::cout << std::endl << std::dec;
-#endif
+    std::cout << std::endl;
+    std::cout.flags(f);
 }
 
 int MSP432_Flasher::sendPkt()
@@ -279,7 +277,6 @@ int MSP432_Flasher::sendPkt()
 
     std::cout << "Sending XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
     describePkt(mPkt);
-#if 1
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
     int ret = waitTillIdle();
     if (ret != 0)
@@ -291,7 +288,6 @@ int MSP432_Flasher::sendPkt()
 
     // Flip pkt buffer ownership bit
     writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
-#endif
     return 0;
 }
 

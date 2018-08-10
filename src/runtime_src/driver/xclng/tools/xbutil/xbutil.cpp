@@ -372,7 +372,15 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::SCAN) {
         xcldev::pci_device_scanner devScanner;
-        return devScanner.scan(true);
+        try
+        {
+            return devScanner.scan(true);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: scan failed" << std::endl;
+            return -1;
+        }
     }
 
     std::vector<std::unique_ptr<xcldev::device>> deviceVec;
@@ -427,7 +435,14 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->program(xclbin, regionIndex);
         break;
     case xcldev::QUERY:
-        result = deviceVec[index]->dump(std::cout);
+        try
+        {
+            result = deviceVec[index]->dump(std::cout);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: query failed" << std::endl;
+        }
         break;
     case xcldev::VALIDATE:
         result = deviceVec[index]->validate();
