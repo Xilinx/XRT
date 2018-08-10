@@ -242,7 +242,9 @@ void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
                 struct device_info temp = { udev.instance, mdev.instance,
                                             udev.device_name, mdev.device_name,
                                             udev.user_bar, udev.user_bar_size,
-                                            mdev.domain, mdev.bus, mdev.dev, mdev.func, udev.func };
+                                            mdev.domain, mdev.bus, mdev.dev,
+                                            mdev.func, udev.func,
+                                            mdev.flash_type };
                 if( skipValidDeviceCheck ) {
                     device_list.emplace_back(temp);
                     continue;
@@ -354,6 +356,8 @@ int xcldev::pci_device_scanner::scan(bool print)
 
         device.user_bar = bar;
         device.user_bar_size = bar_size(subdir, bar);
+	if (board_info->priv_data->flash_type)
+		device.flash_type = board_info->priv_data->flash_type;
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -484,6 +488,8 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
 
         device.user_bar = board_info->priv_data->user_bar;
         device.user_bar_size = bar_size(subdir, device.user_bar);
+	if (board_info->priv_data->flash_type)
+		device.flash_type = board_info->priv_data->flash_type;
         if( !add_device(device) )
         {
             closedir( dir );

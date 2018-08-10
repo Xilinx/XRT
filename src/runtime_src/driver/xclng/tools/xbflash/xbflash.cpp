@@ -48,7 +48,7 @@ struct T_Arguments
     unsigned devIdx = 0;
     char *file1 = nullptr;
     char *file2 = nullptr;
-    Flasher::E_FlasherType flasherType = Flasher::E_FlasherType::UNSET;
+    std::string flasherType;
     bool isValid = false;
 };
 int scanDevices( void );
@@ -125,24 +125,14 @@ int main( int argc, char *argv[] )
           {
             notSeenOrDie(seen_o);
             std::cout << "CAUTION: Overrideing flash programming mode is not recommended. You may damage your device with this option." << std::endl;
-            char *input = nullptr;
+            std::string input;
             std::cout << "Are you sure you wish to proceed? [y/n]" << std::endl;
             std::cin >> input;
-            if( std::string( input ).compare( "y" ) != 0 && std::string( input ).compare( "yes" ) != 0 ) {
+            if( input.compare( "y" ) != 0 && input.compare( "yes" ) != 0 ) {
                 std::cout << "Aborting." << std::endl;
                 return 0;
             }
-            if( std::string( optarg ).compare( "spi" ) == 0 ) {
-                args.flasherType = Flasher::E_FlasherType::SPI;
-            } else if( std::string( optarg ).compare( "bpi" ) == 0 ) {
-                args.flasherType = Flasher::E_FlasherType::BPI;
-            } else {
-                args.isValid = false;
-                std::cout << "Invalid programming mode '" << optarg
-                          << "', must be either 'spi' or 'bpi'." << std::endl;
-                break;
-            }
-            std::cout << "    flash mode: " << optarg << std::endl;
+            args.flasherType = std::string( optarg );
             break;
           }
         case 'p':

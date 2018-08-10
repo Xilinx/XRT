@@ -45,6 +45,7 @@ public:
         size_t user_bar_size;
         int domain;
         uint8_t bus, device, mgmt_func, user_func;
+	std::string flash_type;
     };
     static std::vector<struct device_info> device_list; // userpf instance, mgmt instance, device
     int scan(bool print);
@@ -61,6 +62,7 @@ private:
         std::string driver_name = "???", driver_version = "???";
         int user_bar;
         size_t user_bar_size;
+	std::string flash_type;
     };
     bool add_device(struct pci_device& device);
     bool print_paths();
