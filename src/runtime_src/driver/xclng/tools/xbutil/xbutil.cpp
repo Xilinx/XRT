@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
+        // coverity[TAINTED_STRING] argv will be validated inside xbflash
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 

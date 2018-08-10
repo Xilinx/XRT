@@ -1411,13 +1411,16 @@ std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
 
     if (!v.empty()) {
         s = v[0];
-    } else {
+    }
+#ifdef SYSFS_DEBUG 
+    else {
         std::cerr << __func__ << " ERROR: Failed to read string from ";
         std::cerr << (mgmt ? "mgmt" : "user") << " sysfs ";
         std::cerr << (!subDevName.empty() ? subDevName + "/" : "") + entry;
         std::cerr << " entry" << std::endl;
     }
-
+#endif
+    
     return s;
 }
 
@@ -1428,18 +1431,20 @@ std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
 unsigned long long xocl::XOCLShim::xclSysfsGetInt(bool mgmt,
     const std::string subDevName, const std::string entry)
 {
-    unsigned long long l = 0;
+    unsigned long long l = ~(0ULL);
     auto v = xclSysfsGetInts(mgmt, subDevName, entry);
 
     if (!v.empty()) {
         l = v[0];
-    } else {
+    } 
+#ifdef SYSFS_DEBUG
+    else {
         std::cerr << __func__ << " ERROR: Failed to read integer from ";
         std::cerr << (mgmt ? "mgmt" : "user") << " sysfs ";
         std::cerr << (!subDevName.empty() ? subDevName + "/" : "") + entry;
         std::cerr << " entry" << std::endl;
     }
-
+#endif
     return l;
 }
 

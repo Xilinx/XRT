@@ -59,6 +59,8 @@ typedef std::chrono::high_resolution_clock Clock;
 
 
 #define INVAID_SENSOR_VAL 0
+#define SUBDEV_NOT_AVAILABLE_SHORT 0 0xffff 
+#define SUBDEV_NOT_AVAILABLE_LONG
 
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
