@@ -541,6 +541,21 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info)
     info.vcc_int =     xclSysfsGetInt(true, "sysmon", "vcc_int");
     info.vcc_aux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
     info.vcc_bram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
+    info.xmc_version =        xclSysfsGetInt(true, "xmc", "version");
+    info.twelve_vol_pex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex");
+    info.twelve_vol_aux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux");
+    info.pex_curr =        xclSysfsGetInt(true, "xmc", "xmc_pex_curr");
+    info.aux_curr =        xclSysfsGetInt(true, "xmc", "xmc_aux_curr");
+    info.fan_temp = xclSysfsGetInt(true, "xmc", "xmc_fan_temp");
+    info.fan_speed = xclSysfsGetInt(true, "xmc", "xmc_fan_rpm");
+
+
+
+    info.dimm_temp[0] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp0");
+    info.dimm_temp[1] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp1");
+    info.dimm_temp[2] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp2");
+    info.dimm_temp[3] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp3");
+
 
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
     for (unsigned i = 0;
@@ -582,6 +597,16 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mDDRSize = GB(obj.ddr_channel_size);
     info->mDDRBankCount = obj.ddr_channel_num;
     info->mDDRSize *= info->mDDRBankCount;
+    info->mXMCVersion = obj.xmc_version;
+    info->m12VPex = obj.twelve_vol_pex;
+    info->m12VAux = obj.twelve_vol_aux;
+    info->mPexCurr = obj.pex_curr;
+    info->mAuxCurr = obj.aux_curr;
+    info->mFanRpm = obj.fan_speed;
+
+    for (int i = 0; i < 4; ++i) {
+        info->mDimmTemp[i] = obj.dimm_temp[i];
+    }
 
     const std::string name = newDeviceName(obj.vbnv);
     std::memcpy(info->mName, name.c_str(), name.size() + 1);
@@ -874,6 +899,7 @@ void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
 {
     auto dmaStatStrs = xclSysfsGetStrings(false, "mm_dma", "channel_stat_raw");
     auto mmStatStrs = xclSysfsGetStrings(false, "", "memstat_raw");
+    auto xmcStatStrs = xclSysfsGetStrings(true, "microblaze", "version");
 
     if (!dmaStatStrs.empty()) {
         stat.dma_channel_count = dmaStatStrs.size();

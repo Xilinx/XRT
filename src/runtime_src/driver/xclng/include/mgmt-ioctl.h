@@ -109,6 +109,12 @@ struct xclmgmt_ioc_info {
 	unsigned short num_clocks;
 	bool isXPR;
 	unsigned pci_slot;
+	unsigned long long xmc_version;
+	unsigned short twelve_vol_pex;
+	unsigned short twelve_vol_aux;
+	unsigned long long pex_curr;
+	unsigned long long aux_curr;
+	short dimm_temp[4];
 };
 
 struct xclmgmt_ioc_bitstream {

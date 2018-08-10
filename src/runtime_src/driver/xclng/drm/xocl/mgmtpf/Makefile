@@ -27,7 +27,8 @@ xclmgmt-y := \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
-        ../subdev/mig.o \
+	../subdev/mig.o \
+	../subdev/xmc.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

@@ -112,6 +112,7 @@ enum {
 #define	XOCL_MAILBOX		"mailbox" SUBDEV_SUFFIX
 #define	XOCL_ICAP		"icap" SUBDEV_SUFFIX
 #define	XOCL_MIG		"mig" SUBDEV_SUFFIX
+#define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
 
 enum {
         XOCL_SUBDEV_FEATURE_ROM,
@@ -127,6 +128,7 @@ enum {
 	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_ICAP,
 	XOCL_SUBDEV_STR_DMA,
+	XOCL_SUBDEV_XMC,
         XOCL_SUBDEV_NUM
 };
 
@@ -414,6 +416,38 @@ enum {
 		0,					\
 	}
 
+#define	XOCL_RES_XMC					\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x120000,		\
+			.end 	= 0x121FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x131000,		\
+			.end 	= 0x131FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x140000,		\
+			.end 	= 0x15FFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x160000,		\
+			.end 	= 0x17FFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+		})
+
+#define	XOCL_DEVINFO_XMC					\
+	{						\
+		XOCL_SUBDEV_XMC,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC,				\
+		ARRAY_SIZE(XOCL_RES_XMC),		\
+	}
+
 #define	XOCL_RES_MB					\
 		((struct resource []) {			\
 			{				\
@@ -647,6 +681,17 @@ enum {
 			XOCL_DEVINFO_ICAP_MGMT,				\
 		})
 
+#define	MGMT_RES_XBB_DSA51						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_AF,				\
+			XOCL_DEVINFO_MB,				\
+			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+		})
+
 #define	XOCL_BOARD_MGMT_6A8F						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
@@ -655,6 +700,16 @@ enum {
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
 	}
+
+#define	XOCL_BOARD_MGMT_XBB_DSA51						\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_DSA51,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA51),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+	}
+
 
 #define	XOCL_BOARD_MGMT_888F	XOCL_BOARD_MGMT_6A8F
 #define	XOCL_BOARD_MGMT_898F	XOCL_BOARD_MGMT_6A8F
@@ -711,6 +766,28 @@ enum {
 		.intr_bar = 1,						\
 	}
 
+#define	MGMT_RES_XBB_DSA52						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_AF_DSA52,				\
+			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_MIG_6A8F,        \
+		})
+
+#define	XOCL_BOARD_MGMT_XBB_DSA52					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_DSA52,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+	}
+
+
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -749,8 +826,6 @@ enum {
 		.intr_bar = 1,						\
 	}
 
-#define	XOCL_BOARD_MGMT_XBB_DSA51	XOCL_BOARD_MGMT_6A8F
-#define	XOCL_BOARD_MGMT_XBB_DSA52	XOCL_BOARD_MGMT_6A8F_DSA52
 
 #define	XOCL_MGMT_PCI_IDS			\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\

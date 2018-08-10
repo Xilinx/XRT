@@ -20,6 +20,8 @@
 #include <linux/vmalloc.h>
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
+#include "xmc.h"
+
 
 #define MAX_RETRY       50
 #define RETRY_INTERVAL  100       //ms
@@ -262,9 +264,187 @@ static struct attribute *mb_attrs[] = {
 	&dev_attr_reset.attr,
 	NULL,
 };
-
 static struct attribute_group mb_attr_group = {
 	.attrs = mb_attrs,
+};
+
+static ssize_t xmc_version_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_VERSION_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_version);
+
+static ssize_t xmc_id_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_MAGIC_REG, &val);
+
+	return sprintf(buf, "%x\n", val);
+}
+static DEVICE_ATTR_RO(xmc_id);
+
+static ssize_t xmc_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_STATUS_REG, &val);
+
+	return sprintf(buf, "%x\n", val);
+}
+static DEVICE_ATTR_RO(xmc_status);
+
+static ssize_t xmc_error_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_ERROR_REG, &val);
+
+	return sprintf(buf, "%x\n", val);
+}
+static DEVICE_ATTR_RO(xmc_error);
+
+static ssize_t xmc_capability_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_FEATURE_REG, &val);
+
+	return sprintf(buf, "%x\n", val);
+}
+static DEVICE_ATTR_RO(xmc_capability);
+
+static ssize_t xmc_power_checksum_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(mb, XMC_SNSR_CHKSUM_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power_checksum);
+
+static ssize_t xmc_12v_pex_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 pes_val;
+
+	safe_read32(mb, XMC_12V_PEX_INS_REG, &pes_val);
+
+	return sprintf(buf, "%d\n", pes_val);
+}
+static DEVICE_ATTR_RO(xmc_12v_pex);
+
+static ssize_t xmc_12v_aux_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(mb, XMC_12V_AUX_INS_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_12v_aux);
+
+static ssize_t xmc_pex_curr_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 pes_val;
+
+	safe_read32(mb, XMC_12V_PEX_I_IN_REG, &pes_val);
+
+	return sprintf(buf, "%d\n", pes_val);
+}
+static DEVICE_ATTR_RO(xmc_pex_curr);
+
+static ssize_t xmc_aux_curr_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(mb, XMC_12V_AUX_I_IN_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_aux_curr);
+
+static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(mb, XMC_FPGA_TEMP, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_fpga_temp);
+
+static ssize_t xmc_fan_temp_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(mb, XMC_FAN_TEMP_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_fan_temp);
+
+static ssize_t xmc_fan_rpm_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_mb *mb = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(mb, XMC_FAN_SPEED_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_fan_rpm);
+
+
+static struct attribute *xmc_attrs[] = {
+	&dev_attr_xmc_version.attr,
+	&dev_attr_xmc_id.attr,
+	&dev_attr_xmc_status.attr,
+	&dev_attr_xmc_error.attr,
+	&dev_attr_xmc_capability.attr,
+	&dev_attr_xmc_power_checksum.attr,
+	&dev_attr_xmc_12v_pex.attr,
+	&dev_attr_xmc_12v_aux.attr,
+	&dev_attr_xmc_pex_curr.attr,
+	&dev_attr_xmc_aux_curr.attr,
+	&dev_attr_xmc_fpga_temp.attr,
+	&dev_attr_xmc_fan_temp.attr,
+	&dev_attr_xmc_fan_rpm.attr,
+	NULL,
+};
+
+static struct attribute_group xmc_attr_group = {
+	.attrs = xmc_attrs,
+//	.name = "xmc",
 };
 
 static ssize_t show_mb_pw(struct device *dev, struct device_attribute *da,
@@ -351,7 +531,7 @@ static void mgmt_sysfs_destroy_mb(struct platform_device *pdev)
 		mb->hwmon_dev = NULL;
 	}
 
-
+	sysfs_remove_group(&pdev->dev.kobj, &xmc_attr_group);
 	sysfs_remove_group(&pdev->dev.kobj, &mb_attr_group);
 }
 
@@ -371,6 +551,11 @@ static int mgmt_sysfs_create_mb(struct platform_device *pdev)
 	if (err) {
 		xocl_err(&pdev->dev, "create mb attrs failed: 0x%x", err);
 		goto create_attr_failed;
+	}
+	err = sysfs_create_group(&pdev->dev.kobj, &xmc_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create mb attrs failed: 0x%x", err);
+		goto create_xmc_attr_failed;
 	}
 	mb->hwmon_dev = hwmon_device_register(&core->pdev->dev);
 	if (IS_ERR(mb->hwmon_dev)) {
@@ -402,6 +587,8 @@ create_name_failed:
 	hwmon_device_unregister(mb->hwmon_dev);
 	mb->hwmon_dev = NULL;
 hwmon_reg_failed:
+	sysfs_remove_group(&pdev->dev.kobj, &xmc_attr_group);
+create_xmc_attr_failed:
 	sysfs_remove_group(&pdev->dev.kobj, &mb_attr_group);
 create_attr_failed:
 	return err;

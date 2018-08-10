@@ -23,30 +23,6 @@
 #include "msp432.h"
 #include "flasher.h"
 
-// Register offset in mgmt pf BAR 0
-#define XMC_REG_BASE             0x120000
-
-// Register offset in register map of XMC
-#define XMC_REG_OFF_VER         0x0
-#define XMC_REG_OFF_MAGIC         0x4
-#define XMC_REG_OFF_ERR            0xc
-#define XMC_REG_OFF_FEATURE        0x10
-#define XMC_REG_OFF_CTL            0x18
-#define XMC_REG_OFF_PKT_OFFSET     0x300
-#define XMC_REG_OFF_PKT_STATUS     0x304
-
-#define XMC_MAGIC_NUM            0x74736574
-#define XMC_VERSION                2017403
-
-#define XMC_PKT_SUPPORT_MASK    (1 << 3)
-#define XMC_PKT_OWNER_MASK        (1 << 5)
-#define XMC_PKT_ERR_MASK        (1 << 26)
-
-enum xmc_packet_op {
-    XPO_UNKNOWN = 0,
-    XPO_MSP432_SEC_START,
-    XPO_MSP432_SEC_DATA
-};
 MSP432_Flasher::MSP432_Flasher(unsigned int device_index, char *inMap)
 {
     unsigned val;
@@ -123,6 +99,12 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
                 mRecordList.push_back(record);
                 startAddress.clear();
             }
+            // Create and append the end-of-image record (mDataCount must be 0).
+            record.mStartAddress = 0x201; /* Hard-coded for now */
+            record.mDataPos = tiTxtStream.tellg();
+            record.mEndAddress = record.mStartAddress;
+            record.mDataCount = 0;
+            mRecordList.push_back(record);
             endRecordFound = true;
             break;
         }
@@ -214,14 +196,10 @@ int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
     std::cout << "\tAddress=0x" << record.mStartAddress << std::dec << "\tLength=" << record.mDataCount;
     std::cout<< std::endl;
 
-    if (record.mDataCount == 0) {
-        std::cout << "ERROR: Found zero length record, ignore" << std::endl;
-        return 0;
-    }
-
     tiTxtStream.seekg(record.mDataPos, std::ifstream::beg);
     byteStr.clear();
-    mPkt.hdr.opCode = XPO_MSP432_SEC_START;
+    mPkt.hdr.opCode =
+        record.mDataCount ? XPO_MSP432_SEC_START : XPO_MSP432_IMAGE_END;
     mPkt.hdr.reserved = 0;
 
     const int maxDataSize = sizeof (mPkt.data);
@@ -268,7 +246,7 @@ int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
     }
 
     // Flush the last packet sent to XMC
-#if 0
+#if 1
     return waitTillIdle();
 #else
     return 0;
@@ -282,7 +260,7 @@ void describePkt(struct xmcPkt& pkt)
               << " payload_size=" << pkt.hdr.payloadSize
               << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
               << std::endl;
-#if 0
+#if 1
     uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
     std::cout << std::hex;
     int nbytes = 0;
@@ -303,7 +281,7 @@ int MSP432_Flasher::sendPkt()
 
     std::cout << "Sending XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
     describePkt(mPkt);
-#if 0
+#if 1
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
     int ret = waitTillIdle();
     if (ret != 0)

@@ -107,9 +107,14 @@ struct xclDeviceInfo2 {
   unsigned short mNumClocks;
   unsigned short mFanSpeed;
   bool mMigCalib;
-  // More properties here
+  unsigned long long mXMCVersion;
+  unsigned short m12VPex;
+  unsigned short m12VAux;
+  unsigned long long mPexCurr;
+  unsigned long long mAuxCurr;
+  unsigned short mFanRpm;
+  short mDimmTemp[4];
 };
-
 /**
  * xclMemoryDomains is for support of legacy APIs
  * It is not used in BO APIs where we instead use xclBOKind
@@ -213,6 +218,7 @@ struct xclDeviceUsage {
     uint64_t xclbinId[4];
     unsigned dma_channel_cnt;
     unsigned mm_channel_cnt;
+    uint64_t memSize[8];
 };
 
 struct xclBOProperties {

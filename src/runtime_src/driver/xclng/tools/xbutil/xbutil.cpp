@@ -563,18 +563,20 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(xclDeviceUsage& devstat)
+static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat)
 {
-    printw("\nTotal DMA Transfer Metrics:\n");
-    for (unsigned i = 0; i < devstat.dma_channel_cnt; i++) {
-        printw("  Chan[%d].h2c:  %llu KB\n", i, devstat.h2c[i] / 1024);
-        printw("  Chan[%d].c2h:  %llu KB\n", i, devstat.c2h[i] / 1024);
-    }
+    std::vector<std::string> lines, usage_lines;
 
-    printw("\nDevice Memory Usage:\n");
-    for (unsigned i = 0; i < devstat.mm_channel_cnt; i++) {
-        printw("  Bank[%d].mem:  %llu KB\n", i, devstat.ddrMemUsed[i] / 1024);
-        printw("  Bank[%d].bo:  %llu\n", i, devstat.ddrBOAllocated[i]);
+    dev->m_mem_usage_gui_dynamics(devstat, lines, 0, 7);
+
+    for(auto line:lines){
+            printw("%s", line.c_str());
+    }
+    
+    dev->m_mem_usage_stringize_dynamics(devstat, usage_lines, 0, 7);
+
+    for(auto line:usage_lines){
+            printw("%s", line.c_str());
     }
 }
 
@@ -591,7 +593,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
                 return;
             }
             clear();
-            topPrintUsage(devstat);
+            topPrintUsage(ctrl->dev, devstat);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
