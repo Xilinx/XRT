@@ -477,7 +477,7 @@ public:
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
         for (unsigned i = 0; !result & (i < 2); i++) {
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
-            ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i])  << "\n";
+            ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
         lines.push_back(ss.str());
     }

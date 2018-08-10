@@ -258,7 +258,7 @@ void describePkt(struct xmcPkt& pkt)
               << " payload_size=" << pkt.hdr.payloadSize
               << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
               << std::endl;
-#if 0
+#if 1
     uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
     std::cout << std::hex;
     int nbytes = 0;
