@@ -26,54 +26,47 @@
 
 #define	MAX_IMAGE_LEN	0x20000
 
-#define	XMC_MAGIC_REG			      0x0
-#define	XMC_VERSION_REG		      0x4
-#define	XMC_STATUS_REG		      0x8
-#define	XMC_ERROR_REG			      0xC
-#define	XMC_FEATURE_REG			    0x10
-#define XMC_SENSOR_REG          0x14
-#define	XMC_CONTROL_REG			    0x18
-#define	XMC_STOP_CONFIRM_REG	  0x1C
-
-
-#define XMC_12V_PEX_REG         0x20
-#define XMC_3V3_PEX_REG         0x2C
-#define XMC_3V3_AUX_REG         0x38
-#define XMC_12V_AUX_REG         0x44
-
-
-#define XMC_DDR4_VPP_BTM_REG    0x50
-#define XMC_SYS_5V5_REG         0x5C
-#define XMC_VCC1V2_TOP_REG      0x68
-#define XMC_VCC1V8_REG          0x74
-#define XMC_VCC0V85_REG         0x80
-#define XMC_DDR4_VPP_TOP_REG    0x8C
-#define XMC_MGT0V9AVCC_REG      0x98
-#define XMC_12V_SW_REG          0xA4
-#define XMC_MGTAVTT_REG         0xB0
-#define XMC_VCC1V2_BTM_REG      0xBC
-#define XMC_12V_PEX_I_IN_REG    0xC8
-#define XMC_12V_AUX_I_IN_REG    0xD4
-#define XMC_VCCINT_V_REG        0xE0
-#define XMC_VCCINT_I_REG        0xEC
-#define XMC_FPGA_TEMP           0xF8
-#define XMC_FAN_TEMP_REG       0x104
-
-#define XMC_DIMM_TEMP0_REG     0x110
-#define XMC_DIMM_TEMP1_REG     0x11C
-#define XMC_DIMM_TEMP2_REG     0x128
-#define XMC_DIMM_TEMP3_REG     0x134
-#define XMC_SE98_TEMP0_REG     0x140
-#define XMC_SE98_TEMP1_REG     0x14C
-#define XMC_SE98_TEMP2_REG     0x158
-#define XMC_FAN_SPEED_REG      0x164
-
-
-#define	XMC_SNSR_CHKSUM_REG	        0x1A4
-#define	XMC_SNSR_FLAGS_REG	        0x1A8
-#define	XMC_HOST_MSG_OFFSET_REG	    0x300
-#define	XMC_HOST_MSG_ERROR_REG	    0x304
-#define	XMC_HOST_MSG_HEADER_REG	    0x308
+#define XMC_MAGIC_REG               0x0
+#define XMC_VERSION_REG             0x4
+#define XMC_STATUS_REG              0x8
+#define XMC_ERROR_REG               0xC
+#define XMC_FEATURE_REG             0x10
+#define XMC_SENSOR_REG              0x14
+#define XMC_CONTROL_REG             0x18
+#define XMC_STOP_CONFIRM_REG        0x1C
+#define XMC_12V_PEX_REG             0x20
+#define XMC_3V3_PEX_REG             0x2C
+#define XMC_3V3_AUX_REG             0x38
+#define XMC_12V_AUX_REG             0x44
+#define XMC_DDR4_VPP_BTM_REG        0x50
+#define XMC_SYS_5V5_REG             0x5C
+#define XMC_VCC1V2_TOP_REG          0x68
+#define XMC_VCC1V8_REG              0x74
+#define XMC_VCC0V85_REG             0x80
+#define XMC_DDR4_VPP_TOP_REG        0x8C
+#define XMC_MGT0V9AVCC_REG          0x98
+#define XMC_12V_SW_REG              0xA4
+#define XMC_MGTAVTT_REG             0xB0
+#define XMC_VCC1V2_BTM_REG          0xBC
+#define XMC_12V_PEX_I_IN_REG        0xC8
+#define XMC_12V_AUX_I_IN_REG        0xD4
+#define XMC_VCCINT_V_REG            0xE0
+#define XMC_VCCINT_I_REG            0xEC
+#define XMC_FPGA_TEMP               0xF8
+#define XMC_FAN_TEMP_REG            0x104
+#define XMC_DIMM_TEMP0_REG          0x110
+#define XMC_DIMM_TEMP1_REG          0x11C
+#define XMC_DIMM_TEMP2_REG          0x128
+#define XMC_DIMM_TEMP3_REG          0x134
+#define XMC_FAN_SPEED_REG           0x164
+#define XMC_SE98_TEMP0_REG          0x140
+#define XMC_SE98_TEMP1_REG          0x14C
+#define XMC_SE98_TEMP2_REG          0x158
+#define XMC_SNSR_CHKSUM_REG         0x1A4
+#define XMC_SNSR_FLAGS_REG          0x1A8
+#define XMC_HOST_MSG_OFFSET_REG     0x300
+#define XMC_HOST_MSG_ERROR_REG      0x304
+#define XMC_HOST_MSG_HEADER_REG     0x308
 
 
 #define	VALID_ID		0x74736574
@@ -180,7 +173,7 @@ static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static ssize_t xmc_12v_pex_show(struct device *dev, struct device_attribute *attr,
+static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
@@ -190,9 +183,9 @@ static ssize_t xmc_12v_pex_show(struct device *dev, struct device_attribute *att
 
 	return sprintf(buf, "%d\n", pes_val);
 }
-static DEVICE_ATTR_RO(xmc_12v_pex);
+static DEVICE_ATTR_RO(xmc_12v_pex_vol);
 
-static ssize_t xmc_12v_aux_show(struct device *dev, struct device_attribute *attr,
+static ssize_t xmc_12v_aux_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
@@ -202,9 +195,9 @@ static ssize_t xmc_12v_aux_show(struct device *dev, struct device_attribute *att
 
 	return sprintf(buf, "%d\n", val);
 }
-static DEVICE_ATTR_RO(xmc_12v_aux);
+static DEVICE_ATTR_RO(xmc_12v_aux_vol);
 
-static ssize_t xmc_pex_curr_show(struct device *dev, struct device_attribute *attr,
+static ssize_t xmc_12v_pex_curr_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
@@ -214,9 +207,9 @@ static ssize_t xmc_pex_curr_show(struct device *dev, struct device_attribute *at
 
 	return sprintf(buf, "%d\n", pes_val);
 }
-static DEVICE_ATTR_RO(xmc_pex_curr);
+static DEVICE_ATTR_RO(xmc_12v_pex_curr);
 
-static ssize_t xmc_aux_curr_show(struct device *dev, struct device_attribute *attr,
+static ssize_t xmc_12v_aux_curr_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
@@ -226,7 +219,216 @@ static ssize_t xmc_aux_curr_show(struct device *dev, struct device_attribute *at
 
 	return sprintf(buf, "%d\n", val);
 }
-static DEVICE_ATTR_RO(xmc_aux_curr);
+static DEVICE_ATTR_RO(xmc_12v_aux_curr);
+
+static ssize_t xmc_3v3_pex_vol_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_3v3_pex_vol);
+
+static ssize_t xmc_3v3_aux_vol_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_3v3_aux_vol);
+
+static ssize_t xmc_ddr_vpp_btm_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_ddr_vpp_btm);
+
+static ssize_t xmc_sys_5v5_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_sys_5v5);
+
+static ssize_t xmc_1v2_top_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_1v2_top);
+
+static ssize_t xmc_1v8_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_1v8);
+
+static ssize_t xmc_0v85_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_0v85);
+
+static ssize_t xmc_ddr_vpp_top_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_ddr_vpp_top);
+
+
+static ssize_t xmc_mgt0v9avcc_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_mgt0v9avcc);
+
+static ssize_t xmc_12v_sw_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_12v_sw);
+
+
+static ssize_t xmc_mgtavtt_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_mgtavtt);
+
+static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_vcc1v2_btm);
+
+
+
+
+static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_vccint_vol);
+
+static ssize_t xmc_vccint_curr_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_vccint_curr);
+
+static ssize_t xmc_se98_temp0_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_se98_temp0);
+
+static ssize_t xmc_se98_temp1_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_se98_temp1);
+
+static ssize_t xmc_se98_temp2_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_se98_temp2);
 
 static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
@@ -455,10 +657,22 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_error.attr,
 	&dev_attr_capability.attr,
 	&dev_attr_power_checksum.attr,
-	&dev_attr_xmc_12v_pex.attr,
-	&dev_attr_xmc_12v_aux.attr,
-	&dev_attr_xmc_pex_curr.attr,
-	&dev_attr_xmc_aux_curr.attr,
+	&dev_attr_xmc_12v_pex_vol.attr,
+	&dev_attr_xmc_12v_aux_vol.attr,
+	&dev_attr_xmc_12v_pex_curr.attr,
+	&dev_attr_xmc_12v_aux_curr.attr,
+	&dev_attr_xmc_3v3_pex_vol.attr,
+	&dev_attr_xmc_3v3_aux_vol.attr,
+	&dev_attr_xmc_ddr_vpp_btm.attr,
+	&dev_attr_xmc_sys_5v5.attr,
+	&dev_attr_xmc_1v2_top.attr,
+	&dev_attr_xmc_1v8.attr,
+	&dev_attr_xmc_0v85.attr,
+	&dev_attr_xmc_ddr_vpp_top.attr,
+	&dev_attr_xmc_mgt0v9avcc.attr,
+	&dev_attr_xmc_12v_sw.attr,
+	&dev_attr_xmc_mgtavtt.attr,
+	&dev_attr_xmc_vcc1v2_btm.attr,
 	&dev_attr_xmc_fpga_temp.attr,
 	&dev_attr_xmc_fan_temp.attr,
 	&dev_attr_xmc_fan_rpm.attr,
@@ -466,6 +680,11 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_xmc_dimm_temp1.attr,
 	&dev_attr_xmc_dimm_temp2.attr,
 	&dev_attr_xmc_dimm_temp3.attr,
+	&dev_attr_xmc_vccint_vol.attr,
+	&dev_attr_xmc_vccint_curr.attr,
+	&dev_attr_xmc_se98_temp0.attr,
+	&dev_attr_xmc_se98_temp1.attr,
+	&dev_attr_xmc_se98_temp2.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_power_consumption.attr,

@@ -59,7 +59,7 @@ typedef std::chrono::high_resolution_clock Clock;
 
 
 #define INVAID_SENSOR_VAL 0
-#define THIS_PART_SHOULD_BE_REPLACED 1
+
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -237,7 +237,7 @@ public:
     {
 
         std::stringstream ss, subss;
-        //        ss << std::setfill(' ');
+
         ss << std::left;
         ss << std::setw(16) << "DSA name" <<"\n";
         ss << std::setw(16) << m_devinfo->mName << "\n\n";
@@ -275,73 +275,162 @@ public:
 
     void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
-        std::stringstream ss;
+        std::stringstream ss, subss;
         unsigned long long power;
         ss << std::left << "\n";
-        for(unsigned i= 0; i < m_devinfo->mDDRBankCount; ++i){
-            if(m_devinfo->mDimmTemp[i]){
-                ss << "DDR Temp" << i << ":"<< " " << std::setw(6) << m_devinfo->mDimmTemp[i] << "\n";
+        unsigned i;
+
+        if(m_devinfo->mDimmTemp[0]!=0){
+            for(i= 0; i < m_devinfo->mDDRBankCount; ++i){
+                ss << "DDR Temp" << std::setw(8) << i;
+                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mDimmTemp[i]).substr(0,3)+" C";
             }
-            else
-                break;
+            ss << "\n" << subss.str() << "\n\n";
+            subss.str("");
         }
+        if(m_devinfo->mSE98Temp[0]!=0){
+            for(i= 0; i < 3; ++i){
+                ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
+                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
+            }
+            ss << "\n" << subss.str() << "\n\n";
+        }
+
         ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
-        ss << m_devinfo->mOnChipTemp << std::setw(14) <<" C";
+        ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
 
         if(m_devinfo->mFanTemp != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << m_devinfo->mFanTemp << " C\n";
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanTemp) +" C";
         }
         else
-            ss << std::setw(16) << "Unavailable";
+            ss << std::setw(16) << "Not support";
 
         if(m_devinfo->mFanRpm != INVAID_SENSOR_VAL){
-            ss << std::setw(13) << m_devinfo->mFanRpm << " rpm\n\n";
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanRpm) +" rpm" << "\n\n";
         }
         else
-            ss << std::setw(16) << "Unavailable" << "\n\n";     
-
+            ss << std::setw(16) << "Not support" << "\n\n";
 
         ss << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX";
-        ss << std::setw(16) << "PEX Current" << std::setw(16) << "AUX Current";
-        ss << std::setw(16) << "Power" << "\n";
+        ss << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << "\n";
+  //      ss << std::setw(16) << "Power" << "\n";
 
         if(m_devinfo->m12VPex != INVAID_SENSOR_VAL){
             float vol = (float)m_devinfo->m12VPex/1000;
-            std::string vol_str = std::to_string(vol) + "V";
-            ss << std::setw(16) << vol_str;
+            ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
         }
         else
-            ss << std::setw(16) << "Unavailable";
+            ss << std::setw(16) << "Not support";
 
         if(m_devinfo->m12VAux != INVAID_SENSOR_VAL){
             float vol = (float)m_devinfo->m12VAux/1000;
-            std::string vol_str = std::to_string(vol) + "V";
-            ss << std::setw(16) << vol_str;
+            ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
         }
         else
-            ss << std::setw(16) << "Unavailable";
+            ss << std::setw(16) << "Not support";
 
         if(m_devinfo->mPexCurr != INVAID_SENSOR_VAL){
-            std::string cur_str = std::to_string(m_devinfo->mPexCurr) + "mA";
-            ss << std::setw(16) << cur_str;
+            ss << std::setw(16) << std::to_string(m_devinfo->mPexCurr).substr(0,4) + "mA";
         }
         else
-            ss << std::setw(16) << "Unavailable";
+            ss << std::setw(16) << "Not support";
 
         if(m_devinfo->mAuxCurr != INVAID_SENSOR_VAL){
-            std::string cur_str = std::to_string(m_devinfo->mPexCurr) + "mA";
-            ss << std::setw(16) << cur_str;
+            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr).substr(0,4) + "mA" << "\n\n";
         }
         else
-            ss << std::setw(16) << "Unavailable";
+            ss << std::setw(16) << "Not support" << "\n\n";
 
-        power = m_devinfo->mPexCurr*m_devinfo->m12VPex + m_devinfo->mAuxCurr*m_devinfo->m12VAux;
-        if(power){
-            std::string power_str = std::to_string((float)power/10000000)+"W";
-            ss << std::setw(16) << power_str << "\n";
+        ss << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX";
+        ss << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << "\n";
+
+        if(m_devinfo->m3v3Pex != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Pex/1000).substr(0,4) + "V";
         }
         else
-            ss << std::setw(16) << "Unavailable" << "\n";
+            ss << std::setw(16) << "Not support";
+
+        if(m_devinfo->m3v3Aux != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Aux/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";
+
+        if(m_devinfo->mDDRVppBottom != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppBottom/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";
+
+        if(m_devinfo->mDDRVppTop != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppTop/1000).substr(0,4) + "V" << "\n\n";
+        }
+        else
+            ss << std::setw(16) << "Not support" << "\n\n";
+
+        ss << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP";
+        ss << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << "\n";
+
+
+        if(m_devinfo->mSys5v5 != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mSys5v5/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";
+
+        if(m_devinfo->m1v2Top != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Top/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";   
+
+        if(m_devinfo->m1v8Top != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v8Top/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";      
+
+        if(m_devinfo->m0v85 != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m0v85/1000).substr(0,4) + "V" << "\n\n";
+        }
+        else
+            ss << std::setw(16) << "Not support" << "\n\n";
+
+        ss << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW";
+        ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
+
+
+        if(m_devinfo->mMgt0v9 != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgt0v9/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";    
+
+        if(m_devinfo->m12vSW != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m12vSW/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support";     
+
+        if(m_devinfo->mMgtVtt != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
+        }
+        else
+            ss << std::setw(16) << "Not support"; 
+
+        if(m_devinfo->m1v2Bottom != INVAID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n\n";
+        }
+        else
+            ss << std::setw(16) << "Not support" << "\n\n";
+
+        ss << std::setw(16) << "Power (Beta)" << "\n";
+        power = m_devinfo->mPexCurr*m_devinfo->m12VPex;
+        if(power){
+            ss << std::setw(16) << std::to_string((float)power/1000000).substr(0,4)+"W" << "\n\n";
+        }
+        else
+            ss << std::setw(16) << "Not support" << "\n\n";
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());         
@@ -358,9 +447,10 @@ public:
         std::stringstream ss;
         std::ifstream ifs;;
         unsigned int numDDR;
+        int nums_fiftieth;
+        float percentage;
+        std::string str;
 
-
-#if THIS_PART_SHOULD_BE_REPLACED
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
         std::string mem_path = devPath + "/mem_topology";
 
@@ -370,12 +460,10 @@ public:
         ifs.read((char*)&numBanks, sizeof(numBanks));
         ifs.seekg(0, ifs.beg);
         if( numBanks == 0 ) {
-           // ostr << "\nMem Topology:\n";
             ss << std::setw(40) << "-- none found --. See 'xbutil program'.";
         } else if( numBanks > 0 ) {
             int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
             buf_size *= 2; //TODO: just double this for padding safety for now.
-           // const int fixed_w = 13;
             char* buffer = new char[ buf_size ];
             memset(buffer, 0, buf_size);
             ifs.read( buffer, buf_size);
@@ -384,25 +472,25 @@ public:
             numDDR = map->m_count;
 
             for( unsigned i = 0; i <numDDR; i++ ) {
-                int ratio, fifth;
 
-                fifth = (map->m_mem_data[ i ].m_size<<10) / 50;
-                ratio = devstat.ddrMemUsed[i]/fifth;
+                percentage = (float)devstat.ddrMemUsed[i]*100 / (map->m_mem_data[ i ].m_size<<10);
+                nums_fiftieth = (int)percentage/2;
+
+                str = std::to_string(percentage).substr(0,4)+"%";
 
                 ss << " [" << i << "] " << std::setw(16-(std::to_string(i).length())-4) << std::left << map->m_mem_data[ i ].m_tag;
-                ss << "[ " << std::right << std::setw(ratio) << std::setfill('|') << (ratio ? " ":"") <<  std::setw(50-ratio);
-                ss << std::setfill(' ') <<"]" << "\n";
+           //     ss << std::setw(20) << " [" +std::to_string(i)+ "] " + (map->m_mem_data[ i ].m_tag);
 
-            //    ss << std::setw(8) << unitConvert(map->m_mem_data[ i ].m_size<<10);
-            //    ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
-            //    ss << std::setw(8) << devstat.ddrBOAllocated[i] << "\n";                 // print size
+                ss << "[ " << std::right << std::setw(nums_fiftieth) << std::setfill('|') << (nums_fiftieth ? " ":"") <<  std::setw(56-nums_fiftieth);
+                ss << std::setfill(' ') << str << " ]" << "\n";
+
             }
             delete[] buffer;
         } else { // mem_topology exists, but no data read or reported
             ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
         }
         ifs.close();
-#endif 
+
         ss << "\n";
         lines.push_back(ss.str());
     }
@@ -416,7 +504,6 @@ public:
         unsigned int numDDR;
 
 
-#if THIS_PART_SHOULD_BE_REPLACED
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
         ss << std::left << std::setw(56) << "Mem Topology" << std::setw(24) << "Device Memory Usage" << "\n"; 
         std::string mem_path = devPath + "/mem_topology";
@@ -461,7 +548,7 @@ public:
 
 
                 ss << std::left << std::setw(16) << str;
-                ss << "0x" << std::setw(16-2) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
+                ss << "0x" << std::setw(14) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
 
                 ss << std::setw(8) << unitConvert(map->m_mem_data[ i ].m_size<<10);;
                 ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
@@ -473,7 +560,7 @@ public:
             ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
         }
         ifs.close();
-#endif 
+
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
         for (unsigned i = 0; !result & (i < 2); i++) {
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
@@ -527,26 +614,24 @@ public:
         time_t temp;
         ostr << "\nFirewall Last Error Status:\n";
         for(unsigned i= 0; i < m_errinfo.mNumFirewalls; ++i) {
-            ostr << "  " << std::setw(7) << i << ":      0x" << std::hex
+            ostr << "  " << std::setw(7) << i << ": 0x" << std::hex
                  << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
                  << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus) ;
             if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
                 temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
                 ts = localtime(&temp);
                 strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
-                ostr << ". Error occurred on " << cbuf;
-                break;
+                ostr << ".\n";
+                ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
             }
             else{
                 ostr << "\n";
-                break;
             }
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ');
 #endif // AXI Firewall
 
-#if THIS_PART_SHOULD_BE_REPLACED
         // report xclbinid
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
         std::string binid_path = devPath + "/xclbinid";
@@ -570,8 +655,8 @@ public:
         }
         delete [] fileReadBuf;
         ifs.close();
-#endif
-        // get DDR bank count from mem_topology if possible
+
+       // get DDR bank count from mem_topology if possible
        // unsigned numSupportedMems = numDDR;
 
         ostr << "Compute Unit Status:\n";

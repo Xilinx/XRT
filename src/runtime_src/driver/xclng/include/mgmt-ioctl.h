@@ -114,6 +114,19 @@ struct xclmgmt_ioc_info {
 	unsigned short twelve_vol_aux;
 	unsigned long long pex_curr;
 	unsigned long long aux_curr;
+	unsigned short three_vol_three_pex;
+	unsigned short three_vol_three_aux;
+	unsigned short ddr_vpp_btm;
+	unsigned short sys_5v5;
+	unsigned short one_vol_two_top;
+	unsigned short one_vol_eight_top;
+	unsigned short zero_vol_eight;
+	unsigned short ddr_vpp_top;
+	unsigned short mgt0v9avcc;
+	unsigned short twelve_vol_sw;
+	unsigned short mgtavtt;
+	unsigned short vcc1v2_btm;
+	short se98_temp[4];
 	short dimm_temp[4];
 };
 

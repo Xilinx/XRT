@@ -542,10 +542,11 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info)
     info.vcc_aux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
     info.vcc_bram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
     info.xmc_version =        xclSysfsGetInt(true, "xmc", "version");
-    info.twelve_vol_pex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex");
-    info.twelve_vol_aux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux");
-    info.pex_curr =        xclSysfsGetInt(true, "xmc", "xmc_pex_curr");
-    info.aux_curr =        xclSysfsGetInt(true, "xmc", "xmc_aux_curr");
+    info.twelve_vol_pex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_vol");
+    info.twelve_vol_aux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux_vol");
+    info.pex_curr =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_curr");
+    info.aux_curr =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux_curr");
+
     info.fan_temp = xclSysfsGetInt(true, "xmc", "xmc_fan_temp");
     info.fan_speed = xclSysfsGetInt(true, "xmc", "xmc_fan_rpm");
 
@@ -555,6 +556,24 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info)
     info.dimm_temp[1] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp1");
     info.dimm_temp[2] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp2");
     info.dimm_temp[3] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp3");
+    info.se98_temp[0] = xclSysfsGetInt(true, "xmc", "xmc_se98_temp0");
+    info.se98_temp[1] = xclSysfsGetInt(true, "xmc", "xmc_se98_temp1");
+    info.se98_temp[2] = xclSysfsGetInt(true, "xmc", "xmc_se98_temp2");
+
+    info.three_vol_three_pex = xclSysfsGetInt(true, "xmc", "xmc_3v3_pex_vol");
+    info.three_vol_three_aux = xclSysfsGetInt(true, "xmc", "xmc_3v3_aux_vol");;
+    info.ddr_vpp_btm = xclSysfsGetInt(true, "xmc", "xmc_ddr_vpp_btm");
+    info.ddr_vpp_top = xclSysfsGetInt(true, "xmc", "xmc_ddr_vpp_top");
+    info.sys_5v5 = xclSysfsGetInt(true, "xmc", "xmc_sys_5v5");
+
+    info.one_vol_two_top = xclSysfsGetInt(true, "xmc", "xmc_1v2_top");
+    info.one_vol_eight_top = xclSysfsGetInt(true, "xmc", "xmc_1v8");
+    info.zero_vol_eight = xclSysfsGetInt(true, "xmc", "xmc_0v85");
+    info.mgt0v9avcc = xclSysfsGetInt(true, "xmc", "xmc_mgt0v9avcc");
+    info.twelve_vol_sw = xclSysfsGetInt(true, "xmc", "xmc_12v_sw");
+    info.mgtavtt = xclSysfsGetInt(true, "xmc", "xmc_mgtavtt");
+    info.vcc1v2_btm = xclSysfsGetInt(true, "xmc", "xmc_vcc1v2_btm");
+
 
 
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
@@ -607,6 +626,24 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     for (int i = 0; i < 4; ++i) {
         info->mDimmTemp[i] = obj.dimm_temp[i];
     }
+    for (int i = 0; i < 3; ++i) {
+        info->mSE98Temp[i] = obj.se98_temp[i];
+    }
+
+
+    info->m3v3Pex = obj.three_vol_three_pex;
+    info->m3v3Aux = obj.three_vol_three_aux;
+
+    info->mDDRVppBottom = obj.ddr_vpp_btm;
+    info->mDDRVppTop = obj.ddr_vpp_top;
+    info->mSys5v5 = obj.sys_5v5;
+    info->m1v2Top = obj.one_vol_two_top;
+    info->m1v8Top = obj.one_vol_eight_top;
+    info->m0v85   = obj.zero_vol_eight;
+    info->mMgt0v9 = obj.mgt0v9avcc;
+    info->m12vSW = obj.twelve_vol_sw;
+    info->mMgtVtt = obj.mgtavtt;
+    info->m1v2Bottom = obj.vcc1v2_btm;
 
     const std::string name = newDeviceName(obj.vbnv);
     std::memcpy(info->mName, name.c_str(), name.size() + 1);

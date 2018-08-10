@@ -114,6 +114,19 @@ struct xclDeviceInfo2 {
   unsigned long long mAuxCurr;
   unsigned short mFanRpm;
   short mDimmTemp[4];
+  short mSE98Temp[4];
+  unsigned short m3v3Pex;
+  unsigned short m3v3Aux;
+  unsigned short mDDRVppBottom;
+  unsigned short mDDRVppTop;
+  unsigned short mSys5v5;
+  unsigned short m1v2Top;
+  unsigned short m1v8Top;
+  unsigned short m0v85;
+  unsigned short mMgt0v9;
+  unsigned short m12vSW;
+  unsigned short mMgtVtt;
+  unsigned short m1v2Bottom;
 };
 /**
  * xclMemoryDomains is for support of legacy APIs
