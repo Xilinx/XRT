@@ -466,9 +466,11 @@ dorpmdev()
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_dsa-dev.spec
 
+%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}-dev-%%{RELEASE}.%%{ARCH}.rpm
+
 buildroot:  %{_topdir}
 summary: Xilinx development DSA
-name: $dsa-dev
+name: $dsa
 version: $version
 release: $revision
 license: apache
