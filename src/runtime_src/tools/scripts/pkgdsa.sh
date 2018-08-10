@@ -166,7 +166,7 @@ mcsSecondary=""
 fullBitFile=""
 clearBitstreamFile=""
 dsaXmlFile="dsa.xml"
-featureRomTimestamp=""
+featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
 vbnv=""
@@ -174,16 +174,7 @@ pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
-
-# Post install script for deployment DSA package
-read -d '' post <<EOF
-echo "Looking for boards whose DSA needs updating..."
-/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp}
-if [ $? -ne 0 ]; then
-        echo "DSA on board is not updated"
-        echo "Please run xbutil flash -a all to update later"
-fi
-EOF
+post_inst_fail_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
 
 createEntityAttributeArray ()
 {
@@ -484,7 +475,10 @@ maintainer: soren.soe@xilinx.com
 EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-$post
+
+echo "Looking for boards whose DSA needs updating..."
+/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
+
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
 
@@ -580,7 +574,8 @@ Xilinx deployment DSA.  This DSA depends on xrt >= $opt_xrt.
 %prep
 
 %post
-$post
+echo "Looking for boards whose DSA needs updating..."
+/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx

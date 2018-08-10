@@ -301,6 +301,6 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
 DSAInfo Flasher::getOnBoardDSA()
 {
-    return DSAInfo(std::string( reinterpret_cast<char *>(mFRHeader.VBNVName)),
+    return DSAInfo(std::string(reinterpret_cast<char *>(mFRHeader.VBNVName)),
         mFRHeader.TimeSinceEpoch);
 }

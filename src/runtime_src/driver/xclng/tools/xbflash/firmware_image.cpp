@@ -174,7 +174,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
-        stream << "," << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
+        stream << ", 0x" << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
     return stream;
 }
 
@@ -185,7 +185,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
     if (!in.is_open())
     {
         this->setstate(failbit);
-        std::cout << "Cannot open " << file << std::endl;
+        std::cout << "Can't open " << file << std::endl;
         return;
     }
     streampos bufsize = in.tellg();

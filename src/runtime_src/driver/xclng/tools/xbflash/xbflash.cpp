@@ -27,8 +27,9 @@
 
 const char* UsageMessages[] = {
     "[-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
+    "[-d device] -a <all | dsa> [-t timestamp]",
     "[-d device] -p msp432_firmware",
-    "[-d device] -a dsa",
+    "scan [-v]",
 };
 const char* SudoMessage = "ERROR: root privileges required.";
 int scanDevices(int argc, char *argv[]);
@@ -132,7 +133,7 @@ int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
     DSAInfo& candidate = installedDSA[candidateDSAIndex];
 
     DSAInfo currentDSA = flasher.getOnBoardDSA();
-    if (currentDSA.DSAValid)
+    if (!currentDSA.name.empty())
     {
         if (candidate.name == currentDSA.name &&
             candidate.timestamp == currentDSA.timestamp)
@@ -268,7 +269,7 @@ int main( int argc, char *argv[] )
             break;
         case 't':
             notSeenOrDie(seen_t);
-            args.timestamp = strtoull(optarg, nullptr, 16);
+            args.timestamp = strtoull(optarg, nullptr, 0);
             break;
         default:
             usageAndDie();
@@ -318,7 +319,7 @@ int main( int argc, char *argv[] )
             for (DSAInfo& dsa : installedDSAs)
             {
                 if (args.dsa == dsa.name &&
-                    (args.timestamp == 0 || args.timestamp == dsa.timestamp))
+                    (args.timestamp == NULL_TIMESTAMP || args.timestamp == dsa.timestamp))
                 {
                     if (!foundDSA)
                         foundDSA = true;
@@ -326,6 +327,10 @@ int main( int argc, char *argv[] )
                         multiDSA = true;
                 }
             }
+        }
+        else
+        {
+            foundDSA = true;
         }
 
         // Collect all indexes of boards need checking
@@ -403,11 +408,10 @@ int main( int argc, char *argv[] )
             std::cout << "DSA on below boards will be updated:" << std::endl;
             for (unsigned int i : boardsToUpdate)
             {
-                std::cout << "Board [" << boardsToUpdate[i] << "]" << std::endl;
+                std::cout << "Board [" << i << "]" << std::endl;
             }
             if(!canProceed())
             {
-                std::cout << "Firmware updating is canceled." << std::endl;
                 exit(-ECANCELED);
             }
         }
@@ -493,19 +497,20 @@ int scanDevices(int argc, char *argv[])
         std::cout << "\tDSA installed:\t";
         if (!installedDSA.empty())
         {
-            std::cout << installedDSA[0] << std::endl;
-            for (size_t d = 1; d < installedDSA.size(); d++)
+            for (DSAInfo& d : installedDSA)
             {
                 if (verbose)
-                    std::cout << "\t\t\t" << installedDSA[d] << std::endl;
+                    std::cout << d << std::endl;
                 else
-                    std::cout << "\t\t\t" << installedDSA[d].name << std::endl;
+                    std::cout << d.name << std::endl;
+                std::cout << "\t\t\t";
             }
         }
         else
         {
             std::cout << "(None)" << std::endl;
         }
+        std::cout << std::endl;
     }
 
     return 0;
