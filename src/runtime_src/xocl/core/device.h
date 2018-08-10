@@ -24,6 +24,8 @@
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
 
+#include <unistd.h>
+
 #include <cassert>
 
 namespace xrt { class device; }
@@ -214,7 +216,7 @@ public:
   /**
    * Check if memory is aligned per device requirement.
    *
-   * Default is 4096 if no backing xrt device
+   * Default is page size if no backing xrt device
    *
    * @return
    *   true if ptr is aligned, false otherwise
@@ -222,7 +224,7 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : 4096;
+    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
     return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
   }
 
