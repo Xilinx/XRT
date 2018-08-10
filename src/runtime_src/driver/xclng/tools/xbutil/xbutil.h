@@ -273,11 +273,10 @@ public:
         lines.push_back(ss.str());
    }
 
-    void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    void m_devinfo_stringize_dimm_temp(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss;
-        unsigned long long power;
-        ss << std::left << "\n";
+        ss << std::left;
         unsigned i;
 
         if(m_devinfo->mDimmTemp[0]!=0){
@@ -285,9 +284,17 @@ public:
                 ss << "DDR Temp" << std::setw(8) << i;
                 subss << std::left << std::setw(16) << std::to_string(m_devinfo->mDimmTemp[i]).substr(0,3)+" C";
             }
-            ss << "\n" << subss.str() << "\n\n";
-            subss.str("");
+            ss << "\n" << subss.str() << "\n";
         }
+        lines.push_back(ss.str());
+    }
+    void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    {
+        std::stringstream ss, subss;
+        unsigned long long power;
+        ss << std::left << "\n";
+        unsigned i;
+
         if(m_devinfo->mSE98Temp[0]!=0){
             for(i= 0; i < 3; ++i){
                 ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
@@ -442,7 +449,7 @@ public:
         m_devinfo_stringize_dynamics(m_devinfo, lines);
     }
 
-    void m_mem_usage_gui_dynamics(xclDeviceUsage &devstat, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
+    void m_mem_usage_bar(xclDeviceUsage &devstat, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
     {
         std::stringstream ss;
         std::ifstream ifs;;
@@ -450,6 +457,8 @@ public:
         int nums_fiftieth;
         float percentage;
         std::string str;
+
+        ss << "Device Memory Usage\n";
 
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
         std::string mem_path = devPath + "/mem_topology";
@@ -470,7 +479,8 @@ public:
             mem_topology *map;
             map = (mem_topology *)buffer;
             numDDR = map->m_count;
-
+            if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
+               numSupportedMems = numDDR;
             for( unsigned i = 0; i <numDDR; i++ ) {
 
                 percentage = (float)devstat.ddrMemUsed[i]*100 / (map->m_mem_data[ i ].m_size<<10);
@@ -527,9 +537,9 @@ public:
 
             ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << "\n";
             numDDR = map->m_count;
-          //  if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
-               // numSupportedMems = numDDR;
-            for( unsigned i = 0; i <numDDR; i++ ) {
+            if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
+               numSupportedMems = numDDR;
+            for( unsigned i = 0; i <numSupportedMems; i++ ) {
                 ss << " [" << i << "] " << std::setw(16-(std::to_string(i).length())-4) << std::left << map->m_mem_data[ i ].m_tag;
                 std::string str;
                 if( map->m_mem_data[ i ].m_used == 0 ) {
@@ -614,7 +624,7 @@ public:
         time_t temp;
         ostr << "\nFirewall Last Error Status:\n";
         for(unsigned i= 0; i < m_errinfo.mNumFirewalls; ++i) {
-            ostr << "  " << std::setw(7) << i << ": 0x" << std::hex
+            ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
                  << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
                  << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus) ;
             if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
@@ -657,7 +667,7 @@ public:
         ifs.close();
 
        // get DDR bank count from mem_topology if possible
-       // unsigned numSupportedMems = numDDR;
+       unsigned numSupportedMems = numDDR;
 
         ostr << "Compute Unit Status:\n";
         std::vector<ip_data> computeUnits;
@@ -682,11 +692,12 @@ public:
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ') << "\n";;
+        m_devinfo_stringize_dimm_temp(&m_devinfo, usage_lines);
 
-        m_mem_usage_stringize_dynamics(devstat, usage_lines, result, numDDR);
+        m_mem_usage_stringize_dynamics(devstat, usage_lines, result, numSupportedMems);
 
         for(auto line:usage_lines){
-            ostr << line;
+            ostr << line << "\n";
         }
 
         return 0;
@@ -1047,6 +1058,9 @@ public:
 
     int usageInfo(xclDeviceUsage& devstat) const {
         return xclGetUsageInfo(m_handle, &devstat);
+    }
+    int deviceInfo(xclDeviceInfo2& devinfo) const {
+        return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 };
 

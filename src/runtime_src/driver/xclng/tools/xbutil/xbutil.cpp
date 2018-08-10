@@ -577,21 +577,19 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat)
+static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
 {
-    std::vector<std::string> lines, usage_lines;
+    std::vector<std::string> lines;
 
-    dev->m_mem_usage_gui_dynamics(devstat, lines, 0, 7);
+    dev->m_mem_usage_bar(devstat, lines, 0, devinfo.mDDRBankCount);
+
+    dev->m_devinfo_stringize_dimm_temp(&devinfo, lines);
+    
+    dev->m_mem_usage_stringize_dynamics(devstat, lines, 0, devinfo.mDDRBankCount);
 
     for(auto line:lines){
-            printw("%s", line.c_str());
-    }
-    
-    dev->m_mem_usage_stringize_dynamics(devstat, usage_lines, 0, 7);
-
-    for(auto line:usage_lines){
-            printw("%s", line.c_str());
-    }
+            printw("%s\n", line.c_str());
+    } 
 }
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
@@ -601,13 +599,19 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
             if (result) {
                 ctrl->status = result;
                 return;
             }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
             clear();
-            topPrintUsage(ctrl->dev, devstat);
+            topPrintUsage(ctrl->dev, devstat, devinfo);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
