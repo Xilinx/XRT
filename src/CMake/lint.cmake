@@ -20,6 +20,7 @@ else ()
     -UCL_USE_DEPRECATED_OPENCL_1_1_APIS
     --template=gcc --enable=style
     --language=c++
+    --std=c++11
     --platform=native
     --project=compile_commands.json
     )
