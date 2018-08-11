@@ -184,7 +184,9 @@ int Flasher::mapDevice(unsigned int devIdx)
     }
     std::string devPath = "/sys/bus/pci/devices/" + mgmtDeviceName;
 #endif
-    std::string resourcePath = devPath + "/resource0";
+    char bar[5];
+    snprintf(bar, sizeof (bar) - 1, "%d", dev.user_bar);
+    std::string resourcePath = devPath + "/resource" + bar;
 
     void *p;
     void *addr = (caddr_t)0;

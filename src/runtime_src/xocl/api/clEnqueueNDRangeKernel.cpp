@@ -31,15 +31,15 @@
 #include "detail/event.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
 #include "api.h"
 
 #include "xrt/util/memory.h"
 
-#include "xdp/debug/rt_printf.h"
+#include "printf/rt_printf.h"
 
 #include <sstream>
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 
@@ -461,7 +461,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // Migration action and enqueing
   xocl::enqueue::set_event_action(umEvent.get(),xocl::enqueue::action_ndrange_migrate,mEvent,kernel);
   xocl::profile::set_event_action(umEvent.get(),xocl::profile::action_ndrange_migrate,mEvent,kernel);
-  appdebug::set_event_action(umEvent.get(),appdebug::action_ndrange_migrate,mEvent,kernel);
+  xocl::appdebug::set_event_action(umEvent.get(),xocl::appdebug::action_ndrange_migrate,mEvent,kernel);
 
   // Schedule migration
   umEvent->queue();
@@ -478,7 +478,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
     xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
   xocl::profile::set_event_action(ueEvent.get(),xocl::profile::action_ndrange,eEvent,kernel);
-  appdebug::set_event_action(ueEvent.get(),appdebug::action_ndrange,eEvent,kernel);
+  xocl::appdebug::set_event_action(ueEvent.get(),xocl::appdebug::action_ndrange,eEvent,kernel);
 
   // Schedule execution
   ueEvent->queue();

@@ -228,11 +228,11 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clIcdGetPlatformIDsKHR_fn)(
 #define CL_PIPE_ATTRIBUTE_DPDK_ID                   (1 << 31)
 
 /* Additional cl_device_partition_property */
-#define CL_DEVICE_PARTITION_BY_CLUSTER              (1 << 31)
+#define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
 
 
 /**
- * Aquire the device address associated with a cl_mem buffer on 
+ * Aquire the device address associated with a cl_mem buffer on
  * a specific device.
  *
  * CL_INVALID_MEM_OBJECT: if mem is not a valid buffer object,
@@ -294,10 +294,126 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 // -- Work in progress - new QDMA APIs
 //
 //struct rte_mbuf;
+/*
+ * DOC: OpenCL Stream APIs
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * These structs and functions are used for the new DMA engine QDMA.
+ */
+
+
+/**
+ * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for 
+ * read only. Used in clCreateStream()
+ */
+typedef cl_bitfield         cl_stream_flags;
+#define CL_STREAM_READ_ONLY			    (1 << 0)
+#define CL_STREAM_WRITE_ONLY                        (1 << 1)
+
+/**
+ * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
+ * in clCreateStream()
+ */
+typedef cl_uint             cl_stream_attributes;
+#define CL_STREAM                                   (1 << 0)
+#define CL_PACKET                                   (1 << 1)
+
+/**
+ * cl_stream_attributes. 
+ * eg set it to CL_STREAM_CDH for Customer Defined Header.
+ * Used in clReadStream() and clWriteStream()
+ */
+typedef cl_uint             cl_stream_xfer_req;
+#define CL_STREAM_CDH                               (1 << 0)
+#define CL_STREAM_PARTIAL                           (1 << 1)
+
+typedef struct _cl_stream*      cl_stream;
+typedef struct _cl_stream_mem*  cl_stream_mem;
+
+/**
+ * clCreateStream - create the stream for reading or writing.
+ * @device_id   : The device handle on which stream is to be created.
+ * @flags       : The cl_stream_flags
+ * @attributes  : The attributes of the requested stream.
+ * @errcode_ret : The return value eg CL_SUCCESS
+ */
+extern CL_API_ENTRY cl_stream CL_API_CALL 
+clCreateStream(cl_device_id                /* device_id */,
+	       cl_stream_flags             /* flags */,
+	       cl_stream_attributes*       /* attributes*/,
+	       cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clReleaseStream - Once done with the stream, release it and its associated
+ * objects
+ * @stream: The stream to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL 
+clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clWriteStream - write data to stream
+ * @device_id : The device
+ * @stream    : The stream
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clWriteStream(cl_device_id    /* device_id*/,
+	cl_stream             /* stream*/,
+	const void *          /* ptr */,
+	size_t                /* offset */,
+	size_t                /* size */,
+	cl_stream_xfer_req    /* req_type*/,
+	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clReadStream - write data to stream
+ * @device_id : The device
+ * @stream    : The stream
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReadStream(cl_device_id     /* device_id*/,
+	     cl_stream             /* stream*/,
+	     void *                /* ptr */,
+	     size_t                /* offset */,
+	     size_t                /* size */,
+	     cl_stream_xfer_req*   /* attributes */,
+	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clCreateStreamBuffer - Alloc buffer used for read and write.
+ * @stream     : The stream to associate the buffer with
+ * @size       : The size of the buffer
+ * errcode_ret : The return value, eg CL_SUCCESS
+ * Returns cl_stream_mem
+ */
+extern CL_API_ENTRY cl_stream_mem CL_API_CALL 
+clCreateStreamBuffer(cl_device_id device,
+	cl_stream             /* stream*/,
+	size_t                /* size*/,
+	cl_int *              /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clReleaseStreamBuffer - Release the buffer created.
+ * @cl_stream_mem : The stream memory to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReleaseStreamBuffer(cl_stream_mem /*stream memobj */) CL_API_SUFFIX__VERSION_1_0;
+
+//End QDMA APIs
+
 typedef struct _cl_mem * rte_mbuf;
 typedef struct _cl_pipe * cl_pipe;
-
-
 /* New flag RTE_MBUF_READ_ONLY or RTE_MBUF_WRITE_ONLY
  * OpenCL runtime will use rte_eth_rx_queue_setup to create DPDK RX Ring. The API will return cl_pipe object.
  * OpenCL runtime will use rte_eth_tx_queue_setup to create DPDK TX Ring. The API will return cl_pipe object.
@@ -361,67 +477,27 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 #define CL_MEM_EXT_PTR_XILINX                       (1 << 31)
 
 typedef struct{
-  unsigned flags;
+  unsigned flags; //Top 8 bits reserved.
   void *obj;
   void *param;
 } cl_mem_ext_ptr_t;
 
 //valid flags in above
-//#define XCL_MEM_EXT_PROGRAM_BUFFER      (1<<0)
-//#define XCL_MEM_EXT_PROGRAM_PIPE        (1<<1)
-//#define XCL_MEM_EXT_P2P_BUFFER          (1<<2)
-//#define XCL_MEM_DDR_BANK0               (1<<8)
-//#define XCL_MEM_DDR_BANK1               (1<<9)
-//#define XCL_MEM_DDR_BANK2               (1<<10)
-//#define XCL_MEM_DDR_BANK3               (1<<11)
 #define XCL_MEM_DDR_BANK0               (1<<0)
 #define XCL_MEM_DDR_BANK1               (1<<1)
 #define XCL_MEM_DDR_BANK2               (1<<2)
 #define XCL_MEM_DDR_BANK3               (1<<3)
 
-//--- This will match up with index in mem_topology section --
-#define XCL_BANK0                       (1<<0)
-#define XCL_BANK1                       (1<<1)
-#define XCL_BANK2                       (1<<2)
-#define XCL_BANK3                       (1<<3)
-#define XCL_BANK4                       (1<<4)
-#define XCL_BANK5                       (1<<5)
-#define XCL_BANK6                       (1<<6)
-#define XCL_BANK7                       (1<<7)
-#define XCL_BANK8                       (1<<8)
-#define XCL_BANK9                       (1<<9)
-#define XCL_BANK10                      (1<<10)
-#define XCL_BANK11                      (1<<11)
-#define XCL_BANK12                      (1<<12)
-#define XCL_BANK13                      (1<<13)
-#define XCL_BANK14                      (1<<14)
-#define XCL_BANK15                      (1<<15)
-#define XCL_BANK16                      (1<<16)
-#define XCL_BANK17                      (1<<17)
-#define XCL_BANK18                      (1<<18)
-#define XCL_BANK19                      (1<<19)
-#define XCL_BANK20                      (1<<20)
-#define XCL_BANK21                      (1<<21)
-#define XCL_BANK22                      (1<<22)
-#define XCL_BANK23                      (1<<23)
-#define XCL_BANK24                      (1<<24)
-#define XCL_BANK25                      (1<<25)
-#define XCL_BANK26                      (1<<26)
-#define XCL_BANK27                      (1<<27)
-#define XCL_BANK28                      (1<<28)
-#define XCL_BANK29                      (1<<29)
-#define XCL_BANK30                      (1<<30)
-#define XCL_BANK31                      (1<<31)
-//----
-
+//-- 8 reserved bits of flags in cl_mem_ext_ptr_t
+#define XCL_MEM_LEGACY                  0x0
+#define XCL_MEM_TOPOLOGY                (1<<24)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
-
 
 //cl_program_info
 //accepted by the <flags> paramete of clGetProrgamInfo
 #define CL_PROGRAM_BUFFERS_XILINX       0x1180
 
-// cl_kernel_info 
+// cl_kernel_info
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
 

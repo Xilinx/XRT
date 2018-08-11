@@ -74,6 +74,7 @@ class device : public xrt::hal::device
     uint64_t deviceAddr = 0xffffffffffffffff;
     void *hostAddr = nullptr;
     size_t size = 0;
+    size_t offset = 0;
     xclBOKind kind;
     unsigned int flags = 0;
     hal2::device_handle owner = nullptr;
@@ -314,6 +315,29 @@ public:
 
   virtual int
   exec_wait(int timeout_ms) const;
+
+public:
+
+  virtual int 
+  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
+
+  virtual int 
+  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
+
+  virtual int 
+  closeStream(hal::StreamHandle stream);
+
+  virtual hal::StreamBuf
+  allocStreamBuf(size_t size, hal::StreamBufHandle *buf);
+
+  virtual int 
+  freeStreamBuf(hal::StreamBufHandle buf);
+
+  virtual ssize_t 
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
+
+  virtual ssize_t 
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
 
 public:
   virtual uint64_t

@@ -22,7 +22,7 @@
 #include "xrt/util/task.h"
 #include "xrt/util/memory.h"
 
-#include "xocl/api/profile.h"
+#include "xocl/api/plugin/xdp/profile.h"
 
 #include <iostream>
 #include <cassert>
@@ -48,7 +48,8 @@ to_string(cl_int status)
   return "???";
 }
 
-
+static xocl::event::event_callback_list sg_constructor_callbacks;
+static xocl::event::event_callback_list sg_destructor_callbacks;
 } // namespace
 
 namespace xocl {
@@ -60,6 +61,9 @@ event(command_queue* cq, context* ctx, cl_command_type cmd)
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
   debug::add_command_type(this,cmd);
+
+  for (auto& cb : sg_constructor_callbacks)
+    cb(this);
 
   XOCL_DEBUG(std::cout,"xocl::event::event(",m_uid,")\n");
 }
@@ -80,6 +84,8 @@ event::
 ~event()
 {
   XOCL_DEBUG(std::cout,"xocl::event::~event(",m_uid,")\n");
+  for (auto& cb : sg_destructor_callbacks)
+    cb(this);
 }
 
 cl_int
@@ -261,7 +267,7 @@ add_callback(callback_function_type fcn)
       m_callbacks->emplace_back(std::move(fcn));
     }
   }
-  
+
   // If event was already complete, then the callback was not installed
   // but should still be called
   if (complete)
@@ -297,11 +303,26 @@ run_callbacks(cl_int status)
 
 void
 event::
+register_constructor_callbacks(event_callback_type&& aCallback)
+{
+  sg_constructor_callbacks.emplace_back(std::move(aCallback));
+}
+
+void
+event::
+register_destructor_callbacks(event_callback_type&& aCallback)
+{
+  sg_destructor_callbacks.emplace_back(std::move(aCallback));
+}
+
+
+void
+event::
 chain(event* ev)
 {
   // assert(ev is locked because it is being enqueued || called from "ev" event ctor);
   assert(ev->m_status == -1); // ev is being enq'ed or ctored
-  
+
   std::lock_guard<std::mutex> lk(m_mutex);
   if (m_status == CL_COMPLETE)
     return;
@@ -408,7 +429,7 @@ create_event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_d
 
   if (cq && cq->is_profiling_enabled()) {
     if (num_deps)
-      retval = app_debug 
+      retval = app_debug
         ? new edpw_event(cq,ctx,cmd,num_deps,deps)
         : new epw_event(cq,ctx,cmd,num_deps,deps);
     else
@@ -418,7 +439,7 @@ create_event(command_queue* cq, context* ctx, cl_command_type cmd, cl_uint num_d
   }
   else {
     if (num_deps)
-      retval = app_debug 
+      retval = app_debug
         ? new edw_event(cq,ctx,cmd,num_deps,deps)
         : new ew_event(cq,ctx,cmd,num_deps,deps);
     else
@@ -446,5 +467,3 @@ create_soft_event(cl_context ctx, cl_command_type cmd, cl_uint num_deps, const c
 }
 
 } // xocl
-
-

@@ -1,15 +1,26 @@
-/*
- * This file is part of the Xilinx DMA IP Core driver for Linux
+/*******************************************************************************
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
- * All rights reserved.
+ * Xilinx QDMA IP Core Linux Driver
+ * Copyright(c) 2017 Xilinx, Inc.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
- */
-
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "LICENSE".
+ *
+ * Karen Xie <karen.xie@xilinx.com>
+ *
+ ******************************************************************************/
 #ifndef __QDMA_REGS_H__
 #define __QDMA_REGS_H__
 
@@ -26,12 +37,36 @@
 #define	C2H_CNT_TH_DFLT	0x1
 #define	C2H_BUF_SZ_DFLT	PAGE_SIZE
 
+/* Driver visible Attribute Space 0x100 */
+#define QDMA_REG_GLBL_PF_BARLITE_INT             0x104
+#define 	PF_BARLITE_INT_3_SHIFT               18
+#define 	PF_BARLITE_INT_3_MASK                0xFC0000
+#define 	PF_BARLITE_INT_2_SHIFT               12
+#define 	PF_BARLITE_INT_2_MASK                0x3F000
+#define 	PF_BARLITE_INT_1_SHIFT               6
+#define 	PF_BARLITE_INT_1_MASK                0xFC0
+#define 	PF_BARLITE_INT_0_SHIFT               0
+#define 	PF_BARLITE_INT_0_MASK                0x3F
+
+#define QDMA_REG_GLBL_QMAX                       0x120
+#define QDMA_REG_GLBL_MM_ENGINES                 0xABCD /* TBD : needs to be changed once we get the register offset from the h/w */
+#define QDMA_REG_GLBL_MISC_CAP                   0x134
+#define     MISC_CAP_FLR_PRESENT_SHIFT           1
+#define     MISC_CAP_FLR_PRESENT_MASK            0x2
+#define QDMA_REG_GLBL_MDMA_CHANNEL               0x118
+#define     MDMA_CHANNEL_ST_C2H_ENABLED_SHIFT    16
+#define     MDMA_CHANNEL_ST_C2H_ENABLED_MASK     0x10000
+#define     MDMA_CHANNEL_ST_H2C_ENABLED_SHIFT    17
+#define     MDMA_CHANNEL_ST_H2C_ENABLED_MASK     0x20000
+#define     MDMA_CHANNEL_MM_C2H_ENABLED_SHIFT    8
+#define     MDMA_CHANNEL_MM_C2H_ENABLED_MASK     0x100
+#define     MDMA_CHANNEL_MM_H2C_ENABLED_SHIFT    0
+#define     MDMA_CHANNEL_MM_H2C_ENABLED_MASK     0x1
+
 #ifndef __QDMA_VF__
 /*
  * PF only registers
  */
-
-/* Driver visible Attribute Space 0x100 */
 #define QDMA_REG_FUNC_ID			0x12C
 
 /* CSR space 0x200 */
@@ -39,8 +74,6 @@
 #define		QDMA_REG_GLBL_RNG_SZ_COUNT	16
 
 #define QDMA_REG_GLBL_SCRATCH			0x244
-#define QDMA_REG_GLBL_ERR_STAT			0x248
-#define QDMA_REG_GLBL_ERR_MASK			0x24C
 
 #define QDMA_REG_GLBL_WB_ACC			0x250
 
@@ -54,7 +87,7 @@
 #define		QDMA_REG_C2H_BUF_SZ_COUNT	16
 
 /*
- * FUnction registers
+ * Function registers
  */
 
 #define QDMA_REG_TRQ_SEL_FMAP_BASE			0x400
@@ -73,7 +106,7 @@
 #define		C2H_QID2VEC_MAP_QID_C2H_COALEN_MASK	0x1U
 #define		C2H_QID2VEC_MAP_QID_H2C_VEC_SHIFT	9
 #define		C2H_QID2VEC_MAP_QID_H2C_VEC_MASK	0xFFU
-#define		C2H_QID2VEC_MAP_QID_H2C_COALEN_SHIFT	18
+#define		C2H_QID2VEC_MAP_QID_H2C_COALEN_SHIFT	17
 #define		C2H_QID2VEC_MAP_QID_H2C_COALEN_MASK	0x1U
 
 #define QDMA_REG_C2H_QID2VEC_MAP			0xa84
@@ -115,19 +148,28 @@
 
 #endif /* ifndef __QDMA_VF__ */
 
-/* 
+/*
+ * FLR
+ */
+#ifdef __QDMA_VF__
+#define QDMA_REG_FLR_STATUS			0x1100
+#else
+#define QDMA_REG_FLR_STATUS			0x2500
+#endif
+
+/*
  * desc. Q pdix/cidx update
  */
 
 #define 	QDMA_REG_PIDX_STEP		0x10
 #define 	QDMA_REG_PIDX_COUNT		0x2048
 
-#ifdef __QDMA_VF__ 
+#ifdef __QDMA_VF__
 
-#define QDMA_REG_INT_CIDX_BASE                  0x3000
-#define QDMA_REG_H2C_PIDX_BASE                  0x3004
-#define QDMA_REG_C2H_PIDX_BASE                  0x3008
-#define QDMA_REG_WRB_CIDX_BASE                  0x300C
+#define QDMA_REG_INT_CIDX_BASE			0x3000
+#define QDMA_REG_H2C_PIDX_BASE			0x3004
+#define QDMA_REG_C2H_PIDX_BASE			0x3008
+#define QDMA_REG_WRB_CIDX_BASE			0x300C
 
 #else
 
@@ -157,17 +199,11 @@ enum ind_ctxt_cmd_sel {
 	QDMA_CTXT_SEL_CR_H2C,
 	QDMA_CTXT_SEL_WRB,
 	QDMA_CTXT_SEL_PFTCH,
-	QDMA_CTXT_SEL_COAL
-};
-
-/* Q Context: SW Descriptor */
-enum tigger_mode {
-	TRIG_MODE_DISABLE,	/* 0 */
-	TRIG_MODE_ANY,		/* 1 */
-	TRIG_MODE_TIMER,	/* 2 */
-	TRIG_MODE_COUNTER,	/* 3 */
-	TRIG_MODE_COMBO,	/* 4 */
-	TRIG_MODE_USER,		/* 5 */
+	QDMA_CTXT_SEL_COAL,
+	QDMA_CTXT_SEL_PASID_RAM_LOW,
+	QDMA_CTXT_SEL_PASID_RAM_HIGH,
+	QDMA_CTXT_SEL_TIMER,
+	QDMA_CTXT_SEL_QID2VEC,
 };
 
 #define S_DESC_CTXT_W1_F_QEN		0
@@ -186,13 +222,6 @@ enum tigger_mode {
 #define S_DESC_CTXT_W1_DSC_SZ		16
 #define M_DESC_CTXT_W1_DSC_SZ		0x3U
 #define V_DESC_CTXT_W1_DSC_SZ(x)	((x) << S_DESC_CTXT_W1_DSC_SZ)
-
-enum ctxt_desc_sz_sel {
-	DESC_SZ_8B = 0,
-	DESC_SZ_16B,
-	DESC_SZ_32B,
-	DESC_SZ_RSV
-};
 
 #define S_DESC_CTXT_W1_F_BYP		18
 #define S_DESC_CTXT_W1_F_MM_CHN		19
@@ -284,14 +313,11 @@ enum ctxt_desc_sz_sel {
 #define M_PFTCH_W0_BUF_SIZE_IDX		0xFU
 #define V_PFTCH_W0_BUF_SIZE_IDX(x)	((x) << S_PFTCH_W0_BUF_SIZE_IDX)
 
-#define S_PFTCH_W0_FNC_ID		5
-#define M_PFTCH_W0_FNC_ID		0xFFU
-#define V_PFTCH_W0_FNC_ID(x)		((x & M_PFTCH_W0_FNC_ID) << S_PFTCH_W0_FNC_ID)
-
-#define S_PFTCH_W0_PORT_ID		13
+#define S_PFTCH_W0_PORT_ID		5
 #define M_PFTCH_W0_PORT_ID		0x7U
 #define V_PFTCH_W0_PORT_ID(x)		((x) << S_PFTCH_W0_PORT_ID)
 
+#define S_PFTCH_W0_F_ERR		26
 #define S_PFTCH_W0_F_EN_PFTCH		27
 #define S_PFTCH_W0_F_Q_IN_PFTCH		28
 
@@ -347,7 +373,7 @@ enum ctxt_desc_sz_sel {
 #define M_INTR_CIDX_UPD_SW_CIDX		0xFFFFU
 #define V_INTR_CIDX_UPD_SW_CIDX(x)	((x) << S_INTR_CIDX_UPD_SW_CIDX)
 
-#define S_INTR_CIDX_UPD_DIR_SEL	    16
+#define S_INTR_CIDX_UPD_DIR_SEL		16
 
 
 #define S_WRB_PIDX_UPD_EN_INT		16
@@ -385,15 +411,38 @@ struct qdma_mm_desc {
 	__be64 dst_addr;
 	__be64 rsvd1;
 };
-#define S_DESC_F_DV		28
+
+#define S_DESC_F_DV		    28
 #define S_DESC_F_SOP		29
 #define S_DESC_F_EOP		30
 
+
+#define S_H2C_DESC_F_SOP		1
+#define S_H2C_DESC_F_EOP		2
+
+
+#define S_H2C_DESC_NUM_GL		0
+#define M_H2C_DESC_NUM_GL		0x7U
+#define V_H2C_DESC_NUM_GL(x)	((x) << S_H2C_DESC_NUM_GL)
+
+#define S_H2C_DESC_NUM_CDH		3
+#define M_H2C_DESC_NUM_CDH		0xFU
+#define V_H2C_DESC_NUM_CDH(x)	((x) << S_H2C_DESC_NUM_CDH)
+
+#define S_H2C_DESC_F_ZERO_CDH		13
+#define S_H2C_DESC_F_EOT			14
+#define S_H2C_DESC_F_REQ_WRB		15
+
+/* FIXME pld_len and flags members are part of custom descriptor format needed
+ * by example design for ST loopback and desc bypass */
 struct qdma_h2c_desc {
+	__be16 cdh_flags;
+	__be16 pld_len;
+	__be16 len;
+	__be16 flags;
 	__be64 src_addr;
-	__be32 flag_len;
-	__be32 rsvd;
 };
+
 
 struct qdma_c2h_desc {
 	__be64 dst_addr;
@@ -405,21 +454,34 @@ struct qdma_desc_wb {
 	__be32 rsvd;
 };
 
-#define S_C2H_WB_ENTRY_F_DATA_FORMAT	0
+#define S_C2H_WB_ENTRY_F_FORMAT		0
+#define F_C2H_WB_ENTRY_F_FORMAT		(1 << S_C2H_WB_ENTRY_F_FORMAT)
+#define		DFORMAT0_CMPL_MASK	0xF	/* udd starts at bit 4 */
+#define		DFORMAT1_CMPL_MASK	0xFFFFF	/* udd starts at bit 20 */
+
+
 #define S_C2H_WB_ENTRY_F_COLOR		1
-#define S_C2H_WB_ENTRY_F_DESC_ERR	2
-#define S_C2H_WB_ENTRY_F_RSVD		3
+#define F_C2H_WB_ENTRY_F_COLOR		(1 << S_C2H_WB_ENTRY_F_COLOR)
 
-#define S_C2H_WB_ENTRY_LENGTH		4
-#define M_C2H_WB_ENTRY_LENGTH		0xFFFFU
-#define L_C2H_WB_ENTRY_LENGTH		16
-#define V_C2H_WB_ENTRY_LENGTH(x)	(((x) & M_C2H_WB_ENTRY_LENGTH) << S_C2H_WB_ENTRY_LENGTH)
+#define S_C2H_WB_ENTRY_F_ERR		2
+#define F_C2H_WB_ENTRY_F_ERR		(1 << S_C2H_WB_ENTRY_F_ERR)
 
-#define S_C2H_WB_USER_DEFINED		20
-#define V_C2H_WB_USER_DEFINED(x)	((x) << S_C2H_WB_USER_DEFINED)
+#define S_C2H_WB_ENTRY_F_DESC_USED     	3
+#define F_C2H_WB_ENTRY_F_DESC_USED     	(1 << S_C2H_WB_ENTRY_F_DESC_USED)
 
-#define M_C2H_WB_ENTRY_DMA_INFO     0xFFFFFF
-#define L_C2H_WB_ENTRY_DMA_INFO     3 /* 20 bits */
+#define S_C2H_WB_ENTRY_LENGTH			4
+#define M_C2H_WB_ENTRY_LENGTH			0xFFFFU
+#define L_C2H_WB_ENTRY_LENGTH			16
+#define V_C2H_WB_ENTRY_LENGTH(x)		(((x) & M_C2H_WB_ENTRY_LENGTH) << S_C2H_WB_ENTRY_LENGTH)
+
+#define S_C2H_WB_ENTRY_F_EOT			20
+#define S_C2H_WB_ENTRY_F_USET_INTR		21
+
+#define S_C2H_WB_USER_DEFINED			22
+#define V_C2H_WB_USER_DEFINED(x)		((x) << S_C2H_WB_USER_DEFINED)
+
+#define M_C2H_WB_ENTRY_DMA_INFO		0xFFFFFF
+#define L_C2H_WB_ENTRY_DMA_INFO		3 /* 20 bits */
 
 struct qdma_c2h_wrb_wb {
 	__be16 pidx;
@@ -452,8 +514,8 @@ struct qdma_c2h_wrb_wb {
 
 int hw_monitor_reg(struct xlnx_dma_dev *xdev, unsigned int reg, u32 mask,
 		u32 val, unsigned int interval_us, unsigned int timeout_us);
-
 #ifndef __QDMA_VF__
+void qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
 void hw_mm_channel_enable(struct xlnx_dma_dev *xdev, int channel, bool c2h);
 void hw_mm_channel_disable(struct xlnx_dma_dev *xdev, int channel, bool c2h);
 void hw_set_global_csr(struct xlnx_dma_dev *xdev);
@@ -463,9 +525,163 @@ int hw_indirect_ctext_prog(struct xlnx_dma_dev *xdev, unsigned int qid,
 				enum ind_ctxt_cmd_op op,
 				enum ind_ctxt_cmd_sel sel, u32 *data,
 				unsigned int cnt, bool verify);
-void hw_prog_qid2vec(struct xlnx_dma_dev *xdev, unsigned int qid_hw, bool c2h,
-                        unsigned int intr_id, bool intr_coal_en);
-
 #endif /* #ifndef __QDMA_VF__ */
 
+
+/* HW Error Registers */
+
+#define QDMA_C2H_ERR_INT 				0x0B04
+#define 	S_QDMA_C2H_ERR_INT_FUNC				0
+#define 	M_QDMA_C2H_ERR_INT_FUNC				0xFFU
+#define 	V_QDMA_C2H_ERR_INT_FUNC(x)			((x) << S_QDMA_C2H_ERR_INT_FUNC)
+
+#define 	S_QDMA_C2H_ERR_INT_VEC				8
+#define 	M_QDMA_C2H_ERR_INT_VEC				0xFFU
+#define 	V_QDMA_C2H_ERR_INT_VEC(x)			((x) << S_QDMA_C2H_ERR_INT_VEC)
+
+#define 	S_QDMA_C2H_ERR_INT_F_EN_COAL		16
+#define 	S_QDMA_C2H_ERR_INT_F_ERR_INT_ARM	17
+
+
+#define QDMA_REG_GLBL_ERR_STAT					0x248
+#define QDMA_REG_GLBL_ERR_MASK					0x24C
+#define QDMA_REG_GLBL_ERR_MASK_VALUE			0xFFFU
+#define 	QDMA_REG_GLBL_F_ERR_RAM_SBE			0
+#define 	QDMA_REG_GLBL_F_ERR_RAM_DBE			1
+#define 	QDMA_REG_GLBL_F_ERR_DSC				2
+#define 	QDMA_REG_GLBL_F_ERR_TRQ				3
+#define 	QDMA_REG_GLBL_F_ERR_H2C_MM_0    	4
+#define 	QDMA_REG_GLBL_F_ERR_H2C_MM_1    	5
+#define 	QDMA_REG_GLBL_F_ERR_C2H_MM_0    	6
+#define 	QDMA_REG_GLBL_F_ERR_C2H_MM_1    	7
+#define 	QDMA_REG_GLBL_F_ERR_C2H_ST			8
+#define 	QDMA_REG_GLBL_F_ERR_IND_CTXT_CMD	9
+#define 	QDMA_REG_GLBL_F_ERR_BDG				10
+#define 	QDMA_REG_GLBL_F_ERR_H2C_ST			11
+
+
+/* Global Descriptor Error */
+#define QDMA_GLBL_DSC_ERR_STS	                                0x254
+#define QDMA_GLBL_DSC_ERR_MSK	                                0x258
+#define QDMA_GLBL_DSC_ERR_MSK_VALUE	                            0x1F9023FU
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_HDR_POIS              0
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_UR_CA                 1
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_PARAM_MISMATCH        2
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_UNEXP_ADDR            3
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_TAG            		4
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_FLR                   5
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_TIMEOUT               9
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_DATA_POIS             16
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_FLR_CANCEL            19
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_DMA                   20
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_DSC                   21
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_RQ_CHAN               22
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_RAM_DBE               23
+#define         QDMA_GLBL_DSC_ERR_STS_A_F_RAM_SBE               24
+
+
+#define QDMA_GLBL_DSC_ERR_LOG0	                                 0x25C
+#define QDMA_GLBL_DSC_ERR_LOG1	                                 0x260
+
+
+
+#define QDMA_GLBL_TRQ_ERR_STS                                  	0x264
+#define QDMA_GLBL_TRQ_ERR_MSK                                  	0x268
+#define QDMA_GLBL_TRQ_ERR_MSK_VALUE                             0xFU
+#define 	QDMA_GLBL_TRQ_ERR_STS_F_UN_MAPPED                   0
+#define 	QDMA_GLBL_TRQ_ERR_STS_F_QID_RANGE                   1
+#define 	QDMA_GLBL_TRQ_ERR_STS_F_VF_ACCESS                   2
+#define 	QDMA_GLBL_TRQ_ERR_STS_F_TCP_TIMEOUT                 3
+
+
+#define QDMA_GLBL_TRQ_ERR_LOG                                   0x26C
+#define 	S_QDMA_GLBL_TRQ_ERR_LOG_ADDR                      	0
+#define 	M_QDMA_GLBL_TRQ_ERR_LOG_ADDR                      	0xFFFFU
+#define 	V_QDMA_GLBL_TRQ_ERR_LOG_ADDR(x)                     ((x) << S_QDMA_GLBL_TRQ_ERR_LOG_ADDR)
+#define 	S_QDMA_GLBL_TRQ_ERR_LOG_FUNC                        16
+#define 	M_QDMA_GLBL_TRQ_ERR_LOG_FUNC                        0xFFU
+#define 	V_QDMA_GLBL_TRQ_ERR_LOG_FUNC(x)                     ((x) << S_QDMA_GLBL_TRQ_ERR_LOG_FUNC)
+#define 	S_QDMA_GLBL_TRQ_ERR_LOG_TARGET                      24
+#define 	M_QDMA_GLBL_TRQ_ERR_LOG_TARGET                      0xFU
+#define 	V_QDMA_GLBL_TRQ_ERR_LOG_TARGET(x)                   ((x) << S_QDMA_GLBL_TRQ_ERR_LOG_TARGET)
+
+/* TRQ errors */
+enum trq_err_sel {
+	QDMA_TRQ_ERR_SEL_GLBL1 = 1,
+	QDMA_TRQ_ERR_SEL_GLBL2 = 2,
+	QDMA_TRQ_ERR_SEL_GLBL,
+	QDMA_TRQ_ERR_SEL_FMAP,
+	QDMA_TRQ_ERR_SEL_IND,
+	QDMA_TRQ_ERR_SEL_C2H,
+	QDMA_TRQ_ERR_SEL_C2H_MM0 =      9,
+	QDMA_TRQ_ERR_SEL_H2C_MM0  = 11,
+    QDMA_TRQ_ERR_SEL_QUEUE_PF = 13,
+};
+
+/* C2H ERROR Status Registers */
+#define QDMA_REG_C2H_ERR_STAT                                   0xAF0
+#define QDMA_REG_C2H_ERR_MASK                                   0xAF4
+#define QDMA_REG_C2H_ERR_MASK_VALUE                             0x3EDBU
+#define 	QDMA_REG_C2H_ERR_F_MTY_MISMATCH                 	0
+#define 	QDMA_REG_C2H_ERR_F_LEN_MISMATCH                 	1
+#define 	QDMA_REG_C2H_ERR_F_QID_MISMATCH                 	3
+#define 	QDMA_REG_C2H_ERR_F_DSC_RSP_ERR						4
+#define 	QDMA_REG_C2H_ERR_F_ENG_WPL_DATA_PAR             	6
+#define 	QDMA_REG_C2H_ERR_F_MSI_INT_FAIL                		7
+#define 	QDMA_REG_C2H_ERR_F_DESC_CNT                    	 	9
+#define 	QDMA_REG_C2H_ERR_F_PORT_ID_CTXT_MISMATCH        	10
+#define 	QDMA_REG_C2H_ERR_F_PORT_ID_BYP_IN_MISMATCH      	11
+#define 	QDMA_REG_C2H_ERR_F_WRB_INV_Q     					12
+#define 	QDMA_REG_C2H_ERR_F_WRB_QFULL     					13
+
+
+#define QDMA_C2H_FATAL_ERR_STAT                                      0xAF8
+#define QDMA_C2H_FATAL_ERR_MASK                                      0xAFC
+#define QDMA_C2H_FATAL_ERR_MASK_VALUE                                0x7FF1BU
+#define         QDMA_C2H_FATAL_ERR_STAT_MTY_MISMATCH                 0
+#define         QDMA_C2H_FATAL_ERR_STAT_LEN_MISMATCH                 1
+#define         QDMA_C2H_FATAL_ERR_STAT_QID_MISMATCH                 3
+#define         QDMA_C2H_FATAL_ERR_STAT_TIMER_FIFO_RAM_RDBE          4
+#define         QDMA_C2H_FATAL_ERR_STAT_PFTCH_LL_RAM_RDBE            8
+#define         QDMA_C2H_FATAL_ERR_STAT_WRB_CTXT_RAM_RDBE            9
+#define         QDMA_C2H_FATAL_ERR_STAT_PFTCH_CTXT_RAM_RDBE          10
+#define         QDMA_C2H_FATAL_ERR_STAT_DESC_REQ_FIFO_RAM_RDBE       11
+#define         QDMA_C2H_FATAL_ERR_STAT_INT_CTXT_RAM_RDBE            12
+#define         QDMA_C2H_FATAL_ERR_STAT_INT_QID2VEC_RAM_RDBE         13
+#define         QDMA_C2H_FATAL_ERR_STAT_WRB_COAL_DAT_RAM_DBE         14
+#define         QDMA_C2H_FATAL_ERR_STAT_TUSER_FIFO_RAM_DBE           15
+#define         QDMA_C2H_FATAL_ERR_STAT_QID_FIFO_RAM_DBE             16
+#define         QDMA_C2H_FATAL_ERR_STAT_PLD_FIFO_RAM_DBE             17
+#define         QDMA_C2H_FATAL_ERR_STAT_WPL_DAT_PAR                  18
+
+#define QDMA_C2H_FATAL_ERR_ENABLE                                    0xB00
+#define         QDMA_C2H_FATAL_ERR_ENABLE_F_EN_WRQ_DIS               0
+#define         QDMA_C2H_FATAL_ERR_ENABLE_F_EN_WPL_PAR_INV           1
+
+
+#define QDMA_C2H_FIRST_ERR_QID										  0xB30
+#define 	S_QDMA_C2H_FIRST_ERR_QID								  0
+#define 	M_QDMA_C2H_FIRST_ERR_QID								  0xFFFU
+#define 	V_QDMA_C2H_FIRST_ERR_QID(x)								  ((x) << S_QDMA_C2H_FIRST_ERR_QID)
+#define 	S_QDMA_C2H_FIRST_ERR_TYPE								  16
+#define 	M_QDMA_C2H_FIRST_ERR_TYPE								  0x1FU
+#define 	V_QDMA_C2H_FIRST_ERR_TYPE(x)							  ((x) << S_QDMA_C2H_FIRST_ERR_TYPE)
+
+#define QDMA_H2C_ERR_STAT 												0xE00
+#define QDMA_H2C_ERR_MASK 												0xE04
+#define QDMA_H2C_ERR_MASK_VALUE 										0x7U
+#define 	QDMA_H2C_ERR_ZERO_LEN_DSC									0
+#define 	QDMA_H2C_ERR_WBI_MOP										1
+#define 	QDMA_H2C_ERR_NO_DMA_DSC										2
+
+/* TRQ errors */
+enum hw_err_type_sel {
+	GLBL_ERR = 1,
+	GLBL_DSC_ERR = 2,
+	GLBL_TRQ_ERR,
+	C2H_ERR,
+	C2H_FATAL_ERR,
+	H2C_ERR,
+	HW_ERRS
+};
 #endif /* ifndef __QDMA_REGS_H__ */

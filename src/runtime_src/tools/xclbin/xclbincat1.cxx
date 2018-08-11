@@ -29,7 +29,6 @@
 #include <regex>
 #include <vector>
  
-#include <boost/log/exceptions.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_generators.hpp> // generators
@@ -71,7 +70,8 @@ namespace xclbincat1 {
     std::cout << "                                          Valid segment types:  \n";
     std::cout << "                                             BITSTREAM, CLEAR_BITSTREAM, FIRMWARE, SCHEDULER,   \n";
     std::cout << "                                             BINARY_HEADER, METADATA, MEM_TOPOLOGY, CONNECTIVITY,\n"; 
-    std::cout << "                                             IP_LAYOUT, DEBUG_IP_LAYOUT, and DEBUG_DATA.         \n";
+    std::cout << "                                             IP_LAYOUT, DEBUG_IP_LAYOUT, MCS_PRIMARY, MCS_SECONDARY,\n";
+    std::cout << "                                             and DEBUG_DATA.         \n";
   }
 
 
@@ -97,6 +97,8 @@ namespace xclbincat1 {
     OptionParserSegmentTypeMap( OptionParser::ST_IP_LAYOUT, "IP_LAYOUT" ),
     OptionParserSegmentTypeMap( OptionParser::ST_DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT" ),
     OptionParserSegmentTypeMap( OptionParser::ST_DEBUG_DATA, "DEBUG_DATA" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_MCS_PRIMARY, "MCS_PRIMARY" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_MCS_SECONDARY, "MCS_SECONDARY" ),
     OptionParserSegmentTypeMap( OptionParser::ST_UNKNOWN, "UNKNOWN" )
   };
 
@@ -203,6 +205,14 @@ namespace xclbincat1 {
         m_debugdata.push_back( _sFile );
         break;
 
+      case ST_MCS_PRIMARY:
+        m_mcs.emplace_back( _sFile, MCS_PRIMARY);
+        break;
+
+      case ST_MCS_SECONDARY:
+        m_mcs.emplace_back( _sFile, MCS_SECONDARY);
+        break;
+
       default:
         std::cout << "ERROR: Support missing for the following Segment Type: '" << _sSegmentType << "'" << std::endl;
         break;
@@ -215,7 +225,6 @@ namespace xclbincat1 {
   OptionParser::parse( int argc, char** argv )
   {
     int optCode;
-    int returnCode = 0;
     int optionIndex = 0;
     bool bDisablePositionalArguments = false;
     static struct option longOptions[] = 
@@ -426,6 +435,8 @@ namespace xclbincat1 {
       case IP_LAYOUT: return "IP_LAYOUT";
       case DEBUG_IP_LAYOUT: return "DEBUG_IP_LAYOUT";
       case CLOCK_FREQ_TOPOLOGY: return "CLOCK_FREQ_TOPOLOGY";
+      case DESIGN_CHECK_POINT: return "DESIGN_CHECK_POINT";
+      case MCS: return "MCS";
         break;
     }
 
@@ -699,7 +710,7 @@ namespace xclbincat1 {
     {
       std::ostringstream buf; 
       buf << "Command line: " << argv[ 0 ];
-      for ( size_t i = 1; i < argc; i++ )
+      for ( int i = 1; i < argc; i++ )
         buf << " " << argv[ i ];
 
       if ( parser.isVerbose() )
@@ -723,15 +734,27 @@ namespace xclbincat1 {
     
     // Check duplicate segments
     if ( (parser.m_memTopology.size() > 0) && (data.m_memTopologyBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one MEM_TOPOLOGY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one MEM_TOPOLOGY data segment is permitted.\n");
     if ( (parser.m_connectivity.size() > 0) && (data.m_connectivityBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one CONNECTIVITY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one CONNECTIVITY data segment is permitted.\n");
     if ( (parser.m_ipLayout.size() > 0) && (data.m_ipLayoutBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one IP_LAYOUT data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one IP_LAYOUT data segment is permitted.\n");
     if ( (parser.m_debugIpLayout.size() > 0) && (data.m_debugIpLayoutBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one DEBUG_IP_LAYOUT data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one DEBUG_IP_LAYOUT data segment is permitted.\n");
     if ( (parser.m_clockFreqTopology.size() > 0) && (data.m_clockFreqTopologyBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segment is permitted.\n");
+    if ( (parser.m_clockFreqTopology.size() > 0) && (data.m_clockFreqTopologyBuf.str().length() > 0) )
+      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segment is permitted.\n");
+
+    // Count the number of MCS PRIMARY entries.  If more than 1 then error out.
+    if (std::count_if(parser.m_mcs.begin(), parser.m_mcs.end(), [](std::pair< std::string, int >  pairEntry) { return (pairEntry.second == MCS_PRIMARY); }) > 1)
+      throw std::runtime_error("ERROR: Only one MCS_PRIMARY data segment is permitted.\n");
+
+   // Count the number of MCS SECONDARY entries.  If more than 1 then error out.
+    if (std::count_if(parser.m_mcs.begin(), parser.m_mcs.end(), [](std::pair< std::string, int >  pairEntry) { return (pairEntry.second == MCS_SECONDARY); }) > 1)
+      throw std::runtime_error("ERROR: Only one MCS_SECONDARY data segment is permitted.\n");
+
+    data.createMCSSegmentBuffer(parser.m_mcs);
 
     // Determine the number of sections that will be written out
     int sectionTotal = 0;
@@ -745,6 +768,7 @@ namespace xclbincat1 {
     sectionTotal += parser.m_memTopology.size();
     sectionTotal += parser.m_ipLayout.size();
     sectionTotal += data.getJSONBufferSegmentCount();
+    if (parser.m_mcs.size() > 0) ++sectionTotal;
 
     if ( parser.isVerbose() )
       std::cout << "INFO: Creating xclbin (with '" << sectionTotal << "' sections): '" << parser.m_output.c_str() << "'\n";
@@ -767,6 +791,7 @@ namespace xclbincat1 {
     addSectionBufferWithType( data, data.m_ipLayoutBuf, IP_LAYOUT );
     addSectionBufferWithType( data, data.m_debugIpLayoutBuf, DEBUG_IP_LAYOUT );
     addSectionBufferWithType( data, data.m_clockFreqTopologyBuf, CLOCK_FREQ_TOPOLOGY );
+    addSectionBufferWithType( data, data.m_mcsBuf, MCS );
 
     data.finishWrite();
 

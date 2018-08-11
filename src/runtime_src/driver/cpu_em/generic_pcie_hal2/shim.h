@@ -14,46 +14,27 @@
  * under the License.
  */
 
-#ifndef _CPU_EM_SHIM_H_
-#define _CPU_EM_SHIM_H_
+#ifndef _SW_EMU_SHIM_H_
+#define _SW_EMU_SHIM_H_
 
-/**
- * Copyright (C) 2015 Xilinx, Inc
- * CPU_EM HAL interface
- */
-#include "ocl/runtime_src/driver/common_em/unix_socket.h"
-#include "ocl/runtime_src/driver/common_em/memorymanager.h"
-#include "ocl/runtime_src/driver/common_em/rpc_messages.pb.h"
+#include "unix_socket.h"
+#include "config.h"
+#include "em_defines.h"
+#include "memorymanager.h"
+#include "rpc_messages.pb.h"
 
-#include "xclhal2.h"
 #include "xclperf.h"
-
-#include <fstream>
-#include <list>
-#include <map>
-#include <string>
-#include <mutex>
-#include <sys/types.h>
-#include <cstring>
-#include <sys/stat.h>
-#include <mutex>
-
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
-#include "xbar_sys_parameters.h"
-#include "em_defines.h"
+#include "xclbin.h"
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/foreach.hpp>
+#include <thread>
+#include <sys/wait.h>
+#ifndef _WINDOWS
+#include <dlfcn.h>
+#endif
 
-#include <google/protobuf/message_lite.h>
-#include <unistd.h>
-#define GetCurrentDir getcwd
-#include <sys/param.h>
-#include <signal.h>
 
-const uint64_t mNullBO = 0xffffffff;
 namespace xclcpuemhal2 {
 
   // XDMA Shim
@@ -77,7 +58,7 @@ namespace xclcpuemhal2 {
   public:
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
-      int xoclCreateBo(xocl_create_bo *info);
+      int xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
       unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -88,7 +69,7 @@ namespace xclcpuemhal2 {
       int xclExportBO(unsigned int boHandle); 
       unsigned int xclImportBO(int boGlobalHandle);
 
-      drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
+      xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
       inline unsigned long long xocl_ddr_channel_size();
       // HAL2 RELATED member functions end 
@@ -213,7 +194,7 @@ namespace xclcpuemhal2 {
       bool bUnified;
       bool bXPR;
       // HAL2 RELATED member variables start
-      std::map<int, drm_xocl_bo*> mXoclObjMap;
+      std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
       // HAL2 RELATED member variables end 
 

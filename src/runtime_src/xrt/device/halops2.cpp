@@ -63,6 +63,13 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mCountTrace(0)
   ,mReadTrace(0)
   ,mWriteHostEvent(0)
+  ,mCreateWriteQueue(0)
+  ,mCreateReadQueue(0)
+  ,mDestroyQueue(0)
+  ,mAllocQDMABuf(0)
+  ,mFreeQDMABuf(0)
+  ,mWriteQueue(0)
+  ,mReadQueue(0)
 {
   mProbe = (probeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
   if (!mProbe)
@@ -115,6 +122,14 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mLockDevice = (lockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
   mUnlockDevice = (unlockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnlockDevice");
   mGetDeviceInfo = (getDeviceInfoFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfo2");
+
+  mCreateWriteQueue = (createWriteQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateWriteQueue");
+  mCreateReadQueue = (createReadQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateReadQueue");
+  mDestroyQueue = (destroyQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDestroyQueue");
+  mAllocQDMABuf = (allocQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocQDMABuf");
+  mFreeQDMABuf = (freeQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
+  mWriteQueue = (writeQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
+  mReadQueue = (readQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
 
   mGetDeviceTime = (getDeviceTimeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
   if (!mGetDeviceTime)

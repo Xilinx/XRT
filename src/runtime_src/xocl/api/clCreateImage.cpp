@@ -22,12 +22,11 @@
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
 #include "xrt/util/memory.h"
-#include "profile.h"
-
 #include "detail/memory.h"
 #include "detail/context.h"
 
 #include <cstdlib>
+#include "plugin/xdp/profile.h"
 
 namespace {
 
@@ -39,7 +38,7 @@ namespace {
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-// 
+//
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 static xocl::device*
@@ -69,7 +68,7 @@ validImageFormatOrError(const cl_image_format* image_format)
 
   auto type = image_format->image_channel_data_type;
   auto order = image_format->image_channel_order;
-  
+
   switch (order) {
   // CL_INTENSITY This format can only be used if channel data type =
   // CL_UNORM_INT8, CL_UNORM_INT16, CL_SNORM_INT8, CL_SNORM_INT16,
@@ -159,7 +158,7 @@ validImageFormatOrError(const cl_image_format* image_format)
 }
 
 static void
-validImageDescriptorOrError(const cl_image_desc*   image_desc, 
+validImageDescriptorOrError(const cl_image_desc*   image_desc,
                             void*                  host_ptr)
 {
   auto type = image_desc->image_type;
@@ -182,7 +181,7 @@ validImageDescriptorOrError(const cl_image_desc*   image_desc,
       type != CL_MEM_OBJECT_IMAGE2D_ARRAY && type != CL_MEM_OBJECT_IMAGE3D)
     throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->type");
 
-  // image_width The width of the image in pixels. 
+  // image_width The width of the image in pixels.
   // For a 2D image and image array, the image width must be a value
   // >= 1 and ≤ CL_DEVICE_IMAGE2D_MAX_WIDTH.
   if (type == CL_MEM_OBJECT_IMAGE2D || type == CL_MEM_OBJECT_IMAGE2D_ARRAY)
@@ -190,7 +189,7 @@ validImageDescriptorOrError(const cl_image_desc*   image_desc,
       throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->image_width");
 
   // For a 3D image, the image width must be a value ≥ 1 and ≤
-  // CL_DEVICE_IMAGE3D_MAX_WIDTH. 
+  // CL_DEVICE_IMAGE3D_MAX_WIDTH.
   if (type == CL_MEM_OBJECT_IMAGE3D)
     if (width < 1 /* || width > CL_DEVICE_IMAGE3D_MAX_WIDTH */)
       throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->image_width");
@@ -200,7 +199,7 @@ validImageDescriptorOrError(const cl_image_desc*   image_desc,
   if (type == CL_MEM_OBJECT_IMAGE1D_BUFFER)
     if (width < 1 /* || width > CL_DEVICE_IMAGE_MAX_BUFFER_SIZE */)
       throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->image_width");
-  
+
   // For a 1D image and 1D image array, the image width must be a
   // value ≥ 1 and ≤ CL_DEVICE_IMAGE2D_MAX_WIDTH.
   if (type == CL_MEM_OBJECT_IMAGE1D || type == CL_MEM_OBJECT_IMAGE1D_ARRAY)
@@ -208,7 +207,7 @@ validImageDescriptorOrError(const cl_image_desc*   image_desc,
       throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->image_width");
 
   // image_height The height of the image in pixels. This is only used
-  // if the image is a 2D or 3D image, or a 2D image array. 
+  // if the image is a 2D or 3D image, or a 2D image array.
   // For a 2D image or image array, the image height must be a value ≥
   // 1 and ≤ CL_DEVICE_IMAGE2D_MAX_HEIGHT.
   if (type == CL_MEM_OBJECT_IMAGE2D || type == CL_MEM_OBJECT_IMAGE2D_ARRAY)
@@ -266,7 +265,7 @@ validImageDescriptorOrError(const cl_image_desc*   image_desc,
     throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->image_slice_pitch");
   /* ??? */
 
-  
+
   // num_mip_level, num_samples Must be 0.
   if (num_mip_levels || num_samples)
     throw xocl::error(CL_INVALID_IMAGE_DESCRIPTOR,"bad image_desc->num_mip_levels or num_samples");
@@ -300,7 +299,7 @@ static void
 validOrError(cl_context             context,
              cl_mem_flags           flags,
              const cl_image_format* image_format,
-             const cl_image_desc*   image_desc, 
+             const cl_image_desc*   image_desc,
              void*                  host_ptr,
              cl_int*                errcode_ret)
 
@@ -371,8 +370,8 @@ validOrError(cl_context             context,
   /* ??? */
 }
 
-static unsigned 
-getBytesPerPixel(const cl_image_format *format) 
+static unsigned
+getBytesPerPixel(const cl_image_format *format)
 {
   unsigned bpp = 0;
   const uint32_t type = format->image_channel_data_type;
@@ -381,7 +380,7 @@ getBytesPerPixel(const cl_image_format *format)
   switch(type) {
   case CL_SNORM_INT8:
     bpp = 1;
-    break; 
+    break;
   case CL_SNORM_INT16:
     bpp = 2;
     break;
@@ -395,6 +394,7 @@ getBytesPerPixel(const cl_image_format *format)
   case CL_UNORM_SHORT_565:
   case CL_UNORM_SHORT_555:
     bpp = 2;
+    break;
   case CL_UNORM_INT_101010:
     bpp = 4;
     break;
@@ -407,13 +407,13 @@ getBytesPerPixel(const cl_image_format *format)
   case CL_SIGNED_INT32:
     bpp = 4;
     break;
-  case CL_UNSIGNED_INT8:	
+  case CL_UNSIGNED_INT8:
     bpp = 1;
     break;
   case CL_UNSIGNED_INT16:
     bpp = 2;
     break;
-  case CL_UNSIGNED_INT32:	
+  case CL_UNSIGNED_INT32:
     bpp = 4;
     break;
   case CL_HALF_FLOAT:
@@ -427,29 +427,29 @@ getBytesPerPixel(const cl_image_format *format)
   }
 
   switch (order) {
-    case CL_R: 
+    case CL_R:
     case CL_Rx:
-    case CL_A: 
+    case CL_A:
       break;
     case CL_INTENSITY:
     case CL_LUMINANCE:
       break;
-    case CL_RA: 
+    case CL_RA:
     case CL_RGx:
-    case CL_RG: 
-      bpp *= 2; 
+    case CL_RG:
+      bpp *= 2;
       break;
     case CL_RGB:
     case CL_RGBx:
       break;
-    case CL_RGBA: 
-      bpp *= 4; 
+    case CL_RGBA:
+      bpp *= 4;
       break;
     case CL_ARGB:
     case CL_BGRA:
       bpp *= 4;
       break;
-    default: 
+    default:
       throw xocl::error(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR, "clCreateImage");
   }
 
@@ -460,7 +460,7 @@ static cl_mem
 mkImageCore (cl_context context,
 	cl_mem_flags flags,
 	const cl_image_format * format,
-	const cl_image_desc * desc, 
+	const cl_image_desc * desc,
 	const cl_mem_object_type image_type,
 	size_t w,
 	size_t h,
@@ -472,9 +472,9 @@ mkImageCore (cl_context context,
 	cl_int *     errcode_ret)
 {
     if (xocl::config::api_checks()) {
-	if(w==0) 
+	if(w==0)
 	    throw xocl::error(CL_INVALID_IMAGE_SIZE, "clCreateImage");
-	
+
 	if(h==0) {
 	    if((image_type != CL_MEM_OBJECT_IMAGE1D &&
 			image_type != CL_MEM_OBJECT_IMAGE1D_ARRAY &&
@@ -533,22 +533,22 @@ mkImageCore (cl_context context,
     //Initialize the size.
     sz = adjusted_row_pitch * adjusted_h * depth;
 
-    if(image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER) 
+    if(image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER)
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
 
-    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer)  
+    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer)
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image2D buffer");
 
     if(user_ptr)
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
 
     //cxt, flags, sz, w, h, depth , row, slice, "image_type", *format, xlnx_fmt, bpp
-    auto ubuffer = xrt::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth, 
+    auto ubuffer = xrt::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth,
 	    adjusted_row_pitch,adjusted_slice_pitch,bpp,image_type,*format,user_ptr);
 
     cl_mem image = ubuffer.get();
 
-    if (image_type == CL_MEM_OBJECT_IMAGE1D || image_type == CL_MEM_OBJECT_IMAGE2D 
+    if (image_type == CL_MEM_OBJECT_IMAGE1D || image_type == CL_MEM_OBJECT_IMAGE2D
 	    || image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER)
 	adjusted_slice_pitch = 0;
 
@@ -583,7 +583,7 @@ static cl_mem
 mkImageFromBuffer(cl_context             context,
                   cl_mem_flags           flags,
                   const cl_image_format* format,
-                  const cl_image_desc*   desc, 
+                  const cl_image_desc*   desc,
                   cl_int*                errcode_ret)
 {
   //This will call mkImageCore() function after modifying the arguments of desc.
@@ -591,18 +591,18 @@ mkImageFromBuffer(cl_context             context,
   return nullptr;
 }
 
-static cl_mem 
+static cl_mem
 mkImage(cl_context             context,
 	cl_mem_flags           flags,
 	const cl_image_format* format,
-	const cl_image_desc*   desc, 
+	const cl_image_desc*   desc,
 	void*                  host_ptr,
 	cl_int*                errcode_ret)
 {
   switch (desc->image_type) {
   case CL_MEM_OBJECT_IMAGE1D:
   case CL_MEM_OBJECT_IMAGE3D:
-    return mkImageCore(context,flags,format,desc,desc->image_type, 
+    return mkImageCore(context,flags,format,desc,desc->image_type,
                        desc->image_width,desc->image_height,desc->image_depth,
                        desc->image_row_pitch, desc->image_slice_pitch,
                        host_ptr,nullptr,errcode_ret);
@@ -634,7 +634,7 @@ static cl_mem
 clCreateImage(cl_context             context,
               cl_mem_flags           flags,
               const cl_image_format* image_format,
-              const cl_image_desc*   image_desc, 
+              const cl_image_desc*   image_desc,
               void*                  host_ptr,
               cl_int*                errcode_ret)
 {
@@ -663,7 +663,7 @@ cl_mem
 clCreateImage(cl_context              context,
               cl_mem_flags            flags,
               const cl_image_format*  image_format,
-              const cl_image_desc*    image_desc, 
+              const cl_image_desc*    image_desc,
               void*                   host_ptr,
               cl_int*                 errcode_ret)
 {
@@ -682,6 +682,3 @@ clCreateImage(cl_context              context,
     }
     return nullptr;
 }
-
-
-

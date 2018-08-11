@@ -60,7 +60,7 @@
  * @custom:  [11-4] custom per specific commands
  * @count:   [22-12] number of words in payload (data)
  * @opcode:  [27-23] opcode identifying specific command
- * @type:    [31-27] type of command (currently 0)
+ * @type:    [31-28] type of command (currently 0)
  * @data:    count number of words representing packet payload
  */
 struct ert_packet {
@@ -70,7 +70,7 @@ struct ert_packet {
       uint32_t custom:8;  /* [11-4]  */
       uint32_t count:11;  /* [22-12] */
       uint32_t opcode:5;  /* [27-23] */
-      uint32_t type:4;    /* [31-27] */
+      uint32_t type:4;    /* [31-28] */
     };
     uint32_t header;
   };
@@ -129,7 +129,8 @@ struct ert_start_kernel_cmd {
  * @cu_dma:1         enable CUDMA custom module for HW scheduler
  * @cu_isr:1         enable CUISR custom module for HW scheduler
  * @cq_int:1         enable interrupt from host to HW scheduler
- * @unused:26    
+ * @cdma:1           enable CDMA kernel
+ * @unused:25
  * @dsa52:1          reserved for internal use
  *
  * @data:            addresses of @num_cus CUs
@@ -145,7 +146,7 @@ struct ert_configure_cmd {
     };
     uint32_t header;
   };
-  
+
   /* payload */
   uint32_t slot_size;
   uint32_t num_cus;
@@ -158,7 +159,8 @@ struct ert_configure_cmd {
   uint32_t cu_dma:1;
   uint32_t cu_isr:1;
   uint32_t cq_int:1;
-  uint32_t unusedf:26;
+  uint32_t cdma:1;
+  uint32_t unusedf:25;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -184,7 +186,7 @@ struct ert_abort_cmd {
 };
 
 /**
- * ERT command state 
+ * ERT command state
  *
  * @ERT_CMD_STATE_NEW:      Set by host before submitting a command to scheduler
  * @ERT_CMD_STATE_QUEUED:   Internal scheduler state
@@ -208,6 +210,7 @@ enum ert_cmd_state {
  * @ERT_START_CU:       start a workgroup on a CU
  * @ERT_START_KERNEL:   currently aliased to ERT_START_CU
  * @ERT_CONFIGURE:      configure command scheduler
+ * @ERT_WRITE:          write pairs of addr and value
  */
 enum ert_cmd_opcode {
   ERT_START_CU     = 0,
@@ -215,6 +218,18 @@ enum ert_cmd_opcode {
   ERT_CONFIGURE    = 2,
   ERT_STOP         = 3,
   ERT_ABORT        = 4,
+  ERT_WRITE        = 5,
+};
+
+/**
+ * Command types
+ *
+ * @ERT_DEFAULT:        default command type
+ * @ERT_KDS_LOCAL:      command processed by KDS locally
+ */
+enum ert_cmd_type {
+  ERT_DEFAULT = 0,
+  ERT_KDS_LOCAL = 1,
 };
 
 /**
@@ -229,8 +244,8 @@ enum ert_cmd_opcode {
  * The STATUS REGISTER is for communicating completed CQ slot indices
  * MicroBlaze write, host reads.  MB(W) / HOST(COR)
  */
-#define ERT_STATUS_REGISTER_ADDR          (ERT_CSR_ADDR)      
-#define ERT_STATUS_REGISTER_ADDR0         (ERT_CSR_ADDR)      
+#define ERT_STATUS_REGISTER_ADDR          (ERT_CSR_ADDR)
+#define ERT_STATUS_REGISTER_ADDR0         (ERT_CSR_ADDR)
 #define ERT_STATUS_REGISTER_ADDR1         (ERT_CSR_ADDR + 0x4)
 #define ERT_STATUS_REGISTER_ADDR2         (ERT_CSR_ADDR + 0x8)
 #define ERT_STATUS_REGISTER_ADDR3         (ERT_CSR_ADDR + 0xC)
@@ -238,7 +253,7 @@ enum ert_cmd_opcode {
 /**
  * The CU DMA REGISTER is for communicating which CQ slot is to be started
  * on a specific CU.  MB selects a free CU on which the command can
- * run, then writes the 1<<CU back to the command slot CU mask and 
+ * run, then writes the 1<<CU back to the command slot CU mask and
  * writes the slot index to the CU DMA REGISTER.  HW is notified when
  * the register is written and now does the DMA transfer of CU regmap
  * map from command to CU, while MB continues its work. MB(W) / HW(R)
@@ -264,7 +279,7 @@ enum ert_cmd_opcode {
 #define ERT_CU_OFFSET_ADDR                (ERT_CSR_ADDR + 0x30)
 
 /**
- * The number of slots is command_queue_size / slot_size.  
+ * The number of slots is command_queue_size / slot_size.
  * MB(W) / HW(R)
  */
 #define ERT_CQ_NUMBER_OF_SLOTS_ADDR       (ERT_CSR_ADDR + 0x34)
@@ -275,7 +290,7 @@ enum ert_cmd_opcode {
  */
 #define ERT_CU_BASE_ADDRESS_ADDR          (ERT_CSR_ADDR + 0x38)
 
-/** 
+/**
  * The CQ_BASE_ADDRESS is the base address of the command queue.
  * MB(W) / HW(R)
  */
@@ -299,7 +314,7 @@ enum ert_cmd_opcode {
  * MB to indicate the presense of a new command in some slot.  The
  * slot index is written to the CQ_STATUS_REGISTER (HOST(W)/MB(R))
  */
-#define ERT_CQ_STATUS_ENABLE_ADDR         (ERT_CSR_ADDR + 0x54) 
+#define ERT_CQ_STATUS_ENABLE_ADDR         (ERT_CSR_ADDR + 0x54)
 #define ERT_CQ_STATUS_REGISTER_ADDR       (ERT_CSR_ADDR + 0x58)
 #define ERT_CQ_STATUS_REGISTER_ADDR0      (ERT_CSR_ADDR + 0x58)
 #define ERT_CQ_STATUS_REGISTER_ADDR1      (ERT_CSR_ADDR + 0x5C)
@@ -313,7 +328,7 @@ enum ert_cmd_opcode {
  */
 #define ERT_NUMBER_OF_CU_ADDR             (ERT_CSR_ADDR + 0x68)
 
-/** 
+/**
  * Enable global interrupts from MB to HOST on command completion.
  * When enabled writing to STATUS_REGISTER causes an interrupt in HOST.
  * MB(W)
@@ -326,7 +341,7 @@ enum ert_cmd_opcode {
  */
 #define ERT_INTC_ADDR                     0x41200000
 
-/** 
+/**
  * Look up table for CUISR for CU addresses
  */
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)

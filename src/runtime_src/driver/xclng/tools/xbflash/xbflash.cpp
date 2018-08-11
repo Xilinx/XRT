@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include "flasher.h"
-#include "xbsak.h"
+#include "scan.h"
 
 const char* UsageMessages[] = {
     "xbflash [-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
@@ -67,7 +67,7 @@ int main( int argc, char *argv[] )
         return 0;
     }
 
-    // launched from xbsak
+    // launched from xbutil
     if( std::string( argv[ (startIdx+1) ] ).compare( "flash" ) == 0 ) {
         startIdx++;
     }
