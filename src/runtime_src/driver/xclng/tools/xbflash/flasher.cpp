@@ -266,7 +266,7 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     }
     if( !typeFound )
     {
-        std::cout << "ERROR: failed to determine DSA type." << std::endl;
+        std::cout << "ERROR: failed to determine flash type." << std::endl;
         return -EINVAL;
     }
     return 0;
@@ -291,7 +291,9 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs)
     {
-        if (onBoard.vendor != dsa.vendor || onBoard.board != dsa.board)
+        if (onBoard.vendor != dsa.vendor ||
+            onBoard.board != dsa.board ||
+            dsa.timestamp == NULL_TIMESTAMP)
             continue;
         DSAs.push_back(dsa);
     }

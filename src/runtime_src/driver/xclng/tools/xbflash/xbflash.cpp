@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <memory>
+#include <iomanip>
 #include "flasher.h"
 #include "scan.h"
 #include "firmware_image.h"
@@ -64,6 +65,7 @@ struct T_Arguments
     Flasher::E_FlasherType flasherType = Flasher::E_FlasherType::UNSET;
     std::string dsa;
     uint64_t timestamp = 0;
+    bool force = false;
 };
 
 int flashDSA(Flasher& f, DSAInfo& dsa)
@@ -211,6 +213,7 @@ int main( int argc, char *argv[] )
 
     bool seen_a = false;
     bool seen_d = false;
+    bool seen_f = false;
     bool seen_m = false;
     bool seen_n = false;
     bool seen_o = false;
@@ -219,7 +222,7 @@ int main( int argc, char *argv[] )
     T_Arguments args;
 
     int opt;
-    while( ( opt = getopt( argc, argv, "a:d:m:n:o:p:t:" ) ) != -1 )
+    while( ( opt = getopt( argc, argv, "a:d:fm:n:o:p:t:" ) ) != -1 )
     {
         switch( opt )
         {
@@ -230,6 +233,10 @@ int main( int argc, char *argv[] )
         case 'd':
             notSeenOrDie(seen_d);
             args.devIdx = atoi( optarg );
+            break;
+        case 'f':
+            notSeenOrDie(seen_f);
+            args.force = true;
             break;
         case 'm':
             notSeenOrDie(seen_m);
@@ -381,9 +388,19 @@ int main( int argc, char *argv[] )
         if (!foundDSA)
         {
             if (boardsToCheck.empty())
-                std::cout << "Can't find DSA: " << args.dsa << std::endl;
+            {
+                std::cout << "Can't find DSA: " << args.dsa;
+                if (args.timestamp != NULL_TIMESTAMP)
+                {
+                    std::cout << ", SN=0x" << std::hex <<
+                        std::setw(16) << std::setfill('0') << args.timestamp;
+                }
+                std::cout << std::endl;
+            }
             else
+            {
                 std::cout << "Can't find board matching DSA: " << args.dsa << std::endl;
+            }
             exit (-ENOENT);
         }
         if (multiDSA)
@@ -410,7 +427,7 @@ int main( int argc, char *argv[] )
             {
                 std::cout << "Board [" << i << "]" << std::endl;
             }
-            if(!canProceed())
+            if(!args.force && !canProceed())
             {
                 exit(-ECANCELED);
             }
@@ -419,6 +436,7 @@ int main( int argc, char *argv[] )
         // Perform DSA and BMC updating
         for (unsigned int i : boardsToUpdate)
         {
+            std::cout << "Flashing DSA on board [" << i << "]" << std::endl;
             ret = updateDSA(i, args.dsa, args.timestamp, false);
             if (ret)
                 break;

@@ -174,7 +174,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
-        stream << ", 0x" << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
+        stream << ", SN=0x" << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
     return stream;
 }
 
@@ -200,6 +200,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in.read(reinterpret_cast<char *>(&a), sz);
         if (!in.good())
         {
+            this->setstate(failbit);
             std::cout << "Can't read axlf from "<< file << std::endl;
             return;
         }
@@ -211,6 +212,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in.read(top.get(), sz);
         if (!in.good())
         {
+            this->setstate(failbit);
             std::cout << "Can't read axlf and section headers from "<< file << std::endl;
             return;
         }
@@ -226,6 +228,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
             if (mcsSection == nullptr)
             {
+                this->setstate(failbit);
                 std::cout << "Can't find MCS section in "<< file << std::endl;
                 return;
             }
@@ -235,12 +238,13 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             in.read(mcsbuf.get(), mcsSection->m_sectionSize);
             if (!in.good())
             {
+                this->setstate(failbit);
                 std::cout << "Can't read MCS section from "<< file << std::endl;
                 return;
             }
             const struct mcs *mcs = reinterpret_cast<const struct mcs *>(mcsbuf.get());
             // Only two types of MCS supported today
-            uint8_t mcsType = (type == MCS_FIRMWARE_PRIMARY) ? MCS_PRIMARY : MCS_SECONDARY;
+            unsigned mcsType = (type == MCS_FIRMWARE_PRIMARY) ? MCS_PRIMARY : MCS_SECONDARY;
             const struct mcs_chunk *c = nullptr;
             for (int8_t i = 0; i < mcs->m_count; i++)
             {
@@ -252,7 +256,8 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             }
             if (c == nullptr)
             {
-                std::cout << "Can't find type " << mcsType << " data in "<< file << std::endl;
+                this->setstate(failbit);
+                return;
             }
             // Load data into stream.
             bufsize = c->m_size;

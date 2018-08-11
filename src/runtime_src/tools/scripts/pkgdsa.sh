@@ -37,7 +37,6 @@ opt_dev=0
 license_dir=""
 
 dsa_version="5.1"
-dsa_timestamp="ffffffffffffffff"
 
 
 usage()
@@ -174,7 +173,8 @@ pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
-post_inst_fail_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
+post_inst_fail_msg="DSA installed successfully. But failed to flash board(s). Please flash board manually with xbutil flash -a all"
+post_inst_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
 
 createEntityAttributeArray ()
 {
@@ -476,8 +476,7 @@ EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
 
-echo "Looking for boards whose DSA needs updating..."
-/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
+/opt/xilinx/xrt/bin/xbutil flash -f -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
 
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
@@ -574,8 +573,7 @@ Xilinx deployment DSA.  This DSA depends on xrt >= $opt_xrt.
 %prep
 
 %post
-echo "Looking for boards whose DSA needs updating..."
-/opt/xilinx/xrt/bin/xbutil flash -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
+echo "${post_inst_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx
