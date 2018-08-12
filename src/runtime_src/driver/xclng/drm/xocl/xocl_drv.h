@@ -301,6 +301,7 @@ struct xocl_mb_scheduler_funcs {
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
 		poll_table *wait, void *priv);
 	int (*reset)(struct platform_device *pdev);
+	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
@@ -326,6 +327,10 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+        -ENODEV)
+#define	xocl_exec_validate(xdev, client, bo)			\
+	(MB_SCHEDULER_DEV(xdev) ? 				\
+	 MB_SCHEDULER_OPS(xdev)->validate(MB_SCHEDULER_DEV(xdev), client, bo) : \
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
 	(xdev->topology.m_data[ddr].m_used == 1)
