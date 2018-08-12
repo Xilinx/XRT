@@ -29,8 +29,9 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <cinttypes>
 
-std::string 
+std::string
 XclBinUtil::getCurrentTimeStamp()
 {
   time_t rawtime;
@@ -42,7 +43,7 @@ XclBinUtil::getCurrentTimeStamp()
   return std::string( buffer );
 }
 
-std::string 
+std::string
 XclBinUtil::getBaseFilename( const std::string &_fullPath )
 {
   std::string filename = _fullPath;
@@ -62,7 +63,7 @@ bool
 XclBinUtil::cmdLineSearch( int argc, char** argv, const char* check )
 {
   for ( int i = 1 ; i < argc ; ++i )
-    if ( std::strcmp( argv[i], check ) == 0 ) 
+    if ( std::strcmp( argv[i], check ) == 0 )
       return true;
   return false;
 }
@@ -91,16 +92,16 @@ XclBinUtil::stringEndsWith( const char* str, const char* ending )
 // xclbincat -nobitstream <sharedlib.so> <map.xml> <outputfile.xclbin>
 // xclbincat -clearstream <clearstreambinaryfile.bin> <outputfile.dsabin>
 // xclbincat -bitstream <bitstreambinaryfile.bin> -clearstream <clearstreambinaryfile.bin> <outputfile.dsabin>
-void 
-XclBinUtil::mapArgs( 
+void
+XclBinUtil::mapArgs(
       std::map< std::string, std::string > & decoder,
-      int argc, 
-      char** argv, 
+      int argc,
+      char** argv,
       std::vector< std::string > & newArgv )
 {
   for ( int i = 0; i < argc; i++ ) {
     std::string newArg = argv[ i ];
-    if ( decoder.find( newArg ) != decoder.end() ) 
+    if ( decoder.find( newArg ) != decoder.end() )
       newArg = decoder[ newArg ];
     if ( newArg.empty() )
       continue; // skip adding (delete) if the decoded value is empty
@@ -108,10 +109,10 @@ XclBinUtil::mapArgs(
   }
 }
 
-std::ostream & 
-XclBinUtil::data2hex( 
-    std::ostream & s, 
-    const unsigned char* value, 
+std::ostream &
+XclBinUtil::data2hex(
+    std::ostream & s,
+    const unsigned char* value,
     size_t size )
 {
   // Save and restore the original state of the incoming ostream, because we manipulate it
@@ -135,10 +136,10 @@ XclBinUtil::hex2char( const unsigned char* hex )
 }
 
 
-std::ostream & 
-XclBinUtil::hex2data( 
-    std::ostream & s, 
-    const unsigned char* value, 
+std::ostream &
+XclBinUtil::hex2data(
+    std::ostream & s,
+    const unsigned char* value,
     size_t hexSize )
 {
   size_t size = hexSize / 2;
@@ -146,7 +147,7 @@ XclBinUtil::hex2data(
     unsigned char byte = hex2char( &value[ 2 * i ] );
     unsigned char nibble = hex2char( &value[ 2 * i + 1 ] );
     byte = (byte << 4) | (nibble & 0xF); // Shift the 1st nibble over and add the second nibble
-    s.write( (const char*)&byte, sizeof(byte) ); 
+    s.write( (const char*)&byte, sizeof(byte) );
   }
   return s;
 }
@@ -154,24 +155,21 @@ XclBinUtil::hex2data(
 uint64_t
 XclBinUtil::stringToUInt64( std::string _sInteger)
 {
-    uint64_t value;
+  uint64_t value = 0;
 
-    // Is it a hex value
-    if ( ( _sInteger.length() > 2) &&
-         ( _sInteger[0] == '0' ) &&
-          ( _sInteger[1] == 'x' ) ) {
-      if ( 1 == sscanf(_sInteger.c_str(), "%lx", &value ) ) {
-        return value;
-      }
-    } else {
-      if ( 1 == sscanf(_sInteger.c_str(), "%ld", &value ) ) {
-        return value;
-      }
+  // Is it a hex value
+  if ( ( _sInteger.length() > 2) &&
+       ( _sInteger[0] == '0' ) &&
+       ( _sInteger[1] == 'x' ) ) {
+    if ( 1 == sscanf(_sInteger.c_str(), "%" PRIx64 "", &value ) ) {
+      return value;
     }
+  } else {
+    if ( 1 == sscanf(_sInteger.c_str(), "%" PRId64 "", &value ) ) {
+      return value;
+    }
+  }
 
-    std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
-    throw std::runtime_error(errMsg);
+  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
+  throw std::runtime_error(errMsg);
 }
-
-
-

@@ -1,3 +1,5 @@
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../xrt/user_aws
@@ -23,7 +25,7 @@ if(${INTERNAL_TESTING})
 else()
   include_directories(../../../../../../../sdk/userspace/include/) # path to fpga_mgmt.h
   set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../sdk/userspace/lib)
-  
+
   target_link_libraries(awssak
     xrt_awsstatic
     pthread
@@ -34,3 +36,4 @@ endif()
 
 install (TARGETS awssak RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
+endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
