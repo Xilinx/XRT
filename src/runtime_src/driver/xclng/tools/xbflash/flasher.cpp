@@ -53,15 +53,6 @@ Flasher::Flasher(unsigned int index, std::string flasherType) :
         return;
     }
 
-    pcieBarRead( 0, (unsigned long long)mMgmtMap + FEATURE_ROM_BASE, &mFRHeader, sizeof(struct FeatureRomHeader) );
-    // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
-    // that EntryPointString starts with magic char sequence "xlnx".
-    if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
-    {
-        std::cout << "ERROR: EntryPointString mismatch:" << mFRHeader.EntryPointString << std::endl;
-        return;
-    }
-
     if( flasherType.size() == 0) {
         flasherType = std::string(mDev.flash_type);
     }
@@ -190,6 +181,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device, mDev.mgmt_func );
     mDBDF = std::string( cDBDF );
     std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
+
 #else
     scanner.scan( false );
     std::string mgmtDeviceName;
@@ -228,6 +220,19 @@ int Flasher::mapDevice(unsigned int devIdx)
     }
     mMgmtMap = (char *)p;
     close( mFd );
+
+    unsigned long long feature_rom_base;
+    if (!scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base))
+    {
+        pcieBarRead( 0, (unsigned long long)mMgmtMap + feature_rom_base, &mFRHeader, sizeof(struct FeatureRomHeader) );
+        // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
+        // that EntryPointString starts with magic char sequence "xlnx".
+        if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
+        {
+            std::cout << "ERROR: EntryPointString mismatch:" << mFRHeader.EntryPointString << std::endl;
+            return -EINVAL;
+        }
+    }
 
     return 0;
 }

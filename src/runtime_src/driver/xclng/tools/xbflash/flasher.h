@@ -86,14 +86,14 @@ private:
         std::make_pair( "vcu1550",   SPI ),
         std::make_pair( "vcu1551",   SPI ),
         std::make_pair( "vega-4000", SPI ),
-        std::make_pair( "xbb200",    SPI ),
-        std::make_pair( "xbb250",    SPI )
+        std::make_pair( "u200",    SPI ),
+        std::make_pair( "u250",    SPI )
     };
 
 public:
     std::string sGetDBDF() { return mDBDF; }
     std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
-    std::string sGetDSAName() { return std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); }
+    std::string sGetDSAName() { std::string vbnv = std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); return vbnv.size() ? vbnv : "No Feature ROM Loaded"; }
 };
 
 #endif // FLASHER_H

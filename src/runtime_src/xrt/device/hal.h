@@ -62,7 +62,12 @@ enum class queue_type : unsigned short
 
 //typedef rte_mbuf * PacketObject;
 typedef void* PacketObject;
-typedef unsigned short StreamHandle;
+typedef uint64_t StreamHandle;
+typedef void*    StreamBuf;
+typedef uint64_t StreamBufHandle;
+typedef uint32_t StreamAttributes;
+typedef uint32_t StreamXferFlags;
+typedef uint64_t StreamFlags;
 
 /**
  * Helper class to encapsulate return values from HAL operations.
@@ -254,26 +259,50 @@ public:
     throw std::runtime_error("exec_wait not supported");
   }
 
-#ifdef PMD_OCL
+//#ifdef PMD_OCL
+//public:
+//  virtual StreamHandle
+//  openStream(unsigned depth, unsigned q, direction dir) = 0;
+//
+//  virtual void
+//  closeStream(StreamHandle strm) = 0;
+//
+//  virtual unsigned
+//  send(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+//
+//  virtual unsigned
+//  recv(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+//
+//  virtual PacketObject
+//  acquirePacket() = 0;
+//
+//  virtual void
+//  releasePacket(PacketObject pkt) = 0;
+//#endif
+
 public:
-  virtual StreamHandle
-  openStream(unsigned depth, unsigned q, direction dir) = 0;
+  //TODO : Add documentation. 
+  //TODO: Merge the below 2 into 1 ? HAL has 2 functions too.
+  virtual int 
+  createWriteStream(StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream) = 0;
 
-  virtual void
-  closeStream(StreamHandle strm) = 0;
+  virtual int 
+  createReadStream(StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream) = 0;
 
-  virtual unsigned
-  send(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+  virtual int 
+  closeStream(hal::StreamHandle stream) = 0;
 
-  virtual unsigned
-  recv(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+  virtual StreamBuf
+  allocStreamBuf(size_t size, hal::StreamBufHandle *buf) = 0;
 
-  virtual PacketObject
-  acquirePacket() = 0;
+  virtual int 
+  freeStreamBuf(hal::StreamBufHandle buf) = 0;
 
-  virtual void
-  releasePacket(PacketObject pkt) = 0;
-#endif
+  virtual ssize_t 
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
+
+  virtual ssize_t 
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
 
 public:
   /**

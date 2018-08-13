@@ -578,7 +578,7 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mSubsystemId = obj.subsystem_device;
     info->mSubsystemVendorId = obj.subsystem_vendor;
     info->mDeviceVersion = obj.subsystem_device & 0x00ff;
-    info->mDataAlignment = KB(4);
+    info->mDataAlignment = getpagesize();
     info->mDDRSize = GB(obj.ddr_channel_size);
     info->mDDRBankCount = obj.ddr_channel_num;
     info->mDDRSize *= info->mDDRBankCount;

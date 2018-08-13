@@ -51,6 +51,7 @@ public:
     int scan(bool print);
     int scan_without_driver( void );
     bool get_mgmt_device_name(std::string &devName, unsigned int devIdx);
+    int get_feature_rom_bar_offset(unsigned int devIdx, unsigned long long &offset);
 
 private:
     struct pci_device {

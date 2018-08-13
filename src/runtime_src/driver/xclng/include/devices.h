@@ -756,6 +756,7 @@ enum {
 
 #define	XOCL_BOARD_XBB_MFG						\
 	(struct xocl_board_private){					\
+		.user_bar = 0,						\
 		.flash_type = "spi",					\
 	}
 
