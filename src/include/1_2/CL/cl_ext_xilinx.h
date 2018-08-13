@@ -33,7 +33,12 @@
 #ifndef __CL_EXT_XILINX_H
 #define __CL_EXT_XILINX_H
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+// Xilinx implements deprecated APIs
+// Examples use deprecated APIs
+// Turn off deprecation warnings
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 // Do *not* include cl_ext.h from this directory
 #include_next <CL/cl_ext.h>
