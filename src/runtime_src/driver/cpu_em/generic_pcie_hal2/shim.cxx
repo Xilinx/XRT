@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include <unistd.h>
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
@@ -100,7 +101,7 @@ namespace xclcpuemhal2 {
       const uint64_t bankSize = (*start).ddrSize; 
       mDdrBanks.push_back(*start);
       //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , 4096));
+      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , getpagesize()));
       base += bankSize;
     }
   }
@@ -1089,7 +1090,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, 4096, bo->size)) 
+  if (posix_memalign(&pBuf, getpagesize(), bo->size)) 
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;

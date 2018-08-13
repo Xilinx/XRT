@@ -24,6 +24,8 @@
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
 
+#include <unistd.h>
+
 #include <cassert>
 
 namespace xrt { class device; }
@@ -214,7 +216,7 @@ public:
   /**
    * Check if memory is aligned per device requirement.
    *
-   * Default is 4096 if no backing xrt device
+   * Default is page size if no backing xrt device
    *
    * @return
    *   true if ptr is aligned, false otherwise
@@ -222,7 +224,7 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : 4096;
+    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
     return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
   }
 
@@ -684,6 +686,12 @@ private:
   alloc(memory* mem);
 
 private:
+  struct mapinfo {
+    cl_map_flags flags = 0; // mapflags
+    size_t offset = 0;      // boh:hbuf offset
+    size_t size = 0;        // max size mapped
+  };
+
   unsigned int m_uid = 0;
   program* m_active = nullptr;   // program loaded on to this device
   xclbin m_xclbin;               // cache xclbin that came from program
@@ -705,7 +713,7 @@ private:
   // Track how a region of a buffer object is mapped.  There is
   // no tracking of matching map and unmap.  Last map of a region
   // is what is stored and first unmap of a region erases the content.
-  std::map<const void*,cl_map_flags> m_mapped;
+  std::map<const void*,mapinfo> m_mapped;
 
   // Track memory objects allocated on this device
   std::set<const memory*> m_memobjs;

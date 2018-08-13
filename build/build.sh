@@ -12,6 +12,7 @@ usage()
     echo "[clean|-clean]             Remove build directories"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
+    echo "[-verbose]                 Turn on verbosity when compiling"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
@@ -21,6 +22,7 @@ usage()
 clean=0
 covbuild=0
 ccache=0
+verbose=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -48,6 +50,10 @@ while [ $# -gt 0 ]; do
             covpw=$1
             shift
             ;;
+        -verbose)
+            verbose="VERBOSE=1"
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
@@ -66,9 +72,11 @@ if [[ $clean == 1 ]]; then
 fi
 
 if [[ $ccache == 1 ]]; then
-    export RDI_ROOT=unused
-    export RDI_BUILDROOT=unused
+    SRCROOT=`readlink -f $BUILDDIR/../src`
+    export RDI_ROOT=$SRCROOT
+    export RDI_BUILDROOT=$SRCROOT
     export RDI_CCACHEROOT=/scratch/ccache/$USER
+    mkdir -p $RDI_CCACHEROOT
     # Run cleanup script once a day
     # Clean cache dir for stale files older than 30 days
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
@@ -96,11 +104,11 @@ fi
 mkdir -p Debug Release
 cd Debug
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 DESTDIR=$PWD install
+make -j4 $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 DESTDIR=$PWD install
+make -j4 $verbose DESTDIR=$PWD install
 make package
 cd $here
