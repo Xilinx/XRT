@@ -33,7 +33,10 @@ target_link_libraries(xrt_core
 
 install (TARGETS xrt_core LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-# Vendor - AWS 
+# Vendor - AWS
+# Skip for arm
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+
 add_library(xrt_aws SHARED ${XRT_SRC}
   $<TARGET_OBJECTS:user_common>
   $<TARGET_OBJECTS:user_aws>
@@ -58,3 +61,5 @@ target_link_libraries(xrt_aws
   )
 
 install (TARGETS xrt_aws LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+
+endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
