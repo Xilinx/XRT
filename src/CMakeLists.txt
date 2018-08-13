@@ -4,7 +4,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/1_2
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/driver/include
   )
 
@@ -71,6 +70,7 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
 
+set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 
 SET(XRT_VERSION_MAJOR 2)
@@ -79,6 +79,18 @@ SET(XRT_VERSION_PATCH 0)
 set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
+
+# Release OpenCL extension headers
+set(XRT_CL_EXT_SRC
+  include/1_2/CL/cl_ext_xilinx.h
+  include/1_2/CL/cl_ext.h)
+install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
+message("-- XRT CL extension header files")
+foreach (header ${XRT_CL_EXT_SRC})
+  message("-- ${header}")
+endforeach()
+
+include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
@@ -97,3 +109,5 @@ include (CMake/dkms.cmake)
 include (CMake/icd.cmake)
 
 include (CMake/pkgconfig.cmake)
+
+include (CMake/coverity.cmake)

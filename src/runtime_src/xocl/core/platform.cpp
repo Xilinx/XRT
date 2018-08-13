@@ -58,7 +58,7 @@ is_emulation_mode()
     if(!env.empty() && (env=="sw_emu" || env=="hw_emu") )
       emulation_mode = true;
     initialized = true;
-  } 
+  }
   return emulation_mode;
 }
 
@@ -231,7 +231,7 @@ platform()
 #endif
     }
   }
-    
+
   //User can target either emulation or board. Not both at the same time.
   if (!is_emulation_mode() && m_device_mgr->has_hw_devices()) {
     while (xrt::device* hw_device = m_device_mgr->get_hw_device()) {
@@ -255,9 +255,14 @@ platform()
 platform::
 ~platform()
 {
-  xrt::scheduler::stop();
-  g_platform = nullptr;
   XOCL_DEBUG(std::cout,"xocl::platform::~platform(",m_uid,")\n");
+  try {
+    xrt::scheduler::stop();
+    g_platform = nullptr;
+  }
+  catch (const std::exception& ex) {
+    XOCL_PRINTF("Unexpected exception in platform dtor '%s'\n",ex.what());
+  }
 }
 
 void
@@ -330,5 +335,3 @@ conformance_get_xclbin(const std::string& hash)
 }
 
 } // xocl
-
-

@@ -111,6 +111,16 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
+//Streaming 
+  typedef int     (*createWriteQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*createReadQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*destroyQueueFuncType)(uint64_t q_hdl);
+  typedef void*   (*allocQDMABufFuncType)(size_t size, uint64_t *buf_hdl);
+  typedef int     (*freeQDMABufFuncType)(uint64_t buf_hdl);
+  typedef ssize_t (*writeQueueFuncType)(uint64_t q_hdl, xclQueueRequest *wr);
+  typedef ssize_t (*readQueueFuncType)(uint64_t q_hdl, xclQueueRequest *wr);
+//End Streaming
+//
 #if 0
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
@@ -160,6 +170,7 @@ public:
   lockDeviceFuncType mLockDevice;
   unlockDeviceFuncType mUnlockDevice;
   getDeviceInfoFuncType mGetDeviceInfo;
+
   getDeviceTimeFuncType mGetDeviceTime;
   getDeviceClockFuncType mGetDeviceClock;
   getDeviceMaxReadFuncType mGetDeviceMaxRead;
@@ -177,6 +188,15 @@ public:
   readTraceFuncType mReadTrace;
   writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
+//Streaming
+  createWriteQueueFuncType mCreateWriteQueue;
+  createReadQueueFuncType mCreateReadQueue;
+  destroyQueueFuncType mDestroyQueue;
+  allocQDMABufFuncType mAllocQDMABuf;
+  freeQDMABufFuncType mFreeQDMABuf;
+  writeQueueFuncType mWriteQueue;
+  readQueueFuncType mReadQueue;
+//End Streaming
 
 #if 0
   /* TBD */

@@ -218,8 +218,8 @@ int main(int argc, char** argv)
     bool verbose = false;
     bool ert = false;
     int c;
-    size_t n_elements = 16;
-    int cu = 0;
+    //size_t n_elements = 16;
+    //int cu = 0;
     //findSharedLibrary(sharedLibrary);
 
 while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) != -1)
