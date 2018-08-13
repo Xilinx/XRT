@@ -58,9 +58,8 @@ typedef std::chrono::high_resolution_clock Clock;
 #define AXI_FIREWALL
 
 
-#define INVAID_SENSOR_VAL 0
-#define SUBDEV_NOT_AVAILABLE_SHORT 0 0xffff 
-#define SUBDEV_NOT_AVAILABLE_LONG
+#define XCL_NO_SENSOR_DEV      ~(0ULL)
+#define XCL_INVALID_SENSOR_VAL 0
 
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
@@ -238,7 +237,7 @@ public:
     void m_devinfo_stringize_statics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
 
-        std::stringstream ss, subss;
+        std::stringstream ss, subss, ssdevice;
 
         ss << std::left;
         ss << std::setw(16) << "DSA name" <<"\n";
@@ -249,7 +248,10 @@ public:
 
         ss << std::setw(16) << std::hex << m_devinfo->mVendorId << std::dec;
         ss << std::setw(16) << std::hex << m_devinfo->mDeviceId << std::dec;
-        ss << std::setw(16) << std::hex << m_devinfo->mSubsystemId << std::dec;
+
+        ssdevice << std::setw(4) << std::setfill('0') << std::hex << m_devinfo->mSubsystemId;
+        ss << std::setw(16) << ssdevice.str();
+    ///    ss << std::setw(16) << std::hex << m_devinfo->mSubsystemId << std::dec;
         ss << std::setw(16) << std::hex << m_devinfo->mSubsystemVendorId << std::dec;
         ss << std::setw(16) << m_devinfo->mXMCVersion << "\n\n";
 
@@ -275,25 +277,26 @@ public:
         lines.push_back(ss.str());
    }
 
-    void m_devinfo_stringize_dimm_temp(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    void m_devinfo_stringize_power(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
-        std::stringstream ss, subss;
-        ss << std::left;
-        unsigned i;
+        std::stringstream ss;//, subss;
+        unsigned long long power;
+        ss << std::left << "\n";
 
-        if(m_devinfo->mDimmTemp[0]!=0){
-            for(i= 0; i < m_devinfo->mDDRBankCount; ++i){
-                ss << "DDR Temp" << std::setw(8) << i;
-                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mDimmTemp[i]).substr(0,3)+" C";
-            }
-            ss << "\n" << subss.str() << "\n";
+        ss << std::setw(16) << "Power" << "\n";
+        power = m_devinfo->mPexCurr*m_devinfo->m12VPex;
+        if(m_devinfo->mPexCurr != XCL_INVALID_SENSOR_VAL && m_devinfo->m12VPex != XCL_INVALID_SENSOR_VAL){
+            ss << std::setw(16) << std::to_string((float)power/1000000).substr(0,4)+"W" << "\n";
         }
+        else
+            ss << std::setw(16) << "Not support" << "\n";
+
         lines.push_back(ss.str());
     }
     void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss;
-        unsigned long long power;
+  //      unsigned long long power;
         ss << std::left << "\n";
         unsigned i;
 
@@ -308,138 +311,165 @@ public:
         ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
         ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
 
-        if(m_devinfo->mFanTemp != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string(m_devinfo->mFanTemp) +" C";
-        }
-        else
+        if((unsigned short)m_devinfo->mFanTemp == (XCL_NO_SENSOR_DEV & (0xffff)))
             ss << std::setw(16) << "Not support";
-
-        if(m_devinfo->mFanRpm != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string(m_devinfo->mFanRpm) +" rpm" << "\n\n";
-        }
+        else if (m_devinfo->mFanTemp == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
         else
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanTemp) +" C";
+
+        if(m_devinfo->mFanRpm == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mFanRpm == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanRpm) +" rpm" << "\n\n";
 
         ss << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX";
         ss << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << "\n";
-  //      ss << std::setw(16) << "Power" << "\n";
 
-        if(m_devinfo->m12VPex != INVAID_SENSOR_VAL){
+        if(m_devinfo->m12VPex == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m12VPex == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else{
             float vol = (float)m_devinfo->m12VPex/1000;
             ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
         }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->m12VAux != INVAID_SENSOR_VAL){
+        if(m_devinfo->m12VAux == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m12VAux == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else{
             float vol = (float)m_devinfo->m12VAux/1000;
             ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
         }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->mPexCurr != INVAID_SENSOR_VAL){
+        if(m_devinfo->mPexCurr == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mPexCurr == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string(m_devinfo->mPexCurr).substr(0,4) + "mA";
-        }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->mAuxCurr != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr).substr(0,4) + "mA" << "\n\n";
-        }
-        else
+
+        if(m_devinfo->mAuxCurr == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mAuxCurr == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr).substr(0,4) + "mA" << "\n\n";
+
 
         ss << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX";
         ss << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << "\n";
 
-        if(m_devinfo->m3v3Pex != INVAID_SENSOR_VAL){
+        if(m_devinfo->m3v3Pex == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m3v3Pex == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Pex/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->m3v3Aux != INVAID_SENSOR_VAL){
+
+        if(m_devinfo->m3v3Aux == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m3v3Aux == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Aux/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->mDDRVppBottom != INVAID_SENSOR_VAL){
+
+        if(m_devinfo->mDDRVppBottom == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->mDDRVppBottom == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppBottom/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";
 
-        if(m_devinfo->mDDRVppTop != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppTop/1000).substr(0,4) + "V" << "\n\n";
-        }
-        else
+
+        if(m_devinfo->mDDRVppTop == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mDDRVppTop == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppTop/1000).substr(0,4) + "V" << "\n\n";
+
 
         ss << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP";
         ss << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << "\n";
 
 
-        if(m_devinfo->mSys5v5 != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mSys5v5/1000).substr(0,4) + "V";
-        }
-        else
+        if(m_devinfo->mSys5v5 == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support";
+        else if (m_devinfo->mSys5v5 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mSys5v5/1000).substr(0,4) + "V";
 
-        if(m_devinfo->m1v2Top != INVAID_SENSOR_VAL){
+
+        if(m_devinfo->m1v2Top == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m1v2Top == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Top/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";   
 
-        if(m_devinfo->m1v8Top != INVAID_SENSOR_VAL){
+
+        if(m_devinfo->m1v8Top != XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m1v8Top != XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->m1v8Top/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";      
 
-        if(m_devinfo->m0v85 != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m0v85/1000).substr(0,4) + "V" << "\n\n";
-        }
-        else
+  
+
+        if(m_devinfo->m0v85 == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support" << "\n\n";
+        else if(m_devinfo->m0v85 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m0v85/1000).substr(0,4) + "V" << "\n\n";
+
 
         ss << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW";
         ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
 
 
-        if(m_devinfo->mMgt0v9 != INVAID_SENSOR_VAL){
+        if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mMgt0v9 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo->mMgt0v9/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";    
 
-        if(m_devinfo->m12vSW != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m12vSW/1000).substr(0,4) + "V";
-        }
-        else
-            ss << std::setw(16) << "Not support";     
 
-        if(m_devinfo->mMgtVtt != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
-        }
-        else
+        if(m_devinfo->m12vSW == XCL_NO_SENSOR_DEV)
             ss << std::setw(16) << "Not support"; 
+        else if(m_devinfo->m12vSW == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else 
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m12vSW/1000).substr(0,4) + "V";
 
-        if(m_devinfo->m1v2Bottom != INVAID_SENSOR_VAL){
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n\n";
-        }
-        else
-            ss << std::setw(16) << "Not support" << "\n\n";
 
-        ss << std::setw(16) << "Power (Beta)" << "\n";
-        power = m_devinfo->mPexCurr*m_devinfo->m12VPex;
-        if(power){
-            ss << std::setw(16) << std::to_string((float)power/1000000).substr(0,4)+"W" << "\n\n";
-        }
+        if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mMgtVtt == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
         else
-            ss << std::setw(16) << "Not support" << "\n\n";
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support" << "\n";
+        else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n";
+
+        m_devinfo_stringize_power(m_devinfo, lines);
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());         
@@ -449,6 +479,7 @@ public:
     {
         m_devinfo_stringize_statics(m_devinfo, lines);
         m_devinfo_stringize_dynamics(m_devinfo, lines);
+//        m_devinfo_stringize_power(m_devinfo, lines);
     }
 
     void m_mem_usage_bar(xclDeviceUsage &devstat, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
@@ -499,16 +530,15 @@ public:
             }
             delete[] buffer;
         } else { // mem_topology exists, but no data read or reported
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
+            ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << "\n";
         }
         ifs.close();
 
-        ss << "\n";
         lines.push_back(ss.str());
     }
 
 
-    void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
+    void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
     {
         
         std::stringstream ss;
@@ -517,7 +547,7 @@ public:
 
 
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
-        ss << std::left << std::setw(56) << "Mem Topology" << std::setw(24) << "Device Memory Usage" << "\n"; 
+        ss << std::left << std::setw(48) << "Mem Topology" << std::setw(32) << "Device Memory Usage" << "\n"; 
         std::string mem_path = devPath + "/mem_topology";
 
         ifs.open( mem_path.c_str(), std::ifstream::binary );
@@ -535,7 +565,7 @@ public:
             ifs.read( buffer, buf_size);
             mem_topology *map;
             map = (mem_topology *)buffer;
-            ss << std::setw(16) << "Tag"  << std::setw(16) << "Type" << std::setw(16) << "Base Address" << std::setw(8) << "Size";
+            ss << std::setw(16) << "Tag"  << std::setw(12) << "Type" << std::setw(12) << "Temp" << std::setw(8) << "Size";
 
             ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << "\n";
             numDDR = map->m_count;
@@ -558,10 +588,12 @@ public:
                     str = search->second;
                 }
 
-
-                ss << std::left << std::setw(16) << str;
-                ss << "0x" << std::setw(14) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
-
+                ss << std::left << std::setw(12) << str;
+ //               ss << "0x" << std::setw(14) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
+                if(m_devinfo->mDimmTemp[i]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mDimmTemp[i]!=(XCL_NO_SENSOR_DEV & 0xffff) && i < 4)
+                    ss << std::setw(12) << std::to_string(m_devinfo->mDimmTemp[i]) + " C";
+                else
+                    ss << std::setw(12) << "Not Supp";
                 ss << std::setw(8) << unitConvert(map->m_mem_data[ i ].m_size<<10);;
                 ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
                 ss << std::setw(8) << std::dec << devstat.ddrBOAllocated[i] << "\n";                 // print size
@@ -624,21 +656,21 @@ public:
         char cbuf[80];
         struct tm *ts;
         time_t temp;
+        unsigned i = m_errinfo.mFirewallLevel;
         ostr << "\nFirewall Last Error Status:\n";
-        for(unsigned i= 0; i < m_errinfo.mNumFirewalls; ++i) {
-            ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
-                 << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
-                 << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus) ;
-            if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
-                temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
-                ts = localtime(&temp);
-                strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
-                ostr << ".\n";
-                ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
-            }
-            else{
-                ostr << "\n";
-            }
+        ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
+             << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
+             << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus);
+
+        if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
+            temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
+            ts = localtime(&temp);
+            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
+            ostr << ".\n";
+            ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
+        }
+        else{
+            ostr << "\n";
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ');
@@ -693,10 +725,9 @@ public:
             }
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        ostr << std::setfill(' ') << "\n";;
-        m_devinfo_stringize_dimm_temp(&m_devinfo, usage_lines);
+        ostr << std::setfill(' ') << "\n";
 
-        m_mem_usage_stringize_dynamics(devstat, usage_lines, result, numSupportedMems);
+        m_mem_usage_stringize_dynamics(devstat, &m_devinfo, usage_lines, result, numSupportedMems);
 
         for(auto line:usage_lines){
             ostr << line << "\n";

@@ -291,7 +291,7 @@ private:
         const std::string subDevName, const std::string entry);
     std::vector<std::string> xclSysfsGetStrings(bool mgmt,
         const std::string subDevName, const std::string entry);
-    void xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info);
+    void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 

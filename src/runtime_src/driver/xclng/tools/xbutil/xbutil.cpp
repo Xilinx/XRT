@@ -584,9 +584,9 @@ static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& 
 
     dev->m_mem_usage_bar(devstat, lines, 0, devinfo.mDDRBankCount);
 
-    dev->m_devinfo_stringize_dimm_temp(&devinfo, lines);
+    dev->m_devinfo_stringize_power(&devinfo, lines);
     
-    dev->m_mem_usage_stringize_dynamics(devstat, lines, 0, devinfo.mDDRBankCount);
+    dev->m_mem_usage_stringize_dynamics(devstat, &devinfo, lines, 0, devinfo.mDDRBankCount);
 
     for(auto line:lines){
             printw("%s\n", line.c_str());

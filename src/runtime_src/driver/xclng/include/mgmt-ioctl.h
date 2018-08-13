@@ -134,6 +134,19 @@ struct xclmgmt_ioc_bitstream {
 	//struct xclBin *xclbin;
 };
 
+
+/*
+ * struct xclmgmt_err_info - Obtain Error information from the device
+ * used with XCLMGMT_IOCERRINFO ioctl
+ *
+ * Note that this structure will be obsoleted in future and the same functionality will be exposed via sysfs nodes
+ */
+struct xclmgmt_err_info {
+        unsigned mNumFirewalls;
+        struct xclAXIErrorStatus mAXIErrorStatus[8];
+        struct xclPCIErrorStatus mPCIErrorStatus;
+};
+
 /**
  * struct xclmgmt_ioc_bitstream_axlf - load xclbin (AXLF) device image
  * used with XCLMGMT_IOCICAPDOWNLOAD_AXLF ioctl

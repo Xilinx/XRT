@@ -127,6 +127,12 @@ struct xclDeviceInfo2 {
   unsigned short m12vSW;
   unsigned short mMgtVtt;
   unsigned short m1v2Bottom;
+  unsigned long long mDriverVersion;
+  unsigned mPciSlot;
+  bool mIsXPR;
+  unsigned long long mTimeStamp;
+  char mFpga[256];
+
 };
 /**
  * xclMemoryDomains is for support of legacy APIs
