@@ -58,7 +58,9 @@ typedef std::chrono::high_resolution_clock Clock;
 #define AXI_FIREWALL
 
 
-#define XCL_NO_SENSOR_DEV      ~(0ULL)
+#define XCL_NO_SENSOR_DEV_LL    ~(0ULL)
+#define XCL_NO_SENSOR_DEV       ~(0UL)
+#define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
 /*
@@ -318,7 +320,7 @@ public:
         else
             ss << std::setw(16) << std::to_string(m_devinfo->mFanTemp) +" C";
 
-        if(m_devinfo->mFanRpm == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mFanRpm == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
         else if (m_devinfo->mFanRpm == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -328,7 +330,7 @@ public:
         ss << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX";
         ss << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << "\n";
 
-        if(m_devinfo->m12VPex == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m12VPex == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if (m_devinfo->m12VPex == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -337,7 +339,7 @@ public:
             ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
         }
 
-        if(m_devinfo->m12VAux == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m12VAux == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo->m12VAux == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -365,7 +367,7 @@ public:
         ss << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX";
         ss << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << "\n";
 
-        if(m_devinfo->m3v3Pex == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m3v3Pex == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo->m3v3Pex == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -373,7 +375,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Pex/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->m3v3Aux == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m3v3Aux == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if (m_devinfo->m3v3Aux == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -381,7 +383,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Aux/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->mDDRVppBottom == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mDDRVppBottom == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if (m_devinfo->mDDRVppBottom == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -389,7 +391,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppBottom/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->mDDRVppTop == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mDDRVppTop == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
         else if (m_devinfo->mDDRVppTop == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -401,7 +403,7 @@ public:
         ss << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << "\n";
 
 
-        if(m_devinfo->mSys5v5 == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mSys5v5 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if (m_devinfo->mSys5v5 == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -409,7 +411,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->mSys5v5/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->m1v2Top == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m1v2Top == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if (m_devinfo->m1v2Top == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -417,7 +419,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Top/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->m1v8Top != XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m1v8Top == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo->m1v8Top != XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -426,7 +428,7 @@ public:
 
   
 
-        if(m_devinfo->m0v85 == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m0v85 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
         else if(m_devinfo->m0v85 == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -438,7 +440,7 @@ public:
         ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
 
 
-        if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo->mMgt0v9 == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -446,7 +448,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->mMgt0v9/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->m12vSW == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m12vSW == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support"; 
         else if(m_devinfo->m12vSW == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -454,7 +456,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->m12vSW/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo->mMgtVtt == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
@@ -462,7 +464,7 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
 
 
-        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV)
+        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n";
         else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
@@ -606,7 +608,7 @@ public:
         ifs.close();
 
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
-        for (unsigned i = 0; !result & (i < 2); i++) {
+        for (unsigned i = 0; !result && (i < 2); i++) {
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
