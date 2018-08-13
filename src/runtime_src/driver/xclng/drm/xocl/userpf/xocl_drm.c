@@ -504,7 +504,7 @@ void xocl_mm_update_usage_stat(struct xocl_dev *xdev, u32 ddr,
 int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
-	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
+	return drm_mm_insert_node_generic(xdev->mm[ddr], node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else

@@ -732,7 +732,7 @@ enum {
 		.intr_bar = 1,						\
 	}
 
-#define MGMT_RES_A883							\
+#define MGMT_RES_MPSOC							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_SYSMON,				\
@@ -743,8 +743,8 @@ enum {
 #define	XOCL_BOARD_MGMT_MPSOC						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
-		.subdev_info	= MGMT_RES_A883,			\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_A883),		\
+		.subdev_info	= MGMT_RES_MPSOC,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
 	}
