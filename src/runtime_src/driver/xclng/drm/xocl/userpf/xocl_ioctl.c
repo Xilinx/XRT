@@ -281,7 +281,7 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	unsigned short deviceid = pdev->device;
 	uint64_t reserved_bottom_offset = 0;
 	uint64_t reserved_top_offset = 0;
-	if(deviceid==0xA884){
+	if(deviceid==0xA884 || deviceid==0xA984){
 		reserved_bottom_offset = 0x80000000;
 		reserved_top_offset = 0x1000000;
 	}
