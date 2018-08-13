@@ -488,8 +488,15 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
   auto xdevice = get_xrt_device();
 
   // sub buffer
-  if (mem->get_sub_buffer_parent()) {
-    throw std::runtime_error("sub buffer bank allocation not implemented");
+  if (auto parent = mem->get_sub_buffer_parent()) {
+    auto boh = parent->get_buffer_object(this);
+    auto pmemidx = get_boh_memidx(boh);
+    if (pmemidx.test(memidx)) {
+      auto offset = mem->get_sub_buffer_offset();
+      auto size = mem->get_size();
+      return xdevice->alloc(boh,size,offset);
+    }
+    throw std::runtime_error("parent sub-buffer memory bank mismatch");
   }
 
   auto flag = (mem->get_ext_flags()) & 0xffffff;
