@@ -418,7 +418,7 @@ dodebdev()
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
 package: $dsa-dev
-architecture: amd64 powerpc
+architecture: amd64
 version: $version-$revision
 priority: optional
 depends: $dsa (>= $version)
@@ -454,7 +454,7 @@ dodeb()
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
 package: $dsa
-architecture: amd64 powerpc
+architecture: all
 version: $version-$revision
 priority: optional
 depends: xrt (>= $opt_xrt)
