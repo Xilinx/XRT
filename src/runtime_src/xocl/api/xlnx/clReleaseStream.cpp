@@ -31,7 +31,7 @@ cl_int
 clReleaseStream(cl_stream stream)
 {
   validOrError(stream);   
-  return CL_INVALID_VALUE;
+  return stream->close();
 }
 
 } //xocl

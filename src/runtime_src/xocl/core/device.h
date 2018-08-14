@@ -466,6 +466,24 @@ public:
   void
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
+  //streaming APIs. TODO : document them.
+  int 
+  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, xrt::device::stream_handle* stream);
+
+  int 
+  close_stream(xrt::device::stream_handle stream);
+
+  ssize_t 
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+
+  ssize_t
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+
+  xrt::device::stream_buf
+  alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
+
+  int 
+  free_stream_buf(xrt::device::stream_buf_handle handle);
   /**
    * Read a device register at specified offset
    *
@@ -684,6 +702,7 @@ private:
    */
   xrt::device::BufferObjectHandle
   alloc(memory* mem);
+
 
 private:
   struct mapinfo {

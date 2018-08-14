@@ -41,6 +41,9 @@ class program;
 class kernel;
 class sampler;
 class memory;
+namespace stream {
+class stream;
+}
 
 /**
  * Base class for all CL API object types
@@ -173,6 +176,7 @@ class _xcl_program;
 class _xcl_kernel;
 class _xcl_sampler;
 class _xcl_mem;
+class _xcl_stream;
 
 struct _cl_platform_id :   public xocl::object<xocl::platform,     _xcl_platform_id,  _cl_platform_id> {};
 struct _cl_device_id :     public xocl::object<xocl::device,       _xcl_device_id,    _cl_device_id> {};
@@ -183,6 +187,7 @@ struct _cl_program :       public xocl::object<xocl::program,      _xcl_program,
 struct _cl_sampler :       public xocl::object<xocl::sampler,      _xcl_sampler,      _cl_sampler> {};
 struct _cl_kernel :        public xocl::object<xocl::kernel,       _xcl_kernel,       _cl_kernel> {};
 struct _cl_mem :           public xocl::object<xocl::memory,       _xcl_mem,          _cl_mem> {};
+//struct _cl_stream :        public xocl::object<xocl::stream::stream,_xcl_stream,          _cl_mem> {};
 
 #endif
 
