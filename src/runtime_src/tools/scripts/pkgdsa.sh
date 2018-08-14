@@ -475,7 +475,7 @@ EOF
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
     rsync -avz ${opt_dsadir}/test/ $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
     chmod -R +r $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa
-    dpkg-deb --build $opt_pkgdir/$dir
+    dpkg-deb --build $opt_pkgdir/$dir 
 
     echo "================================================================"
     echo "* Please locate dep for $dsa in: $opt_pkgdir/$dir"
