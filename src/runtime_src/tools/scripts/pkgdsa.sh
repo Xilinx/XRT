@@ -418,7 +418,7 @@ dodebdev()
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
 package: $dsa-dev
-architecture: amd64 powerpc
+architecture: amd64
 version: $version-$revision
 priority: optional
 depends: $dsa (>= $version)
@@ -454,7 +454,7 @@ dodeb()
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
 package: $dsa
-architecture: amd64 powerpc
+architecture: all
 version: $version-$revision
 priority: optional
 depends: xrt (>= $opt_xrt)
@@ -467,8 +467,8 @@ EOF
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
-	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
-	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
+	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
+	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
 	fi
     fi
     rsync -avz $opt_pkgdir/dsabin/firmware/ $opt_pkgdir/$dir/lib/firmware/xilinx
@@ -517,6 +517,13 @@ mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw
 rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/
 rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw/
 rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/
+if [ "${license_dir}" != "" ] ; then
+  if [ -d ${license_dir} ] ; then
+    mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/license
+    cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/platforms/$opt_dsa/license/
+  fi
+fi
+
 
 %files
 %defattr(-,root,root,-)
@@ -564,11 +571,18 @@ mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
 mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
 cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
+if [ "${license_dir}" != "" ] ; then
+  if [ -d ${license_dir} ] ; then
+    mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/license
+    cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/dsa/$opt_dsa/license/
+  fi
+fi
 
 %files
 %defattr(-,root,root,-)
 /lib/firmware/xilinx
-/opt/xilinx/dsa/$opt_dsa/test
+/opt/xilinx/dsa/$opt_dsa/
+
 
 %changelog
 * $build_date Xilinx Inc. - 5.1-1
