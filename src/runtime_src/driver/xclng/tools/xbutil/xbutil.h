@@ -287,7 +287,8 @@ public:
 
         ss << std::setw(16) << "Power" << "\n";
         power = m_devinfo->mPexCurr*m_devinfo->m12VPex;
-        if(m_devinfo->mPexCurr != XCL_INVALID_SENSOR_VAL && m_devinfo->m12VPex != XCL_INVALID_SENSOR_VAL){
+        if(m_devinfo->mPexCurr != XCL_INVALID_SENSOR_VAL && m_devinfo->mPexCurr != XCL_NO_SENSOR_DEV_LL 
+           && m_devinfo->m12VPex != XCL_INVALID_SENSOR_VAL && m_devinfo->m12VPex != XCL_NO_SENSOR_DEV_LL){
             ss << std::setw(16) << std::to_string((float)power/1000000).substr(0,4)+"W" << "\n";
         }
         else
