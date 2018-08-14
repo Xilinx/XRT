@@ -18,6 +18,7 @@
 #define __XILINX_CONTINUOUS_PROFILING
 
 #include "rt_profile_writers.h"
+#include "xrt/device/hal2.h"
 
 #include <unordered_map>
 #include <vector>
@@ -27,14 +28,14 @@
 #include <iostream>
 
 namespace XCL {
-class WriterI;
 
 class BaseMonitor {
 public:
+	BaseMonitor() {};
 	virtual std::string get_id() = 0;
 	virtual void launch() = 0;
 	virtual void terminate() = 0;
-	virtual ~BaseMonitor() = 0;
+	virtual ~BaseMonitor() {};
 };
 
 class ThreadMonitor : public BaseMonitor {
@@ -80,8 +81,10 @@ private:
 
 class PowerMonitor : public SamplingMonitor {
 public:
-	PowerMonitor(std::string dump_filename_in="power_dump_file.csv", int freq_in=1)
-			: SamplingMonitor(freq_in), dump_filename(dump_filename_in) {};
+	PowerMonitor(std::string dump_filename_in, int freq_in, int device_idx, std::string logfile):SamplingMonitor(freq_in) {
+		dump_filename = dump_filename_in;
+		dev = xrt::hal2::device(logfile.c_str(), );
+	}
 	std::string get_id() {return "power_monitor";};
 private:
 	std::unordered_map<std::string, float> readPowerStatus();
@@ -94,6 +97,7 @@ protected:
 private:
 	std::string dump_filename;
 	std::ofstream power_dump_file;
+	xrt::hal2::device dev;
 };
 
 class ContinuousProfile {

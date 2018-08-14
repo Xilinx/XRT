@@ -1,6 +1,6 @@
 #include "continuous_profile.h"
-#include <stdlib.h>
 
+#include <stdlib.h>
 #include <thread>
 #include <chrono>
 
@@ -73,8 +73,9 @@ float PowerMonitor::getFakeReading(int HI, int LO) {
 }
 
 void PowerMonitor::willLaunch() {
-	power_dump_file.open(dump_filename);
+	power_dump_file.open(dump_filename, std::ofstream::app);
 	power_dump_file << "Timestamp,FPGA Power Consumption,Board Power Consumption" << std::endl;
+	power_dump_file.flush();
 }
 
 std::unordered_map<std::string, float> PowerMonitor::readPowerStatus() {
@@ -95,6 +96,7 @@ void PowerMonitor::outputPowerStatus(std::unordered_map<std::string, float>& sta
 	float board_power = status["VCC12V"] + status["VCC12V_AUX"] + status["V3_AUX"] + FPGA_power;
 	auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
 	power_dump_file << timestamp << "," << FPGA_power << "," << board_power << std::endl;
+	power_dump_file.flush();
 }
 
 }

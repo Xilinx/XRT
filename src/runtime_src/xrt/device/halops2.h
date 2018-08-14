@@ -38,6 +38,7 @@ typedef xclDeviceInfo2        device_info;
 typedef xclPerfMonType        perfmon_type;
 typedef xclPerfMonEventType   perfmon_event_type;
 typedef xclPerfMonEventID     perfmon_event_id;
+typedef xclDeviceUsage        usage_info;
 
 class operations
 {
@@ -91,6 +92,7 @@ private:
   typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceMaxReadFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceMaxWriteFuncType)(xclDeviceHandle handle);
+  typedef int (* getUsagneInfoFuncType)(xclDeviceHandle handle, xclDeviceUsage *info);
   typedef void (* setSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots);
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
@@ -111,7 +113,7 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-//Streaming 
+//Streaming
   typedef int     (*createWriteQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*createReadQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*destroyQueueFuncType)(uint64_t q_hdl);
@@ -178,6 +180,7 @@ public:
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;
+  getUsagneInfoFuncType mGetUsageInfo;
   clockTrainingFuncType mClockTraining;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
@@ -228,7 +231,7 @@ public:
       : p.size;
   }
 
-  uint64_t 
+  uint64_t
   mGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle) const
   {
     xclBOProperties p;
@@ -242,5 +245,3 @@ public:
 }} // hal2,xrt
 
 #endif
-
-
