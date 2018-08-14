@@ -71,7 +71,7 @@ static ssize_t link_speed_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed);
+	get_pcie_link_info(lro, &width, &speed, false);
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed);
@@ -82,10 +82,32 @@ static ssize_t link_width_show(struct device *dev,
 	unsigned short speed, width;
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	get_pcie_link_info(lro, &width, &speed);
+	get_pcie_link_info(lro, &width, &speed, false);
 	return sprintf(buf, "%d\n", width);
 }
 static DEVICE_ATTR_RO(link_width);
+
+static ssize_t link_speed_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, true);
+	return sprintf(buf, "%d\n", speed);
+}
+static DEVICE_ATTR_RO(link_speed_max);
+
+static ssize_t link_width_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, true);
+	return sprintf(buf, "%d\n", width);
+}
+static DEVICE_ATTR_RO(link_width_max);
 
 static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -111,6 +133,8 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_slot.attr,
 	&dev_attr_link_speed.attr,
 	&dev_attr_link_width.attr,
+	&dev_attr_link_speed_max.attr,
+	&dev_attr_link_width_max.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_xpr.attr,
 	NULL,

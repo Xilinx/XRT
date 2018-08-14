@@ -517,7 +517,6 @@ int xocl::XOCLShim::xclGetErrorStatus(xclErrorStatus *info)
  */
 void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 {
-
     info->mVendorId =             xclSysfsGetInt(true, "", "vendor");
     info->mDeviceId =             xclSysfsGetInt(true, "", "device");
     info->mSubsystemId =   xclSysfsGetInt(true, "", "subsystem_device");
@@ -535,6 +534,8 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 
     info->mPCIeLinkWidth =    xclSysfsGetInt(true, "", "link_width");
     info->mPCIeLinkSpeed =    xclSysfsGetInt(true, "", "link_speed");
+    info->mPCIeLinkSpeedMax = xclSysfsGetInt(true, "", "link_speed_max");
+    info->mPCIeLinkWidthMax = xclSysfsGetInt(true, "", "link_width_max");
     info->mDriverVersion =     xclSysfsGetInt(true, "", "version");
     info->mPciSlot =           xclSysfsGetInt(true, "", "slot");
     info->mIsXPR =              xclSysfsGetInt(true, "", "xpr");
@@ -556,8 +557,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 
     info->mFanTemp = xclSysfsGetInt(true, "xmc", "xmc_fan_temp");
     info->mFanRpm = xclSysfsGetInt(true, "xmc", "xmc_fan_rpm");
-
-
 
     info->mDimmTemp[0] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp0");
     info->mDimmTemp[1] = xclSysfsGetInt(true, "xmc", "xmc_dimm_temp1");
@@ -581,8 +580,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mMgtVtt = xclSysfsGetInt(true, "xmc", "xmc_mgtavtt");
     info->m1v2Bottom = xclSysfsGetInt(true, "xmc", "xmc_vcc1v2_btm");
 
-
-
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
     for (unsigned i = 0;
         i < std::min(freqs.size(), ARRAY_SIZE(info->mOCLFrequency));
@@ -599,21 +596,21 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     std::memset(info, 0, sizeof(xclDeviceInfo2));
     info->mMagic = 0X586C0C6C;
     info->mHALMajorVersion = XCLHAL_MAJOR_VER;
-    info->mHALMajorVersion = XCLHAL_MINOR_VER;
+    info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
     info->mDMAThreads = 2;
 
     // Obtain device info from sysfs. Will fall back to IOCTL, if not supported.
-    xclmgmt_ioc_info obj = { 0 };
     if (xclSysfsGetInt(true, "", "version") > 0) {
         xclSysfsGetDeviceInfo(info);
         return 0;
-    } else {
-        int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &obj);
-        if (ret) {
-            return ret;
-        }
     }
+
+    // Fall back to IOCTL interface.
+    xclmgmt_ioc_info obj = { 0 };
+    int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &obj);
+    if (ret)
+        return ret;
 
     info->mVendorId = obj.vendor;
     info->mDeviceId = obj.device;
@@ -644,6 +641,9 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mMigCalib    = obj.mig_calibration;
     info->mPCIeLinkWidth = obj.pcie_link_width;
     info->mPCIeLinkSpeed = obj.pcie_link_speed;
+
+    info->mPCIeLinkSpeedMax = xclSysfsGetInt(true, "", "link_speed_max");
+    info->mPCIeLinkWidthMax = xclSysfsGetInt(true, "", "link_width_max");
 
     return 0;
 }
@@ -881,7 +881,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
     file.close();
 
     if(kind == MEM_TOPOLOGY) {
-	mem_topology* mem = (mem_topology*)memblock;
+	mem_topology* mem = reinterpret_cast<mem_topology *>(memblock);
 	if(index > (mem->m_count -1)) {
 	    delete[] memblock;
 	    return EINVAL;
@@ -889,7 +889,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 	memcpy(section_info, &mem->m_mem_data[index], sizeof(mem_data));
 	*section_size = sizeof(mem_data);
     } else if (kind == CONNECTIVITY) {
-	connectivity* con = (connectivity*)memblock;
+	connectivity* con = reinterpret_cast<connectivity *>(memblock);
 	if(index > (con->m_count -1)) {
 	    delete[] memblock;
 	    return EINVAL;
@@ -898,7 +898,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 	*section_size = sizeof(connection);
 
     } else if(kind == IP_LAYOUT) {
-	ip_layout* ip = (ip_layout*)memblock;
+	ip_layout* ip = reinterpret_cast<ip_layout *>(memblock);
 	if(index > (ip->m_count -1)) {
 	    delete[] memblock;
 	    return EINVAL;
@@ -1300,12 +1300,12 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 static std::string getSubdevDirName(const std::string& dir,
     const std::string& subDevName)
 {
-    struct dirent *entry;
     DIR *dp;
     std::string nm;
 
     dp = opendir(dir.c_str());
     if (dp) {
+        struct dirent *entry;
         while ((entry = readdir(dp))) {
             if(strncmp(entry->d_name,
                 subDevName.c_str(), subDevName.size()) == 0) {
@@ -1324,7 +1324,7 @@ static std::string getSubdevDirName(const std::string& dir,
  * Obtain ifstream of a device sysfs entry
  */
 std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
-    const std::string subDevName, const std::string entry)
+    const std::string& subDevName, const std::string& entry)
 {
     xcldev::pci_device_scanner::device_info& dev =
         xcldev::pci_device_scanner::device_list[mBoardNumber];
@@ -1345,7 +1345,7 @@ std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
  * All integers in sysfs entry are separated by '\n'.
  */
 std::vector<unsigned long long> xocl::XOCLShim::xclSysfsGetInts(bool mgmt,
-    const std::string subDevName, const std::string entry)
+    const std::string& subDevName, const std::string& entry)
 {
     std::vector<unsigned long long> iv;
     std::ifstream ifs = xclSysfsOpen(mgmt, subDevName, entry);
@@ -1366,7 +1366,7 @@ std::vector<unsigned long long> xocl::XOCLShim::xclSysfsGetInts(bool mgmt,
  * All strings in sysfs entry are separated by '\n'.
  */
 std::vector<std::string> xocl::XOCLShim::xclSysfsGetStrings(bool mgmt,
-    const std::string subDevName, const std::string entry)
+    const std::string& subDevName, const std::string& entry)
 {
     std::vector<std::string> sv;
     std::ifstream ifs = xclSysfsOpen(mgmt, subDevName, entry);
@@ -1386,7 +1386,7 @@ std::vector<std::string> xocl::XOCLShim::xclSysfsGetStrings(bool mgmt,
  * Obtain content string from a device sysfs entry
  */
 std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
-    const std::string subDevName, const std::string entry)
+    const std::string& subDevName, const std::string& entry)
 {
     std::string s;
     auto v = xclSysfsGetStrings(mgmt, subDevName, entry);
@@ -1411,7 +1411,7 @@ std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
  * Obtain a single integer from a device sysfs entry
  */
 unsigned long long xocl::XOCLShim::xclSysfsGetInt(bool mgmt,
-    const std::string subDevName, const std::string entry)
+    const std::string& subDevName, const std::string& entry)
 {
     unsigned long long l = ~(0ULL);
     auto v = xclSysfsGetInts(mgmt, subDevName, entry);
@@ -1436,10 +1436,9 @@ unsigned long long xocl::XOCLShim::xclSysfsGetInt(bool mgmt,
 ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     ssize_t rc = 0;
-    const void *buf;
 
     for (unsigned i = 0; i < wr->buf_num; i++) {
-        buf = (const void *)wr->bufs[i].va;
+        const void *buf = (const void *)wr->bufs[i].va;
         rc = write((int)q_hdl, buf, wr->bufs[i].len);
     }
     return rc;
@@ -1451,10 +1450,9 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     ssize_t rc = 0;
-    void *buf;
 
     for (unsigned i = 0; i < wr->buf_num; i++) {
-        buf = (void *)wr->bufs[i].va;
+        void *buf = (void *)wr->bufs[i].va;
         rc = read((int)q_hdl, buf, wr->bufs[i].len);
     }
     return rc;
@@ -1490,12 +1488,11 @@ static int getMgmtSlotNo(int handle)
 SHIM_UNUSED
 static int findMgmtDeviceID(int user_slot)
 {
-    int mgmt_fd = -1;
     int mgmt_slot = -1;
 
     for(int i = 0; i < 16; ++i) {
         std::string mgmtFile = "/dev/xclmgmt"+ std::to_string(i);
-        mgmt_fd = open(mgmtFile.c_str(), O_RDWR | O_SYNC);
+        int mgmt_fd = open(mgmtFile.c_str(), O_RDWR | O_SYNC);
         if(mgmt_fd < 0) {
             std::cout << "Could not open " << mgmtFile << std::endl;
             continue;
@@ -1528,7 +1525,7 @@ unsigned xclProbe()
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
     if(xcldev::pci_device_scanner::device_list.size() <= deviceIndex) {
-        printf("Cannot find index %d \n", deviceIndex);
+        printf("Cannot find index %u \n", deviceIndex);
         return nullptr;
     }
 
