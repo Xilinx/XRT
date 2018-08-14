@@ -302,7 +302,7 @@ public:
         ss << std::left << "\n";
         unsigned i;
 
-        if(m_devinfo->mSE98Temp[0]!=0){
+        if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
             for(i= 0; i < 3; ++i){
                 ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
                 subss << std::left << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
@@ -592,7 +592,7 @@ public:
 
                 ss << std::left << std::setw(12) << str;
  //               ss << "0x" << std::setw(14) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
-                if(m_devinfo->mDimmTemp[i]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mDimmTemp[i]!=(XCL_NO_SENSOR_DEV & 0xffff) && i < 4)
+                if(m_devinfo->mDimmTemp[i]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mDimmTemp[i]!= XCL_NO_SENSOR_DEV_S && i < 4)
                     ss << std::setw(12) << std::to_string(m_devinfo->mDimmTemp[i]) + " C";
                 else
                     ss << std::setw(12) << "Not Supp";
