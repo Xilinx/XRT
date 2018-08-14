@@ -638,9 +638,9 @@ public:
             t2 = Clock::now();
             auto timeDDR = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
             long delayPerHop = (timeARE - timeDDR) / (numIteration * numHops);
-            printf("Averaging ARE hardware latency over %lu hops\n", numIteration * numHops);
-            printf("Latency per ARE hop for 128KB: %lu ns\n", delayPerHop);
-            printf("Total latency over ARE: %lu ns\n", (timeARE - timeDDR));
+            std::cout << "Averaging ARE hardware latency over " << numIteration * numHops << " hops\n";
+            std::cout << "Latency per ARE hop for 128KB: " << delayPerHop << " ns\n";
+            std::cout << "Total latency over ARE: " << (timeARE - timeDDR) << " ns\n";
         }
         return result;
     }

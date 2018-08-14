@@ -27,7 +27,7 @@ namespace {
 inline const void*
 get_host_ptr(cl_mem_flags flags, const void* host_ptr)
 {
-  return (flags & CL_MEM_EXT_PTR_XILINX)
+  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
     ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->obj
     : host_ptr;
 }
@@ -35,7 +35,7 @@ get_host_ptr(cl_mem_flags flags, const void* host_ptr)
 inline unsigned int
 get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
 {
-  return (flags & CL_MEM_EXT_PTR_XILINX)
+  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
     ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
     : 0;
 }
@@ -43,7 +43,7 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
 inline const void*
 get_xlnx_ext_param(cl_mem_flags flags, const void* host_ptr)
 {
-  return (flags & CL_MEM_EXT_PTR_XILINX)
+  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
     ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->param
     : 0;
 }
@@ -87,7 +87,7 @@ memFlagsToString(cl_mem_flags flags)
 }
 
 void
-validOrError(const cl_mem_flags xflags) 
+validOrError(const cl_mem_flags xflags)
 {
   // don't check xilinx ext flags
   auto flags = get_ocl_flags(xflags);
@@ -150,7 +150,7 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
 }
 
 static void
-validAccessOrError(const cl_mem mem, const cl_mem_flags flags) 
+validAccessOrError(const cl_mem mem, const cl_mem_flags flags)
 {
   if (xocl(mem)->get_flags() & ~flags &
       (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS))
@@ -159,7 +159,7 @@ validAccessOrError(const cl_mem mem, const cl_mem_flags flags)
 
 static void
 validMapFlagsOrError(const cl_mem mem, cl_map_flags mapflags)
-{ 
+{
   if ((mapflags & (CL_MAP_WRITE | CL_MAP_READ)) &&
       (mapflags & CL_MAP_WRITE_INVALIDATE_REGION))
     throw error(CL_INVALID_VALUE,"Mutually exclusive flags specified");
@@ -218,7 +218,7 @@ validOrError(const cl_mem mem
     throw error(CL_INVALID_VALUE,"host_slice_pitch error");
 
 
-  size_t buffer_origin_in_bytes = 
+  size_t buffer_origin_in_bytes =
     buffer_origin[2]*buffer_slice_pitch+
     buffer_origin[1]*buffer_row_pitch+
     buffer_origin[0];
@@ -233,7 +233,7 @@ validOrError(const cl_mem mem
   // out of bounds.
   if (buffer_extent_in_bytes > (xocl(mem)->get_size()))
     throw error(CL_INVALID_VALUE,"buffer_origin, region, buffer_row_pitch, buffer_slice_pitch out of bounds");
-                                                         
+
 }
 
 void
@@ -268,5 +268,3 @@ validOrError(const std::vector<cl_mem>& mem_objects)
 } // memory
 
 }} // detail,xocl
-
-

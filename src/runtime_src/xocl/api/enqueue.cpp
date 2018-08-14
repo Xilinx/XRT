@@ -48,7 +48,7 @@ handle_device_exception(xocl::event* event, const std::exception& ex)
     s_exception_ptr = std::current_exception();
 
   // Abort the event and any event dependencies.  Indicate
-  // fatal error to forcefully abort from submitted state 
+  // fatal error to forcefully abort from submitted state
   // in command queue.
   event->abort(-1,true/*fatal*/);
 
@@ -62,13 +62,13 @@ handle_device_exception(xocl::event* event, const std::exception& ex)
 inline void
 throw_if_error()
 {
-  // Potential race condition on s_exception_ptr, but this 
+  // Potential race condition on s_exception_ptr, but this
   // is on the exceptional code path, either s_exception_ptr
   // is not set, or set, or it is in a race to be set.  I don't
   // really care that it is half set and may not work.
   // Its more important to keep this function fast in the good case.
   try {
-    if (s_exception_ptr) 
+    if (s_exception_ptr)
       std::rethrow_exception(s_exception_ptr);
   }
   catch (const std::exception& ex) {
@@ -78,7 +78,7 @@ throw_if_error()
 
 using async_type = xrt::device::queue_type;
 
-auto event_completer = [](xocl::event* ev) 
+auto event_completer = [](xocl::event* ev)
 {
   ev->set_status(CL_COMPLETE);
 };
@@ -86,7 +86,7 @@ auto event_completer = [](xocl::event* ev)
 using unique_event_completer = std::unique_ptr<xocl::event,decltype(event_completer)>;
 using shared_event_completer = std::shared_ptr<xocl::event>;
 
-inline shared_event_completer 
+inline shared_event_completer
 make_shared_event_completer(xocl::event* event)
 {
   return shared_event_completer(event,event_completer);
@@ -105,7 +105,7 @@ fill_buffer(xocl::event* event,xocl::device* device
     event->set_status(CL_RUNNING);
     device->fill_buffer(xocl::xocl(buffer),pattern,pattern_size,offset,size);
     event->set_status(CL_COMPLETE);
-  } 
+  }
   catch (const std::exception& ex) {
     handle_device_exception(event,ex);
   }
@@ -162,7 +162,7 @@ map_svm_buffer(xocl::event* event,xocl::device* device
   try {
     event->set_status(CL_RUNNING);
     // For MPSoC SVM, we don't need to sync device memory and host memory. Not sure what will happend in PCIe board.
-    // Do nothing 
+    // Do nothing
     event->set_status(CL_COMPLETE);
   }
   catch (const std::exception& ex) {
@@ -200,7 +200,7 @@ write_buffer(xocl::event* event,xocl::device* device
 
 static void
 unmap_buffer(xocl::event* event,xocl::device* device
-             ,cl_mem buffer, void* mapped_ptr) 
+             ,cl_mem buffer, void* mapped_ptr)
 {
   try {
     event->set_status(CL_RUNNING);
@@ -214,7 +214,7 @@ unmap_buffer(xocl::event* event,xocl::device* device
 
 static void
 unmap_svm_buffer(xocl::event* event,xocl::device* device
-                 ,void* svm_ptr) 
+                 ,void* svm_ptr)
 {
   try {
     event->set_status(CL_RUNNING);
@@ -231,9 +231,9 @@ migrate_buffer(shared_event_completer sec,xocl::device* device
                ,cl_mem buffer,cl_mem_migration_flags flags)
 {
   // The time recorded for CL_RUNNING is from first mem object
-  // starts migration.  If multiple buffers are migrated the 
-  // recorded CL_COMPLTE time (per shared_event_completer) is 
-  // after the last buffer is migrated. This is not accurate, 
+  // starts migration.  If multiple buffers are migrated the
+  // recorded CL_COMPLTE time (per shared_event_completer) is
+  // after the last buffer is migrated. This is not accurate,
   // but is the best supported by OpenCL.
   try {
     sec->set_status(CL_RUNNING);
@@ -295,11 +295,11 @@ xocl::event::action_enqueue_type
 action_copy_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(copy_buffer,async_type::misc,event,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
+    xdevice->schedule(copy_buffer,async_type::misc,ev,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
   };
 }
 
@@ -307,11 +307,11 @@ xocl::event::action_enqueue_type
 action_copy_p2p_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(copy_p2p_buffer,async_type::misc,event,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
+    xdevice->schedule(copy_p2p_buffer,async_type::misc,ev,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
   };
 }
 
@@ -339,12 +339,12 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
     }
   }
 
-  return [kernel_args](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching ndrange migrate DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [kernel_args](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching ndrange migrate DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    auto ec = make_shared_event_completer(event);
+    auto ec = make_shared_event_completer(ev);
 
     for (auto mem : kernel_args) {
       // do not migrate if argument is write only, but trick the code
@@ -366,12 +366,12 @@ xocl::event::action_enqueue_type
 action_read_buffer(cl_mem buffer,size_t offset, size_t size, const void* ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching read buffer DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching read buffer DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(read_buffer,async_type::read,event,device,buffer,offset,size,const_cast<void*>(ptr));
+    xdevice->schedule(read_buffer,async_type::read,ev,device,buffer,offset,size,const_cast<void*>(ptr));
   };
 }
 
@@ -404,12 +404,12 @@ action_map_buffer(cl_event event,cl_mem buffer,cl_map_flags map_flags,size_t off
   // stored as an event action.   We pass in the ptr computed for user
   // as a sanity check to ensure device->enqueueMapBuffer computes the
   // same address
-  return [buffer,map_flags,offset,size,userptr](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching map buffer DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [buffer,map_flags,offset,size,userptr](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching map buffer DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(map_buffer,async_type::read,event,device,buffer,map_flags,offset,size,userptr);
+    xdevice->schedule(map_buffer,async_type::read,ev,device,buffer,map_flags,offset,size,userptr);
   };
 }
 
@@ -417,25 +417,25 @@ xocl::event::action_enqueue_type
 action_map_svm_buffer(cl_event event,cl_map_flags map_flags,void* svm_ptr,size_t size)
 {
   throw_if_error();
-  return [map_flags,svm_ptr,size](xocl::event* event) {
-    XOCL_DEBUG(std::cout, "launching map svm buffer event(", event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [map_flags,svm_ptr,size](xocl::event* ev) {
+    XOCL_DEBUG(std::cout, "launching map svm buffer event(", ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(map_svm_buffer,async_type::read,event,device,map_flags,svm_ptr,size);
+    xdevice->schedule(map_svm_buffer,async_type::read,ev,device,map_flags,svm_ptr,size);
   };
 }
-  
+
 xocl::event::action_enqueue_type
 action_write_buffer(cl_mem buffer,size_t offset, size_t size, const void* ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching write buffer DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching write buffer DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(write_buffer,async_type::write,event,device,buffer,offset,size,ptr);
+    xdevice->schedule(write_buffer,async_type::write,ev,device,buffer,offset,size,ptr);
   };
 }
 
@@ -443,12 +443,12 @@ xocl::event::action_enqueue_type
 action_unmap_buffer(cl_mem memobj,void* mapped_ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching unmap DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching unmap DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(unmap_buffer,async_type::write,event,device,memobj,mapped_ptr);
+    xdevice->schedule(unmap_buffer,async_type::write,ev,device,memobj,mapped_ptr);
   };
 }
 
@@ -456,12 +456,12 @@ xocl::event::action_enqueue_type
 action_unmap_svm_buffer(void* svm_ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching unmap svm buffer event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching unmap svm buffer event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(unmap_svm_buffer,async_type::write,event,device,svm_ptr);
+    xdevice->schedule(unmap_svm_buffer,async_type::write,ev,device,svm_ptr);
   };
 }
 
@@ -469,12 +469,12 @@ xocl::event::action_enqueue_type
 action_read_image(cl_mem image,const size_t* origin,const size_t* region, size_t row_pitch,size_t slice_pitch,const void* ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching read image DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching read image DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(read_image,async_type::read,event,device,image,origin,region,row_pitch,slice_pitch,const_cast<void*>(ptr));
+    xdevice->schedule(read_image,async_type::read,ev,device,image,origin,region,row_pitch,slice_pitch,const_cast<void*>(ptr));
   };
 }
 
@@ -482,12 +482,12 @@ xocl::event::action_enqueue_type
 action_write_image(cl_mem image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,const void* ptr)
 {
   throw_if_error();
-  return [=](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching write image DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [=](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching write image DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    xdevice->schedule(write_image,async_type::write,event,device,image,origin,region,row_pitch,slice_pitch,ptr);
+    xdevice->schedule(write_image,async_type::write,ev,device,image,origin,region,row_pitch,slice_pitch,ptr);
   };
 }
 
@@ -497,12 +497,12 @@ action_migrate_memobjects(size_t num, const cl_mem* memobjs, cl_mem_migration_fl
   throw_if_error();
   std::vector<cl_mem> mo(memobjs,memobjs+num);
 
-  return [mo,flags](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching migrate DMA event(",event->get_uid(),")\n");
-    auto command_queue = event->get_command_queue();
+  return [mo,flags](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching migrate DMA event(",ev->get_uid(),")\n");
+    auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
     auto xdevice = device->get_xrt_device();
-    auto ec = make_shared_event_completer(event);
+    auto ec = make_shared_event_completer(ev);
     for (auto mem : mo) {
       // do not migrate if argument is CL_MIGRATE_MEM_OBJECT_CONTENT_UNDERFINED
       // but trick code into assuming that the argument is resident
@@ -522,13 +522,11 @@ action_migrate_memobjects(size_t num, const cl_mem* memobjs, cl_mem_migration_fl
 xocl::event::action_enqueue_type
 action_ndrange_execute()
 {
-  return [](xocl::event* event) {
-    XOCL_DEBUG(std::cout,"launching ndrange execute CU event(",event->get_uid(),")\n");
-    event->get_execution_context()->execute();
+  return [](xocl::event* ev) {
+    XOCL_DEBUG(std::cout,"launching ndrange execute CU event(",ev->get_uid(),")\n");
+    ev->get_execution_context()->execute();
   };
 }
 
 
 }}
-
-

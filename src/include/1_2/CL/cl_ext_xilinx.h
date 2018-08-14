@@ -33,6 +33,13 @@
 #ifndef __CL_EXT_XILINX_H
 #define __CL_EXT_XILINX_H
 
+// Xilinx implements deprecated APIs
+// Examples use deprecated APIs
+// Turn off deprecation warnings
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+
 // Do *not* include cl_ext.h from this directory
 #include_next <CL/cl_ext.h>
 
@@ -126,7 +133,124 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 
 // -- Work in progress - new QDMA APIs
 //
-//struct rte_mbuf;
+
+/*
+ * DOC: OpenCL Stream APIs
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * These structs and functions are used for the new DMA engine QDMA.
+ */
+
+/**
+ * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
+ * read only. Used in clCreateStream()
+ */
+typedef cl_bitfield         cl_stream_flags;
+#define CL_STREAM_READ_ONLY			    (1 << 0)
+#define CL_STREAM_WRITE_ONLY                        (1 << 1)
+
+/**
+ * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
+ * in clCreateStream()
+ */
+typedef cl_uint             cl_stream_attributes;
+#define CL_STREAM                                   (1 << 0)
+#define CL_PACKET                                   (1 << 1)
+
+/**
+ * cl_stream_attributes.
+ * eg set it to CL_STREAM_CDH for Customer Defined Header.
+ * Used in clReadStream() and clWriteStream()
+ */
+typedef cl_uint             cl_stream_xfer_req;
+#define CL_STREAM_CDH                               (1 << 0)
+#define CL_STREAM_PARTIAL                           (1 << 1)
+
+typedef struct _cl_stream*      cl_stream;
+typedef struct _cl_stream_mem*  cl_stream_mem;
+
+/**
+ * clCreateStream - create the stream for reading or writing.
+ * @device_id   : The device handle on which stream is to be created.
+ * @flags       : The cl_stream_flags
+ * @attributes  : The attributes of the requested stream.
+ * @errcode_ret : The return value eg CL_SUCCESS
+ */
+extern CL_API_ENTRY cl_stream CL_API_CALL
+clCreateStream(cl_device_id                /* device_id */,
+	       cl_stream_flags             /* flags */,
+	       cl_stream_attributes*       /* attributes*/,
+	       cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clReleaseStream - Once done with the stream, release it and its associated
+ * objects
+ * @stream: The stream to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clWriteStream - write data to stream
+ * @device_id : The device
+ * @stream    : The stream
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clWriteStream(cl_device_id    /* device_id*/,
+	cl_stream             /* stream*/,
+	const void *          /* ptr */,
+	size_t                /* offset */,
+	size_t                /* size */,
+	cl_stream_xfer_req    /* req_type*/,
+	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/**
+ * clReadStream - write data to stream
+ * @device_id : The device
+ * @stream    : The stream
+ * @ptr       : The ptr to write from.
+ * @offset    : The offset in the ptr to write from
+ * @size      : The number of bytes to write.
+ * @req_type  : The write request type.
+ * errcode_ret: The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReadStream(cl_device_id     /* device_id*/,
+	     cl_stream             /* stream*/,
+	     void *                /* ptr */,
+	     size_t                /* offset */,
+	     size_t                /* size */,
+	     cl_stream_xfer_req*   /* attributes */,
+	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clCreateStreamBuffer - Alloc buffer used for read and write.
+ * @stream     : The stream to associate the buffer with
+ * @size       : The size of the buffer
+ * errcode_ret : The return value, eg CL_SUCCESS
+ * Returns cl_stream_mem
+ */
+extern CL_API_ENTRY cl_stream_mem CL_API_CALL
+clCreateStreamBuffer(cl_device_id device,
+	cl_stream             /* stream*/,
+	size_t                /* size*/,
+	cl_int *              /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
+
+/* clReleaseStreamBuffer - Release the buffer created.
+ * @cl_stream_mem : The stream memory to be released.
+ * Return a cl_int
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clReleaseStreamBuffer(cl_stream_mem /*stream memobj */) CL_API_SUFFIX__VERSION_1_0;
+
+//End QDMA APIs
+
 typedef struct _cl_mem * rte_mbuf;
 typedef struct _cl_pipe * cl_pipe;
 
@@ -225,6 +349,9 @@ typedef struct{
 // cl_kernel_info
 #define CL_KERNEL_COMPUTE_UNIT_COUNT    0x1300
 #define CL_KERNEL_INSTANCE_BASE_ADDRESS 0x1301
+
+// cl_mem_info
+#define CL_MEM_BANK                     0x1109
 
 // cl_program_build_info (CR962714)
 #define CL_PROGRAM_TARGET_TYPE          0x1190

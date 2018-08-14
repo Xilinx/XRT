@@ -91,8 +91,8 @@ check(const command_type& cmd)
     return true;
   }
 
-  auto notify = [](command_type cmd) {
-    cmd->notify(ERT_CMD_STATE_COMPLETED);
+  auto notify = [](command_type c) {
+    c->notify(ERT_CMD_STATE_COMPLETED);
   };
 
   xrt::task::createF(notify_queue,notify,cmd);
