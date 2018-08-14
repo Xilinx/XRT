@@ -261,10 +261,6 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
-    case XCL_DEBUG_READ_TYPE_SAM:
-      return drv->xclDebugReadSAMCounters(reinterpret_cast<xclDebugSAMCounterResults*>(debugResults));
-    case XCL_DEBUG_READ_TYPE_BAR:
-      return drv->xclDebugReadBarCounters(reinterpret_cast<xclDebugBarCounterResults*>(debugResults));
     default:
       ;
   };
