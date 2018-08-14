@@ -405,19 +405,31 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 };
+
+#define	XMC_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_XMC).pldev
+#define	XMC_OPS(xdev)		\
+	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_XMC).ops)
+
+
 #define	MB_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev
 #define	MB_OPS(xdev)		\
 	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
 	XOCL_SUBDEV_MB).ops)
 #define	xocl_mb_reset(xdev)			\
-	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL)
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->reset(XMC_DEV(xdev)) : \
+	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL))
+
 #define xocl_mb_load_mgmt_image(xdev, buf, len)		\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_mgmt_image(XMC_DEV(xdev), buf, len) :\
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_mgmt_image(MB_DEV(xdev), buf, len) :\
-	-ENODEV)
+	-ENODEV))
 #define xocl_mb_load_sche_image(xdev, buf, len)		\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_sche_image(XMC_DEV(xdev), buf, len) :\
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
-	-ENODEV)
+	-ENODEV))
 
 /*
  * mailbox callbacks
@@ -597,4 +609,6 @@ void xocl_fini_str_qdma(void);
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);
 
+int __init xocl_init_xmc(void);
+void xocl_fini_xmc(void);
 #endif

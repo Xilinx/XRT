@@ -23,34 +23,12 @@
 #include "msp432.h"
 #include "flasher.h"
 
-// Register offset in mgmt pf BAR 0
-#define XMC_REG_BASE             0x120000
-
-// Register offset in register map of XMC
-#define XMC_REG_OFF_VER         0x0
-#define XMC_REG_OFF_MAGIC         0x4
-#define XMC_REG_OFF_ERR            0xc
-#define XMC_REG_OFF_FEATURE        0x10
-#define XMC_REG_OFF_CTL            0x18
-#define XMC_REG_OFF_PKT_OFFSET     0x300
-#define XMC_REG_OFF_PKT_STATUS     0x304
-
-#define XMC_MAGIC_NUM            0x74736574
-#define XMC_VERSION                2017403
-
-#define XMC_PKT_SUPPORT_MASK    (1 << 3)
-#define XMC_PKT_OWNER_MASK        (1 << 5)
-#define XMC_PKT_ERR_MASK        (1 << 26)
-
-enum xmc_packet_op {
-    XPO_UNKNOWN = 0,
-    XPO_MSP432_SEC_START,
-    XPO_MSP432_SEC_DATA
-};
 MSP432_Flasher::MSP432_Flasher(unsigned int device_index, char *inMap)
 {
     unsigned val;
     mMgmtMap = inMap;
+    mPktBufOffset = 0;
+    mPkt = {};
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
@@ -88,8 +66,7 @@ MSP432_Flasher::~MSP432_Flasher()
 /*
  * xclUpgradeFirmware
  */
-int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
-    std::ifstream tiTxtStream(tiTxtFileName);
+int MSP432_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
@@ -100,13 +77,6 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
         return -EOPNOTSUPP;
     }
 
-    if(!tiTxtStream.is_open()) {
-        std::cout << "ERROR: Cannot open " << tiTxtFileName
-                  <<". Check that it exists and is readable." << std::endl;
-        return -ENOENT;
-    }
-
-    std::cout << "INFO: Parsing file " << tiTxtFileName << std::endl;
     while (!tiTxtStream.eof() && !endRecordFound && !errorFound) {
         std::string line;
         std::getline(tiTxtStream, line);
@@ -123,6 +93,12 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
                 mRecordList.push_back(record);
                 startAddress.clear();
             }
+            // Create and append the end-of-image record (mDataCount must be 0).
+            record.mStartAddress = 0x201; /* Hard-coded for now */
+            record.mDataPos = tiTxtStream.tellg();
+            record.mEndAddress = record.mStartAddress;
+            record.mDataCount = 0;
+            mRecordList.push_back(record);
             endRecordFound = true;
             break;
         }
@@ -200,7 +176,7 @@ int MSP432_Flasher::xclUpgradeFirmware(const char *tiTxtFileName) {
     return 0;
 }
 
-int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
+int MSP432_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
 {
     std::string byteStr;
     int ret = 0;
@@ -219,9 +195,11 @@ int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
         return 0;
     }
 
-    tiTxtStream.seekg(record.mDataPos, std::ifstream::beg);
+    tiTxtStream.seekg(record.mDataPos, std::ios_base::beg);
+
     byteStr.clear();
-    mPkt.hdr.opCode = XPO_MSP432_SEC_START;
+    mPkt.hdr.opCode =
+        record.mDataCount ? XPO_MSP432_SEC_START : XPO_MSP432_IMAGE_END;
     mPkt.hdr.reserved = 0;
 
     const int maxDataSize = sizeof (mPkt.data);
@@ -268,21 +246,17 @@ int MSP432_Flasher::program(std::ifstream& tiTxtStream, const ELARecord& record)
     }
 
     // Flush the last packet sent to XMC
-#if 0
     return waitTillIdle();
-#else
-    return 0;
-#endif
 }
 
 void describePkt(struct xmcPkt& pkt)
 {
+    std::ios::fmtflags f(std::cout.flags());
     uint32_t *h = reinterpret_cast<uint32_t *>(&pkt.hdr);
     std::cout << "opcode=" << static_cast<unsigned>(pkt.hdr.opCode)
               << " payload_size=" << pkt.hdr.payloadSize
               << " (0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << *h << std::dec << ")"
               << std::endl;
-#if 0
     uint8_t *data = reinterpret_cast<uint8_t *>(&pkt.data[0]);
     std::cout << std::hex;
     int nbytes = 0;
@@ -293,8 +267,8 @@ void describePkt(struct xmcPkt& pkt)
         if ((nbytes % 16) == 0)
             std::cout << std::endl;
     }
-    std::cout << std::endl << std::dec;
-#endif
+    std::cout << std::endl;
+    std::cout.flags(f);
 }
 
 int MSP432_Flasher::sendPkt()
@@ -303,7 +277,6 @@ int MSP432_Flasher::sendPkt()
 
     std::cout << "Sending XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
     describePkt(mPkt);
-#if 0
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
     int ret = waitTillIdle();
     if (ret != 0)
@@ -314,20 +287,21 @@ int MSP432_Flasher::sendPkt()
     }
 
     // Flip pkt buffer ownership bit
-    writeReg(XMC_REG_OFF_PKT_STATUS, readReg(XMC_REG_OFF_CTL) & ~XMC_PKT_OWNER_MASK);
-#endif
+    writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
     return 0;
 }
 
 int MSP432_Flasher::waitTillIdle()
 {
-    // In total, wait for 50 * 10ms
+    // In total, wait for 500 * 10ms
     const timespec req = {0, 10 * 1000 * 1000}; // 10ms
-    int retry = 50;
+    int retry = 500;
     unsigned err = 0;
 
-    while ((retry-- > 0) && !(readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK))
+    std::cout << "INFO: Waiting until idle" << std::endl;
+    while ((retry-- > 0) && (readReg(XMC_REG_OFF_CTL) & XMC_PKT_OWNER_MASK)){
         (void) nanosleep(&req, nullptr);
+    }
 
     if (retry == 0) {
         std::cout << "ERROR: Time'd out while waiting for XMC packet to be idle" << std::endl;

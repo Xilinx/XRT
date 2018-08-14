@@ -62,6 +62,7 @@
 
 #include "shim.h"
 #include <boost/property_tree/xml_parser.hpp>
+#include <unistd.h>
 
 namespace xclhwemhal2 {
 
@@ -369,7 +370,7 @@ namespace xclhwemhal2 {
       for(auto it:mMembanks )
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, 4096));
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
       }
     }
     // Write XML metadata from xclbin
@@ -1353,7 +1354,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       const uint64_t bankSize = (*start).ddrSize; 
       mDdrBanks.push_back(*start);
-      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , 4096));
+      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , getpagesize()));
       base += bankSize;
     }
   }

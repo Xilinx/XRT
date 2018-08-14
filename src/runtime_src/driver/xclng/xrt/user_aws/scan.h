@@ -21,8 +21,8 @@
 #include <vector>
 
 #ifndef INTERNAL_TESTING
-#define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS 3
+#define XCLMGMT_NUM_SUPPORTED_CLOCKS 4
+#define XCLMGMT_NUM_ACTUAL_CLOCKS 3
 #include <fpga_mgmt.h>
 #include <fpga_pci.h>
 #endif
@@ -52,6 +52,7 @@ public:
     };
     static std::vector<struct device_info> device_list; // userpf instance, mgmt instance, device
     int scan(bool print);
+    void clear_device_list( void ) { device_list.clear(); }
 
 private:
     struct pci_device {

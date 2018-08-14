@@ -163,7 +163,7 @@ int main(int argc, char** argv)
 	xclBOProperties p;
 	uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
-	if((bodevAddr == -1))
+	if((bodevAddr == uint64_t (-1)))
 	    return 1;
 
 	//Allocate the exec_bo

@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
+        // coverity[TAINTED_STRING] argv will be validated inside xbflash
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
@@ -402,7 +403,15 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::SCAN) {
         xcldev::pci_device_scanner devScanner;
-        return devScanner.scan(true);
+        try
+        {
+            return devScanner.scan(true);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: scan failed" << std::endl;
+            return -1;
+        }
     }
 
     std::vector<std::unique_ptr<xcldev::device>> deviceVec;
@@ -457,7 +466,14 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->program(xclbin, regionIndex);
         break;
     case xcldev::QUERY:
-        result = deviceVec[index]->dump(std::cout);
+        try
+        {
+            result = deviceVec[index]->dump(std::cout);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: query failed" << std::endl;
+        }
         break;
     case xcldev::VALIDATE:
         result = deviceVec[index]->validate();
@@ -536,19 +552,18 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dmatest [-d device] [-b [0x]block_size_KB]\n";
     std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-//    std::cout << "  dd      [-d device] [--if=input file] [--bs=block size] [--count=block count] [--seek=destination offset in blocks]\n";
-//    std::cout << "  dd      [-d device] [--of=output file] [--bs=block size] [--count=block count] [--skip=source offset in blocks]\n";
-    //        std::cout << "  fan     [-d device] -s speed\n";
     std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   scan\n";
+    std::cout << "  flash   [-d device] [-d device] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d device] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
     std::cout << "  scan\n";
+    std::cout << "  top [-i seconds]\n";
     std::cout << "  program [-d device] [-r region] -p xclbin\n";
     std::cout << "  query   [-d device [-r region]]\n";
     std::cout << "  reset   [-d device] [-h | -r region]\n";
     std::cout << "  status  [--debug_ip_name]\n";
-    //        std::cout << "  run     -d device [-r region] -c compunit\n"; TODO
     std::cout << "\nExamples:\n";
     std::cout << "List all devices\n";
     std::cout << "  " << exe << " list\n";
@@ -570,12 +585,12 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
     std::cout << "  " << exe << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
-//    std::cout << "Write 2048 bytes from file to device in 1024 byte blocks starting at 0x400\n";
-//    std::cout << "  " << exe << " dd -d0 --if=in.txt --bs=1024 --count=2 --seek=1\n";
-//    std::cout << "Write 512 bytes from device to file in 16 byte blocks starting at 0x400\n";
-//    std::cout << "  " << exe << " dd -d0 --of=out.txt --bs=16 --count=32 --skip=64\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
+    std::cout << "Flash all installed DSA for all boards, if not done\n";
+    std::cout << "  " << exe << " flash -a all\n";
+    std::cout << "Show DSA related information for all boards in the system\n";
+    std::cout << "  " << exe << " flash scan\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
@@ -606,19 +621,19 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(xclDeviceUsage& devstat)
+static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
 {
-    printw("\nTotal DMA Transfer Metrics:\n");
-    for (unsigned i = 0; i < devstat.dma_channel_cnt; i++) {
-        printw("  Chan[%d].h2c:  %llu KB\n", i, devstat.h2c[i] / 1024);
-        printw("  Chan[%d].c2h:  %llu KB\n", i, devstat.c2h[i] / 1024);
-    }
+    std::vector<std::string> lines;
 
-    printw("\nDevice Memory Usage:\n");
-    for (unsigned i = 0; i < devstat.mm_channel_cnt; i++) {
-        printw("  Bank[%d].mem:  %llu KB\n", i, devstat.ddrMemUsed[i] / 1024);
-        printw("  Bank[%d].bo:  %llu\n", i, devstat.ddrBOAllocated[i]);
-    }
+    dev->m_mem_usage_bar(devstat, lines, 0, devinfo.mDDRBankCount);
+
+    dev->m_devinfo_stringize_power(&devinfo, lines);
+    
+    dev->m_mem_usage_stringize_dynamics(devstat, &devinfo, lines, 0, devinfo.mDDRBankCount);
+
+    for(auto line:lines){
+            printw("%s\n", line.c_str());
+    } 
 }
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
@@ -628,13 +643,19 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
             if (result) {
                 ctrl->status = result;
                 return;
             }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
             clear();
-            topPrintUsage(devstat);
+            topPrintUsage(ctrl->dev, devstat, devinfo);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
