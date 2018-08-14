@@ -407,7 +407,8 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * only if another client has not already setup up a context on those compute units. Shared
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
-XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context);
+XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex,
+                                       bool shared);
 
 /**
  * xclCloseContext() - Close previously opened context
@@ -418,7 +419,7 @@ XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextPropert
  *
  * Close a previously allocated shared/exclusive context for a compute unit.
  */
-XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, xclContextProperties *context);
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex);
 
 /*
  * Update the device BPI PROM with new image
@@ -1082,12 +1083,12 @@ enum xclQueueRequestFlag {
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-    xclQueueRequestKind op_code;  
+    xclQueueRequestKind op_code;
     xclWRBuffer*        bufs;
     uint32_t	        buf_num;
     char*               cdh;
     uint32_t	        cdh_len;
-    xclQueueRequestFlag flag;     
+    xclQueueRequestFlag flag;
 };
 
 /**
