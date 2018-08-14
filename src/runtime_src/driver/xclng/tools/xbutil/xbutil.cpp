@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     std::string flashType = ""; // unset and empty by default
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
-    size_t blockSize = 0x200000;
+    size_t blockSize = 0;
     bool hot = false;
     int c;
     dd::ddArgs_t ddArgs;
@@ -72,7 +72,12 @@ int main(int argc, char *argv[])
     } /* end of call to xbflash */
 
     if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
-        return xcldev::xclTop(argc - 1, &argv[1]);
+        optind++;
+        return xcldev::xclTop(argc, argv);
+    }
+    if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
+        optind++;
+        return xcldev::xclValidate(argc, argv);
     }
 
     argv++;
@@ -389,7 +394,7 @@ int main(int argc, char *argv[])
     try {
         unsigned int count = xclProbe();
         if (count == 0) {
-            std::cout << "ERROR: No devices found\n";
+            std::cout << "ERROR: No device found\n";
             return 1;
         }
 
@@ -444,9 +449,6 @@ int main(int argc, char *argv[])
         {
             std::cout << "ERROR: query failed" << std::endl;
         }
-        break;
-    case xcldev::VALIDATE:
-        result = deviceVec[index]->validate();
         break;
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
@@ -677,4 +679,154 @@ int xcldev::xclTop(int argc, char *argv[])
     t.join();
     endwin();
     return ctrl.status;
+}
+
+const std::string dsaPath("/opt/xilinx/dsa/");
+
+int runShellCmd(std::string& cmd, std::string& output)
+{
+    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (pipe == nullptr) {
+        std::cout << "ERROR: Failed to run " << cmd << std::endl;
+        return -EINVAL;
+    }
+
+    char buf[128];
+    while (!feof(pipe.get())) {
+        if (fgets(buf, sizeof (buf), pipe.get()) != nullptr)
+            output += buf;
+    }
+
+    return 0;
+}
+
+/*
+ * validate
+ */
+int xcldev::device::validate()
+{
+    // Check pcie training
+    std::cout << "INFO: Checking PCIE link status" << std::endl;
+    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
+        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+        std::cout << "WARNING: Device trained to lower spec. "
+            << "Expect: Gen" << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
+            << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x" << m_devinfo.mPCIeLinkWidth
+            << std::endl;
+        // Non-fatal, continue validating.
+    }
+
+    // Run verify kernel
+    std::cout << "INFO: Testing verify kernel" << std::endl;
+    std::string path = dsaPath + m_devinfo.mName;
+    path += "/test/verify.";
+    std::string exePath = path + "exe";
+    std::string xclbinPath = path + "xclbin";
+
+    struct stat st;
+    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        std::cout << "ERROR: Failed to find verify kernel. "
+            << "DSA package not installed properly." << std::endl;
+        return -EINVAL;
+    }
+
+    std::string output;
+    std::string cmd = exePath + " " + xclbinPath;
+    int ret = runShellCmd(cmd, output);
+    if (ret != 0) {
+        std::cout << "ERROR: Can't run verify kernel." << std::endl;
+        return ret;
+    }
+    if (output.find("Hello World") == std::string::npos) {
+        std::cout << "ERROR: verify kernel failed, output as below:" << std::endl;
+        std::cout << "=============================================" << std::endl;
+        std::cout << output << std::endl;
+        std::cout << "=============================================" << std::endl;
+        return -EINVAL;
+    }
+
+    // Perform DMA test
+    std::cout << "INFO: Performing DMA test" << std::endl;
+    ret = dmatest(0);
+    if (ret != 0)
+        return ret;
+
+    return 0;
+}
+
+int xcldev::xclValidate(int argc, char *argv[])
+{
+    unsigned index = UINT_MAX;
+    const std::string usage("Options: [-d index]");
+    int c;
+
+    while ((c = getopt(argc, argv, "d:")) != -1) {
+        switch (c) {
+        case 'd':
+            index = (unsigned)std::atoi(optarg);
+            // Hack for now until verify kernel can support multiple boards
+            if (index != 0) {
+                std::cout << "ERROR: Can only validate the first board" << std::endl;
+                return -EINVAL;
+            }
+            break;
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }
+    }
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    unsigned int count = xclProbe();
+    // Hack for now until verify kernel can support multiple boards
+    if (count > 1)
+        std::cout << "WARNING: Will only validate the first board" << std::endl;
+    index = 0;
+
+    std::vector<unsigned> boards;
+    if (index == UINT_MAX) {
+        if (count == 0) {
+            std::cout << "ERROR: No device found" << std::endl;
+            return -ENOENT;
+        }
+        for (unsigned i = 0; i < count; i++)
+            boards.push_back(i);
+    } else {
+        if (index >= count) {
+            std::cout << "ERROR: Device[" << index << "] not found" << std::endl;
+            return -ENOENT;
+        }
+        boards.push_back(index);
+    }
+
+    bool validated = true;
+    for (unsigned i : boards) {
+        std::unique_ptr<device> dev = xclGetDevice(i);
+        if (!dev) {
+            std::cout << "ERROR: Can't open device[" << i << "]" << std::endl;
+            return -EINVAL;
+        }
+
+        std::cout << std::endl << "INFO: Validating device[" << i << "]:" << std::endl;
+        if (dev->validate() != 0) {
+            validated = false;
+            std::cout << "INFO: Device[" << i << "] failed to validate." << std::endl;
+        } else {
+            std::cout << "INFO: Device[" << i << "] validated successfully." << std::endl;
+        }
+    }
+
+    if (!validated) {
+        std::cout << "ERROR: Some devices failed to validate." << std::endl;
+        return -EINVAL;
+    }
+
+    std::cout << "INFO: All devices validated successfully." << std::endl;
+    return 0;
+
 }

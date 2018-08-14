@@ -15,8 +15,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef XBSAK_H
-#define XBSAK_H
+#ifndef XBUTIL_H
+#define XBUTIL_H
 
 #include <getopt.h>
 #include <dlfcn.h>
@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <climits>
 #include <cstring>
 #include <cstddef>
 #include <cctype>
@@ -89,7 +90,6 @@ enum command {
     MEM,
     DD,
     STATUS,
-    VALIDATE,
     CMD_MAX
 };
 enum subcommand {
@@ -121,7 +121,6 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("validate", VALIDATE)
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -617,27 +616,6 @@ public:
     }
 
     /*
-     * validate
-     */
-    int validate()
-    {
-        std::vector<ip_data> computeUnits;
-        int retVal = getComputeUnits( computeUnits );
-        if( retVal < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-            return retVal;
-        }
-        unsigned buf[ 16 ];
-        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &buf, 16);
-            if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
-                return -EBUSY;
-            }
-        }
-        return 0;
-    }
-
-    /*
      * dump
      *
      * TODO: Refactor to make function much shorter.
@@ -820,6 +798,9 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize) {
+        if (blockSize == 0)
+            blockSize = 0x200000; // Default block size
+
         std::cout << "Total DDR size: " << m_devinfo.mDDRSize/(1024 * 1024) << " MB\n";
         unsigned numDDR = m_devinfo.mDDRBankCount;
         bool isAREDevice = false;
@@ -1095,16 +1076,19 @@ public:
     int usageInfo(xclDeviceUsage& devstat) const {
         return xclGetUsageInfo(m_handle, &devstat);
     }
+
     int deviceInfo(xclDeviceInfo2& devinfo) const {
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
+
+    int validate();
 };
 
 void printHelp(const std::string& exe);
-int xclXbsak(int argc, char *argv[]);
 int xclTop(int argc, char *argv[]);
+int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 
 } // end namespace xcldev
 
-#endif /* XBSAK_H */
+#endif /* XBUTIL_H */

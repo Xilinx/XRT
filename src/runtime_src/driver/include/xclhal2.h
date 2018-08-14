@@ -132,8 +132,11 @@ struct xclDeviceInfo2 {
   bool mIsXPR;
   unsigned long long mTimeStamp;
   char mFpga[256];
-
+  unsigned short mPCIeLinkWidthMax;
+  unsigned short mPCIeLinkSpeedMax;
+  // More properties here
 };
+
 /**
  * xclMemoryDomains is for support of legacy APIs
  * It is not used in BO APIs where we instead use xclBOKind
