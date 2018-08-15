@@ -20,8 +20,8 @@
 namespace xocl { 
 
 stream::
-stream(stream::stream_flags_type flags, stream::stream_attributes_type attrs)
-  : m_flags(flags), m_attrs(attrs) 
+stream(stream::stream_flags_type flags, stream::stream_attributes_type attrs, cl_mem_ext_ptr_t* ext)
+  : m_flags(flags), m_attrs(attrs), m_ext(ext) 
 {
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
@@ -34,7 +34,7 @@ stream::
 stream::get_stream(device* device)
 {
   m_device = device;
-  return device->get_stream(m_flags, m_attrs, &m_handle);
+  return device->get_stream(m_flags, m_attrs, m_ext, &m_handle);
 }
 
 ssize_t 
