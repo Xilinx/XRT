@@ -233,21 +233,27 @@ bool xcldev::pci_device_scanner::print_pci_info()
 void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
 {
     for (auto &mdev : mgmt_devices) {
+        struct device_info temp = { 0, mdev.instance,
+                                    "", mdev.device_name,
+                                    mdev.user_bar, mdev.user_bar_size,
+                                    mdev.domain, mdev.bus, mdev.dev,
+                                    mdev.func, 0, mdev.flash_type };
+
+        if( skipValidDeviceCheck ) {
+            device_list.emplace_back(temp);
+            continue;
+        }
         for (auto &udev : user_devices) {
             if( (mdev.domain == udev.domain) &&
                     (mdev.bus == udev.bus) &&
                     (mdev.dev == udev.dev) )
                     
             {
-                struct device_info temp = { udev.instance, mdev.instance,
-                                            udev.device_name, mdev.device_name,
-                                            udev.user_bar, udev.user_bar_size,
-                                            mdev.domain, mdev.bus, mdev.dev, mdev.func, udev.func };
-                if( skipValidDeviceCheck ) {
-                    device_list.emplace_back(temp);
-                    continue;
-                }
                 if( (temp.user_instance != INVALID_DEV) && (temp.mgmt_instance != INVALID_DEV) ) {
+                    temp.user_instance = udev.instance;
+                    temp.user_name = udev.device_name;
+                    temp.user_func = udev.func;
+
                     device_list.emplace_back(temp);
                 }
             }
@@ -354,6 +360,8 @@ int xcldev::pci_device_scanner::scan(bool print)
 
         device.user_bar = bar;
         device.user_bar_size = bar_size(subdir, bar);
+	if (board_info->priv_data->flash_type)
+		device.flash_type = board_info->priv_data->flash_type;
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -428,6 +436,32 @@ bool xcldev::pci_device_scanner::get_mgmt_device_name(std::string &devName , uns
     return retVal;
 }
 
+int xcldev::pci_device_scanner::get_feature_rom_bar_offset(unsigned int devIdx,
+ unsigned long long &offset)
+{
+    int ret = -ENOENT;
+
+    if( !mgmt_devices.empty() )
+    {
+        pci_device device = mgmt_devices[ devIdx ];
+        struct xocl_board_info *board_info;
+
+        if ((board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
+            for (unsigned int i = 0; i < board_info->priv_data->subdev_num; i++)
+            {
+                if (board_info->priv_data->subdev_info[i].id == XOCL_SUBDEV_FEATURE_ROM)
+                {
+                    offset = board_info->priv_data->subdev_info[i].res[0].start;
+                    ret = 0;
+                    break;
+                }
+            } 
+        }
+    }
+
+    return ret;
+}
+
 int xcldev::pci_device_scanner::scan_without_driver( void )
 {
     // need to clear the following lists: mgmt_devices, user_devices, xcldev::device_list
@@ -484,6 +518,8 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
 
         device.user_bar = board_info->priv_data->user_bar;
         device.user_bar_size = bar_size(subdir, device.user_bar);
+	if (board_info->priv_data->flash_type)
+		device.flash_type = board_info->priv_data->flash_type;
         if( !add_device(device) )
         {
             closedir( dir );
