@@ -318,25 +318,25 @@ public:
 
 public:
 
-  virtual int 
+  virtual int
   createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
 
-  virtual int 
+  virtual int
   createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
 
-  virtual int 
+  virtual int
   closeStream(hal::StreamHandle stream);
 
   virtual hal::StreamBuf
   allocStreamBuf(size_t size, hal::StreamBufHandle *buf);
 
-  virtual int 
+  virtual int
   freeStreamBuf(hal::StreamBufHandle buf);
 
-  virtual ssize_t 
+  virtual ssize_t
   writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
 
-  virtual ssize_t 
+  virtual ssize_t
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
 
 public:

@@ -282,16 +282,16 @@ private:
     int xclLoadAxlf(const axlf *buffer);
 
     std::ifstream xclSysfsOpen(bool mgmt,
-        const std::string subDevName, const std::string entry);
+        const std::string& subDevName, const std::string& entry);
     std::string xclSysfsGetString(bool mgmt,
-        const std::string subDevName, const std::string entry);
+        const std::string& subDevName, const std::string& entry);
     unsigned long long xclSysfsGetInt(bool mgmt,
-        const std::string subDevName, const std::string entry);
+        const std::string& subDevName, const std::string& entry);
     std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
-        const std::string subDevName, const std::string entry);
+        const std::string& subDevName, const std::string& entry);
     std::vector<std::string> xclSysfsGetStrings(bool mgmt,
-        const std::string subDevName, const std::string entry);
-    void xclSysfsGetDeviceInfo(xclmgmt_ioc_info& info);
+        const std::string& subDevName, const std::string& entry);
+    void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 
@@ -362,15 +362,15 @@ private:
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;
     bool mIsDeviceProfiling = false;
-    uint64_t mPerfMonFifoCtrlBaseAddress;
-    uint64_t mPerfMonFifoReadBaseAddress;
-    uint64_t mTraceFunnelAddress;
-    uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
-    std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
-    std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
-    uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
-    uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
+    uint64_t mPerfMonFifoCtrlBaseAddress = 0;
+    uint64_t mPerfMonFifoReadBaseAddress = 0;
+    uint64_t mTraceFunnelAddress = 0;
+    uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS] = {};
+    std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS] = {};
+    std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
 }; /* XOCLShim */
 
 } /* xocl */

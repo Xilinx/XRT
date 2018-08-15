@@ -41,8 +41,8 @@ class XSPI_Flasher
 public:
     XSPI_Flasher( unsigned int device_index, char *inMap );
     ~XSPI_Flasher();
-    int xclUpgradeFirmware2(const char *file1, const char* file2);
-    int xclUpgradeFirmwareXSpi(const char *fileName, int device_index=0);
+    int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
+    int xclUpgradeFirmwareXSpi(std::istream& mcsStream, int device_index=0);
 //    std::ofstream mLogStream;
 
 private:
@@ -61,8 +61,8 @@ private:
     bool writePage(unsigned addr, uint8_t writeCmd = 0xff);
     bool readPage(unsigned addr, uint8_t readCmd = 0xff);
     bool prepareXSpi();
-    int programXSpi(std::ifstream& mcsStream, const ELARecord& record);
-    int programXSpi(std::ifstream& mcsStream);
+    int programXSpi(std::istream& mcsStream, const ELARecord& record);
+    int programXSpi(std::istream& mcsStream);
     bool readRegister(unsigned commandCode, unsigned bytes);
     bool writeRegister(unsigned commandCode, unsigned value, unsigned bytes);
 };

@@ -48,7 +48,7 @@ public:
     };
     static std::vector<struct device_info> device_list; // userpf instance, mgmt instance, device
     int scan(bool print);
-    int scan_without_driver( void );
+    int scan_without_driver();
     bool get_mgmt_device_name(std::string &devName, unsigned int devIdx);
 
 private:

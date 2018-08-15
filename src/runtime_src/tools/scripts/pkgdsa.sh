@@ -165,7 +165,7 @@ mcsSecondary=""
 fullBitFile=""
 clearBitstreamFile=""
 dsaXmlFile="dsa.xml"
-featureRomTimestamp=""
+featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
 vbnv=""
@@ -173,6 +173,8 @@ pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
+post_inst_fail_msg="DSA installed successfully. But failed to flash board(s). Please flash board manually with xbutil flash -a all"
+post_inst_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
 
 createEntityAttributeArray ()
 {
@@ -390,6 +392,7 @@ dodsabin()
        echo "Warning: Missing Platform VBNV value"
     fi
 
+
     # -- Mode Hardware PR --
     xclbinOpts+=" --kvp mode:hw_pr"
 
@@ -409,6 +412,7 @@ dodsabin()
     ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}
 
     popd >/dev/null
+
 }
 
 dodebdev()
@@ -464,6 +468,13 @@ maintainer: Xilinx Inc.
 
 EOF
 
+cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
+
+/opt/xilinx/xrt/bin/xbutil flash -f -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
+
+EOF
+    chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
+
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
@@ -510,6 +521,8 @@ Xilinx $dsa development DSA.
 Xilinx $dsa development DSA. Built on $build_date.
 
 %prep
+
+%post
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw
@@ -565,6 +578,9 @@ requires: xrt >= $opt_xrt
 Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $opt_xrt.
 
 %prep
+
+%post
+echo "${post_inst_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx

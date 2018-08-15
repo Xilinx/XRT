@@ -18,6 +18,7 @@
 #ifndef __XILINX_RT_SINGLETON_H
 #define __XILINX_RT_SINGLETON_H
 
+#include <mutex>
 #include <CL/opencl.h>
 #include <string>
 #include <map>
@@ -25,6 +26,7 @@
 #include "xdp/debug/rt_debug.h"
 #include "driver/include/xclperf.h"
 #include "xocl/core/platform.h"
+#include "xdp/profile/continuous_profile.h"
 
 // Use XCL::RTSingleton::Instance() to get to the singleton runtime object
 // Runtime code base can now get access to the singleton and make certain
@@ -39,7 +41,7 @@ namespace XCL {
    * This function can be called during static global exit()
    * to check if it is no longer safe to rely on the singleton
    *
-   * @return 
+   * @return
    *   true as long as main is running, false after the singleton dtor
    *   has been called during static global destruction.
    */
@@ -145,9 +147,9 @@ namespace XCL {
     bool OclProfilingOn = true;
     int ProfileFlags;
     std::map<unsigned, e_ocl_profile_mode> OclProfileMode;
+
+    PowerMonitor* pm;
   };
 };
 
 #endif
-
-
