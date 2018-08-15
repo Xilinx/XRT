@@ -1,0 +1,20 @@
+args: -k kernel.xclbin
+copy: [Makefile, utils.h]
+devices:
+- [all_pcie]
+flags: -g -std=c++0x -ldl
+flows: [hw_all]
+hdrs: [xaddone_hw.h, xaddone_hw_64.h, utils.h]
+krnls:
+- name: addone 
+  srcs: [kernel.cl]
+  type: clc
+name: 13_add_one
+owner: hemn
+srcs: [main.cpp]
+ld_library_path: '$XILINX_OPENCL/runtime/platforms/${DSA_PLATFORM}/driver:$LD_LIBRARY_PATH'
+xclbins:
+- cus:
+  - {krnl: addone, name: addone}
+  name: kernel
+  region: OCL_REGION_0
