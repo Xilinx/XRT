@@ -25,9 +25,6 @@
 //To access make_unique<>. TODO
 #include "xrt/util/memory.h"
 
-#include <type_traits>
-#include <typeinfo>
-
 namespace xocl {
 static void
 validOrError(cl_device_id device,

@@ -41,6 +41,8 @@ ssize_t
 stream
 ::read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_flags flags)
 {
+  if(device != m_device)
+    throw xocl::error(CL_INVALID_OPERATION,"Stream read on a bad device");
   return m_device->read_stream(m_handle, ptr, offset, size, flags);
 }
 
