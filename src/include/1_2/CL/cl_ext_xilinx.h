@@ -231,14 +231,12 @@ clReadStream(cl_device_id     /* device_id*/,
 
 
 /* clCreateStreamBuffer - Alloc buffer used for read and write.
- * @stream     : The stream to associate the buffer with
  * @size       : The size of the buffer
  * errcode_ret : The return value, eg CL_SUCCESS
  * Returns cl_stream_mem
  */
 extern CL_API_ENTRY cl_stream_mem CL_API_CALL
 clCreateStreamBuffer(cl_device_id device,
-	cl_stream             /* stream*/,
 	size_t                /* size*/,
 	cl_int *              /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 

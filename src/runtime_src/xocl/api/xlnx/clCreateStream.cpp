@@ -43,13 +43,11 @@ clCreateStream(cl_device_id           device,
 	       cl_int*                errcode_ret) 
 {
   validOrError(device,flags,attributes,errcode_ret);
-  auto stream = xrt::make_unique<xocl::stream::stream>(flags,attributes);
+  auto stream = xrt::make_unique<xocl::stream>(flags,attributes);
   stream->get_stream(xocl::xocl(device));
   //return xocl(device_id)->get_xrt_device()->createWriteStream(flags, attr, );
   xocl::assign(errcode_ret,CL_SUCCESS);
-  auto x = stream.release();
-  (void) x;
-  return nullptr;
+  return stream.release();
 }
 
 } //xocl

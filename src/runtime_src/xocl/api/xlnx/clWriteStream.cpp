@@ -19,7 +19,7 @@
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
-
+#include "xocl/core/device.h"
 
 namespace xocl {
 
@@ -45,8 +45,7 @@ clWriteStream(cl_device_id        device,
 	      cl_int*             errcode_ret)
 {
   validOrError(device,stream,ptr,offset,size,attributes,errcode_ret);
-  //return stream->write(xocl::xocl(device), ptr, offset, size, attributes);
-  return 0;
+  return xocl::xocl(stream)->write(xocl::xocl(device), ptr, offset, size, attributes);
 }
 
 } //xocl

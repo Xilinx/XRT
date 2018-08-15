@@ -39,20 +39,14 @@ validOrError(cl_device_id device,
 
 static cl_stream_mem
 clCreateStreamBuffer(cl_device_id device,
-                     cl_stream    stream,
 	             size_t       size,
 	             cl_int*      errcode_ret) 
 {
-  (void)stream;
   validOrError(device,size,errcode_ret);
   auto buf = xrt::make_unique<xocl::stream_mem>(size);
-  auto xdevice = xocl::xocl(device); 
-  buf->get(xdevice);
+  buf->get(xocl::xocl(device));
   xocl::assign(errcode_ret,CL_SUCCESS);
-  xocl::stream_mem* s = buf.release();
-  //return *s;
-  (void)s;
-  return nullptr;
+  return buf.release();
 }
 
 } //xocl
@@ -60,14 +54,13 @@ clCreateStreamBuffer(cl_device_id device,
 
 CL_API_ENTRY cl_stream_mem CL_API_CALL
 clCreateStreamBuffer(cl_device_id device,
-	             cl_stream    stream,
 		     size_t       size,
 		     cl_int *     errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clCreateStreamBuffer
-      (device,stream,size,errcode_ret);
+      (device,size,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());

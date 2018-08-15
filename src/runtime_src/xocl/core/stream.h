@@ -23,9 +23,9 @@
 
 #include "xrt/device/device.h"
 
-namespace xocl { namespace stream {
-
-class stream // TODO: public refcount
+namespace xocl {
+//class stream for qdma and other streaming purposes.
+class stream : public _cl_stream // TODO: public refcount
 {  
   using stream_flags_type = property_object<cl_stream_flags>;
   using stream_attributes_type = property_object<cl_stream_attributes>;
@@ -47,11 +47,8 @@ public:
   int close();
 };
 
-
-}} // stream, xocl
-
-namespace xocl {
-class stream_mem //TODO: public refcount
+//class stream_mem for streaming memory allocs.
+class stream_mem : public _cl_stream_mem //TODO: public refcount
 {   
   using stream_buf_handle = xrt::hal::StreamBufHandle;
   using stream_buf = xrt::hal::StreamBuf;
@@ -64,10 +61,9 @@ public:
 public:
   int get(device* device);
   stream_buf map() {return m_buf;};
+  void unmap() { /*do nothing*/ };
 };
-} //xocl
 
-struct _cl_stream : public xocl::stream::stream {};
-struct _cl_stream_mem : public xocl::stream_mem {};
+} //xocl
 
 #endif
