@@ -90,6 +90,13 @@ foreach (header ${XRT_CL_EXT_SRC})
   message("-- ${header}")
 endforeach()
 
+# Release eula (EA temporary)
+file(GLOB XRT_EULA
+  "license/*.txt"
+  )
+install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
+message("-- XRT EA eula files ${XRT_EULA}")
+
 include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
