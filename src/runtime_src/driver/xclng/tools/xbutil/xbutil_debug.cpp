@@ -29,69 +29,12 @@
 #include <unistd.h>
 #include <sys/file.h>
 
-#include <thread>
-#include <chrono>
-
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
-
-xcldev::device::InstPowerStatus xcldev::device::readPowerStatus() {
-	std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-	std::ifstream ifs(path.c_str(), std::ifstream::binary);
-	xcldev::device::InstPowerStatus current_power_status;
-	const int power_status_size = 3 * sizeof(float);
-	char buffer[power_status_size];
-	if( ifs.good() ) {
-		ifs.read(buffer, power_status_size);
-		if (ifs.gcount() > 0) {
-			auto buffer_power_status = reinterpret_cast<xcldev::device::InstPowerStatus*>(buffer);
-			current_power_status.avgPowerConsumption = buffer_power_status->avgPowerConsumption;
-			current_power_status.instPowerConsumption = buffer_power_status->instPowerConsumption;
-			current_power_status.peakPowerConsumption = buffer_power_status->peakPowerConsumption;
-		}
-		ifs.close();
-	} else {
-		std::cout <<  "ERROR: Failed to read power information. \n";
-		current_power_status = {-1.0, -1.0, -1.0};
-	}
-	return current_power_status;
-}
-
-int xcldev::device::readPowerOnce() {
-	auto currentPowerStatus = xcldev::device::readPowerStatus();
-	std::cout << "Reading current power consumption status: " << std::endl;
-	std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
-	std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
-	std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
-	return 0;
-}
-
-int xcldev::device::readPowerTrace(int sampleFreq, std::string filename) {
-	std::ofstream dump_file;
-	dump_file.open(filename, std::ios_base::app);
-	int interval = 1e6 / sampleFreq;
-	std::cout << "Reading power consumption time-trace at frequency " << sampleFreq << " Hz: " << std::endl;
-	while (true) {
-		auto currentPowerStatus = xcldev::device::readPowerStatus();
-		auto timestamp = std::chrono::system_clock::now().time_since_epoch().count();
-		std::cout << std::endl;
-		std::cout << "Timestamp: " << timestamp << std::endl;
-		std::cout << "Average Power Consumption: " << currentPowerStatus.avgPowerConsumption << std::endl;
-		std::cout << "Peak Power Consumption: " << currentPowerStatus.peakPowerConsumption << std::endl;
-		std::cout << "Instantaneous Power Consumption: " << currentPowerStatus.instPowerConsumption << std::endl;
-		dump_file << timestamp << ",";
-		dump_file << currentPowerStatus.avgPowerConsumption << ",";
-		dump_file << currentPowerStatus.peakPowerConsumption << ",";
-		dump_file << currentPowerStatus.instPowerConsumption << "\n";
-		dump_file.flush();
-		std::this_thread::sleep_for (std::chrono::microseconds(interval));
-	}
-	return 0;
-}
 
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;

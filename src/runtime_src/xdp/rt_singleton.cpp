@@ -32,7 +32,6 @@
 #include <string>
 #include <chrono>
 #include <iostream>
-#include <thread>
 
 namespace XCL {
 
@@ -83,15 +82,10 @@ namespace XCL {
 
     gActive = true;
 
-    pm = new PowerMonitor("power_dump.csv", 10, 0, "power.log");
-    pm->launch();
-
   };
 
   RTSingleton::~RTSingleton() {
     gActive = false;
-
-    pm->terminate();
 
     endProfiling();
 
@@ -100,7 +94,6 @@ namespace XCL {
     // Destruct in reverse order of construction
     delete ProfileMgr;
     delete DebugMgr;
-    delete pm;
   }
 
   // Kick off profiling and open writers
