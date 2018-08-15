@@ -18,7 +18,6 @@
 #define __XILINX_CONTINUOUS_PROFILING
 
 #include "rt_profile_writers.h"
-#include "xrt/device/hal2.h"
 
 #include <unordered_map>
 #include <vector>
@@ -83,7 +82,6 @@ class PowerMonitor : public SamplingMonitor {
 public:
 	PowerMonitor(std::string dump_filename_in, int freq_in, int device_idx, std::string logfile):SamplingMonitor(freq_in) {
 		dump_filename = dump_filename_in;
-		dev = xrt::hal2::device(logfile.c_str(), );
 	}
 	std::string get_id() {return "power_monitor";};
 private:
@@ -97,7 +95,6 @@ protected:
 private:
 	std::string dump_filename;
 	std::ofstream power_dump_file;
-	xrt::hal2::device dev;
 };
 
 class ContinuousProfile {

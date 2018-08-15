@@ -54,7 +54,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mSetProfilingSlots(0)
   ,mGetProfilingSlots(0)
   ,mGetProfilingSlotName(0)
-  ,mGetUsageInfo(0)
   ,mClockTraining(0)
   ,mStartCounters(0)
   ,mStopCounters(0)
@@ -131,8 +130,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mFreeQDMABuf = (freeQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
   mWriteQueue = (writeQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
   mReadQueue = (readQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
-
-  mGetUsageInfo = (getUsagneInfoFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetUsageInfo");
 
   mGetDeviceTime = (getDeviceTimeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
   if (!mGetDeviceTime)

@@ -114,11 +114,6 @@ class device : public xrt::hal::device
 #endif
   }
 
-  int
-  getDeviceUsage(hal2::usage_info *info) const {
-    return m_ops->mGetUsageInfo(m_handle, info);
-  }
-
   task::queue&
   get_queue(hal::queue_type qt)
   {

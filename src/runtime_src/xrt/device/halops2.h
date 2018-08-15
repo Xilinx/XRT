@@ -38,7 +38,6 @@ typedef xclDeviceInfo2        device_info;
 typedef xclPerfMonType        perfmon_type;
 typedef xclPerfMonEventType   perfmon_event_type;
 typedef xclPerfMonEventID     perfmon_event_id;
-typedef xclDeviceUsage        usage_info;
 
 class operations
 {
@@ -92,7 +91,6 @@ private:
   typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceMaxReadFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceMaxWriteFuncType)(xclDeviceHandle handle);
-  typedef int (* getUsagneInfoFuncType)(xclDeviceHandle handle, xclDeviceUsage *info);
   typedef void (* setSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots);
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
@@ -180,7 +178,6 @@ public:
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;
-  getUsagneInfoFuncType mGetUsageInfo;
   clockTrainingFuncType mClockTraining;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
