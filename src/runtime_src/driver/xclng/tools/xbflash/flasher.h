@@ -26,6 +26,7 @@
 #include "prom.h"
 #include "msp432.h"
 #include "xclfeatures.h"
+#include "scan.h"
 #include <sys/stat.h>
 #include <vector>
 
@@ -43,7 +44,7 @@ public:
     const char *E_FlasherTypeStrings[4] = { "UNSET", "SPI", "BPI", "MSP432" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
 
-    Flasher(unsigned int index, E_FlasherType flasherType=UNSET);
+    Flasher(unsigned int index, std::string flasherType="");
     ~Flasher();
     int upgradeFirmware( const char *f1, const char *f2 );
     bool isValid( void ) { return mIsValid; }
@@ -62,6 +63,7 @@ private:
     BPI_Flasher  *mBpi;
     MSP432_Flasher  *mMsp;
     bool mIsValid;
+    xcldev::pci_device_scanner::device_info mDev;
 
     int mapDevice(unsigned int devIdx);
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
@@ -84,14 +86,14 @@ private:
         std::make_pair( "vcu1550",   SPI ),
         std::make_pair( "vcu1551",   SPI ),
         std::make_pair( "vega-4000", SPI ),
-        std::make_pair( "u200",      SPI ),
-        std::make_pair( "u250",      SPI )
+        std::make_pair( "u200",    SPI ),
+        std::make_pair( "u250",    SPI )
     };
 
 public:
     std::string sGetDBDF() { return mDBDF; }
     std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
-    std::string sGetDSAName() { return std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); }
+    std::string sGetDSAName() { std::string vbnv = std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); return vbnv.size() ? vbnv : "No Feature ROM Loaded"; }
 };
 
 #endif // FLASHER_H
