@@ -276,12 +276,10 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	struct xocl_mem_topology *topology;
 	struct xocl_mm_wrapper *xocl_mm_wrapper;
 	uint32_t shared_region_ddr;
-	// hardcore, need to modify if feature rom have reserved memory field
-	struct pci_dev *pdev = xdev->core.pdev;
-	unsigned short deviceid = pdev->device;
 	uint64_t reserved_bottom_offset = 0;
 	uint64_t reserved_top_offset = 0;
-	if(deviceid==0xA884 || deviceid==0xA984){
+	if (XOCL_DSA_IS_MPSOC(xdev)) {
+		// TODO: This is still hard code...
 		reserved_bottom_offset = 0x80000000;
 		reserved_top_offset = 0x1000000;
 	}

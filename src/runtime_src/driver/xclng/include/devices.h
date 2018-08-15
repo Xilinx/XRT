@@ -59,6 +59,7 @@ struct xocl_board_private {
         uint32_t		intr_bar;
         uint32_t		dsa_ver;
         bool                    xpr;
+        bool                    mpsoc;
 };
 
 #ifdef __KERNEL__
@@ -747,6 +748,17 @@ enum {
 		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
+		.mpsoc = true,						\
+	}
+
+#define	XOCL_BOARD_USER_XDMA_MPSOC					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+		.mpsoc = true,						\
 	}
 
 #define	XOCL_BOARD_MGMT_XBB_DSA51	XOCL_BOARD_MGMT_6A8F
@@ -791,8 +803,8 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA_MPSOC) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A50, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
