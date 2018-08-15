@@ -1,0 +1,20 @@
+args: -k verify.xclbin
+copy: [Makefile, utils.h , xhello_hw.h]
+devices:
+- [all_pcie]
+flags: -g -std=c++0x -ldl
+flows: [hw_all]
+hdrs: [utils.h xhello_hw.h]
+krnls:
+- name: hello 
+  srcs: [hello.cl]
+  type: clc
+name: 22_verify
+owner: hemn
+srcs: [main.cpp]
+ld_library_path: '$XILINX_OPENCL/runtime/platforms/${DSA_PLATFORM}/driver:$LD_LIBRARY_PATH'
+xclbins:
+- cus:
+  - {krnl: hello, name: hello}
+  name: verify
+  region: OCL_REGION_0
