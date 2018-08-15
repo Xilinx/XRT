@@ -397,4 +397,8 @@ typedef struct {
   xclTraceResults mArray[MAX_TRACE_NUMBER_SAMPLES];
 } xclTraceResultsVector;
 
+typedef struct {
+
+} xclPowerStatus;
+
 #endif

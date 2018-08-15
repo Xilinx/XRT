@@ -32,6 +32,7 @@
 #include <string>
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 namespace XCL {
 
@@ -43,13 +44,13 @@ namespace XCL {
     return gActive;
   }
 
-  RTSingleton* 
+  RTSingleton*
   RTSingleton::Instance() {
     if (gDead) {
       std::cout << "RTSingleton is dead\n";
       return nullptr;
     }
-    
+
     static RTSingleton singleton;
     return &singleton;
   }
@@ -81,10 +82,16 @@ namespace XCL {
 #endif
 
     gActive = true;
+
+    pm = new PowerMonitor("power_dump.csv", 10, 0, "power.log");
+    pm->launch();
+
   };
 
   RTSingleton::~RTSingleton() {
     gActive = false;
+
+    pm->terminate();
 
     endProfiling();
 
@@ -93,6 +100,7 @@ namespace XCL {
     // Destruct in reverse order of construction
     delete ProfileMgr;
     delete DebugMgr;
+    delete pm;
   }
 
   // Kick off profiling and open writers
@@ -194,7 +202,7 @@ namespace XCL {
 
     while (ret == -1 && iter < max_iter) {
       ret = xdp::profile::platform::log_device_trace(Platform.get(),type, true);
-      if (ret == -1) 
+      if (ret == -1)
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
       iter++;
     }
@@ -262,6 +270,3 @@ namespace XCL {
       str = "System Run";
   }
 };
-
-
-

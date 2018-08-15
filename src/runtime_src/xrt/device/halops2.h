@@ -111,7 +111,7 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-//Streaming 
+//Streaming
   typedef int     (*createWriteQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*createReadQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*destroyQueueFuncType)(uint64_t q_hdl);
@@ -228,7 +228,7 @@ public:
       : p.size;
   }
 
-  uint64_t 
+  uint64_t
   mGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle) const
   {
     xclBOProperties p;
@@ -242,5 +242,3 @@ public:
 }} // hal2,xrt
 
 #endif
-
-
