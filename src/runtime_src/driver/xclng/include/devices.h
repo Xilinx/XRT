@@ -59,6 +59,7 @@ struct xocl_board_private {
         uint32_t		intr_bar;
         uint32_t		dsa_ver;
         bool                    xpr;
+	char			*flash_type; /* used by xbflash */
 };
 
 #ifdef __KERNEL__
@@ -543,6 +544,7 @@ enum {
 		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
 		.user_bar = 2,						\
 		.intr_bar = 1,						\
+		.flash_type = "spi"					\
 	}
 
 #define	USER_RES_XDMA_DSA50						\
@@ -827,6 +829,16 @@ enum {
 	}
 
 
+#define	XOCL_BOARD_XBB_MFG						\
+	(struct xocl_board_private){					\
+		.user_bar = 0,						\
+		.flash_type = "spi",					\
+	}
+
+#define XOCL_MFG_PCI_IDS						\
+	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG) }
+
 #define	XOCL_MGMT_PCI_IDS			\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A87, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -871,7 +883,6 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4351, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4352, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E50, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B10, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E90, 0x4352, USER_DSA52) },	\

@@ -45,11 +45,13 @@ public:
         size_t user_bar_size;
         int domain;
         uint8_t bus, device, mgmt_func, user_func;
+        std::string flash_type;
     };
     static std::vector<struct device_info> device_list; // userpf instance, mgmt instance, device
     int scan(bool print);
     int scan_without_driver();
     bool get_mgmt_device_name(std::string &devName, unsigned int devIdx);
+    int get_feature_rom_bar_offset(unsigned int devIdx, unsigned long long &offset);
 
 private:
     struct pci_device {
@@ -61,6 +63,7 @@ private:
         std::string driver_name = "???", driver_version = "???";
         int user_bar;
         size_t user_bar_size;
+        std::string flash_type;
     };
     bool add_device(struct pci_device& device);
     bool print_paths();

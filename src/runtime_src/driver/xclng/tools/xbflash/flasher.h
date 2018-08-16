@@ -27,6 +27,7 @@
 #include "msp432.h"
 #include "xclfeatures.h"
 #include "firmware_image.h"
+#include "scan.h"
 #include <sys/stat.h>
 #include <vector>
 #include <memory>
@@ -42,7 +43,7 @@ public:
     const char *E_FlasherTypeStrings[3] = { "UNSET", "SPI", "BPI" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
 
-    Flasher(unsigned int index, E_FlasherType flasherType=UNSET);
+    Flasher(unsigned int index, std::string flasherType="");
     ~Flasher();
     int upgradeFirmware(std::shared_ptr<firmwareImage> primary, std::shared_ptr<firmwareImage> secondary);
     int upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc);
@@ -65,6 +66,7 @@ private:
     XSPI_Flasher *mXspi;
     BPI_Flasher  *mBpi;
     bool mIsValid;
+    xcldev::pci_device_scanner::device_info mDev;
 
     int mapDevice(unsigned int devIdx);
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
@@ -87,11 +89,9 @@ private:
         std::make_pair( "vcu1550",   SPI ),
         std::make_pair( "vcu1551",   SPI ),
         std::make_pair( "vega-4000", SPI ),
-        std::make_pair( "u200",      SPI ),
-        std::make_pair( "u250",      SPI )
+        std::make_pair( "u200",    SPI ),
+        std::make_pair( "u250",    SPI )
     };
-
-public:
 };
 
 #endif // FLASHER_H

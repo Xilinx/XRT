@@ -36,14 +36,15 @@
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index, E_FlasherType flasherType) : 
-  mType(flasherType), mIdx(index)
+Flasher::Flasher(unsigned int index, std::string flasherType) : 
+  mIdx(index)
 {
     mMgmtMap = nullptr;
     mXspi = nullptr;
     mBpi  = nullptr;
     mFd = 0;
     mIsValid = false;
+    mType = E_FlasherType::UNSET;
     memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
 
     if( mapDevice( mIdx ) < 0 )
@@ -52,18 +53,22 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
         return;
     }
 
-    pcieBarRead( 0, (unsigned long long)mMgmtMap + FEATURE_ROM_BASE, &mFRHeader, sizeof(struct FeatureRomHeader) );
-    // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
-    // that EntryPointString starts with magic char sequence "xlnx".
-    if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
-    {
-        std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
-        return;
+    if( flasherType.size() == 0) {
+        flasherType = std::string(mDev.flash_type);
     }
 
-    if( mType == E_FlasherType::UNSET )
-    {
+    if (flasherType.size() == 0) {
+        // not specified in both command line or device profile
         getProgrammingTypeFromDeviceName( mFRHeader.VBNVName, mType );
+    } else if( std::string( flasherType ).compare( "spi" ) == 0 ) {
+        mType = Flasher::E_FlasherType::SPI;
+    } else if( std::string( flasherType ).compare( "bpi" ) == 0 ) {
+        mType = Flasher::E_FlasherType::BPI;
+    } else {
+        // user input invalid flash type string
+        std::cout << "Invalid programming mode '" << flasherType
+                  << "', must be either 'spi' or 'bpi'." << std::endl;
+        return;
     }
 
     switch( mType )
@@ -77,7 +82,8 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) :
         mIsValid = true;
         break;
     default:
-        break;
+        std::cout << " Unknown flash type " << std::endl;
+        return;
     }
 }
 
@@ -159,13 +165,13 @@ int Flasher::mapDevice(unsigned int devIdx)
     }
 
     char cDBDF[128]; // size of dbdf string
-    xcldev::pci_device_scanner::device_info dev = scanner.device_list.at( devIdx );
-    sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", dev.domain, dev.bus, dev.device, dev.mgmt_func );
+    mDev = scanner.device_list.at( devIdx );
+    sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device, mDev.mgmt_func );
     mDBDF = std::string( cDBDF );
     std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
 
     char bar[5];
-    snprintf(bar, sizeof (bar) - 1, "%d", dev.user_bar);
+    snprintf(bar, sizeof (bar) - 1, "%d", mDev.user_bar);
     std::string resourcePath = devPath + "/resource" + bar;
 
     void *p;
@@ -191,6 +197,19 @@ int Flasher::mapDevice(unsigned int devIdx)
     }
     mMgmtMap = (char *)p;
     close( mFd );
+
+    unsigned long long feature_rom_base;
+    if (!scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base))
+    {
+        pcieBarRead( 0, (unsigned long long)mMgmtMap + feature_rom_base, &mFRHeader, sizeof(struct FeatureRomHeader) );
+        // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
+        // that EntryPointString starts with magic char sequence "xlnx".
+        if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
+        {
+            std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
+            return -EINVAL;
+        }
+    }
 
     return 0;
 }
@@ -303,6 +322,10 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
 DSAInfo Flasher::getOnBoardDSA()
 {
-    return DSAInfo(std::string(reinterpret_cast<char *>(mFRHeader.VBNVName)),
-        mFRHeader.TimeSinceEpoch);
+    std::string vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+
+    if (vbnv.empty())
+        std::cout << "No Feature ROM Loaded" << std::endl;
+
+    return DSAInfo(vbnv, mFRHeader.TimeSinceEpoch);
 }
