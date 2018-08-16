@@ -44,5 +44,6 @@ add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})
 set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
 install (FILES
   ${XRT_XDP_APPDEBUG_DIR}/appdebug.py
+  ${XRT_XDP_APPDEBUG_DIR}/appdebugint.py
   DESTINATION ${APPDEBUG_INSTALL_PREFIX}
 )
