@@ -445,21 +445,17 @@ int XSPI_Flasher::xclTestXSpi(int index)
     return 0;
 }
 
-int XSPI_Flasher::xclUpgradeFirmware2(const char *file1, const char* file2) {
+int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2) {
     int status = 0;
-    status = xclUpgradeFirmwareXSpi(file1, 0);
+    status = xclUpgradeFirmwareXSpi(mcsStream1, 0);
     if(status)
         return status;
     clearBuffers();
     recordList.clear();
-    return xclUpgradeFirmwareXSpi(file2, 1);
+    return xclUpgradeFirmwareXSpi(mcsStream2, 1);
 }
 
-int XSPI_Flasher::xclUpgradeFirmwareXSpi(const char *mcsFile, int index) {
-    //  if (mLogStream.is_open()) {
-    //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << mcsFile << std::endl;
-    //  }
-
+int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     clearBuffers();
     recordList.clear();
 
@@ -468,17 +464,10 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(const char *mcsFile, int index) {
 
     slave_index = index;
     std::string line;
-    std::ifstream mcsStream(mcsFile);
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
 
-    if(!mcsStream.is_open()) {
-        std::cout << "ERROR: Cannot open " << mcsFile << ". Check that it exists and is readable." << std::endl;
-        return -ENOENT;
-    }
-
-    std::cout << "INFO: Parsing file " << mcsFile << std::endl;
     while (!mcsStream.eof() && !endRecordFound) {
         std::string line;
         std::getline(mcsStream, line);
@@ -1160,11 +1149,7 @@ bool XSPI_Flasher::prepareXSpi()
     return true;
 }
 
-int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record) {
-    //  if (mLogStream.is_open()) {
-    //    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    //  }
-
+int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) {
     //TODO: decrease the sleep time.
     const timespec req = {0, 20000};
 
@@ -1173,7 +1158,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record)
 #endif
 
     assert(mcsStream.tellg() < record.mDataPos);
-    mcsStream.seekg(record.mDataPos, std::ifstream::beg);
+    mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char* buffer = &WriteBuffer[READ_WRITE_EXTRA_BYTES];
     int bufferIndex = 0;
     int pageIndex = 0;
@@ -1308,7 +1293,7 @@ int XSPI_Flasher::programXSpi(std::ifstream& mcsStream, const ELARecord& record)
     return 0;
 }
 
-int XSPI_Flasher::programXSpi(std::ifstream& mcsStream)
+int XSPI_Flasher::programXSpi(std::istream& mcsStream)
 {
     //  for (ELARecordList::iterator i = mRecordList.begin(), e = mRecordList.end(); i != e; ++i) {
     //    i->mStartAddress <<= 16;

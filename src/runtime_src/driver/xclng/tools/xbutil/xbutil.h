@@ -15,8 +15,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef XBSAK_H
-#define XBSAK_H
+#ifndef XBUTIL_H
+#define XBUTIL_H
 
 #include <getopt.h>
 #include <dlfcn.h>
@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <climits>
 #include <cstring>
 #include <cstddef>
 #include <cctype>
@@ -57,6 +58,12 @@ typedef std::chrono::high_resolution_clock Clock;
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
 
+
+#define XCL_NO_SENSOR_DEV_LL    ~(0ULL)
+#define XCL_NO_SENSOR_DEV       ~(0UL)
+#define XCL_NO_SENSOR_DEV_S     0xffff
+#define XCL_INVALID_SENSOR_VAL 0
+
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -83,7 +90,6 @@ enum command {
     MEM,
     DD,
     STATUS,
-    VALIDATE,
     CMD_MAX
 };
 enum subcommand {
@@ -115,7 +121,6 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("validate", VALIDATE)
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -230,25 +235,384 @@ public:
         return 0;
     }
 
-    /*
-     * validate
-     */
-    int validate()
+    void m_devinfo_stringize_statics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
-        std::vector<ip_data> computeUnits;
-        int retVal = getComputeUnits( computeUnits );
-        if( retVal < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-            return retVal;
+
+        std::stringstream ss, subss, ssdevice;
+
+        ss << std::left;
+        ss << std::setw(16) << "DSA name" <<"\n";
+        ss << std::setw(16) << m_devinfo->mName << "\n\n";
+        ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
+        ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
+        ss << std::setw(16) << "XMC fw version" << "\n";
+
+        ss << std::setw(16) << std::hex << m_devinfo->mVendorId << std::dec;
+        ss << std::setw(16) << std::hex << m_devinfo->mDeviceId << std::dec;
+
+        ssdevice << std::setw(4) << std::setfill('0') << std::hex << m_devinfo->mSubsystemId;
+        ss << std::setw(16) << ssdevice.str();
+    ///    ss << std::setw(16) << std::hex << m_devinfo->mSubsystemId << std::dec;
+        ss << std::setw(16) << std::hex << m_devinfo->mSubsystemVendorId << std::dec;
+        ss << std::setw(16) << m_devinfo->mXMCVersion << "\n\n";
+
+        ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
+        ss << std::setw(16) << "OCL Frequency";
+
+        subss << std::left << std::setw(16) << unitConvert(m_devinfo->mDDRSize);
+        subss << std::setw(16) << m_devinfo->mDDRBankCount << std::setw(16) << " ";
+
+        for(unsigned i= 0; i < m_devinfo->mNumClocks; ++i) {
+            ss << "Clock" << std::setw(11) << i ;
+            subss << m_devinfo->mOCLFrequency[i] << std::setw(13) << " MHz";
         }
-        unsigned buf[ 16 ];
-        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &buf, 16);
-            if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
-                return -EBUSY;
+        ss << "\n" << subss.str() << "\n\n";
+
+        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
+        ss << std::setw(16) << "MIG Calibrated " << "\n";
+
+        ss << "GEN " << m_devinfo->mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo->mPCIeLinkWidth;
+        ss << std::setw(32) << m_devinfo->mDMAThreads;
+        ss << std::setw(16) << std::boolalpha << m_devinfo->mMigCalib << std::noboolalpha << "\n";
+        ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        lines.push_back(ss.str());
+   }
+
+    void m_devinfo_stringize_power(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    {
+        std::stringstream ss;//, subss;
+        unsigned long long power;
+        ss << std::left << "\n";
+
+        ss << std::setw(16) << "Power" << "\n";
+        power = m_devinfo->mPexCurr*m_devinfo->m12VPex;
+        if(m_devinfo->mPexCurr != XCL_INVALID_SENSOR_VAL && m_devinfo->mPexCurr != XCL_NO_SENSOR_DEV_LL 
+           && m_devinfo->m12VPex != XCL_INVALID_SENSOR_VAL && m_devinfo->m12VPex != XCL_NO_SENSOR_DEV_S){
+            ss << std::setw(16) << std::to_string((float)power/1000000).substr(0,4)+"W" << "\n";
+        }
+        else
+            ss << std::setw(16) << "Not support" << "\n";
+
+        lines.push_back(ss.str());
+    }
+    void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    {
+        std::stringstream ss, subss;
+  //      unsigned long long power;
+        ss << std::left << "\n";
+        unsigned i;
+
+        if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
+            for(i= 0; i < 3; ++i){
+                ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
+                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
             }
+            ss << "\n" << subss.str() << "\n\n";
         }
-        return 0;
+
+        ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
+        ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
+
+        if((unsigned short)m_devinfo->mFanTemp == (XCL_NO_SENSOR_DEV & (0xffff)))
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->mFanTemp == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanTemp) +" C";
+
+        if(m_devinfo->mFanRpm == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mFanRpm == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mFanRpm) +" rpm" << "\n\n";
+
+        ss << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX";
+        ss << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << "\n";
+
+        if(m_devinfo->m12VPex == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m12VPex == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else{
+            float vol = (float)m_devinfo->m12VPex/1000;
+            ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
+        }
+
+        if(m_devinfo->m12VAux == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m12VAux == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else{
+            float vol = (float)m_devinfo->m12VAux/1000;
+            ss << std::setw(16) << std::to_string(vol).substr(0,4) + "V";
+        }
+
+        if(m_devinfo->mPexCurr == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mPexCurr == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mPexCurr).substr(0,4) + "mA";
+
+
+        if(m_devinfo->mAuxCurr == XCL_NO_SENSOR_DEV)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mAuxCurr == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr).substr(0,4) + "mA" << "\n\n";
+
+
+        ss << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX";
+        ss << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << "\n";
+
+        if(m_devinfo->m3v3Pex == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m3v3Pex == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Pex/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m3v3Aux == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m3v3Aux == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m3v3Aux/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->mDDRVppBottom == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->mDDRVppBottom == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppBottom/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->mDDRVppTop == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else if (m_devinfo->mDDRVppTop == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mDDRVppTop/1000).substr(0,4) + "V" << "\n\n";
+
+
+        ss << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP";
+        ss << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << "\n";
+
+
+        if(m_devinfo->mSys5v5 == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->mSys5v5 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mSys5v5/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m1v2Top == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if (m_devinfo->m1v2Top == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Top/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m1v8Top == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->m1v8Top != XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v8Top/1000).substr(0,4) + "V";
+
+  
+
+        if(m_devinfo->m0v85 == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else if(m_devinfo->m0v85 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m0v85/1000).substr(0,4) + "V" << "\n\n";
+
+
+        ss << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW";
+        ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
+
+
+        if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mMgt0v9 == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgt0v9/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m12vSW == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support"; 
+        else if(m_devinfo->m12vSW == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else 
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m12vSW/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mMgtVtt == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support" << "\n";
+        else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n";
+
+        m_devinfo_stringize_power(m_devinfo, lines);
+
+        ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        lines.push_back(ss.str());         
+    }
+
+    void m_devinfo_stringize(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
+    {
+        m_devinfo_stringize_statics(m_devinfo, lines);
+        m_devinfo_stringize_dynamics(m_devinfo, lines);
+//        m_devinfo_stringize_power(m_devinfo, lines);
+    }
+
+    void m_mem_usage_bar(xclDeviceUsage &devstat, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
+    {
+        std::stringstream ss;
+        std::ifstream ifs;;
+        unsigned int numDDR;
+        int nums_fiftieth;
+        float percentage;
+        std::string str;
+
+        ss << "Device Memory Usage\n";
+
+        const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+        std::string mem_path = devPath + "/mem_topology";
+
+        ifs.open( mem_path.c_str(), std::ifstream::binary );
+
+        int numBanks = 0;
+        ifs.read((char*)&numBanks, sizeof(numBanks));
+        ifs.seekg(0, ifs.beg);
+        if( numBanks == 0 ) {
+            ss << std::setw(40) << "-- none found --. See 'xbutil program'.";
+        } else if( numBanks > 0 ) {
+            int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
+            buf_size *= 2; //TODO: just double this for padding safety for now.
+            char* buffer = new char[ buf_size ];
+            memset(buffer, 0, buf_size);
+            ifs.read( buffer, buf_size);
+            mem_topology *map;
+            map = (mem_topology *)buffer;
+            numDDR = map->m_count;
+            if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
+               numSupportedMems = numDDR;
+            for( unsigned i = 0; i <numDDR; i++ ) {
+
+                percentage = (float)devstat.ddrMemUsed[i]*100 / (map->m_mem_data[ i ].m_size<<10);
+                nums_fiftieth = (int)percentage/2;
+
+                str = std::to_string(percentage).substr(0,4)+"%";
+
+                ss << " [" << i << "] " << std::setw(16-(std::to_string(i).length())-4) << std::left << map->m_mem_data[ i ].m_tag;
+           //     ss << std::setw(20) << " [" +std::to_string(i)+ "] " + (map->m_mem_data[ i ].m_tag);
+
+                ss << "[ " << std::right << std::setw(nums_fiftieth) << std::setfill('|') << (nums_fiftieth ? " ":"") <<  std::setw(56-nums_fiftieth);
+                ss << std::setfill(' ') << str << " ]" << "\n";
+
+            }
+            delete[] buffer;
+        } else { // mem_topology exists, but no data read or reported
+            ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << "\n";
+        }
+        ifs.close();
+
+        lines.push_back(ss.str());
+    }
+
+
+    void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat, const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines, int result, unsigned numSupportedMems) const
+    {
+        
+        std::stringstream ss;
+        std::ifstream ifs;;
+        unsigned int numDDR;
+
+
+        const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+        ss << std::left << std::setw(48) << "Mem Topology" << std::setw(32) << "Device Memory Usage" << "\n"; 
+        std::string mem_path = devPath + "/mem_topology";
+
+        ifs.open( mem_path.c_str(), std::ifstream::binary );
+
+        int numBanks = 0;
+        ifs.read((char*)&numBanks, sizeof(numBanks));
+        ifs.seekg(0, ifs.beg);
+        if( numBanks == 0 ) {
+            ss << std::setw(40) << "-- none found --. See 'xbutil program'.";
+        } else if( numBanks > 0 ) {
+            int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
+            buf_size *= 2; //TODO: just double this for padding safety for now.
+            char* buffer = new char[ buf_size ];
+            memset(buffer, 0, buf_size);
+            ifs.read( buffer, buf_size);
+            mem_topology *map;
+            map = (mem_topology *)buffer;
+            ss << std::setw(16) << "Tag"  << std::setw(12) << "Type" << std::setw(12) << "Temp" << std::setw(8) << "Size";
+
+            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << "\n";
+            numDDR = map->m_count;
+            if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
+               numSupportedMems = numDDR;
+            for( unsigned i = 0; i <numSupportedMems; i++ ) {
+                ss << " [" << i << "] " << std::setw(16-(std::to_string(i).length())-4) << std::left << map->m_mem_data[ i ].m_tag;
+                std::string str;
+                if( map->m_mem_data[ i ].m_used == 0 ) {
+                    str = "**UNUSED**";
+                } else {
+                    std::map<MEM_TYPE, std::string> my_map = {
+                        {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"}
+                        ,{MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"}
+                        ,{MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"}, {MEM_ARE, "MEM_ARE"}
+                        ,{MEM_HBM, "MEM_HBM"}, {MEM_BRAM, "MEM_BRAM"}
+                        ,{MEM_URAM, "MEM_URAM"}
+                    };
+                    auto search = my_map.find( (MEM_TYPE)map->m_mem_data[ i ].m_type );
+                    str = search->second;
+                }
+
+                ss << std::left << std::setw(12) << str;
+ //               ss << "0x" << std::setw(14) << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
+                if(m_devinfo->mDimmTemp[i]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mDimmTemp[i]!= XCL_NO_SENSOR_DEV_S && i < 4)
+                    ss << std::setw(12) << std::to_string(m_devinfo->mDimmTemp[i]) + " C";
+                else
+                    ss << std::setw(12) << "Not Supp";
+                ss << std::setw(8) << unitConvert(map->m_mem_data[ i ].m_size<<10);;
+                ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
+                ss << std::setw(8) << std::dec << devstat.ddrBOAllocated[i] << "\n";                 // print size
+
+            }
+            delete[] buffer;
+        } else { // mem_topology exists, but no data read or reported
+            ss << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
+        }
+        ifs.close();
+
+        ss << "\nTotal DMA Transfer Metrics:" << "\n";
+        for (unsigned i = 0; !result && (i < 2); i++) {
+            ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
+            ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
+        }
+        lines.push_back(ss.str());
     }
 
     /*
@@ -260,58 +624,37 @@ public:
         xclDeviceUsage devstat;
         int result = xclGetUsageInfo(m_handle, &devstat);
         unsigned numDDR = m_devinfo.mDDRBankCount;
-        ostr << "DSA name:       " << m_devinfo.mName << "\n";
-        ostr << "Vendor:         " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
-        ostr << "Device:         " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
-        ostr << "SDevice:        " << std::hex << m_devinfo.mSubsystemId << std::dec << "\n";
-        ostr << "SVendor:        " << std::hex << m_devinfo.mSubsystemVendorId << std::dec << "\n";
-        ostr << "DDR size:       " << unitConvert(m_devinfo.mDDRSize)<<"\n";
+        
+        std::vector<std::string> lines, usage_lines;
 
-        ostr << "DDR count:      " << numDDR << "\n";
-        ostr << "OnChip Temp:    " << m_devinfo.mOnChipTemp << " C\n";
-        //ostr << "Fan Temp:       " << m_devinfo.mFanTemp<< " C\n";
-
-        PowerMetrics pm( m_idx );
-        if( pm.getTotalPower_mW() <= 0 )
-        {
-            ostr << "Power(Beta):    **Unable to estimate power**\n";
-        }
-        else
-        {
-            ostr << "Power(Beta):    " << ( (float)pm.getTotalPower_mW() ) / 1000 << " W\n";
-        }
-
-        ostr << "OCL Frequency:\n";
-        for(unsigned i= 0; i < m_devinfo.mNumClocks; ++i) {
-            ostr << "  " << std::setw(7) << i << ":      " <<  m_devinfo.mOCLFrequency[i] << " MHz\n";
-        }
-        ostr << "PCIe:           " << "GEN" << m_devinfo.mPCIeLinkSpeed << " x " << m_devinfo.mPCIeLinkWidth << "\n";
-        ostr << "DMA bi-directional threads:    " << m_devinfo.mDMAThreads << "\n";
-        ostr << "MIG Calibrated: " << std::boolalpha << m_devinfo.mMigCalib << std::noboolalpha << "\n";
-
-        ostr << "\nTotal DMA Transfer Metrics:" << "\n";
-        for (unsigned i = 0; !result & (i < 2); i++) {
-            ostr << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
-            ostr << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i])  << "\n";
+        m_devinfo_stringize(&m_devinfo, lines);
+ 
+        for(auto line:lines){
+            ostr << line;
         }
 
 #ifdef AXI_FIREWALL
         char cbuf[80];
         struct tm *ts;
         time_t temp;
+        unsigned i = m_errinfo.mFirewallLevel;
         ostr << "\nFirewall Last Error Status:\n";
-        for(unsigned i= 0; i < m_errinfo.mNumFirewalls; ++i) {
-            ostr << "  " << std::setw(7) << i << ":      0x" << std::hex
-                 << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
-                 << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus) ;
-            if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
-                temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
-                ts = localtime(&temp);
-                strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
-                ostr << ". Error occurred on " << cbuf;
-            }
+        ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
+             << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
+             << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus);
+
+        if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
+            temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
+            ts = localtime(&temp);
+            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
+            ostr << ".\n";
+            ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
+        }
+        else{
             ostr << "\n";
         }
+        ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        ostr << std::setfill(' ');
 #endif // AXI Firewall
 
         // report xclbinid
@@ -330,79 +673,18 @@ public:
         memset(fileReadBuf, 0, sb.st_size);
         ifs.read( fileReadBuf, sb.st_size );
         if( ifs.gcount() > 0 ) {
-            ostr << "\nXclbin ID:  0x" << fileReadBuf;
+            ostr << std::setw(16) << "\nXclbin ID:" << "\n";
+            ostr << "0x" << std::setw(14) << fileReadBuf << "\n";
         } else { // xclbinid exists, but no data read or reported
             ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbutil program'.\n";
         }
         delete [] fileReadBuf;
         ifs.close();
 
-        // get DDR bank count from mem_topology if possible
-        unsigned numSupportedMems = numDDR;
-        std::string mem_path = devPath + "/mem_topology";
-        if( stat( mem_path.c_str(), &sb ) < 0 ) {
-            std::cout << "ERROR: failed to stat " << mem_path << std::endl;
-            return errno;
-        }
-        ifs.open( mem_path.c_str(), std::ifstream::binary );
-        if( !ifs.good() ) {
-            return errno;
-        }
-        int numBanks = 0;
-        ifs.read((char*)&numBanks, sizeof(numBanks));
-        ifs.seekg(0, ifs.beg);
-        if( numBanks == 0 ) {
-            ostr << "\nMem Topology:\n";
-            ostr << "     -- none found --. See 'xbutil program'.\n";
-        } else if( numBanks > 0 ) {
-            int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
-            buf_size *= 2; //TODO: just double this for padding safety for now.
-            const int fixed_w = 13;
-            char* buffer = new char[ buf_size ];
-            memset(buffer, 0, buf_size);
-            ifs.read( buffer, buf_size);
-            mem_topology *map;
-            map = (mem_topology *)buffer;
-            ostr << "\nMem Topology:\n";
-            ostr << "     Tag" << "       Type" << "          Base Address" << "  Size \n";
-            numDDR = map->m_count;
-            if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
-                numSupportedMems = numDDR;
-            for( unsigned i = 0; i < numDDR; i++ ) {
-                ostr << " [" << i << "] " << std::setw(10) << std::left << map->m_mem_data[ i ].m_tag;
-                //std::string str = "[" + std::to_string( i ) + "] ";
-                //ostr << " " << std::setw( fixed_w - 6 ) << str.substr( 0, fixed_w ); // print bank
-                //ostr << std::setw( fixed_w - 6 ) << map->m_mem_data[ i ].m_tag;
-                //ostr << map->m_mem_data[ i ].m_tag;
-                std::string str;
-                if( map->m_mem_data[ i ].m_used == 0 ) {
-                    str = "**UNUSED**";
-                } else {
-                    std::map<MEM_TYPE, std::string> my_map = {
-                        {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"}
-                        ,{MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"}
-                        ,{MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"}, {MEM_ARE, "MEM_ARE"}
-                        ,{MEM_HBM, "MEM_HBM"}, {MEM_BRAM, "MEM_BRAM"}
-                        ,{MEM_URAM, "MEM_URAM"}
-                    };
-                    auto search = my_map.find( (MEM_TYPE)map->m_mem_data[ i ].m_type );
-                    str = search->second;
-                }
-                ostr << std::setw( fixed_w ) << str;
-                std::stringstream ss;
-                ss << "0x" << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
-                ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w );
-                ss.str( "" );
-                ss << unitConvert(map->m_mem_data[ i ].m_size<<10);                 // print size
-                ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w ) << std::endl;
-            }
-            delete[] buffer;
-        } else { // mem_topology exists, but no data read or reported
-            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
-        }
-        ifs.close();
+       // get DDR bank count from mem_topology if possible
+       unsigned numSupportedMems = numDDR;
 
-        ostr << "\nCompute Unit Status:\n";
+        ostr << "Compute Unit Status:\n";
         std::vector<ip_data> computeUnits;
         if( getComputeUnits( computeUnits ) < 0 ) {
             ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
@@ -412,7 +694,7 @@ public:
                 if( computeUnits.at( i ).m_type == IP_KERNEL ) {
                     unsigned statusBuf;
                     xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-                    ostr << "  CU[" << cuCnt << "]: "
+                    ostr << "CU[" << cuCnt << "]: "
                          << computeUnits.at( i ).m_name
                          << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
                          << std::dec << parseCUStatus( statusBuf ) << "\n";
@@ -420,14 +702,16 @@ public:
                 }
             }
             if(computeUnits.size() == 0) {
-                ostr << "     -- none found --. See 'xbutil program'.\n";
+                ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
             }
         }
+        ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        ostr << std::setfill(' ') << "\n";
 
-        ostr << "\nDevice Memory Usage:" << "\n";
-        for (unsigned i = 0; !result & (i < numSupportedMems); i++) {
-            ostr << "  Bank[" << i << "].mem:  0x" << std::hex << devstat.ddrMemUsed[i] / 1024 << std::dec << " KB\n";
-            ostr << "  Bank[" << i << "].bo:   " << devstat.ddrBOAllocated[i] << "\n";
+        m_mem_usage_stringize_dynamics(devstat, &m_devinfo, usage_lines, result, numSupportedMems);
+
+        for(auto line:usage_lines){
+            ostr << line << "\n";
         }
 
         return 0;
@@ -514,6 +798,9 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize) {
+        if (blockSize == 0)
+            blockSize = 0x200000; // Default block size
+
         std::cout << "Total DDR size: " << m_devinfo.mDDRSize/(1024 * 1024) << " MB\n";
         unsigned numDDR = m_devinfo.mDDRBankCount;
         bool isAREDevice = false;
@@ -789,13 +1076,19 @@ public:
     int usageInfo(xclDeviceUsage& devstat) const {
         return xclGetUsageInfo(m_handle, &devstat);
     }
+
+    int deviceInfo(xclDeviceInfo2& devinfo) const {
+        return xclGetDeviceInfo2(m_handle, &devinfo);
+    }
+
+    int validate();
 };
 
 void printHelp(const std::string& exe);
-int xclXbsak(int argc, char *argv[]);
 int xclTop(int argc, char *argv[]);
+int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 
 } // end namespace xcldev
 
-#endif /* XBSAK_H */
+#endif /* XBUTIL_H */

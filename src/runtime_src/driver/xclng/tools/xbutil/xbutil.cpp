@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     std::string flashType = ""; // unset and empty by default
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
-    size_t blockSize = 0x200000;
+    size_t blockSize = 0;
     bool hot = false;
     int c;
     dd::ddArgs_t ddArgs;
@@ -67,11 +67,17 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
+        // coverity[TAINTED_STRING] argv will be validated inside xbflash
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
     if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
-        return xcldev::xclTop(argc - 1, &argv[1]);
+        optind++;
+        return xcldev::xclTop(argc, argv);
+    }
+    if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
+        optind++;
+        return xcldev::xclValidate(argc, argv);
     }
 
     argv++;
@@ -372,7 +378,15 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::SCAN) {
         xcldev::pci_device_scanner devScanner;
-        return devScanner.scan(true);
+        try
+        {
+            return devScanner.scan(true);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: scan failed" << std::endl;
+            return -1;
+        }
     }
 
     std::vector<std::unique_ptr<xcldev::device>> deviceVec;
@@ -380,7 +394,7 @@ int main(int argc, char *argv[])
     try {
         unsigned int count = xclProbe();
         if (count == 0) {
-            std::cout << "ERROR: No devices found\n";
+            std::cout << "ERROR: No device found\n";
             return 1;
         }
 
@@ -427,10 +441,14 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->program(xclbin, regionIndex);
         break;
     case xcldev::QUERY:
-        result = deviceVec[index]->dump(std::cout);
-        break;
-    case xcldev::VALIDATE:
-        result = deviceVec[index]->validate();
+        try
+        {
+            result = deviceVec[index]->dump(std::cout);
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: query failed" << std::endl;
+        }
         break;
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
@@ -493,19 +511,18 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dmatest [-d device] [-b [0x]block_size_KB]\n";
     std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-//    std::cout << "  dd      [-d device] [--if=input file] [--bs=block size] [--count=block count] [--seek=destination offset in blocks]\n";
-//    std::cout << "  dd      [-d device] [--of=output file] [--bs=block size] [--count=block count] [--skip=source offset in blocks]\n";
-    //        std::cout << "  fan     [-d device] -s speed\n";
     std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   scan\n";
+    std::cout << "  flash   [-d device] [-d device] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d device] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
     std::cout << "  scan\n";
+    std::cout << "  top [-i seconds]\n";
     std::cout << "  program [-d device] [-r region] -p xclbin\n";
     std::cout << "  query   [-d device [-r region]]\n";
     std::cout << "  reset   [-d device] [-h | -r region]\n";
     std::cout << "  status  [--debug_ip_name]\n";
-    //        std::cout << "  run     -d device [-r region] -c compunit\n"; TODO
     std::cout << "\nExamples:\n";
     std::cout << "List all devices\n";
     std::cout << "  " << exe << " list\n";
@@ -527,12 +544,12 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
     std::cout << "  " << exe << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
-//    std::cout << "Write 2048 bytes from file to device in 1024 byte blocks starting at 0x400\n";
-//    std::cout << "  " << exe << " dd -d0 --if=in.txt --bs=1024 --count=2 --seek=1\n";
-//    std::cout << "Write 512 bytes from device to file in 16 byte blocks starting at 0x400\n";
-//    std::cout << "  " << exe << " dd -d0 --of=out.txt --bs=16 --count=32 --skip=64\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
+    std::cout << "Flash all installed DSA for all boards, if not done\n";
+    std::cout << "  " << exe << " flash -a all\n";
+    std::cout << "Show DSA related information for all boards in the system\n";
+    std::cout << "  " << exe << " flash scan\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
@@ -563,19 +580,19 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(xclDeviceUsage& devstat)
+static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
 {
-    printw("\nTotal DMA Transfer Metrics:\n");
-    for (unsigned i = 0; i < devstat.dma_channel_cnt; i++) {
-        printw("  Chan[%d].h2c:  %llu KB\n", i, devstat.h2c[i] / 1024);
-        printw("  Chan[%d].c2h:  %llu KB\n", i, devstat.c2h[i] / 1024);
-    }
+    std::vector<std::string> lines;
 
-    printw("\nDevice Memory Usage:\n");
-    for (unsigned i = 0; i < devstat.mm_channel_cnt; i++) {
-        printw("  Bank[%d].mem:  %llu KB\n", i, devstat.ddrMemUsed[i] / 1024);
-        printw("  Bank[%d].bo:  %llu\n", i, devstat.ddrBOAllocated[i]);
-    }
+    dev->m_mem_usage_bar(devstat, lines, 0, devinfo.mDDRBankCount);
+
+    dev->m_devinfo_stringize_power(&devinfo, lines);
+    
+    dev->m_mem_usage_stringize_dynamics(devstat, &devinfo, lines, 0, devinfo.mDDRBankCount);
+
+    for(auto line:lines){
+            printw("%s\n", line.c_str());
+    } 
 }
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
@@ -585,13 +602,19 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
             if (result) {
                 ctrl->status = result;
                 return;
             }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
             clear();
-            topPrintUsage(devstat);
+            topPrintUsage(ctrl->dev, devstat, devinfo);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -656,4 +679,154 @@ int xcldev::xclTop(int argc, char *argv[])
     t.join();
     endwin();
     return ctrl.status;
+}
+
+const std::string dsaPath("/opt/xilinx/dsa/");
+
+int runShellCmd(std::string& cmd, std::string& output)
+{
+    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (pipe == nullptr) {
+        std::cout << "ERROR: Failed to run " << cmd << std::endl;
+        return -EINVAL;
+    }
+
+    char buf[128];
+    while (!feof(pipe.get())) {
+        if (fgets(buf, sizeof (buf), pipe.get()) != nullptr)
+            output += buf;
+    }
+
+    return 0;
+}
+
+/*
+ * validate
+ */
+int xcldev::device::validate()
+{
+    // Check pcie training
+    std::cout << "INFO: Checking PCIE link status" << std::endl;
+    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
+        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+        std::cout << "WARNING: Device trained to lower spec. "
+            << "Expect: Gen" << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
+            << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x" << m_devinfo.mPCIeLinkWidth
+            << std::endl;
+        // Non-fatal, continue validating.
+    }
+
+    // Run verify kernel
+    std::cout << "INFO: Testing verify kernel" << std::endl;
+    std::string path = dsaPath + m_devinfo.mName;
+    path += "/test/verify.";
+    std::string exePath = path + "exe";
+    std::string xclbinPath = path + "xclbin";
+
+    struct stat st;
+    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        std::cout << "ERROR: Failed to find verify kernel. "
+            << "DSA package not installed properly." << std::endl;
+        return -EINVAL;
+    }
+
+    std::string output;
+    std::string cmd = exePath + " " + xclbinPath;
+    int ret = runShellCmd(cmd, output);
+    if (ret != 0) {
+        std::cout << "ERROR: Can't run verify kernel." << std::endl;
+        return ret;
+    }
+    if (output.find("Hello World") == std::string::npos) {
+        std::cout << "ERROR: verify kernel failed, output as below:" << std::endl;
+        std::cout << "=============================================" << std::endl;
+        std::cout << output << std::endl;
+        std::cout << "=============================================" << std::endl;
+        return -EINVAL;
+    }
+
+    // Perform DMA test
+    std::cout << "INFO: Performing DMA test" << std::endl;
+    ret = dmatest(0);
+    if (ret != 0)
+        return ret;
+
+    return 0;
+}
+
+int xcldev::xclValidate(int argc, char *argv[])
+{
+    unsigned index = UINT_MAX;
+    const std::string usage("Options: [-d index]");
+    int c;
+
+    while ((c = getopt(argc, argv, "d:")) != -1) {
+        switch (c) {
+        case 'd':
+            index = (unsigned)std::atoi(optarg);
+            // Hack for now until verify kernel can support multiple boards
+            if (index != 0) {
+                std::cout << "ERROR: Can only validate the first board" << std::endl;
+                return -EINVAL;
+            }
+            break;
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }
+    }
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    unsigned int count = xclProbe();
+    // Hack for now until verify kernel can support multiple boards
+    if (count > 1)
+        std::cout << "WARNING: Will only validate the first board" << std::endl;
+    index = 0;
+
+    std::vector<unsigned> boards;
+    if (index == UINT_MAX) {
+        if (count == 0) {
+            std::cout << "ERROR: No device found" << std::endl;
+            return -ENOENT;
+        }
+        for (unsigned i = 0; i < count; i++)
+            boards.push_back(i);
+    } else {
+        if (index >= count) {
+            std::cout << "ERROR: Device[" << index << "] not found" << std::endl;
+            return -ENOENT;
+        }
+        boards.push_back(index);
+    }
+
+    bool validated = true;
+    for (unsigned i : boards) {
+        std::unique_ptr<device> dev = xclGetDevice(i);
+        if (!dev) {
+            std::cout << "ERROR: Can't open device[" << i << "]" << std::endl;
+            return -EINVAL;
+        }
+
+        std::cout << std::endl << "INFO: Validating device[" << i << "]:" << std::endl;
+        if (dev->validate() != 0) {
+            validated = false;
+            std::cout << "INFO: Device[" << i << "] failed to validate." << std::endl;
+        } else {
+            std::cout << "INFO: Device[" << i << "] validated successfully." << std::endl;
+        }
+    }
+
+    if (!validated) {
+        std::cout << "ERROR: Some devices failed to validate." << std::endl;
+        return -EINVAL;
+    }
+
+    std::cout << "INFO: All devices validated successfully." << std::endl;
+    return 0;
+
 }

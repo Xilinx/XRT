@@ -21,6 +21,32 @@
 #include <sys/stat.h>
 #include <iostream>
 
+// Register offset in mgmt pf BAR 0
+#define XMC_REG_BASE                0x120000
+
+// Register offset in register map of XMC
+#define XMC_REG_OFF_MAGIC             0x0
+#define XMC_REG_OFF_VER           0x4
+#define XMC_REG_OFF_ERR             0xc
+#define XMC_REG_OFF_FEATURE         0x10
+#define XMC_REG_OFF_CTL             0x18
+#define XMC_REG_OFF_PKT_OFFSET      0x300
+#define XMC_REG_OFF_PKT_STATUS      0x304
+
+#define XMC_MAGIC_NUM               0x74736574
+#define XMC_VERSION                 2018201
+
+#define XMC_PKT_SUPPORT_MASK        (1 << 3)
+#define XMC_PKT_OWNER_MASK          (1 << 5)
+#define XMC_PKT_ERR_MASK            (1 << 26)
+
+enum xmc_packet_op {
+    XPO_UNKNOWN = 0,
+    XPO_MSP432_SEC_START,
+    XPO_MSP432_SEC_DATA,
+    XPO_MSP432_IMAGE_END
+};
+
 const size_t xmcPktSize = (1024 / sizeof (uint32_t)) * 4; // In uint32_t
 struct xmcPkt {
 	// Make sure hdr is uint32_t aligned
@@ -49,13 +75,13 @@ class MSP432_Flasher
 public:
     MSP432_Flasher( unsigned int device_index, char *inMap );
     ~MSP432_Flasher();
-    int xclUpgradeFirmware(const char *fileName);
+    int xclUpgradeFirmware(std::istream& tiTxtStream);
 
 private:
     char *mMgmtMap;
     unsigned mPktBufOffset;
     struct xmcPkt mPkt;
-    int program(std::ifstream& tiTxtStream, const ELARecord& record);
+    int program(std::istream& tiTxtStream, const ELARecord& record);
     int sendPkt();
     int waitTillIdle();
     unsigned readReg(unsigned RegOffset);

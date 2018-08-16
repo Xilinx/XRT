@@ -360,8 +360,8 @@ int xcldev::pci_device_scanner::scan(bool print)
 
         device.user_bar = bar;
         device.user_bar_size = bar_size(subdir, bar);
-	if (board_info->priv_data->flash_type)
-		device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->flash_type)
+            device.flash_type = board_info->priv_data->flash_type;
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -437,7 +437,7 @@ bool xcldev::pci_device_scanner::get_mgmt_device_name(std::string &devName , uns
 }
 
 int xcldev::pci_device_scanner::get_feature_rom_bar_offset(unsigned int devIdx,
- unsigned long long &offset)
+    unsigned long long &offset)
 {
     int ret = -ENOENT;
 
@@ -518,14 +518,13 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
 
         device.user_bar = board_info->priv_data->user_bar;
         device.user_bar_size = bar_size(subdir, device.user_bar);
-	if (board_info->priv_data->flash_type)
-		device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->flash_type)
+            device.flash_type = board_info->priv_data->flash_type;
         if( !add_device(device) )
         {
             closedir( dir );
             return -1;
         }
-
     }
 
     add_to_device_list( true ); // skip valid device check

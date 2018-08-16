@@ -26,11 +26,11 @@
 #include "prom.h"
 #include "msp432.h"
 #include "xclfeatures.h"
+#include "firmware_image.h"
 #include "scan.h"
 #include <sys/stat.h>
 #include <vector>
-
-#define DRIVERLESS 1
+#include <memory>
 
 class Flasher
 {
@@ -39,29 +39,32 @@ public:
         UNSET,
         SPI,
         BPI,
-        MSP432
     };
-    const char *E_FlasherTypeStrings[4] = { "UNSET", "SPI", "BPI", "MSP432" };
+    const char *E_FlasherTypeStrings[3] = { "UNSET", "SPI", "BPI" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
 
     Flasher(unsigned int index, std::string flasherType="");
     ~Flasher();
-    int upgradeFirmware( const char *f1, const char *f2 );
+    int upgradeFirmware(std::shared_ptr<firmwareImage> primary, std::shared_ptr<firmwareImage> secondary);
+    int upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc);
     bool isValid( void ) { return mIsValid; }
 
-    /* public to XSPI_Flasher and BPI_Flasher */
     static void* wordcopy(void *dst, const void* src, size_t bytes);
     static int flashRead(unsigned int pf_bar, unsigned long long offset, void *buffer, unsigned long long length);
     static int flashWrite(unsigned int pf_bar, unsigned long long offset, const void *buffer, unsigned long long length);
     static int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
     static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
 
+    std::string sGetDBDF() { return mDBDF; }
+    std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
+    DSAInfo getOnBoardDSA();
+    std::vector<DSAInfo> getInstalledDSA();
+
 private:
     E_FlasherType mType;
     unsigned int mIdx;
     XSPI_Flasher *mXspi;
     BPI_Flasher  *mBpi;
-    MSP432_Flasher  *mMsp;
     bool mIsValid;
     xcldev::pci_device_scanner::device_info mDev;
 
@@ -89,11 +92,6 @@ private:
         std::make_pair( "u200",    SPI ),
         std::make_pair( "u250",    SPI )
     };
-
-public:
-    std::string sGetDBDF() { return mDBDF; }
-    std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
-    std::string sGetDSAName() { std::string vbnv = std::string( reinterpret_cast<const char*>(mFRHeader.VBNVName) ); return vbnv.size() ? vbnv : "No Feature ROM Loaded"; }
 };
 
 #endif // FLASHER_H

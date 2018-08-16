@@ -24,10 +24,11 @@
 #include "mgmt-reg.h"
 #include <sys/mman.h>
 #include <stddef.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <cassert>
 #include <cstring>
+#include <vector>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -41,7 +42,6 @@ Flasher::Flasher(unsigned int index, std::string flasherType) :
     mMgmtMap = nullptr;
     mXspi = nullptr;
     mBpi  = nullptr;
-    mMsp = nullptr;
     mFd = 0;
     mIsValid = false;
     mType = E_FlasherType::UNSET;
@@ -68,7 +68,7 @@ Flasher::Flasher(unsigned int index, std::string flasherType) :
         // user input invalid flash type string
         std::cout << "Invalid programming mode '" << flasherType
                   << "', must be either 'spi' or 'bpi'." << std::endl;
-	return;
+        return;
     }
 
     switch( mType )
@@ -81,15 +81,10 @@ Flasher::Flasher(unsigned int index, std::string flasherType) :
         mBpi = new BPI_Flasher( mIdx, mMgmtMap );
         mIsValid = true;
         break;
-    case MSP432:
-        mMsp = new MSP432_Flasher( mIdx, mMgmtMap );
-        mIsValid = true;
-        break;
     default:
         std::cout << " Unknown flash type " << std::endl;
         return;
     }
-    std::cout << "    flash mode: " << E_FlasherTypeStrings[mType] << std::endl;
 }
 
 /*
@@ -102,9 +97,6 @@ Flasher::~Flasher()
 
     delete mBpi;
     mBpi = nullptr;
-
-    delete mMsp;
-    mMsp = nullptr;
 
     if( mMgmtMap != nullptr )
     {
@@ -120,39 +112,30 @@ Flasher::~Flasher()
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(const char *f1, const char *f2)
+int Flasher::upgradeFirmware(std::shared_ptr<firmwareImage> primary,
+        std::shared_ptr<firmwareImage> secondary)
 {
     int retVal = -EINVAL;
     switch( mType )
     {
     case SPI:
-        if( f2 == nullptr )
+        if(secondary == nullptr)
         {
-            retVal = mXspi->xclUpgradeFirmwareXSpi( f1 );
+            retVal = mXspi->xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
-            retVal = mXspi->xclUpgradeFirmware2( f1, f2 );
+            retVal = mXspi->xclUpgradeFirmware2(*primary, *secondary);
         }
         break;
     case BPI:
-        if( f2 != nullptr )
+        if(secondary != nullptr)
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
         }
         else
         {
-            retVal = mBpi->xclUpgradeFirmware( f1 );
-        }
-        break;
-    case MSP432:
-        if( f2 != nullptr )
-        {
-            std::cout << "ERROR: Only need firmware image file for flashing MSP432 chip." << std::endl;
-        }
-        else
-        {
-            retVal = mMsp->xclUpgradeFirmware( f1 );
+            retVal = mBpi->xclUpgradeFirmware(*primary);
         }
         break;
     default:
@@ -162,13 +145,18 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
     return retVal;
 }
 
+int Flasher::upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc)
+{
+    MSP432_Flasher flasher(mIdx, mMgmtMap);
+    return flasher.xclUpgradeFirmware(*bmc);
+}
+
 /*
  * mapDevice
  */
 int Flasher::mapDevice(unsigned int devIdx)
 {
     xcldev::pci_device_scanner scanner;
-#if DRIVERLESS
     scanner.scan_without_driver();
 
     if( devIdx >= scanner.device_list.size() ) {
@@ -182,17 +170,6 @@ int Flasher::mapDevice(unsigned int devIdx)
     mDBDF = std::string( cDBDF );
     std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
 
-#else
-    scanner.scan( false );
-    std::string mgmtDeviceName;
-    if( !scanner.get_mgmt_device_name( mgmtDeviceName, devIdx ) )
-    {
-        std::cout << "ERROR: Cannot find mgmt device." << std::endl;
-        return -EBUSY;
-    }
-    mDev = scanner.device_list.at( devIdx );
-    std::string devPath = "/sys/bus/pci/devices/" + mgmtDeviceName;
-#endif
     char bar[5];
     snprintf(bar, sizeof (bar) - 1, "%d", mDev.user_bar);
     std::string resourcePath = devPath + "/resource" + bar;
@@ -213,7 +190,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     p = mmap( addr, mSb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, mFd, 0 );
     if( p == MAP_FAILED )
     {
-        std::cout << "mmap failed : " << errno << std::endl;
+        std::cout << "mmap failed: " << errno << std::endl;
         perror( "mmap" );
         close( mFd );
         return errno;
@@ -229,7 +206,7 @@ int Flasher::mapDevice(unsigned int devIdx)
         // that EntryPointString starts with magic char sequence "xlnx".
         if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
         {
-            std::cout << "ERROR: EntryPointString mismatch:" << mFRHeader.EntryPointString << std::endl;
+            std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
             return -EINVAL;
         }
     }
@@ -308,8 +285,47 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     }
     if( !typeFound )
     {
-        std::cout << "ERROR: failed to determine DSA type, unable to flash device." << std::endl;
+        std::cout << "ERROR: failed to determine flash type." << std::endl;
         return -EINVAL;
     }
     return 0;
+}
+
+/*
+ * Obtain all DSA installed on the system for this board
+ */
+std::vector<DSAInfo> Flasher::getInstalledDSA()
+{
+    std::vector<DSAInfo> DSAs;
+
+    // Obtain board info.
+    DSAInfo onBoard = getOnBoardDSA();
+    if (onBoard.vendor.empty() || onBoard.board.empty())
+    {
+        std::cout << "Onboard DSA is unknown" << std::endl;
+        return DSAs;
+    }
+
+    // Obtain installed DSA info.
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    for (DSAInfo& dsa : installedDSAs)
+    {
+        if (onBoard.vendor != dsa.vendor ||
+            onBoard.board != dsa.board ||
+            dsa.timestamp == NULL_TIMESTAMP)
+            continue;
+        DSAs.push_back(dsa);
+    }
+
+    return DSAs;
+}
+
+DSAInfo Flasher::getOnBoardDSA()
+{
+    std::string vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+
+    if (vbnv.empty())
+        std::cout << "No Feature ROM Loaded" << std::endl;
+
+    return DSAInfo(vbnv, mFRHeader.TimeSinceEpoch);
 }
