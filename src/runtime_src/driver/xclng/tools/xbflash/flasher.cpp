@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstring>
 #include <vector>
+#include <sstream>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -148,6 +149,45 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     MSP432_Flasher flasher(mIdx, mMgmtMap);
     return flasher.xclUpgradeFirmware(*bmc);
+}
+
+void Flasher::parseMspPackage(uint32_t *msp_package)
+{
+    if(msp_package==nullptr)
+        return;
+    int len = (msp_package[0] & 0xfff);
+    len += sizeof(uint32_t);
+    int i=4;
+    char *byte = reinterpret_cast<char *>(msp_package);
+    std::vector<std::string> key_val_pairs;
+
+    while(i<len){
+        std::stringstream ss;
+
+#if 0
+       if(byte[i]==0x2B)
+        flasher.mType = byte[i+2];
+#endif
+       ss << std::to_string(byte[i]) << ":";
+       for(int j=1;j<=(uint8_t)byte[i+1];++j){
+           ss << byte[i+1+j];
+       }
+       key_val_pairs.push_back(ss.str());
+       i+=byte[i+1];
+       i+=2;
+    }
+}
+
+int Flasher::upgradeGetBoardInfo()
+{
+    MSP432_Flasher flasher(mIdx, mMgmtMap);
+    uint32_t *msp_package = new uint32_t[4096];
+    int ret = 0;
+    ret = flasher.xclGetBoardInfo(msp_package);
+
+    parseMspPackage(msp_package);
+    delete [] msp_package;
+    return ret;
 }
 
 /*

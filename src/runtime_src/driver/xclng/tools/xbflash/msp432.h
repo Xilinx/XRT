@@ -25,8 +25,8 @@
 #define XMC_REG_BASE                0x120000
 
 // Register offset in register map of XMC
-#define XMC_REG_OFF_MAGIC             0x0
-#define XMC_REG_OFF_VER           0x4
+#define XMC_REG_OFF_MAGIC           0x0
+#define XMC_REG_OFF_VER             0x4
 #define XMC_REG_OFF_ERR             0xc
 #define XMC_REG_OFF_FEATURE         0x10
 #define XMC_REG_OFF_CTL             0x18
@@ -40,11 +40,20 @@
 #define XMC_PKT_OWNER_MASK          (1 << 5)
 #define XMC_PKT_ERR_MASK            (1 << 26)
 
+#define XMC_HOST_MSG_NO_ERR               0x00
+#define XMC_HOST_MSG_BAD_OPCODE_ERR       0x01
+#define XMC_HOST_MSG_UNKNOWN_ERR          0x02
+#define XMC_HOST_MSG_MSP432_MODE_ERR      0x03
+#define XMC_HOST_MSG_MSP432_FW_LENGTH_ERR 0x04
+#define XMC_HOST_MSG_BRD_INFO_MISSING_ERR 0x05
+
 enum xmc_packet_op {
     XPO_UNKNOWN = 0,
     XPO_MSP432_SEC_START,
     XPO_MSP432_SEC_DATA,
-    XPO_MSP432_IMAGE_END
+    XPO_MSP432_IMAGE_END,
+    XPO_MSP432_INFO_RESP,
+    XPO_MSP432_ERASE_FW
 };
 
 const size_t xmcPktSize = (1024 / sizeof (uint32_t)) * 4; // In uint32_t
@@ -76,13 +85,17 @@ public:
     MSP432_Flasher( unsigned int device_index, char *inMap );
     ~MSP432_Flasher();
     int xclUpgradeFirmware(std::istream& tiTxtStream);
+    int xclGetBoardInfo(uint32_t *msp_package);
 
 private:
     char *mMgmtMap;
     unsigned mPktBufOffset;
     struct xmcPkt mPkt;
     int program(std::istream& tiTxtStream, const ELARecord& record);
+    int getBoardInfo(uint32_t *msp_package);
+    int erase();
     int sendPkt();
+    int recvPkt();
     int waitTillIdle();
     unsigned readReg(unsigned RegOffset);
     int writeReg(unsigned RegOffset, unsigned value);
