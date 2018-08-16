@@ -172,7 +172,7 @@ get_buffer_object(kernel* kernel, unsigned long argidx)
       throw std::bad_alloc();
     }
   }
-  throw std::bad_alloc();
+  return nullptr;
 }
 
 memory::buffer_object_handle
