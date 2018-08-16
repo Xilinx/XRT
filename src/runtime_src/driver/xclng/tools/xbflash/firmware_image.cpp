@@ -57,7 +57,7 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-DSAInfo::DSAInfo(std::string filename, uint64_t ts) :
+DSAInfo::DSAInfo(const std::string& filename, uint64_t ts) :
     DSAValid(false), vendor(), board(), name(), file(filename), timestamp(ts)
 {
     size_t dotpos = filename.rfind(".");
@@ -131,7 +131,7 @@ DSAInfo::DSAInfo(std::string filename, uint64_t ts) :
     }
 }
 
-DSAInfo::DSAInfo(std::string filename) : DSAInfo(filename, NULL_TIMESTAMP)
+DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP)
 {
 }
 

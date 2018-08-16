@@ -45,8 +45,8 @@ public:
 
     Flasher(unsigned int index, std::string flasherType="");
     ~Flasher();
-    int upgradeFirmware(std::shared_ptr<firmwareImage> primary, std::shared_ptr<firmwareImage> secondary);
-    int upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc);
+    int upgradeFirmware(firmwareImage* primary, firmwareImage* secondary);
+    int upgradeBMCFirmware(firmwareImage* bmc);
     bool isValid( void ) { return mIsValid; }
 
     static void* wordcopy(void *dst, const void* src, size_t bytes);

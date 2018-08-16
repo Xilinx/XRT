@@ -1438,7 +1438,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     ssize_t rc = 0;
 
     for (unsigned i = 0; i < wr->buf_num; i++) {
-        const void *buf = (const void *)wr->bufs[i].va;
+        auto buf = reinterpret_cast<const void *>(wr->bufs[i].va);
         rc = write((int)q_hdl, buf, wr->bufs[i].len);
     }
     return rc;
