@@ -325,7 +325,7 @@ struct drm_xocl_ctx {
         xuid_t   xclbin_id;
         uint32_t cu_index;
         uint32_t flags;
-        // unused
+        // unused, in future it would return context id
         uint32_t handle;
 };
 

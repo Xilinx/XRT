@@ -138,6 +138,11 @@ out:
 	return ret;
 }
 
+/*
+ * Create a context (ony shared supported today) on a CU. Take a lock on xclbin if
+ * it has not been acquired before. Shared the same lock for all context requests
+ * for that process
+ */
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		   struct drm_file *filp)
 {
@@ -154,43 +159,49 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (args->cu_index >= xdev->layout->m_count) {
-		ret = -EFAULT;
+		ret = -EINVAL;
 		goto out;
 	}
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EFAULT;
+		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EINVAL;
 		if (ret) // No context was previously allocated for this CU
 			goto out;
 
 		xdev->ip_reference[args->cu_index]--;
-		if (bitmap_empty(client->cu_bitmap, MAX_CUS)) // If no context exists for any CU, give up the xclbin lock
+		if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+                        // We jsut gave up the last context, give up the xclbin lock
 			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
 							 pid_nr(task_tgid(current)));
-		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
+		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
+			  args->cu_index);
 		goto out;
 	}
 
 	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
-		ret = -EFAULT;
+		ret = -EINVAL;
 		goto out;
 	}
 
-	if ((args->flags & XOCL_CTX_SHARED) != 0x0) {
-		ret = -EFAULT;
+	if ((args->flags != XOCL_CTX_SHARED)) {
+		userpf_err(xdev, "Only shared contexts are supported in this release");
+		ret = -EPERM;
 		goto out;
 	}
 
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+		// Process has no other context on any CU ye, hence we need to lock the xclbin
+		// Process uses just one lock for all its contexts
 		acquire_lock = true;
 
 	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
+		userpf_err(xdev, "Context has already been allocated before by this process");
 		// Context was previously allocated for the same CU, cannot allocate again
 		ret = -EPERM;
 		goto out;
 	}
 
-	if (acquire_lock) // Now we have 1 context on a CU, lock the xclbin
+	if (acquire_lock) // This is the first context on any CU for this process, lock the xclbin
 		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
 					       pid_nr(task_tgid(current)));
 
@@ -338,6 +349,10 @@ error_out:
 	return err;
 }
 
+/*
+ * This function is huge and unweildy -- should break it up. Add a separate function for
+ * each section we read from xclbin. See how we are doing this for IP LAYOUT
+ */
 static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 				       struct drm_xocl_axlf *axlf_obj_ptr)
 {
@@ -425,7 +440,7 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	copy_buffer = (struct axlf*)vmalloc(copy_buffer_size);
 	if(!copy_buffer) {
 		printk(KERN_ERR "Unable to create copy_buffer");
-		err = -EFAULT;
+		err = -ENOMEM;
 		goto done;
 	}
 	printk(KERN_INFO "XOCL: Marker 5\n");
