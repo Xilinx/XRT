@@ -112,8 +112,7 @@ Flasher::~Flasher()
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(std::shared_ptr<firmwareImage> primary,
-        std::shared_ptr<firmwareImage> secondary)
+int Flasher::upgradeFirmware(firmwareImage *primary, firmwareImage *secondary)
 {
     int retVal = -EINVAL;
     switch( mType )
@@ -145,7 +144,7 @@ int Flasher::upgradeFirmware(std::shared_ptr<firmwareImage> primary,
     return retVal;
 }
 
-int Flasher::upgradeBMCFirmware(std::shared_ptr<firmwareImage> bmc)
+int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
     MSP432_Flasher flasher(mIdx, mMgmtMap);
     return flasher.xclUpgradeFirmware(*bmc);
