@@ -298,17 +298,12 @@ public:
     void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss;
-  //      unsigned long long power;
         subss << std::left;
         ss << std::left << "\n";
         unsigned i;
 
-        std::vector<std::string> se98;
-        se98.push_back("PCB TOP FRONT");
-        se98.push_back("PCB TOP REAR");
-        se98.push_back("PCB BTM FRONT");
+        const char *se98[4] = {"PCB TOP FRONT", "PCB TOP REAR", "PCB BTM FRONT"};
 
-     //   if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
         for(i= 0; i < 3; ++i){
             ss << std::setw(16) << se98[i];
             if((unsigned short)m_devinfo->mSE98Temp[i] == (XCL_NO_SENSOR_DEV & (0xffff)))
@@ -319,9 +314,8 @@ public:
                 subss << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
         }
         ss << "\n" << subss.str() << "\n\n";
-    //    }
 
-        ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
+        ss << std::setw(16) << "FPGA Temp" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "Fan Speed" << "\n";
         ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
 
         if((unsigned short)m_devinfo->mFanTemp == (XCL_NO_SENSOR_DEV & (0xffff)))
