@@ -732,9 +732,17 @@ int xcldev::device::validate()
         return -EINVAL;
     }
 
+    // Program verify.xclbin first.
+    int ret = program(xclbinPath, 0);
+    if (ret != 0)
+    {
+        std::cout << "ERROR: Failed to download verify kernel: err=" << ret << std::endl;
+        return ret;
+    }
+
     std::string output;
     std::string cmd = exePath + " " + xclbinPath;
-    int ret = runShellCmd(cmd, output);
+    ret = runShellCmd(cmd, output);
     if (ret != 0) {
         std::cout << "ERROR: Can't run verify kernel." << std::endl;
         return ret;
