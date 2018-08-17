@@ -299,16 +299,27 @@ public:
     {
         std::stringstream ss, subss;
   //      unsigned long long power;
+        subss << std::left;
         ss << std::left << "\n";
         unsigned i;
 
-        if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
-            for(i= 0; i < 3; ++i){
-                ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
-                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
-            }
-            ss << "\n" << subss.str() << "\n\n";
+        std::vector<std::string> se98;
+        se98.push_back("PCB TOP FRONT");
+        se98.push_back("PCB TOP REAR");
+        se98.push_back("PCB BTM FRONT");
+
+     //   if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
+        for(i= 0; i < 3; ++i){
+            ss << std::setw(16) << se98[i];
+            if((unsigned short)m_devinfo->mSE98Temp[i] == (XCL_NO_SENSOR_DEV & (0xffff)))
+                subss << std::setw(16) << "Not support";
+            else if (m_devinfo->mSE98Temp[i] == XCL_INVALID_SENSOR_VAL)
+                subss << std::setw(16) << "Not support";
+            else
+                subss << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
         }
+        ss << "\n" << subss.str() << "\n\n";
+    //    }
 
         ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
         ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
