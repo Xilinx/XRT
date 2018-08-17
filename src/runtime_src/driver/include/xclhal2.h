@@ -134,6 +134,8 @@ struct xclDeviceInfo2 {
   char mFpga[256];
   unsigned short mPCIeLinkWidthMax;
   unsigned short mPCIeLinkSpeedMax;
+  unsigned short mVccIntVol;
+  unsigned short mVccIntCurr;
   // More properties here
 };
 
