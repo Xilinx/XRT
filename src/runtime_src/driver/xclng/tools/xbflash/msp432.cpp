@@ -178,6 +178,8 @@ int MSP432_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
             if (ret != 0)
                 break;
         }
+        if(ret == 0)
+            return ret;
     }
     return ret;
 }
