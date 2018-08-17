@@ -9,10 +9,6 @@ file(GLOB XCLBINCAT_FILES
   "xclbinutil.cxx"
   )
 
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-SET(BUILD_SHARED_LIBS OFF)
-SET(CMAKE_EXE_LINKER_FLAGS "-static")
-
 set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 add_executable(xclbincat ${XCLBINCAT_SRC})
 
@@ -22,10 +18,6 @@ file(GLOB XCLBINSPLIT_FILES
   "xclbindata.cxx"
   "xclbinutil.cxx"
   )
-
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-SET(BUILD_SHARED_LIBS OFF)
-SET(CMAKE_EXE_LINKER_FLAGS "-static")
 
 set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
