@@ -354,8 +354,7 @@ int xcldev::pci_device_scanner::scan(bool print)
         } else if ((board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
             bar = board_info->priv_data->user_bar; 
         } else {
-            retVal = -ENODEV;
-            break;
+            continue;
         }
 
         device.user_bar = bar;
