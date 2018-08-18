@@ -173,8 +173,19 @@ pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
-post_inst_fail_msg="DSA installed successfully. But failed to flash board(s). Please flash board manually with xbutil flash -a all"
-post_inst_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
+
+XBUTIL=/opt/xilinx/xrt/bin/xbutil
+# On CentOS, stdin/stdout are disabled for post install script. Hence, we
+# have to redirect xbutil output to a temp file for user to monitor the progress.
+flash_progress_file="/tmp/${opt_dsa}.install.log"
+pre_inst_msg="
+NOTE!! DSA may need to be flashed on board(s) during package installation.
+NOTE!! It may take several minutes to flash one board, so please be patient.
+NOTE!! Please monitor the progress and status by checking ${flash_progress_file}
+"
+post_inst_flash_fail_msg="Failed to flash DSA on one or more boards.
+Please flash board manually with 'xbutil flash -a all' after package is installed"
+post_inst_msg="DSA package installed successfully."
 
 createEntityAttributeArray ()
 {
@@ -455,6 +466,7 @@ dodeb()
 {
     dir=debbuild/$dsa-$version
     mkdir -p $opt_pkgdir/$dir/DEBIAN
+
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
 package: $dsa
@@ -468,10 +480,14 @@ maintainer: Xilinx Inc.
 
 EOF
 
+cat <<EOF > $opt_pkgdir/$dir/DEBIAN/preinst
+echo "${pre_inst_msg}"
+EOF
+    chmod 755 $opt_pkgdir/$dir/DEBIAN/preinst
+
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-
-/opt/xilinx/xrt/bin/xbutil flash -f -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
-
+${XBUTIL} flash -f -a ${opt_dsa} -t ${featureRomTimestamp} > ${flash_progress_file} 2>&1 || echo "${post_inst_flash_fail_msg}"
+echo "${post_inst_msg}"
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
 
@@ -577,9 +593,11 @@ requires: xrt >= $opt_xrt
 %description
 Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $opt_xrt.
 
-%prep
+%pre
+echo "${pre_inst_msg}"
 
 %post
+${XBUTIL} flash -f -a ${opt_dsa} -t ${featureRomTimestamp} > ${flash_progress_file} 2>&1 || echo "${post_inst_flash_fail_msg}"
 echo "${post_inst_msg}"
 
 %install
