@@ -373,7 +373,7 @@ unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned 
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
     //std::cout << "git: alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
-    
+
     drm_xocl_create_bo info = {size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
     return result ? mNullBO : info.handle;
@@ -388,7 +388,7 @@ unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, unsig
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
     //std::cout << "git: user alloc bo: with combined flags " << std::hex << flags << " split, flag: " << flag << "type: " << type << std::endl;
-    
+
     //std::cout << " split flags "  << std::hex << flag << " " << type << std::dec << std::endl;
     drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
@@ -1186,9 +1186,26 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(xclContextProperties *context) const
+int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &context);
+    unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
+    std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+    ctx.cu_index = ipIndex;
+    ctx.flags = flags;
+    return ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+}
+
+/*
+ * xclCloseContext
+ */
+int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+{
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
+    std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+    ctx.cu_index = ipIndex;
+    return ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
 }
 
 /*
@@ -1848,10 +1865,16 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
-int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context)
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(context) : -ENODEV;
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
 // QDMA streaming APIs

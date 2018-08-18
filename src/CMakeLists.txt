@@ -1,4 +1,4 @@
-PROJECT(SDAccel)
+PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
@@ -118,3 +118,6 @@ include (CMake/icd.cmake)
 include (CMake/pkgconfig.cmake)
 
 include (CMake/coverity.cmake)
+
+set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
+include (CMake/tags.cmake)

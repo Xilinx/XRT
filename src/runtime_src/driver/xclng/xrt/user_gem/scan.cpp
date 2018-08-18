@@ -247,7 +247,7 @@ void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
             if( (mdev.domain == udev.domain) &&
                     (mdev.bus == udev.bus) &&
                     (mdev.dev == udev.dev) )
-                    
+
             {
                 if( (temp.user_instance != INVALID_DEV) && (temp.mgmt_instance != INVALID_DEV) ) {
                     temp.user_instance = udev.instance;
@@ -277,7 +277,7 @@ const size_t xcldev::pci_device_scanner::bar_size(const std::string &dir, unsign
     long long start, end, meta;
     if (sscanf(line.c_str(), "0x%llx 0x%llx 0x%llx", &start, &end, &meta) != 3)
         return 0;
-    return end - start;
+    return end - start + 1;
 }
 
 /*
@@ -350,9 +350,9 @@ int xcldev::pci_device_scanner::scan(bool print)
 
         if ((board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
             is_mgmt = true;
-            bar = board_info->priv_data->user_bar; 
+            bar = board_info->priv_data->user_bar;
         } else if ((board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
-            bar = board_info->priv_data->user_bar; 
+            bar = board_info->priv_data->user_bar;
         } else {
             retVal = -ENODEV;
             break;
