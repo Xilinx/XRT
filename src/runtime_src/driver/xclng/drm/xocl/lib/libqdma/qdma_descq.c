@@ -524,6 +524,7 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	cidx_hw = wb->cidx;
 
 	if (cidx_hw == cidx) { /* no new writeback? */
+		qdma_notify_cancel(descq);
 		return 0;
 	}
 
@@ -566,7 +567,9 @@ void qdma_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	INIT_LIST_HEAD(&descq->work_list);
 	INIT_LIST_HEAD(&descq->pend_list);
 	INIT_LIST_HEAD(&descq->intr_list);
+	INIT_LIST_HEAD(&descq->cancel_list);
 	INIT_WORK(&descq->work, intr_work);
+	init_completion(&descq->cancel_comp);
 	descq->xdev = xdev;
 	descq->channel = 0;
 	descq->qidx_hw = qdev->qbase + idx_hw;
@@ -654,9 +657,25 @@ err_out:
 void qdma_descq_free_resource(struct qdma_descq *descq)
 {
 	struct xlnx_dma_dev *xdev = descq->xdev;
+	struct qdma_sgt_req_cb *cb, *tmp;
+	struct qdma_request *req;
 
 	pr_debug("%s: desc 0x%p, wrb 0x%p.\n",
 		descq->conf.name, descq->desc, descq->desc_wrb);
+
+	/* free all pending requests */
+	if (!list_empty(&descq->pend_list)) {
+		list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
+			req = (struct qdma_request *)cb;
+			descq_cancel_req(descq, req);
+			list_del(&cb->list);
+		}
+		reinit_completion(&descq->cancel_comp);
+		schedule_work(&descq->work);
+		unlock_descq(descq);
+		wait_for_completion(&descq->cancel_comp);
+		lock_descq(descq);
+	}
 
 	if (descq->desc) {
 		int desc_sz = get_desc_size(descq);
@@ -788,7 +807,10 @@ int qdma_descq_prog_hw(struct qdma_descq *descq)
 void qdma_descq_service_wb(struct qdma_descq *descq)
 {
 	lock_descq(descq);
-	if (descq->conf.st && descq->conf.c2h)
+	if (!descq->online) {
+		qdma_notify_cancel(descq);
+		complete(&descq->cancel_comp);
+	} else if (descq->conf.st && descq->conf.c2h)
 		descq_process_completion_st_c2h(descq, 0);
 	else
 		descq_mm_n_h2c_wb(descq);
@@ -804,6 +826,24 @@ ssize_t qdma_descq_proc_sgt_request(struct qdma_descq *descq,
 		return descq_proc_st_h2c_request(descq, cb);
 	else	/* ST C2H - should not happen - handled separately */
 		return -1;
+}
+
+void qdma_notify_cancel(struct qdma_descq *descq)
+{
+	struct qdma_sgt_req_cb *cb, *tmp;
+	struct qdma_request *req = NULL;
+
+        /* calling routine should hold the lock */
+        list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
+		req = (struct qdma_request *)cb;
+		if (req->fp_done)
+			req->fp_done(req, 0, 0);
+		else {
+			cb->done = 1;
+			wake_up(&cb->wq);
+		}
+		list_del(&cb->list_cancel);
+	}
 }
 
 void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
@@ -830,7 +870,8 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		}
 		cb->status = error;
 		cb->done = 1;
-		req->fp_done(req, cb->offset, error);
+		if (!cb->canceled)
+			req->fp_done(req, cb->offset, error);
 	} else {
 		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
 		cb->status = error;
