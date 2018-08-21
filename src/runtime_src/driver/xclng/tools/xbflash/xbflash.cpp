@@ -199,7 +199,8 @@ int main( int argc, char *argv[] )
     {
         sudoOrDie();
         return scanDevices(argc, argv);
-    } else if (subcmd.compare("help") == 0)
+    }
+    if (subcmd.compare("help") == 0)
     {
         if (argc != optind + 1)
             usageAndDie();
@@ -407,7 +408,8 @@ int main( int argc, char *argv[] )
         // Update user about what boards will be updated and get permission.
         if (boardsToUpdate.empty())
         {
-            std::cout << "No DSA on board needs updating." << std::endl;
+            std::cout << "Current DSA running on boards matches DSA installed in host. "
+                "No need to update DSA on boards."<< std::endl;
             exit (0);
         }
         else
@@ -460,21 +462,8 @@ int main( int argc, char *argv[] )
  */
 int scanDevices(int argc, char *argv[])
 {
-    bool verbose = false;
-    int opt;
-
-    while((opt = getopt(argc, argv, "v")) != -1)
-    {
-        switch(opt)
-        {
-        case 'v':
-            verbose = true;
-            break;
-        default:
-            usageAndDie();
-            break;
-        }
-    }
+    if (argc != optind + 1)
+        usageAndDie();
 
     xcldev::pci_device_scanner scanner;
     scanner.scan_without_driver();
@@ -491,24 +480,18 @@ int scanDevices(int argc, char *argv[])
             continue;
 
         DSAInfo board = f.getOnBoardDSA();
-        std::cout << "\tDevice type:\t" << board.board << std::endl;
-        std::cout << "\tDevice BDF:\t" << f.sGetDBDF() << std::endl;
-        std::cout << "\tFlash type:\t" << f.sGetFlashType() << std::endl;
-        if (verbose)
-            std::cout << "\tDSA on board:\t" << board << std::endl;
-        else
-            std::cout << "\tDSA on board:\t" << board.name << std::endl;
+        std::cout << "\tDevice type:\t\t" << board.board << std::endl;
+        std::cout << "\tDevice BDF:\t\t" << f.sGetDBDF() << std::endl;
+        std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
+        std::cout << "\tDSA running on FPGA:\t" << board << std::endl;
 
         std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-        std::cout << "\tDSA installed:\t";
+        std::cout << "\tDSA package in system:\t";
         if (!installedDSA.empty())
         {
             for (DSAInfo& d : installedDSA)
             {
-                if (verbose)
-                    std::cout << d << std::endl;
-                else
-                    std::cout << d.name << std::endl;
+                std::cout << d << std::endl;
                 std::cout << "\t\t\t";
             }
         }
