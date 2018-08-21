@@ -192,17 +192,17 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
-	unsigned bit = find_first_bit(client->cu_bitmap, xdev->layout->m_count);
+	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap, xdev->layout->m_count) : MAX_CUS;
 
 	DRM_ENTER("");
 
 	/* This happens when application exists without formally releasing the contexts on CUs.
 	   Give up our contexts on CUs and our lock on xclbin */
-	while (bit < xdev->layout->m_count) {
+	while (xdev->layout && (bit < xdev->layout->m_count)) {
 		xdev->ip_reference[bit]--;
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
-	bitmap_zero(client->cu_bitmap, xdev->layout->m_count);
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	if (!uuid_is_null(&xdev->xclbin_id)) {
 		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
 			pid_nr(task_tgid(current)));
