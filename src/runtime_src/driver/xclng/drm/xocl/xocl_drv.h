@@ -31,7 +31,7 @@
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
 #define XOCL_UUID
 #endif
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
 #define XOCL_UUID
 #endif
 /* UUID helper functions not present in older kernels */

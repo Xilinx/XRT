@@ -739,12 +739,14 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long id, char *buf,
 
 	qdma_descq_context_clear(descq->xdev, descq->qidx_hw, descq->conf.st,
 				descq->conf.c2h, 0);
-
-	qdma_descq_free_resource(descq);
-
+	/*
+	 * assume dma is stopped at this time. It is same to deal with
+	 * pending requests and free buffers
+	 */
 	lock_descq(descq);
 	descq->online = 0;
 	descq->inited = 0;
+	qdma_descq_free_resource(descq);
 	unlock_descq(descq);
 
 	if (buf && buflen) {
