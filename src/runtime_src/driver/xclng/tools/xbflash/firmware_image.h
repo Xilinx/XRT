@@ -44,8 +44,8 @@ public:
     std::string file;
     uint64_t timestamp;
 
-    DSAInfo(std::string filename, uint64_t ts);
-    DSAInfo(std::string filename);
+    DSAInfo(const std::string& filename, uint64_t ts);
+    DSAInfo(const std::string& filename);
     ~DSAInfo();
 };
 

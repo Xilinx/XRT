@@ -1826,12 +1826,20 @@ reset(struct platform_device *pdev)
 	return 0;
 }
 
+static int
+validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd)
+{
+	// TODO: Add code to check if requested cmd is valid in the current context
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.add_exec_buffer = add_exec_buffer,
 	.create_client = create_client,
 	.destroy_client = destroy_client,
 	.poll_client = poll_client,
 	.reset = reset,
+	.validate = validate,
 };
 
 /**

@@ -19,10 +19,74 @@
 #include <thread>
 #include <chrono>
 #include <curses.h>
+#include <sstream>
+#include <climits>
+#include <algorithm>
 
 #include "xbutil.h"
 #include "shim.h"
-#include <linux/limits.h>
+
+int bdf2index(std::string& bdfStr, unsigned& index)
+{
+    // Extract bdf from bdfStr.
+    int dom = 0, b, d, f;
+    char dummy;
+    std::stringstream s(bdfStr);
+    size_t n = std::count(bdfStr.begin(), bdfStr.end(), ':');
+    if (n == 1)
+        s >> std::hex >> b >> dummy >> d >> dummy >> f;
+    else if (n == 2)
+        s >> std::hex >> dom >> dummy >> b >> dummy >> d >> dummy >> f;
+    if ((n != 1 && n != 2) || s.fail()) {
+        std::cout << "ERROR: failed to extract BDF from " << bdfStr << std::endl;
+        return -EINVAL;
+    }
+
+    xcldev::pci_device_scanner devScanner;
+    try {
+        devScanner.scan(false);
+    } catch (...) {
+        std::cout << "ERROR: failed to scan device" << std::endl;
+        return -EINVAL;
+    }
+
+    for (unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++) {
+        auto& dev = xcldev::pci_device_scanner::device_list[i];
+        if (dom == dev.domain && b == dev.bus && d == dev.device &&
+            (f == 0 || f == 1)) {
+            index = i;
+            return 0;
+        }
+    }
+
+    std::cout << "ERROR: no device found for " << bdfStr << std::endl;
+    return -ENOENT;
+}
+
+int str2index(const char *arg, unsigned& index)
+{
+    std::string devStr(arg);
+
+    if (devStr.find(":") == std::string::npos) {
+    // The arg contains a board index.
+        unsigned long i;
+        char *endptr;
+        i = std::strtoul(arg, &endptr, 0);
+        if (*endptr != '\0' || i >= UINT_MAX) {
+            std::cout << "ERROR: " << devStr << " is not a valid board index."
+                << std::endl;
+            return -EINVAL;
+        }
+        index = i;
+    } else {
+    // The arg contains domain:bus:device.function string.
+        int ret = bdf2index(devStr, index);
+        if (ret != 0)
+            return ret;
+    }
+
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
@@ -111,7 +175,7 @@ int main(int argc, char *argv[])
 	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED}
     };
     int long_index;
-    const char* short_options = "a:d:e:i:r:p:f:g:m:n:c:s:b:ho:"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s:"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -234,12 +298,15 @@ int main(int argc, char *argv[])
             }
             break;
         }
-        case 'd':
-            index = std::atoi(optarg);
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
             if (cmd == xcldev::DD) {
                 ddArgs = dd::parse_dd_options( argc, argv );
             }
             break;
+        }
         case 'r':
             if ((cmd == xcldev::FLASH) || (cmd == xcldev::BOOT) || (cmd == xcldev::DMATEST) ||(cmd == xcldev::STATUS)) {
                 std::cout << "ERROR: '-r' not applicable for this command\n";
@@ -580,7 +647,7 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(std::unique_ptr<xcldev::device> &dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
+static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
 {
     std::vector<std::string> lines;
 
@@ -614,7 +681,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
                 return;
             }
             clear();
-            topPrintUsage(ctrl->dev, devstat, devinfo);
+            topPrintUsage(ctrl->dev.get(), devstat, devinfo);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -635,9 +702,12 @@ int xcldev::xclTop(int argc, char *argv[])
         case 'i':
             interval = std::atoi(optarg);
             break;
-        case 'd':
-            index = (unsigned)std::atoi(optarg);
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
             break;
+        }
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
@@ -683,7 +753,7 @@ int xcldev::xclTop(int argc, char *argv[])
 
 const std::string dsaPath("/opt/xilinx/dsa/");
 
-int runShellCmd(std::string& cmd, std::string& output)
+int runShellCmd(const std::string& cmd, std::string& output)
 {
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
@@ -732,9 +802,17 @@ int xcldev::device::validate()
         return -EINVAL;
     }
 
+    // Program verify.xclbin first.
+    int ret = program(xclbinPath, 0);
+    if (ret != 0)
+    {
+        std::cout << "ERROR: Failed to download verify kernel: err=" << ret << std::endl;
+        return ret;
+    }
+
     std::string output;
     std::string cmd = exePath + " " + xclbinPath;
-    int ret = runShellCmd(cmd, output);
+    ret = runShellCmd(cmd, output);
     if (ret != 0) {
         std::cout << "ERROR: Can't run verify kernel." << std::endl;
         return ret;
@@ -764,14 +842,17 @@ int xcldev::xclValidate(int argc, char *argv[])
 
     while ((c = getopt(argc, argv, "d:")) != -1) {
         switch (c) {
-        case 'd':
-            index = (unsigned)std::atoi(optarg);
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
             // Hack for now until verify kernel can support multiple boards
             if (index != 0) {
                 std::cout << "ERROR: Can only validate the first board" << std::endl;
                 return -EINVAL;
             }
             break;
+        }
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;

@@ -95,7 +95,7 @@ int flashDSA(Flasher& f, DSAInfo& dsa)
     if (primary->fail() || (secondary != nullptr && secondary->fail()))
         return -EINVAL;
 
-    return f.upgradeFirmware(primary, secondary);
+    return f.upgradeFirmware(primary.get(), secondary.get());
 }
 
 int updateDSA(unsigned idx, std::string& dsa, uint64_t ts, bool dryrun)
@@ -297,9 +297,9 @@ int main( int argc, char *argv[] )
         if(!flasher.isValid())
             ret = -EINVAL;
         else if (args.bmc != nullptr)
-            ret = flasher.upgradeBMCFirmware(args.bmc);
+            ret = flasher.upgradeBMCFirmware(args.bmc.get());
         else
-            ret = flasher.upgradeFirmware(args.primary, args.secondary);
+            ret = flasher.upgradeFirmware(args.primary.get(), args.secondary.get());
     }
     // Automatically choose DSA/BMC files.
     else
