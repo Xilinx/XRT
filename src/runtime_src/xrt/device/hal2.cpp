@@ -521,21 +521,25 @@ svm_bo_lookup(void* ptr)
 //Stream
 int 
 device::
-createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
   xclQueueContext ctx;
   ctx.flags = flags;
   ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
   return m_ops->mCreateWriteQueue(&ctx,stream);
 }
 
 int 
 device::
-createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
   xclQueueContext ctx;
   ctx.flags = flags;
   ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
   return m_ops->mCreateReadQueue(&ctx,stream);
 }
 
