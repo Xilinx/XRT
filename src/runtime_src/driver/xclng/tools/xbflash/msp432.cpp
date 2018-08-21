@@ -199,7 +199,7 @@ int MSP432_Flasher::erase()
 }
 
 
-int MSP432_Flasher::xclGetBoardInfo(uint32_t *msp_package) {
+int MSP432_Flasher::xclGetBoardInfo(uint32_t *msp_packet) {
     std::string startAddress;
     ELARecord record;
 
@@ -210,12 +210,10 @@ int MSP432_Flasher::xclGetBoardInfo(uint32_t *msp_package) {
         return -EOPNOTSUPP;
     }
 
-    getBoardInfo(msp_package);
-
-    return 0;
+    return getBoardInfo(msp_packet);
 }
 
-int MSP432_Flasher::getBoardInfo(uint32_t *msp_package)
+int MSP432_Flasher::getBoardInfo(uint32_t *msp_packet)
 {
     int ret = 0;
     mPkt.hdr.opCode = XPO_MSP432_INFO_RESP;
@@ -230,7 +228,7 @@ int MSP432_Flasher::getBoardInfo(uint32_t *msp_package)
     recvPkt();
 
     for(uint i=0;i<(mPkt.hdr.payloadSize/sizeof(uint32_t));++i)
-        *(msp_package+i) = mPkt.data[i];
+        *(msp_packet+i) = mPkt.data[i];
 
     return waitTillIdle();
 }

@@ -151,14 +151,14 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
     return flasher.xclUpgradeFirmware(*bmc);
 }
 
-void Flasher::parseMspPackage(uint32_t *msp_package)
+void Flasher::parseMspPacket(uint32_t *msp_packet)
 {
-    if(msp_package==nullptr)
+    if(msp_packet==nullptr)
         return;
-    int len = (msp_package[0] & 0xfff);
+    int len = (msp_packet[0] & 0xfff);
     len += sizeof(uint32_t);
     int i=4;
-    char *byte = reinterpret_cast<char *>(msp_package);
+    char *byte = reinterpret_cast<char *>(msp_packet);
     std::vector<std::string> key_val_pairs;
 
     while(i<len){
@@ -181,12 +181,12 @@ void Flasher::parseMspPackage(uint32_t *msp_package)
 int Flasher::upgradeGetBoardInfo()
 {
     MSP432_Flasher flasher(mIdx, mMgmtMap);
-    uint32_t *msp_package = new uint32_t[4096];
+    uint32_t *msp_packet = new uint32_t[4096];
     int ret = 0;
-    ret = flasher.xclGetBoardInfo(msp_package);
+    ret = flasher.xclGetBoardInfo(msp_packet);
 
-    parseMspPackage(msp_package);
-    delete [] msp_package;
+    parseMspPacket(msp_packet);
+    delete [] msp_packet;
     return ret;
 }
 

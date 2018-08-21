@@ -527,6 +527,19 @@ static ssize_t version_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(version);
 
+static ssize_t sensor_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	safe_read32(xmc, XMC_SENSOR_REG, &val);
+
+	return sprintf(buf, "0x%04x\n", val);
+}
+static DEVICE_ATTR_RO(sensor);
+
+
 static ssize_t id_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -635,25 +648,60 @@ static ssize_t reset_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(reset);
 
-
-static ssize_t power_consumption_show(struct device *dev, struct device_attribute *da,
+static ssize_t power_flag_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read32(xmc, XMC_12V_PEX_REG + attr->index * sizeof(u32), &val);
+	safe_read32(xmc, XMC_SNSR_FLAGS_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
-static DEVICE_ATTR_RO(power_consumption);
+static DEVICE_ATTR_RO(power_flag);
+
+static ssize_t host_msg_offset_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(host_msg_offset);
+
+static ssize_t host_msg_error_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_HOST_MSG_ERROR_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(host_msg_error);
+
+static ssize_t host_msg_header_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_HOST_MSG_HEADER_REG, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(host_msg_header);
 
 
 static struct attribute *xmc_attrs[] = {
 	&dev_attr_version.attr,
 	&dev_attr_id.attr,
 	&dev_attr_status.attr,
+	&dev_attr_sensor.attr,
 	&dev_attr_error.attr,
 	&dev_attr_capability.attr,
 	&dev_attr_power_checksum.attr,
@@ -687,7 +735,10 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_xmc_se98_temp2.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
-	&dev_attr_power_consumption.attr,
+	&dev_attr_power_flag.attr,
+	&dev_attr_host_msg_offset.attr,
+	&dev_attr_host_msg_error.attr,
+	&dev_attr_host_msg_header.attr,
 	NULL,
 };
 
@@ -786,13 +837,13 @@ static int mgmt_sysfs_create_xmc(struct platform_device *pdev)
 	struct xocl_xmc *xmc;
 	struct xocl_dev_core *core;
 	int err;
-
 	xmc = platform_get_drvdata(pdev);
 	core = XDEV(xocl_get_xdev(pdev));
 
 	if (!xmc->enabled) {
 		return 0;
 	}
+
 	err = sysfs_create_group(&pdev->dev.kobj, &xmc_attr_group);
 	if (err) {
 		xocl_err(&pdev->dev, "create xmc attrs failed: 0x%x", err);

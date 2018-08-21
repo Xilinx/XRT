@@ -48,7 +48,7 @@ public:
     int upgradeFirmware(firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
     int upgradeGetBoardInfo();
-    void parseMspPackage(uint32_t *msp_package);
+    void parseMspPacket(uint32_t *msp_packet);
     bool isValid( void ) { return mIsValid; }
 
     static void* wordcopy(void *dst, const void* src, size_t bytes);
