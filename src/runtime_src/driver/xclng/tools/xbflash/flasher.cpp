@@ -162,12 +162,7 @@ void Flasher::parseMspPacket(uint32_t *msp_packet)
     std::vector<std::string> key_val_pairs;
 
     while(i<len){
-        std::stringstream ss;
-
-#if 0
-       if(byte[i]==0x2B)
-        flasher.mType = byte[i+2];
-#endif
+       std::stringstream ss;
        ss << std::to_string(byte[i]) << ":";
        for(int j=1;j<=(uint8_t)byte[i+1];++j){
            ss << byte[i+1+j];
@@ -178,7 +173,7 @@ void Flasher::parseMspPacket(uint32_t *msp_packet)
     }
 }
 
-int Flasher::upgradeGetBoardInfo()
+int Flasher::GetBoardInfo()
 {
     MSP432_Flasher flasher(mIdx, mMgmtMap);
     uint32_t *msp_packet = new uint32_t[4096];

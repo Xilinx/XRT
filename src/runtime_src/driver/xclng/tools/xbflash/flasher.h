@@ -47,7 +47,7 @@ public:
     ~Flasher();
     int upgradeFirmware(firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
-    int upgradeGetBoardInfo();
+    int GetBoardInfo();
     void parseMspPacket(uint32_t *msp_packet);
     bool isValid( void ) { return mIsValid; }
 
