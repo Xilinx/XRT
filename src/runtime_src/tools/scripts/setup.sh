@@ -10,14 +10,14 @@ OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t'`
 if [[ $OSDIST == "ubuntu" ]]; then
     if [[ $OSREL != "16.04" ]] &&  [[ $OSREL != "18.04" ]]; then
         echo "ERROR: Ubuntu release version must be 16.04 or later"
-        exit 1
+        return 1
     fi
 fi
 
 if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
     if [[ $OSREL != "7.4"* ]] &&  [[ $OSREL != "7.5"* ]]; then
         echo "ERROR: Centos or RHEL release version must be 7.4 or later"
-        exit 1
+        return 1
     fi
 fi
 
@@ -26,7 +26,7 @@ XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"
     echo "This script must be sourced from XRT install directory"
-    exit 1
+    return 1
 fi
 
 export XILINX_XRT
