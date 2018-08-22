@@ -68,7 +68,7 @@ static ssize_t dna_show(struct device *dev, struct device_attribute *attr,
 	dna63_32 = ioread32(xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_1_OFFSET);
 	dna31_0  = ioread32(xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_0_OFFSET);
 
-	return sprintf(buf, "%08x%08x%08x\n", dna96_64, dna63_32, dna31_0);
+	return sprintf(buf, "%04x%04x%04x\n", dna96_64, dna63_32, dna31_0);
 }
 static DEVICE_ATTR_RO(dna);
 
