@@ -1655,7 +1655,7 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
 }
 
 void
-XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs)
+XclBinData::createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs)
 {
   // Must have something to work with
   int count = _mcs.size();
@@ -1747,7 +1747,7 @@ XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS
 }
 
 void
-XclBinData::createBMCSegmentBuffer(std::vector< std::string > _bmc)
+XclBinData::createBMCSegmentBuffer(const std::vector< std::string > & _bmc)
 {
   // Must have something to work with
   int count = _bmc.size();

@@ -70,8 +70,8 @@ class XclBinData
     unsigned int getJSONBufferSegmentCount();
     void enableTrace() { m_trace = true; };
     void createBinaryImages();
-    void createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs);
-    void createBMCSegmentBuffer(std::vector< std::string > _mps);
+    void createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs);
+    void createBMCSegmentBuffer(const std::vector< std::string > & _mps);
  
   private:
     bool extractSectionData( int sectionNum, const char* name );
