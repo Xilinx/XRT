@@ -153,7 +153,8 @@ extern "C" {
         DEBUG_IP_LAYOUT,
         DESIGN_CHECK_POINT,
         CLOCK_FREQ_TOPOLOGY,
-        MCS
+        MCS,
+        BMC
     };
 
     enum MEM_TYPE {
@@ -338,6 +339,16 @@ extern "C" {
         int8_t m_count;                    /* Number of chunks */
         int8_t m_unused[7];                /* padding */
         struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
+    };
+
+    struct bmc {                           /* bmc data section  */
+        uint64_t m_offset;                 /* data offset from the start of the section */
+        uint64_t m_size;                   /* data size (bytes)*/
+        char m_image_name[64];             /* Name of the image (e.g., MSP432P401R) */
+        char m_device_name[64];            /* Device ID         (e.g., VCU1525)  */
+        char m_version[64];
+        char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
+        char m_padding[7];                 /* Padding */
     };
 
     /**** END : Xilinx internal section *****/
