@@ -298,19 +298,24 @@ public:
     void m_devinfo_stringize_dynamics(const xclDeviceInfo2 *m_devinfo, std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss;
-  //      unsigned long long power;
+        subss << std::left;
         ss << std::left << "\n";
         unsigned i;
 
-        if(m_devinfo->mSE98Temp[0]!=XCL_INVALID_SENSOR_VAL && (unsigned short)m_devinfo->mSE98Temp[0]!=XCL_NO_SENSOR_DEV_S){
-            for(i= 0; i < 3; ++i){
-                ss << std::setw(16) << "SE98 Temp"+std::to_string(i);
-                subss << std::left << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
-            }
-            ss << "\n" << subss.str() << "\n\n";
-        }
+        const char *se98[4] = {"PCB TOP FRONT", "PCB TOP REAR", "PCB BTM FRONT"};
 
-        ss << std::setw(16) << "OnChip Temp" << std::setw(16) << "Fan Temp" << std::setw(16) << "Fan Speed" << "\n";
+        for(i= 0; i < 3; ++i){
+            ss << std::setw(16) << se98[i];
+            if((unsigned short)m_devinfo->mSE98Temp[i] == (XCL_NO_SENSOR_DEV & (0xffff)))
+                subss << std::setw(16) << "Not support";
+            else if (m_devinfo->mSE98Temp[i] == XCL_INVALID_SENSOR_VAL)
+                subss << std::setw(16) << "Not support";
+            else
+                subss << std::setw(16) << std::to_string(m_devinfo->mSE98Temp[i]).substr(0,3)+" C";
+        }
+        ss << "\n" << subss.str() << "\n\n";
+
+        ss << std::setw(16) << "FPGA Temp" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "Fan Speed" << "\n";
         ss << std::setw(16) << std::to_string(m_devinfo->mOnChipTemp) +" C";
 
         if((unsigned short)m_devinfo->mFanTemp == (XCL_NO_SENSOR_DEV & (0xffff)))
@@ -421,7 +426,7 @@ public:
 
         if(m_devinfo->m1v8Top == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
-        else if(m_devinfo->m1v8Top != XCL_INVALID_SENSOR_VAL)
+        else if(m_devinfo->m1v8Top == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
         else
             ss << std::setw(16) << std::to_string((float)m_devinfo->m1v8Top/1000).substr(0,4) + "V";
@@ -465,11 +470,28 @@ public:
 
 
         if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support" << "\n\n";
         else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support" << "\n\n";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n\n";
+
+        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
+        if(m_devinfo->mVccIntVol == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support";
+        else if(m_devinfo->mVccIntVol == XCL_INVALID_SENSOR_VAL)
+            ss << std::setw(16) << "Not support";
+        else
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mVccIntVol/1000).substr(0,4) + "V";
+
+
+        if(m_devinfo->mVccIntCurr == XCL_NO_SENSOR_DEV_S)
+            ss << std::setw(16) << "Not support" << "\n";
+        else if(m_devinfo->mVccIntCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
         else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n";
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mVccIntCurr).substr(0,4) + "mA" << "\n";
+
 
         m_devinfo_stringize_power(m_devinfo, lines);
 

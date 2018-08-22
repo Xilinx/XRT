@@ -580,6 +580,10 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mMgtVtt = xclSysfsGetInt(true, "xmc", "xmc_mgtavtt");
     info->m1v2Bottom = xclSysfsGetInt(true, "xmc", "xmc_vcc1v2_btm");
 
+    info->mVccIntVol  = xclSysfsGetInt(true, "xmc", "xmc_vccint_vol");
+    info->mVccIntCurr =  xclSysfsGetInt(true, "xmc", "xmc_vccint_curr");
+
+
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
     for (unsigned i = 0;
         i < std::min(freqs.size(), ARRAY_SIZE(info->mOCLFrequency));
