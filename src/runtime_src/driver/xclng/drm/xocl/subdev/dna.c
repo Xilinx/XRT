@@ -85,7 +85,7 @@ static ssize_t capability_show(struct device *dev, struct device_attribute *attr
 static DEVICE_ATTR_RO(capability);
 
 
-static ssize_t version_show(struct device *dev, struct device_attribute *attr,
+static ssize_t dna_version_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
@@ -95,7 +95,7 @@ static ssize_t version_show(struct device *dev, struct device_attribute *attr,
 
 	return sprintf(buf, "%d\n", version);
 }
-static DEVICE_ATTR_RO(version);
+static DEVICE_ATTR_RO(dna_version);
 
 static ssize_t revision_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
@@ -113,7 +113,7 @@ static struct attribute *xlnx_dna_attributes[] = {
 	&dev_attr_status.attr,
 	&dev_attr_dna.attr,
 	&dev_attr_capability.attr,
-	&dev_attr_version.attr,
+	&dev_attr_dna_version.attr,
 	&dev_attr_revision.attr,
 	NULL
 };
