@@ -154,7 +154,7 @@ extern "C" {
         DESIGN_CHECK_POINT,
         CLOCK_FREQ_TOPOLOGY,
         MCS,
-        MSP
+        BMC
     };
 
     enum MEM_TYPE {
@@ -341,7 +341,7 @@ extern "C" {
         struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
     };
 
-    struct msp {                           /* MSP data section  */
+    struct bmc {                           /* bmc data section  */
         uint64_t m_offset;                 /* data offset from the start of the section */
         uint64_t m_size;                   /* data size (bytes)*/
         char m_image_name[64];             /* Name of the image (e.g., MSP432P401R) */

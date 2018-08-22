@@ -168,7 +168,7 @@ dsaXmlFile="dsa.xml"
 featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
-fwMSP432=""
+fwBMC=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
@@ -286,7 +286,7 @@ readDsaMetaData()
   done < "${dsaXmlFile}"
 }
 
-initMSP432Var()
+initBMCVar()
 {
     # Looking for the MSP432 firmware image
     for file in ${XILINX_XRT}/share/fw/*.txt; do
@@ -297,22 +297,22 @@ initMSP432Var()
       baseFileName="${baseFileName##*/}"  # Remove Path
 
       set -- `echo ${baseFileName} | tr '-' ' '`
-      mspImageName="${1}"
-      mspDeviceName="${2}"
-      mspVersion="${3}"
-      mspMd5Expected="${4}"
+      bmcImageName="${1}"
+      bmcDeviceName="${2}"
+      bmcVersion="${3}"
+      bmcMd5Expected="${4}"
 
       # Calculate the md5 checksum
       set -- $(md5sum $file)
-      mspMd5Actual="${1}"
+      bmcMd5Actual="${1}"
 
-      if [ "${mspMd5Expected}" == "${mspMd5Actual}" ]; then
+      if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
          echo "Info: Validated MSP432 flash image MD5 value"
-         fwMSP432="${file}"
+         fwBMC="${file}"
       else
          echo "ERROR: MSP432 Flash image failed MD5 varification."
-         echo "       Expected: ${mspMd5Expected}"
-         echo "       Actual  : ${mspMd5Actual}"
+         echo "       Expected: ${bmcMd5Expected}"
+         echo "       Actual  : ${bmcMd5Actual}"
          echo "       File:   : $file"
          exit 1
       fi
@@ -368,7 +368,7 @@ initDsaBinEnvAndVars()
       fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
     fi
 
-    initMSP432Var
+    initBMCVar
 }
 
 dodsabin()
@@ -410,11 +410,11 @@ dodsabin()
     fi
 
     # -- Firmware: MSP432 --
-    if [ "${fwMSP432}" != "" ]; then
-       if [ -f "${fwMSP432}" ]; then
-         xclbinOpts+=" -s MSP ${fwMSP432}"
+    if [ "${fwBMC}" != "" ]; then
+       if [ -f "${fwBMC}" ]; then
+         xclbinOpts+=" -s BMC ${fwBMC}"
        else
-         echo "Warning: MSP432 firmware does not exist: ${fwMSP432}"
+         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
       fi
     fi
 
@@ -457,7 +457,6 @@ dodsabin()
     ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}
 
     popd >/dev/null
-
 }
 
 dodebdev()

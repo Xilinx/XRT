@@ -370,8 +370,8 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     extractAndWriteMCSImages((char*) data.get(), sectionSize);
     return true;
   }
-  else if ( header.m_sectionKind == MSP ) {
-    extractAndWriteMSPImages((char*) data.get(), sectionSize);
+  else if ( header.m_sectionKind == BMC ) {
+    extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
   }
 
@@ -1747,28 +1747,28 @@ XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS
 }
 
 void
-XclBinData::createMSPSegmentBuffer(std::vector< std::string > _msp)
+XclBinData::createBMCSegmentBuffer(std::vector< std::string > _bmc)
 {
   // Must have something to work with
-  int count = _msp.size();
+  int count = _bmc.size();
   if ( count == 0 )
     return;
 
-  msp mspHdr = (msp) {0};
+  bmc bmcHdr = (bmc) {0};
 
-  TRACE("MSP");
+  TRACE("BMC");
   
   // Determine if the file can be opened and its size
-  std::string filePath = _msp[0];
+  std::string filePath = _bmc[0];
   {
     std::ifstream fs;
     fs.open( filePath.c_str(), std::ifstream::in | std::ifstream::binary );
     fs.seekg( 0, fs.end );
-    mspHdr.m_size = fs.tellg();
-    mspHdr.m_offset = sizeof(msp);
+    bmcHdr.m_size = fs.tellg();
+    bmcHdr.m_offset = sizeof(bmc);
 
     if ( ! fs.is_open() ) {
-      std::string errMsg = "ERROR: Could not open the file for reading: '" + _msp[0] + "'";
+      std::string errMsg = "ERROR: Could not open the file for reading: '" + _bmc[0] + "'";
       throw std::runtime_error(errMsg);
     }
     fs.close();
@@ -1810,50 +1810,50 @@ XclBinData::createMSPSegmentBuffer(std::vector< std::string > _msp)
     }
 
     // Token 0 - Image Name
-    if ( tokens[0].length() >= sizeof(msp::m_image_name) ) {
+    if ( tokens[0].length() >= sizeof(bmc::m_image_name) ) {
       std::string errMsg = XclBinUtil::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                              (unsigned int) tokens[0].length(), (unsigned int) sizeof(msp::m_image_name), tokens[0].c_str());
+                                              (unsigned int) tokens[0].length(), (unsigned int) sizeof(bmc::m_image_name), tokens[0].c_str());
       throw std::runtime_error(errMsg);
     }
-    memcpy( mspHdr.m_image_name, tokens[0].c_str(), tokens[0].length() + 1);
+    memcpy( bmcHdr.m_image_name, tokens[0].c_str(), tokens[0].length() + 1);
 
     // Token 1 - Device Name
-    if ( tokens[1].length() >= sizeof(msp::m_device_name) ) {
+    if ( tokens[1].length() >= sizeof(bmc::m_device_name) ) {
       std::string errMsg = XclBinUtil::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                              (unsigned int) tokens[1].length(), (unsigned int) sizeof(msp::m_device_name), tokens[1].c_str());
+                                              (unsigned int) tokens[1].length(), (unsigned int) sizeof(bmc::m_device_name), tokens[1].c_str());
       throw std::runtime_error(errMsg);
     }
-    memcpy( mspHdr.m_device_name, tokens[1].c_str(), tokens[1].length() + 1);
+    memcpy( bmcHdr.m_device_name, tokens[1].c_str(), tokens[1].length() + 1);
 
     // Token 2 - Version
-    if ( tokens[2].length() >= sizeof(msp::m_version) ) {
+    if ( tokens[2].length() >= sizeof(bmc::m_version) ) {
       std::string errMsg = XclBinUtil::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'",
-                                              (unsigned int) tokens[2].length(), (unsigned int) sizeof(msp::m_version), tokens[2].c_str());
+                                              (unsigned int) tokens[2].length(), (unsigned int) sizeof(bmc::m_version), tokens[2].c_str());
       throw std::runtime_error(errMsg);
     }
-    memcpy( mspHdr.m_version, tokens[2].c_str(), tokens[2].length() + 1);
+    memcpy( bmcHdr.m_version, tokens[2].c_str(), tokens[2].length() + 1);
 
     // Token 3 - MD5 Value
-    if ( tokens[3].length() >= sizeof(msp::m_md5value) ) {
+    if ( tokens[3].length() >= sizeof(bmc::m_md5value) ) {
       std::string errMsg = XclBinUtil::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'",
-                                              (unsigned int) tokens[3].length(), (unsigned int) sizeof(msp::m_md5value), tokens[3].c_str());
+                                              (unsigned int) tokens[3].length(), (unsigned int) sizeof(bmc::m_md5value), tokens[3].c_str());
       throw std::runtime_error(errMsg);
     }
-    memcpy( mspHdr.m_md5value, tokens[3].c_str(), tokens[3].length() + 1);
+    memcpy( bmcHdr.m_md5value, tokens[3].c_str(), tokens[3].length() + 1);
   }
 
   TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
-                           mspHdr.m_offset,
-                           mspHdr.m_size,
-                           mspHdr.m_image_name,
-                           mspHdr.m_device_name,
-                           mspHdr.m_version,
-                           mspHdr.m_md5value));
+                           bmcHdr.m_offset,
+                           bmcHdr.m_size,
+                           bmcHdr.m_image_name,
+                           bmcHdr.m_device_name,
+                           bmcHdr.m_version,
+                           bmcHdr.m_md5value));
 
-  TRACE_BUF("msp", reinterpret_cast<const char*>(&mspHdr), sizeof(msp));
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
 
   // Create the buffer
-  m_mspBuf.write(reinterpret_cast<const char*>(&mspHdr), sizeof(msp));
+  m_bmcBuf.write(reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
 
   // Write Data
   {
@@ -1865,12 +1865,12 @@ XclBinData::createMSPSegmentBuffer(std::vector< std::string > _msp)
       throw std::runtime_error(errMsg);
     }
 
-    std::unique_ptr<unsigned char> memBuffer( new unsigned char[ mspHdr.m_size ] );
+    std::unique_ptr<unsigned char> memBuffer( new unsigned char[ bmcHdr.m_size ] );
     fs.clear();
-    fs.read( (char*) memBuffer.get(), mspHdr.m_size );
+    fs.read( (char*) memBuffer.get(), bmcHdr.m_size );
     fs.close();
 
-    m_mcsBuf.write(reinterpret_cast<const char*>(memBuffer.get()), mspHdr.m_size );
+    m_bmcBuf.write(reinterpret_cast<const char*>(memBuffer.get()), bmcHdr.m_size );
   }
 }
 
@@ -1946,21 +1946,21 @@ XclBinData::extractAndWriteMCSImages( char * _pDataSegment,
 }
 
 void 
-XclBinData::extractAndWriteMSPImages( char * _pDataSegment, 
+XclBinData::extractAndWriteBMCImages( char * _pDataSegment, 
                                       unsigned int _segmentSize) 
 {
   TRACE("");
-  TRACE("Extracting: MPS");
+  TRACE("Extracting: BMC");
 
   // Do we have enough room to overlay the header structure
-  if ( _segmentSize < sizeof(msp) ) {
-    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the msp structure (%d)",
-                                                _segmentSize, sizeof(msp)));
+  if ( _segmentSize < sizeof(bmc) ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)",
+                                                _segmentSize, sizeof(bmc)));
   }
 
-  msp *pHdr = (msp *) _pDataSegment;
+  bmc *pHdr = (bmc *) _pDataSegment;
 
-  TRACE_BUF("msp", reinterpret_cast<const char*>(pHdr), sizeof(msp));
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(pHdr), sizeof(bmc));
   
   TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
                            pHdr->m_offset,
@@ -1974,7 +1974,7 @@ XclBinData::extractAndWriteMSPImages( char * _pDataSegment,
 
   // Check to see if array size  
   if ( expectedSize > _segmentSize ) {
-    throw std::runtime_error(XclBinUtil::format("ERROR: msp section size (0x%lx) exceeds the given segment size (0x%lx).", 
+    throw std::runtime_error(XclBinUtil::format("ERROR: bmc section size (0x%lx) exceeds the given segment size (0x%lx).", 
                                             expectedSize, _segmentSize));
   }
 
@@ -1984,7 +1984,7 @@ XclBinData::extractAndWriteMSPImages( char * _pDataSegment,
                                             pHdr->m_version,
                                             pHdr->m_md5value);
 
-  TRACE("Writing MSP File: '" + fileName + "'");
+  TRACE("Writing BMC File: '" + fileName + "'");
 
   std::fstream fs;
   fs.open( fileName, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc );
