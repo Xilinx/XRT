@@ -871,7 +871,7 @@ public:
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
                     if( map->m_mem_data[i].m_used ) {
-                        std::cout << "Data Validity & DMA Test on mem_data[" << i << "]\n";
+                        std::cout << "Data Validity & DMA Test on " << map->m_mem_data[i].m_tag << "\n";
                         addr = map->m_mem_data[i].m_base_address;
 
                         for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
