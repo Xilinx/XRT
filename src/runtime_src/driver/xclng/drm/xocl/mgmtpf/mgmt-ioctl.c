@@ -16,6 +16,12 @@
 
 #include "mgmt-core.h"
 
+
+static int dna_chk_enable = 0;
+module_param(dna_chk_enable, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(dna_chk_enable,
+	"Enable dna_chk_enable to enable dna check, (0 = disable check, 1 = enable check)");
+
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
 
 	struct xclmgmt_err_info obj;
@@ -88,6 +94,7 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct xclmgmt_char *lro_char = (struct xclmgmt_char *)filp->private_data;
 	struct xclmgmt_dev *lro;
 	long result = 0;
+	uint32_t status = 0;
 	BUG_ON(!lro_char);
 	lro = lro_char->lro;
 	BUG_ON(!lro);
@@ -127,6 +134,14 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD_AXLF:
 		result = bitstream_ioctl_axlf(lro, (void __user *)arg);
+
+		if(result)
+			break;
+		if(dna_chk_enable){
+			mgmt_err(lro, "Capability %08x", xocl_dna_capability(lro));
+			status = xocl_dna_status(lro);
+			result = !(0x1 & status);
+		}
 		break;
 	case XCLMGMT_IOCOCLRESET:
 		result = reset_ocl_ioctl(lro);
