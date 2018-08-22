@@ -203,13 +203,13 @@ failed:
 }
 
 void get_pcie_link_info(struct xclmgmt_dev *lro,
-	unsigned short *link_width, unsigned short *link_speed)
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
 {
 	u16 stat;
 	long result;
+	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
 
-	result = pcie_capability_read_word(lro->core.pdev, PCI_EXP_LNKSTA,
-		&stat);
+	result = pcie_capability_read_word(lro->core.pdev, pos, &stat);
 	if (result) {
 		*link_width = *link_speed = 0;
 		mgmt_err(lro, "Read pcie capability failed");
@@ -263,7 +263,8 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->vcc_bram = val;
 
 	fill_frequency_info(lro, obj);
-	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed);
+	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
+		false);
 }
 
 /* maps the PCIe BAR into user space for memory-like access using mmap() */
@@ -861,6 +862,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_firewall,
 	xocl_init_icap,
 	xocl_init_mig,
+	xocl_init_xmc,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -873,6 +875,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_firewall,
 	xocl_fini_icap,
 	xocl_fini_mig,
+	xocl_fini_xmc,
 };
 
 static int __init xclmgmt_init(void)

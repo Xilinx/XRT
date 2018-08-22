@@ -106,13 +106,12 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
 	} else {
 		drm_gem_object_unreference_unlocked(&cb_arg->xobj->base);
 	}
-		
-#if 0
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
-        kiocb->ki_complete(kiocb, compl_event->done_bytes, 0);
+        kiocb->ki_complete(kiocb, compl_event->done_bytes,
+		compl_event->error);
 #else
-        aio_complete(kiocb, compl_event->done_bytes, 0);
-#endif
+        aio_complete(kiocb, compl_event->done_bytes, compl_event->error);
 #endif
 
 	return 0;
@@ -273,12 +272,14 @@ static ssize_t queue_write(struct file *filp, const char __user *buf, size_t sz,
 	return queue_rw(sdev, queue, (char *)buf, sz, true, NULL);
 }
 
-#if 0
-static int queue_wqe_cancel(struct kiocb *kiocb, struct io_event *ioe)
+static int queue_wqe_cancel(struct kiocb *kiocb)
 {
-	return 0;
+	struct stream_queue	*queue;
+
+	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+
+	return qdma_cancel_req(&queue->queue);
 }
-#endif
 
 static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 	unsigned long nr, loff_t off)
@@ -291,7 +292,7 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 	sdev = queue->sdev;
 
-	// kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
 
 	for (i = 0; i < nr; i++) {
 		ret = queue_rw(sdev, queue, iov[i].iov_base, iov[i].iov_len,
@@ -302,7 +303,7 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 		total += ret;
 	}
 
-	return total > 0 ? total : ret;
+	return total > 0 ? -EIOCBQUEUED : ret;
 }
 
 static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
@@ -316,6 +317,8 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 	sdev = queue->sdev;
 
+	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+
 	for (i = 0; i < nr; i++) {
 		ret = queue_rw(sdev, queue, iov[i].iov_base, iov[i].iov_len,
 			true, kiocb);
@@ -325,18 +328,82 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 		total += ret;
 	}
 
-	return total > 0 ? total : ret;
+	return total > 0 ? -EIOCBQUEUED : ret;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
-	return queue_aio_write(kiocb, io->iov, io->nr_segs, io->iov_offset);
+	struct stream_queue	*queue;
+	struct str_device	*sdev;
+	unsigned long		i, nr;
+	ssize_t			total = 0, ret = 0;
+
+
+	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	sdev = queue->sdev;
+
+	nr = io->nr_segs;
+	if (!iter_is_iovec(io) || !nr) {
+		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
+		goto end;
+	}
+		
+	if (!is_sync_kiocb(kiocb)) {
+		ret = queue_aio_write(kiocb, io->iov, nr, io->iov_offset);
+		goto end;
+	}
+
+	for (i = 0; i < nr; i++) {
+		ret = queue_rw(sdev, queue, io->iov[i].iov_base,
+			io->iov[i].iov_len, true, NULL);
+		if (ret < 0) {
+			break;
+		}
+		total += ret;
+	}
+
+	ret = total > 0 ? total : ret;
+
+end:
+	return ret;
 }
 
 static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
-	return queue_aio_read(kiocb, io->iov, io->nr_segs, io->iov_offset);
+	struct stream_queue	*queue;
+	struct str_device	*sdev;
+	unsigned long		i, nr;
+	ssize_t			total = 0, ret = 0;
+
+
+	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	sdev = queue->sdev;
+
+	nr = io->nr_segs;
+	if (!iter_is_iovec(io) || !nr) {
+		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
+		goto end;
+	}
+		
+	if (!is_sync_kiocb(kiocb)) {
+		ret = queue_aio_read(kiocb, io->iov, nr, io->iov_offset);
+		goto end;
+	}
+
+	for (i = 0; i < nr; i++) {
+		ret = queue_rw(sdev, queue, io->iov[i].iov_base,
+			io->iov[i].iov_len, false, NULL);
+		if (ret < 0) {
+			break;
+		}
+		total += ret;
+	}
+
+	ret = total > 0 ? total : ret;
+
+end:
+	return ret;
 }
 #endif
 

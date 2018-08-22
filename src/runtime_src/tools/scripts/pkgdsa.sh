@@ -165,14 +165,17 @@ mcsSecondary=""
 fullBitFile=""
 clearBitstreamFile=""
 dsaXmlFile="dsa.xml"
-featureRomTimestamp=""
+featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
+fwBMC=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
+post_inst_fail_msg="DSA installed successfully. But failed to flash board(s). Please flash board manually with xbutil flash -a all"
+post_inst_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
 
 createEntityAttributeArray ()
 {
@@ -283,6 +286,39 @@ readDsaMetaData()
   done < "${dsaXmlFile}"
 }
 
+initBMCVar()
+{
+    # Looking for the MSP432 firmware image
+    for file in ${XILINX_XRT}/share/fw/*.txt; do
+      [ -e "$file" ] || continue
+
+      # Found "something" break it down into the basic parts
+      baseFileName="${file%.*txt}"        # Remove suffix
+      baseFileName="${baseFileName##*/}"  # Remove Path
+
+      set -- `echo ${baseFileName} | tr '-' ' '`
+      bmcImageName="${1}"
+      bmcDeviceName="${2}"
+      bmcVersion="${3}"
+      bmcMd5Expected="${4}"
+
+      # Calculate the md5 checksum
+      set -- $(md5sum $file)
+      bmcMd5Actual="${1}"
+
+      if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
+         echo "Info: Validated MSP432 flash image MD5 value"
+         fwBMC="${file}"
+      else
+         echo "ERROR: MSP432 Flash image failed MD5 varification."
+         echo "       Expected: ${bmcMd5Expected}"
+         echo "       Actual  : ${bmcMd5Actual}"
+         echo "       File:   : $file"
+         exit 1
+      fi
+    done
+}
+
 initDsaBinEnvAndVars()
 {
     # Clean out the dsabin directory
@@ -331,6 +367,8 @@ initDsaBinEnvAndVars()
       fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
       fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
     fi
+
+    initBMCVar
 }
 
 dodsabin()
@@ -371,6 +409,15 @@ dodsabin()
       fi
     fi
 
+    # -- Firmware: MSP432 --
+    if [ "${fwBMC}" != "" ]; then
+       if [ -f "${fwBMC}" ]; then
+         xclbinOpts+=" -s BMC ${fwBMC}"
+       else
+         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
+      fi
+    fi
+
     # -- Clear bitstream --
     if [ "${clearBitstreamFile}" != "" ]; then
        xclbinOpts+=" -s CLEAR_BITSTREAM ./firmware/${clearBitstreamFile}"
@@ -389,6 +436,7 @@ dodsabin()
     else
        echo "Warning: Missing Platform VBNV value"
     fi
+
 
     # -- Mode Hardware PR --
     xclbinOpts+=" --kvp mode:hw_pr"
@@ -464,6 +512,13 @@ maintainer: Xilinx Inc.
 
 EOF
 
+cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
+
+/opt/xilinx/xrt/bin/xbutil flash -f -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
+
+EOF
+    chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
+
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
 	if [ -d ${license_dir} ] ; then
@@ -510,6 +565,8 @@ Xilinx $dsa development DSA.
 Xilinx $dsa development DSA. Built on $build_date.
 
 %prep
+
+%post
 
 %install
 mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw
@@ -565,6 +622,9 @@ requires: xrt >= $opt_xrt
 Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $opt_xrt.
 
 %prep
+
+%post
+echo "${post_inst_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx

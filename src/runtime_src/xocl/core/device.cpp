@@ -236,6 +236,54 @@ alloc(memory* mem)
   return boh;
 }
 
+int 
+device::
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, xrt::device::stream_handle* stream) 
+{
+  if(flags & CL_STREAM_READ_ONLY) 
+    return m_xdevice->createReadStream(flags, attrs, stream);
+  else if(flags & CL_STREAM_WRITE_ONLY)
+    return m_xdevice->createWriteStream(flags, attrs, stream);
+  else
+    throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
+  return -1;
+}
+
+int 
+device::
+close_stream(xrt::device::stream_handle stream) 
+{
+  return m_xdevice->closeStream(stream);
+}
+
+ssize_t 
+device::
+write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+{
+  return m_xdevice->writeStream(stream, ptr, offset, size, flags);
+}
+
+ssize_t
+device::
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags) 
+{
+  return m_xdevice->readStream(stream, ptr, offset, size, flags);
+}
+
+xrt::device::stream_buf
+device::
+alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle)
+{
+  return m_xdevice->allocStreamBuf(size,handle);
+}
+
+int 
+device::
+free_stream_buf(xrt::device::stream_buf_handle handle)
+{
+  return m_xdevice->freeStreamBuf(handle);
+}
+
 device::
 device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)

@@ -18,7 +18,7 @@
 
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
 
-	struct xclErrorStatus obj;
+	struct xclmgmt_err_info obj;
 	u32	val, level;
 	u64	t;
 	int	i;

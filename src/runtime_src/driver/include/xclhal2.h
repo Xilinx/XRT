@@ -107,6 +107,35 @@ struct xclDeviceInfo2 {
   unsigned short mNumClocks;
   unsigned short mFanSpeed;
   bool mMigCalib;
+  unsigned long long mXMCVersion;
+  unsigned short m12VPex;
+  unsigned short m12VAux;
+  unsigned long long mPexCurr;
+  unsigned long long mAuxCurr;
+  unsigned short mFanRpm;
+  short mDimmTemp[4];
+  short mSE98Temp[4];
+  unsigned short m3v3Pex;
+  unsigned short m3v3Aux;
+  unsigned short mDDRVppBottom;
+  unsigned short mDDRVppTop;
+  unsigned short mSys5v5;
+  unsigned short m1v2Top;
+  unsigned short m1v8Top;
+  unsigned short m0v85;
+  unsigned short mMgt0v9;
+  unsigned short m12vSW;
+  unsigned short mMgtVtt;
+  unsigned short m1v2Bottom;
+  unsigned long long mDriverVersion;
+  unsigned mPciSlot;
+  bool mIsXPR;
+  unsigned long long mTimeStamp;
+  char mFpga[256];
+  unsigned short mPCIeLinkWidthMax;
+  unsigned short mPCIeLinkSpeedMax;
+  unsigned short mVccIntVol;
+  unsigned short mVccIntCurr;
   // More properties here
 };
 
@@ -213,6 +242,7 @@ struct xclDeviceUsage {
     uint64_t xclbinId[4];
     unsigned dma_channel_cnt;
     unsigned mm_channel_cnt;
+    uint64_t memSize[8];
 };
 
 struct xclBOProperties {
@@ -221,44 +251,6 @@ struct xclBOProperties {
     uint64_t size;
     uint64_t paddr;
     xclBOKind domain; // not implemented
-};
-
-#define XCL_CONTEXT_SHARED 0
-#define XCL_CONTEXT_EXCLUSIVE 1
-/**
- * struct xclContextProperties - XRT context structure
- *
- * This structure represents a context on compute unit. The context may be
- * shared or exclusive.
- */
-
-struct xclContextProperties {
-    /**
-     * @xclbinId:
-     *
-     * UUID of a previously loaded xclbin
-     */
-    uuid_t xclbinId;
-    /**
-     * @ipIndex:
-     *
-     * Index of the compute unit in the IP TOPOLOGY section of xclbin
-     */
-    unsigned int ipIndex;
-    /**
-     * @flags:
-     *
-     * bitmap of request properties sent to the driver. Currently only XCL_CONTEXT_SHARED
-     * or XCL_CONTEXT_EXCLUSIVE is supported.
-     * supported.
-     */
-    unsigned int flags;
-    /**
-     * @handle:
-     *
-     * unused
-     */
-    unsigned int handle;
 };
 
 /**
@@ -399,26 +391,30 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * xclOpenContext() - Create shared/exclusive context on compute units
  *
  * @handle:        Device handle
- * @context:       Context object populated by the caller as defined above
+ * @xclbinId:      UUID of the xclbin image running on the device
+ * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @shared:        Shared access or exclusive access
  * Return:         0 on success or appropriate error number
  *
  * The context is necessary before submitting execution jobs using xclExecBO(). Contexts may be
- * exclusive or shared. Allocation of exclusive contexts on a set of compute units would succeed
- * only if another client has not already setup up a context on those compute units. Shared
+ * exclusive or shared. Allocation of exclusive contexts on a compute unit would succeed
+ * only if another client has not already setup up a context on that compute unit. Shared
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
-XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context);
+XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex,
+                                       bool shared);
 
 /**
  * xclCloseContext() - Close previously opened context
  *
  * @handle:        Device handle
- * @context:       Context object populated by the caller as defined above
+ * @xclbinId:      UUID of the xclbin image running on the device
+ * @ipIndex:       IP/CU index in the IP LAYOUT array
  * Return:         0 on success or appropriate error number
  *
  * Close a previously allocated shared/exclusive context for a compute unit.
  */
-XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, xclContextProperties *context);
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex);
 
 /*
  * Update the device BPI PROM with new image
@@ -1082,12 +1078,12 @@ enum xclQueueRequestFlag {
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-    xclQueueRequestKind op_code;  
+    xclQueueRequestKind op_code;
     xclWRBuffer*        bufs;
     uint32_t	        buf_num;
     char*               cdh;
     uint32_t	        cdh_len;
-    xclQueueRequestFlag flag;     
+    xclQueueRequestFlag flag;
 };
 
 /**

@@ -17,6 +17,11 @@
 #include <CL/opencl.h>
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
+#include "xocl/core/device.h"
+
+//To access make_unique<>. TODO
+#include "xrt/util/memory.h"
+
 #include "plugin/xdp/profile.h"
 
 
@@ -24,35 +29,39 @@
 
 namespace xocl {
 static void
-validOrError(cl_device_id          device_id,
+validOrError(cl_device_id          device,
              cl_stream_flags       flags,
-	     cl_stream_attributes* attributes,
+	     cl_stream_attributes  attributes,
              cl_int *              errcode_ret)
 {
 }
 
 static cl_stream 
-clCreateStream(cl_device_id           device_id,
+clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
-	       cl_stream_attributes*  attributes,
+	       cl_stream_attributes   attributes,
 	       cl_int*                errcode_ret) 
 {
-  validOrError(device_id,flags,attributes,errcode_ret);
-  return nullptr;
+  validOrError(device,flags,attributes,errcode_ret);
+  auto stream = xrt::make_unique<xocl::stream>(flags,attributes);
+  stream->get_stream(xocl::xocl(device));
+  //return xocl(device_id)->get_xrt_device()->createWriteStream(flags, attr, );
+  xocl::assign(errcode_ret,CL_SUCCESS);
+  return stream.release();
 }
 
 } //xocl
 
 CL_API_ENTRY cl_stream CL_API_CALL
-clCreateStream(cl_device_id           device_id,
+clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
-	       cl_stream_attributes*  attributes,
+	       cl_stream_attributes   attributes,
 	       cl_int*                errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clCreateStream
-      (device_id,flags,attributes,errcode_ret);
+      (device,flags,attributes,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());

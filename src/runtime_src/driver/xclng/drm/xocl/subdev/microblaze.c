@@ -262,7 +262,6 @@ static struct attribute *mb_attrs[] = {
 	&dev_attr_reset.attr,
 	NULL,
 };
-
 static struct attribute_group mb_attr_group = {
 	.attrs = mb_attrs,
 };
@@ -350,7 +349,6 @@ static void mgmt_sysfs_destroy_mb(struct platform_device *pdev)
 		hwmon_device_unregister(mb->hwmon_dev);
 		mb->hwmon_dev = NULL;
 	}
-
 
 	sysfs_remove_group(&pdev->dev.kobj, &mb_attr_group);
 }

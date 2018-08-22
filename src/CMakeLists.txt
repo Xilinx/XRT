@@ -1,4 +1,4 @@
-PROJECT(SDAccel)
+PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
@@ -90,6 +90,13 @@ foreach (header ${XRT_CL_EXT_SRC})
   message("-- ${header}")
 endforeach()
 
+# Release eula (EA temporary)
+file(GLOB XRT_EULA
+  "license/*.txt"
+  )
+install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
+message("-- XRT EA eula files ${XRT_EULA}")
+
 include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
@@ -111,3 +118,6 @@ include (CMake/icd.cmake)
 include (CMake/pkgconfig.cmake)
 
 include (CMake/coverity.cmake)
+
+set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
+include (CMake/tags.cmake)

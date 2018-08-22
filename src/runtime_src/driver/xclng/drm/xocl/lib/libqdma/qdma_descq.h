@@ -99,6 +99,7 @@ struct qdma_descq {
 	struct qdma_kthread *wbthp;
 	struct list_head wbthp_list;
 	struct list_head pend_list;
+	struct list_head cancel_list;
 
 	unsigned int avail;
 	unsigned int pidx;
@@ -127,6 +128,7 @@ struct qdma_descq {
 	dma_addr_t desc_wrb_bus;
 	u8 *desc_wrb_wb;
 
+	struct completion cancel_comp;	
 #ifdef ERR_DEBUG
 	/* error inducing */
 	u64 induce_err;
@@ -210,6 +212,8 @@ void intr_cidx_update(struct qdma_descq *descq, unsigned int sw_cidx);
  */
 struct qdma_sgt_req_cb {
 	struct list_head list;
+	struct list_head list_cancel;
+	bool canceled;
 	wait_queue_head_t wq;
 	unsigned int desc_nr;
 	unsigned int offset;
@@ -238,6 +242,18 @@ int descq_flq_alloc_resource(struct qdma_descq *descq);
 int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget);
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update, bool refill);
+
+void qdma_notify_cancel(struct qdma_descq *descq);
+static inline void descq_cancel_req(struct qdma_descq *descq,
+	struct qdma_request *req)
+{
+	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
+
+	if (!cb->canceled) {
+		list_add_tail(&cb->list_cancel, &descq->cancel_list);
+		cb->canceled = true;
+	}
+}
 
 static inline void descq_h2c_pidx_update(struct qdma_descq *descq,
 					unsigned int pidx)

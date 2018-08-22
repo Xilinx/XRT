@@ -44,6 +44,11 @@ public:
   using memoryDomain = hal::device::Domain;
   using queue_type = hal::queue_type;
   using stream_handle = hal::StreamHandle;
+  using stream_flags = hal::StreamFlags;
+  using stream_attrs = hal::StreamAttributes;
+  using stream_xfer_flags = hal::StreamXferFlags;
+  using stream_buf = hal::StreamBuf;
+  using stream_buf_handle = hal::StreamBufHandle;
 
   explicit
   device(std::unique_ptr<hal::device>&& hal)
@@ -431,6 +436,50 @@ public:
   write_cache(const BufferObjectHandle& bo,void* user);
 #endif
 
+//Streaming APIs
+  int 
+  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+  { 
+    return m_hal->createWriteStream(flags, attr, stream);
+  }
+
+  int 
+  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+  {
+    return m_hal->createReadStream(flags, attr, stream);
+  };
+
+  int 
+  closeStream(hal::StreamHandle stream)
+  {
+    return m_hal->closeStream(stream);
+  };
+
+  hal::StreamBuf
+  allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
+  {
+    return m_hal->allocStreamBuf(size, buf);
+  };
+
+  int 
+  freeStreamBuf(hal::StreamBufHandle buf)
+  {
+    return m_hal->freeStreamBuf(buf);
+  };
+
+  ssize_t 
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  {
+    return m_hal->writeStream(stream, ptr, offset, size, flags);
+  };
+
+  ssize_t 
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  {
+    return m_hal->readStream(stream, ptr, offset, size, flags);
+  };
+
+//End Streaming APIs
 #ifdef PMD_OCL
 public:
   StreamHandle openStream(unsigned depth, unsigned q, direction dir)

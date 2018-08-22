@@ -19,50 +19,50 @@
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
-
+#include "xocl/core/device.h"
 
 namespace xocl {
 
 static void
-validOrError(cl_device_id        device_id,
+validOrError(cl_device_id        device,
              cl_stream           stream,
 	     const void*         ptr,
 	     size_t              offset,
 	     size_t              size,
-	     cl_stream_xfer_req* attributes,
+	     cl_stream_xfer_req  attributes,
 	     cl_int*             errcode_ret)
 
 {
 }
 
 static cl_int 
-clWriteStream(cl_device_id        device_id,
+clWriteStream(cl_device_id        device,
 	      cl_stream           stream,
 	      const void*         ptr,
 	      size_t              offset,
 	      size_t              size,
-	      cl_stream_xfer_req* attributes,
+	      cl_stream_xfer_req  attributes,
 	      cl_int*             errcode_ret)
 {
-  validOrError(device_id,stream,ptr,offset,size,attributes,errcode_ret);
-  return CL_INVALID_VALUE;
+  validOrError(device,stream,ptr,offset,size,attributes,errcode_ret);
+  return xocl::xocl(stream)->write(xocl::xocl(device), ptr, offset, size, attributes);
 }
 
 } //xocl
 
 CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id        device_id,
+clWriteStream(cl_device_id        device,
 	      cl_stream           stream,
 	      const void*         ptr,
 	      size_t              offset,
 	      size_t              size,
-	      cl_stream_xfer_req* attributes,
+	      cl_stream_xfer_req  attributes,
 	      cl_int*             errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clWriteStream
-      (device_id,stream,ptr,offset,size,attributes,errcode_ret);
+      (device,stream,ptr,offset,size,attributes,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());
