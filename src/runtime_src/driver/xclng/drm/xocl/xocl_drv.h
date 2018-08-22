@@ -423,7 +423,7 @@ struct xocl_dna_funcs {
 	((struct xocl_dna_funcs *)SUBDEV(xdev,	\
 	XOCL_SUBDEV_DNA).ops)
 #define	xocl_dna_status(xdev)			\
-	(DNA_DEV(xdev) ? DNA_OPS(xdev)->status(DNA_DEV(xdev)) : -1)
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->status(DNA_DEV(xdev)) : 0)
 #define	xocl_dna_capability(xdev)			\
 	(DNA_DEV(xdev) ? DNA_OPS(xdev)->capability(DNA_DEV(xdev)) : 2)
 
