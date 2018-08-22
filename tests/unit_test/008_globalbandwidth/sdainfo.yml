@@ -1,0 +1,21 @@
+args: globalbandwidth.xclbin 1024 4 4 -rw
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g -D FLOW_HLS_CSIM
+flows: [all]
+hdrs: [time_profile.c, ap_interfaces.h]
+krnls:
+- name: globalbandwidth
+  srcs: [globalbandwidth.c]
+  type: c
+name: 008_globalbandwidth
+owner: vallina
+srcs: [test-cl.cpp]
+xclbins:
+- cus:
+  - {krnl: globalbandwidth, name: globalbandwidth_cu0}
+  name: globalbandwidth
+  region: OCL_REGION_0
+user:
+  sdx_type: [dsa_qualify]

@@ -1,0 +1,27 @@
+args: -d acc -k kernel.xclbin -i 5
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g
+flows: [sw_emu, hw, zynq]
+hdrs: [oclHelper.h]
+hw_emu_level: '3'
+levels:
+- hw_emu: 3
+  hw: 1
+krnls:
+- name: montecarlo
+  srcs: [kernel.cl]
+  type: clc
+name: 013_montecarlo
+owner: sonals
+report_estimate: '0'
+srcs: [main.cpp, oclErrorCodes.cpp, oclHelper.cpp]
+xclbins:
+- cus:
+  - {krnl: montecarlo, name: montecarlo_cu0}
+  name: kernel
+  region: OCL_REGION_0
+user:
+- hwtest_export_level: 2
+
