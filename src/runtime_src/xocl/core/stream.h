@@ -33,11 +33,12 @@ protected:
   using stream_handle = xrt::hal::StreamHandle;
   using stream_xfer_flags = xrt::hal::StreamXferFlags;
 public:
-  stream(stream_flags_type flags, stream_attributes_type attr);
+  stream(stream_flags_type flags, stream_attributes_type attr, cl_mem_ext_ptr_t* ext);
 private:
   unsigned int m_uid = 0;
   stream_flags_type m_flags {0};
   stream_attributes_type m_attrs {0};
+  cl_mem_ext_ptr_t* m_ext {nullptr};
   stream_handle m_handle {0};
   device* m_device {nullptr};
 public:
