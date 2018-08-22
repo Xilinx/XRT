@@ -33,6 +33,11 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 
+static int dna_chk_enable = 0;
+module_param(dna_chk_enable, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(dna_chk_enable,
+	"Enable dna_chk_enable to enable dna check, (0 = disable check, 1 = enable check)");
+
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -1583,6 +1588,13 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	buffer = (char __user *)u_xclbin;
 	buffer += primaryFirmwareOffset;
 	err = icap_download_user(icap, buffer, primaryFirmwareLength);
+	if (err)
+		goto done;
+
+	if(dna_chk_enable){
+		ICAP_INFO(icap, "Capability %08x", xocl_dna_capability(xdev));
+		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EINVAL;
+	}
 	if (err)
 		goto done;
 
