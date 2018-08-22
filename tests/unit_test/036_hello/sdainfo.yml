@@ -11,7 +11,7 @@ krnls:
   type: clc
 name: 036_hello
 owner: qinz
-srcs: [hello.c]
+srcs: [hello.cpp]
 xclbins:
 - cus:
   - {krnl: hello, name: hello_cu0}
