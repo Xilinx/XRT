@@ -168,6 +168,7 @@ dsaXmlFile="dsa.xml"
 featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
+fwBMC=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
@@ -285,6 +286,39 @@ readDsaMetaData()
   done < "${dsaXmlFile}"
 }
 
+initBMCVar()
+{
+    # Looking for the MSP432 firmware image
+    for file in ${XILINX_XRT}/share/fw/*.txt; do
+      [ -e "$file" ] || continue
+
+      # Found "something" break it down into the basic parts
+      baseFileName="${file%.*txt}"        # Remove suffix
+      baseFileName="${baseFileName##*/}"  # Remove Path
+
+      set -- `echo ${baseFileName} | tr '-' ' '`
+      bmcImageName="${1}"
+      bmcDeviceName="${2}"
+      bmcVersion="${3}"
+      bmcMd5Expected="${4}"
+
+      # Calculate the md5 checksum
+      set -- $(md5sum $file)
+      bmcMd5Actual="${1}"
+
+      if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
+         echo "Info: Validated MSP432 flash image MD5 value"
+         fwBMC="${file}"
+      else
+         echo "ERROR: MSP432 Flash image failed MD5 varification."
+         echo "       Expected: ${bmcMd5Expected}"
+         echo "       Actual  : ${bmcMd5Actual}"
+         echo "       File:   : $file"
+         exit 1
+      fi
+    done
+}
+
 initDsaBinEnvAndVars()
 {
     # Clean out the dsabin directory
@@ -333,6 +367,8 @@ initDsaBinEnvAndVars()
       fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
       fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
     fi
+
+    initBMCVar
 }
 
 dodsabin()
@@ -370,6 +406,15 @@ dodsabin()
          xclbinOpts+=" -s FIRMWARE ${fwManagement}"
        else
          echo "Warning: Management firmware does not exist: ${fwManagement}"
+      fi
+    fi
+
+    # -- Firmware: MSP432 --
+    if [ "${fwBMC}" != "" ]; then
+       if [ -f "${fwBMC}" ]; then
+         xclbinOpts+=" -s BMC ${fwBMC}"
+       else
+         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
       fi
     fi
 
@@ -412,7 +457,6 @@ dodsabin()
     ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}
 
     popd >/dev/null
-
 }
 
 dodebdev()

@@ -70,9 +70,9 @@ class XclBinData
     unsigned int getJSONBufferSegmentCount();
     void enableTrace() { m_trace = true; };
     void createBinaryImages();
-    void createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs);
-
-  
+    void createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs);
+    void createBMCSegmentBuffer(const std::vector< std::string > & _mps);
+ 
   private:
     bool extractSectionData( int sectionNum, const char* name );
     void TRACE(const std::string &_msg, bool _endl = true);
@@ -100,6 +100,7 @@ class XclBinData
     const std::string getClockTypeStr(enum CLOCK_TYPE _clockFreqType) const;
     void extractClockFreqTopology( char * _pDataSegment, unsigned int _segmentSize,boost::property_tree::ptree & _ptree);
     void extractAndWriteMCSImages( char * _pDataSegment, unsigned int _segmentSize);
+    void extractAndWriteBMCImages( char * _pDataSegment, unsigned int _segmentSize);
 
   private:
     std::string kindToString( axlf_section_kind kind );
@@ -141,6 +142,7 @@ class XclBinData
     std::ostringstream m_clockFreqTopologyBuf;
 
     std::ostringstream m_mcsBuf;
+    std::ostringstream m_bmcBuf;
 
     SchemaVersion m_schemaVersion;
 

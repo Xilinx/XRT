@@ -60,6 +60,7 @@ class OptionParser {
       ST_CLOCK_FREQ_TOPOLOGY,
       ST_MCS_PRIMARY,
       ST_MCS_SECONDARY,
+      ST_BMC,
       ST_UNKNOWN                        
     } SegmentType;
 
@@ -78,6 +79,7 @@ class OptionParser {
     std::vector< std::string > m_debugIpLayout;
     std::vector< std::string > m_clockFreqTopology;
     std::vector< std::pair< std::string, enum MCS_TYPE> > m_mcs;
+    std::vector< std::string > m_bmc;
     std::vector< std::string > m_metadata;
     std::map< std::string, std::string > m_keyValuePairs;
     bool m_help;
