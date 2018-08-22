@@ -9,14 +9,14 @@ OSREL=`lsb_release -r |awk -F: '{print tolower($2)}' |tr -d ' \t'`
 
 if [[ $OSDIST == "ubuntu" ]]; then
     if [[ $OSREL != "16.04" ]] &&  [[ $OSREL != "18.04" ]]; then
-        echo "Ubuntu release version must be 16.04 or later"
+        echo "ERROR: Ubuntu release version must be 16.04 or later"
         exit 1
     fi
 fi
 
 if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
     if [[ $OSREL != "7.4"* ]] &&  [[ $OSREL != "7.5"* ]]; then
-        echo "Centos or RHEL release version must be 7.4 or later"
+        echo "ERROR: Centos or RHEL release version must be 7.4 or later"
         exit 1
     fi
 fi

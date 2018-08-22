@@ -19,12 +19,15 @@
 #include <CL/opencl.h>
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
+#include "xocl/core/device.h"
 #include "plugin/xdp/profile.h"
+
+//To access make_unique<>. TODO
+#include "xrt/util/memory.h"
 
 namespace xocl {
 static void
-validOrError(cl_device_id device_id,
-             cl_stream    stream,
+validOrError(cl_device_id device,
 	     size_t       size,
 	     cl_int*      errcode_ret)
 
@@ -32,28 +35,29 @@ validOrError(cl_device_id device_id,
 }
 
 static cl_stream_mem
-clCreateStreamBuffer(cl_device_id device_id,
-                     cl_stream    stream,
+clCreateStreamBuffer(cl_device_id device,
 	             size_t       size,
 	             cl_int*      errcode_ret) 
 {
-  validOrError(device_id,stream,size,errcode_ret);
-  return nullptr;
+  validOrError(device,size,errcode_ret);
+  auto buf = xrt::make_unique<xocl::stream_mem>(size);
+  buf->get(xocl::xocl(device));
+  xocl::assign(errcode_ret,CL_SUCCESS);
+  return buf.release();
 }
 
 } //xocl
 
 
 CL_API_ENTRY cl_stream_mem CL_API_CALL
-clCreateStreamBuffer(cl_device_id device_id,
-	             cl_stream    stream,
+clCreateStreamBuffer(cl_device_id device,
 		     size_t       size,
 		     cl_int *     errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clCreateStreamBuffer
-      (device_id,stream,size,errcode_ret);
+      (device,size,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());

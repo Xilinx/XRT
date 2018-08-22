@@ -85,6 +85,7 @@ struct xclErrorStatus {
         unsigned  mNumFirewalls;
         struct xclAXIErrorStatus mAXIErrorStatus[8];
         struct xclPCIErrorStatus mPCIErrorStatus;
+        unsigned mFirewallLevel;
 };
 
 #endif /* XCLERR_H_ */

@@ -1081,7 +1081,7 @@ public:
     // 30,20,10,0
     xocl::xclbin::memidx_bitmask_type bitmask = 0;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -1098,7 +1098,7 @@ public:
     // 30,20,10,0
     int bankidx = -1;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;

@@ -46,6 +46,7 @@ RH_LIST=(\
      gcc-c++ \
      gdb \
      git \
+     glibc-static \
      gnuplot \
      gnutls-devel \
      kernel-devel \

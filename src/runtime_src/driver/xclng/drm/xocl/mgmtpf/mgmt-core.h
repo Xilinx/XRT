@@ -144,7 +144,7 @@ void fill_frequency_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 void get_pcie_link_info(struct xclmgmt_dev *lro,
-	unsigned short *width, unsigned short *speed);
+	unsigned short *width, unsigned short *speed, bool is_cap);
 
 // utils.c
 unsigned compute_unit_busy(struct xclmgmt_dev *lro);

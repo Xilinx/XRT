@@ -32,6 +32,7 @@
 #include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
+#include <boost/algorithm/string.hpp>
 
 
 void printTree (boost::property_tree::ptree &pt, std::ostream &_buf = std::cout, int level = 0);
@@ -367,6 +368,10 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   }
   else if ( header.m_sectionKind == MCS ) {
     extractAndWriteMCSImages((char*) data.get(), sectionSize);
+    return true;
+  }
+  else if ( header.m_sectionKind == BMC ) {
+    extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
   }
 
@@ -1650,7 +1655,7 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
 }
 
 void
-XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS_TYPE> > _mcs)
+XclBinData::createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs)
 {
   // Must have something to work with
   int count = _mcs.size();
@@ -1741,6 +1746,134 @@ XclBinData::createMCSSegmentBuffer(std::vector< std::pair< std::string, enum MCS
   }
 }
 
+void
+XclBinData::createBMCSegmentBuffer(const std::vector< std::string > & _bmc)
+{
+  // Must have something to work with
+  int count = _bmc.size();
+  if ( count == 0 )
+    return;
+
+  bmc bmcHdr = (bmc) {0};
+
+  TRACE("BMC");
+  
+  // Determine if the file can be opened and its size
+  std::string filePath = _bmc[0];
+  {
+    std::ifstream fs;
+    fs.open( filePath.c_str(), std::ifstream::in | std::ifstream::binary );
+    fs.seekg( 0, fs.end );
+    bmcHdr.m_size = fs.tellg();
+    bmcHdr.m_offset = sizeof(bmc);
+
+    if ( ! fs.is_open() ) {
+      std::string errMsg = "ERROR: Could not open the file for reading: '" + _bmc[0] + "'";
+      throw std::runtime_error(errMsg);
+    }
+    fs.close();
+  }
+  
+  // Break down the file name into its basic parts
+  {
+    // Assume that there isn't a path
+    std::string baseFileName = filePath;      
+
+    // Remove the path (if there is one)
+    {
+      size_t pos = filePath.find_last_of("/");
+      if ( pos != std::string::npos) {        
+        baseFileName.assign(filePath.begin() + pos + 1, filePath.end());
+      }
+    }
+
+    // Remove the extension (if there is one)
+    {
+      const std::string ext(".txt");
+      if ( (baseFileName != ext) &&
+           (baseFileName.size() > ext.size()) &&
+           (baseFileName.substr(baseFileName.size() - ext.size()) == ext)) {
+        baseFileName = baseFileName.substr(0, baseFileName.size() - ext.size());
+      }
+    }
+
+    // Tokenize the base name
+    std::vector <std::string> tokens;
+    boost::split(tokens, baseFileName, boost::is_any_of("-"));
+
+    TRACE("BaseName: " + baseFileName);
+
+    if ( tokens.size() != 4 ) {
+      std::string errMsg = XclBinUtil::format("ERROR: Unexpected number of tokens (found %d, expected 4) parsing the file: %s",
+                                              tokens.size(), baseFileName);
+      throw std::runtime_error(errMsg);
+    }
+
+    // Token 0 - Image Name
+    if ( tokens[0].length() >= sizeof(bmc::m_image_name) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                              (unsigned int) tokens[0].length(), (unsigned int) sizeof(bmc::m_image_name), tokens[0].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_image_name, tokens[0].c_str(), tokens[0].length() + 1);
+
+    // Token 1 - Device Name
+    if ( tokens[1].length() >= sizeof(bmc::m_device_name) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                              (unsigned int) tokens[1].length(), (unsigned int) sizeof(bmc::m_device_name), tokens[1].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_device_name, tokens[1].c_str(), tokens[1].length() + 1);
+
+    // Token 2 - Version
+    if ( tokens[2].length() >= sizeof(bmc::m_version) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'",
+                                              (unsigned int) tokens[2].length(), (unsigned int) sizeof(bmc::m_version), tokens[2].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_version, tokens[2].c_str(), tokens[2].length() + 1);
+
+    // Token 3 - MD5 Value
+    if ( tokens[3].length() >= sizeof(bmc::m_md5value) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'",
+                                              (unsigned int) tokens[3].length(), (unsigned int) sizeof(bmc::m_md5value), tokens[3].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_md5value, tokens[3].c_str(), tokens[3].length() + 1);
+  }
+
+  TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
+                           bmcHdr.m_offset,
+                           bmcHdr.m_size,
+                           bmcHdr.m_image_name,
+                           bmcHdr.m_device_name,
+                           bmcHdr.m_version,
+                           bmcHdr.m_md5value));
+
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
+
+  // Create the buffer
+  m_bmcBuf.write(reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
+
+  // Write Data
+  {
+    std::ifstream fs;
+    fs.open( filePath.c_str(), std::ifstream::in | std::ifstream::binary );
+
+    if ( ! fs.is_open() ) {
+      std::string errMsg = "ERROR: Could not open the file for reading: '" + filePath + "'";
+      throw std::runtime_error(errMsg);
+    }
+
+    std::unique_ptr<unsigned char> memBuffer( new unsigned char[ bmcHdr.m_size ] );
+    fs.clear();
+    fs.read( (char*) memBuffer.get(), bmcHdr.m_size );
+    fs.close();
+
+    m_bmcBuf.write(reinterpret_cast<const char*>(memBuffer.get()), bmcHdr.m_size );
+  }
+}
+
 
 void 
 XclBinData::extractAndWriteMCSImages( char * _pDataSegment, 
@@ -1810,6 +1943,58 @@ XclBinData::extractAndWriteMCSImages( char * _pDataSegment,
     }
     fs.write( ptrImageBase, pHdr->m_chunk[index].m_size );
   }
+}
+
+void 
+XclBinData::extractAndWriteBMCImages( char * _pDataSegment, 
+                                      unsigned int _segmentSize) 
+{
+  TRACE("");
+  TRACE("Extracting: BMC");
+
+  // Do we have enough room to overlay the header structure
+  if ( _segmentSize < sizeof(bmc) ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)",
+                                                _segmentSize, sizeof(bmc)));
+  }
+
+  bmc *pHdr = (bmc *) _pDataSegment;
+
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(pHdr), sizeof(bmc));
+  
+  TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
+                           pHdr->m_offset,
+                           pHdr->m_size,
+                           pHdr->m_image_name,
+                           pHdr->m_device_name,
+                           pHdr->m_version,
+                           pHdr->m_md5value));
+
+  unsigned int expectedSize = pHdr->m_offset + pHdr->m_size;
+
+  // Check to see if array size  
+  if ( expectedSize > _segmentSize ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: bmc section size (0x%lx) exceeds the given segment size (0x%lx).", 
+                                            expectedSize, _segmentSize));
+  }
+
+  std::string fileName = XclBinUtil::format("%s-%s-%s-%s.txt",
+                                            pHdr->m_image_name,
+                                            pHdr->m_device_name,
+                                            pHdr->m_version,
+                                            pHdr->m_md5value);
+
+  TRACE("Writing BMC File: '" + fileName + "'");
+
+  std::fstream fs;
+  fs.open( fileName, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc );
+  if ( ! fs.is_open() ) {
+    std::cerr << "ERROR: Could not open " << fileName << " for writing" << "\n";
+    return;
+  }
+
+  char * ptrImageBase = _pDataSegment + pHdr->m_offset;
+  fs.write( ptrImageBase, pHdr->m_size );
 }
 
 

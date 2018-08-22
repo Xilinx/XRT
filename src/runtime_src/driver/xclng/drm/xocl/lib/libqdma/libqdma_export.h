@@ -463,7 +463,7 @@ int qdma_queue_set_err_indcution(unsigned long dev_hndl, unsigned long id,
  *	 < 0 in case of error
  */
 
-#define QDMA_REQ_OPAQUE_SIZE 	72
+#define QDMA_REQ_OPAQUE_SIZE 	128
 #define QDMA_UDD_MAXLEN		32
 struct qdma_request {
 	/* private to the dma driver, do NOT touch */
