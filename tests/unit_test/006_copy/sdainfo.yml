@@ -1,0 +1,22 @@
+args: -k kernel.xclbin
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g -D FLOW_HLS_CSIM
+flows: [all]
+hdrs: []
+krnls:
+- name: myCopy
+  srcs: [kernel.cl]
+  type: clc
+name: 006_copy
+owner: vallina
+srcs: [test-cl.cpp]
+xclbins:
+- cus:
+  - {krnl: myCopy, name: myCopy_cu0}
+  name: kernel
+  region: OCL_REGION_0
+user:
+  sdx_type: [dsa_qualify]
+
