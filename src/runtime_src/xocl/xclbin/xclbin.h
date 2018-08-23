@@ -265,6 +265,12 @@ public:
   get_clk_freq_topology() const;
 
   /**
+   * Get the mem topology section in xclbin
+   */
+  const mem_topology*
+  get_mem_topology() const;
+
+  /**
    * Get the CU base offset
    *
    * CU addresses are sequential and separated  by a fixed size

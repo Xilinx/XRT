@@ -238,12 +238,26 @@ alloc(memory* mem)
 
 int 
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, xrt::device::stream_handle* stream) 
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream) 
 {
+  const cl_kernel kernel = (const cl_kernel)(ext->param);
+  const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
+  auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+  const mem_topology* mems = m_xclbin.get_mem_topology();
+
+  if(!mems) 
+    throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
+  
+  if((memidx+1) < mems->m_count) 
+    throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
+
+  uint64_t route = mems->m_mem_data[memidx].route_id;
+  uint64_t flow = mems->m_mem_data[memidx].flow_id;
+
   if(flags & CL_STREAM_READ_ONLY) 
-    return m_xdevice->createReadStream(flags, attrs, stream);
+    return m_xdevice->createReadStream(flags, attrs, route, flow, stream);
   else if(flags & CL_STREAM_WRITE_ONLY)
-    return m_xdevice->createWriteStream(flags, attrs, stream);
+    return m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
   else
     throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
   return -1;

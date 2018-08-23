@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,52 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2014 Xilinx, Inc. All rights reserved.
-//
-// This file contains confidential and proprietary information
-// of Xilinx, Inc. and is protected under U.S. and
-// international copyright and other intellectual property
-// laws.
-//
-// DISCLAIMER
-// This disclaimer is not a license and does not grant any
-// rights to the materials distributed herewith. Except as
-// otherwise provided in a valid license issued to you by
-// Xilinx, and to the maximum extent permitted by applicable
-// law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND
-// WITH ALL FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES
-// AND CONDITIONS, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING
-// BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, NON-
-// INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE; and
-// (2) Xilinx shall not be liable (whether in contract or tort,
-// including negligence, or under any other theory of
-// liability) for any loss or damage of any kind or nature
-// related to, arising under or in connection with these
-// materials, including for any direct, or any indirect,
-// special, incidental, or consequential loss or damage
-// (including loss of data, profits, goodwill, or any type of
-// loss or damage suffered as a result of any action brought
-// by a third party) even if such damage or loss was
-// reasonably foreseeable or Xilinx had been advised of the
-// possibility of the same.
-//
-// CRITICAL APPLICATIONS
-// Xilinx products are not designed or intended to be fail-
-// safe, or for use in any application requiring fail-safe
-// performance, such as life-support or safety devices or
-// systems, Class III medical devices, nuclear facilities,
-// applications related to the deployment of airbags, or any
-// other applications that could lead to death, personal
-// injury, or severe property or environmental damage
-// (individually and collectively, "Critical
-// Applications"). Customer assumes the sole risk and
-// liability of any use of Xilinx products in Critical
-// Applications, subject only to applicable laws and
-// regulations governing limitations on product liability.
-//
-// THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS
-// PART OF THIS FILE AT ALL TIMES.
 
 #include "shim.h"
 #include <boost/property_tree/xml_parser.hpp>
@@ -92,14 +46,14 @@ namespace xclhwemhal2 {
     writeBytes = 0;
   }
 
-  size_t HwEmShim::alloc_void(size_t new_size) 
+  size_t HwEmShim::alloc_void(size_t new_size)
   {
-    if (buf_size == 0) 
+    if (buf_size == 0)
     {
       buf = malloc(new_size);
       return new_size;
     }
-    if (buf_size < new_size) 
+    if (buf_size < new_size)
     {
       buf = (void*) realloc(buf,new_size);
       return new_size;
@@ -201,20 +155,20 @@ namespace xclhwemhal2 {
       PRINTENDFUNC;
       return -1;
     }
-    else if (!std::memcmp(bitstreambin,"xclbin2",7)) 
+    else if (!std::memcmp(bitstreambin,"xclbin2",7))
     {
       auto top = reinterpret_cast<const axlf*>(header);
       if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
         xmlFileSize = sec->m_sectionSize;
         xmlFile = new char[xmlFileSize+1];
         memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-        xmlFile[xmlFileSize] = 0;      
+        xmlFile[xmlFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
         zipFileSize = sec->m_sectionSize;
         zipFile = new char[zipFileSize+1];
         memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-        zipFile[zipFileSize] = 0;      
+        zipFile[zipFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
         debugFileSize = sec->m_sectionSize;
@@ -255,7 +209,7 @@ namespace xclhwemhal2 {
         delete[] xmlFile;
         xmlFile = nullptr;
       }
-      
+
       if(memTopology)
       {
         delete[] memTopology;
@@ -280,7 +234,7 @@ namespace xclhwemhal2 {
     mCore = new exec_core;
     mMBSch = new MBScheduler(this);
     mMBSch->init_scheduler_thread();
-    
+
     delete[] zipFile;
     delete[] debugFile;
     delete[] xmlFile;
@@ -357,7 +311,7 @@ namespace xclhwemhal2 {
     const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
     if(m_mem)
     {
-      for (int32_t i=0; i<m_mem->m_count; ++i) 
+      for (int32_t i=0; i<m_mem->m_count; ++i)
       {
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
         mMembanks.emplace_back (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i});
@@ -382,7 +336,7 @@ namespace xclhwemhal2 {
     {
       FILE *fp=fopen(xmlFileName.c_str(),"rb");
       if(fp==NULL) xmlFileCreated=true;
-      else 
+      else
       {
         fclose(fp);
         xmlFileName += std::string("_");
@@ -391,7 +345,7 @@ namespace xclhwemhal2 {
     FILE *fp=fopen(xmlFileName.c_str(),"wb");
     if(fp==NULL)
     {
-      if (mLogStream.is_open()) 
+      if (mLogStream.is_open())
       {
         mLogStream << __func__ << " failed to create temporary xml file " << std::endl;
       }
@@ -408,7 +362,7 @@ namespace xclhwemhal2 {
 
      // iterate platforms
     int count = 0;
-    for (auto& xml_platform : xml_project.get_child("project")) 
+    for (auto& xml_platform : xml_project.get_child("project"))
     {
       if (xml_platform.first != "platform")
         continue;
@@ -420,7 +374,7 @@ namespace xclhwemhal2 {
 
     // iterate devices
     count = 0;
-    for (auto& xml_device : xml_project.get_child("project.platform")) 
+    for (auto& xml_device : xml_project.get_child("project.platform"))
     {
       if (xml_device.first != "device")
         continue;
@@ -429,10 +383,10 @@ namespace xclhwemhal2 {
         //Give error and return from here
       }
     }
-    
+
     // iterate cores
     count = 0;
-    for (auto& xml_core : xml_project.get_child("project.platform.device")) 
+    for (auto& xml_core : xml_project.get_child("project.platform.device"))
     {
       if (xml_core.first != "core")
         continue;
@@ -443,13 +397,13 @@ namespace xclhwemhal2 {
     }
 
     // iterate kernels
-    for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) 
+    for (auto& xml_kernel : xml_project.get_child("project.platform.device.core"))
     {
       if (xml_kernel.first != "kernel")
         continue;
       std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
 
-      for (auto& xml_kernel_info : xml_kernel.second) 
+      for (auto& xml_kernel_info : xml_kernel.second)
       {
         std::map<uint64_t, KernelArg> kernelArgInfo;
         if (xml_kernel_info.first == "arg")
@@ -469,7 +423,7 @@ namespace xclhwemhal2 {
           std::string instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
 
 
-          for (auto& xml_remap : xml_kernel_info.second) 
+          for (auto& xml_remap : xml_kernel_info.second)
           {
             if (xml_remap.first != "addrRemap")
               continue;
@@ -507,7 +461,7 @@ namespace xclhwemhal2 {
         systemUtil::makeSystemCall (_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
         systemUtil::makeSystemCall (binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
       }
-      
+
       if( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI )
       {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
@@ -612,7 +566,7 @@ namespace xclhwemhal2 {
         //Redirecting the XSIM log to a file
         FILE* nP = freopen("/dev/null","w",stdout);
         if(!nP) { std::cerr <<"FATAR ERROR : Unable to redirect simulation output "<<std::endl; exit(1);}
-        
+
         int rV = chdir(sim_path.c_str());
         if(rV == -1){std::cerr << "FATAL ERROR : Unable to go to simulation directory " << std::endl; exit(1);}
 
@@ -651,7 +605,7 @@ namespace xclhwemhal2 {
         //std::cout<<"environment is not set properly"<<std::endl;
       }
     }
-    
+
     if(simMode)
     {
       free(simMode);
@@ -660,10 +614,10 @@ namespace xclhwemhal2 {
   }
 
    size_t HwEmShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) {
-     
+
      if (!simulator_started)
        return 0;
-     
+
      if (mLogStream.is_open()) {
        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
          << offset << ", " << hostBuf << ", " << size << std::endl;
@@ -729,7 +683,7 @@ namespace xclhwemhal2 {
              {
                unsigned char* axibuf=((unsigned char*) hostBuf);
                std::map<uint64_t, KernelArg> kernelArgInfo = (*offsetKernelArgInfoItr).second;
-               for (auto i : kernelArgInfo) 
+               for (auto i : kernelArgInfo)
                {
                  uint64_t argOffset = i.first;
                  KernelArg kArg = i.second;
@@ -738,9 +692,9 @@ namespace xclhwemhal2 {
                  std::map<uint64_t,uint64_t>::iterator it = mAddrMap.find(argPointer);
                  if(it != mAddrMap.end())
                  {
-                   uint64_t offsetSize =  (*it).second; 
+                   uint64_t offsetSize =  (*it).second;
                    uint64_t padding = (paddingFactor == 0) ? 0 : offsetSize/(1+(paddingFactor*2));
-                   std::pair<std::string,unsigned int> sizeNamePair(kArg.name,offsetSize); 
+                   std::pair<std::string,unsigned int> sizeNamePair(kArg.name,offsetSize);
                    if(hostBuf32[0] & CONTROL_AP_START)
                      offsetArgInfo[argPointer-padding] = sizeNamePair;
                    size_t pos = kArg.name.find(":");
@@ -752,7 +706,7 @@ namespace xclhwemhal2 {
                }
              }
            }
-           
+
            auto controlStreamItr = mOffsetInstanceStreamMap.find(offset);
            if(controlStreamItr != mOffsetInstanceStreamMap.end())
            {
@@ -797,7 +751,7 @@ namespace xclhwemhal2 {
    }
 
   size_t HwEmShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) {
-    
+
     if(tracecount_calls < xclemulation::config::getInstance()->getMaxTraceCount())
     {
       tracecount_calls = tracecount_calls + 1;
@@ -807,7 +761,7 @@ namespace xclhwemhal2 {
 
     if (!simulator_started)
       return 0;
-    
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
         << offset << ", " << hostBuf << ", " << size << std::endl;
@@ -978,7 +932,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return size;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer(size_t size) 
+  uint64_t HwEmShim::xclAllocDeviceBuffer(size_t size)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
@@ -995,7 +949,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if (result != xclemulation::MemoryManager::mNull)
         break;
     }
-    
+
     uint64_t finalValidAddress = result+(paddingFactor*size);
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
@@ -1049,7 +1003,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
 
-  void HwEmShim::xclFreeDeviceBuffer(uint64_t buf) 
+  void HwEmShim::xclFreeDeviceBuffer(uint64_t buf)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
@@ -1072,7 +1026,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
       std::cout<<msg<<std::endl;
   }
-  
+
   void HwEmShim::saveWaveDataBase()
   {
     if (mLogStream.is_open()) {
@@ -1146,7 +1100,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-    if (!sock) 
+    if (!sock)
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
         systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
@@ -1229,7 +1183,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #ifndef _WINDOWS
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
-        do 
+        do
         {
           bool accel=false;
           xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
@@ -1352,7 +1306,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     uint64_t base = 0;
     for(;start != end; start++)
     {
-      const uint64_t bankSize = (*start).ddrSize; 
+      const uint64_t bankSize = (*start).ddrSize;
       mDdrBanks.push_back(*start);
       mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , getpagesize()));
       base += bankSize;
@@ -1398,7 +1352,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     binaryCounter = 0;
     sock = NULL;
 
-    deviceName = "device"+std::to_string(deviceIndex); 
+    deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
 
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
@@ -1613,13 +1567,13 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
     }
-    if ( logfileName && (logfileName[0] != '\0')) 
+    if ( logfileName && (logfileName[0] != '\0'))
     {
       mLogStream.open(logfileName);
       mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-    
+
     if (xclemulation::config::getInstance()->isMemLogsEnabled())
     {
       mGlobalInMemStream.open("global_in.mem");
@@ -1640,14 +1594,14 @@ static int check_bo_user_flags(HwEmShim* dev, unsigned flags)
 		return -EINVAL;
 	if (flags == 0xffffffff)
 		return 0;
-	
+
   ddr = xclemulation::xocl_bo_ddr_idx(flags);
 	if (ddr == 0xffffffff)
 		return 0;
-	
+
   if (ddr > ddr_count)
 		return -EINVAL;
-	
+
 	return 0;
 }
 
@@ -1675,7 +1629,7 @@ inline unsigned long long HwEmShim::xocl_ddr_channel_size()
 
 int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1710,7 +1664,7 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   {
     return -1;
   }
-	
+
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
 
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr);
@@ -1728,7 +1682,7 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
   }
@@ -1743,7 +1697,7 @@ unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
@@ -1762,7 +1716,7 @@ unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
 int HwEmShim::xclExportBO(unsigned int boHandle)
 {
   //TODO
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1775,7 +1729,7 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
 unsigned int HwEmShim::xclImportBO(int boGlobalHandle)
 {
   //TODO
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boGlobalHandle << std::endl;
   }
@@ -1788,7 +1742,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle)
 void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << write << std::endl;
   }
@@ -1799,7 +1753,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, sizeof(double)*16, bo->size)) 
+  if (posix_memalign(&pBuf, sizeof(double)*16, bo->size))
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
@@ -1818,7 +1772,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
 
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
@@ -1849,7 +1803,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
 void HwEmShim::xclFreeBO(unsigned int boHandle)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1870,7 +1824,7 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
 size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< src <<" , "<< size << ", " << seek << std::endl;
   }
@@ -1890,7 +1844,7 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
 size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< dst <<" , "<< size << ", " << skip << std::endl;
   }
@@ -1908,8 +1862,8 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
 
 int HwEmShim::xclExecBuf(unsigned int cmdBO)
 {
-  
-  if (mLogStream.is_open()) 
+
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
@@ -1926,7 +1880,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userInterrupt <<", "<< fd << std::endl;
   }
@@ -1936,7 +1890,7 @@ int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 
 int HwEmShim::xclExecWait(int timeoutMilliSec)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
  //   mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << timeoutMilliSec << std::endl;
   }
@@ -1957,6 +1911,3 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
 /**********************************************HAL2 API's END HERE **********************************************/
 
 }  // end namespace xclhwemhal2
-
-
-

@@ -71,6 +71,8 @@ int MSP432_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     ELARecord record;
     bool endRecordFound = false;
     bool errorFound = false;
+    int retries = 5;
+    int ret = 0;
 
     if (mMgmtMap == nullptr) {
         std::cout << "ERROR: Invalid XMC device register layout, device can't be supported" << std::endl;
@@ -166,14 +168,69 @@ int MSP432_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     std::cout << "INFO: Found " << mRecordList.size() << " Sections" << std::endl;
 
-    for (ELARecordList::iterator i = mRecordList.begin(); i != mRecordList.end(); ++i) {
-        int ret = program(tiTxtStream, *i);
+    while(retries!=0){
+        retries--;
+        std::cout << "Erase FW..." << std::endl;
+        erase();
+        for (ELARecordList::iterator i = mRecordList.begin(); i != mRecordList.end(); ++i) {
+            ret = program(tiTxtStream, *i);
 
-        if (ret != 0)
+            if (ret != 0)
+                break;
+        }
+        if(ret == 0)
             return ret;
     }
+    return ret;
+}
 
-    return 0;
+int MSP432_Flasher::erase()
+{
+    int ret = 0;
+
+    mPkt = {0};
+    mPkt.hdr.opCode = XPO_MSP432_ERASE_FW;
+    mPkt.hdr.reserved = 0;
+
+    if ((ret = sendPkt()) != 0)
+        return ret;
+    // Flush the last packet sent to XMC
+    return waitTillIdle();
+}
+
+
+int MSP432_Flasher::xclGetBoardInfo(uint32_t *msp_packet) {
+    std::string startAddress;
+    ELARecord record;
+
+    std::cout << "MSP432_Flasher::xclGetBoardInfo" << std::endl;
+    
+    if (mMgmtMap == nullptr) {
+        std::cout << "ERROR: Invalid XMC device register layout, device can't be supported" << std::endl;
+        return -EOPNOTSUPP;
+    }
+
+    return getBoardInfo(msp_packet);
+}
+
+int MSP432_Flasher::getBoardInfo(uint32_t *msp_packet)
+{
+    int ret = 0;
+    mPkt.hdr.opCode = XPO_MSP432_INFO_RESP;
+    mPkt.hdr.reserved = 0;
+
+    if ((ret = sendPkt()) != 0){
+        if(ret==XMC_HOST_MSG_BRD_INFO_MISSING_ERR)
+            std::cout << "Unable to get board info, need to upgrade firmware" << std::endl;
+        return ret;
+    }
+
+    recvPkt();
+
+    for(uint i=0;i<(mPkt.hdr.payloadSize/sizeof(uint32_t));++i)
+        *(msp_packet+i) = mPkt.data[i];
+
+    return waitTillIdle();
 }
 
 int MSP432_Flasher::program(std::istream& tiTxtStream, const ELARecord& record)
@@ -269,6 +326,37 @@ void describePkt(struct xmcPkt& pkt)
     }
     std::cout << std::endl;
     std::cout.flags(f);
+}
+
+int MSP432_Flasher::recvPkt()
+{
+    uint32_t header;
+    uint16_t payload_size;
+    int lenInUint32;
+    describePkt(mPkt);
+    uint32_t *pkt;
+
+    int ret = waitTillIdle();
+    if (ret != 0)
+        return ret;
+
+    header = readReg(mPktBufOffset);
+    payload_size = (header) & 0xfff;
+
+
+    mPkt.hdr.payloadSize = payload_size;
+
+    lenInUint32= (sizeof (mPkt.hdr)+ payload_size + sizeof (uint32_t) - 1) / sizeof (uint32_t);
+    std::cout << std::dec << "Receiving XMC packet of " << lenInUint32 << " DWORDs..." << std::endl;
+    pkt = reinterpret_cast<uint32_t *>(&mPkt.data[0]);
+
+    for (int i = 0; i < lenInUint32; i++) {
+        pkt[i] = readReg(mPktBufOffset+ i * sizeof (uint32_t));
+    }
+
+    // Flip pkt buffer ownership bit
+    writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
+    return 0;
 }
 
 int MSP432_Flasher::sendPkt()

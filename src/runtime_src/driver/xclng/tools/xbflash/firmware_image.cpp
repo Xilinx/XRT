@@ -174,7 +174,8 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
-        stream << ", SN=0x" << std::hex << std::setw(16) << std::setfill('0') << dsa.timestamp;
+        stream << ", [0x" << std::hex << std::setw(16) << std::setfill('0')
+        << dsa.timestamp << "]";
     return stream;
 }
 

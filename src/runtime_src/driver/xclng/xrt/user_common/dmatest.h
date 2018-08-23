@@ -116,7 +116,7 @@ namespace xcldev {
             double rate = (mBOList.size() * mSize)/0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
-            std::cout << "Host -> PCIe -> MIG write bandwidth = " << rate << " MB/s\n";
+            std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
 
             //Clear out the host buffer
             std::memset(buf, 0, mSize);
@@ -126,7 +126,7 @@ namespace xcldev {
             rate = (mBOList.size() * mSize)/0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
-            std::cout << "Host <- PCIe <- MIG read bandwidth = " << rate << " MB/s\n";
+            std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
 
             // data integrity check: compare with initialized value 'x'
             for (auto i : mBOList) {

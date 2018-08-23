@@ -560,7 +560,7 @@ int main(int argc, char *argv[])
     }
 
     if(result == 0) {
-        std::cout << "INFO: xbutil " << v->first << " successful." << std::endl;
+        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
     } else {
         std::cout << "ERROR: xbutil " << v->first  << " failed." << std::endl;
     }
@@ -778,18 +778,23 @@ int runShellCmd(const std::string& cmd, std::string& output)
 int xcldev::device::validate()
 {
     // Check pcie training
-    std::cout << "INFO: Checking PCIE link status" << std::endl;
+    std::cout << "INFO: Checking PCIE link status: ";
     if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
         m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+        std::cout << "FAILED" << std::endl;
         std::cout << "WARNING: Device trained to lower spec. "
             << "Expect: Gen" << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
             << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x" << m_devinfo.mPCIeLinkWidth
             << std::endl;
         // Non-fatal, continue validating.
     }
+    else
+    {
+        std::cout << "PASSED" << std::endl;
+    }
 
     // Run verify kernel
-    std::cout << "INFO: Testing verify kernel" << std::endl;
+    std::cout << "INFO: Testing verify kernel: ";
     std::string path = dsaPath + m_devinfo.mName;
     path += "/test/verify.";
     std::string exePath = path + "exe";
@@ -797,6 +802,7 @@ int xcldev::device::validate()
 
     struct stat st;
     if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+        std::cout << "FAILED" << std::endl;
         std::cout << "ERROR: Failed to find verify kernel. "
             << "DSA package not installed properly." << std::endl;
         return -EINVAL;
@@ -806,6 +812,7 @@ int xcldev::device::validate()
     int ret = program(xclbinPath, 0);
     if (ret != 0)
     {
+        std::cout << "FAILED" << std::endl;
         std::cout << "ERROR: Failed to download verify kernel: err=" << ret << std::endl;
         return ret;
     }
@@ -814,22 +821,28 @@ int xcldev::device::validate()
     std::string cmd = exePath + " " + xclbinPath;
     ret = runShellCmd(cmd, output);
     if (ret != 0) {
+        std::cout << "FAILED" << std::endl;
         std::cout << "ERROR: Can't run verify kernel." << std::endl;
         return ret;
     }
     if (output.find("Hello World") == std::string::npos) {
+        std::cout << "FAILED" << std::endl;
         std::cout << "ERROR: verify kernel failed, output as below:" << std::endl;
         std::cout << "=============================================" << std::endl;
         std::cout << output << std::endl;
         std::cout << "=============================================" << std::endl;
         return -EINVAL;
     }
+    std::cout << "PASSED" << std::endl;
 
     // Perform DMA test
     std::cout << "INFO: Performing DMA test" << std::endl;
     ret = dmatest(0);
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << "INFO: DMA test FAILED" << std::endl;
         return ret;
+    }
+    std::cout << "INFO: DMA test PASSED" << std::endl;
 
     return 0;
 }
@@ -909,5 +922,4 @@ int xcldev::xclValidate(int argc, char *argv[])
 
     std::cout << "INFO: All devices validated successfully." << std::endl;
     return 0;
-
 }

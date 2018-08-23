@@ -47,6 +47,12 @@
 extern "C" {
 #endif
 
+typedef struct{
+  unsigned flags; //Top 8 bits reserved.
+  void *obj;
+  void *param;
+} cl_mem_ext_ptr_t;
+
 /**************************
 * Xilinx vendor extensions*
 **************************/
@@ -69,7 +75,6 @@ extern "C" {
 
 /* Additional cl_device_partition_property */
 #define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
-
 
 /**
  * Aquire the device address associated with a cl_mem buffer on
@@ -172,12 +177,14 @@ typedef struct _cl_stream_mem *  cl_stream_mem;
  * @device_id   : The device handle on which stream is to be created.
  * @flags       : The cl_stream_flags
  * @attributes  : The attributes of the requested stream.
+ * @ext         : The extension for kernel and argument matching.
  * @errcode_ret : The return value eg CL_SUCCESS
  */
 extern CL_API_ENTRY cl_stream CL_API_CALL 
 clCreateStream(cl_device_id                /* device_id */,
 	       cl_stream_flags             /* flags */,
 	       cl_stream_attributes        /* attributes*/,
+	       cl_mem_ext_ptr_t*              /* ext */,
 	       cl_int* /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
@@ -312,7 +319,6 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 	    cl_pipe pipe,
 	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
 
-//End work-in-progress QDMA APIs
 
 /*
   Host Accessible Program Scope Globals
@@ -323,11 +329,6 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 
 #define CL_MEM_EXT_PTR_XILINX                       (1 << 31)
 
-typedef struct{
-  unsigned flags; //Top 8 bits reserved.
-  void *obj;
-  void *param;
-} cl_mem_ext_ptr_t;
 
 //valid flags in above
 #define XCL_MEM_DDR_BANK0               (1<<0)

@@ -319,10 +319,10 @@ public:
 public:
 
   virtual int 
-  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
+  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
 
   virtual int 
-  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream);
+  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
 
   virtual int 
   closeStream(hal::StreamHandle stream);
