@@ -720,9 +720,8 @@ namespace xocl {
 
     // ******************************
     // Read all words from trace FIFO
-    // NOTE: DSA Version >= 2.2
     // ******************************
-    if (type == XCL_PERF_MON_MEMORY && isDSAVersion(FAST_OFFLOAD_MAJOR, FAST_OFFLOAD_MINOR, false)) {
+    if (type == XCL_PERF_MON_MEMORY) {
       memset((void *)hostbuf, 0, BUFFER_BYTES);
 
       // Iterate over chunks
