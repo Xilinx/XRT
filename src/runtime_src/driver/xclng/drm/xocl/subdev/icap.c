@@ -1594,9 +1594,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if(dna_chk_enable){
 		ICAP_INFO(icap, "Capability %08x", xocl_dna_capability(xdev));
 		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EINVAL;
+		if (err){
+			ICAP_ERR(icap, "DNA inside xclbin is invalid");
+			goto done;
+		}
 	}
-	if (err)
-		goto done;
 
 	buffer = (char __user *)u_xclbin;
 	buffer += secondaryFirmwareOffset;
