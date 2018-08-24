@@ -112,13 +112,13 @@ private:
                                                void* debugResults);
 
 //Streaming 
-  typedef int     (*createWriteQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
-  typedef int     (*createReadQueueFuncType)(xclQueueContext *q_ctx, uint64_t *q_hdl);
-  typedef int     (*destroyQueueFuncType)(uint64_t q_hdl);
-  typedef void*   (*allocQDMABufFuncType)(size_t size, uint64_t *buf_hdl);
-  typedef int     (*freeQDMABufFuncType)(uint64_t buf_hdl);
-  typedef ssize_t (*writeQueueFuncType)(uint64_t q_hdl, xclQueueRequest *wr);
-  typedef ssize_t (*readQueueFuncType)(uint64_t q_hdl, xclQueueRequest *wr);
+  typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*createReadQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*destroyQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl);
+  typedef void*   (*allocQDMABufFuncType)(xclDeviceHandle handle,size_t size, uint64_t *buf_hdl);
+  typedef int     (*freeQDMABufFuncType)(xclDeviceHandle handle,uint64_t buf_hdl);
+  typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
+  typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
 //End Streaming
 //
 #if 0
