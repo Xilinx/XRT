@@ -47,7 +47,9 @@
 extern "C" {
 #endif
 
-typedef struct{
+typedef struct cl_mem_ext_ptr_t {
+  cl_mem_ext_ptr_t()
+      :flags(0),obj(0),param(0){};
   unsigned flags; //Top 8 bits reserved.
   void *obj;
   void *param;
