@@ -855,6 +855,7 @@ XclBinData::getIPType( std::string &_sIPType ) const
 {
   if ( _sIPType == "IP_MB" ) return IP_MB;
   if ( _sIPType == "IP_KERNEL" ) return IP_KERNEL;
+  if ( _sIPType == "IP_DNASC" ) return IP_DNASC;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -1427,6 +1428,7 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
   switch ( _ipType ) {
     case IP_MB: return "IP_MB";
     case IP_KERNEL: return "IP_KERNEL";
+    case IP_DNASC: return "IP_DNASC";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);

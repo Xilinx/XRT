@@ -255,6 +255,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_
    if((memidx+1) < mems->m_count)
      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
+
     route = mems->m_mem_data[memidx].route_id;
     flow = mems->m_mem_data[memidx].flow_id;
   }
