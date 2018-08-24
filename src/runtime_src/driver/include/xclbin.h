@@ -171,7 +171,8 @@ extern "C" {
 
     enum IP_TYPE {
         IP_MB = 0,
-        IP_KERNEL //kernel instance
+        IP_KERNEL, //kernel instance
+        IP_DNASC
     };
 
     struct axlf_section_header {
