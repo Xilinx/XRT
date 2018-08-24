@@ -18,7 +18,7 @@
 
 #include "xclbin.h"
 #include "xclbindata.h"
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <sys/stat.h>
 #include <cstdlib>
 #include <ctime>

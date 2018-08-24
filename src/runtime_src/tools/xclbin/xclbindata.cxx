@@ -24,7 +24,7 @@
 #include "xclbindata.h"
 
 
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <iostream>
 #include <memory>
 #include <stdlib.h>
