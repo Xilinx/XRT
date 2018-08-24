@@ -184,6 +184,9 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	xocl_info(&sdev->pdev->dev, "Read / Write Queue %ld",
 		queue->queue.qhdl);
 
+	if (sz == 0)
+		return 0;
+
 	if (((uint64_t)(buf) & ~PAGE_MASK) && queue->queue.qconf->c2h) {
 		xocl_err(&sdev->pdev->dev,
 			"C2H buffer has to be page aligned, buf %p", buf);

@@ -528,7 +528,7 @@ createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t r
   ctx.type = attr;
   ctx.route = route;
   ctx.flow = flow;
-  return m_ops->mCreateWriteQueue(&ctx,stream);
+  return m_ops->mCreateWriteQueue(m_handle,&ctx,stream);
 }
 
 int 
@@ -540,28 +540,28 @@ createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t ro
   ctx.type = attr;
   ctx.route = route;
   ctx.flow = flow;
-  return m_ops->mCreateReadQueue(&ctx,stream);
+  return m_ops->mCreateReadQueue(m_handle,&ctx,stream);
 }
 
 int 
 device::
 closeStream(hal::StreamHandle stream) 
 {
-  return m_ops->mDestroyQueue(stream);
+  return m_ops->mDestroyQueue(m_handle,stream);
 }
 
 hal::StreamBuf
 device::
 allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
 {
-  return m_ops->mAllocQDMABuf(size,buf);
+  return m_ops->mAllocQDMABuf(m_handle,size,buf);
 }
 
 int 
 device::
 freeStreamBuf(hal::StreamBufHandle buf)
 {
-  return m_ops->mFreeQDMABuf(buf);
+  return m_ops->mFreeQDMABuf(m_handle,buf);
 }
 
 ssize_t 
@@ -572,11 +572,19 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
   (void)offset;
   (void)flags;
   xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
 //  req,op_code = XCL_QUEUE_WRITE;
 //  req.bufs.buf = const_cast<char*>(ptr);
 //  req.bufs.len = size;
 //  req.flag = XCL_QUEUE_DEFAULT;
-  return m_ops->mWriteQueue(stream,&req);
+  return m_ops->mWriteQueue(m_handle,stream,&req);
 }
 
 ssize_t 
@@ -586,11 +594,19 @@ readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal:
   (void)offset;
   (void)flags;
   xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
 //  req,op_code = XCL_QUEUE_READ;
 //  req.bufs.buf = ptr;
 //  req.bufs.len = size;
 //  req.flag = XCL_QUEUE_DEFAULT;
-  return m_ops->mReadQueue(stream,&req);
+  return m_ops->mReadQueue(m_handle,stream,&req);
 }
 
 #ifdef PMD_OCL

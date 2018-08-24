@@ -1,8 +1,9 @@
 set (MSP432 "MSP432P401R-VCU1525-1.4-56027182079c0bd621761b7dab5a27ca.txt")
 
+
 add_custom_command(
   OUTPUT ${MSP432}
-  COMMAND curl https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware/${MSP432} --output ${MSP432}
+  COMMAND curl https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/rel-v1.4/BMC-card-firmware/${MSP432} --output ${MSP432}
   COMMENT "Downloading MSP432"
 )
 
