@@ -69,7 +69,7 @@ inline bool
 is_51_dsa(const xrt::device* device)
 {
   auto nm = device->getName();
-  return nm.find("_5_1")!=std::string::npos;
+  return (nm.find("_5_1")!=std::string::npos || nm.find("u200_xdma_201820_1")!=std::string::npos);
 }
 
 inline bool

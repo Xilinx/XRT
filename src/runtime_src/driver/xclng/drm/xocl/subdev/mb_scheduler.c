@@ -785,6 +785,7 @@ configure(struct xocl_cmd *xcmd)
 	int i;
 
 	DRM_INFO("ert per feature rom = %d\n",ert);
+	DRM_INFO("dsa per feature rom = %d\n",dsa);
 
 	if (sched_error_on(exec,opcode(xcmd)!=ERT_CONFIGURE,"expected configure command"))
 		return 1;
