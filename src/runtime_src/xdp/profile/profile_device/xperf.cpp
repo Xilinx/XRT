@@ -14,6 +14,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
 #include <stdio.h>
 #include <iostream>
 #include <iomanip>
@@ -32,8 +33,10 @@
 #include <atomic>
 #include <boost/format.hpp>
 
-
 #include "xperf.h"
+#include "xdp_profile.h"
+#include "xdp_profile_writers.h"
+#include "xdp_profile_results.h"
 
 // *****************************************************************************
 //                               Helper Functions
@@ -45,6 +48,8 @@
 
 // TODO: replace these with functions in XDP library
 namespace XDP {
+
+  typedef std::vector<DeviceTrace> TraceResultVector;
 
   unsigned long
   time_ns()
@@ -64,104 +69,7 @@ namespace XDP {
     return getTimestampMsec(nsec);
   }
 
-  // Classes
-  // Class to store time trace of kernel execution, buffer read, or buffer write
-  // Timestamp is in double precision value of unit ms
-  class TimeTrace {
-  public:
-    TimeTrace()
-      : ContextId( 0 )
-      , CommandQueueId( 0 )
-      , Queue( 0.0 )
-      , Submit( 0.0 )
-      , Start( 0.0 )
-      , End( 0.0 )
-      , Complete( 0.0 )
-      {}
-    ~TimeTrace() {};
-  public:
-    double getDuration() const { return End - Start; }
-    uint32_t getContextId() const { return ContextId; }
-    uint32_t getCommandQueueId() const { return CommandQueueId; }
-    double getQueue() const { return Queue; }
-    double getSubmit() const { return Submit; }
-    double getStart() const { return Start; }
-    double getEnd() const { return End; }
-    double getComplete() const { return Complete; }
-
-  protected:
-    void resetTimeStamps()
-    {
-      Queue = 0.0;
-      Submit = 0.0;
-      Start = 0.0;
-      End = 0.0;
-      Complete = 0.0;
-    }
-
-    //virtual void write(WriterI* writer) const = 0;
-  public:
-    // Ids
-    uint32_t ContextId;
-    uint32_t CommandQueueId;
-
-    // Timestamps
-    double Queue;
-    double Submit;
-    double Start;
-    double End;
-    double Complete;
-  };
-
-  class DeviceTrace: public TimeTrace {
-  public:
-    DeviceTrace()
-      : Next(nullptr)
-      , Size(0)
-      {}
-    ~DeviceTrace() {};
-  public:
-    static DeviceTrace* reuse();
-    static void recycle(DeviceTrace* object);
-  public:
-    size_t getSize() const { return Size; }
-  //public:
-  //  void write(WriterI* writer) const override;
-  public:
-    DeviceTrace* Next;
-    size_t Size;
-    // Singly linked list to pool and recycle the DeviceTrace objects
-    static DeviceTrace* RecycleHead;
-
-    enum e_device_kind {
-      DEVICE_KERNEL = 0x1,
-      DEVICE_BUFFER = 0x2
-    };
-
-    std::string Name;
-    std::string DeviceName;
-    std::string Type;
-    e_device_kind Kind = DEVICE_KERNEL;
-    uint16_t SlotNum = 0;
-    uint16_t BurstLength = 0;
-    uint16_t NumBytes = 0;
-    uint64_t StartTime = 0;
-    uint64_t EndTime = 0;
-    double TraceStart = 0.0;
-  };
-
-  typedef std::vector<DeviceTrace> TraceResultVector;
-
   // Helper functions
-  const char * getToolVersion() { return "2018.2"; }
-  std::string getCurrentDateTime();
-  std::string getCurrentTimeMsec();
-  std::string getCurrentExecutableName();
-
-  void writeProfileHeader(std::ofstream& ofs);
-  void writeProfileFooter(std::ofstream& ofs);
-  void writeProfileSummary(std::ofstream& ofs);
-
   void writeTraceHeader(std::ofstream& ofs);
   void writeTraceFooter(xclDeviceInfo2 deviceInfo, std::ofstream& ofs);
   void trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type);
@@ -195,13 +103,16 @@ namespace XDP {
   }
 
   // Members
-  std::string deviceName;
+  bool mUseProfile;
+  bool mUseTrace;
+  std::string mDeviceName;
+  std::string mBinaryName;
   unsigned short mKernelClockFreq;
+  uint32_t mTraceOption;
   std::string mDataTransferTrace;
   std::string mStallTrace;
   std::ofstream mProfileStream;
   std::ofstream mTraceStream;
-  xclCounterResults mProfileResults;
 
   std::string mAccelNames[XSAM_MAX_NUMBER_SLOTS];
   std::string mAccelPortNames[XSPM_MAX_NUMBER_SLOTS];
@@ -230,111 +141,8 @@ namespace XDP {
   std::queue<uint16_t> mWriteBytes[XSPM_MAX_NUMBER_SLOTS];
   std::queue<uint16_t> mReadBytes[XSPM_MAX_NUMBER_SLOTS];
 
-  //
-  // Device Trace
-  //
-  DeviceTrace* DeviceTrace::reuse()
-  {
-    if (RecycleHead) {
-      DeviceTrace* element = RecycleHead;
-      RecycleHead = RecycleHead->Next;
-      return element;
-    }
-    else {
-      return new DeviceTrace();
-    }
-  }
-
-  // Return back the object to be reused later
-  void DeviceTrace::recycle(DeviceTrace* object)
-  {
-    object->resetTimeStamps();
-    object->Next = RecycleHead ? RecycleHead : nullptr;
-    RecycleHead = object;
-  }
-
-  //void DeviceTrace::write(WriterI* writer) const
-  //{
-  //  writer->writeSummary(*this);
-  //}
-
-  // Get current date & time (format: YYYY-MM-DD HH:mm:SS)
-  std::string getCurrentDateTime()
-  {
-    auto time = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-    struct tm tstruct = *(std::localtime(&time));
-    char buf[80];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %X", &tstruct);
-    return std::string(buf);
-  }
-
-  // Get current time (in msec)
-  std::string getCurrentTimeMsec()
-  {
-    struct timespec now;
-    int err;
-    if ((err = clock_gettime(CLOCK_REALTIME, &now)) < 0)
-      return "0";
-
-    uint64_t nsec = (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
-    uint64_t msec = nsec / 1e6;
-    return std::to_string(msec);
-  }
-
-  // Get current host executable name
-  // TODO: does this really give the user host executable in this context?
-  std::string getCurrentExecutableName()
-  {
-    std::string execName("");
-#if defined(__linux__) && defined(__x86_64__)
-    const int maxLength = 1024;
-    char buf[maxLength];
-    ssize_t len;
-    if ((len=readlink("/proc/self/exe", buf, maxLength-1)) != -1) {
-      buf[len]= '\0';
-      execName = buf;
-    }
-
-    // Remove directory path and only keep filename
-    const size_t lastSlash = execName.find_last_of("\\/");
-    if (lastSlash != std::string::npos)
-      execName.erase(0, lastSlash + 1);
-#endif
-    return execName;
-  }
-
-  // Write header to profile summary stream
-  void writeProfileHeader(std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-
-    ofs << "XMA Profile Summary" << std::endl;
-    ofs << "Generated on: " << XDP::getCurrentDateTime() << "\n";
-    ofs << "Msec since Epoch: " << XDP::getCurrentTimeMsec() << "\n";
-    if (!XDP::getCurrentExecutableName().empty())
-      ofs << "Profiled application: " << XDP::getCurrentExecutableName() << "\n";
-    ofs << "Target platform: Xilinx" << std::endl;
-    ofs << "Tool version: " << getToolVersion() << std::endl;
-    ofs << std::endl;
-  }
-
-  // Write footer to profile summary stream
-  void writeProfileFooter(std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-    ofs << "\n";
-  }
-
-  // Write summary tables to profile summary stream
-  void writeProfileSummary(std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-
-    // TODO: write profile summary!!
-  }
+  XDP::CSVWriter*  mWriter = nullptr;
+  XDP::XDPProfile* mProfileMgr = nullptr;
 
   // Write header to timeline trace stream
   void writeTraceHeader(std::ofstream& ofs)
@@ -343,12 +151,12 @@ namespace XDP {
       return;
 
     ofs << "SDAccel Timeline Trace" << std::endl;
-    ofs << "Generated on: " << XDP::getCurrentDateTime() << "\n";
-    ofs << "Msec since Epoch: " << XDP::getCurrentTimeMsec() << "\n";
-    if (!XDP::getCurrentExecutableName().empty())
-      ofs << "Profiled application: " << XDP::getCurrentExecutableName() << "\n";
+    ofs << "Generated on: " << WriterI::getCurrentDateTime() << "\n";
+    ofs << "Msec since Epoch: " << WriterI::getCurrentTimeMsec() << "\n";
+    if (!WriterI::getCurrentExecutableName().empty())
+      ofs << "Profiled application: " << WriterI::getCurrentExecutableName() << "\n";
     ofs << "Target platform: Xilinx" << std::endl;
-    ofs << "Tool version: " << getToolVersion() << std::endl;
+    ofs << "Tool version: " << WriterI::getToolVersion() << std::endl;
     ofs << std::endl;
     ofs << "Time_msec,Name,Event,Address_Port,Size,Latency_cycles,Start_cycles,End_cycles,Latency_usec,Start_msec,End_msec," << std::endl;
   }
@@ -374,9 +182,8 @@ namespace XDP {
     ofs << "Target," << flowMode << ",\n";
 
     // Platform/device info
-    std::string deviceName = deviceInfo.mName;
-    ofs << "Platform," << XDP::deviceName << ",\n";
-    ofs << "Device," << XDP::deviceName << ",begin\n";
+    ofs << "Platform," << XDP::mDeviceName << ",\n";
+    ofs << "Device," << XDP::mDeviceName << ",begin\n";
 
     // DDR Bank addresses
     // TODO: this assumes start address of 0x0 and evenly divided banks
@@ -388,7 +195,7 @@ namespace XDP {
     for (int b=0; b < ddrBanks; ++b)
       ofs << "Bank," << std::dec << b << ",0X" << std::hex << (b * bankSize) << std::endl;
     ofs << "DDR Banks,end\n";
-    ofs << "Device," << XDP::deviceName << ",end\n";
+    ofs << "Device," << XDP::mDeviceName << ",end\n";
 
     // TODO: Unused CUs
 
@@ -847,185 +654,218 @@ namespace XDP {
                        objSize, address, bank, threadId, ofs);
   }
 } // XDP namespace
-XDP::DeviceTrace* XDP::DeviceTrace::RecycleHead = nullptr;
+
 
 // *****************************************************************************
-//                              Profile Counters
+//                        Top-Level Profile Functions
 // *****************************************************************************
 
 void
-profile_start_summary(xclDeviceHandle s_handle)
+profile_initialize(xclDeviceHandle s_handle, bool use_profile, bool use_trace,
+                   const char* data_transfer_trace, const char* stall_trace)
 {
-  xclDeviceHandle dev_handle = s_handle;
-  //printf("xma_plg_start_profile: dev_handle=%p\n", dev_handle);
+  printf("profile_initialize: s_handle=%p, use_profile=%d, use_trace=%d, data_transfer_trace=%s, stall_trace=%s\n",
+         s_handle, use_profile, use_trace, data_transfer_trace, stall_trace);
 
-  // Start counters
-  xclPerfMonStartCounters(dev_handle, XCL_PERF_MON_MEMORY);
+  int ProfileFlags = XDP::XDPProfile::PROFILE_APPLICATION;
+  XDP::mProfileMgr = new XDP::XDPProfile(ProfileFlags);
 
-  // Open profile summary file
-  XDP::mProfileStream.open("xma_profile_summary.csv");
+  // Evaluate arguments
+  XDP::mUseProfile = use_profile;
+  XDP::mUseTrace = use_trace;
+  XDP::mTraceOption = 0;
 
-  // Write header
-  XDP::writeProfileHeader(XDP::mProfileStream);
-}
+  if (XDP::mUseTrace) {
+    XDP::mDataTransferTrace = data_transfer_trace;
+    XDP::mStallTrace = stall_trace;
+    XDP::mTraceOption = (XDP::mDataTransferTrace == "coarse") ? 0x1 : 0x0;
+    if (XDP::mStallTrace == "dataflow")    XDP::mTraceOption |= (0x1 << 2);
 
-void
-profile_read_summary(xclDeviceHandle s_handle)
-{
-  xclDeviceHandle dev_handle = s_handle;
-  //printf("xma_plg_read_profile: dev_handle=%p\n", dev_handle);
-
-  // Read counters
-  xclCounterResults counterResults;
-  xclPerfMonReadCounters(dev_handle, XCL_PERF_MON_MEMORY, counterResults);
-
-  // Store results
-  // TODO: keep track of multiple calls to read and check for overflows
-  XDP::mProfileResults = counterResults;
-}
-
-void
-profile_end_summary(xclDeviceHandle s_handle)
-{
-  xclDeviceHandle dev_handle = s_handle;
-  //printf("xma_plg_end_profile: dev_handle=%p\n", dev_handle);
-
-  if (!XDP::mProfileStream.is_open()) {
-    printf("WARNING: Please run profile_initialize before starting application.");
-    return;
+    else if (XDP::mStallTrace == "pipe")   XDP::mTraceOption |= (0x1 << 3);
+    else if (XDP::mStallTrace == "memory") XDP::mTraceOption |= (0x1 << 4);
+    else if (XDP::mStallTrace == "all")    XDP::mTraceOption |= (0x7 << 2);
+    else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
   }
 
-  // Stop counters
-  xclPerfMonStopCounters(dev_handle, XCL_PERF_MON_MEMORY);
-
-  // Write profile summary
-  XDP::writeProfileSummary(XDP::mProfileStream);
-
-  // Write footer & close
-  XDP::writeProfileFooter(XDP::mProfileStream);
-  XDP::mProfileStream.close();
-}
-
-// *****************************************************************************
-//                               Timeline Trace
-// *****************************************************************************
-
-void
-profile_initialize(xclDeviceHandle s_handle, const char* trace_file_name)
-{
-  // Open timeline trace file
-  XDP::mTraceStream.open(trace_file_name);
-
-  //Make an initialization call for time
-  XDP::time_ns();
-
-  // Write header
-  XDP::writeTraceHeader(XDP::mTraceStream);
-
+  // Get design info (clock freqs, device/binary names)
   xclDeviceInfo2 deviceInfo;
   xclGetDeviceInfo2(s_handle, &deviceInfo);
   XDP::mKernelClockFreq = deviceInfo.mOCLFrequency[0];
-  XDP::deviceName = deviceInfo.mName;
+  XDP::mDeviceName = deviceInfo.mName;
+  // TODO: do we know this?
+  XDP::mBinaryName = "binary";
+  XDP::mProfileMgr->setKernelClockFreqMHz(XDP::mDeviceName, XDP::mKernelClockFreq);
 
+  //
+  // Profile Summary
+  //
+  if (XDP::mUseProfile) {
+	XDP::mProfileMgr->turnOnProfile(XDP::XDPProfile::PROFILE_DEVICE_COUNTERS);
+    XDP::mProfileMgr->turnOnFile(XDP::XDPProfile::FILE_SUMMARY);
+
+    std::string profileFile = "xma_profile_summary.csv";
+    //std::string timelineFile = "xma_timeline_trace.csv";
+    //XDP::mWriter = new XDP::CSVWriter(profileFile, timelineFile, "Xilinx");
+    XDP::mWriter = new XDP::CSVWriter(profileFile, "Xilinx");
+    XDP::mProfileMgr->attach(XDP::mWriter);
+  }
+
+  //
+  // Timeline Trace
+  //
+  if (XDP::mUseTrace) {
+	XDP::mProfileMgr->turnOnProfile(XDP::XDPProfile::PROFILE_DEVICE_TRACE);
+    XDP::mProfileMgr->turnOnFile(XDP::XDPProfile::FILE_TIMELINE_TRACE);
+
+    // Open timeline trace file
+    XDP::mTraceStream.open("xma_timeline_trace.csv");
+
+    // Make an initialization call for time
+    XDP::time_ns();
+
+    // Write header
+    XDP::writeTraceHeader(XDP::mTraceStream);
+  }
 }
 
 void
-profile_start_trace(xclDeviceHandle s_handle, const char* data_transfer_trace, const char* stall_trace)
+profile_start(xclDeviceHandle s_handle)
 {
-  // Evaluate arguments
-  XDP::mDataTransferTrace = data_transfer_trace;
-  XDP::mStallTrace = stall_trace;
-  xclDeviceHandle dev_handle = s_handle;
-  uint32_t traceOption = (XDP::mDataTransferTrace == "coarse") ? 0x1 : 0x0;
-  if (XDP::mStallTrace == "dataflow")    traceOption |= (0x1 << 2);
-  else if (XDP::mStallTrace == "pipe")   traceOption |= (0x1 << 3);
-  else if (XDP::mStallTrace == "memory") traceOption |= (0x1 << 4);
-  else if (XDP::mStallTrace == "all")    traceOption |= (0x7 << 2);
-  else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
-  printf("profile_start_trace: dev_handle=%p, traceOption=%d\n", dev_handle, traceOption);
+  printf("profile_start: s_handle=%p\n", s_handle);
 
-  // Start trace (also reads debug_ip_layout)
-  xclPerfMonStartTrace(dev_handle, XCL_PERF_MON_MEMORY, traceOption);
-  xclPerfMonStartTrace(dev_handle, XCL_PERF_MON_ACCEL, traceOption);
+  //
+  // Profile Summary
+  //
+  if (XDP::mUseProfile) {
+    // Start counters
+    xclPerfMonStartCounters(s_handle, XCL_PERF_MON_MEMORY);
+  }
+
+  //
+  // Timeline Trace
+  //
+  if (XDP::mUseTrace) {
+    // Start trace (also reads debug_ip_layout)
+    xclPerfMonStartTrace(s_handle, XCL_PERF_MON_MEMORY, XDP::mTraceOption);
+    xclPerfMonStartTrace(s_handle, XCL_PERF_MON_ACCEL, XDP::mTraceOption);
+  }
 
   // Get accelerator names
-  uint32_t numAccels = xclGetProfilingNumberSlots(dev_handle, XCL_PERF_MON_ACCEL);
+  uint32_t numAccels = xclGetProfilingNumberSlots(s_handle, XCL_PERF_MON_ACCEL);
+  XDP::mProfileMgr->setProfileNumberSlots(XCL_PERF_MON_ACCEL, numAccels);
+
   for (uint32_t i=0; i < numAccels; ++i) {
     char name[128];
-    xclGetProfilingSlotName(dev_handle, XCL_PERF_MON_ACCEL, i, name, 128);
+    xclGetProfilingSlotName(s_handle, XCL_PERF_MON_ACCEL, i, name, 128);
+    std::string nameStr = name;
+    XDP::mProfileMgr->setProfileSlotName(XCL_PERF_MON_ACCEL, XDP::mDeviceName, i, nameStr);
 	XDP::mAccelNames[i] = name;
+
+	// TODO: we don't know the kernel name so just use the CU name
+    XDP::mProfileMgr->setProfileKernelName(XDP::mDeviceName, nameStr, nameStr);
   }
 
   // Get accelerator port names
-  uint32_t numAccelPorts = xclGetProfilingNumberSlots(dev_handle, XCL_PERF_MON_MEMORY);
+  uint32_t numAccelPorts = xclGetProfilingNumberSlots(s_handle, XCL_PERF_MON_MEMORY);
+  XDP::mProfileMgr->setProfileNumberSlots(XCL_PERF_MON_MEMORY, numAccels);
+
   for (uint32_t i=0; i < numAccelPorts; ++i) {
     char name[128];
-    xclGetProfilingSlotName(dev_handle, XCL_PERF_MON_MEMORY, i, name, 128);
+    xclGetProfilingSlotName(s_handle, XCL_PERF_MON_MEMORY, i, name, 128);
+    std::string nameStr = name;
+    XDP::mProfileMgr->setProfileSlotName(XCL_PERF_MON_MEMORY, XDP::mDeviceName, i, nameStr);
 	XDP::mAccelPortNames[i] = name;
   }
 
+  uint32_t numHosts = xclGetProfilingNumberSlots(s_handle, XCL_PERF_MON_HOST);
+  XDP::mProfileMgr->setProfileNumberSlots(XCL_PERF_MON_HOST, numHosts);
 }
 
 void
-profile_read_trace(xclDeviceHandle s_handle)
+profile_stop(xclDeviceHandle s_handle)
 {
-  xclDeviceHandle dev_handle = s_handle;
-  printf("profile_read_trace: dev_handle=%p\n", dev_handle);
+  printf("profile_stop: s_handle=%p\n", s_handle);
 
-  if (!XDP::mTraceStream.is_open()) {
-    printf("WARNING: Please run xma_plg_start_trace before starting application.");
-    return;
+  //
+  // Profile summary
+  //
+  if (XDP::mUseProfile) {
+    // Read counters
+    xclCounterResults counterResults;
+    xclPerfMonReadCounters(s_handle, XCL_PERF_MON_MEMORY, counterResults);
+
+    // Store results
+    uint64_t timeNsec = XDP::time_ns();
+    bool firstReadAfterProgram = false;
+	XDP::mProfileMgr->logDeviceCounters(XDP::mDeviceName, XDP::mBinaryName, XCL_PERF_MON_MEMORY,
+        counterResults, timeNsec, firstReadAfterProgram);
+
+    // Stop counters
+    xclPerfMonStopCounters(s_handle, XCL_PERF_MON_MEMORY);
   }
 
-  // Get device level info
-  // TODO; instead of calling this multiple times, we should run once then store the whole thing
-  /*
-  xclDeviceInfo2 deviceInfo;
-  xclGetDeviceInfo2(dev_handle, &deviceInfo);
-  XDP::mKernelClockFreq = deviceInfo.mOCLFrequency[0];
-  std::string deviceName = deviceInfo.mName;
-  // TODO: do we know this?
-   */
-  std::string binaryName = "binary";
+  //
+  // Timeline Trace
+  //
+  if (XDP::mUseTrace) {
+    if (!XDP::mTraceStream.is_open()) {
+      printf("WARNING: Please run profile_initialize before starting application.");
+      return;
+    }
 
-  // Data transfers
-  xclTraceResultsVector traceVector = {0};
-  xclPerfMonReadTrace(dev_handle, XCL_PERF_MON_MEMORY, traceVector);
-  XDP::logTrace(XCL_PERF_MON_MEMORY, XDP::deviceName, binaryName, traceVector, XDP::mTraceStream);
+    // Data transfers
+    xclTraceResultsVector traceVector = {0};
+    xclPerfMonReadTrace(s_handle, XCL_PERF_MON_MEMORY, traceVector);
+    XDP::logTrace(XCL_PERF_MON_MEMORY, XDP::mDeviceName, XDP::mBinaryName, traceVector, XDP::mTraceStream);
 
-  // Accelerators
-  xclPerfMonReadTrace(dev_handle, XCL_PERF_MON_ACCEL, traceVector);
-  XDP::logTrace(XCL_PERF_MON_ACCEL, XDP::deviceName, binaryName, traceVector, XDP::mTraceStream);
+    // Accelerators
+    xclPerfMonReadTrace(s_handle, XCL_PERF_MON_ACCEL, traceVector);
+    XDP::logTrace(XCL_PERF_MON_ACCEL, XDP::mDeviceName, XDP::mBinaryName, traceVector, XDP::mTraceStream);
+
+    // Stop trace
+    xclPerfMonStopTrace(s_handle, XCL_PERF_MON_MEMORY);
+    xclPerfMonStopTrace(s_handle, XCL_PERF_MON_ACCEL);
+  }
 }
 
 void
-profile_end_trace(xclDeviceHandle s_handle)
+profile_finalize(xclDeviceHandle s_handle)
 {
-  xclDeviceHandle dev_handle = s_handle;
-  printf("profile_end_trace: dev_handle=%p\n", dev_handle);
+  printf("profile_finalize: s_handle=%p\n", s_handle);
 
-  if (!XDP::mTraceStream.is_open()) {
-    printf("WARNING: Please run xma_plg_start_trace before starting application.");
-    return;
+  //
+  // Profile summary
+  //
+  if (XDP::mUseProfile) {
+    // Write profile summary
+    XDP::mProfileMgr->writeProfileSummary();
+
+    // Close writer and delete
+    XDP::mProfileMgr->detach(XDP::mWriter);
+    delete XDP::mWriter;
   }
 
-  xclDeviceInfo2 deviceInfo;
-  xclGetDeviceInfo2(dev_handle, &deviceInfo);
+  //
+  // Timeline Trace
+  //
+  if (XDP::mUseTrace) {
+    if (!XDP::mTraceStream.is_open()) {
+      printf("WARNING: Please run xma_plg_start_trace before starting application.");
+      return;
+    }
 
-  // Final read of trace
-  profile_read_trace(s_handle);
+    xclDeviceInfo2 deviceInfo;
+    xclGetDeviceInfo2(s_handle, &deviceInfo);
 
-  // Stop trace
-  xclPerfMonStopTrace(dev_handle, XCL_PERF_MON_MEMORY);
-  xclPerfMonStopTrace(dev_handle, XCL_PERF_MON_ACCEL);
-
-  // Write footer & close
-  XDP::writeTraceFooter(deviceInfo, XDP::mTraceStream);
-  XDP::mTraceStream.close();
+    // Write footer & close
+    XDP::writeTraceFooter(deviceInfo, XDP::mTraceStream);
+    XDP::mTraceStream.close();
+  }
 }
 
-int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
-        size_t size, size_t offset)
+int
+xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
+                     size_t size, size_t offset)
 {
   static std::atomic<int> id(0);
   int rc;
@@ -1043,7 +883,7 @@ int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSy
      ,size
      ,0
      ,1
-     ,XDP::deviceName
+     ,XDP::mDeviceName
      ,0
      ,boAddr
      ,"Unknown"
@@ -1062,7 +902,7 @@ int  xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSy
      ,size
      ,0
      ,1
-     ,XDP::deviceName
+     ,XDP::mDeviceName
      ,0
      ,boAddr
      ,"Unknown"
