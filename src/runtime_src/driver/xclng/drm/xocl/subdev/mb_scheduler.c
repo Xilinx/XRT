@@ -55,6 +55,7 @@
 #else
 # define SCHED_DEBUG(msg)
 # define SCHED_DEBUGF(format,...)
+# define SCHED_PRINTF(format,...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet,size)
 #endif
 
@@ -74,11 +75,13 @@ static bool queued_to_running(struct xocl_cmd *xcmd);
  * @submitted_cmds: Tracking of command submitted for execution on this device
  * @num_slots: Number of command queue slots
  * @num_cus: Number of CUs in loaded program
+ * @num_cdma: Number of CDMAs in hardware
  * @cu_shift_offset: CU idx to CU address shift value
  * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
  * @cq_interrupt: If set then trigger interrupt to MB on new commands
  * @configured: Flag to indicate that the core data structure has been initialized
+ * @cu_addr_map: CU idx to CU base address
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
  * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
@@ -104,6 +107,7 @@ struct exec_core {
 
         unsigned int               num_slots;
         unsigned int               num_cus;
+        unsigned int               num_cdma;
         unsigned int               cu_shift_offset;
         u32                        cu_base_addr;
         unsigned int               polling_mode;
@@ -139,6 +143,13 @@ exec_get_pdev(struct exec_core *exec)
 	return exec->pdev;
 }
 
+inline struct exec_core *
+dev_get_exec(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	return pdev ? platform_get_drvdata(pdev) : NULL;
+}
+
 /**
  * exec_get_xdev() -
  */
@@ -146,6 +157,13 @@ inline struct xocl_dev *
 exec_get_xdev(struct exec_core *exec)
 {
 	return xocl_get_xdev(exec->pdev);
+}
+
+inline struct xocl_dev *
+dev_get_xdev(struct device *dev)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	return exec ? exec_get_xdev(exec) : NULL;
 }
 
 /**
@@ -817,9 +835,15 @@ configure(struct xocl_cmd *xcmd)
 	}
 
 	if (cdma) {
-		exec->cu_addr_map[exec->num_cus] = 0x250000;
-		SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",exec->num_cus,exec->cu_addr_map[exec->num_cus]);
-		exec->num_cus = ++cfg->num_cus;
+		exec->num_cdma = 1; /* TBD */
+		exec->num_cus += exec->num_cdma;
+		for (; i<exec->num_cus; ++i) {
+			++cfg->num_cus;
+			++cfg->count;
+			exec->cu_addr_map[i] = 0x250000; // TBD
+			cfg->data[i] = 0x250000;
+			SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+		}
 	}
 
 	if (ert && cfg->ert) {
@@ -1638,7 +1662,6 @@ penguin_submit(struct xocl_cmd *xcmd)
 	return true;
 }
 
-
 /**
  * mb_ops: operations for ERT scheduling
  */
@@ -1843,6 +1866,51 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.validate = validate,
 };
 
+/* sysfs */
+static ssize_t
+kds_numcus_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	unsigned int cus = exec ? exec->num_cus - exec->num_cdma : 0;
+	return sprintf(buf,"%d\n",cus);
+}
+static DEVICE_ATTR_RO(kds_numcus);
+
+static ssize_t
+kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_xdev(dev);
+	bool cdma = xocl_cdma_on(xdev);
+	unsigned int cdmas = cdma ? 1 : 0; //TBD
+	return sprintf(buf,"%d\n",cdmas);
+}
+static DEVICE_ATTR_RO(kds_numcdmas);
+
+static struct attribute *kds_sysfs_attrs[] = {
+	&dev_attr_kds_numcus.attr,
+	&dev_attr_kds_numcdmas.attr,
+	NULL
+};
+
+static const struct attribute_group kds_sysfs_attr_group = {
+	.attrs = kds_sysfs_attrs,
+};
+
+static void
+user_sysfs_destroy_kds(struct platform_device *pdev)
+{
+	sysfs_remove_group(&pdev->dev.kobj, &kds_sysfs_attr_group);
+}
+
+static int
+user_sysfs_create_kds(struct platform_device *pdev)
+{
+	int err = sysfs_create_group(&pdev->dev.kobj, &kds_sysfs_attr_group);
+	if (err)
+		xocl_err(&pdev->dev, "create kds attr failed: 0x%x", err);
+	return err;
+}
+
 /**
  * Init scheduler
  */
@@ -1881,12 +1949,19 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 	init_scheduler_thread();
 	reset_exec(exec);
 
+	if (user_sysfs_create_kds(pdev))
+		goto err;
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MB_SCHEDULER, &sche_ops);
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
 
 	return 0;
+
+err:
+	devm_kfree(&pdev->dev, exec);
+	return 1;
 }
 
 /**
@@ -1914,6 +1989,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 			eventfd_ctx_put(exec->user_msix_table[i]);
 	}
 #endif
+	user_sysfs_destroy_kds(pdev);
 
 	devm_kfree(&pdev->dev, exec);
 	platform_set_drvdata(pdev, NULL);
