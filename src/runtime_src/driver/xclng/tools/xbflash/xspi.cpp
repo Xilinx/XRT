@@ -456,6 +456,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
 }
 
 int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
+    std::cout << "usign new flash" << std::endl;
     clearBuffers();
     recordList.clear();
 
@@ -468,7 +469,9 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     ELARecord record;
     bool endRecordFound = false;
 
+    int lineno = 0;
     while (!mcsStream.eof() && !endRecordFound) {
+	lineno++;
         std::string line;
         std::getline(mcsStream, line);
         if (line.size() == 0) {
@@ -488,13 +491,22 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
                 // except for the last one which can be smaller
                 return -EINVAL;
             }
-            if (address != record.mDataCount) {
-                std::cout << "Address is not contiguous ! " << std::endl;
-                return -EINVAL;
+            if (address != (record.mDataCount+(record.mStartAddress & 0xFFFF))) {
+		if(record.mDataCount == 0) {
+		    std::cout << "lineno with address skip " << lineno;
+		    //First entry only.
+		    assert(record.mStartAddress != 0);
+		    assert(record.mEndAddress != 0);
+		    record.mStartAddress += address;
+		    record.mEndAddress += address;
+		}else {
+		    std::cout << "Address is not contiguous ! " << std::endl;
+		    return -EINVAL;
+		}
             }
-            if (record.mEndAddress != address) {
-                return -EINVAL;
-            }
+            //if ( ((record.mEndAddress-record.mStartAddress)& 0xFFFF) != address) {
+              //  return -EINVAL;
+            //}
             record.mDataCount += dataLen;
             record.mEndAddress += dataLen;
             break;
@@ -527,9 +539,10 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
                 recordList.push_back(record);
             }
             // Start a new record
-            record.mStartAddress = std::stoi(newAddress, 0 , 16);
+	    record.mStartAddress = std::stoi(newAddress, 0 , 16);
+            record.mStartAddress <<= 16;
             record.mDataPos = mcsStream.tellg();
-            record.mEndAddress = 0;
+            record.mEndAddress = record.mStartAddress;
             record.mDataCount = 0;
             startAddress = newAddress;
         }
@@ -537,7 +550,7 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     }
 
     mcsStream.seekg(0);
-    std::cout << "INFO: Found " << recordList.size() << " ELA Records" << std::endl;
+    std::cout << "INFO: ***Found " << recordList.size() << " ELA Records" << std::endl;
 
     return programXSpi(mcsStream);
 }
@@ -1225,7 +1238,9 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) 
             std::cout << "writing page " << pageIndex << std::endl;
 #endif
             const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
-            assert ( (address + dataLen) == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
+            //assert ( (address + dataLen) == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
+	    assert ( (address + dataLen - (record.mStartAddress & 0xFFFF)) 
+		    == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));	    
             if(TEST_MODE) {
                 std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
                 std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;
@@ -1328,7 +1343,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
             std::cout << "." << std::flush;
         }
 
-        i->mStartAddress <<= 16;
+        //i->mStartAddress <<= 16;
 
         unsigned sector = getSector(i->mStartAddress);
         bool valid_sector = false;
@@ -1342,8 +1357,8 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
         }
 
         //Remove the sector determinant half byte.
-        i->mStartAddress &= 0xFFFFFF;
-        i->mEndAddress += i->mStartAddress;
+        //i->mStartAddress &= 0xFFFFFF;
+        //i->mEndAddress += i->mStartAddress;
 
         if(TEST_MODE) {
             std::cout << "INFO: Start address 0x" << std::hex << recordList.front().mStartAddress << std::dec << "\n";
