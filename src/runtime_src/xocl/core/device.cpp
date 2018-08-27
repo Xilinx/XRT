@@ -28,6 +28,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 namespace {
 
@@ -132,6 +133,13 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
   return swem;
+}
+
+static bool
+is_emulation_mode()
+{
+  static bool val = is_sw_emulation() || is_hw_emulation();
+  return val;
 }
 
 static void
@@ -248,10 +256,10 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
     auto mems = m_xclbin.get_mem_topology();
-    
-    if (!mems) 
+
+    if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count) 
+    if((memidx+1) > mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];
@@ -263,10 +271,10 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
 
-    if(read && !(flags & CL_STREAM_READ_ONLY)) 
+    if(read && !(flags & CL_STREAM_READ_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a read stream to non-read stream, argument " + ext->flags);
 
-    if(write &&  !(flags & CL_STREAM_WRITE_ONLY)) 
+    if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
 
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
@@ -862,13 +870,60 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
 
 void
 device::
-copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd)
 {
-  char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
-  char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
-  std::memcpy(hbuf_dst,hbuf_src,size);
-  unmap_buffer(src_buffer,hbuf_src);
-  unmap_buffer(dst_buffer,hbuf_dst);
+  auto xdevice = get_xrt_device();
+
+  if (!get_num_cdmas() || is_emulation_mode()) {
+    auto cb = [this](memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size,const cmd_type& cmd) {
+      cmd->start();
+      char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
+      char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
+      std::memcpy(hbuf_dst,hbuf_src,size);
+      unmap_buffer(src_buffer,hbuf_src);
+      unmap_buffer(dst_buffer,hbuf_dst);
+      cmd->done();
+    };
+    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer, src_offset, dst_offset, size,cmd);
+    return;
+  }
+
+  // CDMA.  TODO, this needs to be done at lower shim level, not in OCL land
+  auto sk_cmd = xrt::command_cast<ert_start_kernel_cmd*>(cmd);
+  auto packet = cmd->get_packet();
+  size_t offset = 1; // packet offset past header
+
+  auto maxidx = get_num_cus() + get_num_cdmas();
+
+  for (auto cu_idx=get_num_cus(); cu_idx<maxidx; ++cu_idx) {
+    auto mask_idx = cu_idx/32;
+    auto cu_mask_idx = cu_idx - mask_idx*32;
+    packet[offset + mask_idx] |= 1 << cu_mask_idx;
+  }
+  sk_cmd->extra_cu_masks = maxidx/32;
+  sk_cmd->opcode = ERT_START_CU;
+  offset += maxidx/32 + 1; // packet offset past cumasks
+
+  // Insert copy command content
+  auto src_boh = xocl::xocl(src_buffer)->get_buffer_object(this);
+  auto src_addr = xdevice->getDeviceAddr(src_boh) + src_offset;
+  auto dst_boh = xocl::xocl(dst_buffer)->get_buffer_object(this);
+  auto dst_addr = xdevice->getDeviceAddr(dst_boh) + dst_offset;
+
+  packet[offset++] = 0; // 0x0 reserved CU AP_CTRL
+  packet[offset++] = 0; // 0x4 reserved CU GIE
+  packet[offset++] = 0; // 0xc reserved CU IER
+  packet[offset++] = 0; // 0xc reserved CU ISR
+  packet[offset++] = src_addr;                       // 0x10
+  packet[offset++] = (src_addr >> 32) & 0xFFFFFFFF;  // 0x14
+  packet[offset++] = 0;                              // 0x18
+  packet[offset++] = dst_addr;                       // 0x1c
+  packet[offset++] = (dst_addr >> 32) & 0xFFFFFFFF;  // 0x20
+  packet[offset++] = 0;                              // 0x24
+  packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
+
+  sk_cmd->count = offset-1; // number of words in payload (excludes header)
+  xrt::scheduler::schedule(cmd);
 }
 
 void
