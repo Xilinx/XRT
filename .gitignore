@@ -1,3 +1,9 @@
 build/Debug
 build/Release
-
+*.o
+*.swp
+*.swo
+*~ 
+tags
+*.mod
+*.ko
