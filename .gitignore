@@ -5,3 +5,5 @@ build/Release
 *.swo
 *~ 
 tags
+*.mod
+*.ko
