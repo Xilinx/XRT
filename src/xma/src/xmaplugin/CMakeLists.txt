@@ -15,19 +15,10 @@ set_target_properties(xmaplugin PROPERTIES VERSION ${XMA_VERSION_STRING}
   SOVERSION ${XMA_VERSION_MAJOR})
 
 #target_link_libraries(xmaplugin "${XML2_LIB}")
-#target_link_libraries(xmaplugin
-#  dl
-#  pthread
-#  crypt
-#  rt
-#  m
-#  stdc++
-#  xml2
-#  yaml
-#  xrt_core
-#  )
+target_link_libraries(xmaplugin
+  xrt_core
+  )
 
-#install (TARGETS xmaapi xmaplugin LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
 install (TARGETS xmaplugin LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
 
 
