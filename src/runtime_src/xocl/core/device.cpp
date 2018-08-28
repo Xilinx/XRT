@@ -240,7 +240,6 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
 
