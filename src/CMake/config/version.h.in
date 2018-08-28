@@ -1,0 +1,12 @@
+#ifndef _XRT_VERSION_H_
+#define _XRT_VERSION_H_
+
+const char xrt_build_version_branch[] = "@XRT_BRANCH@";
+
+const char xrt_build_version_hash[] = "@XRT_HASH@";
+
+const char xrt_build_version_date[] = "@XRT_DATE@";
+
+const char xrt_build_version[] = "@XRT_VERSION_STRING@";
+
+#endif

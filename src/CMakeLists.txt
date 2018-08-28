@@ -27,6 +27,14 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
+find_package(Git)
+
+IF(GIT_FOUND)
+  message("git found: ${GIT_EXECUTABLE}")
+ELSE(GIT_FOUND)
+  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
+endif(GIT_FOUND)
+
 find_program(LSB_RELEASE lsb_release)
 find_program(UNAME uname)
 
@@ -97,12 +105,25 @@ file(GLOB XRT_EULA
 install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
 message("-- XRT EA eula files ${XRT_EULA}")
 
+include (CMake/version.cmake)
+
 include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
 add_subdirectory(runtime_src)
+
+#XMA settings START
+set (XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set (XMA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
+SET(XMA_VERSION_MAJOR 2)
+SET(XMA_VERSION_MINOR 1)
+SET(XMA_VERSION_PATCH 0)
+set(XMA_VERSION_STRING ${XMA_VERSION_MAJOR}.${XMA_VERSION_MINOR}.${XMA_VERSION_PATCH})
+add_subdirectory(xma)
+#XMA settings END
+
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 

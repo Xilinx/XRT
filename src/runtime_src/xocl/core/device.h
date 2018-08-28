@@ -468,7 +468,7 @@ public:
 
   //streaming APIs. TODO : document them.
   int 
-  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, xrt::device::stream_handle* stream);
+  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream);
 
   int 
   close_stream(xrt::device::stream_handle stream);

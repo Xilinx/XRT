@@ -82,6 +82,7 @@ failed:
 int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	struct qdma_wq *queue, u32 priv_data_len)
 {
+	struct qdma_wqe *wqe;
 	int	i, ret;
 
 	queue->dev_hdl = dev_hdl;
@@ -129,8 +130,9 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	queue->priv_data_len = priv_data_len;
 
 	for (i = 0; i < queue->wq_len; i++) {
-		queue->wq[i].queue = queue;
-		init_waitqueue_head(&queue->wq[i].req_comp);
+		wqe = (struct qdma_wqe *)((char *)queue->wq + queue->wqe_sz * i);
+		wqe->queue = queue;
+		init_waitqueue_head(&wqe->req_comp);
 	}
 
 	queue->sg_cache = vzalloc(queue->qlen * sizeof (*queue->sg_cache));

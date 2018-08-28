@@ -1,0 +1,22 @@
+args: sincos.xclbin
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+levels:
+- hw_compile: 1
+- hw: 1
+flags: -g -D FLOW_HLS_CSIM
+flows: [all]
+hdrs: []
+krnls:
+- name: test_sincos
+  srcs: [sincos.cl]
+  type: clc
+name: 001_basic_sincos
+owner: vallina
+srcs: [test-cl.cpp]
+xclbins:
+- cus:
+  - {krnl: test_sincos, name: test_sincos}
+  name: sincos
+  region: OCL_REGION_0

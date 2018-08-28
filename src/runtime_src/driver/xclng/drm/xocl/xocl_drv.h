@@ -406,12 +406,26 @@ struct xocl_mb_funcs {
 		u32 len);
 };
 
+struct xocl_dna_funcs {
+	u32 (*status)(struct platform_device *pdev);
+	u32 (*capability)(struct platform_device *pdev);
+};
+
 #define	XMC_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_XMC).pldev
 #define	XMC_OPS(xdev)		\
 	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
 	XOCL_SUBDEV_XMC).ops)
 
+#define	DNA_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_DNA).pldev
+#define	DNA_OPS(xdev)		\
+	((struct xocl_dna_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_DNA).ops)
+#define	xocl_dna_status(xdev)			\
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->status(DNA_DEV(xdev)) : 0)
+#define	xocl_dna_capability(xdev)			\
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->capability(DNA_DEV(xdev)) : 2)
 
 #define	MB_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev
@@ -612,6 +626,8 @@ void xocl_fini_mig(void);
 int __init xocl_init_xmc(void);
 void xocl_fini_xmc(void);
 
+int __init xocl_init_dna(void);
+void xocl_fini_dna(void);
 /* xclbin helpers */
 
 static inline size_t sizeof_ip_layout(const struct ip_layout *layout)

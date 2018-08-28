@@ -29,6 +29,7 @@ xclmgmt-y := \
 	../subdev/icap.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
+	../subdev/dna.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

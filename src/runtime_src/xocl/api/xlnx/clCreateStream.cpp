@@ -32,6 +32,7 @@ static void
 validOrError(cl_device_id          device,
              cl_stream_flags       flags,
 	     cl_stream_attributes  attributes,
+	     cl_mem_ext_ptr_t*      ext,
              cl_int *              errcode_ret)
 {
 }
@@ -40,12 +41,12 @@ static cl_stream
 clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
 	       cl_stream_attributes   attributes,
+	       cl_mem_ext_ptr_t*      ext,
 	       cl_int*                errcode_ret) 
 {
-  validOrError(device,flags,attributes,errcode_ret);
-  auto stream = xrt::make_unique<xocl::stream>(flags,attributes);
+  validOrError(device,flags,attributes,ext,errcode_ret);
+  auto stream = xrt::make_unique<xocl::stream>(flags,attributes,ext);
   stream->get_stream(xocl::xocl(device));
-  //return xocl(device_id)->get_xrt_device()->createWriteStream(flags, attr, );
   xocl::assign(errcode_ret,CL_SUCCESS);
   return stream.release();
 }
@@ -56,12 +57,13 @@ CL_API_ENTRY cl_stream CL_API_CALL
 clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
 	       cl_stream_attributes   attributes,
+	       cl_mem_ext_ptr_t*      ext,
 	       cl_int*                errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clCreateStream
-      (device,flags,attributes,errcode_ret);
+      (device,flags,attributes,ext,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());

@@ -1,13 +1,13 @@
 set (XMC "xmc.bin")
 
 add_custom_command(
-  OUTPUT xmc.bin
+  OUTPUT ${XMC}
   COMMAND curl https://raw.gitenterprise.xilinx.com/XMC/XMC/XBB-dev/release/${XMC} --output ${XMC}
   COMMENT "Generating binary for XMC"
 )
 
 add_custom_target(xmc
- DEPENDS xmc.bin
+ DEPENDS ${XMC}
 )
 
 install (FILES
