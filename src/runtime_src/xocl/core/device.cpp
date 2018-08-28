@@ -240,11 +240,11 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream) 
 {
-  const cl_kernel kernel = (const cl_kernel)(ext->param);
   uint64_t route = 0;
   uint64_t flow = 0;
 
- if(kernel != nullptr) {
+  if(ext && ext->param) {
+   const cl_kernel kernel = static_cast<const cl_kernel>(ext->param);
    const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
    const mem_topology* mems = m_xclbin.get_mem_topology();
@@ -254,7 +254,6 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_
   
    if((memidx+1) < mems->m_count)
      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
-
 
     route = mems->m_mem_data[memidx].route_id;
     flow = mems->m_mem_data[memidx].flow_id;
