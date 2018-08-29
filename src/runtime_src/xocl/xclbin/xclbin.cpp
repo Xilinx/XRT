@@ -951,6 +951,7 @@ class xclbin_data_sections
   };
 
   std::vector<membank> m_membanks;
+  std::vector<int> m_used_connections;
 
 public:
   explicit
@@ -985,10 +986,50 @@ public:
 #endif
   }
 
+  xocl::xclbin::memidx_type
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+  {
+    if (!is_valid())
+      return -1;
+
+    for (int32_t i=0; i<m_con->m_count; ++i) {
+      if (m_con->m_connection[i].arg_index!=arg)
+        continue;
+      //ip_layout section has format : kernel_name:cu_name
+      auto ipidx = m_con->m_connection[i].m_ip_layout_index;
+      const char *ip_name = reinterpret_cast<const char*>(m_ip->m_ip_data[ipidx].m_name);
+      const char* sub = strstr(ip_name,kernel_name.c_str());
+      if (sub!=ip_name)
+        continue;
+
+      //This connection already has a device storage allocated, so skip to 
+      //the next connection in the connection range which matches the 
+      //criteria - multiple cu case. 
+      //TODO: Check if this is ever hit. 
+      if(std::find(m_used_connections.begin(), m_used_connections.end(), i)
+	     != m_used_connections.end()) {
+	  continue;
+      }
+      // found the connection that match kernel_name,arg
+      size_t memidx = m_con->m_connection[i].mem_data_index;
+      assert(m_mem->m_mem_data[memidx].m_used);
+      m_used_connections.push_back(i);
+      return memidx;
+    }
+    throw std::runtime_error("did not find mem index for (kernel_name,arg):" + kernel_name + "," + std::to_string(arg));
+    return -1;
+  }
+
   const clock_freq_topology*
   get_clk_freq_topology() const
   {
     return m_clk;
+  }
+
+  const mem_topology* 
+  get_mem_topology() const 
+  {
+    return m_mem;
   }
 
   xocl::xclbin::memidx_bitmask_type
@@ -1046,7 +1087,7 @@ public:
     // 30,20,10,0
     xocl::xclbin::memidx_bitmask_type bitmask = 0;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -1063,7 +1104,7 @@ public:
     // 30,20,10,0
     int bankidx = -1;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -1182,6 +1223,10 @@ struct xclbin::impl
   get_clk_freq_topology() const
   { return m_sections.get_clk_freq_topology(); }
 
+  const mem_topology*
+  get_mem_topology() const
+  { return m_sections.get_mem_topology(); }
+
   memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
   { return m_sections.cu_address_to_memidx(cuaddr,arg); }
@@ -1205,6 +1250,10 @@ struct xclbin::impl
   memidx_type
   banktag_to_memidx(const std::string& banktag) const
   { return m_sections.banktag_to_memidx(banktag); }
+
+  memidx_type
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+  { return m_sections.get_memidx_from_arg(kernel_name, arg); }
 
   unsigned int
   conformance_rename_kernel(const std::string& hash)
@@ -1352,6 +1401,13 @@ get_clk_freq_topology() const
   return m_impl->get_clk_freq_topology();
 }
 
+const mem_topology*
+xclbin::
+get_mem_topology() const
+{
+  return m_impl->get_mem_topology();
+}
+
 size_t
 xclbin::
 cu_base_offset() const
@@ -1420,6 +1476,13 @@ xclbin::
 banktag_to_memidx(const std::string& tag) const
 {
   return m_impl->banktag_to_memidx(tag);
+}
+
+xclbin::memidx_type
+xclbin::
+get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+{
+  return m_impl->get_memidx_from_arg(kernel_name, arg);
 }
 
 unsigned int

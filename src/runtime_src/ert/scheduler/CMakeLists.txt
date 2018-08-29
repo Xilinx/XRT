@@ -17,3 +17,8 @@ add_custom_command(
 add_custom_target(scheduler
  DEPENDS sched.bin
 )
+
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/sched.bin
+ DESTINATION ${ERT_INSTALL_PREFIX}
+)

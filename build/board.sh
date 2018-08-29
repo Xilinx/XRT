@@ -22,6 +22,7 @@ ini=""
 run=1
 tests=
 csv=
+select="PASS"
 
 usage()
 {
@@ -30,6 +31,7 @@ usage()
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
+    echo "[-select <regex>]              Pattern to grep for in csv to pick test (default: PASS)"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
     echo "[-rm]                          Remove the synced test after run"
@@ -39,7 +41,7 @@ usage()
     echo "[-xrt <path>]                  Path to XRT install (default: $xrt)"
     echo "[-sdx <path>]                  Path to SDx install (default: $sdx)"
     echo ""
-    echo "With no optional options, this script runs all previously synced tests in" 
+    echo "With no optional options, this script runs all previously synced tests in"
     echo "current directory. "
     echo "% board.sh -board vcu1525"
     echo ""
@@ -54,6 +56,10 @@ usage()
     echo "tests.  It's possible latest sprite had hickups and had no PASSed tests."
     echo "The path to the csv file must be a absolute path to sprite generated file."
     echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
+    echo ""
+    echo "When selecting tests from csv file, only PASS tests are selected by default."
+    echo "Use the -select option to pick any tests that matches the regular expression."
+    echo "% board.sh -board u200 -sync -select 'PASS|INTR' -csv <csv>"
 
     exit 1
 }
@@ -93,6 +99,11 @@ while [ $# -gt 0 ]; do
         -sdx)
             shift
             sdx=$1
+            shift
+            ;;
+        -select)
+            shift
+            select=$1
             shift
             ;;
         -xrt)
@@ -159,7 +170,7 @@ elif [ $sync == 1 ] ; then
  rundir=TEST_WORK_${suffix}
 
  # tests to rsync
- tests=(`egrep -e 'PASS' ${csv} | awk -F, '{print $3}' | grep -v PASS | grep $board | sort | awk -F/ '{print $NF}'`)
+ tests=(`egrep -e $select ${csv} | awk -F, '{print $3}' | egrep -v $select | grep $board | sort | awk -F/ '{print $NF}'`)
 
  if [ ${#tests[@]} == 0 ]; then
    echo "No tests found in $csv"

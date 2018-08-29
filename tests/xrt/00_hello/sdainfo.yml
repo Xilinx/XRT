@@ -1,0 +1,19 @@
+args: -k kernel.xclbin
+copy: [Makefile, utils.h]
+devices:
+- [all_pcie]
+flags: -g -std=c++0x -ldl
+flows: [hw_all]
+hdrs: [utils.h]
+krnls:
+- name: dummy 
+  srcs: [kernel.cl]
+  type: clc
+name: 00_hello 
+owner: hemn
+srcs: [main.cpp]
+xclbins:
+- cus:
+  - {krnl: dummy, name: dummy}
+  name: kernel
+  region: OCL_REGION_0

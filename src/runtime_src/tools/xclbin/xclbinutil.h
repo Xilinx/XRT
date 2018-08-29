@@ -26,9 +26,21 @@
 #include <vector>
 #include <string.h>
 #include <fstream>
+#include <memory>
 
 namespace XclBinUtil
 {
+  template<typename ... Args>
+
+  std::string format(const std::string& format, Args ... args) 
+  {
+    size_t size = 1 + snprintf(nullptr, 0, format.c_str(), args ...);
+    std::unique_ptr<char[]> buf(new char[size]);
+    snprintf(buf.get(), size, format.c_str(), args ...);
+
+    return std::string(buf.get(), buf.get() + size);
+  }
+
   std::string getCurrentTimeStamp();
   std::string getBaseFilename( const std::string &_fullPath );
   bool cmdLineSearch( int argc, char** argv, const char* check );

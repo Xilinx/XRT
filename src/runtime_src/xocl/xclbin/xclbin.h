@@ -56,7 +56,8 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  using memidx_bitmask_type = std::bitset<24>;
+  //Max 64 mem banks for now.
+  using memidx_bitmask_type = std::bitset<64>;
   using memidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
@@ -264,6 +265,12 @@ public:
   get_clk_freq_topology() const;
 
   /**
+   * Get the mem topology section in xclbin
+   */
+  const mem_topology*
+  get_mem_topology() const;
+
+  /**
    * Get the CU base offset
    *
    * CU addresses are sequential and separated  by a fixed size
@@ -356,6 +363,19 @@ public:
    */
   std::string
   memidx_to_banktag(memidx_type memidx) const;
+
+  /**
+   * Get the memory index for a given kernel name for specific arg. 
+   *
+   * @param kernel_name 
+       Kernel name to  retrieve the memory index for
+   * @param arg
+       Index of arg to retrieve the memory index for
+   * @return
+   *   Memory idx
+   */
+  memidx_type
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
 
   /**
    * Get the memory index with the specified tag.

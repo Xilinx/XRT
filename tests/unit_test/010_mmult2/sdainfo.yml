@@ -1,0 +1,25 @@
+args: mmult2.xclbin
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g -D FLOW_HLS_CSIM
+flows: [all]
+hdrs: []
+krnls:
+- name: mmult
+  srcs: [mmult2.cl]
+  type: clc
+name: 010_mmult2
+owner: vallina
+srcs: [test-cl.cpp]
+xclbins:
+- cus:
+  - {krnl: mmult, name: mmult_cu0}
+  name: mmult2
+  region: OCL_REGION_0
+cpu_cores : 2
+memory : 20
+level : 7
+user:
+- hwtest_export_level: 2
+

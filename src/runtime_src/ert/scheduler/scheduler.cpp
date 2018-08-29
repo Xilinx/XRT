@@ -85,7 +85,7 @@ using bitmask_type = uint32_t;
 ////////////////////////////////////////////////////////////////
 // Extensions to driver/include/ert.h
 ////////////////////////////////////////////////////////////////
-const addr_type STATUS_REGISTER_ADDR[4] = 
+const addr_type STATUS_REGISTER_ADDR[4] =
 {
   ERT_STATUS_REGISTER_ADDR0
  ,ERT_STATUS_REGISTER_ADDR1
@@ -109,7 +109,7 @@ const addr_type CU_STATUS_REGISTER_ADDR[4] =
  ,ERT_CU_STATUS_REGISTER_ADDR3
 };
 
-const addr_type CQ_STATUS_REGISTER_ADDR[4] = 
+const addr_type CQ_STATUS_REGISTER_ADDR[4] =
 {
   ERT_CQ_STATUS_REGISTER_ADDR0
  ,ERT_CQ_STATUS_REGISTER_ADDR1
@@ -143,47 +143,47 @@ struct bitset_type
    * @maxpos: The index of the highest order bit
    */
   void
-  reset(size_type maxpos) 
+  reset(size_type maxpos)
   {
     clear();
     masks = (maxpos >> 5)+1;
   }
 
   void
-  set(size_type pos) 
+  set(size_type pos)
   {
     auto mask = pos >> 5;
     bitmasks[mask] |= 1<<(pos - (mask << 5));
   }
 
   void
-  clear_and_set(size_type pos) 
+  clear_and_set(size_type pos)
   {
     clear();
     set(pos);
   }
 
   void
-  set_mask(size_type mask_idx, bitmask_type bm) 
+  set_mask(size_type mask_idx, bitmask_type bm)
   {
     bitmasks[mask_idx] = bm;
   }
 
   bitmask_type
-  get_mask(size_type mask_idx) const 
+  get_mask(size_type mask_idx) const
   {
     return bitmasks[mask_idx];
   }
 
   void
-  toggle(size_type pos) 
+  toggle(size_type pos)
   {
     auto mask = pos >> 5;
     bitmasks[mask] ^= 1<<(pos - (mask << 5));
   }
 
   bool
-  test(size_type pos) const 
+  test(size_type pos) const
   {
     auto mask = pos >> 5;
     return bitmasks[mask] & (1<<(pos - (mask << 5)));
@@ -191,7 +191,7 @@ struct bitset_type
 
   // Return: true if no bits are set
   bool
-  none() const 
+  none() const
   {
     for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
       if (*itr)
@@ -200,14 +200,14 @@ struct bitset_type
   }
 
   void
-  clear() 
+  clear()
   {
     for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
       (*itr)=0;
   }
 
   const char*
-  string() 
+  string()
   {
     return "? not implemented";
   }
@@ -262,6 +262,7 @@ static value_type cu_interrupt_enabled      = 0;
 static value_type cq_status_enabled         = 0;
 static value_type mb_host_interrupt_enabled = 0;
 static value_type cu_dma_52                 = 0;
+static value_type cdma_enabled              = 0;
 
 // Struct slot_info is per command slot in command queue
 struct slot_info
@@ -300,11 +301,11 @@ static bitset_type cu_status;
 // Bitmask for interrupt enabled CUs.  (0) no interrupt (1) enabled
 static bitset_type cu_interrupt_mask;
 #ifndef ERT_HW_EMU
-/** 
+/**
  * Utility to read a 32 bit value from any axi-lite peripheral
  */
 inline value_type
-read_reg(addr_type addr) 
+read_reg(addr_type addr)
 {
   volatile auto ptr = reinterpret_cast<addr_type*>(addr);
   return *ptr;
@@ -313,8 +314,8 @@ read_reg(addr_type addr)
 /**
  * Utility to write a 32 bit value from any axi-lite peripheral
  */
-inline void 
-write_reg(addr_type addr, value_type val) 
+inline void
+write_reg(addr_type addr, value_type val)
 {
   volatile auto ptr = reinterpret_cast<addr_type*>(addr);
   *ptr = val;
@@ -357,7 +358,7 @@ cu_section_addr(addr_type slot_addr)
 }
 
 /**
- * Regmap section (where the cu regmap) is immediately 
+ * Regmap section (where the cu regmap) is immediately
  * after cu section
  */
 inline addr_type
@@ -429,7 +430,7 @@ struct disable_interrupt_guard
 /**
  * MB configuration
  */
-static void 
+static void
 setup()
 {
   INIT_DEBUG("-> setup\n");
@@ -437,7 +438,7 @@ setup()
   num_slots = ERT_CQ_SIZE / slot_size;
   num_slot_masks = ((num_slots-1)>>5) + 1;
   num_cu_masks = ((num_cus-1)>>5) + 1;
-  
+
   INIT_DEBUGF("slot_size=0x%x\n",slot_size);
   INIT_DEBUGF("num_slots=%d\n",num_slots);
   INIT_DEBUGF("num_slot_masks=%d\n",num_slot_masks);
@@ -447,10 +448,11 @@ setup()
   INIT_DEBUGF("cu_base_address=0x%x\n",cu_base_address);
   INIT_DEBUGF("cu_dma_enabled=%d\n",cu_dma_enabled);
   INIT_DEBUGF("cu_dma_52=%d\n",cu_dma_52);
+  INIT_DEBUGF("cdma_enabled=%d\n",cdma_enabled);
   INIT_DEBUGF("cu_isr_enabled=%d\n",cu_interrupt_enabled);
   INIT_DEBUGF("cq_int_enabled=%d\n",cq_status_enabled);
   INIT_DEBUGF("mb_host_int_enabled=%d\n",mb_host_interrupt_enabled);
-  
+
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
     auto& slot = command_slots[i];
@@ -486,15 +488,15 @@ setup()
 
   // Command queue base address
   write_reg(ERT_CQ_BASE_ADDRESS_ADDR,ERT_CQ_BASE_ADDR/4);
-  
+
   // Number of CUs
   write_reg(ERT_NUMBER_OF_CU_ADDR,num_cus);
 
   // Enable/disable CU_DMA module
   write_reg(ERT_CU_DMA_ENABLE_ADDR,cu_dma_enabled);
-  
+
   // Fill CU base addresses for cuisr
-  if(cu_dma_52) {  
+  if(cu_dma_52) {
     for (size_type i=0; i<num_cus; ++i) {
       write_reg(ERT_CUISR_LUT_ADDR+i*4,cu_addr_map[i]/4);
     }
@@ -512,15 +514,18 @@ setup()
       cu_interrupt_mask.set(cu);
     }
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,1); // enable CU ISR handler
-    intc_ier_mask |= 0x2;                    // acccept cu interrupts on bit 1 of the ier of intc
+    intc_ier_mask |= 0x2;                        // acccept cu interrupts on bit 1 of the ier of intc
     enable_master_interrupts = true;
-  } 
+
+    if (cdma_enabled)
+      intc_ier_mask |= 0x4;                      // accept cdma interrupt on bit 2 of the ier of intc
+  }
   else {
     for (size_type cu=0; cu<num_cus; ++cu) {
       write_reg(cu_idx_to_addr(cu) + 0x04,0);
       write_reg(cu_idx_to_addr(cu) + 0x08,0);
     }
-    write_reg(ERT_INTC_IER_ADDR,read_reg(ERT_INTC_IER_ADDR) & ~0x2);  // disable interrupts on bit 1 
+    write_reg(ERT_INTC_IER_ADDR,read_reg(ERT_INTC_IER_ADDR) & ~0x6);  // disable interrupts on bit 1 & 2 (0x2|0x4)
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0); // disable CU ISR handler
   }
   INIT_DEBUGF("cu interrupt mask : %s\n",cu_interrupt_mask.string());
@@ -529,8 +534,8 @@ setup()
   // When enabled, MB will read CQ_STATUS_REGISTER(s) to determine new
   // command slots.
   if (cq_status_enabled) {
-    write_reg(ERT_CQ_STATUS_ENABLE_ADDR,1);      // enable feature
-    intc_ier_mask |= 0x1;                    // acccept interrupts on bit 0 of the ier of intc
+    write_reg(ERT_CQ_STATUS_ENABLE_ADDR,1);   // enable feature
+    intc_ier_mask |= 0x1;                     // acccept interrupts on bit 0 of the ier of intc
     enable_master_interrupts = true;
   }
   else {
@@ -688,7 +693,7 @@ start_cu(size_type slot_idx)
  * Called from CU interrupt service routine.  Argument CU is
  * complete, check if command associated with CU is now complete,
  * that is, all its associated CUs must have completed.
- * 
+ *
  * @param slot_idx
  *  Index of command slot that is associated with the CU
  * @param cu_idx
@@ -705,7 +710,7 @@ check_command(size_type slot_idx, size_type cu_idx)
     notify_host(slot_idx);
     slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
     ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
-    
+
 #ifdef DEBUG_SLOT_STATE
     write_reg(slot.slot_addr,slot.header_value);
 #endif
@@ -741,14 +746,14 @@ check_cu(size_type cu_idx, bool wait=false)
   // check if done
   do {
     // done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-    // but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110 
+    // but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
     // checking for 0x10 is sufficient.
     if (read_reg(cu_addr) & 2) {
       // toogle cu status bit, it is now free
       cu_status.toggle(cu_idx);
       cu_slot_usage[cu_idx] = no_index; // reset slot index
       return true;
-    } 
+    }
   } while (wait);
 
   return false;
@@ -765,7 +770,7 @@ check_cu(size_type cu_idx, bool wait=false)
  *     to be in a slot at default slot offset (4K), most likely slot 0.
  *  2. During regular scheduler loop, in which case the CONFIGURE_MB
  *     packet is at an arbitrary slot location.   In this scenario, the
- *     function may return (false) without processing the command if 
+ *     function may return (false) without processing the command if
  *     other commands are currently executing; this is to avoid hardware
  *     lockup.
  *
@@ -794,6 +799,7 @@ configure_mb(size_type slot_idx)
   cu_dma_enabled = (features & 0x4)!=0;
   cu_interrupt_enabled = (features & 0x8)!=0;
   cq_status_enabled = (features & 0x10)!=0;
+  cdma_enabled = (features & 0x20)!=0;
   cu_dma_52 = (features & 0x80000000)!=0;
 
   // CU base address
@@ -837,7 +843,7 @@ abort_mb(size_type slot_idx)
   auto& s = command_slots[sidx];
   if (opcode(s.header_value)!=ERT_START_KERNEL)
     return true; // bail if not a start_kernel command
-  if ((s.header_value & 0xF)!=0x3) 
+  if ((s.header_value & 0xF)!=0x3)
     return true; // bail if not running
   for (size_type cu_idx=0; cu_idx<num_cus; ++cu_idx) {
     if (s.cus.test(cu_idx)) {
@@ -846,7 +852,7 @@ abort_mb(size_type slot_idx)
       cu_status.toggle(cu_idx);
     }
   }
-  
+
   notify_host(slot_idx);
   return true;
 }
@@ -873,7 +879,7 @@ process_special_command(value_type opcode, size_type slot_idx)
 
 /**
  * Transition slot from free to new if possible
- * 
+ *
  * @return
  *  True if transitioned, false otherwise
  */
@@ -988,7 +994,7 @@ running_to_free(size_type slot_idx)
         return true;
       }
     }
-  }    
+  }
   return false;
 }
 
@@ -1003,7 +1009,7 @@ running_to_free(size_type slot_idx)
  *  3. If status is queued (0x2), then start command on available CU
  *     Status remains queued if no CUs available, or transitions to running (0x3)
  *  4. If status is running (0x4), then check CU status
- *     Status remains running (0x4) if CU is still running, or 
+ *     Status remains running (0x4) if CU is still running, or
  *     transitions to free if CU is done
  */
 ERT_UNUSED // don't warn when unused
@@ -1063,7 +1069,7 @@ cu_interrupt_handler()
   ERT_DEBUG("interrupt_handler\n");
   bitmask_type intc_mask = read_reg(ERT_INTC_IPR_ADDR);
 
-  if (intc_mask & 0x2) { // cu_isr interrupt
+  if (intc_mask & 0x2) { // cuisr interrupt
     for (size_type w=0,offset=0; w<num_cu_masks; ++w,offset+=32) {
       auto cu_mask = read_reg(CU_STATUS_REGISTER_ADDR[w]) & cu_interrupt_mask.get_mask(w);
       for (size_type cu_idx=offset; cu_mask; cu_mask >>= 1, ++cu_idx) {
@@ -1078,7 +1084,7 @@ cu_interrupt_handler()
       }
     }
   }
-  
+
   if (intc_mask & 0x1) { // host interrupt
     for (size_type w=0,offset=0; w<num_slot_masks; ++w,offset+=32) {
       auto slot_mask = read_reg(CQ_STATUS_REGISTER_ADDR[w]);
@@ -1086,8 +1092,21 @@ cu_interrupt_handler()
       // Transition each new command into new state
       for (size_type slot_idx=offset; slot_mask; slot_mask >>= 1, ++slot_idx)
         if (slot_mask & 0x1)
-          free_to_new(slot_idx);    
+          free_to_new(slot_idx);
     }
+  }
+
+  if (intc_mask & 0x4) { // cdma interrupt
+    auto cu_idx = num_cus-1; // cdma is last cu
+    ERT_DEBUGF("cdma cu(%d) interrupts\n",cu_idx);
+    ERT_ASSERT(cu_status.test(cu_idx),"cdma cu wasn't started");
+    check_command(cu_slot_usage[cu_idx],cu_idx);
+    cu_slot_usage[cu_idx] = no_index; // reset slot index;
+    cu_status.toggle(cu_idx); // toggle status of completed cus
+
+    // Reset cdma (1) read status to clear it, (2) reset isr at base + 0xC
+    ERT_UNUSED volatile auto val = read_reg(cu_idx_to_addr(cu_idx));
+    write_reg(cu_idx_to_addr(cu_idx) + 0xC,1);
   }
 
   // Acknowledge interrupts

@@ -129,7 +129,8 @@ struct ert_start_kernel_cmd {
  * @cu_dma:1         enable CUDMA custom module for HW scheduler
  * @cu_isr:1         enable CUISR custom module for HW scheduler
  * @cq_int:1         enable interrupt from host to HW scheduler
- * @unused:26
+ * @cdma:1           enable CDMA kernel
+ * @unused:25
  * @dsa52:1          reserved for internal use
  *
  * @data:            addresses of @num_cus CUs
@@ -158,7 +159,8 @@ struct ert_configure_cmd {
   uint32_t cu_dma:1;
   uint32_t cu_isr:1;
   uint32_t cq_int:1;
-  uint32_t unusedf:26;
+  uint32_t cdma:1;
+  uint32_t unusedf:25;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */

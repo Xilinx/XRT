@@ -107,6 +107,35 @@ struct xclDeviceInfo2 {
   unsigned short mNumClocks;
   unsigned short mFanSpeed;
   bool mMigCalib;
+  unsigned long long mXMCVersion;
+  unsigned short m12VPex;
+  unsigned short m12VAux;
+  unsigned long long mPexCurr;
+  unsigned long long mAuxCurr;
+  unsigned short mFanRpm;
+  short mDimmTemp[4];
+  short mSE98Temp[4];
+  unsigned short m3v3Pex;
+  unsigned short m3v3Aux;
+  unsigned short mDDRVppBottom;
+  unsigned short mDDRVppTop;
+  unsigned short mSys5v5;
+  unsigned short m1v2Top;
+  unsigned short m1v8Top;
+  unsigned short m0v85;
+  unsigned short mMgt0v9;
+  unsigned short m12vSW;
+  unsigned short mMgtVtt;
+  unsigned short m1v2Bottom;
+  unsigned long long mDriverVersion;
+  unsigned mPciSlot;
+  bool mIsXPR;
+  unsigned long long mTimeStamp;
+  char mFpga[256];
+  unsigned short mPCIeLinkWidthMax;
+  unsigned short mPCIeLinkSpeedMax;
+  unsigned short mVccIntVol;
+  unsigned short mVccIntCurr;
   // More properties here
 };
 
@@ -213,6 +242,7 @@ struct xclDeviceUsage {
     uint64_t xclbinId[4];
     unsigned dma_channel_cnt;
     unsigned mm_channel_cnt;
+    uint64_t memSize[8];
 };
 
 struct xclBOProperties {
@@ -221,14 +251,6 @@ struct xclBOProperties {
     uint64_t size;
     uint64_t paddr;
     xclBOKind domain; // not implemented
-};
-
-struct xclContextProperties {
-    uuid_t   xclbinId;
-    uint32_t cuBitmap[4];
-    uint32_t flags;
-    bool     exclusive;
-    uint32_t handle;
 };
 
 /**
@@ -369,15 +391,30 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * xclOpenContext() - Create shared/exclusive context on compute units
  *
  * @handle:        Device handle
- * @context:       context properties object populated by caller
+ * @xclbinId:      UUID of the xclbin image running on the device
+ * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * @shared:        Shared access or exclusive access
  * Return:         0 on success or appropriate error number
  *
  * The context is necessary before submitting execution jobs using xclExecBO(). Contexts may be
- * exclusive or shared. Allocation of exclusive contexts on a set of compute units would succeed
- * only if another client has not already setup up a context on those compute units. Shared
+ * exclusive or shared. Allocation of exclusive contexts on a compute unit would succeed
+ * only if another client has not already setup up a context on that compute unit. Shared
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
-XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xclContextProperties *context);
+XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex,
+                                       bool shared);
+
+/**
+ * xclCloseContext() - Close previously opened context
+ *
+ * @handle:        Device handle
+ * @xclbinId:      UUID of the xclbin image running on the device
+ * @ipIndex:       IP/CU index in the IP LAYOUT array
+ * Return:         0 on success or appropriate error number
+ *
+ * Close a previously allocated shared/exclusive context for a compute unit.
+ */
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex);
 
 /*
  * Update the device BPI PROM with new image
@@ -435,7 +472,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  * Return:         BO handle
  */
 XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
-       	xclBOKind domain, uint64_t flags);
+       	xclBOKind domain, unsigned flags);
 
 /**
  * xclAllocUserPtrBO() - Allocate a BO using userptr provided by the user
@@ -447,7 +484,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
  * Return:         BO handle
  */
 XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle,
-	void *userptr, size_t size, uint64_t flags);
+	void *userptr, size_t size, unsigned flags);
 
 /**
  * xclFreeBO() - Free a previously allocated BO
@@ -927,16 +964,13 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  */
 
 struct xclQueueContext {
-	uint32_t	type;		/* stream or packet Queue, read or write Queue*/
-	uint32_t	state;		/* initialized, running */
-
-	uint64_t	rid;		/* rid potentially specified in xclbin */
-
-	uint32_t	qsize;	/* number of descriptors */
-
-	uint32_t	desc_size;	/* this might imply max inline msg size */
-
-	uint64_t	flags;		/* isr en, wb en, etc */
+    uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
+    uint32_t	state;	   /* initialized, running */
+    uint64_t	route;	   /* route id from xclbin */
+    uint64_t	flow;	   /* flow id from xclbin */
+    uint32_t	qsize;	   /* number of descriptors */
+    uint32_t	desc_size; /* this might imply max inline msg size */
+    uint64_t	flags;	   /* isr en, wb en, etc */
 };
 
 /**
@@ -1013,27 +1047,44 @@ XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
 /**
  * struct xclWRBuffer
- *
  */
 struct xclWRBuffer {
-	uint64_t	va;	 // could be pointer or offset
-	uint64_t	len;
-	uint64_t	buf_hdl; // could be NULL when va is buffer pointer
+    union {
+	char*    buf;    // ptr or,
+	uint64_t va;	 // offset
+    };
+    uint64_t  len;
+    uint64_t  buf_hdl;   // NULL when first field is buffer pointer
+};
+
+/**
+ * enum xclQueueRequestKind - request type.
+ */
+enum xclQueueRequestKind {
+    XCL_QUEUE_WRITE = 0,
+    XCL_QUEUE_READ  = 1,
+    //More, in-line etc.
+};
+
+/**
+ * enum xclQueueRequestFlag - flags associated with the request.
+ */
+enum xclQueueRequestFlag {
+    XCL_QUEUE_DEFAULT,
+    XCL_QUEUE_BLOCKING,
+    XCL_QUEUE_PARTIAL
 };
 
 /**
  * struct xclQueueRequest - read and write request
  */
 struct xclQueueRequest {
-	uint32_t	op_code;//Write, Read, Write in-line, etc.
-
-	struct xclWRBuffer	*bufs;
-        uint32_t		buf_num;
-
-	void		*cdh;
-	uint32_t	cdh_len;
-
-	uint64_t	flag; //blocking, partial, etc.
+    xclQueueRequestKind op_code;
+    xclWRBuffer*        bufs;
+    uint32_t	        buf_num;
+    char*               cdh;
+    uint32_t	        cdh_len;
+    xclQueueRequestFlag flag;
 };
 
 /**

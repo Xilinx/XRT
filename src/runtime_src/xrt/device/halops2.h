@@ -55,8 +55,8 @@ private:
   //typedef void (* freeDeviceBufferType)(xclDeviceHandle handle, unsigned int boHandle);
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, xclBOKind domain, uint64_t flags);
-  typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, uint64_t flags);
+  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags);
+  typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned flags);
 
   typedef unsigned int (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned flags);
   typedef unsigned int (*exportBOFuncType)(xclDeviceHandle handle, unsigned int boHandle);
@@ -111,6 +111,16 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
+//Streaming 
+  typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*createReadQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
+  typedef int     (*destroyQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl);
+  typedef void*   (*allocQDMABufFuncType)(xclDeviceHandle handle,size_t size, uint64_t *buf_hdl);
+  typedef int     (*freeQDMABufFuncType)(xclDeviceHandle handle,uint64_t buf_hdl);
+  typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
+  typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
+//End Streaming
+//
 #if 0
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
@@ -160,6 +170,7 @@ public:
   lockDeviceFuncType mLockDevice;
   unlockDeviceFuncType mUnlockDevice;
   getDeviceInfoFuncType mGetDeviceInfo;
+
   getDeviceTimeFuncType mGetDeviceTime;
   getDeviceClockFuncType mGetDeviceClock;
   getDeviceMaxReadFuncType mGetDeviceMaxRead;
@@ -177,6 +188,15 @@ public:
   readTraceFuncType mReadTrace;
   writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
+//Streaming
+  createWriteQueueFuncType mCreateWriteQueue;
+  createReadQueueFuncType mCreateReadQueue;
+  destroyQueueFuncType mDestroyQueue;
+  allocQDMABufFuncType mAllocQDMABuf;
+  freeQDMABufFuncType mFreeQDMABuf;
+  writeQueueFuncType mWriteQueue;
+  readQueueFuncType mReadQueue;
+//End Streaming
 
 #if 0
   /* TBD */

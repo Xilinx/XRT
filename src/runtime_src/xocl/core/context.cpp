@@ -40,11 +40,16 @@ context(const cl_context_properties* properties
 }
 
 context::
-~context() 
+~context()
 {
   XOCL_DEBUG(std::cout,"xocl::context::~context(",m_uid,")\n");
-  for (auto device : m_devices)
-    device->unlock();
+  try {
+    for (auto device : m_devices)
+      device->unlock();
+  }
+  catch (const std::exception& ex) {
+    XOCL_PRINTF("Unexpected exception in context dtor '%s'\n",ex.what());
+  }
 }
 
 platform*
@@ -55,5 +60,3 @@ get_platform() const
 }
 
 } // xocl
-
-

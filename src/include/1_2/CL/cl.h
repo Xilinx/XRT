@@ -91,13 +91,6 @@ typedef cl_uint             cl_command_type;
 typedef cl_uint             cl_profiling_info;
 typedef cl_uint             cl_pipe_attributes;
 
-typedef struct _cl_image_filler_xilinx {
-    cl_uint                 t0;
-    cl_uint                 t1;
-    cl_uint                 t2;
-    cl_uint                 t3;
-} cl_image_fillier_xilinx;
-
 typedef struct _cl_image_format {
     cl_channel_order        image_channel_order;
     cl_channel_type         image_channel_data_type;
@@ -431,7 +424,6 @@ typedef struct _cl_buffer_region {
 #define CL_MEM_CONTEXT                              0x1106
 #define CL_MEM_ASSOCIATED_MEMOBJECT                 0x1107
 #define CL_MEM_OFFSET                               0x1108
-#define CL_MEM_BANK                                 0x1109 /*xlnx specific, bank*/
 
 /* cl_image_info */
 #define CL_IMAGE_FORMAT                             0x1110

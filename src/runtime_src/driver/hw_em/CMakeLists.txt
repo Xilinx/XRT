@@ -17,16 +17,19 @@ file(GLOB EM_SRC_FILES
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
-add_library(hw_em_objects OBJECT ${EM_SRC_FILES})
+add_library(hw_emu_objects OBJECT ${EM_SRC_FILES})
 
 set(CURR_SOURCE "")
-add_library(hw_em SHARED ${CURR_SOURCE}
-  $<TARGET_OBJECTS:hw_em_objects>
+add_library(xrt_hwemu SHARED ${CURR_SOURCE}
+  $<TARGET_OBJECTS:hw_emu_objects>
   )
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
-target_link_libraries(hw_em
+set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_VERSION_MAJOR})
+
+target_link_libraries(xrt_hwemu
   ${BOOST_FILESYSTEM_LIBRARY}
   ${BOOST_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
@@ -34,5 +37,4 @@ target_link_libraries(hw_em
   rt
   )
 
-install (TARGETS hw_em LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
-
+install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)

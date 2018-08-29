@@ -1,0 +1,14 @@
+args: -d acc
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g
+flows: [all]
+hdrs: [oclHelper.h]
+name: 005_bringup2
+owner: sonals
+srcs: [main.cpp, oclErrorCodes.cpp, oclHelper.cpp]
+xclbins:
+- cus: []
+user:
+- hwtest_export_level: 2

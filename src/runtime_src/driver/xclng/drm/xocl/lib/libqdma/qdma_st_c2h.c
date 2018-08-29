@@ -538,8 +538,10 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget)
 	pidx_wrb = wb->pidx;
 
 	pend = ring_idx_delta(pidx_wrb, cidx_wrb, rngsz_wrb);
-	if (!pend)
+	if (!pend) {
+		qdma_notify_cancel(descq);
 		return 0;
+	}
 
 #if 0
 	print_hex_dump(KERN_INFO, "cmpl status: ", DUMP_PREFIX_OFFSET,

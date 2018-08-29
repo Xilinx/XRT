@@ -105,10 +105,7 @@ BPI_Flasher::~BPI_Flasher()
 /*
  * xclUpgradeFirmware
  */
-int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
-//    if (mLogStream.is_open()) {
-//        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << mcsFile << std::endl;
-//    }
+int BPI_Flasher::xclUpgradeFirmware(std::istream& mcsStream) {
     std::cout << "INFO: Reseting hardware\n";
     if (freezeAXIGate() != 0) {
         return -ENXIO;
@@ -130,17 +127,10 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
 #endif
 
     std::string line;
-    std::ifstream mcsStream(mcsFile);
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
 
-    if(!mcsStream.is_open()) {
-        std::cout << "ERROR: Cannot open " << mcsFile << ". Check that it exists and is readable." << std::endl;
-        return -ENOENT;
-    }
-
-    std::cout << "INFO: Parsing file " << mcsFile << std::endl;
     while (!mcsStream.eof() && !endRecordFound) {
         std::string line;
         std::getline(mcsStream, line);
@@ -402,7 +392,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
 /*
  * program_microblaze
  */
-int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& record) {
+int BPI_Flasher::program_microblaze(std::istream& mcsStream, const ELARecord& record) {
     int status = 0;
 //    if (mLogStream.is_open()) {
 //        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -415,7 +405,7 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
 
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
     assert(mcsStream.tellg() < record.mDataPos);
-    mcsStream.seekg(record.mDataPos, std::ifstream::beg);
+    mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char buffer[64];
     int bufferIndex = 0;
     for (unsigned index = record.mDataCount; index > 0;) {
@@ -499,7 +489,7 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
 /*
  * program
  */
-int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
+int BPI_Flasher::program(std::istream& mcsStream, const ELARecord& record) {
 //    if (mLogStream.is_open()) {
 //        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 //    }
@@ -511,7 +501,7 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
 
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
     assert(mcsStream.tellg() < record.mDataPos);
-    mcsStream.seekg(record.mDataPos, std::ifstream::beg);
+    mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char buffer[64];
     int bufferIndex = 0;
     for (unsigned index = record.mDataCount; index > 0;) {
@@ -584,7 +574,7 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
  *
  * return 0 on success, < 0 on error
  */
-int BPI_Flasher::program(std::ifstream& mcsStream) {
+int BPI_Flasher::program(std::istream& mcsStream) {
     int status = 0;
     int rxthresh = 256;
     bool use_mailbox = 0;
