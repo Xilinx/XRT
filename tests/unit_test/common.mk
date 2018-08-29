@@ -96,7 +96,7 @@ xclbin : $(CL_XCLBIN)
 exe : $(ODIR)/$(EXENAME)
 
 $(ODIR)/$(EXENAME): $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -lxilinxopencl -lxrt_core -ldl -pthread
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -lxilinxopencl  -ldl -pthread
 
 endif
 
