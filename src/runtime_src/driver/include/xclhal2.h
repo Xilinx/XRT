@@ -966,7 +966,8 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
     uint32_t	state;	   /* initialized, running */
-    uint64_t	rid;	   /* rid potentially specified in xclbin */
+    uint64_t	route;	   /* route id from xclbin */
+    uint64_t	flow;	   /* flow id from xclbin */
     uint32_t	qsize;	   /* number of descriptors */
     uint32_t	desc_size; /* this might imply max inline msg size */
     uint64_t	flags;	   /* isr en, wb en, etc */

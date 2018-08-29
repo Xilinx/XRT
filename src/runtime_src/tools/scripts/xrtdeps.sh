@@ -35,6 +35,7 @@ done
 RH_LIST=(\
      boost-devel \
      boost-filesystem \
+     boost-program-options \
      boost-static \
      cmake \
      compat-libtiff3 \
@@ -49,6 +50,7 @@ RH_LIST=(\
      glibc-static \
      gnuplot \
      gnutls-devel \
+     gtest-devel \
      kernel-devel \
      kernel-headers \
 #     kernel-headers-$(uname -r) \
@@ -58,6 +60,8 @@ RH_LIST=(\
      libstdc++-static \
      libtiff-devel \
      libuuid-devel \
+     libxml2-devel \
+     libyaml-devel \
      lm_sensors \
      make \
      ncurses-devel \
@@ -91,13 +95,17 @@ UB_LIST=(\
      gnuplot \
      libboost-dev \
      libboost-filesystem-dev \
+     libboost-program-options-dev \
      libdrm-dev \
      libjpeg-dev \
+     libgtest-dev \
      libncurses5-dev \
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
      libtiff5-dev \
+     libxml2-dev \
+     libyaml-dev \
      linux-headers-$(uname -r) \
      linux-libc-dev \
      lm-sensors \

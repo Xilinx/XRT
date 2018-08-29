@@ -1026,6 +1026,12 @@ public:
     return m_clk;
   }
 
+  const mem_topology* 
+  get_mem_topology() const 
+  {
+    return m_mem;
+  }
+
   xocl::xclbin::memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
   {
@@ -1217,6 +1223,10 @@ struct xclbin::impl
   get_clk_freq_topology() const
   { return m_sections.get_clk_freq_topology(); }
 
+  const mem_topology*
+  get_mem_topology() const
+  { return m_sections.get_mem_topology(); }
+
   memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
   { return m_sections.cu_address_to_memidx(cuaddr,arg); }
@@ -1389,6 +1399,13 @@ xclbin::
 get_clk_freq_topology() const
 {
   return m_impl->get_clk_freq_topology();
+}
+
+const mem_topology*
+xclbin::
+get_mem_topology() const
+{
+  return m_impl->get_mem_topology();
 }
 
 size_t

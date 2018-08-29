@@ -438,15 +438,15 @@ public:
 
 //Streaming APIs
   int 
-  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
   { 
-    return m_hal->createWriteStream(flags, attr, stream);
+    return m_hal->createWriteStream(flags, attr, route, flow, stream);
   }
 
   int 
-  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream)
+  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
   {
-    return m_hal->createReadStream(flags, attr, stream);
+    return m_hal->createReadStream(flags, attr, route, flow, stream);
   };
 
   int 

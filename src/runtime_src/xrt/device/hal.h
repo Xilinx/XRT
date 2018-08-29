@@ -281,13 +281,11 @@ public:
 //#endif
 
 public:
-  //TODO : Add documentation. 
-  //TODO: Merge the below 2 into 1 ? HAL has 2 functions too.
   virtual int 
-  createWriteStream(StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream) = 0;
+  createWriteStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
 
   virtual int 
-  createReadStream(StreamFlags flags, hal::StreamAttributes attr, hal::StreamHandle *stream) = 0;
+  createReadStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
 
   virtual int 
   closeStream(hal::StreamHandle stream) = 0;

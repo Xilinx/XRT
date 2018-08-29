@@ -16,6 +16,7 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
+
 #define NUM_POINTS 768
 
 //__kernel __attribute__ ((reqd_work_group_size(NUM_POINTS, 1, 1)))
