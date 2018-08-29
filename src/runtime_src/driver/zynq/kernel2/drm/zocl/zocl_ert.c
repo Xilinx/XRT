@@ -17,11 +17,11 @@
 #include "zocl_util.h"
 
 #define ert_err(pdev, fmt, args...)  \
-	zocl_err(&pdev->dev, fmt"\n", ##arg)
+	zocl_err(&pdev->dev, fmt"\n", ##args)
 #define ert_info(pdev, fmt, args...)  \
-	zocl_info(&pdev->dev, fmt"\n", ##arg)
+	zocl_info(&pdev->dev, fmt"\n", ##args)
 #define ert_dbg(pdev, fmt, args...)  \
-	zocl_dbg(&pdev->dev, fmt"\n", ##arg)
+	zocl_dbg(&pdev->dev, fmt"\n", ##args)
 
 int
 zocl_ert_irq_handler_register(struct platform_device *pdev, unsigned int irq,
@@ -46,7 +46,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	void __iomem *map;
 
 	id = of_match_node(zocl_ert_of_match, pdev->dev.of_node);
-	ert_info(&pdev->dev, "Probing for %s\n", id->compatible);
+	ert_info(pdev, "Probing for %s\n", id->compatible);
 
 	ert = devm_kzalloc(&pdev->dev, sizeof(*ert), GFP_KERNEL);
 	ert->pdev = pdev;
@@ -85,7 +85,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 
 static int zocl_ert_remove(struct platform_device *pdev)
 {
-	ert_dbg(&pdev->dev, "Release resource\n");
+	ert_dbg(pdev, "Release resource\n");
 	return 0;
 }
 
