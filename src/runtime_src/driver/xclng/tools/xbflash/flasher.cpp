@@ -30,61 +30,25 @@
 #include <cstring>
 #include <vector>
 #include <sstream>
+#include <iomanip>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
+#define MFG_REV_OFFSET  0x131008
 
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index, std::string flasherType) : 
-  mIdx(index)
+Flasher::Flasher(unsigned int index) :
+  mIdx(index), mIsValid(false), mMgmtMap(nullptr), mFd(-1)
 {
-    mMgmtMap = nullptr;
-    mXspi = nullptr;
-    mBpi  = nullptr;
-    mFd = 0;
-    mIsValid = false;
-    mType = E_FlasherType::UNSET;
-    memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
-
     if( mapDevice( mIdx ) < 0 )
     {
         std::cout << "ERROR: Failed to map pcie device." << std::endl;
-        return;
     }
-
-    if( flasherType.size() == 0) {
-        flasherType = std::string(mDev.flash_type);
-    }
-
-    if (flasherType.size() == 0) {
-        // not specified in both command line or device profile
-        getProgrammingTypeFromDeviceName( mFRHeader.VBNVName, mType );
-    } else if( std::string( flasherType ).compare( "spi" ) == 0 ) {
-        mType = Flasher::E_FlasherType::SPI;
-    } else if( std::string( flasherType ).compare( "bpi" ) == 0 ) {
-        mType = Flasher::E_FlasherType::BPI;
-    } else {
-        // user input invalid flash type string
-        std::cout << "Invalid programming mode '" << flasherType
-                  << "', must be either 'spi' or 'bpi'." << std::endl;
-        return;
-    }
-
-    switch( mType )
+    else
     {
-    case SPI:
-        mXspi = new XSPI_Flasher( mIdx, mMgmtMap );
         mIsValid = true;
-        break;
-    case BPI:
-        mBpi = new BPI_Flasher( mIdx, mMgmtMap );
-        mIsValid = true;
-        break;
-    default:
-        std::cout << " Unknown flash type " << std::endl;
-        return;
     }
 }
 
@@ -93,53 +57,82 @@ Flasher::Flasher(unsigned int index, std::string flasherType) :
  */
 Flasher::~Flasher()
 {
-    delete mXspi;
-    mXspi = nullptr;
-
-    delete mBpi;
-    mBpi = nullptr;
-
     if( mMgmtMap != nullptr )
     {
         munmap( mMgmtMap, mSb.st_size );
     }
 
-    if( mFd > 0 )
+    if( mFd >= 0 )
     {
         close( mFd );
     }
 }
 
+Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
+{
+    E_FlasherType type = E_FlasherType::UNKNOWN;
+
+    if (typeStr.empty())
+        typeStr = mDev.flash_type;
+
+    if (typeStr.empty())
+    {
+        getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+    }
+    else if (typeStr.compare("spi") == 0)
+    {
+        type = E_FlasherType::SPI;
+    }
+    else if (typeStr.compare("bpi") == 0)
+    {
+        type = E_FlasherType::BPI;
+    }
+    else
+    {
+        std::cout << "Unknown flash type: " << typeStr << std::endl;
+    }
+
+    return type;
+}
+
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(firmwareImage *primary, firmwareImage *secondary)
+int Flasher::upgradeFirmware(const std::string& flasherType,
+    firmwareImage *primary, firmwareImage *secondary)
 {
     int retVal = -EINVAL;
-    switch( mType )
+    E_FlasherType type = getFlashType(flasherType);
+
+    switch(type)
     {
     case SPI:
+    {
+        XSPI_Flasher xspi(mIdx, mMgmtMap);
         if(secondary == nullptr)
         {
-            retVal = mXspi->xclUpgradeFirmwareXSpi(*primary);
+            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
-            retVal = mXspi->xclUpgradeFirmware2(*primary, *secondary);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
         }
         break;
+    }
     case BPI:
+    {
+        BPI_Flasher bpi(mIdx, mMgmtMap);
         if(secondary != nullptr)
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
         }
         else
         {
-            retVal = mBpi->xclUpgradeFirmware(*primary);
+            retVal = bpi.xclUpgradeFirmware(*primary);
         }
         break;
+    }
     default:
-        std::cout << "ERROR: Invalid programming type." << std::endl;
         break;
     }
     return retVal;
@@ -147,41 +140,68 @@ int Flasher::upgradeFirmware(firmwareImage *primary, firmwareImage *secondary)
 
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
-    MSP432_Flasher flasher(mIdx, mMgmtMap);
+    XMC_Flasher flasher(mIdx, mMgmtMap);
+    const std::string e = flasher.probingErrMsg();
+
+    if (!e.empty())
+    {
+        std::cout << "ERROR: " << e << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     return flasher.xclUpgradeFirmware(*bmc);
 }
 
-void Flasher::parseMspPacket(uint32_t *msp_packet)
+std::string charVec2String(std::vector<char>& v)
 {
-    if(msp_packet==nullptr)
-        return;
-    int len = (msp_packet[0] & 0xfff);
-    len += sizeof(uint32_t);
-    int i=4;
-    char *byte = reinterpret_cast<char *>(msp_packet);
-    std::vector<std::string> key_val_pairs;
+    std::stringstream ss;
 
-    while(i<len){
-       std::stringstream ss;
-       ss << std::to_string(byte[i]) << ":";
-       for(int j=1;j<=(uint8_t)byte[i+1];++j){
-           ss << byte[i+1+j];
-       }
-       key_val_pairs.push_back(ss.str());
-       i+=byte[i+1];
-       i+=2;
+    for (unsigned i = 0; i < v.size(); i++)
+    {
+        ss << v[i];
     }
+    return ss.str();
 }
 
-int Flasher::GetBoardInfo()
+std::string charVec2MacString(std::vector<char>& v)
 {
-    MSP432_Flasher flasher(mIdx, mMgmtMap);
-    uint32_t *msp_packet = new uint32_t[4096];
-    int ret = 0;
-    ret = flasher.xclGetBoardInfo(msp_packet);
+    std::stringstream ss;
 
-    parseMspPacket(msp_packet);
-    delete [] msp_packet;
+    ss << std::hex << std::setw(2) << std::setfill('0');
+    ss << 0u + v[0];
+    for (unsigned i = 1; i < v.size(); i++)
+    {
+        ss << ":" << 0u + v[i];
+    }
+    return ss.str();
+}
+
+int Flasher::getBoardInfo(BoardInfo& board)
+{
+    std::map<char, std::vector<char>> info;
+    XMC_Flasher flasher(mIdx, mMgmtMap);
+
+    if (!flasher.probingErrMsg().empty())
+    {
+        return -EOPNOTSUPP;
+    }
+
+    int ret = flasher.xclGetBoardInfo(info);
+    if (ret != 0)
+        return ret;
+
+    board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
+    board.mFanPresense = info[BDINFO_FAN_PRESENSE][0];
+    board.mMacAddr0 = std::move(charVec2MacString(info[BDINFO_MAC0]));
+    board.mMacAddr1 = std::move(charVec2MacString(info[BDINFO_MAC1]));
+    board.mMacAddr2 = std::move(charVec2MacString(info[BDINFO_MAC2]));
+    board.mMacAddr3 = std::move(charVec2MacString(info[BDINFO_MAC3]));
+    board.mMaxPowerLvl = info[BDINFO_MAX_PWR][0];
+    board.mName = std::move(charVec2String(info[BDINFO_NAME]));
+    board.mRev = std::move(charVec2String(info[BDINFO_REV]));
+    board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));
+
     return ret;
 }
 
@@ -192,6 +212,8 @@ int Flasher::mapDevice(unsigned int devIdx)
 {
     xcldev::pci_device_scanner scanner;
     scanner.scan_without_driver();
+
+    memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
 
     if( devIdx >= scanner.device_list.size() ) {
         std::cout << "ERROR: Invalid device index." << std::endl;
@@ -233,7 +255,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     close( mFd );
 
     unsigned long long feature_rom_base;
-    if (!scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base))
+    if (scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base) == 0)
     {
         pcieBarRead( 0, (unsigned long long)mMgmtMap + feature_rom_base, &mFRHeader, sizeof(struct FeatureRomHeader) );
         // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
@@ -243,6 +265,15 @@ int Flasher::mapDevice(unsigned int devIdx)
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
             return -EINVAL;
         }
+    }
+    else if (mDev.is_mfg)
+    {
+        pcieBarRead( 0, (unsigned long long)mMgmtMap + MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer) );
+    }
+    else
+    {
+        std::cout << "ERROR: Device not supported." << std::endl;
+        return -EINVAL;
     }
 
     return 0;
@@ -319,7 +350,6 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     }
     if( !typeFound )
     {
-        std::cout << "ERROR: failed to determine flash type." << std::endl;
         return -EINVAL;
     }
     return 0;
@@ -356,10 +386,30 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
 DSAInfo Flasher::getOnBoardDSA()
 {
-    std::string vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+    std::string vbnv;
+    std::string bmc;
+    uint64_t ts = NULL_TIMESTAMP;
 
-    if (vbnv.empty())
-        std::cout << "No Feature ROM Loaded" << std::endl;
+    if (mDev.is_mfg)
+    {
+        std::stringstream ss;
 
-    return DSAInfo(vbnv, mFRHeader.TimeSinceEpoch);
+        ss << "xilinx_" << mDev.board_name << "_GOLDEN_" << mGoldenVer;
+        vbnv = ss.str();
+    }
+    else if (mFRHeader.VBNVName[0] != '\0')
+    {
+        vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+        ts = mFRHeader.TimeSinceEpoch;
+    }
+    else
+    {
+        std::cout << "ERROR: No Feature ROM found" << std::endl;
+    }
+
+    BoardInfo info;
+    if (getBoardInfo(info) == 0)
+        bmc = info.mBMCVer;
+
+    return DSAInfo(vbnv, ts, bmc);
 }
