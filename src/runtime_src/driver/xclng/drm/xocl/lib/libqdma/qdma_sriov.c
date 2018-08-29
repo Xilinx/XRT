@@ -1,26 +1,14 @@
-/*******************************************************************************
+/*
+ * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Xilinx DMA IP Core Linux Driver
- * Copyright(c) 2017 Xilinx, Inc.
+ * Copyright (c) 2017-present,  Xilinx, Inc.
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "LICENSE".
- *
- * Karen Xie <karen.xie@xilinx.com>
- *
- ******************************************************************************/
+ * This source code is licensed under both the BSD-style license (found in the
+ * LICENSE file in the root directory of this source tree) and the GPLv2 (found
+ * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
+ */
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
@@ -34,16 +22,16 @@
 #ifdef __QDMA_VF__
 int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
+	struct mbox_msg *m;
 	int rv;
 
-	memset(&m, 0, sizeof(struct mbox_msg));
-	hdr->op = MBOX_OP_BYE;
+	m = qdma_mbox_msg_alloc(xdev, MBOX_OP_BYE);	
+	if (!m)
+		return -ENOMEM;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 0);
+	rv = qdma_mbox_msg_send(xdev, m, 0, 0, 0);
 	if (rv < 0) {
-		pr_info("%s, send bye failed %d.\n",  xdev->conf.name, rv);
+		pr_info("%s, send bye failed %d.\n", xdev->conf.name, rv);
 		return rv;
 	}
 
@@ -52,14 +40,14 @@ int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)
 
 int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
+	struct mbox_msg *m;
 	int rv;
 
-	memset(&m, 0, sizeof(struct mbox_msg));
-	hdr->op = MBOX_OP_HELLO;
+	m = qdma_mbox_msg_alloc(xdev, MBOX_OP_HELLO);	
+	if (!m)
+		return -ENOMEM;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 0);
+	rv = qdma_mbox_msg_send(xdev, m, 0, 0, 0);
 	if (rv < 0) {
 		pr_info("%s, send hello failed %d.\n",  xdev->conf.name, rv);
 		return rv;
@@ -83,12 +71,12 @@ void xdev_sriov_disable(struct xlnx_dma_dev *xdev)
 
 	pci_disable_sriov(pdev);
 
-	if (xdev->vf_info) 
+	if (xdev->vf_info)
 		kfree(xdev->vf_info);
 	xdev->vf_info = NULL;
 	xdev->vf_count = 0;
 
-	qdma_mbox_timer_stop(xdev);
+	qdma_mbox_stop(xdev);
 }
 
 int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
@@ -128,7 +116,7 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 		return 0;
 	}
 
-	qdma_mbox_timer_start(xdev);
+	qdma_mbox_start(xdev);
 
 	pr_debug("%s: done, req %d, current %d, assigned %d.\n",
 		xdev->conf.name, num_vfs, pci_num_vf(pdev),
