@@ -114,7 +114,7 @@ enum {
 #define	XOCL_ICAP		"icap" SUBDEV_SUFFIX
 #define	XOCL_MIG		"mig" SUBDEV_SUFFIX
 #define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
-
+#define	XOCL_DNA		"dna" SUBDEV_SUFFIX
 enum {
         XOCL_SUBDEV_FEATURE_ROM,
         XOCL_SUBDEV_MM_DMA,
@@ -130,6 +130,7 @@ enum {
 	XOCL_SUBDEV_ICAP,
 	XOCL_SUBDEV_STR_DMA,
 	XOCL_SUBDEV_XMC,
+	XOCL_SUBDEV_DNA,
         XOCL_SUBDEV_NUM
 };
 
@@ -319,6 +320,24 @@ enum {
 		XOCL_XIIC,				\
 		XOCL_RES_XIIC,				\
 		ARRAY_SIZE(XOCL_RES_XIIC),		\
+	}
+
+
+#define	XOCL_RES_DNA					\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x1100000,		\
+			.end	= 0x1100FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_DNA				\
+	{						\
+		XOCL_SUBDEV_DNA,			\
+		XOCL_DNA,				\
+		XOCL_RES_DNA,				\
+		ARRAY_SIZE(XOCL_RES_DNA),		\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000
@@ -689,6 +708,7 @@ enum {
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_DNA,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
@@ -774,6 +794,7 @@ enum {
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_DNA,				\
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\

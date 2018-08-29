@@ -314,9 +314,14 @@ static int feature_rom_probe(struct platform_device *pdev)
 	}
 
 	rom->dsa_version = 0;
-	if (strstr(rom->header.VBNVName,"5_1"))
+	if (strstr(rom->header.VBNVName,"5_0"))
+		rom->dsa_version = 50;
+	else if (strstr(rom->header.VBNVName,"5_1")
+		 || strstr(rom->header.VBNVName,"u200_xdma_201820_1"))
 		rom->dsa_version = 51;
-	else if (strstr(rom->header.VBNVName,"5_2"))
+	else if (strstr(rom->header.VBNVName,"5_2")
+		 || strstr(rom->header.VBNVName,"u200_xdma_201820_2")
+		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1"))
 		rom->dsa_version = 52;
 	else if (strstr(rom->header.VBNVName,"5_3"))
 		rom->dsa_version = 53;
@@ -327,7 +332,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD) {
 		rom->mb_mgmt_enabled = true;
 	}
-	if( (rom->header.FeatureBitMap & MB_SCHEDULER) && rom->dsa_version>=51
+	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
+	    && rom->dsa_version>=51
 	    && !strstr(rom->header.VBNVName,"kcu1500")) {
 		rom->mb_sche_enabled = true;
 	}
