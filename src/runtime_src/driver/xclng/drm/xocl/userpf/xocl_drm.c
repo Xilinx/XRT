@@ -347,6 +347,9 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	int			i, ret = 0;
 	u32			ddr_count = 0;
 	u64			ddr_size;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+	struct xocl_mm_wrapper *wrapper;
+#endif
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
@@ -379,7 +382,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 		ddr_size = xocl_get_ddr_channel_size(xdev);
 
 		xdev->mm = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_mm) * ddr_count, GFP_KERNEL);
+			sizeof(struct drm_mm*) * ddr_count, GFP_KERNEL);
 		if (!xdev->mm) {
 			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
 				ddr_count, ddr_size);
@@ -387,7 +390,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 			goto failed;
 		}
 		xdev->mm_usage_stat = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_xocl_mm_stat) * ddr_count,
+			sizeof(struct drm_xocl_mm_stat*) * ddr_count,
 			GFP_KERNEL);
 		if (!xdev->mm_usage_stat) {
 			userpf_err(xdev, "alloc stat failed, ddr %d, sz %lld",
@@ -398,7 +401,24 @@ int xocl_drm_init(struct xocl_dev *xdev)
 
 		for (i = 0; i < ddr_count; i++) {
 			xdev->topology.m_data[i].m_used = 1;
-			drm_mm_init(&xdev->mm[i], segment, ddr_size);
+			xdev->mm[i] = kzalloc(sizeof(struct drm_mm), GFP_KERNEL);
+			if (!xdev->mm[i]) {
+				userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
+					ddr_count, ddr_size);
+				ret = -ENOMEM;
+				goto failed_at_i;
+			}
+			xdev->mm_usage_stat[i] = kzalloc(sizeof(struct drm_xocl_mm_stat), GFP_KERNEL);
+			if (!xdev->mm_usage_stat[i]) {
+				userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
+					ddr_count, ddr_size);
+				ret = -ENOMEM;
+				goto failed_at_i;
+			}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+			hash_add(xdev->mm_range, &wrapper->node, xdev->topology.m_data[i].m_base_address);
+#endif
+			drm_mm_init(xdev->mm[i], segment, ddr_size);
 			segment += ddr_size;
 		}
 	}
@@ -414,13 +434,36 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	atomic_set(&xdev->needs_reset,0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+	hash_init(xdev->mm_range);
+#endif
 	return 0;
+
+failed_at_i:
+	for(;i>=0;i--){
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+		hash_for_each_possible(xdev->mm_range, wrapper, node, xdev->topology.m_data[i].m_base_address){
+			if(wrapper->start_addr == xdev->topology.m_data[i].m_base_address){
+				hash_del(&wrapper->node);
+				kfree(wrapper);
+				drm_mm_takedown(xdev->mm[i]);
+				if(xdev->mm[i])
+					kfree(xdev->mm[i]);
+				if(xdev->mm_usage_stat[i])			
+					kfree(xdev->mm_usage_stat[i]);
+			}
+		}
+#else
+		drm_mm_takedown(xdev->mm[i]);
+		if(xdev->mm[i])
+			kfree(xdev->mm[i]);
+		if(xdev->mm_usage_stat[i])
+			kfree(xdev->mm_usage_stat[i]);
+#endif
+	}
 
 failed:
 	if (xdev->mm) {
-	 	for (i = 0; i < ddr_count; i++) {
-			drm_mm_takedown(&xdev->mm[i]);
-		}
 		devm_kfree(&xdev->core.pdev->dev, xdev->mm);
 	}
 	if (xdev->mm_usage_stat)
@@ -451,25 +494,25 @@ void xocl_drm_fini(struct xocl_dev *xdev)
 void xocl_mm_get_usage_stat(struct xocl_dev *xdev, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
-	if (xdev->mm_usage_stat) {
-		pstat->memory_usage = xdev->mm_usage_stat[ddr].memory_usage;
-		pstat->bo_count = xdev->mm_usage_stat[ddr].bo_count;
+	if (xdev->mm_usage_stat[ddr]) {
+		pstat->memory_usage = xdev->mm_usage_stat[ddr]->memory_usage;
+		pstat->bo_count = xdev->mm_usage_stat[ddr]->bo_count;
 	}
 }
 
 void xocl_mm_update_usage_stat(struct xocl_dev *xdev, u32 ddr,
 	u64 size, int count)
 {
-	BUG_ON(!xdev->mm_usage_stat);
+	BUG_ON(!xdev->mm_usage_stat[ddr]);
 
-	xdev->mm_usage_stat[ddr].memory_usage += (count > 0) ? size : -size;
-	xdev->mm_usage_stat[ddr].bo_count += count;
+	xdev->mm_usage_stat[ddr]->memory_usage += (count > 0) ? size : -size;
+	xdev->mm_usage_stat[ddr]->bo_count += count;
 }
 
 int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
-	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
+	return drm_mm_insert_node_generic(xdev->mm[ddr], node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
@@ -487,7 +530,7 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
         for (i= 0; i < topology->bank_count; i++) {
                 if (topology->m_data[i].m_used) {
-                        if (xdev->mm_usage_stat[i].bo_count !=0 ) {
+                        if (xdev->mm_usage_stat[i]->bo_count !=0 ) {
                                 err = -EPERM;
                                 userpf_err(xdev, "The ddr %d has "
                                         "pre-existing buffer allocations, "
@@ -498,6 +541,31 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
         return err;
 }
+
+uint32_t xocl_mm_range_shared_with_ddr(struct xocl_dev *xdev, struct mem_data *m_data){
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+	struct xocl_mm_wrapper *wrapper;
+	uint64_t start_addr = m_data->m_base_address;
+	uint64_t sz = m_data->m_size*1024;
+
+	hash_for_each_possible(xdev->mm_range, wrapper, node, start_addr){
+
+		if(!wrapper)
+			continue;
+
+		if(wrapper->start_addr == start_addr){
+			if (wrapper->size == sz){
+				return wrapper->ddr;
+			}
+			else{
+				return 0xffffffff;
+			}
+		}
+	}
+#endif
+	return 0xffffffff;
+}
+
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
@@ -511,7 +579,7 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 		if(topology->m_data[i].m_used) {
 			userpf_info(xdev, "Taking down DDR : %d",
 				ddr);
-			drm_mm_takedown(&xdev->mm[i]);
+			drm_mm_takedown(xdev->mm[i]);
 		}
 	}
 
@@ -534,7 +602,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = xdev->topology.topology;
-	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
+	struct drm_xocl_mm_stat **stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!topo || !stat)
@@ -543,8 +611,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	for (i = 0; i < topo->m_count; i++) {
 		if (raw) {
 			count = sprintf(buf, raw_fmt,
-				stat[i].memory_usage,
-				stat[i].bo_count);
+				stat[i]->memory_usage,
+				stat[i]->bo_count);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?
@@ -552,8 +620,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
-				stat[i].memory_usage / 1024,
-				stat[i].bo_count);
+				stat[i]->memory_usage / 1024,
+				stat[i]->bo_count);
 		}
 		buf += count;
 		size += count;
