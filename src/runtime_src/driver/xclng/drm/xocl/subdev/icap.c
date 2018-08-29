@@ -1593,7 +1593,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	if(dna_chk_enable){
 		ICAP_INFO(icap, "Capability %08x", xocl_dna_capability(xdev));
-		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EINVAL;
+		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
 		if (err){
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
 			goto done;
