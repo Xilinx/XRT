@@ -192,11 +192,21 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     if (ret != 0)
         return ret;
 
-    for (int i = 0; i < 40; i++) {
-        int m = BMC_MODE();
-
-        if (m != 0x1)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    // Waiting for BMC to come back online.
+    // It should not take more than 10 sec, but wait for 1 min to be safe.
+    std::cout << "INFO: Loading new firmware on BMC" << std::endl;
+    for (int i = 0; i < 60; i++) {
+        if (BMC_MODE() == 0x1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::cout << "." << std::flush;
+    }
+    std::cout << std::endl;
+    if (BMC_MODE() != 0x1)
+    {
+        std::cout << "ERROR: Time'd out waiting for BMC to come back online"
+            << std::endl;
+        return -ETIMEDOUT;
     }
 
     return 0;

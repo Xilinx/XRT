@@ -180,6 +180,11 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             std::string d(FIRMWARE_DIR);
             std::string e(entry->d_name);
 
+            // Only look for DSA from .dsabin file,
+            // legacy .mcs file is not supported
+            if (e.find(DSABIN_FILE_SUFFIX) == std::string::npos)
+                continue;
+
             DSAInfo dsa(d + e);
             if (!dsa.DSAValid)
                 continue;

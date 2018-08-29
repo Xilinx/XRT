@@ -142,16 +142,15 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
 
     std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
 
-    if (installedDSA.empty())
-    {
-        std::cout << "no DSA installed" << std::endl;
-        return candidateDSAIndex;
-    }
-
     // Find candidate DSA from installed DSA list.
     if (dsa.compare("all") == 0)
     {
-        if (installedDSA.size() > 1)
+        if (installedDSA.empty())
+        {
+            std::cout << "no DSA installed" << std::endl;
+            return candidateDSAIndex;
+        }
+        else if (installedDSA.size() > 1)
         {
             std::cout << "multiple DSA installed" << std::endl;
             return candidateDSAIndex;
@@ -181,7 +180,7 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
 
     if (candidateDSAIndex == UINT_MAX)
     {
-        std::cout << "specified DSA not found" << std::endl;
+        std::cout << "specified DSA not applicable" << std::endl;
         return candidateDSAIndex;
     }
 
