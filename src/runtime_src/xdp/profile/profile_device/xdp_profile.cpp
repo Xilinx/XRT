@@ -810,7 +810,7 @@ namespace XDP {
     // Write out results to timeline trace stream
     //writeTrace(resultVector, deviceName, binaryName, ofs);
     for (auto w : Writers) {
-      w->writeDeviceTrace(resultVector, deviceName, binaryName);
+      w->writeDeviceTrace(this, resultVector, deviceName, binaryName);
     }
     resultVector.clear();
     printf("[logTrace] Done logging device trace samples\n");

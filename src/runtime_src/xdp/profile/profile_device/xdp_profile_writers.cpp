@@ -471,8 +471,8 @@ namespace XDP {
      writeTableRowEnd(getTimelineStream());
    }
 
-   void WriterI::writeDeviceTrace(const TraceResultVector &resultVector, std::string deviceName,
-                   std::string binaryName)
+   void WriterI::writeDeviceTrace(XDPProfile* profile, const TraceResultVector &resultVector,
+                                  std::string deviceName, std::string binaryName)
    {
      if (!Timeline_ofs.is_open())
        return;
@@ -487,7 +487,7 @@ namespace XDP {
 
        //auto rts = XCL::RTSingleton::Instance();
        //double deviceClockDurationUsec = (1.0 / (rts->getProfileManager()->getKernelClockFreqMHz(deviceName)));
-       double deviceClockDurationUsec = (1.0 / mKernelClockFreq);
+       double deviceClockDurationUsec = (1.0 / profile->getKernelClockFreqMHz(deviceName));
 
        std::stringstream startStr;
        startStr << std::setprecision(10) << tr.Start;
@@ -530,10 +530,12 @@ namespace XDP {
          std::string portName;
          std::string cuPortName;
          if (tr.Kind == DeviceTrace::DEVICE_KERNEL && (tr.Type == "Kernel" || tr.Type.find("Stall") != std::string::npos)) {
-        	  cuName = mAccelNames[tr.SlotNum];
+           //cuName = mAccelNames[tr.SlotNum];
+           profile->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
          }
          else {
-        	  cuPortName = mAccelPortNames[tr.SlotNum];
+           //cuPortName = mAccelPortNames[tr.SlotNum];
+           profile->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
            cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
            portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
            std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
@@ -726,7 +728,7 @@ namespace XDP {
   }
 
   // Write footer to timeline trace stream
-    void CSVWriter::writeTimelineFooter(xclDeviceInfo2& deviceInfo, std::ofstream& ofs)
+    void CSVWriter::writeTimelineFooter(std::ofstream& ofs)
     {
       if (!ofs.is_open())
         return;
@@ -739,12 +741,14 @@ namespace XDP {
       //std::string projectName = profile->getProjectName();
       //ofs << "Project," << projectName << ",\n";
 
-      std::string stallProfiling = (mStallTrace == "off") ? "false" : "true";
+      //std::string stallProfiling = (mStallTrace == "off") ? "false" : "true";
+      std::string stallProfiling = "false";
       ofs << "Stall profiling," << stallProfiling << ",\n";
 
       std::string flowMode = "System Run";
       ofs << "Target," << flowMode << ",\n";
 
+#if 0
       // Platform/device info
       ofs << "Platform," << XDP::mDeviceName << ",\n";
 
@@ -765,7 +769,9 @@ namespace XDP {
       for (int b=0; b < ddrBanks; ++b)
         ofs << "Bank," << std::dec << b << ",0X" << std::hex << (b * bankSize) << std::endl;
       ofs << "DDR Banks,end\n";
+
       ofs << "Device," << XDP::mDeviceName << ",end\n";
+#endif
 
       // TODO: Unused CUs
 

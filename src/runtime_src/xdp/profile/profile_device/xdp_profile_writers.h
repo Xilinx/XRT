@@ -97,8 +97,9 @@ namespace XDP {
                  const std::string& dependString, size_t size, uint64_t address,
                  const std::string& bank, std::thread::id threadId);
 
-      void writeDeviceTrace(const TraceResultVector &resultVector, std::string deviceName,
-                                                                   std::string binaryName);
+      void writeDeviceTrace(XDPProfile* profile, const TraceResultVector &resultVector,
+                 std::string deviceName, std::string binaryName);
+
 	public:
       static std::string getCurrentDateTime();
       static std::string getCurrentTimeMsec();
@@ -177,7 +178,7 @@ namespace XDP {
       void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
       void writeTableFooter(std::ofstream& ofs) override { ofs << "\n";};
       void writeDocumentFooter(std::ofstream& ofs) override;
-      void writeTimelineFooter(xclDeviceInfo2 deviceInfo, std::ofstream& ofs);
+      void writeTimelineFooter(std::ofstream& ofs);
 
       // Cell and Row marking tokens
       const char* cellStart() override { return ""; }
