@@ -168,7 +168,6 @@ profile_start(xclDeviceHandle s_handle)
     xclGetProfilingSlotName(s_handle, XCL_PERF_MON_ACCEL, i, name, 128);
     std::string nameStr = name;
     XDP::mProfileMgr->setProfileSlotName(XCL_PERF_MON_ACCEL, XDP::mDeviceName, i, nameStr);
-	XDP::mAccelNames[i] = name;
 
 	// TODO: we don't know the kernel name so just use the CU name
     XDP::mProfileMgr->setProfileKernelName(XDP::mDeviceName, nameStr, nameStr);
@@ -183,7 +182,6 @@ profile_start(xclDeviceHandle s_handle)
     xclGetProfilingSlotName(s_handle, XCL_PERF_MON_MEMORY, i, name, 128);
     std::string nameStr = name;
     XDP::mProfileMgr->setProfileSlotName(XCL_PERF_MON_MEMORY, XDP::mDeviceName, i, nameStr);
-	XDP::mAccelPortNames[i] = name;
   }
 
   uint32_t numHosts = xclGetProfilingNumberSlots(s_handle, XCL_PERF_MON_HOST);
@@ -227,11 +225,6 @@ profile_stop(xclDeviceHandle s_handle)
   // Timeline Trace
   //
   if (XDP::mUseTrace) {
-    //if (!XDP::mTraceStream.is_open()) {
-    //  printf("WARNING: Please run profile_initialize before starting application.");
-    //  return;
-   //}
-
     // Data transfers
     xclTraceResultsVector traceVector = {0};
     xclPerfMonReadTrace(s_handle, XCL_PERF_MON_MEMORY, traceVector);
