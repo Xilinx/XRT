@@ -65,13 +65,14 @@ namespace XDP {
   XDP::XDPProfile* mProfileMgr = nullptr;
 
  // XDP namespace
+}
 
 // *****************************************************************************
 //                        Top-Level Profile Functions
 // *****************************************************************************
 
 void
-profile_initialize(xclDeviceHandle s_handle, bool use_profile, bool use_trace,
+profile_initialize(xclDeviceHandle s_handle, int use_profile, int use_trace,
                    const char* data_transfer_trace, const char* stall_trace)
 {
   printf("profile_initialize: s_handle=%p, use_profile=%d, use_trace=%d, data_transfer_trace=%s, stall_trace=%s\n",
@@ -315,5 +316,4 @@ xclSyncBOWithProfile(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDir
      ,std::this_thread::get_id());
 
   return rc;
-}
 }

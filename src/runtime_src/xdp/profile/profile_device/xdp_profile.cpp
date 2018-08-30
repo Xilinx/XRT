@@ -391,38 +391,7 @@ namespace XDP {
                        size, address, bank, threadId);
     }
   }
-/*
-  void XDPProfile::writeDataTransferTrace(double traceTime, const std::string& commandString,
-            const std::string& stageString, const std::string& eventString,
-            const std::string& dependString, size_t size, uint64_t address,
-            const std::string& bank, std::thread::id threadId,  std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
 
-    std::stringstream timeStr;
-    timeStr << std::setprecision(10) << traceTime;
-
-    // Write out DDR physical address and bank
-    // NOTE: thread ID is only valid for START and END
-    std::stringstream strAddress;
-    strAddress << (boost::format("0X%09x") % address) << "|" << std::dec << bank;
-    //strAddress << std::showbase << std::hex << std::uppercase << address
-    //		   << "|" << std::dec << bank;
-    if (stageString == "START" || stageString == "END")
-      strAddress << "|" << std::showbase << std::hex << std::uppercase << threadId;
-
-    XDP::writeTableRowStart(ofs);
-  #ifndef _WINDOWS
-    // TODO: Windows build support
-    //    Variadic Template is not supported
-    writeTableCells(ofs, timeStr.str(), commandString,
-        stageString, strAddress.str(), size, "", "", "", "", "", "",
-        eventString, dependString);
-  #endif
-    writeTableRowEnd(ofs);
-  }
-*/
   void XDPProfile::logDataTransfer(uint64_t objId, const std::string& commandString,
             const std::string& stageString, const std::string& eventString,
             const std::string& dependString, size_t size, uint64_t address,
@@ -483,65 +452,6 @@ namespace XDP {
                         size, address, bank, threadId);
    }
 
-/*
-  // Write header to timeline trace stream
-  void XDPProfile::writeTraceHeader(std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-
-    ofs << "SDAccel Timeline Trace" << std::endl;
-    ofs << "Generated on: " << WriterI::getCurrentDateTime() << "\n";
-    ofs << "Msec since Epoch: " << WriterI::getCurrentTimeMsec() << "\n";
-    if (!WriterI::getCurrentExecutableName().empty())
-      ofs << "Profiled application: " << WriterI::getCurrentExecutableName() << "\n";
-    ofs << "Target platform: Xilinx" << std::endl;
-    ofs << "Tool version: " << WriterI::getToolVersion() << std::endl;
-    ofs << std::endl;
-    ofs << "Time_msec,Name,Event,Address_Port,Size,Latency_cycles,Start_cycles,End_cycles,Latency_usec,Start_msec,End_msec," << std::endl;
-  }
-
-  // Write footer to timeline trace stream
-  void XDPProfile::writeTraceFooter(xclDeviceInfo2 deviceInfo, std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-
-    ofs << "Footer,begin\n";
-
-    //
-    // Settings (project name, stalls, target, & platform)
-    //
-    //std::string projectName = profile->getProjectName();
-    //ofs << "Project," << projectName << ",\n";
-
-    std::string stallProfiling = (mStallTrace == "off") ? "false" : "true";
-    ofs << "Stall profiling," << stallProfiling << ",\n";
-
-    std::string flowMode = "System Run";
-    ofs << "Target," << flowMode << ",\n";
-
-    // Platform/device info
-    ofs << "Platform," << XDP::mDeviceName << ",\n";
-    ofs << "Device," << XDP::mDeviceName << ",begin\n";
-
-    // DDR Bank addresses
-    // TODO: this assumes start address of 0x0 and evenly divided banks
-    unsigned ddrBanks = deviceInfo.mDDRBankCount;
-    if (ddrBanks == 0) ddrBanks = 1;
-    size_t ddrSize = deviceInfo.mDDRSize;
-    size_t bankSize = ddrSize / ddrBanks;
-    ofs << "DDR Banks,begin\n";
-    for (int b=0; b < ddrBanks; ++b)
-      ofs << "Bank," << std::dec << b << ",0X" << std::hex << (b * bankSize) << std::endl;
-    ofs << "DDR Banks,end\n";
-    ofs << "Device," << XDP::mDeviceName << ",end\n";
-
-    // TODO: Unused CUs
-
-    ofs << "Footer,end\n";
-  }
-*/
   // Complete training to convert device timestamp to host time domain
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
   void XDPProfile::trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type)
@@ -816,124 +726,6 @@ namespace XDP {
     printf("[logTrace] Done logging device trace samples\n");
   }
 
-  /*
-  void XDPProfile::writeTrace(const TraceResultVector &resultVector, std::string deviceName,
-                  std::string binaryName, std::ofstream& ofs)
-  {
-    if (!ofs.is_open())
-      return;
-
-    for (auto it = resultVector.begin(); it != resultVector.end(); it++) {
-      DeviceTrace tr = *it;
-
-#ifndef XDP_VERBOSE
-      if (tr.Kind == DeviceTrace::DEVICE_BUFFER)
-        continue;
-#endif
-
-      //auto rts = XCL::RTSingleton::Instance();
-      //double deviceClockDurationUsec = (1.0 / (rts->getProfileManager()->getKernelClockFreqMHz(deviceName)));
-      double deviceClockDurationUsec = (1.0 / mKernelClockFreq);
-
-      std::stringstream startStr;
-      startStr << std::setprecision(10) << tr.Start;
-      std::stringstream endStr;
-      endStr << std::setprecision(10) << tr.End;
-
-      bool showKernelCUNames = true;
-      bool showPortName = false;
-      uint32_t ddrBank;
-      std::string traceName;
-      std::string cuName;
-      std::string argNames;
-
-      // Populate trace name string
-      if (tr.Kind == DeviceTrace::DEVICE_KERNEL) {
-        if (tr.Type == "Kernel") {
-          traceName = "KERNEL";
-        } else if (tr.Type.find("Stall") != std::string::npos) {
-          traceName = "Kernel_Stall";
-          showPortName = false;
-        } else if (tr.Type == "Write") {
-          showPortName = true;
-          traceName = "Kernel_Write";
-        } else {
-          showPortName = true;
-          traceName = "Kernel_Read";
-        }
-      }
-      else {
-        showKernelCUNames = false;
-        if (tr.Type == "Write")
-          traceName = "Host_Write";
-        else
-          traceName = "Host_Read";
-      }
-
-      traceName += ("|" + deviceName + "|" + binaryName);
-
-      if (showKernelCUNames || showPortName) {
-        std::string portName;
-        std::string cuPortName;
-        if (tr.Kind == DeviceTrace::DEVICE_KERNEL && (tr.Type == "Kernel" || tr.Type.find("Stall") != std::string::npos)) {
-       	  cuName = mAccelNames[tr.SlotNum];
-        }
-        else {
-       	  cuPortName = mAccelPortNames[tr.SlotNum];
-          cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
-          portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
-        }
-        // TODO: get kernel name
-        std::string kernelName = "kernel";
-        //XCL::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
-
-        if (showKernelCUNames)
-          traceName += ("|" + kernelName + "|" + cuName);
-
-        if (showPortName) {
-          // TODO: get arguments and DDR bank
-          argNames = "a|b|c";
-          ddrBank = 0;
-          //rts->getProfileManager()->getArgumentsBank(deviceName, cuName, portName, argNames, ddrBank);
-          traceName += ("|" + portName + "|" + std::to_string(ddrBank));
-        }
-      }
-
-      if (tr.Type == "Kernel") {
-        std::string workGroupSize;
-        // TODO: get trace string (we don't know the CU name or the work group size)
-        traceName = "KERNEL|" + deviceName + "|" + binaryName + "|" + "kernel" + "|1:1:1|" + cuName ;
-        //rts->getProfileManager()->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
-        if (traceName.empty()) continue;
-
-        //size_t pos = traceName.find_last_of("|");
-        //workGroupSize = traceName.substr(pos + 1);
-        //traceName = traceName.substr(0, pos);
-        workGroupSize = "1";
-
-        writeTableRowStart(ofs);
-        writeTableCells(ofs, startStr.str(), traceName, "START", "", workGroupSize);
-        writeTableRowEnd(ofs);
-
-        writeTableRowStart(ofs);
-        writeTableCells(ofs, endStr.str(), traceName, "END", "", workGroupSize);
-        writeTableRowEnd(ofs);
-        continue;
-      }
-
-      double deviceDuration = 1000.0*(tr.End - tr.Start);
-      if (!(deviceDuration > 0.0)) deviceDuration = deviceClockDurationUsec;
-      writeTableRowStart(ofs);
-      writeTableCells(ofs, startStr.str(), traceName,
-          tr.Type, argNames, tr.BurstLength, (tr.EndTime - tr.StartTime),
-          tr.StartTime, tr.EndTime, deviceDuration,
-          startStr.str(), endStr.str());
-      writeTableRowEnd(ofs);
-    }
-  }
-*/
-
   // Get a device timestamp
   double XDPProfile::getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName)
   {
@@ -1154,12 +946,12 @@ namespace XDP {
       }
     }
   }
-
+/*
   void XDPProfile::writeTopKernelSummary(WriterI* writer) const
   {
     PerfCounters.writeTopKernelSummary(writer);
   }
-
+*/
   void XDPProfile::writeTopKernelTransferSummary(WriterI* writer) const
   {
     // Iterate over all devices
