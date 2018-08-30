@@ -24,31 +24,52 @@
 
 #include "xspi.h"
 #include "prom.h"
-#include "msp432.h"
+#include "xmc.h"
 #include "xclfeatures.h"
 #include "firmware_image.h"
 #include "scan.h"
 #include <sys/stat.h>
 #include <vector>
 #include <memory>
+#include <climits>
+
+struct BoardInfo
+{
+    std::string mSerialNum;
+    std::string mRev;
+    std::string mName;
+    std::string mMacAddr0;
+    std::string mMacAddr1;
+    std::string mMacAddr2;
+    std::string mMacAddr3;
+    std::string mBMCVer;
+    unsigned int mMaxPowerLvl;
+    unsigned int mConfigMode;
+    char mFanPresense;
+};
+
+enum BoardInfoKey
+{
+    BDINFO_SN = 0x21,
+    BDINFO_MAC0,
+    BDINFO_MAC1,
+    BDINFO_MAC2,
+    BDINFO_MAC3,
+    BDINFO_REV,
+    BDINFO_NAME,
+    BDINFO_BMC_VER,
+    BDINFO_MAX_PWR,
+    BDINFO_FAN_PRESENSE,
+    BDINFO_CONFIG_MODE
+};
 
 class Flasher
 {
 public:
-    enum E_FlasherType {
-        UNSET,
-        SPI,
-        BPI,
-    };
-    const char *E_FlasherTypeStrings[3] = { "UNSET", "SPI", "BPI" };
-    const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
-
-    Flasher(unsigned int index, std::string flasherType="");
+    Flasher(unsigned int index);
     ~Flasher();
-    int upgradeFirmware(firmwareImage* primary, firmwareImage* secondary);
+    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
-    int GetBoardInfo();
-    void parseMspPacket(uint32_t *msp_packet);
     bool isValid( void ) { return mIsValid; }
 
     static void* wordcopy(void *dst, const void* src, size_t bytes);
@@ -58,15 +79,20 @@ public:
     static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
 
     std::string sGetDBDF() { return mDBDF; }
-    std::string sGetFlashType() { return std::string( getFlasherTypeText( mType ) ); }
+    std::string sGetFlashType() { return std::string( getFlasherTypeText( getFlashType() ) ); }
     DSAInfo getOnBoardDSA();
     std::vector<DSAInfo> getInstalledDSA();
+    int getBoardInfo(BoardInfo& board);
 
 private:
-    E_FlasherType mType;
+    enum E_FlasherType {
+        UNKNOWN,
+        SPI,
+        BPI,
+    };
+    const char *E_FlasherTypeStrings[3] = { "UNKNOWN", "SPI", "BPI" };
+    const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     unsigned int mIdx;
-    XSPI_Flasher *mXspi;
-    BPI_Flasher  *mBpi;
     bool mIsValid;
     xcldev::pci_device_scanner::device_info mDev;
 
@@ -78,6 +104,7 @@ private:
     int mFd;
     struct stat mSb;
     std::string mDBDF;
+    unsigned int mGoldenVer = UINT_MAX;
 
     const std::vector<std::pair<std::string, E_FlasherType>> flashPairs = {
         std::make_pair( "7v3", BPI ),
@@ -90,10 +117,10 @@ private:
         std::make_pair( "vcu1526",   SPI ),
         std::make_pair( "vcu1550",   SPI ),
         std::make_pair( "vcu1551",   SPI ),
-        std::make_pair( "vega-4000", SPI ),
-        std::make_pair( "u200",    SPI ),
-        std::make_pair( "u250",    SPI )
+        std::make_pair( "vega-4000", SPI )
+        // No more flash type added here. Add them in devices.h please.
     };
+    E_FlasherType getFlashType(std::string typeStr = "");
 };
 
 #endif // FLASHER_H

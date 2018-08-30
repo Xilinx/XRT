@@ -57,9 +57,13 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-DSAInfo::DSAInfo(const std::string& filename, uint64_t ts) :
-    DSAValid(false), vendor(), board(), name(), file(filename), timestamp(ts)
+DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bmc) :
+    DSAValid(false), vendor(), board(), name(), file(filename),
+    timestamp(ts), bmcVer(bmc)
 {
+    if (filename.empty())
+        return;
+
     size_t dotpos = filename.rfind(".");
     size_t slashpos = filename.rfind("/");
 
@@ -128,10 +132,27 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts) :
         getVendorBoardFromDSAName(name, vendor, board);
         timestamp = ap->m_header.m_featureRomTimeStamp;
         DSAValid = (xclbin::get_axlf_section(ap, MCS) != nullptr);
+
+        // Find out BMC version
+        // Obtain BMC section header.
+        const axlf_section_header* bmcSection = xclbin::get_axlf_section(ap, BMC);
+        if (bmcSection == nullptr)
+            return;
+        // Load entire BMC section.
+        std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+        in.seekg(bmcSection->m_sectionOffset);
+        in.read(bmcbuf.get(), bmcSection->m_sectionSize);
+        if (!in.good())
+        {
+            std::cout << "Can't read BMC section from "<< filename << std::endl;
+            return;
+        }
+        const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
+        bmcVer = std::move(std::string(bmc->m_version));
     }
 }
 
-DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP)
+DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP, "")
 {
 }
 
@@ -159,6 +180,11 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             std::string d(FIRMWARE_DIR);
             std::string e(entry->d_name);
 
+            // Only look for DSA from .dsabin file,
+            // legacy .mcs file is not supported
+            if (e.find(DSABIN_FILE_SUFFIX) == std::string::npos)
+                continue;
+
             DSAInfo dsa(d + e);
             if (!dsa.DSAValid)
                 continue;
@@ -174,8 +200,14 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
-        stream << ", [0x" << std::hex << std::setw(16) << std::setfill('0')
-        << dsa.timestamp << "]";
+    {
+        stream << ",[TS=0x" << std::hex << std::setw(16) << std::setfill('0')
+            << dsa.timestamp << "]";
+    }
+    if (!dsa.bmcVer.empty())
+    {
+        stream << ",[BMC=" << dsa.bmcVer << "]";
+    }
     return stream;
 }
 
@@ -218,14 +250,37 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             return;
         }
 
+        const axlf *ap = reinterpret_cast<const axlf *>(top.get());
         if (type == BMC_FIRMWARE)
         {
-            // TODO
+            // Obtain BMC section header.
+            const axlf_section_header* bmcSection = xclbin::get_axlf_section(ap, BMC);
+            if (bmcSection == nullptr)
+            {
+                this->setstate(failbit);
+                std::cout << "Can't find BMC section in "<< file << std::endl;
+                return;
+            }
+            // Load entire BMC section.
+            std::shared_ptr<char> bmcbuf(new char[bmcSection->m_sectionSize]);
+            in.seekg(bmcSection->m_sectionOffset);
+            in.read(bmcbuf.get(), bmcSection->m_sectionSize);
+            if (!in.good())
+            {
+                this->setstate(failbit);
+                std::cout << "Can't read BMC section from "<< file << std::endl;
+                return;
+            }
+            const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
+            // Load data into stream.
+            bufsize = bmc->m_size;
+            mBuf = new char[bufsize];
+            in.seekg(bmcSection->m_sectionOffset + bmc->m_offset);
+            in.read(mBuf, bufsize);
         }
         else
         {
             // Obtain MCS section header.
-            const axlf *ap = reinterpret_cast<const axlf *>(top.get());
             const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
             if (mcsSection == nullptr)
             {

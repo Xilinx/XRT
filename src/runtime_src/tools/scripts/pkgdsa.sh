@@ -531,6 +531,7 @@ EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
 ${XBUTIL} flash -f -a ${opt_dsa} -t ${featureRomTimestamp} > ${flash_progress_file} 2>&1 || echo "${post_inst_flash_fail_msg}"
+cat ${flash_progress_file}
 echo "${post_inst_msg}"
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
@@ -642,6 +643,7 @@ echo "${pre_inst_msg}"
 
 %post
 ${XBUTIL} flash -f -a ${opt_dsa} -t ${featureRomTimestamp} > ${flash_progress_file} 2>&1 || echo "${post_inst_flash_fail_msg}"
+cat ${flash_progress_file}
 echo "${post_inst_msg}"
 
 %install
