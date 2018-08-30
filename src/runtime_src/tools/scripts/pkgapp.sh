@@ -191,13 +191,16 @@ EOF
     echo "================================================================"
 }
 
-FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
-FLAVOR=`echo $FLAVOR | tr -d '"'`
+FLAVOR=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 
 if [[ $FLAVOR == "centos" ]]; then
+    echo "centos"
+    exit
     dorpm
 fi
 
 if [[ $FLAVOR == "ubuntu" ]]; then
+    echo "ubuntu"
+    exit
     dodeb
 fi
