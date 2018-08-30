@@ -194,13 +194,9 @@ EOF
 FLAVOR=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 
 if [[ $FLAVOR == "centos" ]]; then
-    echo "centos"
-    exit
     dorpm
 fi
 
 if [[ $FLAVOR == "ubuntu" ]]; then
-    echo "ubuntu"
-    exit
     dodeb
 fi
