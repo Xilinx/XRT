@@ -899,7 +899,12 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     ipDataHdr.properties = (uint32_t) XclBinUtil::stringToUInt64(sProperties);
 
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
-    ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    if ( sBaseAddress != "not_used" ) {
+      ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    }
+    else {
+      ipDataHdr.m_base_address = (uint64_t) -1;
+    }
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(ip_data::m_name) ) {
@@ -1482,7 +1487,11 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type).c_str());
     ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
-    ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
+      ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    } else {
+      ip_data.put("m_base_address", "not_used");
+    }
     ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
     m_ip_data.add_child("ip_data", ip_data);

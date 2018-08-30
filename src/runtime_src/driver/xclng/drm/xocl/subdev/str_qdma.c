@@ -63,7 +63,7 @@ struct str_device {
 
 	u16			instance;
 
-	struct qdma_dev_conf	*dev_info;
+	struct qdma_dev_conf	dev_info;
 };
 
 static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
@@ -489,9 +489,13 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
+	/* qconf.pipe = 1; */
 
 	if (!req.write)
 		qconf.c2h = 1;
+	else
+		qconf.bypass = 1;
+
 	ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
 		&queue->queue, sizeof (struct stream_async_arg));
 	if (ret < 0) {
@@ -726,11 +730,10 @@ static int str_dma_probe(struct platform_device *pdev)
 	sdev->pdev = pdev;
 	xdev = xocl_get_xdev(pdev);
 
-	sdev->dev_info = qdma_device_get_config((unsigned long)xdev->dma_handle,
-		ebuf, EBUF_LEN);
-	if (!sdev->dev_info) {
+	ret = qdma_device_get_config((unsigned long)xdev->dma_handle,
+		&sdev->dev_info, ebuf, EBUF_LEN);
+	if (ret) {
 		xocl_err(&pdev->dev, "Failed to get device info");
-		ret = -EINVAL;
 		goto failed;
 	}
 

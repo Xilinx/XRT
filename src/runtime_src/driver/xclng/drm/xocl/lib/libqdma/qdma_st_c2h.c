@@ -1,3 +1,15 @@
+/*
+ * This file is part of the Xilinx DMA IP Core driver for Linux
+ *
+ * Copyright (c) 2017-present,  Xilinx, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under both the BSD-style license (found in the
+ * LICENSE file in the root directory of this source tree) and the GPLv2 (found
+ * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
+ */
+
 #define pr_fmt(fmt)     KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include "qdma_descq.h"
@@ -23,7 +35,8 @@ struct cmpl_info {
 			u8 color:1;
 			u8 err:1;
 			u8 desc_used:1;
-			u8 filler:4;
+			u8 eot:1;
+			u8 filler:3;
 		} f;
 	};
 	u8 rsvd;
@@ -64,8 +77,8 @@ static inline int flq_fill_one(struct qdma_sw_sg *sdesc,
 				struct qdma_c2h_desc *desc, struct device *dev,
 				int node, unsigned char pg_order, gfp_t gfp)
 {
-        struct page *pg;
-        dma_addr_t mapping;
+	struct page *pg;
+	dma_addr_t mapping;
 
 	pg = alloc_pages_node(node, __GFP_COMP | gfp, pg_order);
 	if (unlikely(!pg)) {
@@ -82,7 +95,7 @@ static inline int flq_fill_one(struct qdma_sw_sg *sdesc,
 		return -EINVAL;
 	}
 
-	sdesc->pg = pg;	
+	sdesc->pg = pg;
 	sdesc->dma_addr = mapping;
 	sdesc->len = PAGE_SIZE << pg_order;
 	sdesc->offset = 0;
@@ -145,13 +158,13 @@ int descq_flq_alloc_resource(struct qdma_descq *descq)
 			prev->next = sdesc;
 		if (sprev)
 			sprev->next = sinfo;
-	}	
+	}
 	/* last entry's next points to the first entry */
 	prev->next = flq->sdesc;
 	sprev->next = flq->sdesc_info;
 
 	for (sdesc = flq->sdesc, i = 0; i < flq->size; i++, sdesc++, desc++) {
-//pr_err("flq sdesc 0x%p fill.\n", sdesc);
+	/* pr_err("flq sdesc 0x%p fill.\n", sdesc); */
 		rv = flq_fill_one(sdesc, desc, dev, node, flq->pg_order,
 				GFP_KERNEL);
 		if (rv < 0) {
@@ -211,7 +224,7 @@ static int qdma_flq_refill(struct qdma_descq *descq, int idx, int count,
 }
 
 /*
- * 
+ *
  */
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update_pidx, bool refill)
@@ -230,10 +243,10 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	if (!fsgcnt)
 		return 0;
 
-	if (cb->sg_idx) {	
-		for ( ; tsg && j < cb->sg_idx; j++) {
+	if (cb->sg_idx) {
+		for ( ; tsg && j < cb->sg_idx; j++)
 			tsg = tsg->next;
-		}
+
 		if (!tsg) {
 			pr_err("tsg error, index %u/%u.\n",
 				cb->sg_idx, req->sgcnt);
@@ -243,11 +256,11 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 
 	while ((i < fsgcnt) && tsg) {
 		unsigned int flen = fsg->len;
-		unsigned char *faddr = page_address(fsg->pg);
+		unsigned char *faddr = page_address(fsg->pg) + fsg->offset;
 
 		foff = 0;
 
-		while(flen && tsg) {
+		while (flen && tsg) {
 			unsigned int toff = tsg->offset + tsgoff;
 			unsigned int copy = min_t(unsigned int, flen,
 						 tsg->len - tsgoff);
@@ -270,7 +283,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		if (foff == fsg->len) {
 			struct qdma_sdesc_info *sinfo = flq->sdesc_info + pidx;
 
- 			if (sinfo->f.eop)
+			if (sinfo->f.eop)
 				descq->cidx_wrb_pend = sinfo->cidx;
 
 			pidx = ring_idx_incr(pidx, 1, descq->conf.rngsz);
@@ -290,12 +303,12 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		fsg->len -= foff;
 	}
 
-	if (update_pidx) {
+	if (update_pidx &&  (i || req->count)) {
+		descq_wrb_cidx_update(descq, descq->cidx_wrb_pend);
 		i = ring_idx_decr(flq->pidx_pend, 1, flq->size);
 		descq_c2h_pidx_update(descq, i);
-		descq_wrb_cidx_update(descq, descq->cidx_wrb_pend);
 	}
-	
+
 	cb->sg_idx = j;
 	cb->sg_offset = tsgoff;
 	cb->left -= copied;
@@ -316,20 +329,20 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 
 		/* check for zero length dma */
 		if (!cb->left) {
-			pr_info ("%s, cb 0x%p pending, zero len.\n",
+			pr_debug("%s, cb 0x%p pending, zero len.\n",
 				descq->conf.name, cb);
 
 			qdma_sgt_req_done(descq, cb, 0);
 			return 0;
 		}
 
-		rv = descq_st_c2h_read(descq, (struct qdma_request *)cb, 0, 0);	
+		rv = descq_st_c2h_read(descq, (struct qdma_request *)cb, 0, 0);
 		if (rv < 0) {
 			pr_info("req 0x%p, error %d.\n", cb, rv);
 			qdma_sgt_req_done(descq, cb, rv);
 		}
 
-		if (!cb->left) 
+		if (!cb->left)
 			qdma_sgt_req_done(descq, cb, 0);
 		else
 			break;
@@ -372,6 +385,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 	cmpl->f.format = wrb[0] & F_C2H_WB_ENTRY_F_FORMAT ? 1 : 0;
 	cmpl->f.color = wrb[0] & F_C2H_WB_ENTRY_F_COLOR ? 1 : 0;
 	cmpl->f.err = wrb[0] & F_C2H_WB_ENTRY_F_ERR ? 1 : 0;
+	cmpl->f.eot = wrb[0] & F_C2H_WB_ENTRY_F_EOT ? 1 : 0;
 	cmpl->f.desc_used = wrb[0] & F_C2H_WB_ENTRY_F_DESC_USED ? 1 : 0;
 	if (!cmpl->f.format && cmpl->f.desc_used) {
 		cmpl->len = (wrb[0] >> S_C2H_WB_ENTRY_LENGTH) &
@@ -386,7 +400,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 		goto err_out;
 	}
 
-	/* 
+	/*
 	 * format = 1 does not have length field, so the driver cannot
 	 * figure out how many descriptor is used
 	 */
@@ -409,7 +423,7 @@ err_out:
 	print_hex_dump(KERN_INFO, "cmpl entry: ", DUMP_PREFIX_OFFSET,
 			16, 1, (void *)wrb, descq->wb_entry_len,
 			false);
-        return -EINVAL;
+	return -EINVAL;
 }
 
 static int rcv_pkt(struct qdma_descq *descq, struct cmpl_info *cmpl,
@@ -423,7 +437,10 @@ static int rcv_pkt(struct qdma_descq *descq, struct cmpl_info *cmpl,
 	/* zero length still uses one descriptor */
 	int fl_nr = len ? (len + pg_mask) >> pg_shift : 1;
 	unsigned int last = ring_idx_incr(cmpl->pidx, fl_nr - 1, rngsz);
+	unsigned int next = ring_idx_incr(last, 1, rngsz);
 	struct qdma_sw_sg *sdesc = flq->sdesc + last;
+	unsigned int cidx_next = ring_idx_incr(descq->cidx_wrb, 1,
+					descq->conf.rngsz_wrb);
 
 	descq->avail -= fl_nr;
 
@@ -437,7 +454,9 @@ static int rcv_pkt(struct qdma_descq *descq, struct cmpl_info *cmpl,
 	}
 
 	if (descq->conf.fp_descq_c2h_packet) {
-		int rv = descq->conf.fp_descq_c2h_packet(descq->conf.qidx,
+		struct qdma_dev *qdev = xdev_2_qdev(descq->xdev);
+		int rv = descq->conf.fp_descq_c2h_packet(descq->conf.qidx +
+					(descq->conf.c2h ? qdev->qmax : 0),
 				descq->conf.quld, len, fl_nr, flq->sdesc + pidx,
 				descq->conf.cmpl_udd_en ?
 				(unsigned char *)cmpl->entry : NULL);
@@ -445,13 +464,11 @@ static int rcv_pkt(struct qdma_descq *descq, struct cmpl_info *cmpl,
 		if (rv < 0)
 			return rv;
 
-		descq->cidx_wrb_pend = descq->cidx_wrb;
-		flq->pidx_pend = last;
+		descq->cidx_wrb_pend = cidx_next;
+		flq->pidx_pend = next;
 	} else {
 		int i;
 		struct qdma_sdesc_info *sinfo = flq->sdesc_info + pidx;
-		unsigned int cidx_next = ring_idx_incr(descq->cidx_wrb, 1,
-					descq->conf.rngsz_wrb);
 
 		for (i = 0; i < fl_nr; i++, sinfo = sinfo->next) {
 			WARN_ON(sinfo->f.valid);
@@ -466,7 +483,7 @@ static int rcv_pkt(struct qdma_descq *descq, struct cmpl_info *cmpl,
 		if (descq->conf.cmpl_udd_en)
 			flq->udd_cnt++;
 	}
-	cmpl->pidx = ring_idx_incr(last, 1, rngsz);
+	cmpl->pidx = next;
 
 	return 0;
 }
@@ -484,14 +501,18 @@ static int rcv_udd_only(struct qdma_descq *descq, struct cmpl_info *cmpl)
 			false);
 
 	/* udd only: no descriptor used */
-	if (descq->conf.fp_descq_c2h_packet)
-		return descq->conf.fp_descq_c2h_packet(descq->conf.qidx,
+	if (descq->conf.fp_descq_c2h_packet) {
+		struct qdma_dev *qdev = xdev_2_qdev(descq->xdev);
+
+		return descq->conf.fp_descq_c2h_packet(descq->conf.qidx +
+					(descq->conf.c2h ? qdev->qmax : 0),
 				descq->conf.quld, 0, 0, NULL,
 				(unsigned char *)cmpl->entry);
+	}
 #ifdef XMP_DISABLE_ST_C2H_CMPL
 	if ((wb_entry & (1 << 20)) > 0) {
 		__be16 pkt_cnt = (wb_entry >> 32) & 0xFFFF;
-		__be16 pkt_len = (wb_entry >> 48) & 0xFFFF;	
+		__be16 pkt_len = (wb_entry >> 48) & 0xFFFF;
 		int i;
 
 		pr_info("pkt %u * %u.\n", pkt_len, pkt_cnt);
@@ -508,7 +529,8 @@ static int rcv_udd_only(struct qdma_descq *descq, struct cmpl_info *cmpl)
 	return 0;
 }
 
-int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget)
+int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
+					bool upd_cmpl)
 {
 	struct qdma_c2h_wrb_wb *wb = (struct qdma_c2h_wrb_wb *)
 				descq->desc_wrb_wb;
@@ -527,11 +549,6 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget)
 		pr_info("%s: err.\n", descq->conf.name);
 		return 0;
 	}
-
-	/* if no uld user and no pending request */
-	if (!uld_handler && list_empty(&descq->pend_list) &&
-		list_empty(&descq->work_list))
-		return 0;
 
 	dma_rmb();
 
@@ -570,16 +587,12 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget)
 
 		if (cmpl.f.desc_used) {
 			rv = rcv_pkt(descq, &cmpl, cmpl.len);
-			if (rv < 0) /* cannot process now, stop */
-				break;
 		} else if (descq->conf.cmpl_udd_en) {
 			/* udd only: no descriptor used */
 			rv = rcv_udd_only(descq, &cmpl);
-			if (rv < 0) /* cannot process now, stop */
-				break;
 		}
 
-		if (rv < 0)
+		if (rv < 0) /* cannot process now, stop */
 			break;
 
 		pidx = cmpl.pidx;
@@ -597,17 +610,24 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget)
 
 		/* some descq entries have been consumed */
 		if (flq->pidx_pend != pidx_pend) {
-			unsigned int cnt = ring_idx_delta(flq->pidx_pend,
-						pidx_pend, flq->size);
-
-			qdma_flq_refill(descq, pidx_pend, cnt,
+			pend = ring_idx_delta(flq->pidx_pend, pidx_pend,
+						flq->size);
+			qdma_flq_refill(descq, pidx_pend, pend,
 					uld_handler ? 0 : 1, GFP_ATOMIC);
 
-			cnt = ring_idx_decr(flq->pidx_pend, 1, flq->size);
-			descq_c2h_pidx_update(descq, cnt);
-		}
+			if (upd_cmpl) {
+				/* <= 2018.2 IP:
+				 * must update cidx first before pidx
+				 * otherwise, when there is room in descriptor ring
+				 * but no room in cmpl. ring, h/w will disable the cmpl
+				 * ring, thus renders the Q non-operational
+				 */
+				descq_wrb_cidx_update(descq, descq->cidx_wrb_pend);
 
-		descq_wrb_cidx_update(descq, descq->cidx_wrb_pend);
+				pend = ring_idx_decr(flq->pidx_pend, 1, flq->size);
+				descq_c2h_pidx_update(descq, pend);
+			}
+		}
 	}
 
 	return 0;
@@ -617,22 +637,21 @@ int qdma_queue_c2h_peek(unsigned long dev_hndl, unsigned long id,
 			unsigned int *udd_cnt, unsigned int *pkt_cnt,
 			unsigned int *data_len)
 {
-        struct qdma_descq *descq = qdma_device_get_descq_by_id(
-                                        (struct xlnx_dma_dev *)dev_hndl,
-                                        id, NULL, 0, 1);
+	struct qdma_descq *descq = qdma_device_get_descq_by_id(
+					(struct xlnx_dma_dev *)dev_hndl,
+					id, NULL, 0, 1);
 	struct qdma_flq *flq;
 
-        if (!descq)
-                return QDMA_ERR_INVALID_QIDX;
+	if (!descq)
+		return QDMA_ERR_INVALID_QIDX;
 
 	flq = &descq->flq;
-	*udd_cnt = flq->udd_cnt;	
-	*pkt_cnt = flq->pkt_cnt;	
-	*data_len = flq->pkt_dlen;	
+	*udd_cnt = flq->udd_cnt;
+	*pkt_cnt = flq->pkt_cnt;
+	*data_len = flq->pkt_dlen;
 
 	return 0;
 }
-
 
 int qdma_queue_packet_read(unsigned long dev_hndl, unsigned long id,
 			struct qdma_request *req, struct qdma_cmpl_ctrl *cctrl)
@@ -652,9 +671,12 @@ int qdma_queue_packet_read(unsigned long dev_hndl, unsigned long id,
 	}
 
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
-	init_waitqueue_head(&cb->wq);
 
-	//descq_st_c2h_read(descq, req, 1);
+	qdma_waitq_init(&cb->wq);
 
-	return 0;
+	lock_descq(descq);
+	descq_st_c2h_read(descq, req, 1, 1);
+	unlock_descq(descq);
+
+	return req->count - cb->left;
 }
