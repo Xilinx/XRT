@@ -129,11 +129,12 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		if (ret)
 			goto failed_set_channel;
 
-		ret = xocl_drm_init(ocl_dev);
-		if (ret) {
-			xocl_err(&pdev->dev, "failed to init drm mm");
-			goto failed_drm_init;
-		}
+	}
+
+	ret = xocl_drm_init(ocl_dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed_drm_init;
 	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
@@ -249,7 +250,7 @@ int __init xocl_init_drv_user_qdma(void)
 {
 	int ret;
 
-	ret = libqdma_init();
+	ret = libqdma_init(0);
 	if (ret) {
 		goto failed;
 	}
