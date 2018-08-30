@@ -1553,6 +1553,22 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 	}
 
+	ICAP_INFO(icap, "finding ip layout sections");
+	ipLayout = get_axlf_section(icap, copy_buffer, IP_LAYOUT);
+	if (ipLayout == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	layout = vmalloc(ipLayout->m_sectionSize);
+	if(layout == NULL)
+		goto done;
+	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
+	if (sizeof_ip_layout(layout) > ipLayout->m_sectionSize) {
+	    err = -EINVAL;
+	    goto done;
+  }
+  
 	ICAP_INFO(icap, "finding bitstream sections");
 	primaryHeader = get_axlf_section(icap, copy_buffer, BITSTREAM);
 	if (primaryHeader == NULL) {
@@ -1561,13 +1577,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 	primaryFirmwareOffset = primaryHeader->m_sectionOffset;
 	primaryFirmwareLength = primaryHeader->m_sectionSize;
-
-	ICAP_INFO(icap, "finding ip layout sections");
-	ipLayout = get_axlf_section(icap, copy_buffer, IP_LAYOUT);
-	if (ipLayout == NULL) {
-		err = -EINVAL;
-		goto done;
-	}
 
 	secondaryHeader = get_axlf_section(icap, copy_buffer,
 		CLEARING_BITSTREAM);
@@ -1600,16 +1609,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	err = icap_download_user(icap, buffer, primaryFirmwareLength);
 	if (err)
 		goto done;
-
-
-	layout = vmalloc(ipLayout->m_sectionSize);
-	if(layout == NULL)
-		goto done;
-	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
-	if (sizeof_ip_layout(layout) > ipLayout->m_sectionSize) {
-	    err = -EINVAL;
-	    goto done;
-  }
 
 	for(i=0;i<layout->m_count;++i){
 		if(layout->m_ip_data[i].m_type==IP_DNASC){
