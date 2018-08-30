@@ -40,6 +40,9 @@
 
 namespace XDP {
     class XDPProfile;
+    class DeviceTrace;
+
+    typedef std::vector<DeviceTrace> TraceResultVector;
 
     // Writer interface for generating profile data
     class WriterI {
@@ -88,6 +91,14 @@ namespace XDP {
           double totalWriteTimeMsec, double totalReadTimeMsec,
           uint32_t maxBytesPerTransfer, double maxTransferRateMBps);
 
+      // Write data transfer event to trace
+      void writeTimeline(double traceTime, const std::string& commandString,
+                 const std::string& stageString, const std::string& eventString,
+                 const std::string& dependString, size_t size, uint64_t address,
+                 const std::string& bank, std::thread::id threadId);
+
+      void writeDeviceTrace(const TraceResultVector &resultVector, std::string deviceName,
+                                                                   std::string binaryName);
 	public:
       static std::string getCurrentDateTime();
       static std::string getCurrentTimeMsec();
@@ -116,6 +127,7 @@ namespace XDP {
 	protected:
       void openStream(std::ofstream& ofs, const std::string& fileName);
       std::ofstream& getSummaryStream() {return Summary_ofs;}
+      std::ofstream& getTimelineStream(){return Timeline_ofs;}
 	    
 	protected:
       // Document is assumed to consist of Document Header, one or more tables and document footer
@@ -141,6 +153,7 @@ namespace XDP {
 
 	protected:
       std::ofstream Summary_ofs;
+      std::ofstream Timeline_ofs;
       xclCounterResults CountersPrev;
     };
 
@@ -150,7 +163,8 @@ namespace XDP {
     class CSVWriter: public WriterI {
 
 	public:
-      CSVWriter(const std::string& summaryFileName, const std::string& platformName);
+      CSVWriter(const std::string& summaryFileName, const std::string& timelineFileName,
+                const std::string& platformName);
       ~CSVWriter();
 
       virtual void writeSummary(XDPProfile* profile);
@@ -163,7 +177,7 @@ namespace XDP {
       void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
       void writeTableFooter(std::ofstream& ofs) override { ofs << "\n";};
       void writeDocumentFooter(std::ofstream& ofs) override;
-      void writeTimelineFooter(std::ofstream& ofs);
+      void writeTimelineFooter(xclDeviceInfo2 deviceInfo, std::ofstream& ofs);
 
       // Cell and Row marking tokens
       const char* cellStart() override { return ""; }
@@ -174,6 +188,7 @@ namespace XDP {
 
 	private:
       std::string SummaryFileName;
+      std::string TimelineFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
     };

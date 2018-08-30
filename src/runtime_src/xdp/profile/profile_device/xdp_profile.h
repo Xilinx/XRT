@@ -101,6 +101,8 @@ namespace XDP {
       STALL_TRACE_ALL = STALL_TRACE_EXT | STALL_TRACE_INT | STALL_TRACE_STR
     };
 
+    typedef std::vector<DeviceTrace> TraceResultVector;
+
   public:
     XDPProfile(int& flags);
     ~XDPProfile();
@@ -114,6 +116,23 @@ namespace XDP {
     void logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
         xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram);
 
+    void writeTimelineTrace(double traceTime, const std::string& commandString,
+              const std::string& stageString, const std::string& eventString,
+              const std::string& dependString, size_t size, uint64_t address,
+              const std::string& bank, std::thread::id threadId);
+/*
+    void writeDataTransferTrace(double traceTime, const std::string& commandString,
+            const std::string& stageString, const std::string& eventString,
+            const std::string& dependString, size_t size, uint64_t address,
+            const std::string& bank, std::thread::id threadId,  std::ofstream& ofs);
+*/
+    void logDataTransfer(uint64_t objId, const std::string& commandString,
+            const std::string& stageString, const std::string& eventString,
+            const std::string& dependString, size_t size, uint64_t address,
+            const std::string& bank, std::thread::id threadId);
+
+    void logTrace(xclPerfMonType type, const std::string deviceName, std::string binaryName,
+                xclTraceResultsVector& traceVector);
   public:
     void turnOnProfile(e_profile_mode mode) { ProfileFlags |= mode; }
     void turnOffProfile(e_profile_mode mode) { ProfileFlags &= ~mode; }
@@ -142,6 +161,9 @@ namespace XDP {
   public:
     void setKernelClockFreqMHz(const std::string &deviceName, unsigned int kernelClockRateMHz);
     unsigned int getKernelClockFreqMHz(std::string &deviceName) const;
+    void trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type);
+    double convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
+                                      const std::string& deviceName);
 
   public:
     void writeProfileSummary();
@@ -170,6 +192,10 @@ namespace XDP {
     double getGlobalMemoryMaxBandwidthMBps() const;
     double getReadMaxBandwidthMBps() const;
     double getWriteMaxBandwidthMBps() const;
+    unsigned long time_ns();
+    double getTimestampMsec(uint64_t timeNsec);
+    double getTraceTime();
+    double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName);
 
     void setProfileSlotName(xclPerfMonType type, std::string& deviceName,
                             unsigned slotnum, std::string& slotName) {
@@ -200,7 +226,7 @@ namespace XDP {
         std::string& stageString) const;
 
   private:
-    int& ProfileFlags;
+    int ProfileFlags;
     int FileFlags; //Which files we want to write out
     int HostSlotIndex;
     e_flow_mode FlowMode;
@@ -224,6 +250,34 @@ namespace XDP {
     std::map<uint64_t, BufferTrace*> BufferTraceMap;
     std::map<uint64_t, DeviceTrace*> DeviceTraceMap;
     std::mutex LogMutex;
+
+  std::string mAccelNames[XSAM_MAX_NUMBER_SLOTS];
+  std::string mAccelPortNames[XSPM_MAX_NUMBER_SLOTS];
+
+  double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
+  double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
+  double mTrainProgramStart[XCL_PERF_MON_TOTAL_PROFILE];
+  uint32_t mPrevTimestamp[XCL_PERF_MON_TOTAL_PROFILE];
+  uint64_t mAccelMonCuTime[XSAM_MAX_NUMBER_SLOTS]       = { 0 };
+  uint64_t mAccelMonCuHostTime[XSAM_MAX_NUMBER_SLOTS]   = { 0 };
+  uint64_t mAccelMonStallIntTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
+  uint64_t mAccelMonStallStrTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
+  uint64_t mAccelMonStallExtTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
+  uint8_t mAccelMonStartedEvents[XSAM_MAX_NUMBER_SLOTS] = { 0 };
+  uint64_t mPerfMonLastTranx[XSPM_MAX_NUMBER_SLOTS]     = { 0 };
+  uint64_t mAccelMonLastTranx[XSAM_MAX_NUMBER_SLOTS]    = { 0 };
+  std::set<std::string> mDeviceFirstTimestamp;
+  std::vector<uint32_t> mDeviceTrainVector;
+  std::vector<uint64_t> mHostTrainVector;
+  std::queue<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint32_t> mWriteLengths[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint32_t> mReadLengths[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint16_t> mWriteBytes[XSPM_MAX_NUMBER_SLOTS];
+  std::queue<uint16_t> mReadBytes[XSPM_MAX_NUMBER_SLOTS];
+
     //RTProfileDevice* DeviceProfile;
     //ProfileRuleChecks* RuleChecks;
 
