@@ -168,6 +168,8 @@ alloc(size_t sz)
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -193,6 +195,8 @@ alloc(size_t sz,void* userptr)
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -244,6 +248,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   }
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -510,6 +516,97 @@ svm_bo_lookup(void* ptr)
     return (*itr).second;
   else
     throw std::runtime_error("svm_bo_lookup: The SVM pointer is invalid.");
+}
+
+//Stream
+int 
+device::
+createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
+  return m_ops->mCreateWriteQueue(m_handle,&ctx,stream);
+}
+
+int 
+device::
+createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
+  return m_ops->mCreateReadQueue(m_handle,&ctx,stream);
+}
+
+int 
+device::
+closeStream(hal::StreamHandle stream) 
+{
+  return m_ops->mDestroyQueue(m_handle,stream);
+}
+
+hal::StreamBuf
+device::
+allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
+{
+  return m_ops->mAllocQDMABuf(m_handle,size,buf);
+}
+
+int 
+device::
+freeStreamBuf(hal::StreamBufHandle buf)
+{
+  return m_ops->mFreeQDMABuf(m_handle,buf);
+}
+
+ssize_t 
+device::
+writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{
+  //TODO:
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
+//  req,op_code = XCL_QUEUE_WRITE;
+//  req.bufs.buf = const_cast<char*>(ptr);
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mWriteQueue(m_handle,stream,&req);
+}
+
+ssize_t 
+device::
+readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{ 
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
+//  req,op_code = XCL_QUEUE_READ;
+//  req.bufs.buf = ptr;
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mReadQueue(m_handle,stream,&req);
 }
 
 #ifdef PMD_OCL

@@ -1,27 +1,19 @@
-/*******************************************************************************
+/*
+ * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Xilinx DMA IP Core Linux Driver
- * Copyright(c) 2017 Xilinx, Inc.
+ * Copyright (c) 2017-present,  Xilinx, Inc.
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * This source code is licensed under both the BSD-style license (found in the
+ * LICENSE file in the root directory of this source tree) and the GPLv2 (found
+ * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
+ */
+/**
+ * @file
+ * @brief This file contains the declarations for QDMA PCIe device
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "LICENSE".
- *
- * Karen Xie <karen.xie@xilinx.com>
- *
- ******************************************************************************/
-
+ */
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
 #include <linux/version.h>
@@ -32,14 +24,19 @@
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
 
+#include "qdma_regs.h"
 #include "xdev.h"
 #include "qdma_mbox.h"
 
-/*
+/**
  * qdma device management
  * maintains a list of the qdma devices
  */
 static LIST_HEAD(xdev_list);
+
+/**
+ * mutex defined for qdma device management
+ */
 static DEFINE_MUTEX(xdev_mutex);
 
 #ifndef list_last_entry
@@ -47,6 +44,18 @@ static DEFINE_MUTEX(xdev_mutex);
 		list_entry((ptr)->prev, type, member)
 #endif
 
+/* entern declarations */
+void qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
+int qdma_device_init(struct xlnx_dma_dev *);
+void qdma_device_cleanup(struct xlnx_dma_dev *);
+
+/*****************************************************************************/
+/**
+ * xdev_list_first() - handler to return the first xdev entry from the list
+ *
+ * @return	pointer to first xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
 struct xlnx_dma_dev *xdev_list_first(void)
 {
 	struct xlnx_dma_dev *xdev;
@@ -58,6 +67,15 @@ struct xlnx_dma_dev *xdev_list_first(void)
 	return xdev;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_list_next() - handler to return the next xdev entry from the list
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ *
+ * @return	pointer to next xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
 struct xlnx_dma_dev *xdev_list_next(struct xlnx_dma_dev *xdev)
 {
 	struct xlnx_dma_dev *next;
@@ -69,6 +87,16 @@ struct xlnx_dma_dev *xdev_list_next(struct xlnx_dma_dev *xdev)
 	return next;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_list_dump() - list the dma device details
+ *
+ * @param[in]	buflen:		length of the input buffer
+ * @param[out]	buf:		message buffer
+ *
+ * @return	pointer to next xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
 int xdev_list_dump(char *buf, int buflen)
 {
 	struct xlnx_dma_dev *xdev, *tmp;
@@ -76,8 +104,8 @@ int xdev_list_dump(char *buf, int buflen)
 
 	mutex_lock(&xdev_mutex);
 	list_for_each_entry_safe(xdev, tmp, &xdev_list, list_head) {
-		len += sprintf(buf + len, "qdma%d\t%02x:%02x.%02x\n",
-				xdev->conf.idx, xdev->conf.pdev->bus->number,
+		len += sprintf(buf + len, "qdma%05x\t%02x:%02x.%02x\n",
+				xdev->conf.bdf, xdev->conf.pdev->bus->number,
 				PCI_SLOT(xdev->conf.pdev->devfn),
 				PCI_FUNC(xdev->conf.pdev->devfn));
 		if (len >= buflen)
@@ -89,23 +117,64 @@ int xdev_list_dump(char *buf, int buflen)
 	return len;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_list_add() - add a new node to the xdma device lsit
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ *
+ * @return	none
+ *****************************************************************************/
 static inline void xdev_list_add(struct xlnx_dma_dev *xdev)
 {
-	mutex_lock(&xdev_mutex);
-	if (list_empty(&xdev_list))
-		xdev->conf.idx = 0;
-	else {
-		struct xlnx_dma_dev *last;
+	u32 bdf = 0;
+	struct xlnx_dma_dev *_xdev, *tmp;
+	u32 last_bus = 0;
+	u32 last_dev = 0;
 
-		last = list_last_entry(&xdev_list, struct xlnx_dma_dev, list_head);
-		xdev->conf.idx = last->conf.idx + 1;
-	}
+	mutex_lock(&xdev_mutex);
+	bdf = ((xdev->conf.pdev->bus->number << PCI_SHIFT_BUS) |
+			(PCI_SLOT(xdev->conf.pdev->devfn) << PCI_SHIFT_DEV) |
+			PCI_FUNC(xdev->conf.pdev->devfn));
+	xdev->conf.bdf = bdf;
 	list_add_tail(&xdev->list_head, &xdev_list);
+
+	/*
+	 * Iterate through the list of devices. Increment cfg_done, to
+	 * get the mulitplier for initial configuration of queues. A
+	 * '0' indicates queue is already configured. < 0, indicates
+	 * config done using sysfs entry
+	 */
+	list_for_each_entry_safe(_xdev, tmp, &xdev_list, list_head) {
+		/*are we dealing with a different card?*/
+#ifdef __QDMA_VF__
+		/** for VF check only bus number, as dev number can change
+		 * in a single card
+		 */
+		if ((last_bus != _xdev->conf.pdev->bus->number))
+#else
+		if ((last_bus != _xdev->conf.pdev->bus->number) ||
+				(last_dev != PCI_SLOT(_xdev->conf.pdev->devfn)))
+#endif
+			xdev->conf.idx = 0;
+		xdev->conf.idx++;
+		last_bus = _xdev->conf.pdev->bus->number;
+		last_dev = PCI_SLOT(xdev->conf.pdev->devfn);
+	}
+	xdev->conf.cur_cfg_state = CFG_UNCONFIGURED;
 	mutex_unlock(&xdev_mutex);
 }
 
-#undef list_last_entry
 
+#undef list_last_entry
+/*****************************************************************************/
+/**
+ * xdev_list_add() - remove a node from the xdma device lsit
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ *
+ * @return	none
+ *****************************************************************************/
 static inline void xdev_list_remove(struct xlnx_dma_dev *xdev)
 {
 	mutex_lock(&xdev_mutex);
@@ -113,6 +182,15 @@ static inline void xdev_list_remove(struct xlnx_dma_dev *xdev)
 	mutex_unlock(&xdev_mutex);
 }
 
+/*****************************************************************************/
+/**
+ * xdev_find_by_pdev() - find the xdev using struct pci_dev
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ *
+ * @return	pointer to xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
 struct xlnx_dma_dev *xdev_find_by_pdev(struct pci_dev *pdev)
 {
 	struct xlnx_dma_dev *xdev, *tmp;
@@ -128,13 +206,22 @@ struct xlnx_dma_dev *xdev_find_by_pdev(struct pci_dev *pdev)
 	return NULL;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_find_by_idx() - find the xdev using the index value
+ *
+ * @param[in]	idx:	index value in the xdev list
+ *
+ * @return	pointer to xlnx_dma_dev on success
+ * @return	NULL on failure
+ *****************************************************************************/
 struct xlnx_dma_dev *xdev_find_by_idx(int idx)
 {
 	struct xlnx_dma_dev *xdev, *tmp;
 
 	mutex_lock(&xdev_mutex);
 	list_for_each_entry_safe(xdev, tmp, &xdev_list, list_head) {
-		if (xdev->conf.idx == idx) {
+		if (xdev->conf.bdf == idx) {
 			mutex_unlock(&xdev_mutex);
 			return xdev;
 		}
@@ -143,6 +230,16 @@ struct xlnx_dma_dev *xdev_find_by_idx(int idx)
 	return NULL;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_check_hndl() - helper function to validate the device handle
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ * @param[in]	hndl:	device handle
+ *
+ * @return	0: success
+ * @return	<0: on failure
+ *****************************************************************************/
 int xdev_check_hndl(const char *fname, struct pci_dev *pdev, unsigned long hndl)
 {
 	struct xlnx_dma_dev *xdev;
@@ -163,8 +260,9 @@ int xdev_check_hndl(const char *fname, struct pci_dev *pdev, unsigned long hndl)
 	}
 
 	 if (xdev->conf.pdev != pdev) {
-		 pr_info("pci_dev(0x%lx) != pdev(0x%lx)\n",
-			(unsigned long)xdev->conf.pdev, (unsigned long)pdev);
+		pr_info("pci_dev(0x%lx) != pdev(0x%lx)\n",
+				(unsigned long)xdev->conf.pdev,
+				(unsigned long)pdev);
 		return -EINVAL;
 	}
 
@@ -175,9 +273,16 @@ int xdev_check_hndl(const char *fname, struct pci_dev *pdev, unsigned long hndl)
  * PCI-level Functions
  **********************************************************************/
 
-/*
- * Unmap the BAR regions that had been mapped earlier using map_bars()
- */
+/*****************************************************************************/
+/**
+ * xdev_unmap_bars() - Unmap the BAR regions that had been mapped
+ *						earlier using map_bars()
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ * @param[in]	pdev:	pointer to struct pci_dev
+ *
+ * @return	none
+ *****************************************************************************/
 static void xdev_unmap_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 {
 	if (xdev->regs) {
@@ -186,13 +291,27 @@ static void xdev_unmap_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		/* mark as unmapped */
 		xdev->regs = NULL;
 	}
+
+	if (xdev->stm_regs) {
+		pci_iounmap(pdev, xdev->stm_regs);
+		xdev->stm_regs = NULL;
+	}
 }
 
-/* map_bars() -- map device regions into kernel virtual address space
+/*****************************************************************************/
+/**
+ * xdev_map_bars() - map device regions into kernel virtual address space
+ *						earlier using map_bars()
+ *
+ * @param[in]	xdev:	pointer to current xdev
+ * @param[in]	pdev:	pointer to struct pci_dev
  *
  * Map the device memory regions into kernel virtual address space after
  * verifying their sizes respect the minimum sizes needed
- */
+ *
+ * @return	length of the bar on success
+ * @return	0 on failure
+ *****************************************************************************/
 static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 {
 	int map_len;
@@ -204,9 +323,9 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	if (map_len > QDMA_MAX_BAR_LEN_MAPPED)
 		map_len = QDMA_MAX_BAR_LEN_MAPPED;
 
-	xdev->regs = pci_iomap(pdev, 0, map_len);
+	xdev->regs = pci_iomap(pdev, QDMA_CONFIG_BAR, map_len);
 	if (!xdev->regs) {
-		pr_info("%s unable to map bar %d.\n", xdev->conf.name,
+		pr_err("%s unable to map config bar %d.\n", xdev->conf.name,
 			QDMA_CONFIG_BAR);
 		return -EINVAL;
 	}
@@ -215,6 +334,7 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	{
 		/* check if it's dma control BAR */
 		u32 id = readl(xdev->regs);
+
 		if ((id & 0xFFFF0000) != 0x1FD30000) {
 			pr_info("%s: NO QDMA config bar found, id 0x%x.\n",
 				xdev->conf.name, id);
@@ -225,9 +345,46 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		}
 	}
 #endif
+
+	if (pdev->device == STM_ENABLED_DEVICE) {
+		u32 rev;
+
+		map_len = pci_resource_len(pdev, STM_BAR);
+		xdev->stm_regs = pci_iomap(pdev, STM_BAR, map_len);
+		if (!xdev->stm_regs) {
+			pr_warn("%s unable to map bar %d.\n",
+				xdev->conf.name, STM_BAR);
+			return -EINVAL;
+		}
+
+		rev = readl(xdev->stm_regs + STM_REG_BASE + STM_REG_REV);
+		if (!(((rev >> 24) == 'S') && (((rev >> 16) & 0xFF) == 'T') &&
+		      (((rev >> 8) & 0xFF) == 'M') &&
+		      ((rev & 0xFF) == STM_SUPPORTED_REV))) {
+			pr_err("%s: Unsupported STM Rev found, rev 0x%x\n",
+			       xdev->conf.name, rev);
+			xdev_unmap_bars(xdev, pdev);
+			return -EINVAL;
+		}
+		xdev->stm_en = 1;
+		xdev->stm_rev = rev & 0xFF;
+	} else {
+		xdev->stm_en = 0;
+	}
+
 	return 0;
 }
 
+/*****************************************************************************/
+/**
+ * xdev_map_bars() - allocate the dma device
+ *
+ * @param[in]	conf:	qdma device configuration
+ *
+ *
+ * @return	pointer to dma device
+ * @return	NULL on failure
+ *****************************************************************************/
 static struct xlnx_dma_dev *xdev_alloc(struct qdma_dev_conf *conf)
 {
 	struct xlnx_dma_dev *xdev;
@@ -240,8 +397,6 @@ static struct xlnx_dma_dev *xdev_alloc(struct qdma_dev_conf *conf)
 	}
 	spin_lock_init(&xdev->hw_prg_lock);
 	spin_lock_init(&xdev->lock);
-	spin_lock_init(&xdev->mbox_lock);
-	init_waitqueue_head(&xdev->mbox_wq);
 
 	/* create a driver to device reference */
 	memcpy(&xdev->conf, conf, sizeof(*conf));
@@ -255,18 +410,29 @@ static struct xlnx_dma_dev *xdev_alloc(struct qdma_dev_conf *conf)
 	return xdev;
 }
 
+/*****************************************************************************/
+/**
+ * pci_dma_mask_set() - check the pci capability of the dma device
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ *
+ *
+ * @return	0: on success
+ * @return	<0: on failure
+ *****************************************************************************/
 static int pci_dma_mask_set(struct pci_dev *pdev)
 {
-	/* 64-bit addressing capability for XDMA? */
+	/** 64-bit addressing capability for XDMA? */
 	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
-		/* use 32-bit DMA for descriptors */
+		/** use 32-bit DMA for descriptors */
 		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
-		/* use 64-bit DMA, 32-bit for consistent */
+		/** use 64-bit DMA, 32-bit for consistent */
 	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
-		/* use 32-bit DMA */
+		/** use 32-bit DMA */
 		dev_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
 	} else {
+		/** use 32-bit DMA */
 		dev_info(&pdev->dev, "No suitable DMA possible.\n");
 		return -EINVAL;
 	}
@@ -274,7 +440,7 @@ static int pci_dma_mask_set(struct pci_dev *pdev)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
 static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
 {
 	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
@@ -293,9 +459,17 @@ static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
 	}
 }
 #endif
-int qdma_device_init(struct xlnx_dma_dev *);
-void qdma_device_cleanup(struct xlnx_dma_dev *);
 
+/*****************************************************************************/
+/**
+ * qdma_device_offline() - set the dma device in offline mode
+ *
+ * @param[in]	pdev:		pointer to struct pci_dev
+ * @param[in]	dev_hndl:	device handle
+ *
+ *
+ * @return	none
+ *****************************************************************************/
 void qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
@@ -321,10 +495,20 @@ void qdma_device_offline(struct pci_dev *pdev, unsigned long dev_hndl)
 
 	qdma_device_cleanup(xdev);
 
-	qdma_mbox_timer_stop(xdev);
-
+	qdma_mbox_cleanup(xdev);
 }
 
+/*****************************************************************************/
+/**
+ * qdma_device_online() - set the dma device in online mode
+ *
+ * @param[in]	pdev:		pointer to struct pci_dev
+ * @param[in]	dev_hndl:	device handle
+ *
+ *
+ * @return	0: on success
+ * @return	<0: on failure
+ *****************************************************************************/
 int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
@@ -347,10 +531,10 @@ int qdma_device_online(struct pci_dev *pdev, unsigned long dev_hndl)
 		goto cleanup_qdma;
 	}
 	xdev_flag_clear(xdev, XDEV_FLAG_OFFLINE);
-	qdma_mbox_timer_init(xdev);
+	qdma_mbox_init(xdev);
 #ifdef __QDMA_VF__
-	/* PF mbox timer will start when vf > 0 */
-	qdma_mbox_timer_start(xdev);
+	/* PF mbox will start when vf > 0 */
+	qdma_mbox_start(xdev);
 	rv = xdev_sriov_vf_online(xdev, 0);
 	if (rv < 0)
 		goto cleanup_qdma;
@@ -368,7 +552,18 @@ cleanup_qdma:
 	return rv;
 }
 
-void qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
+/*****************************************************************************/
+/**
+ * qdma_device_open() - open the dma device
+ *
+ * @param[in]	mod_name:	name of the dma device
+ * @param[in]	conf:		device configuration
+ * @param[in]	dev_hndl:	device handle
+ *
+ *
+ * @return	0: on success
+ * @return	<0: on failure
+ *****************************************************************************/
 int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 			unsigned long *dev_hndl)
 {
@@ -396,7 +591,7 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	conf->bar_num_config = -1;
 	conf->bar_num_user = -1;
 
-	pr_debug("%s, %02x:%02x.%02x, pdev 0x%p, 0x%x:0x%x.\n",
+	pr_info("%s, %02x:%02x.%02x, pdev 0x%p, 0x%x:0x%x.\n",
 		mod_name, pdev->bus->number, PCI_SLOT(pdev->devfn),
 		PCI_FUNC(pdev->devfn), pdev, pdev->vendor, pdev->device);
 
@@ -440,8 +635,8 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	xdev_flag_set(xdev, XDEV_FLAG_OFFLINE);
 	xdev_list_add(xdev);
 
-	rv = sprintf(xdev->conf.name, "qdma%d-p%s",
-		xdev->conf.idx, dev_name(&xdev->conf.pdev->dev));
+	rv = sprintf(xdev->conf.name, "qdma%05x-p%s",
+		xdev->conf.bdf, dev_name(&xdev->conf.pdev->dev));
 	xdev->conf.name[rv] = '\0';
 
 	rv = xdev_map_bars(xdev, pdev);
@@ -452,7 +647,7 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	/* get the device attributes */
 	qdma_device_attributes_get(xdev);
 
-	if(!xdev->mm_mode_en && !xdev->st_mode_en) {
+	if (!xdev->mm_mode_en && !xdev->st_mode_en) {
 		pr_info("None of the modes ( ST or MM) are enabled\n");
 		rv = QDMA_ERR_INTERFACE_NOT_ENABLED_IN_DEVICE;
 		goto unmap_bars;
@@ -465,8 +660,8 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	if (rv < 0)
 		goto cleanup_qdma;
 
-	pr_info("%s, %d, pdev 0x%p, xdev 0x%p, ch %u, q %u, vf %u.\n",
-		dev_name(&pdev->dev), xdev->conf.idx, pdev, xdev,
+	pr_info("%s, %05x, pdev 0x%p, xdev 0x%p, ch %u, q %u, vf %u.\n",
+		dev_name(&pdev->dev), xdev->conf.bdf, pdev, xdev,
 		xdev->mm_channel_max, conf->qsets_max, conf->vf_max);
 
 	*dev_hndl = (unsigned long)xdev;
@@ -491,6 +686,16 @@ release_regions:
 	return rv;
 }
 
+/*****************************************************************************/
+/**
+ * qdma_device_close() - close the dma device
+ *
+ * @param[in]	pdev:		pointer to struct pci_dev
+ * @param[in]	dev_hndl:	device handle
+ *
+ *
+ * @return	none
+ *****************************************************************************/
 void qdma_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
@@ -518,13 +723,77 @@ void qdma_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 	kfree(xdev);
 }
 
-struct qdma_dev_conf *qdma_device_get_config(unsigned long dev_hndl,
-					char *ebuf, int ebuflen)
+/*****************************************************************************/
+/**
+ * qdma_device_get_config() - get the device configuration
+ *
+ * @param[in]	dev_hndl:	device handle
+ * @param[out]	conf:		dma device configuration
+ * @param[out]	buf, buflen:
+ *			error message buffer, can be NULL/0 (i.e., optional)
+ *
+ *
+ * @return	none
+ *****************************************************************************/
+int qdma_device_get_config(unsigned long dev_hndl, struct qdma_dev_conf *conf,
+					char *buf, int buflen)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
 	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0)
-		return NULL;
+		return -EINVAL;
 
-	return &xdev->conf;
+	memcpy(conf, &xdev->conf, sizeof(*conf));
+	return 0;
 }
+
+/*****************************************************************************/
+/**
+ * qdma_device_set_config() - set the device configuration
+ *
+ * @param[in]	dev_hndl:	device handle
+ * @param[in]	conf:		dma device configuration to set
+ *
+ * @return	0 on success ,<0 on failure
+ *****************************************************************************/
+int qdma_device_set_config(unsigned long dev_hndl, struct qdma_dev_conf *conf)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+
+	if (!conf)
+		return -EINVAL;
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0)
+		return -EINVAL;
+
+	memcpy(&xdev->conf, conf, sizeof(*conf));
+
+	return 0;
+}
+
+/*****************************************************************************/
+/**
+ * qdma_device_set_cfg_state - set the device configuration state
+ *
+ * @param[in]	dev_hndl:	device handle
+ * @param[in]	new_cfg_state:	dma device conf state to set
+ *
+ *
+ * @return	0 on success ,<0 on failure
+ *****************************************************************************/
+
+int qdma_device_set_cfg_state(unsigned long dev_hndl, enum cfg_state new_cfg_state)
+{
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
+
+	if (new_cfg_state > CFG_USER)
+		return -EINVAL;
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0)
+		return -EINVAL;
+
+	xdev->conf.cur_cfg_state = new_cfg_state;
+
+	return 0;
+}
+

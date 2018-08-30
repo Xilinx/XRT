@@ -1026,6 +1026,12 @@ public:
     return m_clk;
   }
 
+  const mem_topology* 
+  get_mem_topology() const 
+  {
+    return m_mem;
+  }
+
   xocl::xclbin::memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
   {
@@ -1081,7 +1087,7 @@ public:
     // 30,20,10,0
     xocl::xclbin::memidx_bitmask_type bitmask = 0;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -1098,7 +1104,7 @@ public:
     // 30,20,10,0
     int bankidx = -1;
     for (auto& mb : m_membanks) {
-      if (mb.index > 31)
+      if (mb.index > 63)
         throw std::runtime_error("bad mem_data index '" + std::to_string(mb.index) + "'");
       if (!m_mem->m_mem_data[mb.index].m_used)
         continue;
@@ -1216,6 +1222,10 @@ struct xclbin::impl
   const clock_freq_topology*
   get_clk_freq_topology() const
   { return m_sections.get_clk_freq_topology(); }
+
+  const mem_topology*
+  get_mem_topology() const
+  { return m_sections.get_mem_topology(); }
 
   memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
@@ -1389,6 +1399,13 @@ xclbin::
 get_clk_freq_topology() const
 {
   return m_impl->get_clk_freq_topology();
+}
+
+const mem_topology*
+xclbin::
+get_mem_topology() const
+{
+  return m_impl->get_mem_topology();
 }
 
 size_t

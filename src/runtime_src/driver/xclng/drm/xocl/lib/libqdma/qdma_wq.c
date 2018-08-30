@@ -64,7 +64,6 @@ int qdma_wq_destroy(struct qdma_wq *queue)
 			wait_for_completion(&queue->wq_comp);
 		}
 #endif
-		mutex_destroy(&queue->wq_lock);
 		queue->flag &= ~QDMA_WQ_INITIALIZED;
 	}
 
@@ -83,6 +82,7 @@ failed:
 int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	struct qdma_wq *queue, u32 priv_data_len)
 {
+	struct qdma_wqe *wqe;
 	int	i, ret;
 
 	queue->dev_hdl = dev_hdl;
@@ -130,8 +130,9 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	queue->priv_data_len = priv_data_len;
 
 	for (i = 0; i < queue->wq_len; i++) {
-		queue->wq[i].queue = queue;
-		init_waitqueue_head(&queue->wq[i].req_comp);
+		wqe = (struct qdma_wqe *)((char *)queue->wq + queue->wqe_sz * i);
+		wqe->queue = queue;
+		init_waitqueue_head(&wqe->req_comp);
 	}
 
 	queue->sg_cache = vzalloc(queue->qlen * sizeof (*queue->sg_cache));
@@ -144,7 +145,7 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	queue->sgc_len = queue->qlen;
 	queue->sgc_pidx = 0;
 
-	mutex_init(&queue->wq_lock);
+	spin_lock_init(&queue->wq_lock);
 	init_completion(&queue->wq_comp);
 	queue->flag |= QDMA_WQ_INITIALIZED;
 	return 0;
@@ -152,11 +153,6 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 failed:
 	qdma_wq_destroy(queue);
 	return ret;
-}
-
-static int qdma_wq_reset(struct qdma_wq *queue)
-{
-	return 0;
 }
 
 static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
@@ -281,7 +277,10 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc->len = len;
 
 		desc->pld_len = len;
-		desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH;
+		/* desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH; */
+
+		desc->cdh_flags |= (1 << S_H2C_DESC_F_ZERO_CDH);
+		desc->cdh_flags |= V_H2C_DESC_NUM_GL(1);
 		
 		descq->pidx++;
 		descq->pidx &= descq->conf.rngsz - 1;
@@ -301,6 +300,9 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	}
 	desc->flags |= S_H2C_DESC_F_EOP;
+	desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT) |
+		(1 << S_H2C_DESC_F_REQ_WRB);
+
 	BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0);
 
 	wqe->unproc_sg = sg;
@@ -383,6 +385,8 @@ static void descq_proc_req(struct qdma_wq *queue)
 
 	wqe = wq_next_unproc(queue);
 	while (wqe) {
+		if (wqe->state == QDMA_WQE_STATE_CANCELED)
+			goto next;
 		if(descq->conf.st) {
 			if (descq->conf.c2h) {
 				ret = descq_st_c2h_fill(descq, wqe);
@@ -397,7 +401,7 @@ static void descq_proc_req(struct qdma_wq *queue)
 
 		if (descq->wbthp)
 			qdma_kthread_wakeup(descq->wbthp);
-
+next:
 		wqe = wq_next_unproc(queue);
 	}
 }
@@ -408,30 +412,77 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	struct qdma_wqe			*wqe;
 	struct qdma_wq			*queue;
 	struct qdma_complete_event	compl_evt;
+	unsigned long			flags;
 
 	wqe = container_of(req, struct qdma_wqe, wr.req);
 	queue = wqe->queue;
 
-	mutex_lock(&queue->wq_lock);
+	spin_lock_irqsave(&queue->wq_lock, flags);
 	wqe->done_bytes += bytes_done;
 	queue->sgc_avail += req->sgcnt;
-	if (wqe->done_bytes == wqe->wr.len) {
+	if (wqe->done_bytes == wqe->wr.len &&
+		wqe->state != QDMA_WQE_STATE_CANCELED &&
+		wqe->state != QDMA_WQE_STATE_CANCELED_HW) {
 		if (wqe->wr.block) {
 			wake_up(&wqe->req_comp);
 		} else {
 			compl_evt.done_bytes = wqe->done_bytes;
-			compl_evt.error =0;
+			compl_evt.error = QDMA_EVT_SUCCESS;
 			compl_evt.req_priv = wqe->priv_data;
-			mutex_unlock(&queue->wq_lock);
 			wqe->wr.complete(&compl_evt);
-			mutex_lock(&queue->wq_lock);
 		}
 		wqe->state = QDMA_WQE_STATE_DONE;
+		wqe = wq_next_pending(queue);
+	} else if (wqe->state == QDMA_WQE_STATE_CANCELED_HW) {
+		if (!wqe->wr.block) {
+			compl_evt.done_bytes = 0;
+			compl_evt.error = QDMA_EVT_CANCELED;
+			compl_evt.req_priv = wqe->priv_data;
+			wqe->wr.complete(&compl_evt);
+		}
+	}
+
+	/* walk through all canceled reqs */
+	while (wqe && wqe->state == QDMA_WQE_STATE_CANCELED) {
+		if (!wqe->wr.block) {
+			compl_evt.done_bytes = 0;
+			compl_evt.error = QDMA_EVT_CANCELED;
+			compl_evt.req_priv = wqe->priv_data;
+			wqe->wr.complete(&compl_evt);
+		}
 		wqe = wq_next_pending(queue);
 	}
 
 	descq_proc_req(queue);
-	mutex_unlock(&queue->wq_lock);
+	spin_unlock_irqrestore(&queue->wq_lock, flags);
+
+	return 0;
+}
+
+int qdma_cancel_req(struct qdma_wq *queue)
+{
+	struct qdma_wqe			*wqe;
+	unsigned long			flags;
+	struct xlnx_dma_dev		*xdev;
+	struct qdma_descq		*descq;
+
+        xdev = (struct xlnx_dma_dev *)queue->dev_hdl;
+        descq = qdma_device_get_descq_by_id(xdev, queue->qhdl, NULL, 0, 0);
+
+
+	spin_lock_irqsave(&queue->wq_lock, flags);
+	wqe = wq_last_nonblock(queue);
+	if (unlikely(!wqe)) { /* req is processed, nothing to cancel */
+		spin_unlock_irqrestore(&queue->wq_lock, flags);
+		return -EINVAL;
+	}
+	if (wqe->state == QDMA_WQE_STATE_PENDING) {
+		descq_cancel_req(descq, &wqe->wr.req);
+		wqe->state = QDMA_WQE_STATE_CANCELED_HW;
+	} else {
+		wqe->state = QDMA_WQE_STATE_CANCELED;
+	}
+	spin_unlock_irqrestore(&queue->wq_lock, flags);
 
 	return 0;
 }
@@ -457,7 +508,7 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 	BUG_ON(i == sg_num && off > sg->length);
 	sg_num -= i;
 
-	mutex_lock(&queue->wq_lock);
+	spin_lock(&queue->wq_lock);
 	wqe = wq_next_free(queue);
 	if (!wqe) {
 		ret = -EAGAIN;
@@ -481,26 +532,30 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 
 	cb = qdma_req_cb_get(&wqe->wr.req);
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
-	init_waitqueue_head(&cb->wq);
+	qdma_waitq_init(&cb->wq);;
 
 again:
 	descq_proc_req(queue);
-	if (!ret && wqe->wr.block) {
-		mutex_unlock(&queue->wq_lock);
-		ret = wait_event_killable(wqe->req_comp,
-			(wqe->state == QDMA_WQE_STATE_DONE));
-		mutex_lock(&queue->wq_lock);
-		if (ret < 0) {
-			if (wqe->state == QDMA_WQE_STATE_PENDING) {
-				qdma_wq_reset(queue);
-			} else {
-				wqe->state = QDMA_WQE_STATE_CANCELED;
+	if (!ret) {
+		if (wqe->wr.block) {
+			spin_unlock(&queue->wq_lock);
+			ret = wait_event_killable(wqe->req_comp,
+				(wqe->state == QDMA_WQE_STATE_DONE));
+			spin_lock(&queue->wq_lock);
+			if (ret < 0) {
+				if (wqe->state == QDMA_WQE_STATE_PENDING) {
+					wqe->state = QDMA_WQE_STATE_CANCELED_HW;
+				} else {
+					wqe->state = QDMA_WQE_STATE_CANCELED;
+				}
 			}
+			ret = wqe->done_bytes;
+		} else {
+			ret = wr->len;
 		}
-		ret = wqe->done_bytes;
 	}
 		
-	mutex_unlock(&queue->wq_lock);
+	spin_unlock(&queue->wq_lock);
 
 	return ret;
 }

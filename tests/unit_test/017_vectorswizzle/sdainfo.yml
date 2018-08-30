@@ -1,0 +1,23 @@
+args: vectorswizzle.xclbin
+devices:
+- [all]
+exclude_devices: [zc702-linux-uart, zedboard-linux]
+flags: -g -D FLOW_HLS_CSIM
+flows: [all]
+hdrs: []
+krnls:
+- name: vectorswizzle
+  srcs: [vectorswizzle.cl]
+  type: clc
+name: 017_vectorswizzle
+owner: vallina
+srcs: [test-cl.cpp]
+xclbins:
+- cus:
+  - {krnl: vectorswizzle, name: vectorswizzle_cu0}
+  name: vectorswizzle
+  region: OCL_REGION_0
+cpu_cores : 2
+memory : 20
+level : 7
+

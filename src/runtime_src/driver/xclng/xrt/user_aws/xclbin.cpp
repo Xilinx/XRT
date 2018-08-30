@@ -28,7 +28,7 @@
 #include "hal/fpga_common.h"
 #endif
 
-// deprecated
+// deprecated but added in order to compile
 //const char *get_afi_from_xclBin(const xclBin *buffer)
 //{
 //    const char *afid = reinterpret_cast<const char *>(buffer);

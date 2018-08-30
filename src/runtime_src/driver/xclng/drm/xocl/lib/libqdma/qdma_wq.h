@@ -74,7 +74,7 @@ struct qdma_wq {
 	u32			wq_free;
 	u32			wq_pending;
 	u32			wq_unproc;
-	struct mutex		wq_lock;
+	spinlock_t		wq_lock;
 	struct completion	wq_comp;
 	u32			priv_data_len;
 	u64			trans_bytes;
@@ -95,7 +95,13 @@ enum {
 	QDMA_WQE_STATE_SUBMITTED,
 	QDMA_WQE_STATE_PENDING,
 	QDMA_WQE_STATE_CANCELED,
+	QDMA_WQE_STATE_CANCELED_HW,
 	QDMA_WQE_STATE_DONE,
+};
+
+enum {
+	QDMA_EVT_SUCCESS,
+	QDMA_EVT_CANCELED,
 };
 
 #define	_wqe(q, i)	((struct qdma_wqe *)((char *)q->wq + q->wqe_sz * i))
@@ -103,8 +109,7 @@ enum {
 static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q) 
 {
 	while (q->wq_unproc != q->wq_free &&
-		(_wqe(q, q->wq_unproc)->state == QDMA_WQE_STATE_CANCELED ||
-		_wqe(q, q->wq_unproc)->unproc_bytes == 0)) {
+		(_wqe(q, q->wq_unproc)->unproc_bytes == 0)) {
 		q->wq_unproc++;
 		q->wq_unproc &= q->wq_len - 1;
 	}
@@ -114,8 +119,7 @@ static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q)
 static inline struct qdma_wqe *wq_next_pending(struct qdma_wq *q)
 {
 	while (q->wq_pending != q->wq_unproc &&
-		(_wqe(q, q->wq_pending)->state == QDMA_WQE_STATE_CANCELED ||
-		_wqe(q, q->wq_pending)->state == QDMA_WQE_STATE_DONE)) {
+		( _wqe(q, q->wq_pending)->state == QDMA_WQE_STATE_DONE)) {
 		q->wq_pending++;
 		q->wq_pending &= q->wq_len - 1;
 	}
@@ -135,9 +139,27 @@ static inline struct qdma_wqe *wq_next_free(struct qdma_wq *q)
 	return NULL;
 }
 
+static inline struct qdma_wqe *wq_last_nonblock(struct qdma_wq *q)
+{
+	u32		last = q->wq_free;
+	struct qdma_wqe	*wqe = NULL;
+
+	while (last != q->wq_pending) {
+		last = (last - 1) & (q->wq_len - 1);
+		if (_wqe(q, last)->state != QDMA_WQE_STATE_CANCELED &&
+			_wqe(q, last)->state != QDMA_WQE_STATE_CANCELED_HW &&
+			!(_wqe(q, last)->wr.block)) {
+			wqe = _wqe(q, last);
+			break;
+		}
+	}
+	return wqe;
+}
+
 int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	struct qdma_wq *queue, u32 priv_data_len);
 int qdma_wq_destroy(struct qdma_wq *queue);
 ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
+int qdma_cancel_req(struct qdma_wq *queue);
 
 #endif /* _QDMA_WR_H */
