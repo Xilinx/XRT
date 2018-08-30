@@ -476,14 +476,14 @@ dodebdev()
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-package: $dsa-dev
-architecture: amd64
-version: $version-$revision
-priority: optional
-depends: $dsa (>= $version)
-description: Xilinx $dsa development DSA. Built on $build_date.
-maintainer: Xilinx Inc
-
+Package: $dsa-dev
+Architecture: amd64
+Version: $version-$revision
+Priority: optional
+Depends: $dsa (>= $version)
+Description: Xilinx $dsa development DSA. Built on $build_date.
+Maintainer: Xilinx Inc
+Section: devel
 EOF
 
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw
@@ -513,15 +513,15 @@ dodeb()
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-package: $dsa
-architecture: all
-version: $version-$revision
-priority: optional
-depends: xrt (>= $opt_xrt)
-description: Xilinx $dsa deployment DSA. 
+Package: $dsa
+Architecture: all
+Version: $version-$revision
+Priority: optional
+Depends: xrt (>= $opt_xrt)
+Description: Xilinx $dsa deployment DSA. 
  This DSA depends on xrt >= $opt_xrt.
-maintainer: Xilinx Inc.
-
+Maintainer: Xilinx Inc.
+Section: devel
 EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/preinst
