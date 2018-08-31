@@ -478,7 +478,11 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::LIST) {
         for (unsigned i = 0; i < deviceVec.size(); i++) {
-            std::cout << '[' << i << "] " << deviceVec[i]->name() << std::endl;
+            std::cout << '[' << i << "] "
+                << std::setw(2) << std::setfill('0') << deviceVec[i]->mBus << ":"
+                << std::setw(2) << std::setfill('0') << deviceVec[i]->mDev << "."
+                << deviceVec[i]->mUserFunc << " "
+                << deviceVec[i]->name() << std::endl;
         }
         return 0;
     }
