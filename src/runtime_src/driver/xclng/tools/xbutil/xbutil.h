@@ -489,8 +489,9 @@ public:
             ss << std::setw(16) << "Not support" << "\n";
         else if(m_devinfo->mVccIntCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
-        else
-            ss << std::setw(16) << std::to_string(m_devinfo->mVccIntCurr) + "mA" << "\n";
+        else{
+            ss << std::setw(16) << (m_devinfo->mVccIntCurr >= 10000 ? (std::to_string(m_devinfo->mVccIntCurr) + "mA") : "<10A") << "\n";
+        }
 
 
         m_devinfo_stringize_power(m_devinfo, lines);
