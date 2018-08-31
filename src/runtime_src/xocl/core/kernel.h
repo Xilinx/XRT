@@ -25,6 +25,8 @@
 #include "xrt/util/td.h"
 #include <limits>
 
+#include <iostream>
+
 namespace xocl {
 
 class kernel : public refcount, public _cl_kernel
@@ -341,6 +343,19 @@ public:
       : argument(kernel) {}
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
+  };
+
+  class stream_argument : public argument
+  {
+  public:
+    stream_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
+    virtual std::unique_ptr<argument> clone();
+    virtual void set(size_t sz, const void* arg);
+    virtual argtype get_argtype() const { return m_arg_info->atype; }
+    virtual size_t get_address_space() const { return 4; }
+  private:
+    arginfo_type m_arg_info;
   };
 
 private:

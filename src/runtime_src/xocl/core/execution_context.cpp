@@ -399,14 +399,11 @@ start()
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    }
-    else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT
-             || address_space==SPIR_ADDRSPACE_PIPES)
+    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+	//do nothing
+    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
+             || address_space==SPIR_ADDRSPACE_CONSTANT)
     {
-      if (address_space==SPIR_ADDRSPACE_PIPES)
-        throw std::runtime_error("cu_ffa.cpp internal error, unexpected address space (pipes)");
-
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
         auto boh = xocl::xocl(mem)->get_buffer_object_or_error(m_device);
