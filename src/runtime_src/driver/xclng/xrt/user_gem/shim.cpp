@@ -750,6 +750,19 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
 
     if (!memcmp(xclbininmemory, "xclbin2", 8)) {
         ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+        if (ret != 0) {
+            if (ret == -EINVAL) {
+                std::stringstream output;
+                output << "Xclbin does not match DSA on board.\n"
+                    << "Please run xbutil flash -a all to flash board."
+                    << std::endl;
+                if (mLogStream.is_open()) {
+                    mLogStream << output.str();
+                } else {
+                    std::cout << output.str();
+                }
+            }
+        }
     } else {
         if (mLogStream.is_open()) {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", Legacy xclbin no longer supported" << std::endl;
