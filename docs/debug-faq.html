@@ -167,7 +167,7 @@
 <dd>Capture stack trace of an XRT application</dd>
 <dt><code class="docutils literal"><span class="pre">lspci</span></code></dt>
 <dd>Enumerate Xilinx PCIe devices</dd>
-<dt><code class="docutils literal"><span class="pre">xbsak</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xbutil</span></code></dt>
 <dd>Query status of Xilinx PCIe device</dd>
 <dt><code class="docutils literal"><span class="pre">xclbinsplit</span></code></dt>
 <dd>Unpack an xclbin</dd>
@@ -190,8 +190,8 @@ hal_log=myfail.log
 </pre></div>
 </div>
 <p>Check if XRT can see the board and reports sane values</p>
-<div class="last highlight-none"><div class="highlight"><pre>xbsak scan
-xbsak query
+<div class="last highlight-none"><div class="highlight"><pre>xbutil scan
+xbutil query
 </pre></div>
 </div>
 </dd>
@@ -202,7 +202,7 @@ xbsak query
 </pre></div>
 </div>
 <p>Check DDR and PCIe bandwidth</p>
-<div class="last highlight-none"><div class="highlight"><pre>xbsak dmatest
+<div class="last highlight-none"><div class="highlight"><pre>xbutil dmatest
 </pre></div>
 </div>
 </dd>
@@ -219,8 +219,8 @@ xbsak query
 <h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
 <p>Read-Before-Write in 5.0+ DSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if &#8211; since the last bitstream download which results in MIG initialization &#8211; no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
 <ol class="arabic simple">
-<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
-<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
+<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
+<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
 </ol>
 <p>Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.</p>
 </div>
@@ -233,11 +233,11 @@ xbsak query
 <li>When run several times, a CU may produce correct results a few times and incorrect results rest of the time</li>
 <li>A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct &#8211; typically 64 bytes or one AXI burst &#8211; segment followed by incorrect segments are generated.</li>
 </ol>
-<p>Users should check the frequency of the board with <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code> and compare it against the metadata in xclbin. <code class="docutils literal"><span class="pre">xclbincat</span></code> may be used to extract metadata from xclbin.</p>
+<p>Users should check the frequency of the board with <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> and compare it against the metadata in xclbin. <code class="docutils literal"><span class="pre">xclbincat</span></code> may be used to extract metadata from xclbin.</p>
 </div>
 <div class="section" id="cu-deadlock">
 <h3>CU Deadlock<a class="headerlink" href="#cu-deadlock" title="Permalink to this headline">¶</a></h3>
-<p>HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code> where the CU will appear stuck in <em>START</em> or <em>&#8212;</em> state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.</p>
+<p>HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> where the CU will appear stuck in <em>START</em> or <em>&#8212;</em> state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.</p>
 </div>
 <div class="section" id="multiple-cu-ddr-access-deadlock">
 <h3>Multiple CU DDR Access Deadlock<a class="headerlink" href="#multiple-cu-ddr-access-deadlock" title="Permalink to this headline">¶</a></h3>
@@ -245,7 +245,7 @@ xbsak query
 </div>
 <div class="section" id="axi-bus-deadlock">
 <h3>AXI Bus Deadlock<a class="headerlink" href="#axi-bus-deadlock" title="Permalink to this headline">¶</a></h3>
-<p>AXI Bus deadlocks can be caused by <a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a>, <a class="reference internal" href="#cu-deadlock">CU Deadlock</a> or <a class="reference internal" href="#multiple-cu-ddr-access-deadlock">Multiple CU DDR Access Deadlock</a> described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code> to check if CU is stuck in <em>START</em> or <em>&#8211;</em> state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">status</span></code> which should list and performance counter values. Optionally run <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">dmatest</span></code> which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.</p>
+<p>AXI Bus deadlocks can be caused by <a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a>, <a class="reference internal" href="#cu-deadlock">CU Deadlock</a> or <a class="reference internal" href="#multiple-cu-ddr-access-deadlock">Multiple CU DDR Access Deadlock</a> described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> to check if CU is stuck in <em>START</em> or <em>&#8211;</em> state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">status</span></code> which should list and performance counter values. Optionally run <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">dmatest</span></code> which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.</p>
 </div>
 <div class="section" id="platform-bugs">
 <h3>Platform Bugs<a class="headerlink" href="#platform-bugs" title="Permalink to this headline">¶</a></h3>
@@ -260,8 +260,8 @@ Rarely MIG calibration might fail after bitstream download. This will also show 
 </div>
 <div class="section" id="board-in-crashed-state">
 <h2>Board in Crashed State<a class="headerlink" href="#board-in-crashed-state" title="Permalink to this headline">¶</a></h2>
-<p>When board is in crashed state PCIe read operations start returning 0XFF. In this state xbsak query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset</p>
-<div class="highlight-none"><div class="highlight"><pre>xbsak reset -h
+<p>When board is in crashed state PCIe read operations start returning 0XFF. In this state xbutil query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset</p>
+<div class="highlight-none"><div class="highlight"><pre>xbutil reset -h
 </pre></div>
 </div>
 <p>If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in <a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></p>
@@ -280,8 +280,8 @@ kds=false
 <p>When creating bug reports please include the following:</p>
 <ol class="arabic simple">
 <li>Output of <code class="docutils literal"><span class="pre">dmesg</span></code></li>
-<li>Output of <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">query</span></code></li>
-<li>Output of <code class="docutils literal"><span class="pre">xbsak</span> <span class="pre">scan</span></code></li>
+<li>Output of <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code></li>
+<li>Output of <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">scan</span></code></li>
 <li>Application binaries: xclbin, host executable and code, any data files used by the application</li>
 <li>XRT version</li>
 <li>DSA name and version</li>

@@ -1,3 +1,7 @@
+if( ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+  add_subdirectory(doc)
+endif()
+
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${BOOST_FILESYSTEM_INCLUDE_DIRS}
