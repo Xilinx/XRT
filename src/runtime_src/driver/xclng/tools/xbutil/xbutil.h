@@ -265,7 +265,7 @@ public:
         ss << std::setw(16) << ssdevice.str();
     ///    ss << std::setw(16) << std::hex << m_devinfo->mSubsystemId << std::dec;
         ss << std::setw(16) << std::hex << m_devinfo->mSubsystemVendorId << std::dec;
-        ss << std::setw(16) << m_devinfo->mXMCVersion << "\n\n";
+        ss << std::setw(16) << (m_devinfo->mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo->mXMCVersion : m_devinfo->mMBVersion) << "\n\n";
 
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
         ss << std::setw(16) << "OCL Frequency";
@@ -500,8 +500,9 @@ public:
             ss << std::setw(16) << "Not support" << "\n";
         else if(m_devinfo->mVccIntCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
-        else
-            ss << std::setw(16) << std::to_string(m_devinfo->mVccIntCurr) + "mA" << "\n";
+        else{
+            ss << std::setw(16) << (m_devinfo->mVccIntCurr >= 10000 ? (std::to_string(m_devinfo->mVccIntCurr) + "mA") : "<10A") << "\n";
+        }
 
 
         m_devinfo_stringize_power(m_devinfo, lines);

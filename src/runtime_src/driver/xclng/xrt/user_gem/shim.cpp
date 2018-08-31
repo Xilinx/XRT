@@ -558,6 +558,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mVAux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
     info->mVBram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
     info->mXMCVersion =        xclSysfsGetInt(true, "xmc", "version");
+    info->mMBVersion =        xclSysfsGetInt(true, "microblaze", "version");
     info->m12VPex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_vol");
     info->m12VAux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux_vol");
     info->mPexCurr =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_curr");
@@ -1389,7 +1390,10 @@ std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
         (mgmt ? dev.mgmt_name : dev.user_name) + "/";
 
     if (!subDevName.empty()) {
-        path += getSubdevDirName(path, subDevName);
+        std::string subdir = getSubdevDirName(path, subDevName);
+        if (subdir.empty())
+            return std::ifstream();
+        path += subdir;
         path += "/";
     }
 
