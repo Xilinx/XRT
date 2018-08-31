@@ -55,21 +55,21 @@ static const struct vm_operations_struct reg_physical_vm_ops = {
 
 void zocl_free_sections(struct drm_zocl_dev *zdev)
 {
-	if (zdev->ip_layout) {
-		vfree(zdev->ip_layout);
-		CLEAR(zdev->ip_layout);
+	if (zdev->ip) {
+		vfree(zdev->ip);
+		CLEAR(zdev->ip);
 	}
-	if (zdev->debug_ip_layout) {
-		vfree(zdev->debug_ip_layout);
-		CLEAR(zdev->debug_ip_layout);
+	if (zdev->debug_ip) {
+		vfree(zdev->debug_ip);
+		CLEAR(zdev->debug_ip);
 	}
 	if (zdev->connectivity) {
 		vfree(zdev->connectivity);
 		CLEAR(zdev->connectivity);
 	}
-	if (zdev->mem_topology) {
-		vfree(zdev->mem_topology);
-		CLEAR(zdev->mem_topology);
+	if (zdev->topology) {
+		vfree(zdev->topology);
+		CLEAR(zdev->topology);
 	}
 }
 

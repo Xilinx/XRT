@@ -42,9 +42,9 @@ static ssize_t mem_topology_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	size_t size = sizeof_section(zdev->mem_topology, m_mem_data);
+	size_t size = sizeof_section(zdev->topology, m_mem_data);
 
-	memcpy(buf, zdev->mem_topology, size);
+	memcpy(buf, zdev->topology, size);
 
 	return size;
 }
@@ -68,9 +68,9 @@ static ssize_t ip_layout_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	size_t size = sizeof_section(zdev->ip_layout, m_ip_data);
+	size_t size = sizeof_section(zdev->ip, m_ip_data);
 
-	memcpy(buf, zdev->ip_layout, size);
+	memcpy(buf, zdev->ip, size);
 
 	return size;
 }
@@ -85,7 +85,7 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	size = sizeof_section(zdev->debug_ip_layout, m_debug_ip_data);
+	size = sizeof_section(zdev->debug_ip, m_debug_ip_data);
 
 	if (off >= size)
 		return 0;
@@ -95,7 +95,7 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 	else
 		nread = size - off;
 
-	memcpy(buf, ((char *)zdev->debug_ip_layout) + off, nread);
+	memcpy(buf, ((char *)zdev->debug_ip) + off, nread);
 
 	return nread;
 }

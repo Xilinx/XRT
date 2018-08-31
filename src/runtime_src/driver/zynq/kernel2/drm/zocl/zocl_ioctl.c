@@ -353,144 +353,37 @@ zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
 }
 
 int
-zocl_read_ip_layout(struct drm_zocl_dev *zdev, struct axlf *axlf_full,
-		char __user *xclbin_ptr)
+zocl_read_sect(enum axlf_section_kind kind, void *sect,
+		struct axlf *axlf_full, char __user *xclbin_ptr)
 {
 	struct axlf_section_header *memHeader = NULL;
 	uint64_t xclbin_len;
 	uint64_t offset;
 	uint64_t size;
+	void **sect_tmp = (void *)sect;
 	int err = 0;
 
-	memHeader = get_axlf_section(axlf_full, IP_LAYOUT);
+	memHeader = get_axlf_section(axlf_full, kind);
 	if (!memHeader)
 		return 0;
 
 	xclbin_len = axlf_full->m_header.m_length;
-	err = zocl_check_section(memHeader, xclbin_len, IP_LAYOUT);
+	err = zocl_check_section(memHeader, xclbin_len, kind);
 	if (err)
 		return err;
 
 	/* Populating IP_LAYOUT section */
 	offset = memHeader->m_sectionOffset;
 	size = memHeader->m_sectionSize;
-	zdev->ip_layout = vmalloc(size);
-	err = copy_from_user(zdev->ip_layout, &xclbin_ptr[offset], size);
+	*sect_tmp = vmalloc(size);
+	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
 	if (err) {
-		vfree(zdev->ip_layout);
-		zdev->ip_layout = NULL;
+		vfree(*sect_tmp);
+		sect = NULL;
 		return err;
 	}
-	/* TODO. Maybe we can remove this check? */
-	if (sizeof_section(zdev->ip_layout, m_ip_data) != size)
-		return -EINVAL;
 
-	return 0;
-}
-
-int
-zocl_read_debug_ip_layout(struct drm_zocl_dev *zdev, struct axlf *axlf_full,
-		char __user *xclbin_ptr)
-{
-	struct axlf_section_header *memHeader = NULL;
-	uint64_t xclbin_len;
-	uint64_t offset;
-	uint64_t size;
-	int err = 0;
-
-	memHeader = get_axlf_section(axlf_full, DEBUG_IP_LAYOUT);
-	if (!memHeader)
-		return 0;
-
-	xclbin_len = axlf_full->m_header.m_length;
-	err = zocl_check_section(memHeader, xclbin_len, DEBUG_IP_LAYOUT);
-	if (err)
-		return err;
-
-	/* Populating DEBUG_IP_LAYOUT section */
-	offset = memHeader->m_sectionOffset;
-	size = memHeader->m_sectionSize;
-	zdev->debug_ip_layout = vmalloc(size);
-	err = copy_from_user(zdev->debug_ip_layout, &xclbin_ptr[offset], size);
-	if (err) {
-		vfree(zdev->debug_ip_layout);
-		zdev->debug_ip_layout = NULL;
-		return err;
-	}
-	if (sizeof_section(zdev->debug_ip_layout, m_debug_ip_data) != size)
-		return -EINVAL;
-
-	return 0;
-}
-
-int
-zocl_read_connectivity(struct drm_zocl_dev *zdev, struct axlf *axlf_full,
-		char __user *xclbin_ptr)
-{
-	struct axlf_section_header *memHeader = NULL;
-	uint64_t xclbin_len;
-	uint64_t offset;
-	uint64_t size;
-	int err = 0;
-
-	memHeader = get_axlf_section(axlf_full, CONNECTIVITY);
-	if (!memHeader)
-		return 0;
-
-	xclbin_len = axlf_full->m_header.m_length;
-	err = zocl_check_section(memHeader, xclbin_len, CONNECTIVITY);
-	if (err)
-		return err;
-
-	/* Populating CONNECTIVITY section */
-	offset = memHeader->m_sectionOffset;
-	size = memHeader->m_sectionSize;
-	zdev->connectivity = vmalloc(size);
-	err = copy_from_user(zdev->connectivity, &xclbin_ptr[offset], size);
-	if (err) {
-		vfree(zdev->connectivity);
-		zdev->connectivity = NULL;
-		return err;
-	}
-	if (sizeof_section(zdev->connectivity, m_connection) != size)
-		return -EINVAL;
-
-	return 0;
-}
-
-static int
-zocl_read_mem_topology(struct drm_zocl_dev *zdev, struct axlf *axlf_full,
-		char __user *xclbin_ptr)
-{
-	struct axlf_section_header *memHeader = NULL;
-	uint64_t xclbin_len;
-	uint64_t offset;
-	uint64_t size;
-	int err = 0;
-
-	memHeader = get_axlf_section(axlf_full, MEM_TOPOLOGY);
-	if (!memHeader)
-		return 0;
-
-	xclbin_len = axlf_full->m_header.m_length;
-	err = zocl_check_section(memHeader, xclbin_len, MEM_TOPOLOGY);
-	if (err)
-		return err;
-
-	/* Populating MEM_TOPOLOGY section */
-	offset = memHeader->m_sectionOffset;
-	size = memHeader->m_sectionSize;
-	zdev->mem_topology = vmalloc(size);
-	err = copy_from_user(zdev->mem_topology, &xclbin_ptr[offset], size);
-	if (err) {
-		vfree(zdev->mem_topology);
-		zdev->mem_topology = NULL;
-		return err;
-	}
-	if (sizeof_section(zdev->mem_topology, m_mem_data) != size)
-		return -EINVAL;
-
-	return 0;
+	return size;
 }
 
 int
@@ -499,11 +392,12 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct axlf axlf_head;
-	struct axlf *axlf_full;
-	long axlf_full_size;
-	char __user *xclbin_ptr = NULL;
+	struct axlf *axlf;
+	long axlf_size;
+	char __user *xclbin = NULL;
 	size_t size_of_header;
 	size_t num_of_sections;
+	uint64_t size = 0;
 	int ret = 0;
 
 	if (copy_from_user(&axlf_head, axlf_obj->xclbin, sizeof(struct axlf)))
@@ -513,51 +407,79 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -EINVAL;
 
 	/* Check unique ID */
-	if (axlf_head.m_uniqueId == zdev->unique_id_last_bitstream)
+	if (axlf_head.m_uniqueId == zdev->unique_id_last_bitstream) {
+		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
 		return ret;
+	}
 
 	zocl_free_sections(zdev);
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head.m_header.m_numSections-1;
-	axlf_full_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf_full = vmalloc(axlf_full_size);
-	if (!axlf_full)
+	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
+	axlf = vmalloc(axlf_size);
+	if (!axlf)
 		return -ENOMEM;
 
-	if (copy_from_user(axlf_full, axlf_obj->xclbin, axlf_full_size)) {
+	if (copy_from_user(axlf, axlf_obj->xclbin, axlf_size)) {
 		ret = -EFAULT;
 		goto out0;
 	}
 
-	xclbin_ptr = (char __user *)axlf_obj->xclbin;
-	ret = !access_ok(VERIFY_READ, xclbin_ptr, axlf_head.m_header.m_length);
+	xclbin = (char __user *)axlf_obj->xclbin;
+	ret = !access_ok(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 	if (ret) {
 		ret = -EFAULT;
 		goto out0;
 	}
 
-	/* Populating sections */
-	ret = zocl_read_ip_layout(zdev, axlf_full, xclbin_ptr);
-	if (ret)
+	/* Populating IP_LAYOUT sections */
+	/* zocl_read_sect return size of section when successfully find it */
+	size = zocl_read_sect(IP_LAYOUT, &zdev->ip, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			goto out0;
+	} else if (sizeof_section(zdev->ip, m_ip_data) != size) {
+		ret = -EINVAL;
 		goto out0;
+	}
 
-	ret = zocl_read_debug_ip_layout(zdev, axlf_full, xclbin_ptr);
-	if (ret)
+	/* Populating DEBUG_IP_LAYOUT sections */
+	size = zocl_read_sect(DEBUG_IP_LAYOUT, &zdev->debug_ip, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			goto out0;
+	} else if (sizeof_section(zdev->debug_ip, m_debug_ip_data) != size) {
+		ret = -EINVAL;
 		goto out0;
+	}
 
-	ret = zocl_read_connectivity(zdev, axlf_full, xclbin_ptr);
-	if (ret)
+	/* Populating CONNECTIVITY sections */
+	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			goto out0;
+	} else if (sizeof_section(zdev->connectivity, m_connection) != size) {
+		ret = -EINVAL;
 		goto out0;
+	}
 
-	ret = zocl_read_mem_topology(zdev, axlf_full, xclbin_ptr);
-	if (ret)
+	/* Populating MEM_TOPOLOGY sections */
+	size = zocl_read_sect(MEM_TOPOLOGY, &zdev->topology, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			goto out0;
+	} else if (sizeof_section(zdev->topology, m_mem_data) != size) {
+		ret = -EINVAL;
 		goto out0;
+	}
 
 	zdev->unique_id_last_bitstream = axlf_head.m_uniqueId;
 
 out0:
-	vfree(axlf_full);
+	if (size < 0)
+		ret = size;
+	vfree(axlf);
 	return ret;
 }

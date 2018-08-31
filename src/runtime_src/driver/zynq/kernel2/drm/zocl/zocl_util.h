@@ -47,9 +47,9 @@ struct drm_zocl_dev {
 	unsigned int             irq;
 	struct sched_exec_core  *exec;
 
-	struct mem_topology	*mem_topology;
-	struct ip_layout	*ip_layout;
-	struct debug_ip_layout	*debug_ip_layout;
+	struct mem_topology	*topology;
+	struct ip_layout	*ip;
+	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
 	u64			 unique_id_last_bitstream;
 };
