@@ -77,7 +77,6 @@ load_file_to_memory(const char *filename, char **result)
   (*result)[size] = 0;
   return size;
 }
-
 int main(int argc, char** argv)
 {
   cl_int err;                         // error code returned from api calls
@@ -134,15 +133,15 @@ T = fexists(xclbin);
 
 
 // Fill our data sets with pattern
-  //
-  int i = 0;
+ int i = 0;
   for(i = 0; i < LENGTH; i++) {
     h_buf[i] = 0;
   }
 
   // Connect to first platform
   //
-err = clGetPlatformIDs(1, &platform_id, &num_platforms);
+
+  err = clGetPlatformIDs(1, &platform_id, &num_platforms);
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to get a platform id!\n");
@@ -171,12 +170,14 @@ err = clGetPlatformIDs(1, &platform_id, &num_platforms);
   printf("Platform profile:    %s\n", (char *)platform_prof);
   printf("Platform extensions: %s\n", ((char)platform_exts[0] != '\0') ? (char *)platform_exts : "NONE");
 
-  // Get all available devices (up to 10)
+  // Get all available devices
 
   cl_uint num_devices;
-  cl_device_id devices[10];
 
-  err = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, 10, devices, &num_devices);
+   clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, 0, NULL, &num_devices);
+   cl_device_id*  devices = (cl_device_id*) malloc(sizeof(cl_device_id) * num_devices);
+
+  err = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_ACCELERATOR, num_devices, devices, NULL);
 
   if (err != CL_SUCCESS) {
     printf("Failed to collect device list on this platform!\n");
@@ -185,21 +186,19 @@ err = clGetPlatformIDs(1, &platform_id, &num_platforms);
 
   printf("\nFound %d compute devices!:\n", num_devices);
 
-
    if (index >= num_devices) {
-        cout << "Out of range index: " << index << " >= num_devices: " << num_devices << "\n";
+ cout << "Out of range index: " << index << " >= num_devices: " << num_devices << "\n";
         return EXIT_FAILURE;
   }
 
 // Checking for availability of the required device
       device_id = devices[index];
 
-
   // We have a compute device of required type! Next, create a compute context on it.
 
 
   context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &err);
- if (!context) {
+  if (!context) {
     printf("Error: Failed to create a compute context!\n");
     return EXIT_FAILURE;
   }
@@ -244,7 +243,7 @@ program = clCreateProgramWithBinary(context, 1, &device_id, &n,
 
     // See page 98...
     clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-    printf("%s\n", buffer);
+ printf("%s\n", buffer);
     exit(1);
   }
 
@@ -257,7 +256,8 @@ program = clCreateProgramWithBinary(context, 1, &device_id, &n,
     printf("Test failed\n");
     return EXIT_FAILURE;
   }
- // Create the input and output arrays in device memory for our calculation
+
+  // Create the input and output arrays in device memory for our calculation
   //
   d_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(char) * LENGTH, NULL, NULL);
   if (!d_buf)
@@ -311,7 +311,8 @@ program = clCreateProgramWithBinary(context, 1, &device_id, &n,
 
   printf("\nRESULT:\n%s", &h_buf[0]);
 
- // Shutdown and cleanup
+
+  // Shutdown and cleanup
   //
   clReleaseMemObject(d_buf);
   clReleaseProgram(program);
