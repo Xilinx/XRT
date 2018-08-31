@@ -358,7 +358,7 @@ public:
         else if(m_devinfo->mPexCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
         else
-            ss << std::setw(16) << std::to_string(m_devinfo->mPexCurr).substr(0,4) + "mA";
+            ss << std::setw(16) << std::to_string(m_devinfo->mPexCurr) + "mA";
 
 
         if(m_devinfo->mAuxCurr == XCL_NO_SENSOR_DEV)
@@ -366,7 +366,7 @@ public:
         else if (m_devinfo->mAuxCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
         else
-            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr).substr(0,4) + "mA" << "\n\n";
+            ss << std::setw(16) << std::to_string(m_devinfo->mAuxCurr) + "mA" << "\n\n";
 
 
         ss << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX";
@@ -490,7 +490,7 @@ public:
         else if(m_devinfo->mVccIntCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
         else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mVccIntCurr).substr(0,4) + "mA" << "\n";
+            ss << std::setw(16) << std::to_string(m_devinfo->mVccIntCurr) + "mA" << "\n";
 
 
         m_devinfo_stringize_power(m_devinfo, lines);

@@ -1,17 +1,23 @@
-set (MSP432 "MSP432P401R-VCU1525-1.4-56027182079c0bd621761b7dab5a27ca.txt")
-
+set (MSP432 "BMC-MSP432")
+set (URL_MSP432 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master/BMC-card-firmware")
 
 add_custom_command(
-  OUTPUT ${MSP432}
-  COMMAND curl https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/rel-v1.4/BMC-card-firmware/${MSP432} --output ${MSP432}
-  COMMENT "Downloading MSP432"
+  OUTPUT ${MSP432}.txt {MSP432}.txt.filename 
+
+  COMMENT "Downloading MSP432..."
+  COMMAND curl ${URL_MSP432}/${MSP432}.txt --output ${MSP432}.txt
+  COMMAND curl ${URL_MSP432}/${MSP432}.txt.filename --output ${MSP432}.txt.filename
+  COMMENT "Completed downloading MSP432"
+
+  COMMENT "Rename base file name"
+  COMMAND cat BMC-MSP432.txt.filename | tr -d ' ' | xargs -d '\\n'  -t -I % mv BMC-MSP432.txt %.txt
 )
 
 add_custom_target(bmc
- DEPENDS ${MSP432}
+  DEPENDS ${MSP432}.txt
 )
 
-install (FILES
- ${CMAKE_CURRENT_BINARY_DIR}/${MSP432}
- DESTINATION ${ERT_INSTALL_PREFIX}
+install (
+   CODE "file( GLOB _FlashImages \"${CMAKE_CURRENT_BINARY_DIR}/*.txt\" )"
+   CODE "file( INSTALL \${_FlashImages} DESTINATION \"${ERT_INSTALL_PREFIX}\" )"
 )

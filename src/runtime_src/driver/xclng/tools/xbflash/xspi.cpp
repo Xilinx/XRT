@@ -456,7 +456,7 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
 }
 
 int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
-    std::cout << "usign new flash" << std::endl;
+    std::cout << "INFO: Using new flash" << std::endl;
     clearBuffers();
     recordList.clear();
 

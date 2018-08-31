@@ -277,7 +277,10 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc->len = len;
 
 		desc->pld_len = len;
-		desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH;
+		/* desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH; */
+
+		desc->cdh_flags |= (1 << S_H2C_DESC_F_ZERO_CDH);
+		desc->cdh_flags |= V_H2C_DESC_NUM_GL(1);
 		
 		descq->pidx++;
 		descq->pidx &= descq->conf.rngsz - 1;
@@ -297,6 +300,9 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	}
 	desc->flags |= S_H2C_DESC_F_EOP;
+	desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT) |
+		(1 << S_H2C_DESC_F_REQ_WRB);
+
 	BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0);
 
 	wqe->unproc_sg = sg;
@@ -526,7 +532,7 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 
 	cb = qdma_req_cb_get(&wqe->wr.req);
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
-	init_waitqueue_head(&cb->wq);
+	qdma_waitq_init(&cb->wq);;
 
 again:
 	descq_proc_req(queue);

@@ -20,8 +20,8 @@
 #include "lib/xmacfg.h"
 #include "lib/xmahw.h"
 #include "lib/xmalimits.h"
-#include "lib/hal/xclbin.h"
-#include "lib/hal/mgmt-ioctl.h"
+#include "xclbin.h"
+#include "mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout

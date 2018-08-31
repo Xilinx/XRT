@@ -1060,14 +1060,13 @@ load_program(program* program)
       idx=2; // system clocks start at idx==2
       auto sclocks = m_xclbin.system_clocks();
       if (sclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
       for (auto& clock : sclocks)
-	target_freqs[idx++] = clock.frequency;
+        target_freqs[idx++] = clock.frequency;
 
       auto rv = xdevice->reClock2(0,target_freqs);
-
       if (rv.valid() && rv.get())
-	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
+        throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
     }
   }
 
@@ -1076,11 +1075,23 @@ load_program(program* program)
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     auto xbrv = xdevice->loadXclBin(header);
-    if (xbrv.valid() && xbrv.get())
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+    if (xbrv.valid() && xbrv.get()){
+      if(xbrv.get() == -EACCES)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
+      else if (xbrv.get() == -EPERM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
+      else if (xbrv.get() == -EBUSY)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
+      else if (xbrv.get() == -ETIMEDOUT)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Timeout, see dmesg for details");
+      else if (xbrv.get() == -ENOMEM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Out of Memory, see dmesg for details");
+      else
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
+    }
 
     if (!xbrv.valid()) {
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
     }
   }
 
