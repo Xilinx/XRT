@@ -41,6 +41,6 @@ target_link_libraries(xmaapi
 
 install(TARGETS xmaapi LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc.in ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc @ONLY)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)
+#CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc.in ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc @ONLY)
+#install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)
 

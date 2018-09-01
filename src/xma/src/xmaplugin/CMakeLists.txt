@@ -22,7 +22,7 @@ set_target_properties(xmaplugin PROPERTIES VERSION ${XMA_VERSION_STRING}
 
 install (TARGETS xmaplugin LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
 
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc.in ${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc @ONLY)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)
+#CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc.in ${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc @ONLY)
+#install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/libxmaplugin.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)
 
 
