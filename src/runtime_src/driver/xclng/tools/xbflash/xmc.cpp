@@ -37,11 +37,15 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index, char *inMap)
     mMgmtMap = inMap;
     mPktBufOffset = 0;
     mPkt = {};
+    xcldev::pci_device_scanner scanner;
+    auto& dev = scanner.device_list.at(device_index);
 
-    if(Flasher::pcieBarRead(0, (unsigned long long)mMgmtMap +
-        XMC_GPIO_RESET, &val, sizeof (val)) != 0 || val == 0) {
-        mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
-        goto nosup;
+    if (!dev.is_mfg) {
+        if(Flasher::pcieBarRead(0, (unsigned long long)mMgmtMap +
+            XMC_GPIO_RESET, &val, sizeof (val)) != 0 || val == 0) {
+            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+            goto nosup;
+        }
     }
 
     val = readReg(XMC_REG_OFF_MAGIC);

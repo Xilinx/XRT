@@ -821,11 +821,12 @@ public:
      *
      * TODO: Refactor this function to be much shorter.
      */
-    int dmatest(size_t blockSize) {
+    int dmatest(size_t blockSize, bool verbose) {
         if (blockSize == 0)
             blockSize = 0x200000; // Default block size
 
-        std::cout << "Total DDR size: " << m_devinfo.mDDRSize/(1024 * 1024) << " MB\n";
+        if (verbose)
+            std::cout << "Total DDR size: " << m_devinfo.mDDRSize/(1024 * 1024) << " MB\n";
         unsigned numDDR = m_devinfo.mDDRBankCount;
         bool isAREDevice = false;
         if (strstr(m_devinfo.mName, "-xare")) {//This is ARE device
@@ -867,11 +868,13 @@ public:
                 ifs.read(buffer, buf_size);
                 mem_topology *map;
                 map = (mem_topology *)buffer;
-                std::cout << "Reporting from mem_topology:" << std::endl;
+                if (verbose)
+                    std::cout << "Reporting from mem_topology:" << std::endl;
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
                     if( map->m_mem_data[i].m_used ) {
-                        std::cout << "Data Validity & DMA Test on " << map->m_mem_data[i].m_tag << "\n";
+                        if (verbose)
+                            std::cout << "Data Validity & DMA Test on " << map->m_mem_data[i].m_tag << "\n";
                         addr = map->m_mem_data[i].m_base_address;
 
                         for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
@@ -898,9 +901,11 @@ public:
             }
             ifs.close();
         } else { // legacy mode
-            std::cout << "Reporting in legacy mode:" << std::endl;
+            if (verbose)
+                std::cout << "Reporting in legacy mode:" << std::endl;
             for (unsigned i = 0; i < numDDR; i++) {
-                std::cout << "Data Validity & DMA Test on DDR[" << i << "]\n";
+                if (verbose)
+                    std::cout << "Data Validity & DMA Test on DDR[" << i << "]\n";
                 addr = i * oneDDRSize;
 
                 for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
@@ -1106,13 +1111,19 @@ public:
     }
 
     int validate();
+
+private:
+    // Run a test case as <exe> <xclbin> [-d index] on this device and collect
+    // all output from the run into "output"
+    // Note: exe should assume index to be 0 without -d
+    int runTestCase(const std::string& exe, const std::string& xclbin,
+        std::string& output);
 };
 
 void printHelp(const std::string& exe);
 int xclTop(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
-
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
