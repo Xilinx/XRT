@@ -1,7 +1,7 @@
 Tools and Utilities
 -------------------
 
-xbsak
+xbutil
 ~~~~~
 
-Xilinx Board Swiss Army Knife
+Xilinx Board Utility Tool

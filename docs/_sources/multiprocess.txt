@@ -44,6 +44,6 @@ Failure to pre-program the device results in the following error:
   ERROR: Failed to load xclbin
   Error: Failed to create compute program from binary -44!
 
-An xclbin is programmed explicitly by using xbsak::
+An xclbin is programmed explicitly by using xbutil::
 
-  xbsak program -p <xclbin>
+  xbutil program -p <xclbin>

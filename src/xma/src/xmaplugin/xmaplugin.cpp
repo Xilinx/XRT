@@ -15,7 +15,7 @@
  * under the License.
  */
 #include <stdio.h>
-#include "lib/hal/xclhal2.h"
+#include "xclhal2.h"
 #include "xmaplugin.h"
 
 XmaBufferHandle

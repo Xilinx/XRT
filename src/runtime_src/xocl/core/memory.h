@@ -30,6 +30,8 @@
 
 namespace xocl {
 
+class kernel;
+
 class memory : public refcount, public _cl_mem
 {
   using memory_flags_type  = property_object<cl_mem_flags>;
@@ -81,15 +83,15 @@ public:
   }
 
   void
-  add_xlnx_ext_param(void* param)
+  add_ext_kernel(const kernel* kernel)
   {
-    xlnx_ext_param = param;
+    m_ext_kernel = kernel;
   }
 
-  const void*
-  get_xlnx_ext_param()
+  const kernel*
+  get_ext_kernel()
   {
-    return xlnx_ext_param;
+    return m_ext_kernel;
   }
 
   context*
@@ -446,8 +448,10 @@ private:
   ptr<context> m_context;
 
   memory_flags_type m_flags {0};
+
+  // cl_mem_ext_ptr_t data.  move to buffer derived class
   memory_extension_flags_type m_ext_flags {0};
-  void* xlnx_ext_param {nullptr};
+  const kernel* m_ext_kernel {nullptr};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.

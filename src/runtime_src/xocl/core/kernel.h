@@ -416,7 +416,12 @@ public:
   const std::string&
   get_name_from_constructor() const
   {
-    return m_name;
+    // Remove this function, it is not needed
+    // Remove m_name from data members
+    // Fix ctor
+    if (m_name != m_symbol.name)
+      throw std::runtime_error("Internal Error");
+    return get_name();
   }
   /**
    * Return list of instances (CUs) in this kernel

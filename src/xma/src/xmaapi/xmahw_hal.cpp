@@ -25,9 +25,7 @@
 #include <unistd.h>
 //#include <config.h>
 #include "app/xmaerror.h"
-#include "lib/hal/xclhal2.h"
-#include "lib/hal/xclbin.h"
-#include "lib/hal/mgmt-ioctl.h"
+#include "xclhal2.h"
 #include "lib/xmaxclbin.h"
 #include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
