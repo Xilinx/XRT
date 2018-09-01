@@ -151,7 +151,18 @@ class device {
     xclErrorStatus m_errinfo;
 
 public:
+    int mDomain;
+    int mBus;
+    int mDev;
+    int mUserFunc;
+    int mMgmtFunc;
     device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{} {
+        auto& dev = xcldev::pci_device_scanner::device_list[m_idx];
+        mDomain = dev.domain;
+        mBus = dev.bus;
+        mDev = dev.device;
+        mUserFunc = dev.user_func;
+        mMgmtFunc = dev.mgmt_func;
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open device index, " + std::to_string(m_idx));
@@ -254,7 +265,7 @@ public:
         ss << std::setw(16) << ssdevice.str();
     ///    ss << std::setw(16) << std::hex << m_devinfo->mSubsystemId << std::dec;
         ss << std::setw(16) << std::hex << m_devinfo->mSubsystemVendorId << std::dec;
-        ss << std::setw(16) << m_devinfo->mXMCVersion << "\n\n";
+        ss << std::setw(16) << (m_devinfo->mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo->mXMCVersion : m_devinfo->mMBVersion) << "\n\n";
 
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
         ss << std::setw(16) << "OCL Frequency";
@@ -489,8 +500,9 @@ public:
             ss << std::setw(16) << "Not support" << "\n";
         else if(m_devinfo->mVccIntCurr == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n";
-        else
-            ss << std::setw(16) << std::to_string(m_devinfo->mVccIntCurr) + "mA" << "\n";
+        else{
+            ss << std::setw(16) << (m_devinfo->mVccIntCurr >= 10000 ? (std::to_string(m_devinfo->mVccIntCurr) + "mA") : "<10A") << "\n";
+        }
 
 
         m_devinfo_stringize_power(m_devinfo, lines);
