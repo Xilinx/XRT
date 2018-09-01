@@ -987,29 +987,32 @@ public:
   }
 
   xocl::xclbin::memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
   {
     if (!is_valid())
       return -1;
 
+    // iterate connectivity and look for CU that with name that matches kernel_name
     for (int32_t i=0; i<m_con->m_count; ++i) {
       if (m_con->m_connection[i].arg_index!=arg)
         continue;
-      //ip_layout section has format : kernel_name:cu_name
       auto ipidx = m_con->m_connection[i].m_ip_layout_index;
-      const char *ip_name = reinterpret_cast<const char*>(m_ip->m_ip_data[ipidx].m_name);
-      const char* sub = strstr(ip_name,kernel_name.c_str());
+      auto ip_name = reinterpret_cast<const char*>(m_ip->m_ip_data[ipidx].m_name);
+
+      // ip_name has format : kernel_name:cu_name
+      // For a match, kernel_name should be found at first location in ip_name
+      auto sub = strstr(ip_name,kernel_name.c_str());
       if (sub!=ip_name)
         continue;
 
-      //This connection already has a device storage allocated, so skip to 
-      //the next connection in the connection range which matches the 
-      //criteria - multiple cu case. 
-      //TODO: Check if this is ever hit. 
-      if(std::find(m_used_connections.begin(), m_used_connections.end(), i)
-	     != m_used_connections.end()) {
+      // This connection already has a device storage allocated, so skip to
+      // the next connection in the connection range which matches the
+      // criteria - multiple cu case.
+      // TODO: Check if this is ever hit.
+      if (std::find(m_used_connections.begin(), m_used_connections.end(), i)
+	     != m_used_connections.end())
 	  continue;
-      }
+
       // found the connection that match kernel_name,arg
       size_t memidx = m_con->m_connection[i].mem_data_index;
       assert(m_mem->m_mem_data[memidx].m_used);
@@ -1026,8 +1029,8 @@ public:
     return m_clk;
   }
 
-  const mem_topology* 
-  get_mem_topology() const 
+  const mem_topology*
+  get_mem_topology() const
   {
     return m_mem;
   }
@@ -1252,7 +1255,7 @@ struct xclbin::impl
   { return m_sections.banktag_to_memidx(banktag); }
 
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
   { return m_sections.get_memidx_from_arg(kernel_name, arg); }
 
   unsigned int
@@ -1480,7 +1483,7 @@ banktag_to_memidx(const std::string& tag) const
 
 xclbin::memidx_type
 xclbin::
-get_memidx_from_arg(const std::string& kernel_name, int32_t arg) 
+get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
 {
   return m_impl->get_memidx_from_arg(kernel_name, arg);
 }

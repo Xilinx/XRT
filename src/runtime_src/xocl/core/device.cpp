@@ -236,23 +236,23 @@ alloc(memory* mem)
   return boh;
 }
 
-int 
+int
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream) 
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-  const cl_kernel kernel = (const cl_kernel)(ext->param);
+  auto kernel = xocl::xocl(ext->kernel);
   uint64_t route = 0;
   uint64_t flow = 0;
 
- if(kernel != nullptr) {
-   const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
+ if (kernel != nullptr) {
+   auto& kernel_name = kernel->get_name_from_constructor();
    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
-   const mem_topology* mems = m_xclbin.get_mem_topology();
+   auto mems = m_xclbin.get_mem_topology();
 
-   if(!mems)
+   if (!mems)
      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-  
-   if((memidx+1) < mems->m_count)
+
+   if ((memidx+1) < mems->m_count)
      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
 
@@ -260,23 +260,23 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_
     flow = mems->m_mem_data[memidx].flow_id;
   }
 
-  if(flags & CL_STREAM_READ_ONLY) 
+  if (flags & CL_STREAM_READ_ONLY)
     return m_xdevice->createReadStream(flags, attrs, route, flow, stream);
-  else if(flags & CL_STREAM_WRITE_ONLY)
+  else if (flags & CL_STREAM_WRITE_ONLY)
     return m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
   else
     throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
   return -1;
 }
 
-int 
+int
 device::
-close_stream(xrt::device::stream_handle stream) 
+close_stream(xrt::device::stream_handle stream)
 {
   return m_xdevice->closeStream(stream);
 }
 
-ssize_t 
+ssize_t
 device::
 write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
 {
@@ -285,7 +285,7 @@ write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, 
 
 ssize_t
 device::
-read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags) 
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
 {
   return m_xdevice->readStream(stream, ptr, offset, size, flags);
 }
@@ -297,7 +297,7 @@ alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle)
   return m_xdevice->allocStreamBuf(size,handle);
 }
 
-int 
+int
 device::
 free_stream_buf(xrt::device::stream_buf_handle handle)
 {
@@ -499,21 +499,21 @@ allocate_buffer_object(memory* mem)
     //Rest 24 bits directly indexes into mem topology section OR.
     //have legacy one-hot encoding.
     auto flag = mem->get_ext_flags();
-    auto param = mem->get_xlnx_ext_param();
     int32_t memidx = 0;
-    if(param) {
+    if (auto kernel = mem->get_ext_kernel()) {
       //param<==>kernel; flag<==>arg_index
       flag = flag & 0xffffff;
-      const cl_kernel kernel = (const cl_kernel)(param);
-      const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
+      auto& kernel_name = kernel->get_name_from_constructor();
       memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag);
-    } else if(flag & XCL_MEM_TOPOLOGY) {
+    }
+    else if (flag & XCL_MEM_TOPOLOGY) {
       memidx = flag & 0xffffff;
-    }else {
+    }
+    else {
       flag = flag & 0xffffff;
       auto bank = myctz(flag);
       memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-      if(memidx==-1){
+      if (memidx==-1){
         memidx = bank;
       }
     }
