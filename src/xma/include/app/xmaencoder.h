@@ -284,6 +284,7 @@ typedef struct XmaEncoderProperties
     /** aq_mode  */
     int32_t         aq_mode;
     int32_t         minQP;
+    int32_t         force_param;
 } XmaEncoderProperties;
 
 /* Forward declaration */
