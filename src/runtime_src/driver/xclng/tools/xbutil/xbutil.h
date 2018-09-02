@@ -835,7 +835,7 @@ public:
      */
     int dmatest(size_t blockSize) {
         if (blockSize == 0)
-            blockSize = 0x200000; // Default block size
+            blockSize = 256 * 1024 * 1024; // Default block size
 
         std::cout << "Total DDR size: " << m_devinfo.mDDRSize/(1024 * 1024) << " MB\n";
         unsigned numDDR = m_devinfo.mDDRBankCount;
