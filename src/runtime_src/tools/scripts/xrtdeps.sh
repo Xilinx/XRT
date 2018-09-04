@@ -80,7 +80,14 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
-     )
+     curl \
+     protobuf-devel \
+     protobuf-compiler \
+     protobuf-static \
+     ncurses-devel \
+     cppcheck \
+  )
+# test comment : to be deleted
 
 UB_LIST=(\
      cmake \
