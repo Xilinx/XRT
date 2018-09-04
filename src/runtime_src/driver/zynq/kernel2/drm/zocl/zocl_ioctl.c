@@ -372,7 +372,6 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	if (err)
 		return err;
 
-	/* Populating IP_LAYOUT section */
 	offset = memHeader->m_sectionOffset;
 	size = memHeader->m_sectionSize;
 	*sect_tmp = vmalloc(size);
