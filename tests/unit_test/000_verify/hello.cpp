@@ -35,6 +35,8 @@
 #include <fstream>
 #include <CL/cl.h>
 #include<iostream>
+#include <ctype.h>
+
 using namespace std;
 
 #define LENGTH (20)
@@ -105,6 +107,25 @@ int main(int argc, char** argv)
         printHelp();
         return -1;
     }
+    if (argc == 4) {
+      if (strcmp(argv[2], "-d") != 0) {
+        cout << "Invalid option \n";
+        printHelp();
+        return -1;
+     } else {
+       if (!isdigit(*argv[3])) {
+         cout << "Error: Device index should be an integer\n";
+         return EXIT_FAILURE;
+         }
+      }
+        index = std::atoi(argv[3]) ;
+   } else { 
+      if (argc == 3 || argc > 4) {
+        cout << "Invalid option \n";
+        printHelp();
+        return -1;
+    }
+}
 
 unsigned char *kernelbinary;
 char *xclbin=argv[1];
@@ -115,21 +136,6 @@ T = fexists(xclbin);
     printf("Error: argv[1] must be xclbin file!\n");
     return EXIT_FAILURE;
   }
-
-  if (argv[2] != NULL) {
-     if (strcmp(argv[2], "-d") != 0) {
-        cout << "Invalid option \n";
-        printHelp();
-        return -1;
-    } else {
-       if (argv[3] == NULL ) {
-         cout << "Error: Device index should be an integer\n";
-         return EXIT_FAILURE;
-    } else {
-        index = std::atoi(argv[3]) ;
-}
-}
-}
 
 
 // Fill our data sets with pattern
