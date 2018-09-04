@@ -163,19 +163,6 @@ std::string charVec2String(std::vector<char>& v)
     return ss.str();
 }
 
-std::string charVec2MacString(std::vector<char>& v)
-{
-    std::stringstream ss;
-
-    ss << std::hex << std::setw(2) << std::setfill('0');
-    ss << 0u + v[0];
-    for (unsigned i = 1; i < v.size(); i++)
-    {
-        ss << ":" << 0u + v[i];
-    }
-    return ss.str();
-}
-
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
@@ -192,11 +179,11 @@ int Flasher::getBoardInfo(BoardInfo& board)
 
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
     board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
-    board.mFanPresense = info[BDINFO_FAN_PRESENSE][0];
-    board.mMacAddr0 = std::move(charVec2MacString(info[BDINFO_MAC0]));
-    board.mMacAddr1 = std::move(charVec2MacString(info[BDINFO_MAC1]));
-    board.mMacAddr2 = std::move(charVec2MacString(info[BDINFO_MAC2]));
-    board.mMacAddr3 = std::move(charVec2MacString(info[BDINFO_MAC3]));
+    board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
+    board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
+    board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
+    board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
+    board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
     board.mMaxPowerLvl = info[BDINFO_MAX_PWR][0];
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
     board.mRev = std::move(charVec2String(info[BDINFO_REV]));
