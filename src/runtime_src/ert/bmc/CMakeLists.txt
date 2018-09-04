@@ -10,7 +10,7 @@ add_custom_command(
   COMMENT "Completed downloading MSP432"
 
   COMMENT "Rename base file name"
-  COMMAND cat BMC-MSP432.txt.filename | tr -d ' ' | xargs -d '\\n'  -t -I % mv BMC-MSP432.txt %.txt
+  COMMAND cat ${MSP432}.txt.filename | xargs -t mv ${MSP432}.txt
 )
 
 add_custom_target(bmc
