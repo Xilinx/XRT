@@ -4,7 +4,7 @@ CXX_EXT := cpp
 
 CXX := g++
 
-CXXFLAGS := -Wall -std=c++11 -pthread
+CXXFLAGS := -g -Wall -std=c++11 -pthread
 RT_SRC_ROOT := ../../../..
 
 # External Dependencies

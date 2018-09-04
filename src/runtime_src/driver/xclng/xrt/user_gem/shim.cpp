@@ -409,8 +409,10 @@ void xocl::XOCLShim::xclFreeBO(unsigned int boHandle)
  */
 int xocl::XOCLShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
+    int ret;
     drm_xocl_pwrite_bo pwriteInfo = { boHandle, 0, seek, size, reinterpret_cast<uint64_t>(src) };
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_PWRITE_BO, &pwriteInfo);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_PWRITE_BO, &pwriteInfo);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -418,8 +420,10 @@ int xocl::XOCLShim::xclWriteBO(unsigned int boHandle, const void *src, size_t si
  */
 int xocl::XOCLShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
+    int ret;
     drm_xocl_pread_bo preadInfo = { boHandle, 0, skip, size, reinterpret_cast<uint64_t>(dst) };
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_BO, &preadInfo);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_BO, &preadInfo);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -448,11 +452,13 @@ void *xocl::XOCLShim::xclMapBO(unsigned int boHandle, bool write)
  */
 int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+    int ret;
     drm_xocl_sync_bo_dir drm_dir = (dir == XCL_BO_SYNC_BO_TO_DEVICE) ?
             DRM_XOCL_SYNC_BO_TO_DEVICE :
             DRM_XOCL_SYNC_BO_FROM_DEVICE;
     drm_xocl_sync_bo syncInfo = {boHandle, 0, size, offset, drm_dir};
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_SYNC_BO, &syncInfo);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SYNC_BO, &syncInfo);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -460,8 +466,10 @@ int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, siz
  */
 int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+    int ret;
     drm_xocl_copy_bo copyInfo = {dst_boHandle, src_boHandle, 0, size, dst_offset, src_offset};
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -501,7 +509,7 @@ int xocl::XOCLShim::xclGetErrorStatus(xclErrorStatus *info)
     } else {
         int ret = ioctl(mMgtHandle, XCLMGMT_IOCERRINFO, &err_obj);
         if (ret) {
-            return ret;
+            return -errno;
         }
     }
 
@@ -550,6 +558,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mVAux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
     info->mVBram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
     info->mXMCVersion =        xclSysfsGetInt(true, "xmc", "version");
+    info->mMBVersion =        xclSysfsGetInt(true, "microblaze", "version");
     info->m12VPex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_vol");
     info->m12VAux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux_vol");
     info->mPexCurr =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_curr");
@@ -614,7 +623,7 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     xclmgmt_ioc_info obj = { 0 };
     int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &obj);
     if (ret)
-        return ret;
+        return -errno;
 
     info->mVendorId = obj.vendor;
     info->mDeviceId = obj.device;
@@ -657,13 +666,15 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
  */
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
+    int ret;
     // Call a new IOCTL to just reset the OCL region
     if (kind == XCL_RESET_FULL) {
-        int ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
-        return ret;
+        ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
+        return ret ? -errno : ret;
     }
     else if (kind == XCL_RESET_KERNEL) {
-        return ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
+        ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
+        return ret ? -errno : ret;
     }
     return -EINVAL;
 }
@@ -697,12 +708,14 @@ bool xocl::XOCLShim::xclUnlockDevice()
  */
 int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *targetFreqMHz)
 {
+    int ret;
     xclmgmt_ioc_freqscaling obj;
     std::memset(&obj, 0, sizeof(xclmgmt_ioc_freqscaling));
     obj.ocl_region = region;
     obj.ocl_target_freq[0] = targetFreqMHz[0];
     obj.ocl_target_freq[1] = targetFreqMHz[1];
-    return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
+    ret = ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -738,6 +751,19 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
 
     if (!memcmp(xclbininmemory, "xclbin2", 8)) {
         ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+        if (ret != 0) {
+            if (ret == -EINVAL) {
+                std::stringstream output;
+                output << "Xclbin does not match DSA on board.\n"
+                    << "Please run xbutil flash -a all to flash board."
+                    << std::endl;
+                if (mLogStream.is_open()) {
+                    mLogStream << output.str();
+                } else {
+                    std::cout << output.str();
+                }
+            }
+        }
     } else {
         if (mLogStream.is_open()) {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", Legacy xclbin no longer supported" << std::endl;
@@ -780,8 +806,8 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
     const unsigned cmd = XCLMGMT_IOCICAPDOWNLOAD_AXLF;
     xclmgmt_ioc_bitstream_axlf obj = {const_cast<axlf *>(buffer)};
     int ret = ioctl(mMgtHandle, cmd, &obj);
-    if(0 != ret) {
-        return ret;
+    if(ret) {
+        return ret ? -errno : ret;
     }
 
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
@@ -809,7 +835,7 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
 
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
     ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    return ret;
+    return ret ? -errno : ret;
 }
 
 /*
@@ -847,7 +873,7 @@ int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *p
     properties->size   = info.size;
     properties->paddr  = info.paddr;
     properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
-    return result;
+    return result ? -errno : result;
 }
 
 int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
@@ -958,7 +984,7 @@ int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
     } else {
         int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USAGE_STAT, &stat);
         if (result) {
-            return result;
+            return -errno;
         }
     }
     std::memset(info, 0, sizeof(xclDeviceUsage));
@@ -1145,11 +1171,13 @@ ssize_t xocl::XOCLShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, u
  */
 int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
 {
+    int ret;
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
     }
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1161,10 +1189,12 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, u
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
                    << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
     }
+    int ret;
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
     drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1172,8 +1202,10 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, u
  */
 int xocl::XOCLShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
+    int ret ;
     drm_xocl_user_intr userIntr = {0, fd, (int)userInterrupt};
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_USER_INTR, &userIntr);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_USER_INTR, &userIntr);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1193,12 +1225,13 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-
+    int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
     ctx.flags = flags;
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1206,10 +1239,12 @@ int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool s
  */
 int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
 {
+    int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
-    return ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1217,7 +1252,9 @@ int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
  */
 int xocl::XOCLShim::xclBootFPGA()
 {
-    return ioctl( mMgtHandle, XCLMGMT_IOCREBOOT );
+    int ret;
+    ret = ioctl( mMgtHandle, XCLMGMT_IOCREBOOT );
+    return ret ? -errno : ret;
 }
 
 /*
@@ -1237,7 +1274,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     } else
         *q_hdl = q_info.handle;
 
-    return rc;
+     return rc ? -errno : rc;
 }
 
 /*
@@ -1256,7 +1293,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     } else
         *q_hdl = q_info.handle;
 
-    return rc;
+    return rc ? -errno : rc;
 }
 
 /*
@@ -1353,7 +1390,10 @@ std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
         (mgmt ? dev.mgmt_name : dev.user_name) + "/";
 
     if (!subDevName.empty()) {
-        path += getSubdevDirName(path, subDevName);
+        std::string subdir = getSubdevDirName(path, subDevName);
+        if (subdir.empty())
+            return std::ifstream();
+        path += subdir;
         path += "/";
     }
 
