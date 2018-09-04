@@ -43,8 +43,9 @@ public:
     std::string name;
     std::string file;
     uint64_t timestamp;
+    std::string bmcVer;
 
-    DSAInfo(const std::string& filename, uint64_t ts);
+    DSAInfo(const std::string& filename, uint64_t ts, const std::string& bmc);
     DSAInfo(const std::string& filename);
     ~DSAInfo();
 };

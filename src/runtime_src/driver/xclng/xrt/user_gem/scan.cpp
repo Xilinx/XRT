@@ -237,7 +237,8 @@ void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
                                     "", mdev.device_name,
                                     mdev.user_bar, mdev.user_bar_size,
                                     mdev.domain, mdev.bus, mdev.dev,
-                                    mdev.func, 0, mdev.flash_type };
+                                    mdev.func, 0, mdev.flash_type,
+                                    mdev.board_name, mdev.is_mfg };
 
         if( skipValidDeviceCheck ) {
             device_list.emplace_back(temp);
@@ -361,6 +362,9 @@ int xcldev::pci_device_scanner::scan(bool print)
         device.user_bar_size = bar_size(subdir, bar);
         if (board_info->priv_data->flash_type)
             device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->board_name)
+            device.board_name = board_info->priv_data->board_name;
+        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -519,6 +523,9 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
         device.user_bar_size = bar_size(subdir, device.user_bar);
         if (board_info->priv_data->flash_type)
             device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->board_name)
+            device.board_name = board_info->priv_data->board_name;
+        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
         if( !add_device(device) )
         {
             closedir( dir );

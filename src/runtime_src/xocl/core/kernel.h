@@ -25,6 +25,8 @@
 #include "xrt/util/td.h"
 #include <limits>
 
+#include <iostream>
+
 namespace xocl {
 
 class kernel : public refcount, public _cl_kernel
@@ -343,6 +345,19 @@ public:
     virtual void set(size_t sz, const void* arg);
   };
 
+  class stream_argument : public argument
+  {
+  public:
+    stream_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
+    virtual std::unique_ptr<argument> clone();
+    virtual void set(size_t sz, const void* arg);
+    virtual argtype get_argtype() const { return m_arg_info->atype; }
+    virtual size_t get_address_space() const { return 4; }
+  private:
+    arginfo_type m_arg_info;
+  };
+
 private:
   using argument_value_type = std::unique_ptr<argument>;
   using argument_vector_type = std::vector<argument_value_type>;
@@ -416,7 +431,12 @@ public:
   const std::string&
   get_name_from_constructor() const
   {
-    return m_name;
+    // Remove this function, it is not needed
+    // Remove m_name from data members
+    // Fix ctor
+    if (m_name != m_symbol.name)
+      throw std::runtime_error("Internal Error");
+    return get_name();
   }
   /**
    * Return list of instances (CUs) in this kernel

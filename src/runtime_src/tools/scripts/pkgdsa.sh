@@ -136,8 +136,8 @@ if [ "X$opt_xrt" == "X" ]; then
 fi
 
 if [ "X${XILINX_XRT}" == "X" ]; then
-  echo "Environment variable XILINX_XRT is not set.  Please the XRT setup script."
-#  exit 1;
+  echo "Environment variable XILINX_XRT is not set.  Please source the XRT setup script."
+  exit 1;
 fi
 
 # get dsa, version, and revision
@@ -174,8 +174,11 @@ pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
-post_inst_fail_msg="DSA installed successfully. But failed to flash board(s). Please flash board manually with xbutil flash -a all"
-post_inst_msg="DSA installed successfully. Please flash board manually with xbutil flash -a all"
+
+XBUTIL=/opt/xilinx/xrt/bin/xbutil
+post_inst_msg="DSA package installed successfully.
+Please flash board manually by running below command:
+sudo ${XBUTIL} flash -a ${opt_dsa} -t"
 
 createEntityAttributeArray ()
 {
@@ -465,14 +468,14 @@ dodebdev()
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-package: $dsa-dev
-architecture: amd64
-version: $version-$revision
-priority: optional
-depends: $dsa (>= $version)
-description: Xilinx $dsa development DSA. Built on $build_date.
-maintainer: Xilinx Inc
-
+Package: $dsa-dev
+Architecture: amd64
+Version: $version-$revision
+Priority: optional
+Depends: $dsa (>= $version)
+Description: Xilinx $dsa development DSA. Built on $build_date.
+Maintainer: Xilinx Inc
+Section: devel
 EOF
 
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw
@@ -499,23 +502,22 @@ dodeb()
 {
     dir=debbuild/$dsa-$version
     mkdir -p $opt_pkgdir/$dir/DEBIAN
+
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-package: $dsa
-architecture: all
-version: $version-$revision
-priority: optional
-depends: xrt (>= $opt_xrt)
-description: Xilinx $dsa deployment DSA. 
+Package: $dsa
+Architecture: all
+Version: $version-$revision
+Priority: optional
+Depends: xrt (>= $opt_xrt)
+Description: Xilinx $dsa deployment DSA. 
  This DSA depends on xrt >= $opt_xrt.
-maintainer: Xilinx Inc.
-
+Maintainer: Xilinx Inc.
+Section: devel
 EOF
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-
-/opt/xilinx/xrt/bin/xbutil flash -f -a ${opt_dsa} -t ${featureRomTimestamp} || echo "${post_inst_fail_msg}"
-
+echo "${post_inst_msg} ${featureRomTimestamp}"
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
 
@@ -621,10 +623,10 @@ requires: xrt >= $opt_xrt
 %description
 Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $opt_xrt.
 
-%prep
+%pre
 
 %post
-echo "${post_inst_msg}"
+echo "${post_inst_msg} ${featureRomTimestamp}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx

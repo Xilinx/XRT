@@ -47,15 +47,59 @@
 extern "C" {
 #endif
 
-typedef struct{
-  unsigned flags; //Top 8 bits reserved.
-  void *obj;
-  void *param;
-} cl_mem_ext_ptr_t;
-
 /**************************
 * Xilinx vendor extensions*
 **************************/
+
+/**
+ * struct cl_mem_ext_ptr: Xilinx specific memory extensions
+ *
+ * Control bank allocation of buffer object.
+ *
+ * @flags:    Legacy bank flag when @kernel is nullptr
+ * @argidx:   Same as @flags, argument index associated with valid @kernel
+ * @host_ptr: Host pointer when buffer is created with CL_MEM_USE_HOST_PTR
+ * @obj:      Same as @obj
+ * @param:    Same as @kernel
+ * @kernel:   Kernel associated with @argidx
+ *
+ * The default legacy layout has overloaded use of flags and param, which
+ * is redefined/aliased in interpreted layouts.
+ *
+ * Two usages are supported:
+ *  (1) Specify bank assignment for buffer with XCL_MEM mask. Optionally
+ *      use host_ptr for reusing host side buffer per CL_MEM_USE_HOST_PTR.
+ *  (2) Specify that buffer is for argument @argidx of kernel @kernel.
+ *      Optionally use host_ptr as for (1).
+ *
+ * To use cl_mem_ext_ptr_t, simply pass the struct object as the host_ptr
+ * clCreateBuffer and make sure cl_mem_flags specifies CL_MEM_EXT_PTR_XILINX
+ */
+typedef struct cl_mem_ext_ptr_t {
+  union {
+    struct { // legacy layout
+      unsigned int flags;   // Top 8 bits reserved.
+      void *obj;
+      void *param;
+    };
+    struct { // interpreted legcy bank assignment
+      unsigned int banks;   // Top 8 bits reserved.
+      void *host_ptr;
+      void *unused1;        // nullptr required
+    };
+    struct { // interpreted kernel arg assignment
+      unsigned int argidx;
+      void *host_ptr_;      // use as host_ptr
+      cl_kernel kernel;
+    };
+  };
+  cl_mem_ext_ptr_t()
+  : flags(0),obj(0),param(0) {}
+} cl_mem_ext_ptr_t;
+
+/* Make clCreateBuffer to interpret host_ptr argument as cl_mem_ext_ptr_t */
+#define CL_MEM_EXT_PTR_XILINX                       (1 << 31)
+
 #define CL_XILINX_UNIMPLEMENTED  -20
 
 /* New flags for cl_queue */
@@ -145,7 +189,7 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 
 
 /**
- * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for 
+ * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
  * read only. Used in clCreateStream()
  */
 typedef cl_bitfield         cl_stream_flags;
@@ -161,13 +205,15 @@ typedef cl_uint             cl_stream_attributes;
 #define CL_PACKET                                   (1 << 1)
 
 /**
- * cl_stream_attributes. 
+ * cl_stream_attributes.
  * eg set it to CL_STREAM_CDH for Customer Defined Header.
  * Used in clReadStream() and clWriteStream()
  */
 typedef cl_uint             cl_stream_xfer_req;
-#define CL_STREAM_CDH                               (1 << 0)
-#define CL_STREAM_PARTIAL                           (1 << 1)
+#define CL_STREAM_DEFAULT                           (1 << 0)
+#define CL_STREAM_EOT                               (1 << 1)
+#define CL_STREAM_CDH                               (1 << 2)
+#define CL_STREAM_NONBLOCKING                       (1 << 3)
 
 typedef struct _cl_stream *      cl_stream;
 typedef struct _cl_stream_mem *  cl_stream_mem;
@@ -180,7 +226,7 @@ typedef struct _cl_stream_mem *  cl_stream_mem;
  * @ext         : The extension for kernel and argument matching.
  * @errcode_ret : The return value eg CL_SUCCESS
  */
-extern CL_API_ENTRY cl_stream CL_API_CALL 
+extern CL_API_ENTRY cl_stream CL_API_CALL
 clCreateStream(cl_device_id                /* device_id */,
 	       cl_stream_flags             /* flags */,
 	       cl_stream_attributes        /* attributes*/,
@@ -193,7 +239,7 @@ clCreateStream(cl_device_id                /* device_id */,
  * @stream: The stream to be released.
  * Return a cl_int
  */
-extern CL_API_ENTRY cl_int CL_API_CALL 
+extern CL_API_ENTRY cl_int CL_API_CALL
 clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
@@ -327,10 +373,8 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 //cl_mem_flags bitfield
 //accepted by the <flags> parameter of clCreateBuffer
 
-#define CL_MEM_EXT_PTR_XILINX                       (1 << 31)
 
-
-//valid flags in above
+//valid flags in cl_mem_ext_ptr_t
 #define XCL_MEM_DDR_BANK0               (1<<0)
 #define XCL_MEM_DDR_BANK1               (1<<1)
 #define XCL_MEM_DDR_BANK2               (1<<2)

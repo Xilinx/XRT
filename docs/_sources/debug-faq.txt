@@ -14,7 +14,7 @@ Tools of the Trade
    Capture stack trace of an XRT application
 ``lspci``
    Enumerate Xilinx PCIe devices
-``xbsak``
+``xbutil``
    Query status of Xilinx PCIe device
 ``xclbinsplit``
    Unpack an xclbin
@@ -36,8 +36,8 @@ Board Enumeration
 
   Check if XRT can see the board and reports sane values ::
 
-    xbsak scan
-    xbsak query
+    xbutil scan
+    xbutil query
 
 DSA Sanity Test
   Check if verify kernel works ::
@@ -47,7 +47,7 @@ DSA Sanity Test
 
   Check DDR and PCIe bandwidth ::
 
-    xbsak dmatest
+    xbutil dmatest
 
 Common Reasons For Failures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,8 +64,8 @@ Memory Read Before Write
 
 Read-Before-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if -- since the last bitstream download which results in MIG initialization -- no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
-1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbsak query`` will show that the CU is stuck in *BUSY* state and not making progress.
-2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbsak query`` will show if an AXI Firewall has indeed tripped including its timestamp.
+1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbutil query`` will show that the CU is stuck in *BUSY* state and not making progress.
+2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbutil query`` will show if an AXI Firewall has indeed tripped including its timestamp.
 
 Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.
 
@@ -79,12 +79,12 @@ Incorrect frequency scaling usually indicates a tooling or infrastructure bug. T
 3. When run several times, a CU may produce correct results a few times and incorrect results rest of the time
 4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct -- typically 64 bytes or one AXI burst -- segment followed by incorrect segments are generated.
 
-Users should check the frequency of the board with ``xbsak query`` and compare it against the metadata in xclbin. ``xclbincat`` may be used to extract metadata from xclbin.
+Users should check the frequency of the board with ``xbutil query`` and compare it against the metadata in xclbin. ``xclbincat`` may be used to extract metadata from xclbin.
 
 CU Deadlock
 ...........
 
-HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbsak query`` where the CU will appear stuck in *START* or *---* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
+HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbutil query`` where the CU will appear stuck in *START* or *---* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
 
 Multiple CU DDR Access Deadlock
 ...............................
@@ -94,7 +94,7 @@ TODO
 AXI Bus Deadlock
 ................
 
-AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbsak query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing ``xbsak status`` which should list and performance counter values. Optionally run ``xbsak dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
+AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
 
 
 Platform Bugs
@@ -110,9 +110,9 @@ Incorrect Timing Constraints
 Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~
 
-When board is in crashed state PCIe read operations start returning 0XFF. In this state xbsak query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset ::
+When board is in crashed state PCIe read operations start returning 0XFF. In this state xbutil query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset ::
 
-  xbsak reset -h
+  xbutil reset -h
 
 If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in `Validating a Working Setup`_
 
@@ -131,8 +131,8 @@ Writing Good Bug Reports
 When creating bug reports please include the following:
 
 1. Output of ``dmesg``
-2. Output of ``xbsak query``
-3. Output of ``xbsak scan``
+2. Output of ``xbutil query``
+3. Output of ``xbutil scan``
 4. Application binaries: xclbin, host executable and code, any data files used by the application
 5. XRT version
 6. DSA name and version

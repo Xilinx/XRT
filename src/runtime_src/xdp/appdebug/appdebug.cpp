@@ -919,10 +919,11 @@ getArgValueString(const xocl::event* aEvent)
       auto arginforange = arg->get_arginfo_range();
       //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
       sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
-    }
-    else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT
-             || address_space==SPIR_ADDRSPACE_PIPES)
+    } else if (address_space==SPIR_ADDRSPACE_PIPES){
+      sstr << arg->get_name() << " = " << "stream arg " << std::dec;
+
+    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
+             || address_space==SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       std::string bank = "";
