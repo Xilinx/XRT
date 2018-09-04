@@ -50,7 +50,8 @@ create(arginfo_type arg, kernel* kernel)
     // matters is that cu_ffa gets proper xclbin arg properties (size,offset,etc)
     if (arg->atype==xclbin::symbol::arg::argtype::progvar)
       return xrt::make_unique<kernel::global_argument>(arg,kernel);
-    throw std::runtime_error("unsupported address qualifier 'pipe' for argument '" + arg->name + "'.");
+    //Indexed 4 implies stream. Above kludge contd.. : TODO
+    return xrt::make_unique<kernel::stream_argument>(arg,kernel);
     break;
   default:
     throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: "
@@ -200,7 +201,7 @@ kernel::constant_argument::
 set(size_t size, const void* cvalue)
 {
   if (size != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid global_argument size for kernel arg");
+    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
   m_buf = xocl(mem);
@@ -236,6 +237,24 @@ set(size_t size, const void* value)
   throw std::runtime_error("not implemented");
 }
 
+std::unique_ptr<kernel::argument>
+kernel::stream_argument::
+clone()
+{
+  return xrt::make_unique<stream_argument>(*this);
+}
+
+void
+kernel::stream_argument::
+set(size_t size, const void* cvalue)
+{
+  //PTR_SIZE
+  if (size != sizeof(cl_mem))
+    throw error(CL_INVALID_ARG_SIZE,"Invalid stream_argument size for kernel arg");
+  if(cvalue != nullptr)
+    throw error(CL_INVALID_VALUE,"Invalid stream_argument value for kernel arg, it should be null");
+  m_set = true;
+}
 
 kernel::
 kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)

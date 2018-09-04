@@ -240,24 +240,24 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-  auto kernel = xocl::xocl(ext->kernel);
-  uint64_t route = 0;
-  uint64_t flow = 0;
 
- if (kernel != nullptr) {
-   auto& kernel_name = kernel->get_name_from_constructor();
-   auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
-   auto mems = m_xclbin.get_mem_topology();
+  uint64_t route = (uint64_t)-1;
+  uint64_t flow = (uint64_t)-1;
 
-   if (!mems)
-     throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-
-   if ((memidx+1) < mems->m_count)
-     throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
-
+  if(ext && ext->param) {
+    auto kernel = xocl::xocl(ext->kernel);
+    auto& kernel_name = kernel->get_name_from_constructor();
+    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+    auto mems = m_xclbin.get_mem_topology();
+    
+    if (!mems)
+      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
+    if((memidx+1) > mems->m_count)
+      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     route = mems->m_mem_data[memidx].route_id;
     flow = mems->m_mem_data[memidx].flow_id;
+    xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
   if (flags & CL_STREAM_READ_ONLY)
