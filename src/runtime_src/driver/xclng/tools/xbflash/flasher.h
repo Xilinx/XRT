@@ -45,7 +45,7 @@ struct BoardInfo
     std::string mBMCVer;
     unsigned int mMaxPowerLvl;
     unsigned int mConfigMode;
-    char mFanPresense;
+    char mFanPresence;
 };
 
 enum BoardInfoKey
@@ -59,7 +59,7 @@ enum BoardInfoKey
     BDINFO_NAME,
     BDINFO_BMC_VER,
     BDINFO_MAX_PWR,
-    BDINFO_FAN_PRESENSE,
+    BDINFO_FAN_PRESENCE,
     BDINFO_CONFIG_MODE
 };
 

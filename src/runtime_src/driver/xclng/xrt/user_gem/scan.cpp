@@ -293,6 +293,7 @@ int xcldev::pci_device_scanner::scan(bool print)
     mgmt_devices.clear();
     user_devices.clear();
     device_list.clear();
+    bool foundNoDriverDev = false;
 
     if( print ) {
         if( !print_system_info() ) {
@@ -374,6 +375,7 @@ int xcldev::pci_device_scanner::scan(bool print)
         if( err >= 0 ) {
             driverName[err] = 0; // null terminate after successful readlink()
         } else {
+            foundNoDriverDev = true;
             add_device(device); // add device even if it is incomplete
             continue;
         }
@@ -422,6 +424,11 @@ int xcldev::pci_device_scanner::scan(bool print)
     }
 
     if ( print ) {
+        if (foundNoDriverDev) {
+            std::cout << "WARNING: Found devices without driver, "
+                << "run xbutil flash scan to check if DSA is flashed on FPGA."
+                << std::endl;
+        }
         return print_pci_info() ? 0 : -1;
     } else {
         return 0;
