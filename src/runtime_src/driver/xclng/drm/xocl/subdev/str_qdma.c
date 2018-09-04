@@ -30,6 +30,11 @@
 #define	EBUF_LEN		256
 #define	MINOR_NAME_MASK		0xffff
 
+#define	STREAM_FLOWID_MASK	0xff
+#define	STREAM_SLRID_SHIFT	16
+#define	STREAM_SLRID_MASK	0xff
+#define	STREAM_TDEST_MASK	0xffff
+
 #define	QUEUE_POST_TIMEOUT	10000
 
 static dev_t	str_dev;
@@ -489,7 +494,14 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
-	/* qconf.pipe = 1; */
+
+	qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
+	qconf.pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) & STREAM_SLRID_MASK;
+	qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
+
+	xocl_info(&sdev->pdev->dev, "Creating queue with tdest %d, flow %d, "
+		"slr %d", qconf.pipe_tdest, qconf.pipe_flow_id,
+		qconf.pipe_slr_id);
 
 	if (!req.write)
 		qconf.c2h = 1;

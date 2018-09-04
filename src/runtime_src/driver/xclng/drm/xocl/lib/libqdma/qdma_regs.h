@@ -532,7 +532,7 @@ struct qdma_c2h_wrb_wb {
 #define STM_REG_REV			0x18
 #define STM_REG_C2H_DATA8		0x20
 #define STM_REG_IND_CTXT_REG_COUNT	5
-#define STM_SUPPORTED_REV		0x3
+#define STM_SUPPORTED_REV		0x6
 #define STM_ENABLED_DEVICE		0x6aa0
 #define	STM_MAX_SUPPORTED_QID		64
 
