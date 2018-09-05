@@ -17,3 +17,8 @@ add_custom_command(
 add_custom_target(management
  DEPENDS mgmt.bin
 )
+
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/mgmt.bin
+ DESTINATION ${ERT_INSTALL_PREFIX}
+)

@@ -236,6 +236,74 @@ alloc(memory* mem)
   return boh;
 }
 
+int 
+device::
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream) 
+{
+  const cl_kernel kernel = (const cl_kernel)(ext->param);
+  uint64_t route = 0;
+  uint64_t flow = 0;
+
+ if(kernel != nullptr) {
+   const std::string& kernel_name = xocl(kernel)->get_name_from_constructor();
+   auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+   const mem_topology* mems = m_xclbin.get_mem_topology();
+
+   if(!mems)
+     throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
+  
+   if((memidx+1) < mems->m_count)
+     throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
+
+
+    route = mems->m_mem_data[memidx].route_id;
+    flow = mems->m_mem_data[memidx].flow_id;
+  }
+
+  if(flags & CL_STREAM_READ_ONLY) 
+    return m_xdevice->createReadStream(flags, attrs, route, flow, stream);
+  else if(flags & CL_STREAM_WRITE_ONLY)
+    return m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
+  else
+    throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
+  return -1;
+}
+
+int 
+device::
+close_stream(xrt::device::stream_handle stream) 
+{
+  return m_xdevice->closeStream(stream);
+}
+
+ssize_t 
+device::
+write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+{
+  return m_xdevice->writeStream(stream, ptr, offset, size, flags);
+}
+
+ssize_t
+device::
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags) 
+{
+  return m_xdevice->readStream(stream, ptr, offset, size, flags);
+}
+
+xrt::device::stream_buf
+device::
+alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle)
+{
+  return m_xdevice->allocStreamBuf(size,handle);
+}
+
+int 
+device::
+free_stream_buf(xrt::device::stream_buf_handle handle)
+{
+  return m_xdevice->freeStreamBuf(handle);
+}
+
 device::
 device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
@@ -488,8 +556,15 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
   auto xdevice = get_xrt_device();
 
   // sub buffer
-  if (mem->get_sub_buffer_parent()) {
-    throw std::runtime_error("sub buffer bank allocation not implemented");
+  if (auto parent = mem->get_sub_buffer_parent()) {
+    auto boh = parent->get_buffer_object(this);
+    auto pmemidx = get_boh_memidx(boh);
+    if (pmemidx.test(memidx)) {
+      auto offset = mem->get_sub_buffer_offset();
+      auto size = mem->get_size();
+      return xdevice->alloc(boh,size,offset);
+    }
+    throw std::runtime_error("parent sub-buffer memory bank mismatch");
   }
 
   auto flag = (mem->get_ext_flags()) & 0xffffff;
@@ -637,7 +712,7 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   // is specified in which case host will discard current content
   if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
     boh = buffer->get_buffer_object_or_error(this);
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
 
   if (!boh)
@@ -649,8 +724,11 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
     auto hbuf = xdevice->map(boh);
     xdevice->unmap(boh);
     assert(ubuf!=hbuf);
-    if (ubuf)
-      memcpy(ubuf,hbuf,buffer->get_size());
+    if (ubuf) {
+      auto dst = static_cast<char*>(ubuf) + offset;
+      auto src = static_cast<char*>(hbuf) + offset;
+      memcpy(dst,src,size);
+    }
     else
       ubuf = hbuf;
   }
@@ -661,10 +739,15 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   // If this buffer is being mapped for writing, then a following
   // unmap will have to sync the data to device, so record this.  We
   // will not enforce that map is followed by unmap, so two maps of
-  // same buffer for write without corresponding unmaps is not an
-  // and will simply override previous map value.
+  // same buffer for write without corresponding unmaps will simply
+  // override previous map value.  We do however keep track of the
+  // map with largest size to subsume small maps into the largest.
+  // That way largest chunk is synced to device if necessary.
   std::lock_guard<std::mutex> lk(m_mutex);
-  m_mapped[result] = map_flags;
+  auto& mapinfo = m_mapped[result];
+  mapinfo.flags = map_flags;
+  mapinfo.offset = offset;
+  mapinfo.size = std::max(mapinfo.size,size);
   return result;
 }
 
@@ -672,14 +755,18 @@ void
 device::
 unmap_buffer(memory* buffer, void* mapped_ptr)
 {
-  cl_map_flags flags = 0;
+  cl_map_flags flags = 0; // flags of mapped_ptr
+  size_t offset = 0;      // offset of mapped_ptr wrt BO
+  size_t size = 0;        // size of mapped_ptr
   {
     // There is no checking that map/unmap match.  Only one active
     // map of a mapped_ptr is maintained and is erased on first unmap
     std::lock_guard<std::mutex> lk(m_mutex);
     auto itr = m_mapped.find(mapped_ptr);
     if (itr!=m_mapped.end()) {
-      flags = (*itr).second;
+      flags = (*itr).second.flags;
+      offset = (*itr).second.offset;
+      size = (*itr).second.size;
       m_mapped.erase(itr);
     }
   }
@@ -689,10 +776,10 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
 
   // Sync data to boh if write flags, and sync to device if resident
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-    if (auto ubuf = buffer->get_host_ptr())
-      xdevice->write(boh,ubuf,buffer->get_size(),0,false);
+    if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
+      xdevice->write(boh,ubuf+offset,size,offset,false);
     if (buffer->is_resident(this))
-      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::HOST2DEVICE,false);
+      xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -973,14 +1060,13 @@ load_program(program* program)
       idx=2; // system clocks start at idx==2
       auto sclocks = m_xclbin.system_clocks();
       if (sclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
       for (auto& clock : sclocks)
-	target_freqs[idx++] = clock.frequency;
+        target_freqs[idx++] = clock.frequency;
 
       auto rv = xdevice->reClock2(0,target_freqs);
-
       if (rv.valid() && rv.get())
-	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
+        throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
     }
   }
 
@@ -989,11 +1075,23 @@ load_program(program* program)
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     auto xbrv = xdevice->loadXclBin(header);
-    if (xbrv.valid() && xbrv.get())
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+    if (xbrv.valid() && xbrv.get()){
+      if(xbrv.get() == -EACCES)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
+      else if (xbrv.get() == -EPERM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
+      else if (xbrv.get() == -EBUSY)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
+      else if (xbrv.get() == -ETIMEDOUT)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Timeout, see dmesg for details");
+      else if (xbrv.get() == -ENOMEM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Out of Memory, see dmesg for details");
+      else
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
+    }
 
     if (!xbrv.valid()) {
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
     }
   }
 

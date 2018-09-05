@@ -45,7 +45,7 @@ extern "C" {
  *
  **/
 void
-profile_initialize(xclDeviceHandle s_handle, bool use_profile, bool use_trace,
+profile_initialize(xclDeviceHandle s_handle, int use_profile, int use_trace,
                    const char* data_transfer_trace, const char* stall_trace);
 
 /**

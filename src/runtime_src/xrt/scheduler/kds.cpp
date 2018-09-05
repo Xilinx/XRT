@@ -69,7 +69,7 @@ inline bool
 is_51_dsa(const xrt::device* device)
 {
   auto nm = device->getName();
-  return nm.find("_5_1")!=std::string::npos;
+  return (nm.find("_5_1")!=std::string::npos || nm.find("u200_xdma_201820_1")!=std::string::npos);
 }
 
 inline bool
@@ -91,8 +91,8 @@ check(const command_type& cmd)
     return true;
   }
 
-  auto notify = [](command_type cmd) {
-    cmd->notify(ERT_CMD_STATE_COMPLETED);
+  auto notify = [](command_type c) {
+    c->notify(ERT_CMD_STATE_COMPLETED);
   };
 
   xrt::task::createF(notify_queue,notify,cmd);

@@ -33,6 +33,11 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 
+static int dna_chk_enable = 0;
+module_param(dna_chk_enable, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(dna_chk_enable,
+	"Enable dna_chk_enable to enable dna check, (0 = disable check, 1 = enable check)");
+
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -1454,10 +1459,13 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	uint64_t secondaryFirmwareLength = 0;
 	const struct axlf_section_header* primaryHeader = NULL;
 	const struct axlf_section_header* secondaryHeader = NULL;
+	const struct axlf_section_header* ipLayout = NULL;
 	uint64_t copy_buffer_size = 0;
 	struct axlf* copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
+	struct ip_layout* layout = NULL;
+	int i = 0;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1545,6 +1553,22 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 	}
 
+	ICAP_INFO(icap, "finding ip layout sections");
+	ipLayout = get_axlf_section(icap, copy_buffer, IP_LAYOUT);
+	if (ipLayout == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	layout = vmalloc(ipLayout->m_sectionSize);
+	if(layout == NULL)
+		goto done;
+	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
+	if (sizeof_ip_layout(layout) > ipLayout->m_sectionSize) {
+	    err = -EINVAL;
+	    goto done;
+  }
+  
 	ICAP_INFO(icap, "finding bitstream sections");
 	primaryHeader = get_axlf_section(icap, copy_buffer, BITSTREAM);
 	if (primaryHeader == NULL) {
@@ -1586,6 +1610,18 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (err)
 		goto done;
 
+	for(i=0;i<layout->m_count;++i){
+		if(layout->m_ip_data[i].m_type==IP_DNASC){
+			ICAP_INFO(icap, "%s, %llx", layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
+			ICAP_INFO(icap, "Capability %08x", xocl_dna_capability(xdev));
+			err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
+			if (err){
+				ICAP_ERR(icap, "DNA inside xclbin is invalid");
+				goto done;
+			}
+		}
+	}
+
 	buffer = (char __user *)u_xclbin;
 	buffer += secondaryFirmwareOffset;
 	err = icap_setup_clear_bitstream(icap, buffer, secondaryFirmwareLength);
@@ -1606,8 +1642,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		memcpy(&icap->icap_bitstream_uuid,
 			&bin_obj.m_header.m_timeStamp, 8);
 	}
-
 done:
+	vfree(layout);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	mutex_unlock(&icap->icap_lock);
 	vfree(copy_buffer);

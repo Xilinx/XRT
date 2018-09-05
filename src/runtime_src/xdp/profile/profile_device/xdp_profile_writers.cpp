@@ -103,6 +103,7 @@ namespace XDP {
     writeDocumentSubHeader(getSummaryStream(), profile);
 
     // Table: Kernel Execution Summary
+#if 0
     std::vector<std::string> KernelExecutionSummaryColumnLabels = {
         "Kernel", "Number Of Enqueues", "Total Time (ms)",
         "Minimum Time (ms)", "Average Time (ms)", "Maximum Time (ms)" };
@@ -112,6 +113,7 @@ namespace XDP {
     writeTableHeader(getSummaryStream(), table2Caption, KernelExecutionSummaryColumnLabels);
     profile->writeKernelSummary(this);
     writeTableFooter(getSummaryStream());
+#endif
 
     // Table: Compute Unit Utilization
     std::vector<std::string> ComputeUnitExecutionSummaryColumnLabels = {
@@ -602,7 +604,7 @@ namespace XDP {
       assert(!Summary_ofs.is_open());
       SummaryFileName += FileExtension;
       openStream(Summary_ofs, SummaryFileName);
-      writeDocumentHeader(Summary_ofs, "XMA Profile Summary");
+      writeDocumentHeader(Summary_ofs, "SDAccel Profile Summary");
     }
     if (TimelineFileName != "") {
       assert(!Timeline_ofs.is_open());
@@ -636,6 +638,7 @@ namespace XDP {
     WriterI::writeSummary(profile);
 
     // Table: Top Kernel Summary
+#if 0
     std::vector<std::string> TopKernelSummaryColumnLabels = {
         "Kernel Instance Address", "Kernel", "Context ID", "Command Queue ID",
         "Device", "Start Time (ms)", "Duration (ms)",
@@ -644,6 +647,7 @@ namespace XDP {
         TopKernelSummaryColumnLabels);
     profile->writeTopKernelSummary(this);
     writeTableFooter(getSummaryStream());
+#endif
 
     // Table: Top Buffer Write Summary
     std::vector<std::string> TopBufferWritesColumnLabels = {

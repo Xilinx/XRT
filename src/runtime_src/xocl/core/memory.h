@@ -25,6 +25,7 @@
 
 #include "xrt/device/device.h"
 
+#include <unistd.h>
 #include <map>
 
 namespace xocl {
@@ -464,7 +465,7 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = 4096;
+    const size_t alignment = getpagesize();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr

@@ -101,7 +101,7 @@ xclbin : $(CL_XCLBIN)
 exe : $(ODIR)/$(EXENAME)
 
 $(ODIR)/$(EXENAME): $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) -L${XILINX_SDACCEL}/data/sdaccel/pcie/x86_64 -lxclgemdrv -ldl -pthread
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS)  -I${XILINX_XRT}/include  -L${XILINX_XRT}/lib -lxrt_core -ldl -pthread
 
 endif
 

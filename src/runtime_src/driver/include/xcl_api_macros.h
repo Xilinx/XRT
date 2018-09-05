@@ -14,51 +14,6 @@
  * under the License.
  */
 
-// Copyright 2014 Xilinx, Inc. All rights reserved.
-//
-// This file contains confidential and proprietary information
-// of Xilinx, Inc. and is protected under U.S. and
-// international copyright and other intellectual property
-// laws.
-//
-// DISCLAIMER
-// This disclaimer is not a license and does not grant any
-// rights to the materials distributed herewith. Except as
-// otherwise provided in a valid license issued to you by
-// Xilinx, and to the maximum extent permitted by applicable
-// law: (1) THESE MATERIALS ARE MADE AVAILABLE "AS IS" AND
-// WITH ALL FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES
-// AND CONDITIONS, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING
-// BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, NON-
-// INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE; and
-// (2) Xilinx shall not be liable (whether in contract or tort,
-// including negligence, or under any other theory of
-// liability) for any loss or damage of any kind or nature
-// related to, arising under or in connection with these
-// materials, including for any direct, or any indirect,
-// special, incidental, or consequential loss or damage
-// (including loss of data, profits, goodwill, or any type of
-// loss or damage suffered as a result of any action brought
-// by a third party) even if such damage or loss was
-// reasonably foreseeable or Xilinx had been advised of the
-// possibility of the same.
-//
-// CRITICAL APPLICATIONS
-// Xilinx products are not designed or intended to be fail-
-// safe, or for use in any application requiring fail-safe
-// performance, such as life-support or safety devices or
-// systems, Class III medical devices, nuclear facilities,
-// applications related to the deployment of airbags, or any
-// other applications that could lead to death, personal
-// injury, or severe property or environmental damage
-// (individually and collectively, "Critical
-// Applications"). Customer assumes the sole risk and
-// liability of any use of Xilinx products in Critical
-// Applications, subject only to applicable laws and
-// regulations governing limitations on product liability.
-//
-// THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS
-// PART OF THIS FILE AT ALL TIMES.
 
 //Initialize Messages
 #include "xcl_macros.h"
@@ -101,7 +56,7 @@ mtx.unlock();
 
 //RELEASE BUFFER MEMORIES
 #define FREE_BUFFERS() \
-  RELEASE_MUTEX() 
+  RELEASE_MUTEX()
 
 #define xclSetEnvironment_SET_PROTOMESSAGE() \
   for (auto i : mEnvironmentNameValueMap) \
@@ -113,7 +68,7 @@ mtx.unlock();
 
 #define xclSetEnvironment_SET_PROTO_RESPONSE() \
     ack = r_msg.ack()
-    
+
 
 #define xclSetEnvironment_RETURN()\
     //return size;
@@ -143,7 +98,7 @@ mtx.unlock();
 
 #define xclLoadBitstream_SET_PROTO_RESPONSE() \
     ack = r_msg.ack()
-    
+
 
 #define xclLoadBitstream_RETURN()\
     //return size;
@@ -164,7 +119,7 @@ mtx.unlock();
 
 #define xclAllocDeviceBuffer_SET_PROTO_RESPONSE() \
     ack = r_msg.ack()
-    
+
 
 #define xclAllocDeviceBuffer_RETURN()\
     //return size;
@@ -183,7 +138,7 @@ mtx.unlock();
 
 #define xclFreeDeviceBuffer_SET_PROTO_RESPONSE() \
     ack = r_msg.ack()
-    
+
 
 #define xclFreeDeviceBuffer_RETURN()\
     //return size;
@@ -197,17 +152,17 @@ mtx.unlock();
     xclFreeDeviceBuffer_RETURN();
 //------------------------------------------------------------
 //--------------------xclWriteAddrSpaceDeviceRam--------------------------------
-//Generate call and info message 
+//Generate call and info message
 #define xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
     c_msg.set_addr(addr); \
     c_msg.set_data((char*) data, size); \
-    c_msg.set_size(size); 
+    c_msg.set_size(size);
 
 
 #define xclWriteAddrSpaceDeviceRam_SET_PROTO_RESPONSE() \
     if (!r_msg.valid()) \
       size = -1;
-    
+
 
 #define xclWriteAddrSpaceDeviceRam_RETURN()\
     //return size;
@@ -221,7 +176,7 @@ mtx.unlock();
     xclWriteAddrSpaceDeviceRam_RETURN();
 
 //--------------------xclWriteAddrKernelCtrl--------------------------------
-//Generate call and info message 
+//Generate call and info message
 #define xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,kernelArgsInfo) \
     c_msg.set_addr(addr); \
     c_msg.set_data((char*) data, size); \
@@ -237,7 +192,7 @@ mtx.unlock();
 #define xclWriteAddrKernelCtrl_SET_PROTO_RESPONSE() \
     if (!r_msg.valid()) \
       size = -1;
-    
+
 
 #define xclWriteAddrKernelCtrl_RETURN()\
     //return size;
@@ -251,7 +206,7 @@ mtx.unlock();
     xclWriteAddrKernelCtrl_RETURN();
 
 //-----------------------xclReadAddrSpaceDeviceRam----------------------------
-//Generate call and info message 
+//Generate call and info message
 #define xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
     c_msg.set_addr(addr); \
     c_msg.set_size(size); \
@@ -263,7 +218,7 @@ mtx.unlock();
     else { \
       memcpy(datax,r_msg.data().c_str(),size);\
     }
-    
+
 
 #define xclReadAddrSpaceDeviceRam_RETURN()\
   //  return size;
@@ -274,9 +229,9 @@ mtx.unlock();
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrSpaceDeviceRam_SET_PROTO_RESPONSE(data,size); \
     FREE_BUFFERS(); \
-    xclReadAddrSpaceDeviceRam_RETURN();   
+    xclReadAddrSpaceDeviceRam_RETURN();
 //-----------------------xclReadAddrKernelCtrl----------------------------
-//Generate call and info message 
+//Generate call and info message
 #define xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
     c_msg.set_addr(addr); \
     c_msg.set_size(size); \
@@ -288,7 +243,7 @@ mtx.unlock();
     else { \
       memcpy(datax,r_msg.data().c_str(),size);\
     }
-    
+
 
 #define xclReadAddrKernelCtrl_RETURN()\
   //  return size;
@@ -299,7 +254,7 @@ mtx.unlock();
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrKernelCtrl_SET_PROTO_RESPONSE(data,size); \
     FREE_BUFFERS(); \
-    xclReadAddrKernelCtrl_RETURN();  
+    xclReadAddrKernelCtrl_RETURN();
 
 //-------------------xclClose---------------------------------
 #define xclClose_SET_PROTOMESSAGE(func_name,dev_handle) \
@@ -308,7 +263,7 @@ mtx.unlock();
 
 #define xclClose_SET_PROTO_RESPONSE() \
   simulator_started = false;
-    
+
 #define xclClose_RETURN() \
 	return;
 
@@ -317,7 +272,7 @@ mtx.unlock();
     xclClose_SET_PROTOMESSAGE(func_name,dev_handle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclClose_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); 
+    FREE_BUFFERS();
   //  xclClose_RETURN();
 
 //-----------xclCopyBufferHost2Device-----------------
@@ -328,10 +283,10 @@ mtx.unlock();
     c_msg.set_size(size); \
     c_msg.set_seek(seek); \
     c_msg.set_space(space);
-   
+
 #define xclCopyBufferHost2Device_SET_PROTO_RESPONSE() \
  //   uint64_t ret = r_msg.size();
-    
+
 
 #define xclCopyBufferHost2Device_RETURN() \
    // return ret;
@@ -352,11 +307,11 @@ mtx.unlock();
     c_msg.set_size(size); \
     c_msg.set_skip(skip); \
     c_msg.set_space(space);
-   
+
 #define xclCopyBufferDevice2Host_SET_PROTO_RESPONSE(c_dest) \
     uint64_t ret = r_msg.size();\
     memcpy(c_dest,r_msg.dest().c_str(),ret);
-    
+
 
 #define xclCopyBufferDevice2Host_RETURN() \
     //return ret;
@@ -369,7 +324,7 @@ mtx.unlock();
     FREE_BUFFERS(); \
     xclCopyBufferDevice2Host_RETURN();
 
-   
+
 //----------xclPerfMonReadCounters------------
 #define xclPerfMonReadCounters_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
@@ -379,15 +334,15 @@ mtx.unlock();
     }\
     c_msg.set_slotname(slotname); \
     c_msg.set_accel(accel); \
-   
+
 #define xclPerfMonReadCounters_SET_PROTO_RESPONSE() \
     wr_byte_count    = r_msg.wr_byte_count(); \
     wr_trans_count   = r_msg.wr_trans_count(); \
     total_wr_latency = r_msg.total_wr_latency(); \
     rd_byte_count    = r_msg.rd_byte_count(); \
     rd_trans_count   = r_msg.rd_trans_count(); \
-    total_rd_latency = r_msg.total_rd_latency(); 
-    
+    total_rd_latency = r_msg.total_rd_latency();
+
 
 #define xclPerfMonReadCounters_RETURN()
 
@@ -409,10 +364,10 @@ mtx.unlock();
   c_msg.set_ack(ack); \
   c_msg.set_slotname(slotname); \
   c_msg.set_accel(accel);
-   
+
 #define xclPerfMonGetTraceCount_SET_PROTO_RESPONSE() \
     no_of_samples = r_msg.no_of_samples();
-    
+
 
 #define xclPerfMonGetTraceCount_RPC_CALL(func_name,ack,no_of_samples,slotname,accel) \
     RPC_PROLOGUE(func_name); \
@@ -431,7 +386,7 @@ mtx.unlock();
     c_msg.set_ack(ack); \
     c_msg.set_slotname(slotname); \
     c_msg.set_accel(accel);
-   
+
 #define xclPerfMonReadTrace_SET_PROTO_RESPONSE() \
     samplessize = r_msg.output_data_size(); \
 
@@ -470,7 +425,7 @@ mtx.unlock();
       return 0; \
     }\
   c_msg.set_ack(ack);
-   
+
 #define xclGetDeviceTimestamp_SET_PROTO_RESPONSE() \
     deviceTimeStamp = r_msg.device_timestamp(); \
 
@@ -521,4 +476,3 @@ mtx.unlock();
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
-

@@ -32,6 +32,7 @@
 #include <boost/foreach.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
+#include <boost/algorithm/string.hpp>
 
 
 void printTree (boost::property_tree::ptree &pt, std::ostream &_buf = std::cout, int level = 0);
@@ -364,6 +365,14 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "clock_freq_topology";
     ext = ".bin";
     extractClockFreqTopology((char*) data.get(), sectionSize, m_ptree_extract);
+  }
+  else if ( header.m_sectionKind == MCS ) {
+    extractAndWriteMCSImages((char*) data.get(), sectionSize);
+    return true;
+  }
+  else if ( header.m_sectionKind == BMC ) {
+    extractAndWriteBMCImages((char*) data.get(), sectionSize);
+    return true;
   }
 
 
@@ -846,6 +855,7 @@ XclBinData::getIPType( std::string &_sIPType ) const
 {
   if ( _sIPType == "IP_MB" ) return IP_MB;
   if ( _sIPType == "IP_KERNEL" ) return IP_KERNEL;
+  if ( _sIPType == "IP_DNASC" ) return IP_DNASC;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -889,7 +899,12 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     ipDataHdr.properties = (uint32_t) XclBinUtil::stringToUInt64(sProperties);
 
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
-    ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    if ( sBaseAddress != "not_used" ) {
+      ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    }
+    else {
+      ipDataHdr.m_base_address = (uint64_t) -1;
+    }
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(ip_data::m_name) ) {
@@ -1216,9 +1231,9 @@ XclBinData::addPTreeSchemaVersion( boost::property_tree::ptree &_pt, SchemaVersi
                      _schemaVersion.minor, 
                      _schemaVersion.patch));
 
-  pt_schemaVersion.put("major", XclBinUtil::format("%d", _schemaVersion.major));
-  pt_schemaVersion.put("minor", XclBinUtil::format("%d", _schemaVersion.minor));
-  pt_schemaVersion.put("patch", XclBinUtil::format("%d", _schemaVersion.patch));
+  pt_schemaVersion.put("major", XclBinUtil::format("%d", _schemaVersion.major).c_str());
+  pt_schemaVersion.put("minor", XclBinUtil::format("%d", _schemaVersion.minor).c_str());
+  pt_schemaVersion.put("patch", XclBinUtil::format("%d", _schemaVersion.patch).c_str());
   _pt.add_child("schema_version", pt_schemaVersion);
 }
 
@@ -1279,6 +1294,19 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);
 }
 
+const std::string 
+XclBinData::getMCSTypeStr(enum MCS_TYPE _mcsType) const
+{
+  switch ( _mcsType ) {
+    case MCS_PRIMARY:   return "MCS_PRIMARY";
+    case MCS_SECONDARY: return "MCS_SECONDARY";
+    case MCS_UNKNOWN:
+    default:
+      return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _mcsType);
+  }
+}
+
+
 void 
 XclBinData::extractMemTopologyData( char * _pDataSegment, 
                                     unsigned int _segmentSize,
@@ -1301,7 +1329,7 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr);
-  mem_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  mem_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr)  + (sizeof(mem_data) * pHdr->m_count);
 
@@ -1316,7 +1344,7 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
 
     TRACE(XclBinUtil::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx", 
                        index,
-                       getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type),
+                       getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type).c_str(),
                        (unsigned int) pHdr->m_mem_data[index].m_used,
                        pHdr->m_mem_data[index].m_size,
                        pHdr->m_mem_data[index].m_tag,
@@ -1325,11 +1353,11 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("mem_data", reinterpret_cast<const char*>(&(pHdr->m_mem_data[index])), sizeof(mem_data));
 
-    mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type));
-    mem_data.put("m_used", XclBinUtil::format("%d", (unsigned int) pHdr->m_mem_data[index].m_used));
-    mem_data.put("m_sizeKB", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_size));
-    mem_data.put("m_tag", XclBinUtil::format("%s", pHdr->m_mem_data[index].m_tag));
-    mem_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address));
+    mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type).c_str());
+    mem_data.put("m_used", XclBinUtil::format("%d", (unsigned int) pHdr->m_mem_data[index].m_used).c_str());
+    mem_data.put("m_sizeKB", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_size).c_str());
+    mem_data.put("m_tag", XclBinUtil::format("%s", pHdr->m_mem_data[index].m_tag).c_str());
+    mem_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address).c_str());
 
     m_mem_data.add_child("mem_data", mem_data);
   }
@@ -1363,7 +1391,7 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr);
-  connectivity.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  connectivity.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr)  + (sizeof(connection) * pHdr->m_count);
 
@@ -1386,9 +1414,9 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));
 
-    connection.put("arg_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].arg_index));
-    connection.put("m_ip_layout_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].m_ip_layout_index));
-    connection.put("mem_data_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].mem_data_index));
+    connection.put("arg_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].arg_index).c_str());
+    connection.put("m_ip_layout_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].m_ip_layout_index).c_str());
+    connection.put("mem_data_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].mem_data_index).c_str());
 
     m_connection.add_child("connection", connection);
   }
@@ -1405,6 +1433,7 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
   switch ( _ipType ) {
     case IP_MB: return "IP_MB";
     case IP_KERNEL: return "IP_KERNEL";
+    case IP_DNASC: return "IP_DNASC";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);
@@ -1433,7 +1462,7 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
    // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr);
-  ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr)  + (sizeof(ip_data) * pHdr->m_count);
 
@@ -1448,7 +1477,7 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
     TRACE(XclBinUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
                        index,
-                       getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type),
+                       getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type).c_str(),
                        pHdr->m_ip_data[index].properties,
                        pHdr->m_ip_data[index].m_base_address,
                        pHdr->m_ip_data[index].m_name));
@@ -1456,10 +1485,14 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
-    ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type));
-    ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties));
-    ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address));
-    ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name));
+    ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type).c_str());
+    ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
+    if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
+      ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    } else {
+      ip_data.put("m_base_address", "not_used");
+    }
+    ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
     m_ip_data.add_child("ip_data", ip_data);
   }
@@ -1510,7 +1543,7 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_debug_ip_data[0]) - (unsigned long) pHdr);
-  debug_ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  debug_ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   debug_ip_data mydata = (debug_ip_data){0};
   
@@ -1532,7 +1565,7 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
 
     TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              index,
-                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type),
+                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
                              (unsigned int) pHdr->m_debug_ip_data[index].m_index,
                              pHdr->m_debug_ip_data[index].m_base_address,
                              pHdr->m_debug_ip_data[index].m_name));
@@ -1540,11 +1573,11 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
-    debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type));
-    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index));
-    debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties));
-    debug_ip_data.put("m_base_address", XclBinUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address));
-    debug_ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_debug_ip_data[index].m_name));
+    debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str());
+    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index).c_str());
+    debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties).c_str());
+    debug_ip_data.put("m_base_address", XclBinUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address).c_str());
+    debug_ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_debug_ip_data[index].m_name).c_str());
 
     m_debug_ip_data.add_child("debug_ip_data", debug_ip_data);
   }
@@ -1591,7 +1624,7 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_clock_freq[0]) - (unsigned long) pHdr);
-  clock_freq_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  clock_freq_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   clock_freq mydata = (clock_freq){0};
   
@@ -1610,18 +1643,18 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree clock_freq;
 
-    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'", 
+    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %s, m_name: '%s'", 
                              index,
                              (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz,
-                             getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type),
+                             getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type).c_str(),
                              pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
-    clock_freq.put("m_freq_Mhz", XclBinUtil::format("%d", (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz));
-    clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type));
-    clock_freq.put("m_name", XclBinUtil::format("%s", pHdr->m_clock_freq[index].m_name));
+    clock_freq.put("m_freq_Mhz", XclBinUtil::format("%d", (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz).c_str());
+    clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type).c_str());
+    clock_freq.put("m_name", XclBinUtil::format("%s", pHdr->m_clock_freq[index].m_name).c_str());
 
     m_clock_freq.add_child("clock_freq", clock_freq);
   }
@@ -1632,7 +1665,348 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
   TRACE("-----------------------------");
 }
 
+void
+XclBinData::createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs)
+{
+  // Must have something to work with
+  int count = _mcs.size();
+  if ( count == 0 )
+    return;
 
+  mcs mcsHdr = (mcs) {0};
+  mcsHdr.m_count = (int8_t) count;
+
+  TRACE("MCS");
+  TRACE(XclBinUtil::format("m_count: %d", (int) mcsHdr.m_count));
+
+  // Write out the entire structure except for the mcs structure
+  TRACE_BUF("mcs - minus mcs_chunk", reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)));
+  m_mcsBuf.write(reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)) );
+
+  // Calculate The mcs_chunks data
+  std::vector< mcs_chunk > mcsChunks;
+  {
+    uint64_t currentOffset = ((sizeof(mcs) - sizeof(mcs_chunk)) + 
+                              (sizeof(mcs_chunk) * count));
+
+    for ( auto mcsEntry : _mcs) {
+      mcs_chunk mcsChunk = (mcs_chunk) {0};
+      mcsChunk.m_type = mcsEntry.second;   // Record the MCS type
+
+      // -- Determine if the file can be opened and its size --
+      std::ifstream fs;
+      fs.open( mcsEntry.first.c_str(), std::ifstream::in | std::ifstream::binary );
+      fs.seekg( 0, fs.end );
+      mcsChunk.m_size = fs.tellg();
+      mcsChunk.m_offset = currentOffset;
+      currentOffset += mcsChunk.m_size;
+
+      if ( ! fs.is_open() ) {
+        std::string errMsg = "ERROR: Could not open the file for reading: '" + mcsEntry.first + "'";
+        throw std::runtime_error(errMsg);
+      }
+
+      fs.close();
+      mcsChunks.push_back(mcsChunk);
+    }
+  }
+
+  // Finish building the buffer
+  // First the array
+  {
+    int index = 0;
+    for (auto mcsChunk : mcsChunks) {
+      TRACE(XclBinUtil::format("[%d]: m_type: %d, m_offset: 0x%lx, m_size: 0x%lx",
+                               index++,
+                               mcsChunk.m_type,
+                               mcsChunk.m_offset,
+                               mcsChunk.m_size));
+      TRACE_BUF("mcs_chunk", reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
+      m_mcsBuf.write(reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk) );
+    }
+  }
+
+  // Second the data
+  {
+    int index = 0;
+    for ( auto mcsEntry : _mcs) {
+      // -- Determine if the file can be opened and its size --
+      std::ifstream fs;
+      fs.open( mcsEntry.first.c_str(), std::ifstream::in | std::ifstream::binary );
+      fs.seekg( 0, fs.end );
+      uint64_t mcsSize = fs.tellg();
+
+      if ( ! fs.is_open() ) {
+        std::string errMsg = "ERROR: Could not open the file for reading: '" + mcsEntry.first + "'";
+        throw std::runtime_error(errMsg);
+      }
+
+      // -- Read contents into memory buffer --
+      std::unique_ptr<unsigned char> memBuffer( new unsigned char[ mcsSize ] );
+      fs.clear();
+      fs.seekg( 0, fs.beg );
+      fs.read( (char*) memBuffer.get(), mcsSize );
+      fs.close();
+
+      TRACE(XclBinUtil::format("[%d]: Adding file - size: 0x%lx, file: %s",
+                               index++,
+                               mcsSize,
+                               mcsEntry.first.c_str()));
+      m_mcsBuf.write(reinterpret_cast<const char*>(memBuffer.get()), mcsSize );
+    }
+  }
+}
+
+void
+XclBinData::createBMCSegmentBuffer(const std::vector< std::string > & _bmc)
+{
+  // Must have something to work with
+  int count = _bmc.size();
+  if ( count == 0 )
+    return;
+
+  bmc bmcHdr = (bmc) {0};
+
+  TRACE("BMC");
+  
+  // Determine if the file can be opened and its size
+  std::string filePath = _bmc[0];
+  {
+    std::ifstream fs;
+    fs.open( filePath.c_str(), std::ifstream::in | std::ifstream::binary );
+    fs.seekg( 0, fs.end );
+    bmcHdr.m_size = fs.tellg();
+    bmcHdr.m_offset = sizeof(bmc);
+
+    if ( ! fs.is_open() ) {
+      std::string errMsg = "ERROR: Could not open the file for reading: '" + _bmc[0] + "'";
+      throw std::runtime_error(errMsg);
+    }
+    fs.close();
+  }
+  
+  // Break down the file name into its basic parts
+  {
+    // Assume that there isn't a path
+    std::string baseFileName = filePath;      
+
+    // Remove the path (if there is one)
+    {
+      size_t pos = filePath.find_last_of("/");
+      if ( pos != std::string::npos) {        
+        baseFileName.assign(filePath.begin() + pos + 1, filePath.end());
+      }
+    }
+
+    // Remove the extension (if there is one)
+    {
+      const std::string ext(".txt");
+      if ( (baseFileName != ext) &&
+           (baseFileName.size() > ext.size()) &&
+           (baseFileName.substr(baseFileName.size() - ext.size()) == ext)) {
+        baseFileName = baseFileName.substr(0, baseFileName.size() - ext.size());
+      }
+    }
+
+    // Tokenize the base name
+    std::vector <std::string> tokens;
+    boost::split(tokens, baseFileName, boost::is_any_of("-"));
+
+    TRACE("BaseName: " + baseFileName);
+
+    if ( tokens.size() != 4 ) {
+      std::string errMsg = XclBinUtil::format("ERROR: Unexpected number of tokens (found %d, expected 4) parsing the file: %s",
+                                              tokens.size(), baseFileName);
+      throw std::runtime_error(errMsg);
+    }
+
+    // Token 0 - Image Name
+    if ( tokens[0].length() >= sizeof(bmc::m_image_name) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                              (unsigned int) tokens[0].length(), (unsigned int) sizeof(bmc::m_image_name), tokens[0].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_image_name, tokens[0].c_str(), tokens[0].length() + 1);
+
+    // Token 1 - Device Name
+    if ( tokens[1].length() >= sizeof(bmc::m_device_name) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
+                                              (unsigned int) tokens[1].length(), (unsigned int) sizeof(bmc::m_device_name), tokens[1].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_device_name, tokens[1].c_str(), tokens[1].length() + 1);
+
+    // Token 2 - Version
+    if ( tokens[2].length() >= sizeof(bmc::m_version) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'",
+                                              (unsigned int) tokens[2].length(), (unsigned int) sizeof(bmc::m_version), tokens[2].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_version, tokens[2].c_str(), tokens[2].length() + 1);
+
+    // Token 3 - MD5 Value
+    if ( tokens[3].length() >= sizeof(bmc::m_md5value) ) {
+      std::string errMsg = XclBinUtil::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'",
+                                              (unsigned int) tokens[3].length(), (unsigned int) sizeof(bmc::m_md5value), tokens[3].c_str());
+      throw std::runtime_error(errMsg);
+    }
+    memcpy( bmcHdr.m_md5value, tokens[3].c_str(), tokens[3].length() + 1);
+  }
+
+  TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
+                           bmcHdr.m_offset,
+                           bmcHdr.m_size,
+                           bmcHdr.m_image_name,
+                           bmcHdr.m_device_name,
+                           bmcHdr.m_version,
+                           bmcHdr.m_md5value));
+
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
+
+  // Create the buffer
+  m_bmcBuf.write(reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
+
+  // Write Data
+  {
+    std::ifstream fs;
+    fs.open( filePath.c_str(), std::ifstream::in | std::ifstream::binary );
+
+    if ( ! fs.is_open() ) {
+      std::string errMsg = "ERROR: Could not open the file for reading: '" + filePath + "'";
+      throw std::runtime_error(errMsg);
+    }
+
+    std::unique_ptr<unsigned char> memBuffer( new unsigned char[ bmcHdr.m_size ] );
+    fs.clear();
+    fs.read( (char*) memBuffer.get(), bmcHdr.m_size );
+    fs.close();
+
+    m_bmcBuf.write(reinterpret_cast<const char*>(memBuffer.get()), bmcHdr.m_size );
+  }
+}
+
+
+void 
+XclBinData::extractAndWriteMCSImages( char * _pDataSegment, 
+                                      unsigned int _segmentSize) 
+{
+  TRACE("");
+  TRACE("Extracting: MCS");
+
+  // Do we have enough room to overlay the header structure
+  if ( _segmentSize < sizeof(mcs) ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the mcs structure (%d)",
+                                                _segmentSize, sizeof(mcs)));
+  }
+
+  mcs *pHdr = (mcs *) _pDataSegment;
+
+  TRACE(XclBinUtil::format("m_count: %d", (uint32_t) pHdr->m_count));
+  TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_chunk[0]) - (unsigned long) pHdr);
+  
+  // Do we have something to extract.  Note: This should never happen.  
+  if ( pHdr->m_count == 0 ) {
+    TRACE("m_count is zero, nothing to extract");
+    return;
+  }
+
+  // Check to make sure that the array did not exceed its bounds
+  unsigned int arraySize = ((unsigned long) &(pHdr->m_chunk[0]) - (unsigned long) pHdr)  + (sizeof(mcs_chunk) * pHdr->m_count);
+
+  if ( arraySize > _segmentSize ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).", 
+                                            arraySize, _segmentSize));
+  }
+
+  // Examine and extract the data
+  for (int index = 0; index < pHdr->m_count; ++index) {
+    TRACE(XclBinUtil::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx", 
+                       index,
+                       getMCSTypeStr((enum MCS_TYPE) pHdr->m_chunk[index].m_type).c_str(),
+                       pHdr->m_chunk[index].m_offset,
+                       pHdr->m_chunk[index].m_size));
+
+    TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
+
+    std::string fileName;
+    switch ( pHdr->m_chunk[index].m_type ) {
+      case MCS_PRIMARY: fileName = "primary.mcs"; break;
+      case MCS_SECONDARY: fileName = "secondary.mcs"; break;
+      default: fileName = XclBinUtil::format("unknown_idx_%d.mcs", index);
+    }
+   
+    char * ptrImageBase = _pDataSegment + pHdr->m_chunk[index].m_offset;
+
+    // Check to make sure that the MCS image is partially looking good
+    if ( (unsigned long) ptrImageBase > ((unsigned long) _pDataSegment) + _segmentSize ) {
+      throw std::runtime_error(XclBinUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index));
+    }
+
+    if ( ((unsigned long) ptrImageBase) + pHdr->m_chunk[index].m_size > ((unsigned long) _pDataSegment) + _segmentSize ) {
+      throw std::runtime_error(XclBinUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index));
+    }
+
+    std::fstream fs;
+    fs.open( fileName, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc );
+    if ( ! fs.is_open() ) {
+      std::cerr << "ERROR: Could not open " << fileName << " for writing" << "\n";
+      continue;
+    }
+    fs.write( ptrImageBase, pHdr->m_chunk[index].m_size );
+  }
+}
+
+void 
+XclBinData::extractAndWriteBMCImages( char * _pDataSegment, 
+                                      unsigned int _segmentSize) 
+{
+  TRACE("");
+  TRACE("Extracting: BMC");
+
+  // Do we have enough room to overlay the header structure
+  if ( _segmentSize < sizeof(bmc) ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)",
+                                                _segmentSize, sizeof(bmc)));
+  }
+
+  bmc *pHdr = (bmc *) _pDataSegment;
+
+  TRACE_BUF("bmc", reinterpret_cast<const char*>(pHdr), sizeof(bmc));
+  
+  TRACE(XclBinUtil::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'", 
+                           pHdr->m_offset,
+                           pHdr->m_size,
+                           pHdr->m_image_name,
+                           pHdr->m_device_name,
+                           pHdr->m_version,
+                           pHdr->m_md5value));
+
+  unsigned int expectedSize = pHdr->m_offset + pHdr->m_size;
+
+  // Check to see if array size  
+  if ( expectedSize > _segmentSize ) {
+    throw std::runtime_error(XclBinUtil::format("ERROR: bmc section size (0x%lx) exceeds the given segment size (0x%lx).", 
+                                            expectedSize, _segmentSize));
+  }
+
+  std::string fileName = XclBinUtil::format("%s-%s-%s-%s.txt",
+                                            pHdr->m_image_name,
+                                            pHdr->m_device_name,
+                                            pHdr->m_version,
+                                            pHdr->m_md5value);
+
+  TRACE("Writing BMC File: '" + fileName + "'");
+
+  std::fstream fs;
+  fs.open( fileName, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc );
+  if ( ! fs.is_open() ) {
+    std::cerr << "ERROR: Could not open " << fileName << " for writing" << "\n";
+    return;
+  }
+
+  char * ptrImageBase = _pDataSegment + pHdr->m_offset;
+  fs.write( ptrImageBase, pHdr->m_size );
+}
 
 
 

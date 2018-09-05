@@ -70,7 +70,8 @@ namespace xclbincat1 {
     std::cout << "                                          Valid segment types:  \n";
     std::cout << "                                             BITSTREAM, CLEAR_BITSTREAM, FIRMWARE, SCHEDULER,   \n";
     std::cout << "                                             BINARY_HEADER, METADATA, MEM_TOPOLOGY, CONNECTIVITY,\n"; 
-    std::cout << "                                             IP_LAYOUT, DEBUG_IP_LAYOUT, and DEBUG_DATA.         \n";
+    std::cout << "                                             IP_LAYOUT, DEBUG_IP_LAYOUT, MCS_PRIMARY, MCS_SECONDARY,\n";
+    std::cout << "                                             BMC, and DEBUG_DATA.         \n";
   }
 
 
@@ -96,6 +97,9 @@ namespace xclbincat1 {
     OptionParserSegmentTypeMap( OptionParser::ST_IP_LAYOUT, "IP_LAYOUT" ),
     OptionParserSegmentTypeMap( OptionParser::ST_DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT" ),
     OptionParserSegmentTypeMap( OptionParser::ST_DEBUG_DATA, "DEBUG_DATA" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_MCS_PRIMARY, "MCS_PRIMARY" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_MCS_SECONDARY, "MCS_SECONDARY" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_BMC, "BMC" ),
     OptionParserSegmentTypeMap( OptionParser::ST_UNKNOWN, "UNKNOWN" )
   };
 
@@ -200,6 +204,18 @@ namespace xclbincat1 {
 
       case ST_DEBUG_DATA:
         m_debugdata.push_back( _sFile );
+        break;
+
+      case ST_MCS_PRIMARY:
+        m_mcs.emplace_back( _sFile, MCS_PRIMARY);
+        break;
+
+      case ST_MCS_SECONDARY:
+        m_mcs.emplace_back( _sFile, MCS_SECONDARY);
+        break;
+
+      case ST_BMC:
+        m_bmc.emplace_back( _sFile );
         break;
 
       default:
@@ -426,6 +442,7 @@ namespace xclbincat1 {
       case CLOCK_FREQ_TOPOLOGY: return "CLOCK_FREQ_TOPOLOGY";
       case DESIGN_CHECK_POINT: return "DESIGN_CHECK_POINT";
       case MCS: return "MCS";
+      case BMC: return "BMC";
         break;
     }
 
@@ -508,7 +525,11 @@ namespace xclbincat1 {
     memcpy( (char*) memBuffer.get(), _buf.str().c_str(), header.m_sectionSize);
 
     // -- Write contents out --
-    std::cout << "INFO: Adding section [" << getKindStr(_ekind) << " (" << _ekind << ")] using: '" << (const char*)&header.m_sectionName << "' (" << (unsigned int)header.m_sectionSize << " Bytes)\n";
+    if ( (_ekind == MCS) || (_ekind == BMC) ) {
+      std::cout << "INFO: Adding section [" << getKindStr(_ekind) << " (" << _ekind << ")] (" << (unsigned int)header.m_sectionSize << " Bytes)\n";
+    } else {
+      std::cout << "INFO: Adding section [" << getKindStr(_ekind) << " (" << _ekind << ")] using: '" << (const char *)&header.m_sectionName << "' (" << (unsigned int)header.m_sectionSize << " Bytes)\n";
+    }
     _xclBinData.addSection( header, (const char*) memBuffer.get(), header.m_sectionSize );
   }
 
@@ -723,15 +744,31 @@ namespace xclbincat1 {
     
     // Check duplicate segments
     if ( (parser.m_memTopology.size() > 0) && (data.m_memTopologyBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one MEM_TOPOLOGY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one MEM_TOPOLOGY data segment is permitted.\n");
     if ( (parser.m_connectivity.size() > 0) && (data.m_connectivityBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one CONNECTIVITY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one CONNECTIVITY data segment is permitted.\n");
     if ( (parser.m_ipLayout.size() > 0) && (data.m_ipLayoutBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one IP_LAYOUT data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one IP_LAYOUT data segment is permitted.\n");
     if ( (parser.m_debugIpLayout.size() > 0) && (data.m_debugIpLayoutBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one DEBUG_IP_LAYOUT data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one DEBUG_IP_LAYOUT data segment is permitted.\n");
     if ( (parser.m_clockFreqTopology.size() > 0) && (data.m_clockFreqTopologyBuf.str().length() > 0) )
-      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segments is permitted.\n");
+      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segment is permitted.\n");
+    if ( (parser.m_clockFreqTopology.size() > 0) && (data.m_clockFreqTopologyBuf.str().length() > 0) )
+      throw std::runtime_error("ERROR: Only one CLOCK_FREQ_TOPOLOGY data segment is permitted.\n");
+
+    // Count the number of MCS PRIMARY entries.  If more than 1 then error out.
+    if (std::count_if(parser.m_mcs.begin(), parser.m_mcs.end(), [](std::pair< std::string, int >  pairEntry) { return (pairEntry.second == MCS_PRIMARY); }) > 1)
+      throw std::runtime_error("ERROR: Only one MCS_PRIMARY data segment is permitted.\n");
+
+   // Count the number of MCS SECONDARY entries.  If more than 1 then error out.
+    if (std::count_if(parser.m_mcs.begin(), parser.m_mcs.end(), [](std::pair< std::string, int >  pairEntry) { return (pairEntry.second == MCS_SECONDARY); }) > 1)
+      throw std::runtime_error("ERROR: Only one MCS_SECONDARY data segment is permitted.\n");
+
+    if ( parser.m_bmc.size() > 1 )
+      throw std::runtime_error("ERROR: Only one BMC image segment is permitted.\n");
+
+    data.createMCSSegmentBuffer(parser.m_mcs);
+    data.createBMCSegmentBuffer(parser.m_bmc);
 
     // Determine the number of sections that will be written out
     int sectionTotal = 0;
@@ -744,7 +781,9 @@ namespace xclbincat1 {
     sectionTotal += parser.m_connectivity.size();
     sectionTotal += parser.m_memTopology.size();
     sectionTotal += parser.m_ipLayout.size();
+    sectionTotal += parser.m_bmc.size();
     sectionTotal += data.getJSONBufferSegmentCount();
+    if (parser.m_mcs.size() > 0) ++sectionTotal;
 
     if ( parser.isVerbose() )
       std::cout << "INFO: Creating xclbin (with '" << sectionTotal << "' sections): '" << parser.m_output.c_str() << "'\n";
@@ -767,6 +806,8 @@ namespace xclbincat1 {
     addSectionBufferWithType( data, data.m_ipLayoutBuf, IP_LAYOUT );
     addSectionBufferWithType( data, data.m_debugIpLayoutBuf, DEBUG_IP_LAYOUT );
     addSectionBufferWithType( data, data.m_clockFreqTopologyBuf, CLOCK_FREQ_TOPOLOGY );
+    addSectionBufferWithType( data, data.m_mcsBuf, MCS );
+    addSectionBufferWithType( data, data.m_bmcBuf, BMC );
 
     data.finishWrite();
 

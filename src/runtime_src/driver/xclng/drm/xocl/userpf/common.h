@@ -74,10 +74,10 @@ struct xocl_dev	{
 	u32     bypass_bar_idx;
 
 
-	void			*dma_handle;
+	void		       *dma_handle;
 	u32			max_user_intr;
 	u32			start_user_intr;
-	struct eventfd_ctx      **user_msix_table;
+	struct eventfd_ctx    **user_msix_table;
 	struct mutex		user_msix_table_lock;
 
 	bool			offline;
@@ -91,7 +91,7 @@ struct xocl_dev	{
 	struct mutex			stat_lock;
 
 	struct xocl_mem_topology	topology;
-        struct xocl_layout		layout;
+        struct ip_layout	       *layout;
         struct xocl_debug_layout	debug_layout;
         struct xocl_connectivity	connectivity;
 
@@ -106,14 +106,13 @@ struct xocl_dev	{
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	struct percpu_ref ref;
-  struct completion cmp;
+	struct completion cmp;
 #endif
 	/*should be removed after mailbox is supported */
 	u64			        unique_id_last_bitstream;
 	/* remove the previous id after we move to uuid */
 	xuid_t                          xclbin_id;
-	DECLARE_BITMAP                  (cu_exclusive_bitmap, MAX_CUS);
-	DECLARE_BITMAP                  (cu_shared_bitmap, MAX_CUS);
+	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
 	atomic_t                        needs_reset;
@@ -141,7 +140,7 @@ struct client_ctx {
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-	struct pid		*pid;
+	struct pid             *pid;
 };
 
 /* ioctl functions */
