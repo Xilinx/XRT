@@ -100,6 +100,9 @@ namespace xclbincat1 {
     OptionParserSegmentTypeMap( OptionParser::ST_MCS_PRIMARY, "MCS_PRIMARY" ),
     OptionParserSegmentTypeMap( OptionParser::ST_MCS_SECONDARY, "MCS_SECONDARY" ),
     OptionParserSegmentTypeMap( OptionParser::ST_BMC, "BMC" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_BUILD_METADATA, "BUILD_METADATA" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_KEYVALUE_METADATA, "KEYVALUE_METADATA" ),
+    OptionParserSegmentTypeMap( OptionParser::ST_USER_METADATA, "USER_METADATA" ),
     OptionParserSegmentTypeMap( OptionParser::ST_UNKNOWN, "UNKNOWN" )
   };
 
@@ -443,6 +446,9 @@ namespace xclbincat1 {
       case DESIGN_CHECK_POINT: return "DESIGN_CHECK_POINT";
       case MCS: return "MCS";
       case BMC: return "BMC";
+      case BUILD_METADATA: return "BUILD_METADATA";
+      case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
+      case USER_METADATA: return "USER_METADATA";
         break;
     }
 
