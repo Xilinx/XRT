@@ -24,6 +24,7 @@
 
 #include <vector>
 #include <map>
+#include <functional>
 
 namespace xocl {
 
@@ -62,14 +63,12 @@ public:
   /**
    * Delegating contstrutor
    */
+  explicit
   program(context* ctx)
     : program(ctx,"")
   {}
 
   virtual ~program();
-
-  program&
-  operator=(const program& rhs);
 
   unsigned int
   get_uid() const
@@ -95,8 +94,8 @@ public:
     return m_context.get();
   }
 
-  const std::string& 
-  get_source() const 
+  const std::string&
+  get_source() const
   {
     return m_source;
   }
@@ -177,7 +176,7 @@ public:
    * get_device_range.
    *
    * Not a cool dependency on device range. Subject to removal.
-   * 
+   *
    * @return
    *   List of binary sizes
    */
@@ -218,7 +217,7 @@ public:
   }
 
   bool
-  has_kernel(const std::string& kname) const 
+  has_kernel(const std::string& kname) const
   {
     auto kernels = get_kernel_names();
     return range_find(kernels,[&kname](const std::string& s){return s==kname;})!=kernels.end();
@@ -267,14 +266,14 @@ public:
       ? (*itr).second
       : "";
   }
-  
+
   /**
    * Get the build log for argument device
    *
    * @param dev
    *  Device for which to get build log.
    * @return
-   *  Build log argument device, or empty string if program wasn't 
+   *  Build log argument device, or empty string if program wasn't
    *  explicitly build by runtime.
    */
   std::string
@@ -357,5 +356,3 @@ get_global_programs();
 } // xocl
 
 #endif
-
-

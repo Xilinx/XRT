@@ -18,8 +18,8 @@
 #include <linux/pci.h>
 #include <linux/aer.h>
 #include "../xocl_drv.h"
-#include "../xocl_subdev.h"
 #include "../lib/libqdma/libqdma_export.h"
+#include "../lib/libqdma/libqdma_config.h"
 #include "common.h"
 #include "xocl_drm.h"
 
@@ -90,11 +90,9 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 	conf = &qd->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->poll_mode = 1;
-	conf->h2c_channel_max = QDMA_MM_ENGINE_MAX;
-	conf->c2h_channel_max = QDMA_MM_ENGINE_MAX;
-	conf->user_max = 0;
-	conf->qsets_max = 32;
 	conf->pdev = pdev;
+	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
+	conf->master_pf =  PCI_FUNC(pdev->devfn);
 
 	ret = qdma_device_open(XOCL_QDMA_PCI, conf,
 		(unsigned long *)(&ocl_dev->dma_handle));
@@ -103,8 +101,8 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	xocl_info(&pdev->dev, "QDMA open succeed: intr: %d MM channel %d",
-		ocl_dev->max_user_intr, conf->h2c_channel_max);
+	xocl_info(&pdev->dev, "QDMA open succeed: intr: %d",
+		ocl_dev->max_user_intr);
 
 	/* map user bar */
 	ocl_dev->core.bar_idx = XOCL_QDMA_USER_BAR;
@@ -131,11 +129,12 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		if (ret)
 			goto failed_set_channel;
 
-		ret = xocl_drm_init(ocl_dev);
-		if (ret) {
-			xocl_err(&pdev->dev, "failed to init drm mm");
-			goto failed_drm_init;
-		}
+	}
+
+	ret = xocl_drm_init(ocl_dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed_drm_init;
 	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
@@ -251,7 +250,7 @@ int __init xocl_init_drv_user_qdma(void)
 {
 	int ret;
 
-	ret = libqdma_init();
+	ret = libqdma_init(0);
 	if (ret) {
 		goto failed;
 	}

@@ -24,7 +24,6 @@
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
 #include "xrt/util/memory.h"
-#include "profile.h"
 #include "detail/context.h"
 
 #include <boost/filesystem/operations.hpp>
@@ -34,6 +33,7 @@
 
 // should use some md5 checksum instead
 #include <crypt.h> 
+#include "plugin/xdp/profile.h"
 
 namespace {
 

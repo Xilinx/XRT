@@ -132,14 +132,14 @@ allocExecBuffer(size_t sz)
 
   auto ubo = xrt::make_unique<ExecBufferObject>();
   //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
-  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<63));  // 1<<31 xocl_ioctl.h
+  ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
   ubo->size = sz;
   ubo->owner = m_handle;
   ubo->data = m_ops->mMapBO(m_handle,ubo->handle, true /* write */);
-  if (ubo->data == (void*)(-1)) 
+  if (ubo->data == (void*)(-1))
     throw std::runtime_error(std::string("map failed: ") + std::strerror(errno));
   return ExecBufferObjectHandle(ubo.release(),delBufferObject);
 }
@@ -157,7 +157,7 @@ alloc(size_t sz)
   };
 
   xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
-  uint64_t flags = 0; //TODO: check default
+  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
   if (ubo->handle == 0xffffffff)
@@ -168,6 +168,8 @@ alloc(size_t sz)
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -182,7 +184,7 @@ alloc(size_t sz,void* userptr)
     delete bo;
   };
 
-  uint64_t flags = 0; //TODO:check default
+  uint64_t flags = 0xFFFFFF; //TODO:check default
   auto ubo = xrt::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
@@ -193,6 +195,8 @@ alloc(size_t sz,void* userptr)
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -220,11 +224,11 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     ubo->hostAddr = nullptr;
   }
   else {
-    uint64_t flags = (1<<memory_index);
+    //uint64_t flags = (1<<memory_index);
+    uint64_t flags = memory_index;
     xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
     if(domain==Domain::XRT_DEVICE_P2P_RAM) {
-      //flags |= (1<<30);
-      flags |= (((uint64_t)1)<<62);
+      flags |= (1<<30);
     }
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
@@ -244,6 +248,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   }
   ubo->size = sz;
   ubo->owner = m_handle;
+
+  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -263,7 +269,8 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->handle = bo->handle;
   ubo->deviceAddr = bo->deviceAddr+offset;
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
-  ubo->size = bo->size;
+  ubo->size = sz;
+  ubo->offset = offset;
   ubo->kind = bo->kind;
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
@@ -342,7 +349,7 @@ device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction 
     auto qt = (dir==XCL_BO_SYNC_BO_FROM_DEVICE) ? hal::queue_type::read : hal::queue_type::write;
     return event(addTaskF(m_ops->mSyncBO,qt,m_handle,bo->handle,dir,sz,offset));
   }
-  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset)));
+  return event(typed_event<int>(m_ops->mSyncBO(m_handle, bo->handle, dir, sz, offset+bo->offset)));
 }
 
 event
@@ -443,7 +450,7 @@ getDeviceAddr(const BufferObjectHandle& boh)
 
 int
 device::
-getMemObjectFd(const BufferObjectHandle& boh) 
+getMemObjectFd(const BufferObjectHandle& boh)
 {
   if (!m_ops->mExportBO)
     throw std::runtime_error("ExportBO function not found in FPGA driver. Please install latest driver");
@@ -511,6 +518,97 @@ svm_bo_lookup(void* ptr)
     throw std::runtime_error("svm_bo_lookup: The SVM pointer is invalid.");
 }
 
+//Stream
+int 
+device::
+createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
+  return m_ops->mCreateWriteQueue(m_handle,&ctx,stream);
+}
+
+int 
+device::
+createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
+{
+  xclQueueContext ctx;
+  ctx.flags = flags;
+  ctx.type = attr;
+  ctx.route = route;
+  ctx.flow = flow;
+  return m_ops->mCreateReadQueue(m_handle,&ctx,stream);
+}
+
+int 
+device::
+closeStream(hal::StreamHandle stream) 
+{
+  return m_ops->mDestroyQueue(m_handle,stream);
+}
+
+hal::StreamBuf
+device::
+allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
+{
+  return m_ops->mAllocQDMABuf(m_handle,size,buf);
+}
+
+int 
+device::
+freeStreamBuf(hal::StreamBufHandle buf)
+{
+  return m_ops->mFreeQDMABuf(m_handle,buf);
+}
+
+ssize_t 
+device::
+writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{
+  //TODO:
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
+//  req,op_code = XCL_QUEUE_WRITE;
+//  req.bufs.buf = const_cast<char*>(ptr);
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mWriteQueue(m_handle,stream,&req);
+}
+
+ssize_t 
+device::
+readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+{ 
+  (void)offset;
+  (void)flags;
+  xclQueueRequest req;
+  xclWRBuffer buffer;
+
+  buffer.va = (uint64_t)ptr;
+  buffer.len = size;
+  buffer.buf_hdl = 0;
+
+  req.bufs = &buffer;
+  req.buf_num = 1;
+//  req,op_code = XCL_QUEUE_READ;
+//  req.bufs.buf = ptr;
+//  req.bufs.len = size;
+//  req.flag = XCL_QUEUE_DEFAULT;
+  return m_ops->mReadQueue(m_handle,stream,&req);
+}
+
 #ifdef PMD_OCL
 void
 createDevices(hal::device_list& devices,
@@ -531,6 +629,3 @@ createDevices(hal::device_list& devices,
 
 
 }} // hal2,xrt
-
-
-

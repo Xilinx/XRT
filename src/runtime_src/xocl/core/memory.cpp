@@ -21,8 +21,6 @@
 
 #include "xrt/util/memory.h"
 
-#include "xdp/appdebug/appdebug_track.h"
-
 #include <iostream>
 
 namespace {
@@ -35,7 +33,7 @@ namespace {
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-// 
+//
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 static xocl::device*
@@ -50,10 +48,12 @@ singleContextDevice(cl_context context)
     : nullptr;
 }
 
+static xocl::memory::memory_callback_list sg_constructor_callbacks;
+static xocl::memory::memory_callback_list sg_destructor_callbacks;
+
 } // namespace
 
 namespace xocl {
-
 memory::
 memory(context* cxt, cl_mem_flags flags)
   : m_context(cxt), m_flags(flags)
@@ -62,7 +62,11 @@ memory(context* cxt, cl_mem_flags flags)
   m_uid = uid_count++;
 
   XOCL_DEBUG(std::cout,"xocl::memory::memory(): ",m_uid,"\n");
-  appdebug::add_clmem(this);
+
+  for (auto& cb: sg_constructor_callbacks)
+    cb(this);
+
+  //appdebug::add_clmem(this);
 }
 
 memory::
@@ -73,7 +77,10 @@ memory::
   if (m_dtor_notify)
     std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
                   [](std::function<void()>& fcn) { fcn(); });
-   appdebug::remove_clmem(this);
+
+  for (auto& cb: sg_destructor_callbacks)
+    cb(this);
+   //appdebug::remove_clmem(this);
 }
 
 
@@ -110,7 +117,7 @@ get_buffer_object(device* device)
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
 
-  // Maybe import from XARE device 
+  // Maybe import from XARE device
   if (m_bomap.size() && itr==m_bomap.end() && device->is_xare_device()) {
     auto first = m_bomap.begin(); // import any existing BO
     return (m_bomap[device] = device->import_buffer_object(first->first,first->second));
@@ -119,7 +126,53 @@ get_buffer_object(device* device)
   // Regular none XARE device, or first BO for this mem object
   return (itr==m_bomap.end())
     ? (m_bomap[device] = device->allocate_buffer_object(this))
-    : (*itr).second;  
+    : (*itr).second;
+}
+
+memory::buffer_object_handle
+memory::
+get_buffer_object(kernel* kernel, unsigned long argidx)
+{
+  // Must be single device context
+  if (auto device=singleContextDevice(get_context())) {
+    // Memory intersection of arg connection across all CUs in current
+    // device for the kernel
+    auto cu_memidx_mask = device->get_cu_memidx(kernel,argidx);
+
+    // Coarse scoped lock.
+    // The boh may not be created by other thread simultanously.
+    std::lock_guard<std::mutex> lk(m_boh_mutex);
+
+    // Is this memory object already allocated on device
+    // get_buffer_object_or_null can't be called because it obtains lock
+    auto itr = m_bomap.find(device);
+    auto boh = (itr==m_bomap.end()) ? nullptr : (*itr).second;
+    if (boh) {
+      // This buffer is already allocated on device, verify that
+      // current bank match that reqired for kernel argument
+      auto memidx_mask = device->get_boh_memidx(boh);
+      if ((cu_memidx_mask & memidx_mask).any())
+        return boh;
+
+      // revisit error code
+      throw std::runtime_error("Buffer is allocated in wrong memory bank\n");
+    }
+    else {
+      // This buffer is not currently allocated on device, allocate
+      // in first available bank for argument
+      for (size_t idx=0; idx<cu_memidx_mask.size(); ++idx) {
+        if (cu_memidx_mask.test(idx)) {
+          try {
+            return (m_bomap[device] = device->allocate_buffer_object(this,idx));
+          }
+          catch (const std::bad_alloc&) {
+          }
+        }
+      }
+      throw std::bad_alloc();
+    }
+  }
+  return nullptr;
 }
 
 memory::buffer_object_handle
@@ -144,6 +197,7 @@ get_buffer_object_or_null(const device* device) const
     : (*itr).second;
 }
 
+
 memory::buffer_object_handle
 memory::
 try_get_buffer_object_or_error(const device* device) const
@@ -159,7 +213,7 @@ try_get_buffer_object_or_error(const device* device) const
 
 memory::memidx_bitmask_type
 memory::
-get_memidx(const device* dev) const 
+get_memidx(const device* dev) const
 {
   if (auto boh = get_buffer_object_or_null(dev))
     return dev->get_boh_memidx(boh);
@@ -191,11 +245,25 @@ void
 memory::
 add_dtor_notify(std::function<void()> fcn)
 {
-  using notify_type = std::function<void()>;
   if (!m_dtor_notify)
     m_dtor_notify = xrt::make_unique<std::vector<std::function<void()>>>();
   m_dtor_notify->emplace_back(std::move(fcn));
 }
+
+void
+memory::
+register_constructor_callbacks (memory::memory_callback_type&& cb)
+{
+  sg_constructor_callbacks.emplace_back(std::move(cb));
+}
+
+void
+memory::
+register_destructor_callbacks (memory::memory_callback_type&& cb)
+{
+  sg_destructor_callbacks.emplace_back(std::move(cb));
+}
+
 
 //Functions for derived classes.
 memory::buffer_object_handle
@@ -225,5 +293,3 @@ get_buffer_object(device* device)
 }
 
 } // xocl
-
-

@@ -24,11 +24,18 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "xclbin.h"
+#include "devices.h"
 #include "xocl_ioctl.h"
-#include "xocl_subdev.h"
 
+#if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#define XOCL_UUID
+#endif
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
+#define XOCL_UUID
+#endif
 /* UUID helper functions not present in older kernels */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if defined(XOCL_UUID)
 static inline bool uuid_equal(const xuid_t *u1, const xuid_t *u2)
 {
 	return memcmp(u1, u2, sizeof(xuid_t)) == 0;
@@ -84,75 +91,21 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_XILINX_VEN		0x10EE
 #define	XOCL_CHARDEV_REG_COUNT	16
 
-#define	XOCL_PCI_DEVID(ven, dev, subsysid, priv)	\
-         .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
-	 .subdevice = subsysid, .driver_data = 		\
-	 (kernel_ulong_t) &XOCL_BOARD_##priv
-
-
-#define	XOCL_MGMT_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A87, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B47, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4350, MGMT_DSA50) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4351, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x684F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x698F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4350, MGMT_6A8F_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4351, MGMT_6A8F) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4352, MGMT_6A8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, 0x4360, MGMT_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E8F, 0x4352, MGMT_6E8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x888F, PCI_ANY_ID, MGMT_888F) },   \
-	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_DEFAULT) }
-
-#define	XOCL_USER_XDMA_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A48, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4A88, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B48, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4350, USER_XDMA_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4351, USER_XDMA) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A50, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4351, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4352, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E50, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6B10, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6E90, 0x4352, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x8890, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },   \
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF040, PCI_ANY_ID, USER_AWS) }
-
-#define	XOCL_USER_QDMA_PCI_IDS			\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) }
+#ifdef RHEL_RELEASE_VERSION
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
+#define RHEL_P2P_SUPPORT  1
+#else
+#define RHEL_P2P_SUPPORT  0
+#endif
+#else
+#define RHEL_P2P_SUPPORT  0
+#endif
 
 extern struct class *xrt_class;
 
 struct xocl_dev;
 struct drm_xocl_bo;
 struct client_ctx;
-
-struct xocl_subdev_info {
-	u32			id;
-	char			*name;
-	struct resource		*res;
-	int			num_res;
-};
 
 struct xocl_subdev {
 	struct platform_device 		*pldev;
@@ -171,11 +124,6 @@ struct xocl_mem_topology {
 struct xocl_connectivity {
         u64                     size;
         struct connectivity     *connections;
-};
-
-struct xocl_layout {
-        u64                     size;
-        struct ip_layout        *layout;
 };
 
 struct xocl_debug_layout {
@@ -204,25 +152,6 @@ struct xocl_pci_funcs {
 	XDEV_PCIOPS(xdev)->dev_online(xdev)
 #define	xocl_user_dev_offline(xdev)	\
 	XDEV_PCIOPS(xdev)->dev_offline(xdev)
-
-/* board flags */
-enum {
-	XOCL_DSAFLAG_PCI_RESET_OFF =		0x01,
-	XOCL_DSAFLAG_MB_SCHE_OFF =		0x02,
-	XOCL_DSAFLAG_AXILITE_FLUSH =		0x04,
-	XOCL_DSAFLAG_SET_DSA_VER =		0x08,
-	XOCL_DSAFLAG_SET_XPR = 			0x10,
-};
-
-struct xocl_board_private {
-	u64			flags;
-	struct xocl_subdev_info	*subdev_info;
-	u32			subdev_num;
-	u32			user_bar;
-	u32			intr_bar;
-	u32			dsa_ver;
-	bool			xpr;
-};
 
 struct xocl_context {
 	struct hlist_node	hlist;
@@ -289,6 +218,7 @@ struct xocl_rom_funcs {
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
+	bool (*cdma_on)(struct platform_device *pdev);
 	u16 (*get_ddr_channel_count)(struct platform_device *pdev);
 	u64 (*get_ddr_channel_size)(struct platform_device *pdev);
 	bool (*is_are)(struct platform_device *pdev);
@@ -309,6 +239,8 @@ struct xocl_rom_funcs {
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_mgmt_on(ROM_DEV(xdev)) : false)
 #define	xocl_mb_sched_on(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
+#define	xocl_cdma_on(xdev)		\
+	(ROM_DEV(xdev) ? ROM_OPS(xdev)->cdma_on(ROM_DEV(xdev)) : false)
 #define	xocl_get_ddr_channel_count(xdev) \
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->get_ddr_channel_count(ROM_DEV(xdev)) :\
 	0)
@@ -369,6 +301,7 @@ struct xocl_mb_scheduler_funcs {
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
 		poll_table *wait, void *priv);
 	int (*reset)(struct platform_device *pdev);
+	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
@@ -394,6 +327,10 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+        -ENODEV)
+#define	xocl_exec_validate(xdev, client, bo)			\
+	(MB_SCHEDULER_DEV(xdev) ? 				\
+	 MB_SCHEDULER_OPS(xdev)->validate(MB_SCHEDULER_DEV(xdev), client, bo) : \
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
 	(xdev->topology.m_data[ddr].m_used == 1)
@@ -468,19 +405,45 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 };
+
+struct xocl_dna_funcs {
+	u32 (*status)(struct platform_device *pdev);
+	u32 (*capability)(struct platform_device *pdev);
+};
+
+#define	XMC_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_XMC).pldev
+#define	XMC_OPS(xdev)		\
+	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_XMC).ops)
+
+#define	DNA_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_DNA).pldev
+#define	DNA_OPS(xdev)		\
+	((struct xocl_dna_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_DNA).ops)
+#define	xocl_dna_status(xdev)			\
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->status(DNA_DEV(xdev)) : 0)
+#define	xocl_dna_capability(xdev)			\
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->capability(DNA_DEV(xdev)) : 2)
+
 #define	MB_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev
 #define	MB_OPS(xdev)		\
 	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
 	XOCL_SUBDEV_MB).ops)
 #define	xocl_mb_reset(xdev)			\
-	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL)
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->reset(XMC_DEV(xdev)) : \
+	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL))
+
 #define xocl_mb_load_mgmt_image(xdev, buf, len)		\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_mgmt_image(XMC_DEV(xdev), buf, len) :\
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_mgmt_image(MB_DEV(xdev), buf, len) :\
-	-ENODEV)
+	-ENODEV))
 #define xocl_mb_load_sche_image(xdev, buf, len)		\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_sche_image(XMC_DEV(xdev), buf, len) :\
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
-	-ENODEV)
+	-ENODEV))
 
 /*
  * mailbox callbacks
@@ -491,6 +454,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
+	MAILBOX_REQ_RESET_BEGIN,
+	MAILBOX_REQ_RESET_END,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -515,7 +480,7 @@ struct xocl_mailbox_funcs {
 		void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*init_hw)(void *base);
+	int (*reset)(struct platform_device *pdev, bool end_of_reset);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -533,8 +498,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
-#define	xocl_mailbox_init_hw(xdev, base)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->init_hw(base) : -ENODEV)
+#define	xocl_mailbox_reset(xdev, end)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
+	end) : -ENODEV)
 
 struct xocl_icap_funcs {
 	int (*freeze_axi_gate)(struct platform_device *pdev);
@@ -548,10 +514,10 @@ struct xocl_icap_funcs {
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	char* (*ocl_get_clock_freq_topology)(struct platform_device *pdev);
-	int (*ocl_lock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
-	int (*ocl_unlock_bitstream)(struct platform_device *pdev, xuid_t *uuid,
-		pid_t pid);
+	int (*ocl_lock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
+	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
+		const xuid_t *uuid, pid_t pid);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -654,4 +620,18 @@ void xocl_fini_icap(void);
 int __init xocl_init_str_qdma(void);
 void xocl_fini_str_qdma(void);
 
+int __init xocl_init_mig(void);
+void xocl_fini_mig(void);
+
+int __init xocl_init_xmc(void);
+void xocl_fini_xmc(void);
+
+int __init xocl_init_dna(void);
+void xocl_fini_dna(void);
+/* xclbin helpers */
+
+static inline size_t sizeof_ip_layout(const struct ip_layout *layout)
+{
+	return layout ? offsetof(struct ip_layout, m_ip_data) + layout->m_count * sizeof(struct ip_data) : 0;
+}
 #endif

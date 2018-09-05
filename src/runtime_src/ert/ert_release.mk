@@ -41,8 +41,8 @@ endef
 include $(RDI_SRCROOT)/products/sdx/ocl/src/runtime_src/driver/xclng/xclng_release.mk
 
 # disable for now
-ERT_RELEASE_DIRS := $(filter %_5_0 %_5_1 %_5_2,$(XCLNG_RELEASE_DIRS))
-ERT_INTERNAL_RELEASE_DIRS := $(filter %_5_0 %_5_1 %_5_2,$(XCLNG_INTERNAL_RELEASE_DIRS))
+ERT_RELEASE_DIRS := $(filter %_5_0 %_5_1 %_5_2 %_6_0,$(XCLNG_RELEASE_DIRS))
+ERT_INTERNAL_RELEASE_DIRS := $(filter %_5_0 %_5_1 %_5_2 %_6_0,$(XCLNG_INTERNAL_RELEASE_DIRS))
 
 endif
 

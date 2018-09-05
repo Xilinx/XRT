@@ -24,8 +24,16 @@
 #include <drm/drm_mm.h>
 #include "../lib/libxdma_api.h"
 #include "common.h"
+#if RHEL_P2P_SUPPORT
+#include <linux/pfn_t.h>
+#endif
 
+#if defined(__PPC64__)
+#define XOCL_FILE_PAGE_OFFSET   0x10000
+#else
 #define XOCL_FILE_PAGE_OFFSET   0x100000
+#endif
+
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -122,13 +130,18 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	loff_t num_pages;
 	unsigned int page_offset;
 	int ret = 0;
+#if RHEL_P2P_SUPPORT
+	pfn_t pfn;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
-	page_offset = (vmf->address - vma->vm_start) >> PAGE_SHIFT;
+	unsigned long vmf_address = vmf->address;
 #else
-	page_offset = ((unsigned long)vmf->virtual_address - vma->vm_start) >>
-		PAGE_SHIFT;
+	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
 #endif
+
+	page_offset = (vmf_address - vma->vm_start) >> PAGE_SHIFT;
+
 
 	if (!xobj->pages)
 		return VM_FAULT_SIGBUS;
@@ -137,12 +150,17 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
-	ret = vm_insert_page(vma, vmf->address, xobj->pages[page_offset]);
+	if(xobj->type & XOCL_BO_P2P){
+#if RHEL_P2P_SUPPORT
+		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
+		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
-	ret = vm_insert_page(vma, (unsigned long)vmf->virtual_address,
-		xobj->pages[page_offset]);
+		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
+  }
+  else{
+  	ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
+  }
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
@@ -174,9 +192,17 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
+	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap, xdev->layout->m_count) : MAX_CUS;
 
 	DRM_ENTER("");
 
+	/* This happens when application exists without formally releasing the contexts on CUs.
+	   Give up our contexts on CUs and our lock on xclbin */
+	while (xdev->layout && (bit < xdev->layout->m_count)) {
+		xdev->ip_reference[bit]--;
+		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
+	}
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	if (!uuid_is_null(&xdev->xclbin_id)) {
 		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
 			pid_nr(task_tgid(current)));
@@ -271,12 +297,13 @@ static struct drm_driver mm_drm_driver = {
 	.gem_prime_import_sg_table      = xocl_gem_prime_import_sg_table,
 	.gem_prime_vmap                 = xocl_gem_prime_vmap,
 	.gem_prime_vunmap               = xocl_gem_prime_vunmap,
+	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
 	.gem_prime_export		= drm_gem_prime_export,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid                      = drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,
@@ -286,6 +313,32 @@ static struct drm_driver mm_drm_driver = {
 	.minor				= XOCL_DRIVER_MINOR,
 	.patchlevel			= XOCL_DRIVER_PATCHLEVEL,
 };
+
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err)
+{
+	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
+	struct mailbox_req *req = (struct mailbox_req *)data;
+	int ret = 0;
+
+	if (err != 0)
+		return;
+
+	userpf_info(xdev, "received request (%d) from peer\n", req->req);
+
+	switch (req->req) {
+	case MAILBOX_REQ_RESET_BEGIN:
+		xocl_reset_notify(xdev->core.pdev, true);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RESET_END:
+		xocl_reset_notify(xdev->core.pdev, false);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	default:
+		break;
+	}
+}
 
 int xocl_drm_init(struct xocl_dev *xdev)
 {
@@ -349,6 +402,9 @@ int xocl_drm_init(struct xocl_dev *xdev)
 			segment += ddr_size;
 		}
 	}
+
+	/* Launch the mailbox server. */
+        (void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
 	mutex_init(&xdev->stat_lock);
 	mutex_init(&xdev->mm_lock);
@@ -414,7 +470,7 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
 	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
 		0, 0, 0);
@@ -445,50 +501,60 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
-        struct xocl_mem_topology *topology;
-        u16 i, ddr;
+	struct xocl_mem_topology *topology;
+	u16 i, ddr;
 
-        topology = &xdev->topology;
+	topology = &xdev->topology;
 
-        ddr = topology->bank_count;
-        for (i = 0; i < ddr; i++) {
-                if(topology->m_data[i].m_used) {
-                        userpf_info(xdev, "Taking down DDR : %d",
-                                ddr);
-                        drm_mm_takedown(&xdev->mm[i]);
-                }
-        }
+	ddr = topology->bank_count;
+	for (i = 0; i < ddr; i++) {
+		if(topology->m_data[i].m_used) {
+			userpf_info(xdev, "Taking down DDR : %d",
+				ddr);
+			drm_mm_takedown(&xdev->mm[i]);
+		}
+	}
 
-        vfree(topology->m_data);
-        vfree(topology->topology);
-        memset(topology, 0, sizeof(struct xocl_mem_topology));
-        vfree(xdev->connectivity.connections);
-        memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
-        vfree(xdev->layout.layout);
-        memset(&xdev->layout, 0, sizeof(xdev->layout));
-        vfree(xdev->debug_layout.layout);
-        memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
+	vfree(topology->m_data);
+	vfree(topology->topology);
+	memset(topology, 0, sizeof(struct xocl_mem_topology));
+	vfree(xdev->connectivity.connections);
+	memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
+	vfree(xdev->layout);
+	xdev->layout = NULL;
+	vfree(xdev->debug_layout.layout);
+	memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
 }
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf)
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
+	const char *raw_fmt = "%llu %d\n";
+	struct mem_topology *topo = xdev->topology.topology;
+	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);
-	if (!xdev->topology.topology || !xdev->mm_usage_stat)
+	if (!topo || !stat)
 		goto out;
 
-	for (i = 0; i < xdev->topology.topology->m_count; i++) {
-		const char *state = xdev->topology.topology->m_mem_data[i].m_used ? "on" : "off";
-		count = sprintf(buf, "[%d] %s@0x%llx; (%s); 0x%zx/0x%llx KB; %x BO\n", i,
-				xdev->topology.topology->m_mem_data[i].m_tag,
-				xdev->topology.topology->m_mem_data[i].m_base_address,
-				state,
-				xdev->mm_usage_stat[i].memory_usage/1024,
-				xdev->topology.topology->m_mem_data[i].m_size,
-				xdev->mm_usage_stat[i].bo_count);
+	for (i = 0; i < topo->m_count; i++) {
+		if (raw) {
+			count = sprintf(buf, raw_fmt,
+				stat[i].memory_usage,
+				stat[i].bo_count);
+		} else {
+			count = sprintf(buf, txt_fmt,
+				topo->m_mem_data[i].m_used ?
+					"IN-USE" : "UNUSED",
+				topo->m_mem_data[i].m_tag,
+				topo->m_mem_data[i].m_base_address,
+				topo->m_mem_data[i].m_size / 1024,
+				stat[i].memory_usage / 1024,
+				stat[i].bo_count);
+		}
 		buf += count;
 		size += count;
 	}

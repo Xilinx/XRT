@@ -26,7 +26,7 @@
 #include <linux/uuid.h>
 #include "common.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
@@ -80,7 +80,7 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	 * This adds a reference to the gem object.  The refernece is
 	 * passed to kds or released here if errors occur.
 	 */
-	obj =xocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
+	obj = xocl_gem_object_lookup(dev, filp, args->exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
 			args->exec_bo_handle);
@@ -88,9 +88,15 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	}
 
 	/* Convert gem object to xocl_bo extension */
-	xobj =to_xocl_bo(obj);
+	xobj = to_xocl_bo(obj);
 	if (!xocl_bo_execbuf(xobj)) {
 		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = xocl_exec_validate(xdev, client, xobj);
+	if (ret) {
+		userpf_err(xdev, "Exec buffer validation failed\n");
 		goto out;
 	}
 
@@ -132,9 +138,15 @@ out:
 	return ret;
 }
 
+/*
+ * Create a context (ony shared supported today) on a CU. Take a lock on xclbin if
+ * it has not been acquired before. Shared the same lock for all context requests
+ * for that process
+ */
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		   struct drm_file *filp)
 {
+	bool acquire_lock = false;
 	struct drm_xocl_ctx *args = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
@@ -142,28 +154,67 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
-		ret = -EPERM;
-		goto out;
-	}
-
-	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		bitmap_zero(client->cu_bitmap, MAX_CUS);
-		goto out;
-	}
-
-	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
-		ret = -EFAULT;
-		goto out;
-	}
-
-	if (!bitmap_empty(client->cu_bitmap, MAX_CUS)) {
 		ret = -EBUSY;
 		goto out;
 	}
 
-	bitmap_copy(client->cu_bitmap, (const long unsigned int *)args->cu_bitmap, MAX_CUS);
-	xocl_info(dev->dev, "CTX ioctl");
+	if (args->cu_index >= xdev->layout->m_count) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (args->op == XOCL_CTX_OP_FREE_CTX) {
+		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EINVAL;
+		if (ret) // No context was previously allocated for this CU
+			goto out;
+
+		xdev->ip_reference[args->cu_index]--;
+		if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+                        // We jsut gave up the last context, give up the xclbin lock
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
+							 pid_nr(task_tgid(current)));
+		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
+			  args->cu_index);
+		goto out;
+	}
+
+	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if ((args->flags != XOCL_CTX_SHARED)) {
+		userpf_err(xdev, "Only shared contexts are supported in this release");
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+		// Process has no other context on any CU ye, hence we need to lock the xclbin
+		// Process uses just one lock for all its contexts
+		acquire_lock = true;
+
+	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
+		userpf_err(xdev, "Context has already been allocated before by this process");
+		// Context was previously allocated for the same CU, cannot allocate again
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (acquire_lock) // This is the first context on any CU for this process, lock the xclbin
+		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
+					       pid_nr(task_tgid(current)));
+
+	if (ret) {
+                // Locking of xclbin failed, give up our context
+		clear_bit(args->cu_index, client->cu_bitmap);
+		goto out;
+	}
+
+	xdev->ip_reference[args->cu_index]++;
+	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
 out:
+	uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;
 }
@@ -258,6 +309,50 @@ static uint live_client_size(struct xocl_dev *xdev)
 	return count;
 }
 
+static int xocl_read_ip_layout(struct xocl_dev *xdev, const struct axlf* copy_buffer, char __user *buffer)
+{
+	int err = 0;
+	const struct axlf_section_header *memHeader = get_axlf_section(copy_buffer, IP_LAYOUT);
+	printk(KERN_INFO "Finding IP_LAYOUT section\n");
+
+	if (memHeader == 0) {
+		printk(KERN_INFO "Did not find IP_LAYOUT section.\n");
+		return 0;
+	}
+
+	printk(KERN_INFO "%s XOCL: IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, copy_buffer->m_header.m_length);
+
+	if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > copy_buffer->m_header.m_length) {
+		printk(KERN_INFO "%s XOCL: IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, copy_buffer->m_header.m_length);
+		err = -EINVAL;
+		goto error_out;
+	}
+	printk(KERN_INFO "XOCL: Marker 5.1\n");
+	buffer += memHeader->m_sectionOffset;
+	xdev->layout = vmalloc(memHeader->m_sectionSize);
+	err = copy_from_user(xdev->layout, buffer, memHeader->m_sectionSize);
+	if (sizeof_ip_layout(xdev->layout) > memHeader->m_sectionSize) {
+		err = -EINVAL;
+		goto error_out;
+	}
+
+	printk(KERN_INFO "XOCL: Marker 5.2\n");
+	if (err)
+		goto error_out;
+	printk(KERN_INFO "XOCL: Marker 5.3\n");
+	return 0;
+
+error_out:
+	if (xdev->layout)
+		vfree(xdev->layout);
+	xdev->layout = NULL;
+	return err;
+}
+
+/*
+ * This function is huge and unweildy -- should break it up. Add a separate function for
+ * each section we read from xclbin. See how we are doing this for IP LAYOUT
+ */
 static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 				       struct drm_xocl_axlf *axlf_obj_ptr)
 {
@@ -345,7 +440,7 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	copy_buffer = (struct axlf*)vmalloc(copy_buffer_size);
 	if(!copy_buffer) {
 		printk(KERN_ERR "Unable to create copy_buffer");
-		err = -EFAULT;
+		err = -ENOMEM;
 		goto done;
 	}
 	printk(KERN_INFO "XOCL: Marker 5\n");
@@ -363,29 +458,9 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	}
 
 	//----
-	printk(KERN_INFO "Finding IP_LAYOUT section\n");
-	memHeader = get_axlf_section(copy_buffer, IP_LAYOUT);
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find IP_LAYOUT section.\n");
-	} else {
-		printk(KERN_INFO "%s XOCL: IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, bin_obj.m_header.m_length);
-
-		if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > bin_obj.m_header.m_length) {
-			printk(KERN_INFO "%s XOCL: IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, bin_obj.m_header.m_length);
-			err = -EINVAL;
-			goto done;
-		}
-		printk(KERN_INFO "XOCL: Marker 5.1\n");
-		buffer += memHeader->m_sectionOffset;
-		xdev->layout.layout = vmalloc(memHeader->m_sectionSize);
-		err = copy_from_user(xdev->layout.layout, buffer, memHeader->m_sectionSize);
-		printk(KERN_INFO "XOCL: Marker 5.2\n");
-		if (err)
-			goto done;
-		xdev->layout.size = memHeader->m_sectionSize;
-		printk(KERN_INFO "XOCL: Marker 5.3\n");
-	}
-
+	err = xocl_read_ip_layout(xdev, copy_buffer, (char __user *)axlf_obj_ptr->xclbin);
+	if (err)
+		goto done;
 	//----
 	printk(KERN_INFO "Finding DEBUG_IP_LAYOUT section\n");
 	memHeader = get_axlf_section(copy_buffer, DEBUG_IP_LAYOUT);
@@ -410,6 +485,7 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 		xdev->debug_layout.size = memHeader->m_sectionSize;
 		printk(KERN_INFO "XOCL: Marker 6.3\n");
 	}
+
 
 	//---
 	printk(KERN_INFO "Finding CONNECTIVITY section\n");
@@ -533,13 +609,16 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
-	if (err != 0)
+	if (err != 0) {
 		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 			pid_nr(task_tgid(current)));
+		if (xdev->layout)
+			vfree(xdev->layout);
+		xdev->layout = NULL;
+	}
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(copy_buffer);
 	return err;
-
 }
 
 int xocl_read_axlf_ioctl(struct drm_device *dev,

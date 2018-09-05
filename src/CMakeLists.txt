@@ -1,10 +1,9 @@
-PROJECT(SDAccel)
+PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/1_2
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/driver/include
   )
 
@@ -28,7 +27,17 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
+find_package(Git)
+
+IF(GIT_FOUND)
+  message("git found: ${GIT_EXECUTABLE}")
+ELSE(GIT_FOUND)
+  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
+endif(GIT_FOUND)
+
 find_program(LSB_RELEASE lsb_release)
+find_program(UNAME uname)
+
 execute_process(COMMAND ${LSB_RELEASE} -is
   OUTPUT_VARIABLE LINUX_FLAVOR
   OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -36,6 +45,11 @@ execute_process(COMMAND ${LSB_RELEASE} -is
 
 execute_process(COMMAND ${LSB_RELEASE} -rs
   OUTPUT_VARIABLE LINUX_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(COMMAND ${UNAME} -r
+  OUTPUT_VARIABLE LINUX_KERNEL_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
@@ -49,6 +63,9 @@ if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
 endif()
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
+INCLUDE (FindCurses)
+find_package(Curses REQUIRED)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -61,47 +78,82 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
 
+set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 
-SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 1)
-SET(XRT_VERSION_PATCH 0)
+if (DEFINED ENV{XRT_VERSION_MAJOR})
+  SET(XRT_VERSION_MAJOR $ENV{XRT_VERSION_MAJOR})
+else(DEFINED ENV{XRT_VERSION_MAJOR})
+  SET(XRT_VERSION_MAJOR 2)
+endif(DEFINED ENV{XRT_VERSION_MAJOR})
+
+if (DEFINED ENV{XRT_VERSION_MINOR})
+  SET(XRT_VERSION_MINOR $ENV{XRT_VERSION_MINOR})
+else(DEFINED ENV{XRT_VERSION_MINOR})
+  SET(XRT_VERSION_MINOR 1)
+endif(DEFINED ENV{XRT_VERSION_MINOR})
+
+if (DEFINED ENV{XRT_VERSION_PATCH})
+  SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})
+else(DEFINED $ENV{XRT_VERSION_PATCH})
+  SET(XRT_VERSION_PATCH 0)
+endif(DEFINED $ENV{XRT_VERSION_PATCH})
+
 set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
-message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR})")
+# Release OpenCL extension headers
+set(XRT_CL_EXT_SRC
+  include/1_2/CL/cl_ext_xilinx.h
+  include/1_2/CL/cl_ext.h)
+install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
+message("-- XRT CL extension header files")
+foreach (header ${XRT_CL_EXT_SRC})
+  message("-- ${header}")
+endforeach()
+
+# Release eula (EA temporary)
+file(GLOB XRT_EULA
+  "license/*.txt"
+  )
+install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
+message("-- XRT EA eula files ${XRT_EULA}")
+
+include (CMake/version.cmake)
+
+include (CMake/ccache.cmake)
+
+message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
 add_subdirectory(runtime_src)
 
-SET(CPACK_SET_DESTDIR ON)
-SET(CPACK_PACKAGE_VERSION_MAJOR "${XRT_VERSION_MAJOR}")
-SET(CPACK_PACKAGE_VERSION_MINOR "${XRT_VERSION_MINOR}")
-SET(CPACK_PACKAGE_VERSION_PATCH "${XRT_VERSION_PATCH}")
+#XMA settings START
+set (XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set (XMA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
+SET(XMA_VERSION_MAJOR 2)
+SET(XMA_VERSION_MINOR 1)
+SET(XMA_VERSION_PATCH 0)
+set(XMA_VERSION_STRING ${XMA_VERSION_MAJOR}.${XMA_VERSION_MINOR}.${XMA_VERSION_PATCH})
+add_subdirectory(xma)
+#XMA settings END
 
-SET(PACKAGE_KIND "TGZ")
-if (${LINUX_FLAVOR} STREQUAL Ubuntu)
-  SET(CPACK_GENERATOR "DEB;TGZ")
-  SET(PACKAGE_KIND "DEB")
-  SET(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/runtime_src/postinst;${CMAKE_CURRENT_BINARY_DIR}/runtime_src/prerm")
-  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-  set(CPACK_DEBIAN_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>=1.58), libboost-filesystem-dev (>=1.58), uuid-dev (>= 2.27.1), dkms (>= 2.2.0)")
-elseif ((${LINUX_FLAVOR} STREQUAL Redhat) OR (${LINUX_FLAVOR} STREQUAL CentOS))
-  SET(CPACK_GENERATOR "RPM;TGZ")
-  SET(PACKAGE_KIND "RPM")
-  SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/runtime_src/postinst")
-  SET(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/runtime_src/prerm")
-  SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src")
-  set(CPACK_RPM_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0")
-else ()
-  SET (CPACK_GENERATOR "TGZ")
-endif()
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
-message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 
-SET(CPACK_PACKAGE_NAME "XRT")
-SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
-SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
+include (CMake/cpack.cmake)
 
-INCLUDE(CPack)
+include (CMake/lint.cmake)
+
+set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
+include (CMake/dkms.cmake)
+
+include (CMake/icd.cmake)
+
+include (CMake/pkgconfig.cmake)
+
+include (CMake/coverity.cmake)
+
+set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
+include (CMake/tags.cmake)

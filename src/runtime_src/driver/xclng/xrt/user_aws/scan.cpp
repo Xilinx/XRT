@@ -32,10 +32,6 @@
 #ifndef INTERNAL_TESTING
 #include <sstream>
 #include <iomanip>
-#define AWSMGMT_NUM_SUPPORTED_CLOCKS 4
-#define AWSMGMT_NUM_ACTUAL_CLOCKS 3
-#include <fpga_mgmt.h>
-#include <fpga_pci.h>
 #endif
 
 std::vector<xcldev::pci_device_scanner::device_info> xcldev::pci_device_scanner::device_list;

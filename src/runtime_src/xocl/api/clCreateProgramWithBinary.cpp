@@ -30,27 +30,17 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
-#include "profile.h"
-#include "debug.h"
-
-// <MUST REMOVE>
-#include "xdp/profile/profiling.h"
-// </MUST REMOVE>
-
 #include <exception>
 #include <string>
 #include <algorithm>
+
+#include "plugin/xdp/profile.h"
 
 namespace {
 
 static void
 loadProgramBinary(xocl::program* program, xocl::device* device)
 {
-  auto xclbin = program->get_xclbin(device);
-
-  xocl::debug::reset(xclbin);
-  xocl::profile::reset(xclbin);
-
   device->load_program(program);
 }
 
@@ -125,7 +115,7 @@ clCreateProgramWithBinary(cl_context                      context ,
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;
   if (!once) {
-    Profiling::Profiler::Instance()->getDeviceTrace(true);
+    xocl::profile::get_device_trace(true);
     once = true;
   }
 
@@ -149,11 +139,11 @@ clCreateProgramWithBinary(cl_context                      context ,
     }
   }
 
-  Profiling::Profiler::Instance()->startDeviceProfiling(1);
+  xocl::profile::start_device_profiling(1);
   // NOTE: We read from the counters to set a baseline for values and
   // inform the reporting this is the first read after a program with
   // binary. Otherwise, the counters will overflow.
-  Profiling::Profiler::Instance()->getDeviceCounters(true, true);
+  xocl::profile::get_device_counters(true, true);
 
   xocl::assign(errcode_ret,CL_SUCCESS);
 

@@ -135,8 +135,10 @@ namespace xclhwemhal2 {
     {
       mask = exec->slot_status[mask_idx];
       slot_idx = ffz_or_neg_one(mask);
-      if (slot_idx==-1 || slot_idx_from_mask_idx(slot_idx,mask_idx)>=exec->num_slots)
+      if (slot_idx_from_mask_idx(slot_idx,mask_idx)>=exec->num_slots)
         continue;
+      if(slot_idx > 31) //coverity slot_idx should be <=31
+        return -1;
       exec->slot_status[mask_idx] ^= (1<<slot_idx);
       int rSlot = slot_idx_from_mask_idx(slot_idx,mask_idx);
       return rSlot;
@@ -300,7 +302,7 @@ namespace xclhwemhal2 {
     return cmd;
   } 
   
-  int MBScheduler::add_cmd(exec_core *exec, drm_xocl_bo* bo)
+  int MBScheduler::add_cmd(exec_core *exec, xclemulation::drm_xocl_bo* bo)
   {
     std::lock_guard<std::mutex> lk(pending_cmds_mutex);
     xocl_cmd *xcmd = get_free_xocl_cmd();
@@ -477,7 +479,7 @@ namespace xclhwemhal2 {
     return retval;
   } 
 
-  int MBScheduler::add_exec_buffer(exec_core* exec, drm_xocl_bo *buf)
+  int MBScheduler::add_exec_buffer(exec_core* exec, xclemulation::drm_xocl_bo *buf)
   {
     return add_cmd(exec, buf);
   }

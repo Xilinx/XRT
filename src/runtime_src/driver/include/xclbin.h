@@ -64,6 +64,12 @@ typedef uuid_t xuid_t;
 #else //(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 typedef uuid_t xuid_t;
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#else
+typedef uuid_le xuid_t;
+#endif
 #else
 typedef uuid_le xuid_t;
 #endif
@@ -146,7 +152,9 @@ extern "C" {
         IP_LAYOUT,
         DEBUG_IP_LAYOUT,
         DESIGN_CHECK_POINT,
-        CLOCK_FREQ_TOPOLOGY
+        CLOCK_FREQ_TOPOLOGY,
+        MCS,
+        BMC
     };
 
     enum MEM_TYPE {
@@ -163,7 +171,8 @@ extern "C" {
 
     enum IP_TYPE {
         IP_MB = 0,
-        IP_KERNEL //kernel instance
+        IP_KERNEL, //kernel instance
+        IP_DNASC
     };
 
     struct axlf_section_header {
@@ -295,8 +304,7 @@ extern "C" {
         struct debug_ip_data m_debug_ip_data[1];
     };
 
-    enum CLOCK_TYPE                        /* Supported clock frequency types */
-    {
+    enum CLOCK_TYPE {                      /* Supported clock frequency types */
         CT_UNUSED = 0,                     /* Initialized value */
         CT_DATA   = 1,                     /* Data clock */
         CT_KERNEL = 2,                     /* Kernel clock */
@@ -315,7 +323,34 @@ extern "C" {
         struct clock_freq m_clock_freq[1]; /* Clock array */
     };
 
+    enum MCS_TYPE {                        /* Supported MCS file types */
+        MCS_UNKNOWN = 0,                   /* Initialized value */
+        MCS_PRIMARY = 1,                   /* The primary mcs file data */
+        MCS_SECONDARY = 2,                 /* The secondary mcs file data */
+    };
 
+    struct mcs_chunk {                     /* One chunk of MCS data */
+        uint8_t m_type;                    /* MCS data type */
+        uint8_t m_unused[7];               /* padding */
+        uint64_t m_offset;                 /* data offset from the start of the section */
+        uint64_t m_size;                   /* data size */
+    };
+
+    struct mcs {                           /* MCS data section */
+        int8_t m_count;                    /* Number of chunks */
+        int8_t m_unused[7];                /* padding */
+        struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
+    };
+
+    struct bmc {                           /* bmc data section  */
+        uint64_t m_offset;                 /* data offset from the start of the section */
+        uint64_t m_size;                   /* data size (bytes)*/
+        char m_image_name[64];             /* Name of the image (e.g., MSP432P401R) */
+        char m_device_name[64];            /* Device ID         (e.g., VCU1525)  */
+        char m_version[64];
+        char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
+        char m_padding[7];                 /* Padding */
+    };
 
     /**** END : Xilinx internal section *****/
 

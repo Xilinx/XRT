@@ -17,8 +17,8 @@
 
 #include "hwmon.h"
 #include "scan.h"
-#include "xbsak.h"
 #include <dirent.h>
+#include <iostream>
 
 /*
  * Constructor
@@ -145,9 +145,9 @@ bool PowerMetrics::buildTable( std::string path, std::vector<std::string> *list,
  */
 void PowerMetrics::sortList(std::vector<std::string> *list)
 {
-    for( int j = 0; j < list->size(); j++ )
+    for( size_t j = 0; j < list->size(); j++ )
     {
-        for( int i = j; i < list->size(); i++ )
+        for( size_t i = j; i < list->size(); i++ )
         {
             if( i != j )
             {

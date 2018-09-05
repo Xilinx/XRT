@@ -33,7 +33,7 @@
 //struct xclBin;
 struct axlf;
 
-namespace xrt { 
+namespace xrt {
 
 namespace hal {
 
@@ -44,12 +44,12 @@ struct exec_buffer_object {};
 using BufferObjectHandle = std::shared_ptr<buffer_object>;
 using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
 
-enum class verbosity_level : unsigned short 
-{ 
+enum class verbosity_level : unsigned short
+{
   quiet
  ,info
  ,warning
- ,error 
+ ,error
 };
 
 enum class queue_type : unsigned short
@@ -62,12 +62,17 @@ enum class queue_type : unsigned short
 
 //typedef rte_mbuf * PacketObject;
 typedef void* PacketObject;
-typedef unsigned short StreamHandle;
+typedef uint64_t StreamHandle;
+typedef void*    StreamBuf;
+typedef uint64_t StreamBufHandle;
+typedef uint32_t StreamAttributes;
+typedef uint32_t StreamXferFlags;
+typedef uint64_t StreamFlags;
 
 /**
- * Helper class to encapsulate return values from HAL operations.  
+ * Helper class to encapsulate return values from HAL operations.
  *
- * The HAL operation return value is valid if and only of the 
+ * The HAL operation return value is valid if and only of the
  * HAL operations function is defined and was called.  Using this
  * class avoids client code littered with tests prior to call.
  */
@@ -78,6 +83,7 @@ class operations_result
   bool m_valid;
 
 public:
+  // implicit
   operations_result(ReturnValueType&& v)
     : m_value(std::move(v)),m_valid(true)
   {}
@@ -96,6 +102,7 @@ class operations_result<void>
   bool m_valid;
 
 public:
+  // implicit
   operations_result(int)
     : m_valid(true)
   {}
@@ -143,24 +150,24 @@ public:
     ,XRT_DEVICE_P2P_RAM
   };
 
-  virtual bool 
+  virtual bool
   open(const char* log, verbosity_level l) = 0;
 
-  virtual void 
+  virtual void
   close() = 0;
 
   // Hack to copy hw_em device info to sw_em device info
-  // Should not be necessary when we move to cpu_em
+  // Should not be necessary when we move to sw_emu
   virtual void
   copyDeviceInfo(const device* src) {}
 
-  virtual std::string 
+  virtual std::string
   getDriverLibraryName() const = 0;
 
-  virtual std::string 
+  virtual std::string
   getName() const = 0;
 
-  virtual unsigned int 
+  virtual unsigned int
   getBankCount() const = 0;
 
   virtual size_t
@@ -173,7 +180,7 @@ public:
   virtual range<const unsigned short*>
   getClockFrequencies() const = 0;
 
-  virtual std::ostream& 
+  virtual std::ostream&
   printDeviceInfo(std::ostream&) const = 0;
 
   virtual ExecBufferObjectHandle
@@ -187,7 +194,7 @@ public:
 
   /**
    * Allocate buffer object in specified memory bank index
-   * 
+   *
    * The bank index is an index into mem topology array and not
    * necessarily the logical bank number used in the host code.
    */
@@ -222,10 +229,10 @@ public:
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz,
        size_t dst_offset, size_t src_offset) = 0;
 
-  virtual size_t 
+  virtual size_t
   read_register(size_t offset, void* buffer, size_t size) = 0;
 
-  virtual size_t 
+  virtual size_t
   write_register(size_t offset, const void* buffer, size_t size) = 0;
 
   virtual void*
@@ -241,44 +248,66 @@ public:
   unmap(const ExecBufferObjectHandle& bo) = 0;
 
   virtual int
-  exec_buf(const ExecBufferObjectHandle& bo) 
-  { 
+  exec_buf(const ExecBufferObjectHandle& bo)
+  {
     throw std::runtime_error("exec_buf not supported");
   }
 
   virtual int
   exec_wait(int timeout_ms) const
-  { 
+  {
     throw std::runtime_error("exec_wait not supported");
   }
 
-#ifdef PMD_OCL
+//#ifdef PMD_OCL
+//public:
+//  virtual StreamHandle
+//  openStream(unsigned depth, unsigned q, direction dir) = 0;
+//
+//  virtual void
+//  closeStream(StreamHandle strm) = 0;
+//
+//  virtual unsigned
+//  send(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+//
+//  virtual unsigned
+//  recv(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+//
+//  virtual PacketObject
+//  acquirePacket() = 0;
+//
+//  virtual void
+//  releasePacket(PacketObject pkt) = 0;
+//#endif
+
 public:
-  virtual StreamHandle
-  openStream(unsigned depth, unsigned q, direction dir) = 0;
+  virtual int 
+  createWriteStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
 
-  virtual void
-  closeStream(StreamHandle strm) = 0;
+  virtual int 
+  createReadStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
 
-  virtual unsigned
-  send(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+  virtual int 
+  closeStream(hal::StreamHandle stream) = 0;
 
-  virtual unsigned
-  recv(StreamHandle strm, PacketObject *pkts, unsigned count) = 0;
+  virtual StreamBuf
+  allocStreamBuf(size_t size, hal::StreamBufHandle *buf) = 0;
 
-  virtual PacketObject
-  acquirePacket() = 0;
+  virtual int 
+  freeStreamBuf(hal::StreamBufHandle buf) = 0;
 
-  virtual void
-  releasePacket(PacketObject pkt) = 0;
-#endif
+  virtual ssize_t 
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
+
+  virtual ssize_t 
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
 
 public:
   /**
    * @returns
    *   The device address of a buffer object
    */
-  virtual uint64_t 
+  virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh) = 0;
 
   /**
@@ -384,7 +413,7 @@ public:
   /**
    * Check if bank allocation is supported
    *
-   * @return 
+   * @return
    *   true if bank allocation is supported, false otherwise
    */
   virtual bool
@@ -604,9 +633,11 @@ loadDevices(const std::string& dirName);
 device_list
 loadDevices();
 
+void
+load_xdp();
 } // namespace hal
 
-namespace hal2 { 
+namespace hal2 {
 
 /**
  * Populate hal device list with hal2 devices as probed by DLL
@@ -629,5 +660,3 @@ createDevices(hal::device_list&,const std::string&,void*,unsigned int,void* pmd=
 } // xrt
 
 #endif
-
-

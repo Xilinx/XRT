@@ -22,7 +22,7 @@ Build the runtime
    cd XRT/build
    ./build.sh
 
-``build.sh`` script builds for both Debug and Release profiles.
+``build.sh`` script builds for both Debug and Release profiles.  On RHEL/CentOS, if ``build.sh`` was accidentally run prior to enabling the devtoolset, then it is necessary to clean stale files makefiles by running ``build.sh clean`` prior to the next build.
 
 Build RPM package on RHEL/CentOS or DEB package on Ubuntu
 .........................................................
@@ -37,14 +37,14 @@ Install the XRT RPM package
 
 ::
 
-   yum install ./XRT-2.1.0-Linux.rpm
+   yum reinstall ./XRT-2.1.0-Linux.rpm
 
 Install the XRT DEB package
 ...........................
 
 ::
 
-   apt install ./XRT-2.1.0-Linux.deb
+   apt install --reinstall ./XRT-2.1.0-Linux.deb
 
 XRT Documentation
 ~~~~~~~~~~~~~~~~~

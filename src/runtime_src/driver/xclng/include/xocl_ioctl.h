@@ -67,6 +67,8 @@
  * 10   Obtain device usage statistics         DRM_IOCTL_XOCL_USAGE_STAT      drm_xocl_usage_stat
  * 11   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
+ * 12   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ *      buffer
  * ==== ====================================== ============================== ==================================
  */
 
@@ -88,6 +90,10 @@
 #if defined(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 typedef uuid_t xuid_t;
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+typedef uuid_t xuid_t;
+#endif
 #else
 typedef uuid_le xuid_t;
 #endif
@@ -311,11 +317,15 @@ enum drm_xocl_ctx_code {
         XOCL_CTX_OP_FREE_CTX
 };
 
+#define XOCL_CTX_SHARED    0x0
+#define XOCL_CTX_EXCLUSIVE 0x1
+
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
         xuid_t   xclbin_id;
-        uint32_t cu_bitmap[4];
+        uint32_t cu_index;
         uint32_t flags;
+        // unused, in future it would return context id
         uint32_t handle;
 };
 

@@ -70,8 +70,9 @@ class XclBinData
     unsigned int getJSONBufferSegmentCount();
     void enableTrace() { m_trace = true; };
     void createBinaryImages();
-
-  
+    void createMCSSegmentBuffer(const std::vector< std::pair< std::string, enum MCS_TYPE> > & _mcs);
+    void createBMCSegmentBuffer(const std::vector< std::string > & _mps);
+ 
   private:
     bool extractSectionData( int sectionNum, const char* name );
     void TRACE(const std::string &_msg, bool _endl = true);
@@ -81,6 +82,7 @@ class XclBinData
     void TRACE_BUF(const std::string &_msg, const char * _pData, unsigned long _size);
     enum MEM_TYPE getMemType( std::string &_sMemType ) const;
     const std::string getMemTypeStr(enum MEM_TYPE _memType) const;
+    const std::string getMCSTypeStr(enum MCS_TYPE _mcsType) const;
     enum IP_TYPE getIPType( std::string &_sIPType ) const;
     enum DEBUG_IP_TYPE getDebugIPType( std::string &_sDebugIPType ) const;
     void createMemTopologyBinaryImage( boost::property_tree::ptree &_pt, std::ostringstream &_buf);
@@ -97,6 +99,8 @@ class XclBinData
     void createClockFreqTopologyBinaryImage( boost::property_tree::ptree &_pt, std::ostringstream &_buf);
     const std::string getClockTypeStr(enum CLOCK_TYPE _clockFreqType) const;
     void extractClockFreqTopology( char * _pDataSegment, unsigned int _segmentSize,boost::property_tree::ptree & _ptree);
+    void extractAndWriteMCSImages( char * _pDataSegment, unsigned int _segmentSize);
+    void extractAndWriteBMCImages( char * _pDataSegment, unsigned int _segmentSize);
 
   private:
     std::string kindToString( axlf_section_kind kind );
@@ -117,10 +121,10 @@ class XclBinData
     void align(); // Will align m_xclbinFile to 8 byte boundary.
 
   private:
-    bool m_trace;
     FileMode m_mode;
+    unsigned int m_numSections;
+    bool m_trace;
     std::fstream m_xclbinFile;
-    int m_numSections;
     axlf m_xclBinHead;
     std::vector< axlf_section_header > m_sections;
     std::map< /*axlf_section_kind*/ uint32_t, int > m_sectionCounts;
@@ -136,6 +140,9 @@ class XclBinData
     std::ostringstream m_ipLayoutBuf;
     std::ostringstream m_debugIpLayoutBuf;
     std::ostringstream m_clockFreqTopologyBuf;
+
+    std::ostringstream m_mcsBuf;
+    std::ostringstream m_bmcBuf;
 
     SchemaVersion m_schemaVersion;
 

@@ -29,7 +29,7 @@
 #include <array>
 #include <bitset>
 
-namespace xocl { 
+namespace xocl {
 
 class device;
 class kernel;
@@ -47,7 +47,7 @@ class kernel;
  *          uses                          uses    uses
  *           |                             |       |
  *         [xocl]                        [xrt]    [hal]
- *     
+ *
  */
 class xclbin
 {
@@ -56,7 +56,9 @@ class xclbin
 
 public:
   using addr_type = uint64_t;
-  using memidx_bitmask_type = std::bitset<24>;
+  //Max 64 mem banks for now.
+  using memidx_bitmask_type = std::bitset<64>;
+  using memidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
@@ -127,7 +129,7 @@ public:
     std::string hash;                // kernel conformance hash
     std::string controlport;         // kernel axi slave control port
     size_t workgroupsize = 0;
-    size_t compileworkgroupsize[3] = {0};   // 
+    size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
@@ -142,6 +144,7 @@ public:
    * The underlying binary type that represents the raw
    * binary xclbin file per xclBin structs.
    */
+  // implicit
   xclbin(std::vector<char>&& xb);
   xclbin(xclbin&& rhs);
 
@@ -151,12 +154,12 @@ public:
   xclbin&
   operator=(const xclbin& rhs);
 
-  bool 
+  bool
   operator==(const xclbin& rhs) const;
 
   /**
    * Access the raw binary xclbin
-   * 
+   *
    * The binary type API conforms to the xclBin struct interface
    */
   using binary_type = ::xclbin::binary;
@@ -248,7 +251,7 @@ public:
   /**
    * Get the list of profilers
    *
-   * @return 
+   * @return
    *  Vector of profiler struct objects constructed from the xclbin meta data.
    */
   using profilers_type = std::vector<profiler>;
@@ -258,8 +261,14 @@ public:
   /**
    * Get the clock frequency sections in xclbin
    */
-  const clock_freq_topology* 
+  const clock_freq_topology*
   get_clk_freq_topology() const;
+
+  /**
+   * Get the mem topology section in xclbin
+   */
+  const mem_topology*
+  get_mem_topology() const;
 
   /**
    * Get the CU base offset
@@ -315,7 +324,7 @@ public:
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const;
 
   /**
-   * @return 
+   * @return
    *   Memory connection indeces as the union of connections for all
    *   arguments of CU as specified address.
    */
@@ -341,7 +350,7 @@ public:
    *   index in the range 0,1,2...31
    *   -1 if no match
   */
-  int32_t
+  memidx_type
   mem_address_to_first_memidx(addr_type addr) const;
 
   /**
@@ -353,8 +362,21 @@ public:
    *   Tag name for memory idx
    */
   std::string
-  memidx_to_banktag(int32_t memidx) const;
-    
+  memidx_to_banktag(memidx_type memidx) const;
+
+  /**
+   * Get the memory index for a given kernel name for specific arg. 
+   *
+   * @param kernel_name 
+       Kernel name to  retrieve the memory index for
+   * @param arg
+       Index of arg to retrieve the memory index for
+   * @return
+   *   Memory idx
+   */
+  memidx_type
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
+
   /**
    * Get the memory index with the specified tag.
    *
@@ -363,7 +385,7 @@ public:
    * @return
    *   Tag memory index corresponding to tag name
    */
-  int32_t
+  memidx_type
   banktag_to_memidx(const std::string& tag) const;
 
   ////////////////////////////////////////////////////////////////
@@ -379,5 +401,3 @@ public:
 } // xocl
 
 #endif
-
-

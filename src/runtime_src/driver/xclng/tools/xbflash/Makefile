@@ -4,11 +4,10 @@ CXX_EXT := cpp
 
 CXX := g++
 
-CXXFLAGS := -Wall -std=c++11 -pthread
+CXXFLAGS := -g -Wall -std=c++11 -pthread
 RT_SRC_ROOT := ../../../..
 
 # External Dependencies
-# EXT_DEP_OBJ := scan xbsak shim
 EXT_DEP_DIR := $(RT_SRC_ROOT)/driver/xclng/xrt/user_gem
 
 HAL_INC := -I$(RT_SRC_ROOT) -I../../../..

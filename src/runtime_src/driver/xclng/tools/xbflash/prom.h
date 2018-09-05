@@ -41,7 +41,7 @@ class BPI_Flasher
 public:
     BPI_Flasher( unsigned int device_index, char *inMap );
     ~BPI_Flasher();
-    int xclUpgradeFirmware(const char *fileName);
+    int xclUpgradeFirmware(std::istream& mcsStream);
 
 private:
     char *mMgmtMap;
@@ -50,9 +50,9 @@ private:
     int freeAXIGate();
     int prepare_microblaze(unsigned startAddress, unsigned endAddress);
     int prepare(unsigned startAddress, unsigned endAddress);
-    int program_microblaze(std::ifstream& mcsStream, const ELARecord& record);
-    int program(std::ifstream& mcsStream, const ELARecord& record);
-    int program(std::ifstream& mcsStream);
+    int program_microblaze(std::istream& mcsStream, const ELARecord& record);
+    int program(std::istream& mcsStream, const ELARecord& record);
+    int program(std::istream& mcsStream);
     int waitForReady_microblaze(unsigned code, bool verbose = true);
     int waitForReady(unsigned code, bool verbose = true);
     int waitAndFinish_microblaze(unsigned code, unsigned data, bool verbose = true);

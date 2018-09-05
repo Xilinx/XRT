@@ -26,8 +26,8 @@
 #include "detail/memory.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 

@@ -147,14 +147,14 @@ namespace XCL {
   class TimeTrace {
   public:
     TimeTrace()
-      : Queue( 0.0 ),
-        Submit( 0.0 ),
-        Start( 0.0 ),
-        End( 0.0 ),
-        Complete( 0.0 ),
-        ContextId( 0 ),
-        CommandQueueId( 0 )
-      {};
+      : ContextId( 0 )
+      , CommandQueueId( 0 )
+      , Queue( 0.0 )
+      , Submit( 0.0 )
+      , Start( 0.0 )
+      , End( 0.0 )
+      , Complete( 0.0 )
+      {}
     ~TimeTrace() {};
   public:
     double getDuration() const { return End - Start; }
@@ -259,14 +259,6 @@ namespace XCL {
   class DeviceTrace: public TimeTrace {
   public:
     DeviceTrace()
-      : Next( nullptr ),
-        BurstLength( 0 ),
-        NumBytes( 0 ),
-        StartTime( 0 ),
-        EndTime( 0 ),
-        TraceStart( 0.0 ),
-        Size( 0 ),
-        Kind( DEVICE_KERNEL )
       {};
     ~DeviceTrace() {};
   public:

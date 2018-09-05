@@ -21,7 +21,7 @@
 #include "xocl/core/event.h"
 #include "detail/event.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -57,6 +57,7 @@ validOrError(cl_event event, cl_int execution_status)
 static cl_int
 clSetUserEventStatus(cl_event event, cl_int execution_status)
 {
+  validOrError(event,execution_status);
   if(execution_status==CL_COMPLETE)
     xocl::xocl(event)->set_status(CL_COMPLETE);
   else

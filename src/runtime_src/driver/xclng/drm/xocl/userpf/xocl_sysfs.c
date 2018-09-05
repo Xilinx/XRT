@@ -80,10 +80,17 @@ static ssize_t memstat_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return xocl_mm_sysfs_stat(xdev, buf);
+	return xocl_mm_sysfs_stat(xdev, buf, false);
 }
-
 static DEVICE_ATTR_RO(memstat);
+
+static ssize_t memstat_raw_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+    struct xocl_dev *xdev = dev_get_drvdata(dev);
+    return xocl_mm_sysfs_stat(xdev, buf, true);
+}
+static DEVICE_ATTR_RO(memstat_raw);
 
 /* - End attributes-- */
 
@@ -125,20 +132,20 @@ static struct bin_attribute debug_ip_layout_attr = {
 static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct xocl_dev *xdev;
+	const struct xocl_dev *xdev;
 	u32 nread = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->layout.size)
+	if (offset >= sizeof_ip_layout(xdev->layout))
 		return 0;
 
-	if (count < xdev->layout.size - offset)
+	if (count < sizeof_ip_layout(xdev->layout) - offset)
 		nread = count;
 	else
-		nread = xdev->layout.size - offset;
+		nread = sizeof_ip_layout(xdev->layout) - offset;
 
-	memcpy(buffer, ((char *)xdev->layout.layout) + offset, nread);
+	memcpy(buffer, ((char *)xdev->layout) + offset, nread);
 
 	return nread;
 }
@@ -227,6 +234,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
+	&dev_attr_memstat_raw.attr,
 	NULL,
 };
 

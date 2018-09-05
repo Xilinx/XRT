@@ -182,7 +182,7 @@ static struct xocl_sched global_scheduler0;
  * @list: command object moves from list to list
  * @bo: underlying drm buffer object
  * @exec: execution device associated with this command
- * @client: client (user process) context that created this command 
+ * @client: client (user process) context that created this command
  * @xs: command scheduler responsible for schedulint this command
  * @state: state of command object per scheduling
  * @id: unique id for an active command object
@@ -234,6 +234,82 @@ struct sched_ops
 
 static struct sched_ops mb_ops;
 static struct sched_ops penguin_ops;
+
+/**
+ * opcode() - Command opcode
+ *
+ * @cmd: Command object
+ * Return: Opcode per command packet
+ */
+inline u32
+opcode(struct xocl_cmd* xcmd)
+{
+	return xcmd->packet->opcode;
+}
+
+/**
+ * type() - Command type
+ *
+ * @cmd: Command object
+ * Return: Type of command
+ */
+inline u32
+type(struct xocl_cmd* xcmd)
+{
+	return xcmd->packet->type;
+}
+
+/**
+ * payload_size() - Command payload size
+ *
+ * @xcmd: Command object
+ * Return: Size in number of words of command packet payload
+ */
+inline u32
+payload_size(struct xocl_cmd *xcmd)
+{
+	return xcmd->packet->count;
+}
+
+/**
+ * packet_size() - Command packet size
+ *
+ * @xcmd: Command object
+ * Return: Size in number of words of command packet
+ */
+inline u32
+packet_size(struct xocl_cmd *xcmd)
+{
+	return payload_size(xcmd) + 1;
+}
+
+/**
+ * cu_masks() - Number of command packet cu_masks
+ *
+ * @xcmd: Command object
+ * Return: Total number of CU masks in command packet
+ */
+inline u32
+cu_masks(struct xocl_cmd *xcmd)
+{
+	struct ert_start_kernel_cmd *sk;
+	if (opcode(xcmd)!=ERT_START_KERNEL)
+		return 0;
+	sk = (struct ert_start_kernel_cmd *)xcmd->packet;
+	return 1 + sk->extra_cu_masks;
+}
+
+/**
+ * regmap_size() - Size of regmap is payload size (n) minus the number of cu_masks
+ *
+ * @xcmd: Command object
+ * Return: Size of register map in number of words
+ */
+inline u32
+regmap_size(struct xocl_cmd* xcmd)
+{
+	return payload_size(xcmd) - cu_masks(xcmd);
+}
 
 /**
  * cmd_get_xdev() -
@@ -383,7 +459,7 @@ add_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* b
 	atomic64_inc(&xdev->total_execs);
 	wake_up_interruptible(&xcmd->xs->wait_queue);
 
-	SCHED_DEBUG("<- add_cmd\n");
+	SCHED_DEBUGF("<- add_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
 	return 0;
 }
 
@@ -649,69 +725,6 @@ slot_idx_from_mask_idx(unsigned int slot_idx,unsigned int mask_idx)
 	return slot_idx + (mask_idx << 5);
 }
 
-/**
- * opcode() - Command opcode
- *
- * @cmd: Command object
- * Return: Opcode per command packet
- */
-inline u32
-opcode(struct xocl_cmd* xcmd)
-{
-	return xcmd->packet->opcode;
-}
-
-/**
- * payload_size() - Command payload size
- *
- * @xcmd: Command object
- * Return: Size in number of words of command packet payload
- */
-inline u32
-payload_size(struct xocl_cmd *xcmd)
-{
-	return xcmd->packet->count;
-}
-
-/**
- * packet_size() - Command packet size
- *
- * @xcmd: Command object
- * Return: Size in number of words of command packet
- */
-inline u32
-packet_size(struct xocl_cmd *xcmd)
-{
-	return payload_size(xcmd) + 1;
-}
-
-/**
- * cu_masks() - Number of command packet cu_masks
- *
- * @xcmd: Command object
- * Return: Total number of CU masks in command packet
- */
-inline u32
-cu_masks(struct xocl_cmd *xcmd)
-{
-	struct ert_start_kernel_cmd *sk;
-	if (opcode(xcmd)!=ERT_START_KERNEL)
-		return 0;
-	sk = (struct ert_start_kernel_cmd *)xcmd->packet;
-	return 1 + sk->extra_cu_masks;
-}
-
-/**
- * regmap_size() - Size of regmap is payload size (n) minus the number of cu_masks
- *
- * @xcmd: Command object
- * Return: Size of register map in number of words
- */
-inline u32
-regmap_size(struct xocl_cmd* xcmd)
-{
-	return payload_size(xcmd) - cu_masks(xcmd);
-}
 
 /**
  * cu_idx_to_addr() - Convert CU idx into it relative bar address.
@@ -766,11 +779,13 @@ configure(struct xocl_cmd *xcmd)
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	bool ert = xocl_mb_sched_on(xdev);
+	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
 	int i;
 
 	DRM_INFO("ert per feature rom = %d\n",ert);
+	DRM_INFO("dsa per feature rom = %d\n",dsa);
 
 	if (sched_error_on(exec,opcode(xcmd)!=ERT_CONFIGURE,"expected configure command"))
 		return 1;
@@ -801,12 +816,19 @@ configure(struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
 	}
 
+	if (cdma) {
+		exec->cu_addr_map[exec->num_cus] = 0x250000;
+		SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",exec->num_cus,exec->cu_addr_map[exec->num_cus]);
+		exec->num_cus = ++cfg->num_cus;
+	}
+
 	if (ert && cfg->ert) {
 		SCHED_DEBUG("++ configuring embedded scheduler mode\n");
 		exec->ops = &mb_ops;
 		exec->polling_mode = cfg->polling;
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
+		cfg->cdma = cdma ? 1 : 0;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -814,17 +836,37 @@ configure(struct xocl_cmd *xcmd)
 		exec->polling_mode = 1;
 	}
 
-	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
+	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
 		 ,is_ert(exec)
 		 ,exec->num_slots
 		 ,cfg->cu_dma ? 1 : 0
 		 ,cfg->cu_isr ? 1 : 0
+		 ,cfg->cdma ? 1 : 0
 		 ,exec->num_cus
 		 ,exec->cu_shift_offset
 		 ,exec->cu_base_addr
 		 ,exec->num_cu_masks);
 
 	exec->configured=true;
+	return 0;
+}
+
+/**
+ * exec_write() - Execute a write command
+ */
+static int
+exec_write(struct xocl_cmd *xcmd)
+{
+	struct ert_packet *cmd = xcmd->packet;
+	unsigned int idx=0;
+	SCHED_DEBUGF("-> exec_write(%lu)\n",xcmd->id);
+	for (idx=0; idx<cmd->count-1; idx+=2) {
+		u32 addr = cmd->data[idx];
+		u32 val = cmd->data[idx+1];
+		SCHED_DEBUGF("+ exec_write base[0x%x] = 0x%x\n",addr,val);
+		iowrite32(val,xcmd->exec->base + addr);
+	}
+	SCHED_DEBUG("<- exec_write\n");
 	return 0;
 }
 
@@ -1082,9 +1124,14 @@ queued_to_running(struct xocl_cmd *xcmd)
 	if (xcmd->wait_count)
 		return false;
 
-	SCHED_DEBUGF("-> queued_to_running(%lu)\n",xcmd->id);
+	SCHED_DEBUGF("-> queued_to_running(%lu) opcode(%d)\n",xcmd->id,opcode(xcmd));
 
 	if (opcode(xcmd)==ERT_CONFIGURE && configure(xcmd)) {
+		set_cmd_state(xcmd,ERT_CMD_STATE_ERROR);
+		return false;
+	}
+
+	if (opcode(xcmd)==ERT_WRITE && exec_write(xcmd)) {
 		set_cmd_state(xcmd,ERT_CMD_STATE_ERROR);
 		return false;
 	}
@@ -1390,7 +1437,13 @@ mb_query(struct xocl_cmd *xcmd)
 	struct exec_core *exec = xcmd->exec;
 	unsigned int cmd_mask_idx = slot_mask_idx(xcmd->slot_idx);
 
-	SCHED_DEBUGF("-> mb_query slot_idx=%d, cmd_mask_idx=%d\n",xcmd->slot_idx,cmd_mask_idx);
+	SCHED_DEBUGF("-> mb_query(%lu) slot_idx(%d), cmd_mask_idx(%d)\n",xcmd->id,xcmd->slot_idx,cmd_mask_idx);
+
+	if (type(xcmd)==ERT_KDS_LOCAL) {
+		mark_cmd_complete(xcmd);
+		SCHED_DEBUG("<- mb_query local command\n");
+		return;
+	}
 
 	if (exec->polling_mode
 	    || (cmd_mask_idx==0 && atomic_xchg(&exec->sr0,0))
@@ -1421,7 +1474,9 @@ penguin_query(struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> penguin_queury() slot_idx=%d\n",xcmd->slot_idx);
 
-	if (opc==ERT_CONFIGURE || (opc==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
+	if (type(xcmd)==ERT_KDS_LOCAL
+	    ||opc==ERT_CONFIGURE
+	    ||(opc==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
 		mark_cmd_complete(xcmd);
 
 	SCHED_DEBUG("<- penguin_queury\n");
@@ -1444,6 +1499,11 @@ mb_submit(struct xocl_cmd *xcmd)
 	if (xcmd->slot_idx<0) {
 		SCHED_DEBUG("<- mb_submit returns false\n");
 		return false;
+	}
+
+	if (type(xcmd)==ERT_KDS_LOCAL) {
+		SCHED_DEBUG("<- mb_submit returns true for local command\n");
+		return true;
 	}
 
 	slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
@@ -1549,12 +1609,12 @@ configure_cu(struct xocl_cmd *xcmd, int cu_idx)
 static bool
 penguin_submit(struct xocl_cmd *xcmd)
 {
-	SCHED_DEBUG("-> penguin_submit\n");
+	SCHED_DEBUGF("-> penguin_submit(%lu) opcode(%d) type(%d)\n",xcmd->id,opcode(xcmd),type(xcmd));
 
-	/* configuration was done by submit_cmds, ensure the cmd retired properly */
-	if (opcode(xcmd)==ERT_CONFIGURE) {
+	/* execution done by submit_cmds, ensure the cmd retired properly */
+	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL) {
 		xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
-		SCHED_DEBUG("<- penguin_submit (configure)\n");
+		SCHED_DEBUGF("<- penguin_submit slot(%d)\n",xcmd->slot_idx);
 		return true;
 	}
 
@@ -1573,7 +1633,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 	/* found free cu, transfer regmap and start it */
 	configure_cu(xcmd,xcmd->cu_idx);
 
-	SCHED_DEBUGF("<- penguin_submit cu_idx=%d slot=%d\n",xcmd->cu_idx,xcmd->slot_idx);
+	SCHED_DEBUGF("<- penguin_submit cu_idx(%d) slot(%d)\n",xcmd->cu_idx,xcmd->slot_idx);
 
 	return true;
 }
@@ -1627,7 +1687,7 @@ static irqreturn_t exec_isr(int irq, void *arg)
  *
  * Function adds exec buffer to the pending list of commands
  */
-int 
+int
 add_exec_buffer(struct platform_device *pdev, struct client_ctx *client, void *buf, int numdeps, struct drm_xocl_bo **deps)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
@@ -1749,7 +1809,7 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
  * same state as was when scheduler was originally probed for the device.
  * The callback from icap, ensures that scheduler resets the exec core when
  * multiple processes are already attached to the device but AXI is reset.
- * 
+ *
  * Even though the very first client created for this device also resets the
  * exec core, it is possible that further resets are necessary.  For example
  * in multi-process case, there can be 'n' processes that attach to the
@@ -1767,12 +1827,20 @@ reset(struct platform_device *pdev)
 	return 0;
 }
 
+static int
+validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd)
+{
+	// TODO: Add code to check if requested cmd is valid in the current context
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.add_exec_buffer = add_exec_buffer,
 	.create_client = create_client,
 	.destroy_client = destroy_client,
 	.poll_client = poll_client,
 	.reset = reset,
+	.validate = validate,
 };
 
 /**

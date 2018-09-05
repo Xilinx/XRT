@@ -25,7 +25,7 @@
 
 #include "detail/context.h"
 #include "detail/device.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -49,6 +49,7 @@ clCreateProgramWithBuiltInKernels(cl_context          context ,
                                   const char *        kernel_names ,
                                   cl_int *            errcode_ret )
 {
+  validOrError(context,num_devices,device_list,kernel_names);
   auto program = xrt::make_unique<xocl::program>(xocl::xocl(context));
   for (auto d : xocl::get_range(device_list,device_list+num_devices)) {
     program->add_device(xocl(d));

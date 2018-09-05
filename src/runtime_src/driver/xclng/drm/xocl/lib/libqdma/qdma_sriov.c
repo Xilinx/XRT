@@ -22,16 +22,16 @@
 #ifdef __QDMA_VF__
 int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
+	struct mbox_msg *m;
 	int rv;
 
-	memset(&m, 0, sizeof(struct mbox_msg));
-	hdr->op = MBOX_OP_BYE;
+	m = qdma_mbox_msg_alloc(xdev, MBOX_OP_BYE);	
+	if (!m)
+		return -ENOMEM;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 0);
+	rv = qdma_mbox_msg_send(xdev, m, 0, 0, 0);
 	if (rv < 0) {
-		pr_info("%s, send bye failed %d.\n",  xdev->conf.name, rv);
+		pr_info("%s, send bye failed %d.\n", xdev->conf.name, rv);
 		return rv;
 	}
 
@@ -40,14 +40,14 @@ int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id)
 
 int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
+	struct mbox_msg *m;
 	int rv;
 
-	memset(&m, 0, sizeof(struct mbox_msg));
-	hdr->op = MBOX_OP_HELLO;
+	m = qdma_mbox_msg_alloc(xdev, MBOX_OP_HELLO);	
+	if (!m)
+		return -ENOMEM;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 0);
+	rv = qdma_mbox_msg_send(xdev, m, 0, 0, 0);
 	if (rv < 0) {
 		pr_info("%s, send hello failed %d.\n",  xdev->conf.name, rv);
 		return rv;
@@ -71,10 +71,12 @@ void xdev_sriov_disable(struct xlnx_dma_dev *xdev)
 
 	pci_disable_sriov(pdev);
 
-	if (xdev->vf_info) 
+	if (xdev->vf_info)
 		kfree(xdev->vf_info);
 	xdev->vf_info = NULL;
 	xdev->vf_count = 0;
+
+	qdma_mbox_stop(xdev);
 }
 
 int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
@@ -85,8 +87,8 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 	int i;
 	int rv;
 
-        if (current_vfs) {
-                dev_err(&pdev->dev, "%d VFs already enabled!n", current_vfs);
+	if (current_vfs) {
+		dev_err(&pdev->dev, "%d VFs already enabled!n", current_vfs);
 		return current_vfs;
 	}
 
@@ -103,7 +105,7 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 	xdev->vf_count = num_vfs;
 	xdev->vf_info = vf;
 
-	pr_info("%s: req %d, current %d, assigned %d.\n",
+	pr_debug("%s: req %d, current %d, assigned %d.\n",
 		xdev->conf.name, num_vfs, current_vfs, pci_vfs_assigned(pdev));
 
 	rv = pci_enable_sriov(pdev, num_vfs);
@@ -114,7 +116,9 @@ int xdev_sriov_enable(struct xlnx_dma_dev *xdev, int num_vfs)
 		return 0;
 	}
 
-	pr_info("%s: done, req %d, current %d, assigned %d.\n",
+	qdma_mbox_start(xdev);
+
+	pr_debug("%s: done, req %d, current %d, assigned %d.\n",
 		xdev->conf.name, num_vfs, pci_num_vf(pdev),
 		pci_vfs_assigned(pdev));
 
@@ -127,12 +131,12 @@ int qdma_device_sriov_config(struct pci_dev *pdev, unsigned long dev_hndl,
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	int rv;
 
-        if (!dev_hndl)
-                return -EINVAL;
+	if (!dev_hndl)
+		return -EINVAL;
 
-        rv = xdev_check_hndl(__func__, pdev, dev_hndl);
+	rv = xdev_check_hndl(__func__, pdev, dev_hndl);
 	if (rv < 0)
-                return rv;
+		return rv;
 
 	/* if zeror disable sriov */
 	if (!num_vfs) {

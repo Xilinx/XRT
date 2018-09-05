@@ -47,9 +47,10 @@
  * @XCL_FW_DATAPATH:      DMA data path protection
  */
 enum xclFirewallID {
-        XCL_FW_MGMT_CONTROL = 0x00000000,
-        XCL_FW_USER_CONTROL = 0x00000001,
-        XCL_FW_DATAPATH     = 0x00000002
+        XCL_FW_MGMT_CONTROL = 0,
+        XCL_FW_USER_CONTROL,
+        XCL_FW_DATAPATH,
+        XCL_FW_MAX_LEVEL // always the last one
 };
 
 /**
@@ -84,6 +85,7 @@ struct xclErrorStatus {
         unsigned  mNumFirewalls;
         struct xclAXIErrorStatus mAXIErrorStatus[8];
         struct xclPCIErrorStatus mPCIErrorStatus;
+        unsigned mFirewallLevel;
 };
 
 #endif /* XCLERR_H_ */

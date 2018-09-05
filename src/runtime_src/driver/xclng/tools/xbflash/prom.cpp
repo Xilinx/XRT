@@ -67,7 +67,7 @@ int BPI_Flasher::freeAXIGate() {
 #endif
     unsigned char buf = 0x2;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
-        return -1;
+        return -ENXIO;
     buf = 0x0;
 #ifndef _WINDOWS
     // TODO: Windows build support
@@ -75,7 +75,7 @@ int BPI_Flasher::freeAXIGate() {
     nanosleep(&interval, 0);
 #endif
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
-        return -1;
+        return -ENXIO;
     buf = 0x2;
 #ifndef _WINDOWS
     // TODO: Windows build support
@@ -83,7 +83,7 @@ int BPI_Flasher::freeAXIGate() {
     nanosleep(&interval, 0);
 #endif
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
-        return -1;
+        return -ENXIO;
     buf = 0x3;
 #ifndef _WINDOWS
     // TODO: Windows build support
@@ -105,13 +105,10 @@ BPI_Flasher::~BPI_Flasher()
 /*
  * xclUpgradeFirmware
  */
-int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
-//    if (mLogStream.is_open()) {
-//        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << mcsFile << std::endl;
-//    }
+int BPI_Flasher::xclUpgradeFirmware(std::istream& mcsStream) {
     std::cout << "INFO: Reseting hardware\n";
     if (freezeAXIGate() != 0) {
-        return -1;
+        return -ENXIO;
     }
 
 #ifndef _WINDOWS
@@ -121,7 +118,7 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
     nanosleep(&req, 0);
 #endif
     if (freeAXIGate() != 0) {
-        return -1;
+        return -ENXIO;
     }
 #ifndef _WINDOWS
     // TODO: Windows build support
@@ -130,17 +127,10 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
 #endif
 
     std::string line;
-    std::ifstream mcsStream(mcsFile);
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
 
-    if(!mcsStream.is_open()) {
-        std::cout << "ERROR: Cannot open " << mcsFile << ". Check that it exists and is readable." << std::endl;
-        return -ENOENT;
-    }
-
-    std::cout << "INFO: Parsing file " << mcsFile << std::endl;
     while (!mcsStream.eof() && !endRecordFound) {
         std::string line;
         std::getline(mcsStream, line);
@@ -148,7 +138,7 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
             continue;
         }
         if (line[0] != ':') {
-            return -1;
+            return -EINVAL;
         }
         const unsigned dataLen = std::stoi(line.substr(1, 2), 0 , 16);
         const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
@@ -159,13 +149,13 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
             if (dataLen > 16) {
                 // For xilinx mcs files data length should be 16 for all records
                 // except for the last one which can be smaller
-                return -1;
+                return -EINVAL;
             }
             if (address != record.mDataCount) {
-                return -1;
+                return -EINVAL;
             }
             if (record.mEndAddress != address) {
-                return -1;
+                return -EINVAL;
             }
             record.mDataCount += dataLen;
             record.mEndAddress += dataLen;
@@ -187,10 +177,10 @@ int BPI_Flasher::xclUpgradeFirmware(const char *mcsFile) {
         case 0x04:
         {
             if (address != 0x0) {
-                return -1;
+                return -EINVAL;
             }
             if (dataLen != 2) {
-                return -1;
+                return -EINVAL;
             }
             std::string newAddress = line.substr(9, dataLen * 2);
             if (startAddress.size()) {
@@ -225,41 +215,28 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     addrHi &= 0xF;
     unsigned endAddressHi = (endAddress >>24)& 0x3;
     unsigned cmdHi = START_ADDR_HI_CMD;
-    unsigned versionCmd = VERSION_CMD;
     cmdHi |= addrHi;
 
     // Drain mailbox
     Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
     while(!(status&0x1)){ //0: fifo is not empty
         if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
-            return -1;
+            return -ENXIO;
         }
         Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
     }
     std::cout << "INFO: Finished draining mailbox\n";
     // Check for Ready
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
-        return -1;
+        return -ENXIO;
     }
     if (waitAndFinish_microblaze(READY_STAT, 0xff)) {
-        return -1;
+        return -ETIMEDOUT;
     }
     std::cout << "INFO: Finished waiting for READY_STAT\n";
 
-//    if (pcieBarWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &versionCmd, 4)) {
-//        return -1;
-//    }
-//    pcieBarRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
-//    while((status&0x1)){ //0: fifo is not empty
-//      pcieBarRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
-//    }
-//    if(pcieBarRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
-//      return -1;
-//    }
-//    std::cout << "INFO: Microblaze Code version: " << std::hex << status << "\n";
-
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
-        return -1;
+        return -ENXIO;
     }
     std::cout << "done sending hi cmd " << std::hex << cmdHi << std::dec<< std::endl;
     //End sending "hi" msb address command
@@ -268,7 +245,7 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     endAddress &= 0x00ffffff; // truncate to 24 bits
 
     if (waitForReady_microblaze(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     std::cout << "INFO: Sending the address range\n";
@@ -276,59 +253,55 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     unsigned command = START_ADDR_CMD;
     command |= startAddress;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     command = END_ADDR_CMD;
     command |= endAddress;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     command = END_ADDR_HI_CMD;
     command |= endAddressHi;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
-
-    //  if (waitForReady(READY_STAT)) {
-    //    return -1;
-    //  }
 
     std::cout << "INFO: Sending unlock command\n";
     // Send unlock command
     command = UNLOCK_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
     if (waitForReady_microblaze(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     // Send erase command
     std::cout << "INFO: Sending erase command\n";
     command = ERASE_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
     // now hanging here
     if (waitForReady_microblaze(ERASE_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     if (waitForReady_microblaze(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     // Send program command
     std::cout << "INFO: Erasing the address range\n";
     command = PROGRAM_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     if (waitForReady_microblaze(PROGRAM_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     return 0;
@@ -345,7 +318,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     unsigned cmdHi = START_ADDR_HI_CMD;
     cmdHi |= addrHi;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
-        return -1;
+        return -ENXIO;
     }
     std::cout << "done sending hi cmd " << std::hex << cmdHi << std::dec<< std::endl;
     //End sending "hi" msb address command
@@ -354,7 +327,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     endAddress &= 0x00ffffff; // truncate to 24 bits
 
     if (waitForReady(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     std::cout << "INFO: Sending the address range\n";
@@ -362,59 +335,55 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     unsigned command = START_ADDR_CMD;
     command |= startAddress;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     command = END_ADDR_CMD;
     command |= endAddress;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     command = END_ADDR_HI_CMD;
     command |= endAddressHi;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
-
-    //  if (waitForReady(READY_STAT)) {
-    //    return -1;
-    //  }
 
     std::cout << "INFO: Sending unlock command\n";
     // Send unlock command
     command = UNLOCK_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
     if (waitForReady(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     // Send erase command
     std::cout << "INFO: Sending erase command\n";
     command = ERASE_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
     // now hanging here
     if (waitForReady(ERASE_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     if (waitForReady(READY_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     // Send program command
     std::cout << "INFO: Erasing the address range\n";
     command = PROGRAM_CMD;
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
-        return -1;
+        return -ENXIO;
     }
 
     if (waitForReady(PROGRAM_STAT)) {
-        return -1;
+        return -ETIMEDOUT;
     }
 
     return 0;
@@ -423,7 +392,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
 /*
  * program_microblaze
  */
-int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& record) {
+int BPI_Flasher::program_microblaze(std::istream& mcsStream, const ELARecord& record) {
     int status = 0;
 //    if (mLogStream.is_open()) {
 //        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -436,7 +405,7 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
 
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
     assert(mcsStream.tellg() < record.mDataPos);
-    mcsStream.seekg(record.mDataPos, std::ifstream::beg);
+    mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char buffer[64];
     int bufferIndex = 0;
     for (unsigned index = record.mDataCount; index > 0;) {
@@ -470,7 +439,7 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
         assert(bufferIndex <= 64);
         if (bufferIndex == 64) {
             if (waitForReady_microblaze(PROGRAM_STAT, false)) {
-                return -1;
+                return -ETIMEDOUT;
             }
             for (int i=0; i< 16; i++)
             {
@@ -479,11 +448,11 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
                     Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
                 }
                 if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer+4*i, 4)) {
-                    return -1;
+                    return -ENXIO;
                 }
             }
             if (waitForReady_microblaze(PROGRAM_STAT, false)) {
-                return -1;
+                return -ETIMEDOUT;
             }
 #ifndef _WINDOWS
             // TODO: Windows build support
@@ -495,11 +464,8 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
     }
     if (bufferIndex) {
         if (waitForReady_microblaze(PROGRAM_STAT, false)) {
-            return -1;
+            return -ETIMEDOUT;
         }
-        //  if (pcieBarWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer, bufferIndex)) {
-        //      return -1;
-        //  }
         for (int i=0; i<bufferIndex/4 ; i++)
         {
             Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
@@ -507,13 +473,10 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
                 Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
             }
             if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer+4*i, 4)) {
-                return -1;
+                return -ENXIO;
             }
         }
 
-        //            if (waitForReady(READY_STAT, false)) { // Drain out the last READY_STAT from mailbox
-        //                return -1;
-        //            }
 #ifndef _WINDOWS
         // TODO: Windows build support
         //   nanosleep is defined in unistd.h
@@ -526,7 +489,7 @@ int BPI_Flasher::program_microblaze(std::ifstream& mcsStream, const ELARecord& r
 /*
  * program
  */
-int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
+int BPI_Flasher::program(std::istream& mcsStream, const ELARecord& record) {
 //    if (mLogStream.is_open()) {
 //        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 //    }
@@ -538,7 +501,7 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
 
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
     assert(mcsStream.tellg() < record.mDataPos);
-    mcsStream.seekg(record.mDataPos, std::ifstream::beg);
+    mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char buffer[64];
     int bufferIndex = 0;
     for (unsigned index = record.mDataCount; index > 0;) {
@@ -571,13 +534,13 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
         assert(bufferIndex <= 64);
         if (bufferIndex == 64) {
             if (waitForReady(PROGRAM_STAT, false)) {
-                return -1;
+                return -ETIMEDOUT;
             }
             if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer, 64)) {
-                return -1;
+                return -ENXIO;
             }
             if (waitForReady(PROGRAM_STAT, false)) {
-                return -1;
+                return -ETIMEDOUT;
             }
 #ifndef _WINDOWS
             // TODO: Windows build support
@@ -589,13 +552,13 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
     }
     if (bufferIndex) {
         if (waitForReady(PROGRAM_STAT, false)) {
-            return -1;
+            return -ETIMEDOUT;
         }
         if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer, bufferIndex)) {
-            return -1;
+            return -ENXIO;
         }
         if (waitForReady(PROGRAM_STAT, false)) {
-            return -1;
+            return -ETIMEDOUT;
         }
 #ifndef _WINDOWS
         // TODO: Windows build support
@@ -609,9 +572,9 @@ int BPI_Flasher::program(std::ifstream& mcsStream, const ELARecord& record) {
 /*
  * program
  *
- * return 0 on success, -1 on error
+ * return 0 on success, < 0 on error
  */
-int BPI_Flasher::program(std::ifstream& mcsStream) {
+int BPI_Flasher::program(std::istream& mcsStream) {
     int status = 0;
     int rxthresh = 256;
     bool use_mailbox = 0;
@@ -627,10 +590,10 @@ int BPI_Flasher::program(std::ifstream& mcsStream) {
 
     // Check for existance of Mailbox IP
     if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x1C, &rxthresh, 4)) {
-        return -1;
+        return -ENXIO;
     }
     if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x1C, &status, 4)) {
-        return -1;
+        return -ENXIO;
     }
     if(status==rxthresh) {
         use_mailbox = 1;
@@ -642,12 +605,12 @@ int BPI_Flasher::program(std::ifstream& mcsStream) {
     if(use_mailbox) {
         if (prepare_microblaze(mRecordList.front().mStartAddress, mRecordList.back().mEndAddress)) {
             std::cout << "ERROR: Could not unlock or erase the blocks\n";
-            return -1;
+            return -EACCES;
         }
     } else {
         if (prepare(mRecordList.front().mStartAddress, mRecordList.back().mEndAddress)) {
             std::cout << "ERROR: Could not unlock or erase the blocks\n";
-            return -1;
+            return -EACCES;
         }
     }
 #ifndef _WINDOWS
@@ -666,12 +629,12 @@ int BPI_Flasher::program(std::ifstream& mcsStream) {
         if(use_mailbox) {
             if (program_microblaze(mcsStream, *i)) {
                 std::cout << "ERROR: Could not program the block\n";
-                return -1;
+                return -ENXIO;
             }
         } else {
             if (program(mcsStream, *i)) {
                 std::cout << "ERROR: Could not program the block\n";
-                return -1;
+                return -ENXIO;
             }
         }
 #ifndef _WINDOWS
@@ -684,11 +647,11 @@ int BPI_Flasher::program(std::ifstream& mcsStream) {
     // Now keep writing 0xff till the hardware says ready
     if(use_mailbox) {
         if (waitAndFinish_microblaze(READY_STAT, 0xff)) {
-            return -1;
+            return -ETIMEDOUT;
         }
     } else {
         if (waitAndFinish(READY_STAT, 0xff)) {
-            return -1;
+            return -ETIMEDOUT;
         }
     }
     return 0;
@@ -719,7 +682,7 @@ int BPI_Flasher::waitForReady_microblaze(unsigned code, bool verbose) {
         if(!(status&0x1)){ //0: fifo is not empty
 
             if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
-                return -1;
+                return -ENXIO;
             }
         }
         delay += 5000;
@@ -729,7 +692,7 @@ int BPI_Flasher::waitForReady_microblaze(unsigned code, bool verbose) {
             }
         }
     }
-    return (status == code) ? 0 : -1;
+    return (status == code) ? 0 : -ETIMEDOUT;
 }
 
 /*
@@ -753,11 +716,11 @@ int BPI_Flasher::waitForReady(unsigned code, bool verbose) {
         nanosleep(&req, 0);
 #endif
         if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
-            return -1;
+            return -ENXIO;
         }
         delay += 5000;
     }
-    return (status == code) ? 0 : -1;
+    return (status == code) ? 0 : -ETIMEDOUT;
 }
 
 /*
@@ -779,7 +742,7 @@ int BPI_Flasher::waitAndFinish_microblaze(unsigned code, unsigned data, bool ver
 
         if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
             std::cout << "INFO: Failed to read from Mailbox\n";
-            return -1;
+            return -ENXIO;
         }
     }
 
@@ -795,20 +758,20 @@ int BPI_Flasher::waitAndFinish_microblaze(unsigned code, unsigned data, bool ver
         }
         if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &data, 4)) {
             std::cout << "INFO: Failed to write to Mailbox\n";
-            return -1;
+            return -ENXIO;
         }
 
         if(!(status&0x1)){ //0: fifo is not empty
 
             if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
                 std::cout << "INFO: Failed to read from Mailbox\n";
-                return -1;
+                return -ENXIO;
             }
         }
 
         delay += 5000;
     }
-    return (status == code) ? 0 : -1;
+    return (status == code) ? 0 : -ETIMEDOUT;
 }
 
 /*
@@ -826,7 +789,7 @@ int BPI_Flasher::waitAndFinish(unsigned code, unsigned data, bool verbose) {
         std::cout << "INFO: Finishing up\n";
     }
     if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
-        return -1;
+        return -ENXIO;
     }
     while ((status != code) && (delay < 30000000000)) {
 #ifndef _WINDOWS
@@ -835,12 +798,12 @@ int BPI_Flasher::waitAndFinish(unsigned code, unsigned data, bool verbose) {
         nanosleep(&req, 0);
 #endif
         if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &data, 4)) {
-            return -1;
+            return -ENXIO;
         }
         if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
-            return -1;
+            return -ENXIO;
         }
         delay += 5000;
     }
-    return (status == code) ? 0 : -1;
+    return (status == code) ? 0 : -ETIMEDOUT;
 }

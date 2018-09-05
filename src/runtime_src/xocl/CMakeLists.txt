@@ -1,5 +1,5 @@
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${XRT_SRC_DIR}/include/1_2
   ${DRM_INCLUDE_DIRS}
   ${BOOST_FILESYSTEM_INCLUDE_DIRS}
   ${BOOST_SYSTEM_INCLUDE_DIRS}
@@ -22,6 +22,10 @@ file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/khronos/*.cpp"
   "${XRT_XOCL_API_DIR}/xlnx/*.h"
   "${XRT_XOCL_API_DIR}/xlnx/*.cpp"
+  "${XRT_XOCL_API_DIR}/printf/*.h"
+  "${XRT_XOCL_API_DIR}/printf/*.cpp"
+  "${XRT_XOCL_API_DIR}/plugin/xdp/*.h"
+  "${XRT_XOCL_API_DIR}/plugin/xdp/*.cpp"
   )
 
 file(GLOB XRT_XOCL_CORE_FILES

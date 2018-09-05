@@ -29,6 +29,7 @@ struct feature_rom {
 	bool			unified;
 	bool			mb_mgmt_enabled;
 	bool			mb_sche_enabled;
+	bool			cdma_enabled;
 	bool			are_dev;
 	bool			aws_dev;
 };
@@ -55,9 +56,49 @@ static ssize_t dr_base_addr_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(dr_base_addr);
 
+static ssize_t ddr_bank_count_max_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", rom->header.DDRChannelCount);
+}
+static DEVICE_ATTR_RO(ddr_bank_count_max);
+
+static ssize_t ddr_bank_size_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%d\n", rom->header.DDRChannelSize);
+}
+static DEVICE_ATTR_RO(ddr_bank_size);
+
+static ssize_t timestamp_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%llu\n", rom->header.TimeSinceEpoch);
+}
+static DEVICE_ATTR_RO(timestamp);
+
+static ssize_t FPGA_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%s\n", rom->header.FPGAPartName);
+}
+static DEVICE_ATTR_RO(FPGA);
+
 static struct attribute *rom_attrs[] = {
 	&dev_attr_VBNV.attr,
 	&dev_attr_dr_base_addr.attr,
+	&dev_attr_ddr_bank_count_max.attr,
+	&dev_attr_ddr_bank_size.attr,
+	&dev_attr_timestamp.attr,
+	&dev_attr_FPGA.attr,
 	NULL,
 };
 
@@ -103,6 +144,16 @@ static bool mb_sched_on(struct platform_device *pdev)
 	BUG_ON(!rom);
 
 	return rom->mb_sche_enabled;
+}
+
+static bool cdma_on(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->cdma_enabled;
 }
 
 static u16 get_ddr_channel_count(struct platform_device *pdev)
@@ -180,6 +231,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
 	.mb_sched_on = mb_sched_on,
+	.cdma_on = cdma_on,
 	.get_ddr_channel_count = get_ddr_channel_count,
 	.get_ddr_channel_size = get_ddr_channel_size,
 	.is_are = is_are,
@@ -219,7 +271,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 			/*
  			 * This is AWS device. Fill the FeatureROM struct.
  			 * Right now it doesn't have FeatureROM
- 			 */ 
+ 			 */
 			memset(rom->header.EntryPointString, 0,
 				sizeof(rom->header.EntryPointString));
 			strncpy(rom->header.EntryPointString, "xlnx", 4);
@@ -262,10 +314,17 @@ static int feature_rom_probe(struct platform_device *pdev)
 	}
 
 	rom->dsa_version = 0;
-	if (strstr(rom->header.VBNVName,"5_1"))
+	if (strstr(rom->header.VBNVName,"5_0"))
+		rom->dsa_version = 50;
+	else if (strstr(rom->header.VBNVName,"5_1")
+		 || strstr(rom->header.VBNVName,"u200_xdma_201820_1"))
 		rom->dsa_version = 51;
-	else if (strstr(rom->header.VBNVName,"5_2"))
+	else if (strstr(rom->header.VBNVName,"5_2")
+		 || strstr(rom->header.VBNVName,"u200_xdma_201820_2")
+		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1"))
 		rom->dsa_version = 52;
+	else if (strstr(rom->header.VBNVName,"5_3"))
+		rom->dsa_version = 53;
 
 	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM) {
 		rom->unified = true;
@@ -273,10 +332,13 @@ static int feature_rom_probe(struct platform_device *pdev)
 	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD) {
 		rom->mb_mgmt_enabled = true;
 	}
-	if( (rom->header.FeatureBitMap & MB_SCHEDULER) && rom->dsa_version>=51
+	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
+	    && rom->dsa_version>=51
 	    && !strstr(rom->header.VBNVName,"kcu1500")) {
 		rom->mb_sche_enabled = true;
 	}
+	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
+	    rom->cdma_enabled = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
@@ -321,6 +383,9 @@ static int feature_rom_remove(struct platform_device *pdev)
 	}
 	if (rom->base)
 		iounmap(rom->base);
+
+	sysfs_remove_group(&pdev->dev.kobj, &rom_attr_group);
+
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, rom);
 	return 0;

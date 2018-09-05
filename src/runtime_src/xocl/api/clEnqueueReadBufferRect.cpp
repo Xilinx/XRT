@@ -22,11 +22,10 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/event.h"
-#include "profile.h"
-
 #include "detail/command_queue.h"
 #include "detail/memory.h"
 #include "detail/event.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -85,12 +84,6 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
                ,buffer_origin,host_origin,region
                ,buffer_row_pitch,buffer_slice_pitch,host_row_pitch,host_slice_pitch
                ,ptr,num_events_in_wait_list ,event_wait_list,event);
-
-
-
-  cl_context context = nullptr;
-  cl_int errcode = CL_SUCCESS;
-  uint64_t tcl_profiling_command_queued = 0;
 
   size_t buffer_origin_in_bytes = 
     buffer_origin[2]*buffer_slice_pitch+

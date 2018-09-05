@@ -23,6 +23,9 @@
 #include "xocl/xclbin/xclbin.h"
 
 #include "xrt/util/td.h"
+#include <limits>
+
+#include <iostream>
 
 namespace xocl {
 
@@ -34,10 +37,10 @@ public:
    * class argument is a class hierarchy that represents a kernel
    * object argument constructed from xclbin::symbol::arg meta data.
    *
-   * The class is in flux, and will change much as upstream cu_ffa 
+   * The class is in flux, and will change much as upstream cu_ffa
    * and execution context are adapated.
    */
-  class argument 
+  class argument
   {
   public:
     using argtype = xclbin::symbol::arg::argtype;
@@ -56,8 +59,11 @@ public:
     { throw std::runtime_error("not implemented"); }
 
   public:
-    bool 
-    is_set() const 
+
+    argument(kernel* kernel) : m_kernel(kernel) {}
+
+    bool
+    is_set() const
     { return m_set; }
 
     void
@@ -80,26 +86,26 @@ public:
     /**
      * Get argument address qualifier
      *
-     * This is a simple translation of address space per 
+     * This is a simple translation of address space per
      * get_address_space
      */
-    cl_kernel_arg_address_qualifier 
+    cl_kernel_arg_address_qualifier
     get_address_qualifier() const;
 
     bool
-    is_indexed() const 
+    is_indexed() const
     { return get_argtype()==argtype::indexed; }
 
     bool
-    is_printf() const 
+    is_printf() const
     { return get_argtype()==argtype::printf; }
 
     bool
-    is_progvar() const 
+    is_progvar() const
     { return get_argtype()==argtype::progvar; }
 
     bool
-    is_rtinfo() const 
+    is_rtinfo() const
     { return get_argtype()==argtype::rtinfo; }
 
     virtual ~argument() {}
@@ -113,19 +119,19 @@ public:
      * Asserts that the argument has been set, otherwise
      * it makes no sense to clone it.
      */
-    virtual std::unique_ptr<argument> 
+    virtual std::unique_ptr<argument>
     clone() = 0;
 
     /**
      * Set an argument (clSetKernelArg) to some value.
      */
-    virtual void 
+    virtual void
     set(size_t sz, const void* arg) = 0;
 
     /**
      * Set an svm argument (clSetKernelArgSVMPointer) to some value.
      */
-    virtual void 
+    virtual void
     set_svm(size_t sz, const void* arg)
     { throw std::runtime_error("not implemented"); }
 
@@ -140,20 +146,20 @@ public:
      * @return
      *   Argument size after component was added.
      */
-    virtual size_t 
+    virtual size_t
     add(arginfo_type arg)
     { throw xocl::error(CL_INVALID_BINARY,"Cannot add component to argument"); }
 
     /**
      */
-    virtual size_t 
-    get_address_space() const 
+    virtual size_t
+    get_address_space() const
     { throw std::runtime_error("not implemented"); }
 
     /**
      * Get argument name
      */
-    virtual std::string 
+    virtual std::string
     get_name() const
     { throw std::runtime_error("not implemented"); }
 
@@ -166,8 +172,8 @@ public:
      *   xocl::memory pointer or nullptr if argument is not backed
      *   by a cl_mem object
      */
-    virtual memory* 
-    get_memory_object() const 
+    virtual memory*
+    get_memory_object() const
     { return nullptr; }
 
     /**
@@ -178,21 +184,21 @@ public:
      * @return
      *   void* pointer or nullptr if argument is not svm
      */
-    virtual void* 
-    get_svm_object() const 
+    virtual void*
+    get_svm_object() const
     { throw std::runtime_error("not implemented"); }
 
     /**
-     * 
+     *
      */
-    virtual size_t 
-    get_size() const 
+    virtual size_t
+    get_size() const
     { return 0; }
 
     /**
      */
-    virtual const void* 
-    get_value() const 
+    virtual const void*
+    get_value() const
     { return nullptr; }
 
     virtual const std::string
@@ -210,22 +216,24 @@ public:
     /**
      * Get component argument info range
      */
-    virtual arginfo_range_type 
+    virtual arginfo_range_type
     get_arginfo_range() const
     { throw std::runtime_error("not implemented"); }
 
     static std::unique_ptr<kernel::argument>
-    create(arginfo_type arg);
+      create(arginfo_type arg,kernel* kernel);
 
   protected:
-    unsigned long m_argidx = -1;
+    kernel* m_kernel = nullptr;
+    unsigned long m_argidx = std::numeric_limits<unsigned long>::max();
     bool m_set = false;
   };
 
   class scalar_argument : public argument
   {
   public:
-    scalar_argument(arginfo_type arg) : m_sz(arg->hostsize)
+    scalar_argument(arginfo_type arg,kernel* kernel)
+      : argument(kernel), m_sz(arg->hostsize)
     {
       m_components.push_back(arg);
     }
@@ -238,7 +246,7 @@ public:
     virtual size_t get_size() const { return m_sz; }
     virtual const void* get_value() const { return m_value.data(); }
     virtual const std::string get_string_value() const;
-    virtual arginfo_range_type get_arginfo_range() const 
+    virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(m_components.begin(),m_components.end()); }
   private:
     size_t m_sz;
@@ -251,7 +259,8 @@ public:
   class global_argument : public argument
   {
   public:
-    global_argument(arginfo_type arg) : m_arg_info(arg) {}
+    global_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual std::string get_name() const { return m_arg_info->name; }
     virtual size_t get_address_space() const { return 1; }
@@ -264,7 +273,7 @@ public:
     virtual const void* get_value() const { return m_buf.get(); }
     virtual size_t get_baseaddr() const { return m_arg_info->baseaddr; }
     virtual std::string get_linkage() const { return m_arg_info->linkage; }
-    virtual arginfo_range_type get_arginfo_range() const 
+    virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
   private:
     ptr<memory> m_buf;   // retain ownership
@@ -276,7 +285,8 @@ public:
   class progvar_argument : public global_argument
   {
   public:
-    progvar_argument(arginfo_type arg) : global_argument(arg) {}
+  progvar_argument(arginfo_type arg, kernel* kernel)
+    : m_kernel(kernel), global_argument(arg) {}
   private:
   };
 #endif
@@ -284,13 +294,14 @@ public:
   class local_argument : public argument
   {
   public:
-    local_argument(arginfo_type arg) : m_arg_info(arg) {}
+    local_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual std::string get_name() const { return m_arg_info->name; }
     virtual size_t get_address_space() const { return 3; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
-    virtual arginfo_range_type get_arginfo_range() const 
+    virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
   private:
     arginfo_type m_arg_info;
@@ -299,7 +310,8 @@ public:
   class constant_argument : public argument
   {
   public:
-    constant_argument(arginfo_type arg) : m_arg_info(arg) {}
+    constant_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
     virtual std::string get_name() const { return m_arg_info->name; }
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual size_t get_address_space() const { return 2; }
@@ -308,7 +320,7 @@ public:
     virtual memory* get_memory_object() const { return m_buf.get(); }
     virtual size_t get_size() const { return sizeof(memory*); }
     virtual const void* get_value() const { return m_buf.get(); }
-    virtual arginfo_range_type get_arginfo_range() const 
+    virtual arginfo_range_type get_arginfo_range() const
     { return arginfo_range_type(&m_arg_info,&m_arg_info+1); }
   private:
     ptr<memory> m_buf;  // retain ownership
@@ -318,7 +330,8 @@ public:
   class image_argument : public argument
   {
   public:
-    image_argument(arginfo_type arg) {}
+    image_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel) {}
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
   };
@@ -326,9 +339,23 @@ public:
   class sampler_argument : public argument
   {
   public:
-    sampler_argument(arginfo_type arg) {}
+    sampler_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel) {}
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
+  };
+
+  class stream_argument : public argument
+  {
+  public:
+    stream_argument(arginfo_type arg, kernel* kernel)
+      : argument(kernel), m_arg_info(arg) {}
+    virtual std::unique_ptr<argument> clone();
+    virtual void set(size_t sz, const void* arg);
+    virtual argtype get_argtype() const { return m_arg_info->atype; }
+    virtual size_t get_address_space() const { return 4; }
+  private:
+    arginfo_type m_arg_info;
   };
 
 private:
@@ -343,7 +370,7 @@ public:
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
-  kernel(program* prog);
+  explicit kernel(program* prog);
 
 public:
   virtual ~kernel();
@@ -398,9 +425,23 @@ public:
   }
 
   /**
+   * @return
+   *   Name of kernel
+   */
+  const std::string&
+  get_name_from_constructor() const
+  {
+    // Remove this function, it is not needed
+    // Remove m_name from data members
+    // Fix ctor
+    if (m_name != m_symbol.name)
+      throw std::runtime_error("Internal Error");
+    return get_name();
+  }
+  /**
    * Return list of instances (CUs) in this kernel
    *
-   * This function directly access the kernel symbol to 
+   * This function directly access the kernel symbol to
    * extract the names of the embedded kernel instances
    *
    * @return
@@ -422,7 +463,7 @@ public:
   }
 
   /**
-   * Get compile work group size per xclbin 
+   * Get compile work group size per xclbin
    */
   range<const size_t*>
   get_compile_wg_size_range() const
@@ -431,7 +472,7 @@ public:
   }
 
   /**
-   * Get max work group size per xclbin 
+   * Get max work group size per xclbin
    */
   range<const size_t*>
   get_max_wg_size_range() const
@@ -503,7 +544,7 @@ public:
   {
     return range<argument_iterator_type>(m_progvar_args.begin(),m_progvar_args.end());
   }
-  
+
   /**
    * @return Range of printf arguments
    */
@@ -514,7 +555,7 @@ public:
   }
 
   /**
-   * Get rtinfo args.  
+   * Get rtinfo args.
    *
    * This is used by cu_ffa, it does contain printf args, but only the
    * static part of the printf is used in cu_ffa.  Feels awkward, but
@@ -550,5 +591,3 @@ private:
 } // xocl
 
 #endif
-
-

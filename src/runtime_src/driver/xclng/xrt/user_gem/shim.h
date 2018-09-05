@@ -23,11 +23,11 @@
  */
 
 #include "driver/include/xclhal2.h"
-#include "driver/xclng/include/drm/drm.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/qdma_ioctl.h"
+#include <libdrm/drm.h>
 #include <mutex>
 #include <cstdint>
 #include <fstream>
@@ -35,6 +35,7 @@
 #include <map>
 #include <utility>
 #include <cassert>
+#include <vector>
 
 namespace xocl {
 
@@ -111,7 +112,7 @@ class RangeTable
     std::map<AddressRange, std::pair<unsigned, char *>> mTable;
     mutable std::mutex mMutex;
 public:
-    void insert(uint64_t addr, size_t size, std::pair<unsigned, char *> bo) {
+    void insert(uint64_t addr, size_t size, const std::pair<unsigned, char *> &bo) {
         // assert(find(addr) == 0xffffffff);
         std::lock_guard<std::mutex> lock(mMutex);
         mTable[AddressRange(addr, size)] = bo;
@@ -162,8 +163,8 @@ public:
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
-    unsigned int xclAllocBO(size_t size, xclBOKind domain, uint64_t flags);
-    unsigned int xclAllocUserPtrBO(void *userptr, size_t size, uint64_t flags);
+    unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+    unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
     void xclFreeBO(unsigned int boHandle);
     int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
     int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
@@ -222,7 +223,7 @@ public:
 
     //debug related
     uint32_t getCheckerNumberSlots(int type);
-    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames, 
+    uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
@@ -238,7 +239,8 @@ public:
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
-    int xclOpenContext(xclContextProperties *context) const;
+    int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }
@@ -248,6 +250,10 @@ public:
     int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
     int xclDestroyQueue(uint64_t q_hdl);
+    void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
+    int xclFreeQDMABuf(uint64_t buf_hdl);
+    ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -275,6 +281,20 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
+
+    std::ifstream xclSysfsOpen(bool mgmt,
+        const std::string& subDevName, const std::string& entry);
+    std::string xclSysfsGetString(bool mgmt,
+        const std::string& subDevName, const std::string& entry);
+    unsigned long long xclSysfsGetInt(bool mgmt,
+        const std::string& subDevName, const std::string& entry);
+    std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
+        const std::string& subDevName, const std::string& entry);
+    std::vector<std::string> xclSysfsGetStrings(bool mgmt,
+        const std::string& subDevName, const std::string& entry);
+    void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
+    void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
+    void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 
     // Upper two denote PF, lower two bytes denote BAR
     // USERPF == 0x0
@@ -343,15 +363,15 @@ private:
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;
     bool mIsDeviceProfiling = false;
-    uint64_t mPerfMonFifoCtrlBaseAddress;
-    uint64_t mPerfMonFifoReadBaseAddress;
-    uint64_t mTraceFunnelAddress;
-    uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
-    std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
-    std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
-    uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
-    uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
+    uint64_t mPerfMonFifoCtrlBaseAddress = 0;
+    uint64_t mPerfMonFifoReadBaseAddress = 0;
+    uint64_t mTraceFunnelAddress = 0;
+    uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS] = {};
+    std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS] = {};
+    std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
 }; /* XOCLShim */
 
 } /* xocl */

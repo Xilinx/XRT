@@ -25,7 +25,7 @@
 
 #include "detail/memory.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -95,7 +95,6 @@ clGetMemObjectInfo(cl_mem           memobj,
       buffer.as<void*>() = xocl(memobj)->get_host_ptr();
       break;
     case CL_MEM_MAP_COUNT:
-#warning fix access to map count
       buffer.as<cl_uint>() = 0; // not useful
       break;
     case CL_MEM_REFERENCE_COUNT:
@@ -112,7 +111,7 @@ clGetMemObjectInfo(cl_mem           memobj,
       break;
     case CL_MEM_BANK:
       {
-        auto idx = 0;
+        size_t idx = 0;
         auto memidx_mask = xocl(memobj)->get_memidx();
         for (idx=0; idx<memidx_mask.size(); ++idx)
           if (memidx_mask.test(idx))

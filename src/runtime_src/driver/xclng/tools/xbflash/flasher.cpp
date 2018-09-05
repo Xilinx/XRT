@@ -24,59 +24,31 @@
 #include "mgmt-reg.h"
 #include <sys/mman.h>
 #include <stddef.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <cassert>
 #include <cstring>
+#include <vector>
+#include <sstream>
+#include <iomanip>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
+#define MFG_REV_OFFSET  0x131008
 
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index, E_FlasherType flasherType) : mIdx(index), mType(flasherType)
+Flasher::Flasher(unsigned int index) :
+  mIdx(index), mIsValid(false), mMgmtMap(nullptr), mFd(-1)
 {
-    mMgmtMap = nullptr;
-    mXspi = nullptr;
-    mBpi  = nullptr;
-    mFd = 0;
-    mIsValid = false;
-    memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
-
     if( mapDevice( mIdx ) < 0 )
     {
         std::cout << "ERROR: Failed to map pcie device." << std::endl;
-        return;
     }
-
-    pcieBarRead( 0, (unsigned long long)mMgmtMap + FEATURE_ROM_BASE, &mFRHeader, sizeof(struct FeatureRomHeader) );
-
-    // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
-    // that EntryPointString starts with magic char sequence "xlnx".
-    if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
+    else
     {
-        std::cout << "ERROR: EntryPointString mismatch:" << mFRHeader.EntryPointString << std::endl;
-        return;
-    }
-
-    if( mType == E_FlasherType::UNSET )
-    {
-        getProgrammingTypeFromDeviceName( mFRHeader.VBNVName, mType );
-    }
-
-    switch( mType )
-    {
-    case SPI:
-        mXspi = new XSPI_Flasher( mIdx, mMgmtMap );
         mIsValid = true;
-        break;
-    case BPI:
-        mBpi = new BPI_Flasher( mIdx, mMgmtMap );
-        mIsValid = true;
-        break;
-    default:
-        break;
     }
 }
 
@@ -85,64 +57,139 @@ Flasher::Flasher(unsigned int index, E_FlasherType flasherType) : mIdx(index), m
  */
 Flasher::~Flasher()
 {
-    if( mXspi != nullptr )
-    {
-        delete mXspi;
-        mXspi = nullptr;
-    }
-
-    if( mBpi != nullptr )
-    {
-        delete mBpi;
-        mBpi = nullptr;
-    }
-
     if( mMgmtMap != nullptr )
     {
         munmap( mMgmtMap, mSb.st_size );
     }
 
-    if( mFd > 0 )
+    if( mFd >= 0 )
     {
         close( mFd );
     }
 }
 
+Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
+{
+    E_FlasherType type = E_FlasherType::UNKNOWN;
+
+    if (typeStr.empty())
+        typeStr = mDev.flash_type;
+
+    if (typeStr.empty())
+    {
+        getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+    }
+    else if (typeStr.compare("spi") == 0)
+    {
+        type = E_FlasherType::SPI;
+    }
+    else if (typeStr.compare("bpi") == 0)
+    {
+        type = E_FlasherType::BPI;
+    }
+    else
+    {
+        std::cout << "Unknown flash type: " << typeStr << std::endl;
+    }
+
+    return type;
+}
+
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(const char *f1, const char *f2)
+int Flasher::upgradeFirmware(const std::string& flasherType,
+    firmwareImage *primary, firmwareImage *secondary)
 {
-    int retVal = -1;
-    switch( mType )
+    int retVal = -EINVAL;
+    E_FlasherType type = getFlashType(flasherType);
+
+    switch(type)
     {
     case SPI:
-        if( f2 == nullptr )
+    {
+        XSPI_Flasher xspi(mIdx, mMgmtMap);
+        if(secondary == nullptr)
         {
-            retVal = mXspi->xclUpgradeFirmwareXSpi( f1 );
+            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
-            retVal = mXspi->xclUpgradeFirmware2( f1, f2 );
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
         }
         break;
+    }
     case BPI:
-        if( f2 != nullptr )
+    {
+        BPI_Flasher bpi(mIdx, mMgmtMap);
+        if(secondary != nullptr)
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
-            retVal = -1;
         }
         else
         {
-            retVal = mBpi->xclUpgradeFirmware( f1 );
+            retVal = bpi.xclUpgradeFirmware(*primary);
         }
         break;
+    }
     default:
-        std::cout << "ERROR: Invalid programming type." << std::endl;
-        retVal = -1;
         break;
     }
     return retVal;
+}
+
+int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
+{
+    XMC_Flasher flasher(mIdx, mMgmtMap);
+    const std::string e = flasher.probingErrMsg();
+
+    if (!e.empty())
+    {
+        std::cout << "ERROR: " << e << std::endl;
+        return -EOPNOTSUPP;
+    }
+
+    return flasher.xclUpgradeFirmware(*bmc);
+}
+
+std::string charVec2String(std::vector<char>& v)
+{
+    std::stringstream ss;
+
+    for (unsigned i = 0; i < v.size(); i++)
+    {
+        ss << v[i];
+    }
+    return ss.str();
+}
+
+int Flasher::getBoardInfo(BoardInfo& board)
+{
+    std::map<char, std::vector<char>> info;
+    XMC_Flasher flasher(mIdx, mMgmtMap);
+
+    if (!flasher.probingErrMsg().empty())
+    {
+        return -EOPNOTSUPP;
+    }
+
+    int ret = flasher.xclGetBoardInfo(info);
+    if (ret != 0)
+        return ret;
+
+    board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
+    board.mConfigMode = info[BDINFO_CONFIG_MODE][0];
+    board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
+    board.mMacAddr0 = std::move(charVec2String(info[BDINFO_MAC0]));
+    board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
+    board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
+    board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
+    board.mMaxPowerLvl = info[BDINFO_MAX_PWR][0];
+    board.mName = std::move(charVec2String(info[BDINFO_NAME]));
+    board.mRev = std::move(charVec2String(info[BDINFO_REV]));
+    board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));
+
+    return ret;
 }
 
 /*
@@ -151,8 +198,9 @@ int Flasher::upgradeFirmware(const char *f1, const char *f2)
 int Flasher::mapDevice(unsigned int devIdx)
 {
     xcldev::pci_device_scanner scanner;
-#if DRIVERLESS
     scanner.scan_without_driver();
+
+    memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
 
     if( devIdx >= scanner.device_list.size() ) {
         std::cout << "ERROR: Invalid device index." << std::endl;
@@ -160,21 +208,14 @@ int Flasher::mapDevice(unsigned int devIdx)
     }
 
     char cDBDF[128]; // size of dbdf string
-    xcldev::pci_device_scanner::device_info dev = scanner.device_list.at( devIdx );
-    sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", dev.domain, dev.bus, dev.device, dev.mgmt_func );
+    mDev = scanner.device_list.at( devIdx );
+    sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device, mDev.mgmt_func );
     mDBDF = std::string( cDBDF );
     std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
-#else
-    scanner.scan( false );
-    std::string mgmtDeviceName;
-    if( !scanner.get_mgmt_device_name( mgmtDeviceName, devIdx ) )
-    {
-        std::cout << "ERROR: Cannot find mgmt device." << std::endl;
-        return -EBUSY;
-    }
-    std::string devPath = "/sys/bus/pci/devices/" + mgmtDeviceName;
-#endif
-    std::string resourcePath = devPath + "/resource0";
+
+    char bar[5];
+    snprintf(bar, sizeof (bar) - 1, "%d", mDev.user_bar);
+    std::string resourcePath = devPath + "/resource" + bar;
 
     void *p;
     void *addr = (caddr_t)0;
@@ -192,13 +233,35 @@ int Flasher::mapDevice(unsigned int devIdx)
     p = mmap( addr, mSb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, mFd, 0 );
     if( p == MAP_FAILED )
     {
-        std::cout << "mmap failed : " << errno << std::endl;
+        std::cout << "mmap failed: " << errno << std::endl;
         perror( "mmap" );
         close( mFd );
         return errno;
     }
     mMgmtMap = (char *)p;
     close( mFd );
+
+    unsigned long long feature_rom_base;
+    if (scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base) == 0)
+    {
+        pcieBarRead( 0, (unsigned long long)mMgmtMap + feature_rom_base, &mFRHeader, sizeof(struct FeatureRomHeader) );
+        // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
+        // that EntryPointString starts with magic char sequence "xlnx".
+        if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
+        {
+            std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
+            return -EINVAL;
+        }
+    }
+    else if (mDev.is_mfg)
+    {
+        pcieBarRead( 0, (unsigned long long)mMgmtMap + MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer) );
+    }
+    else
+    {
+        std::cout << "ERROR: Device not supported." << std::endl;
+        return -EINVAL;
+    }
 
     return 0;
 }
@@ -274,8 +337,66 @@ int Flasher::getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherTyp
     }
     if( !typeFound )
     {
-        std::cout << "ERROR: failed to determine DSA type, unable to flash device." << std::endl;
-        return -1;
+        return -EINVAL;
     }
     return 0;
+}
+
+/*
+ * Obtain all DSA installed on the system for this board
+ */
+std::vector<DSAInfo> Flasher::getInstalledDSA()
+{
+    std::vector<DSAInfo> DSAs;
+
+    // Obtain board info.
+    DSAInfo onBoard = getOnBoardDSA();
+    if (onBoard.vendor.empty() || onBoard.board.empty())
+    {
+        std::cout << "Onboard DSA is unknown" << std::endl;
+        return DSAs;
+    }
+
+    // Obtain installed DSA info.
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    for (DSAInfo& dsa : installedDSAs)
+    {
+        if (onBoard.vendor != dsa.vendor ||
+            onBoard.board != dsa.board ||
+            dsa.timestamp == NULL_TIMESTAMP)
+            continue;
+        DSAs.push_back(dsa);
+    }
+
+    return DSAs;
+}
+
+DSAInfo Flasher::getOnBoardDSA()
+{
+    std::string vbnv;
+    std::string bmc;
+    uint64_t ts = NULL_TIMESTAMP;
+
+    if (mDev.is_mfg)
+    {
+        std::stringstream ss;
+
+        ss << "xilinx_" << mDev.board_name << "_GOLDEN_" << mGoldenVer;
+        vbnv = ss.str();
+    }
+    else if (mFRHeader.VBNVName[0] != '\0')
+    {
+        vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+        ts = mFRHeader.TimeSinceEpoch;
+    }
+    else
+    {
+        std::cout << "ERROR: No Feature ROM found" << std::endl;
+    }
+
+    BoardInfo info;
+    if (getBoardInfo(info) == 0)
+        bmc = info.mBMCVer;
+
+    return DSAInfo(vbnv, ts, bmc);
 }

@@ -29,37 +29,38 @@ namespace xocl {
 
 std::unique_ptr<kernel::argument>
 kernel::argument::
-create(arginfo_type arg)
+create(arginfo_type arg, kernel* kernel)
 {
   switch (arg->address_qualifier) {
   case 0:
-    return xrt::make_unique<kernel::scalar_argument>(arg);
+    return xrt::make_unique<kernel::scalar_argument>(arg,kernel);
     break;
   case 1:
-    return xrt::make_unique<kernel::global_argument>(arg);
+    return xrt::make_unique<kernel::global_argument>(arg,kernel);
     break;
   case 2:
-    return xrt::make_unique<kernel::constant_argument>(arg);
+    return xrt::make_unique<kernel::constant_argument>(arg,kernel);
     break;
   case 3:
-    return xrt::make_unique<kernel::local_argument>(arg);
+    return xrt::make_unique<kernel::local_argument>(arg,kernel);
     break;
   case 4:
     // hack for progvar (064_pipe_num_packets_hw_xilinx_adm-pcie-ku3_2ddr_3_3)
     // do not understand this code at all, but reuse global_argument all that
     // matters is that cu_ffa gets proper xclbin arg properties (size,offset,etc)
-    if (arg->atype==xclbin::symbol::arg::argtype::progvar) 
-      return xrt::make_unique<kernel::global_argument>(arg);
-    throw std::runtime_error("unsupported address qualifier 'pipe' for argument '" + arg->name + "'.");
+    if (arg->atype==xclbin::symbol::arg::argtype::progvar)
+      return xrt::make_unique<kernel::global_argument>(arg,kernel);
+    //Indexed 4 implies stream. Above kludge contd.. : TODO
+    return xrt::make_unique<kernel::stream_argument>(arg,kernel);
     break;
   default:
-    throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: " 
+    throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: "
                       + std::to_string(arg->address_qualifier)
                       + "(id: " + arg->id +")");
   }
 }
 
-cl_kernel_arg_address_qualifier 
+cl_kernel_arg_address_qualifier
 kernel::argument::
 get_address_qualifier() const
 {
@@ -79,7 +80,7 @@ get_address_qualifier() const
   }
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::scalar_argument::
 clone()
 {
@@ -95,12 +96,12 @@ add(arginfo_type arg)
   return m_sz;
 }
 
-void 
+void
 kernel::scalar_argument::
 set(size_t size, const void* cvalue)
 {
   if (size != m_sz)
-    throw error(CL_INVALID_ARG_SIZE,"Invalid scalar argument size, expected " 
+    throw error(CL_INVALID_ARG_SIZE,"Invalid scalar argument size, expected "
                 + std::to_string(m_sz) + " got " + std::to_string(size));
   // construct vector from iterator range.
   // the value can be gathered with m_value.data()
@@ -131,14 +132,14 @@ get_string_value() const
   return sstr.str();
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::global_argument::
 clone()
 {
   return xrt::make_unique<global_argument>(*this);
 }
 
-void 
+void
 kernel::global_argument::
 set(size_t size, const void* cvalue)
 {
@@ -149,6 +150,8 @@ set(size_t size, const void* cvalue)
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
 
   m_buf = xocl(mem);
+  if (m_argidx < std::numeric_limits<unsigned long>::max())
+    m_buf->get_buffer_object(m_kernel,m_argidx);
   m_set = true;
 }
 
@@ -165,14 +168,14 @@ set_svm(size_t size, const void* cvalue)
   m_set = true;
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::local_argument::
 clone()
 {
   return xrt::make_unique<local_argument>(*this);
 }
 
-void 
+void
 kernel::local_argument::
 set(size_t size, const void* value)
 {
@@ -186,53 +189,72 @@ set(size_t size, const void* value)
   m_set = true;
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::constant_argument::
 clone()
 {
   return xrt::make_unique<constant_argument>(*this);
 }
 
-void 
+void
 kernel::constant_argument::
 set(size_t size, const void* cvalue)
 {
   if (size != sizeof(cl_mem))
-    throw error(CL_INVALID_ARG_SIZE,"Invalid global_argument size for kernel arg");
+    throw error(CL_INVALID_ARG_SIZE,"Invalid constant_argument size for kernel arg");
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
   m_buf = xocl(mem);
+  m_buf->get_buffer_object(m_kernel,m_argidx);
   m_set = true;
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::image_argument::
 clone()
 {
   return xrt::make_unique<image_argument>(*this);
 }
 
-void 
+void
 kernel::image_argument::
 set(size_t size, const void* value)
 {
   throw std::runtime_error("not implemented");
 }
 
-std::unique_ptr<kernel::argument> 
+std::unique_ptr<kernel::argument>
 kernel::sampler_argument::
 clone()
 {
   return xrt::make_unique<sampler_argument>(*this);
 }
 
-void 
+void
 kernel::sampler_argument::
 set(size_t size, const void* value)
 {
   throw std::runtime_error("not implemented");
 }
 
+std::unique_ptr<kernel::argument>
+kernel::stream_argument::
+clone()
+{
+  return xrt::make_unique<stream_argument>(*this);
+}
+
+void
+kernel::stream_argument::
+set(size_t size, const void* cvalue)
+{
+  //PTR_SIZE
+  if (size != sizeof(cl_mem))
+    throw error(CL_INVALID_ARG_SIZE,"Invalid stream_argument size for kernel arg");
+  if(cvalue != nullptr)
+    throw error(CL_INVALID_VALUE,"Invalid stream_argument value for kernel arg, it should be null");
+  m_set = true;
+}
 
 kernel::
 kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
@@ -249,7 +271,7 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     case xclbin::symbol::arg::argtype::printf:
       if (m_printf_args.size())
         throw xocl::error(CL_INVALID_BINARY,"Only one printf argument allowed");
-      m_printf_args.emplace_back(argument::create(&arg));
+      m_printf_args.emplace_back(argument::create(&arg,this));
       break;
     case xclbin::symbol::arg::argtype::progvar:
     {
@@ -258,7 +280,7 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
         throw std::runtime_error
           ("progvar with address_qualifiler " + std::to_string(arg.address_qualifier)
            + " not implemented");
-      m_progvar_args.emplace_back(argument::create(&arg));
+      m_progvar_args.emplace_back(argument::create(&arg,this));
       if (arg.address_qualifier==1) {
         auto& pvar = m_progvar_args.back();
         auto mem = clCreateBuffer(get_context(),CL_MEM_PROGVAR,arg.memsize,nullptr,nullptr);
@@ -277,18 +299,18 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
                             [&nm](const argument_value_type& arg)
                             { return arg->get_name()==nm; });
       if (itr==m_rtinfo_args.end())
-        m_rtinfo_args.emplace_back(argument::create(&arg));
+        m_rtinfo_args.emplace_back(argument::create(&arg,this));
       else
         (*itr)->add(&arg);
       break;
     }
-    case xclbin::symbol::arg::argtype::indexed: 
+    case xclbin::symbol::arg::argtype::indexed:
     {
       assert(!arg.id.empty());
       auto idx  = std::stoul(arg.id,0,0);
       if (idx==m_indexed_args.size())
         // next argument
-        m_indexed_args.emplace_back(argument::create(&arg));
+        m_indexed_args.emplace_back(argument::create(&arg,this));
       else if (idx<m_indexed_args.size())
         // previous argument a second time (e.g. 229_vadd-long)
         // scalar vector, e.g. long2, long4, etc.
@@ -314,9 +336,9 @@ temp_get_symbol(program* prog, std::string name)
     static xclbin::symbol s;
     // set workgroup size to CL_DEVICE_MAX_WORK_GROUP_SIZE
     // this is a carry over from clCreateKernel where conformance
-    // mode is faking a kernel.  need to better understand that 
+    // mode is faking a kernel.  need to better understand that
     // part of the code and find another way
-    s.workgroupsize = 4096; 
+    s.workgroupsize = 4096;
     return s;
   }
 
@@ -367,5 +389,3 @@ get_instance_names() const
 }
 
 } // xocl
-
-

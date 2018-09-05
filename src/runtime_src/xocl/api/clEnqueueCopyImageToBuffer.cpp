@@ -20,7 +20,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -105,6 +105,8 @@ clEnqueueCopyImageToBuffer(cl_command_queue command_queue,
                            const cl_event*  event_wait_list,
                            cl_event*        event)
 {
+  validOrError(command_queue,src_image,dst_buffer,src_origin,region,dst_offset,
+               num_events_in_wait_list,event_wait_list,event);
   throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
 }
 

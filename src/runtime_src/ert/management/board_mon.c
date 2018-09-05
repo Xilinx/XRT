@@ -229,9 +229,12 @@ void fake_xil_printf(char* somestring, ...) {
 //#define VCU1525_IIC_MUX_ADDR 	0x74 //This is the true 7bit address
 #define VCU1525_NUM_SUPPLIES 	4
 #define VCCINT_MULT_FACTOR 6 //6 phase supply
-//VCU1526 Definitions
-#define VCU1526_IIC_MUX_ADDR 	0x74 //This is the true 7bit address
-#define VCU1526_NUM_SUPPLIES 	1
+//VCU1526 Definitions - Read from MSP432
+//#define VCU1526_IIC_MUX_ADDR 	0x74 //This is the true 7bit address
+#define VCU1526_NUM_SUPPLIES 	4
+//VCU1550 Definitions - Read from MSP432
+//#define VCU1550_IIC_MUX_ADDR 	0x74 //This is the true 7bit address
+#define VCU1550_NUM_SUPPLIES 	4
 
 //When host requests to read power measurements the microblaze will pause for 10s
 #define MB_PAUSED_TIMEOUT_US 10000000 //10s timeout
@@ -490,8 +493,25 @@ static SupplyStats VCU1525_SUPPLIES[VCU1525_NUM_SUPPLIES] = {
 };
 
 static SupplyStats VCU1526_SUPPLIES[VCU1526_NUM_SUPPLIES] = {
-		{.supply_name="VCCINT",  	.IIC_ADDR=0x44, .chipid=LTC3884, .max_iout_reg=&RegisterMap[VCCINT_CUR_MAX_REG],
-		    .avg_iout_reg=&RegisterMap[VCCINT_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[VCCINT_CUR_INS_REG], .sum_iout=0}
+		/*{.supply_name="VCCINT",  	.IIC_ADDR=0x44, .chipid=LTC3884, .max_iout_reg=&RegisterMap[VCCINT_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[VCCINT_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[VCCINT_CUR_INS_REG], .sum_iout=0}*/
+	    {.supply_name="PEXV12",  	 .cur_sense_reff_inv=VCU1525_LTC6103_REFF, .sensor_byte_addr=PEXV12_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[PEXV12_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[PEXV12_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[PEXV12_CUR_INS_REG], .sum_iout=0},
+		{.supply_name="AUX12V",  	 .cur_sense_reff_inv=VCU1525_LTC6106_REFF, .sensor_byte_addr=AUX_12V_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[AUX12V_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[AUX12V_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[AUX12V_CUR_INS_REG], .sum_iout=0},
+		{.supply_name="PEX3V3",  	 .cur_sense_reff_inv=VCU1525_LTC6103_REFF, .sensor_byte_addr=PEX3V3_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[PEX3V3_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[PEX3V3_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[PEX3V3_CUR_INS_REG], .sum_iout=0}
+};
+
+static SupplyStats VCU1550_SUPPLIES[VCU1550_NUM_SUPPLIES] = {
+		/*{.supply_name="VCCINT",  	.IIC_ADDR=0x44, .chipid=LTC3884, .max_iout_reg=&RegisterMap[VCCINT_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[VCCINT_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[VCCINT_CUR_INS_REG], .sum_iout=0}*/
+	    {.supply_name="PEXV12",  	 .cur_sense_reff_inv=VCU1525_LTC6103_REFF, .sensor_byte_addr=PEXV12_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[PEXV12_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[PEXV12_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[PEXV12_CUR_INS_REG], .sum_iout=0},
+		{.supply_name="AUX12V",  	 .cur_sense_reff_inv=VCU1525_LTC6106_REFF, .sensor_byte_addr=AUX_12V_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[AUX12V_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[AUX12V_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[AUX12V_CUR_INS_REG], .sum_iout=0},
+		{.supply_name="PEX3V3",  	 .cur_sense_reff_inv=VCU1525_LTC6103_REFF, .sensor_byte_addr=PEX3V3_I_IN_PKT_OFFSET, .max_iout_reg=&RegisterMap[PEX3V3_CUR_MAX_REG],
+		    .avg_iout_reg=&RegisterMap[PEX3V3_CUR_AVG_REG], .cur_iout_reg=&RegisterMap[PEX3V3_CUR_INS_REG], .sum_iout=0}
 };
 
 //Global variables
@@ -929,7 +949,6 @@ int init_board_info(u32 feature_rom) {
 		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | MGTAVTT_AVAILABLE | MGTAVCCC_AVAILABLE |
 		    VCC1V2_AVAILABLE | VCC1V8_AVAILABLE | VCCINT_AVAILABLE);
 	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && strcmp(_board_info.board,"kcu1500") == 0) {
-		xil_printf("KCU1500\n");
 		//Set board info properties
 		_board_info.supplies = KCU1500_SUPPLIES;
 		_board_info.num_supplies = KCU1500_NUM_SUPPLIES;
@@ -937,8 +956,7 @@ int init_board_info(u32 feature_rom) {
 		//Update register map
 		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | MGTAVTT_AVAILABLE | MGTAVCCC_AVAILABLE |
 		    VCC1V2_AVAILABLE | VCC1V8_AVAILABLE | VCCINT_AVAILABLE);
-	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && strcmp(_board_info.board,"vcu1525") == 0) {
-		xil_printf("VCU1525\n");
+	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && (strcmp(_board_info.board,"vcu1525") == 0 || strcmp(_board_info.board,"xbb200") == 0 )) {
 		//Set board info properties
 		msp432_support = true;
 		_board_info.supplies = VCU1525_SUPPLIES;
@@ -947,20 +965,31 @@ int init_board_info(u32 feature_rom) {
 		//Update register map
 		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | BMC_COMM_SUPPORT | PEX12V_AVAILABLE |
 		    AUX12V_AVAILABLE | PEX3V3_AVAILABLE | VCCINT_AVAILABLE);
-	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && strcmp(_board_info.board,"vcu1526") == 0) {
-		xil_printf("VCU1526\n");
+	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && (strcmp(_board_info.board,"vcu1526") == 0 || strcmp(_board_info.board,"xbb250") == 0 )) {
 		//Set board info properties
+		msp432_support = true;
 		_board_info.supplies = VCU1526_SUPPLIES;
 		_board_info.num_supplies = VCU1526_NUM_SUPPLIES;
-		_board_info.iic_mux_addr = VCU1526_IIC_MUX_ADDR;
+		//_board_info.iic_mux_addr = VCU1526_IIC_MUX_ADDR;
 		//Update register map
-		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | VCCINT_AVAILABLE);
+		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | BMC_COMM_SUPPORT | PEX12V_AVAILABLE |
+		    AUX12V_AVAILABLE | PEX3V3_AVAILABLE | VCCINT_AVAILABLE);
+	} else if(strcmp(_board_info.vendor,"xilinx") == 0 && (strcmp(_board_info.board,"vcu1550") == 0 || strcmp(_board_info.board,"vcu1551") == 0 )) {
+		//Set board info properties
+		msp432_support = true;
+		_board_info.supplies = VCU1550_SUPPLIES;
+		_board_info.num_supplies = VCU1550_NUM_SUPPLIES;
+		//_board_info.iic_mux_addr = VCU1550_IIC_MUX_ADDR;
+		//Update register map
+		write_reg(&RegisterMap[FEATURES_REG], POWMON_SUPPORT | BMC_COMM_SUPPORT | PEX12V_AVAILABLE |
+		    AUX12V_AVAILABLE | PEX3V3_AVAILABLE | VCCINT_AVAILABLE);
 	} else {
 		xil_printf("ERROR: Unrecognized vbnv! %s:%s:%s:%s\n", _board_info.vendor, _board_info.board, _board_info.name, _board_info.version);
 		write_reg(&RegisterMap[ERROR_REG], RegisterMap[ERROR_REG].reg_val | FEATURE_ROM_ERROR);
 
 		return XST_FAILURE;
 	}
+	xil_printf("%s\n", _board_info.board);
 	return XST_SUCCESS;
 }
 

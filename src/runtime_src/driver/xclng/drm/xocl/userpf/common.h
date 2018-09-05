@@ -17,6 +17,7 @@
 #define	_USERPF_COMMON_H
 
 #include "../xocl_drv.h"
+#include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
 #include "xocl_drm.h"
 
@@ -24,10 +25,10 @@
 #define	XOCL_QDMA_PCI		"xocl_qdma"
 
 #define XOCL_DRIVER_DESC        "Xilinx PCIe Accelerator Device Manager"
-#define XOCL_DRIVER_DATE        "20180125"
+#define XOCL_DRIVER_DATE        "20180612"
 #define XOCL_DRIVER_MAJOR       2018
 #define XOCL_DRIVER_MINOR       2
-#define XOCL_DRIVER_PATCHLEVEL  7
+#define XOCL_DRIVER_PATCHLEVEL  8
 
 #define XOCL_DRIVER_VERSION                             \
         __stringify(XOCL_DRIVER_MAJOR) "."              \
@@ -55,6 +56,14 @@
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
 #define MAX_DEPS        8
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#define XOCL_DRM_FREE_MALLOC
+#elif defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+#define XOCL_DRM_FREE_MALLOC
+#endif
+#endif
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -65,10 +74,10 @@ struct xocl_dev	{
 	u32     bypass_bar_idx;
 
 
-	void			*dma_handle;
+	void		       *dma_handle;
 	u32			max_user_intr;
 	u32			start_user_intr;
-	struct eventfd_ctx      **user_msix_table;
+	struct eventfd_ctx    **user_msix_table;
 	struct mutex		user_msix_table_lock;
 
 	bool			offline;
@@ -82,7 +91,7 @@ struct xocl_dev	{
 	struct mutex			stat_lock;
 
 	struct xocl_mem_topology	topology;
-        struct xocl_layout		layout;
+        struct ip_layout	       *layout;
         struct xocl_debug_layout	debug_layout;
         struct xocl_connectivity	connectivity;
 
@@ -95,15 +104,15 @@ struct xocl_dev	{
 
 	void * __iomem bypass_bar_addr;
 	/*should be removed after mailbox is supported */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	struct percpu_ref ref;
+	struct completion cmp;
 #endif
 	/*should be removed after mailbox is supported */
 	u64			        unique_id_last_bitstream;
 	/* remove the previous id after we move to uuid */
 	xuid_t                          xclbin_id;
-	DECLARE_BITMAP                  (cu_exclusive_bitmap, MAX_CUS);
-	DECLARE_BITMAP                  (cu_shared_bitmap, MAX_CUS);
+	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
 	atomic_t                        needs_reset;
@@ -131,7 +140,7 @@ struct client_ctx {
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-	struct pid		*pid;
+	struct pid             *pid;
 };
 
 /* ioctl functions */
@@ -151,7 +160,7 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf);
+ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
@@ -162,5 +171,12 @@ void user_pci_reset_done(struct pci_dev *pdev);
 
 uint get_live_client_size(struct xocl_dev *xdev);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
+
+struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
+                                          uint64_t unaligned_size,
+                                          unsigned user_flags,
+                                          unsigned user_type);
+
+void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
 
 #endif

@@ -43,17 +43,100 @@ static ssize_t error_show(struct device *dev,
 static DEVICE_ATTR_RO(error);
 
 static ssize_t userbar_show(struct device *dev,
-        struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
-        struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-        return sprintf(buf, "%d\n", lro->core.priv.user_bar);
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", lro->core.priv.user_bar);
 }
 static DEVICE_ATTR_RO(userbar);
+
+static ssize_t version_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", XCLMGMT_DRIVER_VERSION_NUMBER);
+}
+static DEVICE_ATTR_RO(version);
+
+static ssize_t slot_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", PCI_SLOT(lro->core.pdev->devfn));
+}
+static DEVICE_ATTR_RO(slot);
+
+static ssize_t link_speed_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, false);
+	return sprintf(buf, "%d\n", speed);
+}
+static DEVICE_ATTR_RO(link_speed);
+
+static ssize_t link_width_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, false);
+	return sprintf(buf, "%d\n", width);
+}
+static DEVICE_ATTR_RO(link_width);
+
+static ssize_t link_speed_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, true);
+	return sprintf(buf, "%d\n", speed);
+}
+static DEVICE_ATTR_RO(link_speed_max);
+
+static ssize_t link_width_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	get_pcie_link_info(lro, &width, &speed, true);
+	return sprintf(buf, "%d\n", width);
+}
+static DEVICE_ATTR_RO(link_width_max);
+
+static ssize_t mig_calibration_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, GENERAL_STATUS_BASE));
+}
+static DEVICE_ATTR_RO(mig_calibration);
+
+static ssize_t xpr_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+    struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+    return sprintf(buf, "%d\n", XOCL_DSA_XPR_ON(lro));
+}
+static DEVICE_ATTR_RO(xpr);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
 	&dev_attr_userbar.attr,
+	&dev_attr_version.attr,
+	&dev_attr_slot.attr,
+	&dev_attr_link_speed.attr,
+	&dev_attr_link_width.attr,
+	&dev_attr_link_speed_max.attr,
+	&dev_attr_link_width_max.attr,
+	&dev_attr_mig_calibration.attr,
+	&dev_attr_xpr.attr,
 	NULL,
 };
 

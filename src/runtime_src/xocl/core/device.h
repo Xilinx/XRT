@@ -24,6 +24,8 @@
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
 
+#include <unistd.h>
+
 #include <cassert>
 
 namespace xrt { class device; }
@@ -40,7 +42,7 @@ public:
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
 
   /**
-   * Construct an xocl::device.  
+   * Construct an xocl::device.
    *
    * @param platform
    *   The platform associated with this device
@@ -98,7 +100,7 @@ public:
   /**
    * Delegating ctor (temp)
    */
-  device() 
+  device()
     : device(nullptr,nullptr)
   {}
 
@@ -121,13 +123,13 @@ public:
   }
 
   device*
-  get_parent_device() const 
+  get_parent_device() const
   {
     return m_parent.get();
   }
 
   const device*
-  get_root_device() const 
+  get_root_device() const
   {
     return m_parent.get() ? m_parent->get_root_device() : this;
   }
@@ -144,13 +146,13 @@ public:
   }
 
   platform*
-  get_platform() const 
+  get_platform() const
   {
     return m_platform;
   }
 
   std::string
-  get_name() const 
+  get_name() const
   {
     return m_xdevice ? m_xdevice->getName() : "fpga0";
   }
@@ -164,7 +166,7 @@ public:
   /**
    * Get the number of DDR memory banks on the current device
    *
-   * @return 
+   * @return
    *  Number of banks on device
    */
   unsigned int
@@ -189,7 +191,7 @@ public:
    * Get max clock frequency for this device.
    *
    * The max clock frequency is whatever frequency the device
-   * is currently set to.  It really isn't the max, since the 
+   * is currently set to.  It really isn't the max, since the
    * xclbin can reclock the device at a higher rate.
    *
    * @return
@@ -214,7 +216,7 @@ public:
   /**
    * Check if memory is aligned per device requirement.
    *
-   * Default is 4096 if no backing xrt device
+   * Default is page size if no backing xrt device
    *
    * @return
    *   true if ptr is aligned, false otherwise
@@ -222,16 +224,16 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : 4096;
+    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
     return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
   }
 
   /**
    * Import a buffer object from exporting device to this device
    *
-   * This function assumes correct XARE device connections, e.g. 
+   * This function assumes correct XARE device connections, e.g.
    * no mix of XARE and non-XARE. It is undefined behavior to call
-   * this function if a buffer object already exists for current 
+   * this function if a buffer object already exists for current
    * device and argument bo.
    *
    * @param src_device
@@ -249,16 +251,32 @@ public:
    *
    * This function allocates a buffer object for current device
    * and argument cl_mem object.  It is undefined behavior to call
-   * this function if a buffer object already exists for current 
+   * this function if a buffer object already exists for current
    * device and argument mem object.
    *
    * @param mem
-   *   The cl_mem object to allocate a buffer object from.  
+   *   The cl_mem object to allocate a buffer object from.
    * @return
    *   The buffer object that was created.
    */
   xrt::device::BufferObjectHandle
   allocate_buffer_object(memory* mem);
+
+  /**
+   * Allocate and return buffer object for argument cl_mem
+   *
+   * This function allocates the buffer in memory bank identified by
+   * argument memidx.
+   *
+   * @param mem
+   *   The cl_mem object to allocate a buffer object from.
+   * @param memidx
+   *   The memory bank to allocate buffer in.
+   * @return
+   *   The buffer object that was created.
+   */
+  xrt::device::BufferObjectHandle
+  allocate_buffer_object(memory* mem, uint64_t memidx);
 
   /**
    * Special interface to allocate a buffer object undconditionally
@@ -316,12 +334,33 @@ public:
 
   /**
    * Get the memory index of the bank for all CUs in this device
-   * 
+   *
    * @return Memory index for DDR bank if all CUs are uniquely connected
    *  to same DDR bank for all arguments, -1 otherwise
    */
   int
   get_cu_memidx() const;
+
+  /**
+   * Get the indices of memory banks which CU argument is connected to
+   * for specified kernel.
+   *
+   * The function returns a bitset with bits for each bank connected
+   * to the specified argument of all device CUs for given kernel.
+   *
+   * If device has multiple CUs for given kernel and memory bank indeces
+   * have no overlap, then the function returns 0.
+   *
+   * @param kernel
+   *   Kernel used to identify CUs.  The device may contain CUs for
+   *   multiple kernels.
+   * @param argidx
+   *   The index of the kernel argument.
+   * @return
+   *   Bitset with matching mem bank indices or none() if no matches.
+   */
+  memidx_bitmask_type
+  get_cu_memidx(kernel* kernel, int argidx) const;
 
   /**
    * Map buffer (clEnqueueMapBuffer) implementation
@@ -347,7 +386,7 @@ public:
    * Write data size bytes to buffer at specified offset
    *
    * @param buffer
-   *  Buffer to write to.  The underlying buffer object will 
+   *  Buffer to write to.  The underlying buffer object will
    *  receive the data.  The data will be synced to device if
    *  and only of the buffer is currently resident on the device
    * @param offset
@@ -427,6 +466,24 @@ public:
   void
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
+  //streaming APIs. TODO : document them.
+  int
+  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream);
+
+  int
+  close_stream(xrt::device::stream_handle stream);
+
+  ssize_t
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+
+  ssize_t
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+
+  xrt::device::stream_buf
+  alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
+
+  int
+  free_stream_buf(xrt::device::stream_buf_handle handle);
   /**
    * Read a device register at specified offset
    *
@@ -476,7 +533,7 @@ public:
 
   /**
    * Get current loaded program
-   * 
+   *
    * @return
    *   Program that is currently loaded or nullptr if none
    */
@@ -487,7 +544,7 @@ public:
   }
 
   /**
-   * @return 
+   * @return
    *  Current loaded xclbin
    */
   xclbin
@@ -500,9 +557,9 @@ public:
   is_active() const { return m_active!=nullptr; }
 
   /**
-   * Lock current device.   
+   * Lock current device.
    *
-   * If the device is already locked by this process, then the 
+   * If the device is already locked by this process, then the
    * lock count is incremented and returned.
    *
    * If the device is not currently locked, then this function
@@ -519,7 +576,7 @@ public:
   lock();
 
   /**
-   * Unlock current device.   
+   * Unlock current device.
    *
    * If the device is not currently locked by this process, then this
    * function is a no-op.
@@ -551,7 +608,7 @@ public:
   is_available() const { return m_locks>0; }
 
   /**
-   * Check if an address is currently mapped from memory 
+   * Check if an address is currently mapped from memory
    * maintained by this device.
    *
    * clEnqueueMapBuffer maps the host ptr of a buffer object
@@ -613,7 +670,7 @@ private:
   /**
    * Validate xclbin and set xrt device according to xclbin target
    */
-  void 
+  void
   set_xrt_device(const xocl::xclbin& xclbin);
 
   /**
@@ -628,7 +685,7 @@ private:
    * @param mem
    *  Memory object for which to allocated device side buffer
    * @param bank
-   *  DDR bank ID specifying which virtual bank to allocated buffer on 
+   *  DDR bank ID specifying which virtual bank to allocated buffer on
    * @return
    *  Buffer object handle for allocated memory
    */
@@ -646,7 +703,14 @@ private:
   xrt::device::BufferObjectHandle
   alloc(memory* mem);
 
+
 private:
+  struct mapinfo {
+    cl_map_flags flags = 0; // mapflags
+    size_t offset = 0;      // boh:hbuf offset
+    size_t size = 0;        // max size mapped
+  };
+
   unsigned int m_uid = 0;
   program* m_active = nullptr;   // program loaded on to this device
   xclbin m_xclbin;               // cache xclbin that came from program
@@ -654,7 +718,7 @@ private:
 
   platform* m_platform = nullptr;
   xrt::device* m_xdevice = nullptr;
-  
+
   xrt::device* m_hw_device = nullptr;
   xrt::device* m_swem_device = nullptr;
   xrt::device* m_hwem_device = nullptr;
@@ -668,7 +732,7 @@ private:
   // Track how a region of a buffer object is mapped.  There is
   // no tracking of matching map and unmap.  Last map of a region
   // is what is stored and first unmap of a region erases the content.
-  std::map<const void*,cl_map_flags> m_mapped;
+  std::map<const void*,mapinfo> m_mapped;
 
   // Track memory objects allocated on this device
   std::set<const memory*> m_memobjs;
@@ -683,5 +747,3 @@ private:
 } // xocl
 
 #endif
-
-

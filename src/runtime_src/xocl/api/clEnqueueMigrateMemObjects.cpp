@@ -21,11 +21,10 @@
 #include "xocl/core/event.h"
 
 #include "enqueue.h"
-#include "profile.h"
-#include "appdebug.h"
-
 #include "detail/event.h"
 #include "detail/memory.h"
+#include "plugin/xdp/appdebug.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -98,8 +97,8 @@ clEnqueueMigrateMemObjects(cl_command_queue        command_queue ,
     (uevent.get(),xocl::enqueue::action_migrate_memobjects,num_mem_objects,mem_objects,flags);
   xocl::profile::set_event_action
     (uevent.get(),xocl::profile::action_migrate,num_mem_objects,mem_objects,flags);
-  appdebug::set_event_action
-    (uevent.get(),appdebug::action_migrate,num_mem_objects,mem_objects,flags);
+  xocl::appdebug::set_event_action
+    (uevent.get(),xocl::appdebug::action_migrate,num_mem_objects,mem_objects,flags);
 
   uevent->queue();
   xocl::assign(event_parameter,uevent.get());

@@ -22,7 +22,7 @@
 #include "detail/platform.h"
 #include "detail/device.h"
 #include "api.h"
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace {
 
@@ -127,7 +127,8 @@ clGetDeviceIDs(cl_platform_id   platform,
   }
   catch (const xocl::error& ex) {
     // suppress messages if icd loader is asking for CPU or GPU
-    if (ex.get_code()!=CL_DEVICE_NOT_FOUND || (device_type!=CL_DEVICE_TYPE_CPU && device_type!=CL_DEVICE_TYPE_GPU))
+    if (ex.get_code()!=static_cast<unsigned int>(CL_DEVICE_NOT_FOUND) 
+        || (device_type!=CL_DEVICE_TYPE_CPU && device_type!=CL_DEVICE_TYPE_GPU))
       xocl::send_exception_message(ex.what());
     return ex.get_code();
   }

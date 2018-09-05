@@ -25,15 +25,19 @@
 
 #include "xrt/device/device.h"
 
+#include <unistd.h>
 #include <map>
 
 namespace xocl {
+
+class kernel;
 
 class memory : public refcount, public _cl_mem
 {
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
   using pipe_property_type = property_object<cl_pipe_attributes>;
@@ -42,11 +46,14 @@ protected:
   using bomap_value_type = bomap_type::value_type;
   using bomap_iterator_type = bomap_type::iterator;
 public:
+  using memory_callback_type = std::function<void (memory*)>;
+  using memory_callback_list = std::vector<memory_callback_type>;
+
   memory(context* cxt, cl_mem_flags flags);
   virtual ~memory();
 
   unsigned int
-  get_uid() const 
+  get_uid() const
   {
     return m_uid;
   }
@@ -64,7 +71,7 @@ public:
   }
 
   const memory_extension_flags_type
-  get_ext_flags() const 
+  get_ext_flags() const
   {
     return m_ext_flags;
   }
@@ -75,8 +82,20 @@ public:
     return m_ext_flags |= flags;
   }
 
+  void
+  add_ext_kernel(const kernel* kernel)
+  {
+    m_ext_kernel = kernel;
+  }
+
+  const kernel*
+  get_ext_kernel()
+  {
+    return m_ext_kernel;
+  }
+
   context*
-  get_context() const 
+  get_context() const
   {
     return m_context.get();
   }
@@ -90,8 +109,8 @@ public:
   // Derived classes accessors
   // May be structured differently when _xcl_mem is eliminated
   virtual size_t
-  get_size() const 
-  { 
+  get_size() const
+  {
     throw std::runtime_error("get_size on bad object");
   }
 
@@ -100,17 +119,17 @@ public:
    *
    * @param device
    *   Device to check allocation on
-   * @return bitmask identifying matching memory, or 0 if not 
+   * @return bitmask identifying matching memory, or 0 if not
    *   allocated on device.
    */
   virtual memidx_bitmask_type
   get_memidx(const device* d) const;
 
   /**
-   * Get memory index of DDR bank where this memory object is allocated 
+   * Get memory index of DDR bank where this memory object is allocated
    * if owning context has one device only.
    *
-   * @return bitmask identifying matching memory banks, or 0 if not 
+   * @return bitmask identifying matching memory banks, or 0 if not
    *   allocated on device or there are multiple devices in context.
    */
   virtual memidx_bitmask_type
@@ -126,7 +145,7 @@ public:
   try_get_address_bank(uint64_t& addr, std::string& bank) const;
 
   virtual void*
-  get_host_ptr() const 
+  get_host_ptr() const
   {
     throw std::runtime_error("get_host_ptr called on bad object");
   }
@@ -141,14 +160,14 @@ public:
   get_type() const = 0;
 
   virtual memory*
-  get_sub_buffer_parent() const 
-  { 
+  get_sub_buffer_parent() const
+  {
     //throw std::runtime_error("get_sub_buffer_parent called on bad object");
     return nullptr;
   }
 
   virtual size_t
-  get_sub_buffer_offset() const 
+  get_sub_buffer_offset() const
   {
     throw std::runtime_error("get_sub_buffer_offset called on bad object");
   }
@@ -160,36 +179,36 @@ public:
   }
 
   virtual size_t
-  get_image_data_offset() const 
+  get_image_data_offset() const
   {
     throw std::runtime_error("get_image_offset called on bad object");
   }
 
   virtual size_t
-  get_image_width() const 
+  get_image_width() const
   {
     throw std::runtime_error("get_image_width called on bad object");
   }
 
   virtual size_t
-  get_image_height() const 
+  get_image_height() const
   {
     throw std::runtime_error("get_image_height called on bad object");
   }
 
   virtual size_t
-  get_image_depth() const 
+  get_image_depth() const
   {
     throw std::runtime_error("get_image_depth called on bad object");
   }
 
   virtual size_t
-  get_image_bytes_per_pixel() const 
+  get_image_bytes_per_pixel() const
   {
     throw std::runtime_error("get_bytes_per_pixel called on bad object");
   }
 
-  virtual size_t 
+  virtual size_t
   get_image_row_pitch() const
   {
     throw std::runtime_error("get_image_row_pitch called on bad object");
@@ -202,26 +221,26 @@ public:
   }
 
   virtual void
-  set_image_row_pitch(size_t pitch) 
+  set_image_row_pitch(size_t pitch)
   {
     throw std::runtime_error("set_image_row_pitch called on bad object");
   }
 
   virtual void
-  set_image_slice_pitch(size_t pitch) 
+  set_image_slice_pitch(size_t pitch)
   {
     throw std::runtime_error("set_image_slice_pitch called on bad object");
   }
 
   virtual void*
-  get_pipe_host_ptr() const 
+  get_pipe_host_ptr() const
   {
     throw std::runtime_error("get_pipe_host_ptr called on bad object");
   }
 
   virtual const pipe_property_type
-  get_pipe_properties() const 
-  { 
+  get_pipe_properties() const
+  {
     throw std::runtime_error("get_pipe_properties called on bad object");
   }
 
@@ -282,6 +301,16 @@ public:
   get_buffer_object(device* device);
 
   /**
+   * Get or create the device buffer object for kernel and argument
+   *
+   * This function requires that the context in which the buffer is
+   * created has exactly one device.  CUs memory connection must
+   * match for all CUs associated with argument kernel.
+   */
+  buffer_object_handle
+  get_buffer_object(kernel* kernel, unsigned long argidx);
+
+  /**
    * Get the buffer object on argument device or error out if none
    * exists.
    *
@@ -290,9 +319,9 @@ public:
    * throws std::runtime_error.
    *
    * @param device
-   *   The device from which to get a buffer object.  
+   *   The device from which to get a buffer object.
    * @return
-   *   The buffer object associated with the device, or 
+   *   The buffer object associated with the device, or
    *   std::runtime_error if no buffer object exists.
    */
   buffer_object_handle
@@ -302,7 +331,7 @@ public:
    * Get the buffer object on argument device or nullptr if none
    *
    * This function return the buffer object that is associated
-   * argument device. If a buffer object does not exist the 
+   * argument device. If a buffer object does not exist the
    * function returns nullptr;
    *
    * @param device
@@ -388,7 +417,7 @@ public:
    * Clear resident devices
    */
   void
-  clear_resident() 
+  clear_resident()
   {
     std::lock_guard<std::mutex> lk(m_boh_mutex);
     m_resident.clear();
@@ -400,12 +429,29 @@ public:
   void
   add_dtor_notify(std::function<void()> fcn);
 
+  /**
+   * Register callback function for memory construction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void register_constructor_callbacks(memory_callback_type&& aCallback);
+
+  /**
+   * Register callback function for memory destruction
+   *
+   * Callbacks are called in arbitrary order
+   */
+  static void register_destructor_callbacks(memory_callback_type&& aCallback);
+
 private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
-  
-  memory_flags_type m_flags = 0;
-  memory_extension_flags_type m_ext_flags = 0;
+
+  memory_flags_type m_flags {0};
+
+  // cl_mem_ext_ptr_t data.  move to buffer derived class
+  memory_extension_flags_type m_ext_flags {0};
+  const kernel* m_ext_kernel {nullptr};
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.
@@ -423,7 +469,7 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = 4096;
+    const size_t alignment = getpagesize();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr
@@ -442,7 +488,7 @@ public:
   }
 
   virtual cl_mem_object_type
-  get_type() const 
+  get_type() const
   {
     return CL_MEM_OBJECT_BUFFER;
   }
@@ -476,7 +522,7 @@ class sub_buffer : public buffer
 public:
   sub_buffer(memory* parent,cl_mem_flags flags,size_t offset, size_t sz)
   : buffer(parent->get_context(),flags,sz,
-           parent->get_host_ptr() 
+           parent->get_host_ptr()
            ? static_cast<char*>(parent->get_host_ptr())+offset
            : nullptr)
   , m_parent(parent),m_offset(offset)
@@ -533,7 +579,7 @@ public:
   }
 private:
   void
-  make_resident(const device* device) 
+  make_resident(const device* device)
   {
     memory::get_buffer_object(const_cast<xocl::device*>(device));
     memory::set_resident(device);
@@ -554,24 +600,19 @@ class image : public buffer
 
 public:
   image(context* ctx,cl_mem_flags flags, size_t sz,
-	  size_t w, size_t h, size_t depth,
-	  size_t row_pitch, size_t slice_pitch,
-	  uint32_t bpp, cl_mem_object_type type,
-	  cl_image_format fmt, void* host_ptr)
+        size_t w, size_t h, size_t d,
+        size_t row_pitch, size_t slice_pitch,
+        uint32_t bpp, cl_mem_object_type type,
+        cl_image_format fmt, void* host_ptr)
     : buffer(ctx,flags,sz+sizeof(image_info), host_ptr)
+    , m_width(w), m_height(h), m_depth(d)
+    , m_row_pitch(row_pitch), m_slice_pitch(slice_pitch)
+    , m_bpp(bpp), m_image_type(type), m_format(fmt)
   {
-      m_width = w;
-      m_height = h;
-      m_depth = depth;
-      m_row_pitch = row_pitch;
-      m_slice_pitch = slice_pitch;
-      m_bpp = bpp;
-      m_image_type = type;
-      m_format = fmt;
   }
 
   virtual cl_mem_object_type
-  get_type() const 
+  get_type() const
   {
     return m_image_type;
   }
@@ -583,36 +624,36 @@ public:
   }
 
   virtual size_t
-  get_image_data_offset() const 
+  get_image_data_offset() const
   {
     return sizeof(image_info);
   }
 
   virtual size_t
-  get_image_width() const 
+  get_image_width() const
   {
     return m_width;
   }
 
   virtual size_t
-  get_image_height() const 
+  get_image_height() const
   {
     return m_height;
   }
 
   virtual size_t
-  get_image_depth() const 
+  get_image_depth() const
   {
     return m_depth;
   }
 
   virtual size_t
-  get_image_bytes_per_pixel() const 
+  get_image_bytes_per_pixel() const
   {
     return m_bpp;
   }
 
-  virtual size_t 
+  virtual size_t
   get_image_row_pitch() const
   {
     return m_row_pitch;
@@ -625,13 +666,13 @@ public:
   }
 
   virtual void
-  set_image_row_pitch(size_t pitch) 
+  set_image_row_pitch(size_t pitch)
   {
     m_row_pitch = pitch;
   }
 
   virtual void
-  set_image_slice_pitch(size_t pitch) 
+  set_image_slice_pitch(size_t pitch)
   {
     m_slice_pitch = pitch;
   }
@@ -688,7 +729,7 @@ public:
   }
 
   virtual cl_mem_object_type
-  get_type() const 
+  get_type() const
   {
     return CL_MEM_OBJECT_PIPE;
   }
@@ -727,5 +768,3 @@ private:
 } // xocl
 
 #endif
-
-

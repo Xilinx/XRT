@@ -20,7 +20,7 @@
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 
-#include "profile.h"
+#include "plugin/xdp/profile.h"
 
 namespace xocl {
 
@@ -120,6 +120,8 @@ clEnqueueMapImage(cl_command_queue   command_queue ,
                   cl_event *         event ,
                   cl_int *           errcode_ret )
 {
+  validOrError(command_queue,image,blocking_map,map_flags,origin,region,image_row_pitch,image_slice_pitch,
+               num_events_in_wait_list,event_wait_list,event,errcode_ret);
   throw error(CL_XILINX_UNIMPLEMENTED,"Not implemented");
 }
 

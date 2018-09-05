@@ -19,9 +19,9 @@
 #include "program.h"
 #include "compute_unit.h"
 
+#include "xocl/api/plugin/xdp/profile.h"
+#include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xocl/api/profile.h"
-
 #include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
@@ -134,14 +134,6 @@ is_sw_emulation()
   return swem;
 }
 
-static bool
-is_singleprocess_cpu_em()
-{
-  static auto ecpuem = std::getenv("ENHANCED_CPU_EM");
-  static bool single_process_cpu_em = ecpuem ? std::strcmp(ecpuem,"false")==0 : false;
-  return single_process_cpu_em;
-}
-
 static void
 init_scheduler(xocl::device* device)
 {
@@ -244,6 +236,74 @@ alloc(memory* mem)
   return boh;
 }
 
+int
+device::
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
+{
+
+  uint64_t route = (uint64_t)-1;
+  uint64_t flow = (uint64_t)-1;
+
+  if(ext && ext->param) {
+    auto kernel = xocl::xocl(ext->kernel);
+    auto& kernel_name = kernel->get_name_from_constructor();
+    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+    auto mems = m_xclbin.get_mem_topology();
+    
+    if (!mems)
+      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
+    if((memidx+1) > mems->m_count)
+      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
+
+    route = mems->m_mem_data[memidx].route_id;
+    flow = mems->m_mem_data[memidx].flow_id;
+    xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
+  }
+
+  if (flags & CL_STREAM_READ_ONLY)
+    return m_xdevice->createReadStream(flags, attrs, route, flow, stream);
+  else if (flags & CL_STREAM_WRITE_ONLY)
+    return m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
+  else
+    throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
+  return -1;
+}
+
+int
+device::
+close_stream(xrt::device::stream_handle stream)
+{
+  return m_xdevice->closeStream(stream);
+}
+
+ssize_t
+device::
+write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+{
+  return m_xdevice->writeStream(stream, ptr, offset, size, flags);
+}
+
+ssize_t
+device::
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+{
+  return m_xdevice->readStream(stream, ptr, offset, size, flags);
+}
+
+xrt::device::stream_buf
+device::
+alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle)
+{
+  return m_xdevice->allocStreamBuf(size,handle);
+}
+
+int
+device::
+free_stream_buf(xrt::device::stream_buf_handle handle)
+{
+  return m_xdevice->freeStreamBuf(handle);
+}
+
 device::
 device(platform* pltf, xrt::device* xdevice)
   : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
@@ -276,10 +336,6 @@ device(platform* pltf, xrt::device* hw_device, xrt::device* swem_device, xrt::de
       log.append(".hw_em");
     open_or_error(m_hwem_device,log);
   }
-
-  // Hack to accomodate missing sw_em device info.
-  if (m_hwem_device && m_swem_device && is_singleprocess_cpu_em())
-    m_swem_device->copyDeviceInfo(m_hwem_device);
 
   if (m_hw_device)
     open_or_error(m_hw_device,hallog);
@@ -328,15 +384,6 @@ device(device* parent, const compute_unit_vector_type& cus)
 
   // Current program tracks this subdevice on which it is implicitly loaded.
   m_active->add_device(this);
-
-#if 0  // No need to explicit add in subdevice,  m_computeunits can copy
-       // parent cus, since cus are stored as shared ptrs a reference is
-       // retained
-  // Add CUs based on incoming list.  This controls the CUs that
-  // an NDRange event can use during execution.
-  for (auto& cu : cus)
-    add_cu(xrt::make_unique<compute_unit>(cu->get_symbol(),cu->get_name(),cu->get_offset(),cu->get_size(),this));
-#endif
 }
 
 device::
@@ -444,20 +491,36 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  //auto flag = (mem->get_ext_flags() >> 8) & 0xff;
-  auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc()) {
-    auto bank = myctz(flag);
-    auto memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+  if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
+	  && xdevice->hasBankAlloc())
+  {
+    //Extension flags were passed. Get the extension flags.
+    //First 8 bits will indicate legacy/mem_topology etc.
+    //Rest 24 bits directly indexes into mem topology section OR.
+    //have legacy one-hot encoding.
+    auto flag = mem->get_ext_flags();
+    int32_t memidx = 0;
+    if (auto kernel = mem->get_ext_kernel()) {
+      //param<==>kernel; flag<==>arg_index
+      flag = flag & 0xffffff;
+      auto& kernel_name = kernel->get_name_from_constructor();
+      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag);
+    }
+    else if (flag & XCL_MEM_TOPOLOGY) {
+      memidx = flag & 0xffffff;
+    }
+    else {
+      flag = flag & 0xffffff;
+      auto bank = myctz(flag);
+      memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+      if (memidx==-1){
+        memidx = bank;
+      }
+    }
 
-    // HBM support does not use bank tag, host code must use proper enum value
-    if(memidx==-1)
-      memidx = bank;
-
-    // Determine the bank number for the buffers
     try {
       auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",flag,")\n");
+      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
       return boh;
     }
     catch (const std::bad_alloc&) {
@@ -481,6 +544,45 @@ allocate_buffer_object(memory* mem)
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
   return alloc(mem);
+}
+
+xrt::device::BufferObjectHandle
+device::
+allocate_buffer_object(memory* mem, uint64_t memidx)
+{
+  if (mem->get_flags() & CL_MEM_REGISTER_MAP)
+    throw std::runtime_error("Cannot allocate register map buffer on bank");
+
+  auto xdevice = get_xrt_device();
+
+  // sub buffer
+  if (auto parent = mem->get_sub_buffer_parent()) {
+    auto boh = parent->get_buffer_object(this);
+    auto pmemidx = get_boh_memidx(boh);
+    if (pmemidx.test(memidx)) {
+      auto offset = mem->get_sub_buffer_offset();
+      auto size = mem->get_size();
+      return xdevice->alloc(boh,size,offset);
+    }
+    throw std::runtime_error("parent sub-buffer memory bank mismatch");
+  }
+
+  auto flag = (mem->get_ext_flags()) & 0xffffff;
+  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation()) {
+    auto bank = myctz(flag);
+    auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+    if (midx==-1)
+      midx=bank;
+    if (static_cast<uint64_t>(midx)!=memidx)
+      throw std::runtime_error("implicitly request memidx("
+                               +std::to_string(memidx)
+                               +") does not match explicit memidx("
+                               +std::to_string(midx)+")");
+  }
+
+  auto boh = alloc(mem,memidx);
+  XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
+  return boh;
 }
 
 void
@@ -518,7 +620,10 @@ device::
 get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
 {
   auto addr = get_boh_addr(boh);
-  return m_xclbin.mem_address_to_memidx(addr);
+  auto bset = m_xclbin.mem_address_to_memidx(addr);
+  if (bset.none() && is_sw_emulation())
+    bset.set(0); // default bank in sw_emu
+  return bset;
 }
 
 std::string
@@ -540,22 +645,46 @@ get_cu_memidx() const
   if (m_cu_memidx == -2) {
     m_cu_memidx = -1;
 
-    // compute intersection of all CU memory masks
-    memidx_bitmask_type mask;
-    mask.set();
-    for (auto& cu : get_cu_range())
-      mask &= cu->get_memidx_intersect();
+    if (get_num_cus()) {
+      // compute intersection of all CU memory masks
+      memidx_bitmask_type mask;
+      mask.set();
+      for (auto& cu : get_cu_range())
+        mask &= cu->get_memidx_intersect();
 
-    // select first common memory bank index if any
-    for (size_t idx=0; idx<mask.size(); ++idx) {
-      if (mask.test(idx)) {
-        m_cu_memidx = idx;
-        break;
+      // select first common memory bank index if any
+      for (size_t idx=0; idx<mask.size(); ++idx) {
+        if (mask.test(idx)) {
+          m_cu_memidx = idx;
+          break;
+        }
       }
     }
   }
-
   return m_cu_memidx;
+}
+
+device::memidx_bitmask_type
+device::
+get_cu_memidx(kernel* kernel, int argidx) const
+{
+  bool set = false;
+  memidx_bitmask_type memidx;
+  memidx.set();
+  auto sid = kernel->get_symbol_uid();
+
+  // iterate CUs
+  for (auto& cu : get_cus()) {
+    if (cu->get_symbol_uid()!=sid)
+      continue;
+    memidx &= cu->get_memidx(argidx);
+    set = true;
+  }
+
+  if (!set)
+    memidx.reset();
+
+  return memidx;
 }
 
 xrt::device::BufferObjectHandle
@@ -583,7 +712,7 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   // is specified in which case host will discard current content
   if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
     boh = buffer->get_buffer_object_or_error(this);
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
 
   if (!boh)
@@ -595,8 +724,11 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
     auto hbuf = xdevice->map(boh);
     xdevice->unmap(boh);
     assert(ubuf!=hbuf);
-    if (ubuf)
-      memcpy(ubuf,hbuf,buffer->get_size());
+    if (ubuf) {
+      auto dst = static_cast<char*>(ubuf) + offset;
+      auto src = static_cast<char*>(hbuf) + offset;
+      memcpy(dst,src,size);
+    }
     else
       ubuf = hbuf;
   }
@@ -607,10 +739,15 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   // If this buffer is being mapped for writing, then a following
   // unmap will have to sync the data to device, so record this.  We
   // will not enforce that map is followed by unmap, so two maps of
-  // same buffer for write without corresponding unmaps is not an
-  // and will simply override previous map value.
+  // same buffer for write without corresponding unmaps will simply
+  // override previous map value.  We do however keep track of the
+  // map with largest size to subsume small maps into the largest.
+  // That way largest chunk is synced to device if necessary.
   std::lock_guard<std::mutex> lk(m_mutex);
-  m_mapped[result] = map_flags;
+  auto& mapinfo = m_mapped[result];
+  mapinfo.flags = map_flags;
+  mapinfo.offset = offset;
+  mapinfo.size = std::max(mapinfo.size,size);
   return result;
 }
 
@@ -618,14 +755,18 @@ void
 device::
 unmap_buffer(memory* buffer, void* mapped_ptr)
 {
-  cl_map_flags flags = 0;
+  cl_map_flags flags = 0; // flags of mapped_ptr
+  size_t offset = 0;      // offset of mapped_ptr wrt BO
+  size_t size = 0;        // size of mapped_ptr
   {
     // There is no checking that map/unmap match.  Only one active
     // map of a mapped_ptr is maintained and is erased on first unmap
     std::lock_guard<std::mutex> lk(m_mutex);
     auto itr = m_mapped.find(mapped_ptr);
     if (itr!=m_mapped.end()) {
-      flags = (*itr).second;
+      flags = (*itr).second.flags;
+      offset = (*itr).second.offset;
+      size = (*itr).second.size;
       m_mapped.erase(itr);
     }
   }
@@ -635,10 +776,10 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
 
   // Sync data to boh if write flags, and sync to device if resident
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-    if (auto ubuf = buffer->get_host_ptr())
-      xdevice->write(boh,ubuf,buffer->get_size(),0,false);
+    if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
+      xdevice->write(boh,ubuf+offset,size,offset,false);
     if (buffer->is_resident(this))
-      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::HOST2DEVICE,false);
+      xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
 
@@ -833,7 +974,27 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-  get_xrt_device()->write_register(offset,ptr,size);
+
+  auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
+  auto packet = cmd->get_packet();
+  auto idx = packet.size() + 1; // past header is start of payload
+  auto addr = offset;
+  auto value = reinterpret_cast<const uint32_t*>(ptr);
+
+  while (size>0) {
+    packet[idx++] = addr;
+    packet[idx++] = *value;
+    ++value;
+    addr+=4;
+    size-=4;
+  }
+
+  auto ecmd = xrt::command_cast<ert_packet*>(cmd);
+  ecmd->type = ERT_KDS_LOCAL;
+  ecmd->count = packet.size() - 1; // substract header
+
+  xrt::scheduler::schedule(cmd);
+  cmd->wait();
 }
 
 void
@@ -850,8 +1011,15 @@ load_program(program* program)
 
   m_xclbin = program->get_xclbin(this);
   auto binary = m_xclbin.binary(); // ::xclbin::binary
-  auto binary_data = binary.binary_data();
-  auto binary_size = binary_data.second - binary_data.first;
+
+  // Kernel debug is enabled based on if there is debug_data in the
+  // binary it does not have sdaccel.ini attribute. If there is
+  // debug_data then make sure xdp is loaded
+  if (binary.debug_data().first)
+    xrt::hal::load_xdp();
+
+  xocl::debug::reset(m_xclbin);
+  xocl::profile::reset(m_xclbin);
 
   // validatate target binary for target device and set the xrt device
   // according to target binary this is likely temp code that is
@@ -859,6 +1027,8 @@ load_program(program* program)
   // up front
   set_xrt_device(m_xclbin);
 
+  auto binary_data = binary.binary_data();
+  auto binary_size = binary_data.second - binary_data.first;
   if (binary_size == 0)
     return;
 
@@ -890,88 +1060,38 @@ load_program(program* program)
       idx=2; // system clocks start at idx==2
       auto sclocks = m_xclbin.system_clocks();
       if (sclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
       for (auto& clock : sclocks)
-	target_freqs[idx++] = clock.frequency;
-
-//      for(int i = 0; i < 4; ++i) {
-//	std::cout << "Original frequency calc: " << i  << "\t" << target_freqs[i] << std::endl;
-//      }
+        target_freqs[idx++] = clock.frequency;
 
       auto rv = xdevice->reClock2(0,target_freqs);
-
       if (rv.valid() && rv.get())
-	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
+        throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
     }
   }
-
-
-//  // reclocking - new
-//  if (xrt::config::get_frequency_scaling())
-//  {
-//    unsigned short idx = 0;
-//    unsigned short target_freqs[4] = {0};
-//    const clock_freq_topology* freqs = m_xclbin.get_clk_freq_topology();
-//    if (freqs)
-//    {
-//      int16_t count = 0;
-//      std::vector<const clock_freq*> data_clks;
-//      std::vector<const clock_freq*> kernel_clks;
-//      std::vector<const clock_freq*> system_clks;
-//
-//      while (count < freqs->m_count)
-//      {
-//	  const clock_freq* freq = &(freqs->m_clock_freq[count++]);
-//	  if(freq->m_type == CT_DATA)
-//	    data_clks.emplace_back(freq);
-//	  else if(freq->m_type == CT_KERNEL)
-//	    kernel_clks.emplace_back(freq);
-//	  else if(freq->m_type == CT_SYSTEM)
-//	    system_clks.emplace_back(freq);
-//	  else
-//	    throw xocl::error(CL_INVALID_PROGRAM,"Unknown clock type in xclbin");
-//      }
-//
-//      if(data_clks.size() !=1)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Data clocks not found in xclbin");
-//      if(kernel_clks.size() !=1)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Kernel clocks not found in xclbin");
-//      if(system_clks.size() > 2)
-//        throw xocl::error(CL_INVALID_PROGRAM,"Too many system clocks");
-//
-//
-//      target_freqs[0] = data_clks.at(0)->m_freq_Mhz;
-//      target_freqs[1] = kernel_clks.at(0)->m_freq_Mhz;
-//      idx = 2;
-//      for(auto & sys_clks: system_clks) {
-//	target_freqs[idx] = sys_clks->m_freq_Mhz;
-//	idx++;
-//      }
-//
-//      std::string device_name = get_unique_name();
-//      profile::set_kernel_clock_freq(device_name, target_freqs[0]);
-//
-////      for(int i = 0; i < 4; ++i) {
-////	  std::cout << "New section based frequency: " << i << "\t" << target_freqs[i] << std::endl;
-////      }
-//
-//      auto rv = xdevice->reClock2(0,target_freqs);
-//
-//      if (rv.valid() && rv.get())
-//	  throw xocl::error(CL_INVALID_PROGRAM,"Reclocking failed");
-//    }
-//  }
 
 
   // programmming
   if (xrt::config::get_xclbin_programing()) {
     auto header = reinterpret_cast<const xclBin *>(binary_data.first);
     auto xbrv = xdevice->loadXclBin(header);
-    if (xbrv.valid() && xbrv.get())
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+    if (xbrv.valid() && xbrv.get()){
+      if(xbrv.get() == -EACCES)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
+      else if (xbrv.get() == -EPERM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
+      else if (xbrv.get() == -EBUSY)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
+      else if (xbrv.get() == -ETIMEDOUT)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Timeout, see dmesg for details");
+      else if (xbrv.get() == -ENOMEM)
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Out of Memory, see dmesg for details");
+      else
+        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
+    }
 
     if (!xbrv.valid()) {
-      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin");
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
     }
   }
 
@@ -981,11 +1101,9 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   m_computeunits.clear();
   m_cu_memidx = -2;
-  auto cu_base_offset = m_xclbin.cu_base_offset();
-  auto cu_size = m_xclbin.cu_size();
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,cu_base_offset,cu_size,this));
+      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,this));
     }
   }
 
