@@ -1463,9 +1463,13 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	uint64_t copy_buffer_size = 0;
 	struct axlf* copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	bool need_download;
 	struct ip_layout* layout = NULL;
-	int i = 0;
+	int i = 0, j = 0;
+	uint32_t dynamic_subdev_nums = core->dyna_subdevs_num;
+	struct xocl_subdev_info* subdev_info = NULL;
+	struct resource *res = NULL;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1610,14 +1614,65 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (err)
 		goto done;
 
+	/* Destroy all dynamically add sub-devices*/
+	for(i=0;i<dynamic_subdev_nums;++i){
+		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[i]);
+		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[i]);
+		core->dyna_subdevs_id[i] = INVALID_SUBDEVICE;
+		core->dyna_subdevs_num--;
+	}
+
+	subdev_info = kzalloc(sizeof(struct xocl_subdev_info),GFP_KERNEL);
+	if(subdev_info == NULL){
+		err = -ENOMEM;
+		goto done;
+	}
+
+	/* restrict any dynamically added sub-device and has up to 4 base address,
+	 * and can only appear once. Has pre-defined length 
+	 *  Ex:    "ip_data": {
+	 *         "m_type": "IP_DNASC",
+	 *         "properties": "0x0",
+	 *         "m_base_address": "0x1100000", <--  base address
+	 *         "m_name": "slr0\/dna_self_check_0"
+	 */
+	res = kzalloc(sizeof(struct resource), GFP_KERNEL);
+	if(res == NULL){
+		err = -ENOMEM;
+		goto done;
+	}
+
+	/* Add sub device dynamically*/
 	for(i=0;i<layout->m_count;++i){
+		if(layout->m_ip_data[i].m_type!=IP_KERNEL){
+			
+			memset(subdev_info, 0, sizeof(struct xocl_subdev_info));
+			memset(res, 0, sizeof(struct resource)*NUMS_OF_DYNA_IP_ADDR);
+
+			err = xocl_subdev_get_devinfo(subdev_info, res, &layout->m_ip_data[i]);
+			if (err) {
+				ICAP_ERR(icap, "failed to find IP type: %d ", layout->m_ip_data[i].m_type);
+				goto add_subdev_failed;
+			}
+			ICAP_INFO(icap, "%s, num_res: %d", subdev_info->name, subdev_info->num_res);
+
+			for(j=0;j<subdev_info->num_res;++j)
+				ICAP_INFO(icap,	"  start: 0x%llx, end: 0x%llx", subdev_info->res[j].start, subdev_info->res[j].end);
+
+			err = xocl_subdev_create_one(xdev, subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "failed to create subdev %s ", subdev_info->name);
+				goto add_subdev_failed;
+			}
+			core->dyna_subdevs_id[core->dyna_subdevs_num++] = subdev_info->id;
+		}
+
 		if(layout->m_ip_data[i].m_type==IP_DNASC){
-			ICAP_INFO(icap, "%s, %llx", layout->m_ip_data[i].m_name, layout->m_ip_data[i].m_base_address);
-			ICAP_INFO(icap, "Capability %08x", xocl_dna_capability(xdev));
+			ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
 			err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
 			if (err){
 				ICAP_ERR(icap, "DNA inside xclbin is invalid");
-				goto done;
+				goto dna_check_failed;
 			}
 		}
 	}
@@ -1626,12 +1681,12 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	buffer += secondaryFirmwareOffset;
 	err = icap_setup_clear_bitstream(icap, buffer, secondaryFirmwareLength);
 	if (err)
-		goto done;
+		goto dna_check_failed;
 
 	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
 		err = calibrate_mig(icap);
 	if (err)
-		goto done;
+		goto dna_check_failed;
 
 	/* Remember "this" bitstream, so avoid redownload the next time. */
 	icap->icap_bitstream_id = bin_obj.m_uniqueId;
@@ -1642,7 +1697,19 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		memcpy(&icap->icap_bitstream_uuid,
 			&bin_obj.m_header.m_timeStamp, 8);
 	}
+	goto done;
+
+dna_check_failed:	
+add_subdev_failed:
+	for(;i>=0;--i){
+		ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[i]);
+		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[i]);
+		core->dyna_subdevs_id[i] = INVALID_SUBDEVICE;
+		core->dyna_subdevs_num--;
+	}
 done:
+	kfree(res);
+  kfree(subdev_info);
 	vfree(layout);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	mutex_unlock(&icap->icap_lock);
