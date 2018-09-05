@@ -93,8 +93,6 @@ typedef struct cl_mem_ext_ptr_t {
       cl_kernel kernel;
     };
   };
-  cl_mem_ext_ptr_t()
-  : flags(0),obj(0),param(0) {}
 } cl_mem_ext_ptr_t;
 
 /* Make clCreateBuffer to interpret host_ptr argument as cl_mem_ext_ptr_t */
