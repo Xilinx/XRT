@@ -43,12 +43,19 @@
 
 class Section {
  public:
+  enum FormatType{
+    FT_RAW,
+    FT_JSON
+  };
+
+ public:
 
  public:
   virtual ~Section();
 
  public:
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind);
+  static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
 
  public:
   enum axlf_section_kind getSectionKind() const;
@@ -58,15 +65,17 @@ class Section {
   // Xclbin Binary helper methods - child classes can override them if they choose
   virtual void readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader);
   virtual void readXclBinBinary(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
+  void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
 
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream);
+  void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType);
 
   void addMirrorPayload(boost::property_tree::ptree& _pt) const;
 
  protected:
   // Child class option to create an JSON metadata
-  virtual void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const;
+  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
 
  protected:
