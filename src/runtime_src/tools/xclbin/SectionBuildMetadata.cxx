@@ -16,6 +16,8 @@
 
 #include "SectionBuildMetadata.h"
 
+#include <boost/property_tree/json_parser.hpp>
+
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
@@ -29,6 +31,34 @@ SectionBuildMetadata::SectionBuildMetadata() {
 SectionBuildMetadata::~SectionBuildMetadata() {
   // Empty
 }
+
+void 
+SectionBuildMetadata::marshalToJSON(char* _pDataSection, 
+                                    unsigned int _sectionSize, 
+                                    boost::property_tree::ptree& _ptree) const
+{
+    XUtil::TRACE("");
+    XUtil::TRACE("Extracting: BUILD_METADATA");
+
+    std::unique_ptr<unsigned char> memBuffer(new unsigned char[_sectionSize + 1]);
+    memcpy((char *) memBuffer.get(), _pDataSection, _sectionSize);
+    memBuffer.get()[_sectionSize] = '\0';
+
+    std::stringstream ss((char*) memBuffer.get());
+
+    // TODO: Catch the exception (if any) from this call and produce a nice message
+    XUtil::TRACE_BUF("BUILD_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
+    boost::property_tree::read_json(ss, _ptree);
+}
+
+void 
+SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection, 
+                                      std::ostringstream& _buf) const
+{
+   XUtil::TRACE("BUILD_METADATA");
+   boost::property_tree::write_json(_buf, _ptSection);
+}
+
 
 
 
