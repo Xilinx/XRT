@@ -643,6 +643,15 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	if (rv)
 		goto unmap_bars;
 
+	/* program STM port map */
+	if (xdev->stm_en) {
+		u32 v = readl(xdev->stm_regs + STM_REG_BASE +
+			      STM_REG_H2C_MODE);
+		v &= 0x0000FFFF;
+		v |= (STM_PORT_MAP << 16);
+		writel(v, xdev->stm_regs + STM_REG_BASE + STM_REG_H2C_MODE);
+	}
+
 #ifndef __QDMA_VF__
 	/* get the device attributes */
 	qdma_device_attributes_get(xdev);

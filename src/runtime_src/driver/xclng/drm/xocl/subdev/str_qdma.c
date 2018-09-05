@@ -186,7 +186,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	struct qdma_wr wr;
 	long	ret = 0;
 
-	xocl_info(&sdev->pdev->dev, "Read / Write Queue %ld",
+	xocl_debug(&sdev->pdev->dev, "Read / Write Queue %ld",
 		queue->queue.qhdl);
 
 	if (sz == 0)
@@ -495,18 +495,19 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
 
-	qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
-	qconf.pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) & STREAM_SLRID_MASK;
-	qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
-
+	if (!req.write) {
+		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
+		qconf.c2h = 1;
+	} else {
+		qconf.bypass = 1;
+		qconf.pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
+			STREAM_SLRID_MASK;
+		qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
+		qconf.pipe_gl_max = 1;
+	}
 	xocl_info(&sdev->pdev->dev, "Creating queue with tdest %d, flow %d, "
 		"slr %d", qconf.pipe_tdest, qconf.pipe_flow_id,
 		qconf.pipe_slr_id);
-
-	if (!req.write)
-		qconf.c2h = 1;
-	else
-		qconf.bypass = 1;
 
 	ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
 		&queue->queue, sizeof (struct stream_async_arg));
