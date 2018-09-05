@@ -397,7 +397,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 		}
 
 		for (i = 0; i < ddr_count; i++) {
-			xdev->topology.m_data[i].m_used = 1;
+			xdev->topology->m_mem_data[i].m_used = 1;
 			drm_mm_init(&xdev->mm[i], segment, ddr_size);
 			segment += ddr_size;
 		}
@@ -479,15 +479,17 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
 
 int xocl_check_topology(struct xocl_dev *xdev)
 {
-        struct xocl_mem_topology    *topology;
+	struct mem_topology    *topology;
         u16     i;
         int     err = 0;
 
-        topology = &xdev->topology;
+	topology = xdev->topology;
+	if (topology == NULL)
+		return 0;
 
-        for (i= 0; i < topology->bank_count; i++) {
-                if (topology->m_data[i].m_used) {
-                        if (xdev->mm_usage_stat[i].bo_count !=0 ) {
+	for (i = 0; i < topology->m_count; i++) {
+		if (topology->m_mem_data[i].m_used) {
+			if (xdev->mm_usage_stat[i].bo_count != 0) {
                                 err = -EPERM;
                                 userpf_err(xdev, "The ddr %d has "
                                         "pre-existing buffer allocations, "
@@ -501,29 +503,30 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
-	struct xocl_mem_topology *topology;
+	struct mem_topology *topology;
 	u16 i, ddr;
 
-	topology = &xdev->topology;
+	topology = xdev->topology;
 
-	ddr = topology->bank_count;
-	for (i = 0; i < ddr; i++) {
-		if(topology->m_data[i].m_used) {
-			userpf_info(xdev, "Taking down DDR : %d",
-				ddr);
-			drm_mm_takedown(&xdev->mm[i]);
+	if (topology != NULL) {
+		ddr = topology->m_count;
+		for (i = 0; i < ddr; i++) {
+			if (topology->m_mem_data[i].m_used) {
+				userpf_info(xdev, "Taking down DDR : %d",
+						ddr);
+				drm_mm_takedown(&xdev->mm[i]);
+			}
 		}
 	}
 
-	vfree(topology->m_data);
-	vfree(topology->topology);
-	memset(topology, 0, sizeof(struct xocl_mem_topology));
-	vfree(xdev->connectivity.connections);
-	memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
+	vfree(xdev->topology);
+	xdev->topology = NULL;
+	vfree(xdev->connectivity);
+	xdev->connectivity = NULL;
 	vfree(xdev->layout);
 	xdev->layout = NULL;
-	vfree(xdev->debug_layout.layout);
-	memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
+	vfree(xdev->debug_layout);
+	xdev->debug_layout = NULL;
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
@@ -533,7 +536,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	ssize_t size = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
-	struct mem_topology *topo = xdev->topology.topology;
+	struct mem_topology *topo = xdev->topology;
 	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);

@@ -276,21 +276,93 @@ out:
 	return ret;
 }
 
+char *kind_to_string(enum axlf_section_kind kind)
+{
+	switch (kind) {
+	case 0:  return "BITSTREAM";
+	case 1:  return "CLEARING_BITSTREAM";
+	case 2:  return "EMBEDDED_METADATA";
+	case 3:  return "FIRMWARE";
+	case 4:  return "DEBUG_DATA";
+	case 5:  return "SCHED_FIRMWARE";
+	case 6:  return "MEM_TOPOLOGY";
+	case 7:  return "CONNECTIVITY";
+	case 8:  return "IP_LAYOUT";
+	case 9:  return "DEBUG_IP_LAYOUT";
+	case 10: return "DESIGN_CHECK_POINT";
+	case 11: return "CLOCK_FREQ_TOPOLOGY";
+	default: return "UNKNOWN";
+	}
+}
+
 /* should be obsoleted after mailbox implememted */
-static const struct axlf_section_header* get_axlf_section(const struct axlf* top, enum axlf_section_kind kind)
+static const struct axlf_section_header *
+get_axlf_section(const struct axlf *top, enum axlf_section_kind kind)
 {
 	int i = 0;
-	printk(KERN_INFO "Trying to find section header for axlf section %d", kind);
-	for(i = 0; i < top->m_header.m_numSections; i++)
-	{
-		printk(KERN_INFO "Section is %d",top->m_sections[i].m_sectionKind);
-		if(top->m_sections[i].m_sectionKind == kind) {
-			printk(KERN_INFO "Found section header for axlf");
+
+	DRM_INFO("Finding %s section header", kind_to_string(kind));
+	for (i = 0; i < top->m_header.m_numSections; i++) {
+		if (top->m_sections[i].m_sectionKind == kind)
 			return &top->m_sections[i];
-		}
 	}
-	printk(KERN_INFO "Did NOT find section header for axlf section %d", kind);
+	DRM_INFO("Did not find AXLF section %s", kind_to_string(kind));
 	return NULL;
+}
+
+int
+xocl_check_section(const struct axlf_section_header *header, uint64_t len,
+		enum axlf_section_kind kind)
+{
+	uint64_t offset;
+	uint64_t size;
+
+	DRM_INFO("Section %s details:", kind_to_string(kind));
+	DRM_INFO("  offset = 0x%llx", header->m_sectionOffset);
+	DRM_INFO("  size = 0x%llx", header->m_sectionSize);
+
+	offset = header->m_sectionOffset;
+	size = header->m_sectionSize;
+	if (offset + size <= len)
+		return 0;
+
+	DRM_INFO("Section %s extends beyond xclbin boundary 0x%llx\n",
+			kind_to_string(kind), len);
+	return -EINVAL;
+}
+
+/* Return value: Negative for error, or the size in bytes has been copied */
+int
+xocl_read_sect(enum axlf_section_kind kind, void *sect,
+		struct axlf *axlf_full, char __user *xclbin_ptr)
+{
+	const struct axlf_section_header *memHeader;
+	uint64_t xclbin_len;
+	uint64_t offset;
+	uint64_t size;
+	void **sect_tmp = (void *)sect;
+	int err = 0;
+
+	memHeader = get_axlf_section(axlf_full, kind);
+	if (!memHeader)
+		return 0;
+
+	xclbin_len = axlf_full->m_header.m_length;
+	err = xocl_check_section(memHeader, xclbin_len, kind);
+	if (err)
+		return err;
+
+	offset = memHeader->m_sectionOffset;
+	size = memHeader->m_sectionSize;
+	*sect_tmp = vmalloc(size);
+	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
+	if (err) {
+		vfree(*sect_tmp);
+		sect = NULL;
+		return -EINVAL;
+	}
+
+	return size;
 }
 
 static uint live_client_size(struct xocl_dev *xdev)
@@ -309,74 +381,81 @@ static uint live_client_size(struct xocl_dev *xdev)
 	return count;
 }
 
-static int xocl_read_ip_layout(struct xocl_dev *xdev, const struct axlf* copy_buffer, char __user *buffer)
+static int xocl_init_mm(struct xocl_dev *xdev)
 {
-	int err = 0;
-	const struct axlf_section_header *memHeader = get_axlf_section(copy_buffer, IP_LAYOUT);
-	printk(KERN_INFO "Finding IP_LAYOUT section\n");
+	size_t length = 0;
+	size_t mm_size = 0, mm_stat_size = 0;
+	size_t ddr_bank_size;
+	struct mem_topology *topo;
+	struct mem_data *mem_data;
+	struct device *dev = xdev->ddev->dev;
+	int i = 0;
 
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find IP_LAYOUT section.\n");
-		return 0;
+	topo = xdev->topology;
+	length = topo->m_count * sizeof(struct mem_data);
+	mm_size = topo->m_count * sizeof(struct drm_mm);
+
+	DRM_INFO("XOCL: Topology count = %d, data_length = %ld\n",
+			topo->m_count, length);
+
+	xdev->mm = devm_kzalloc(dev, mm_size, GFP_KERNEL);
+	xdev->mm_usage_stat = devm_kzalloc(dev, mm_stat_size, GFP_KERNEL);
+	if (!xdev->mm || !xdev->mm_usage_stat)
+		return -ENOMEM;
+
+	for (i = 0; i < topo->m_count; i++) {
+		mem_data = &topo->m_mem_data[i];
+		ddr_bank_size = mem_data->m_size * 1024;
+
+		DRM_INFO("DDR bank%d Info", i);
+		DRM_INFO("  Base Address:0x%llx\n", mem_data->m_base_address);
+		DRM_INFO("  Size:0x%llx", ddr_bank_size);
+		DRM_INFO("  Type:%d", mem_data->m_type);
+		DRM_INFO("  Used:%d", mem_data->m_used);
 	}
 
-	printk(KERN_INFO "%s XOCL: IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, copy_buffer->m_header.m_length);
+	/* Initialize the used banks and their sizes */
+	/* Currently only fixed sizes are supported */
+	for (i = 0; i < topo->m_count; i++) {
+		mem_data = &topo->m_mem_data[i];
+		if (mem_data->m_used) {
+			ddr_bank_size = mem_data->m_size * 1024;
+			DRM_INFO("XOCL: Allocating DDR bank%d", i);
+			DRM_INFO("  base_addr:0x%llx, size:0x%llx\n",
+					mem_data->m_base_address,
+					ddr_bank_size);
+			drm_mm_init(&xdev->mm[i], mem_data->m_base_address,
+					ddr_bank_size);
 
-	if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > copy_buffer->m_header.m_length) {
-		printk(KERN_INFO "%s XOCL: IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, copy_buffer->m_header.m_length);
-		err = -EINVAL;
-		goto error_out;
-	}
-	printk(KERN_INFO "XOCL: Marker 5.1\n");
-	buffer += memHeader->m_sectionOffset;
-	xdev->layout = vmalloc(memHeader->m_sectionSize);
-	err = copy_from_user(xdev->layout, buffer, memHeader->m_sectionSize);
-	if (sizeof_ip_layout(xdev->layout) > memHeader->m_sectionSize) {
-		err = -EINVAL;
-		goto error_out;
+			DRM_INFO("drm_mm_init called\n");
+		}
 	}
 
-	printk(KERN_INFO "XOCL: Marker 5.2\n");
-	if (err)
-		goto error_out;
-	printk(KERN_INFO "XOCL: Marker 5.3\n");
 	return 0;
-
-error_out:
-	if (xdev->layout)
-		vfree(xdev->layout);
-	xdev->layout = NULL;
-	return err;
 }
 
-/*
- * This function is huge and unweildy -- should break it up. Add a separate function for
- * each section we read from xclbin. See how we are doing this for IP LAYOUT
- */
-static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
-				       struct drm_xocl_axlf *axlf_obj_ptr)
+static int
+xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 {
 	long err = 0;
-	unsigned i = 0;
-	uint64_t copy_buffer_size = 0;
-	struct axlf* copy_buffer = 0;
-	const struct axlf_section_header *memHeader = 0;
-	char __user *buffer = 0;
-	int32_t bank_count = 0;
-	//short ddr = 0;
+	uint64_t axlf_size = 0;
+	struct axlf *axlf = 0;
+	char __user *buf = 0;
 	struct axlf bin_obj;
-	struct xocl_mem_topology *topology;
+	size_t size_of_header;
+	size_t num_of_sections;
+	size_t size;
 
-	userpf_info(xdev, "READ_AXLF IOCTL \n");
+	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
 	if(!xocl_is_unified(xdev)) {
 		printk(KERN_INFO "XOCL: not unified dsa");
 		return err;
 	}
 
-	printk(KERN_INFO "XOCL: Marker 0 %p\n", axlf_obj_ptr);
-	if (copy_from_user((void *)&bin_obj, (void*)axlf_obj_ptr->xclbin, sizeof(struct axlf)))
+	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
+
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
@@ -436,172 +515,73 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	xocl_cleanup_mem(xdev);
 
 	//Copy from user space and proceed.
-	copy_buffer_size = (bin_obj.m_header.m_numSections)*sizeof(struct axlf_section_header) + sizeof(struct axlf);
-	copy_buffer = (struct axlf*)vmalloc(copy_buffer_size);
-	if(!copy_buffer) {
-		printk(KERN_ERR "Unable to create copy_buffer");
+	size_of_header = sizeof(struct axlf_section_header);
+	num_of_sections = bin_obj.m_header.m_numSections;
+	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
+	axlf = vmalloc(axlf_size);
+	if (!axlf) {
+		DRM_ERROR("Unable to create axlf\n");
 		err = -ENOMEM;
 		goto done;
 	}
 	printk(KERN_INFO "XOCL: Marker 5\n");
 
-	if (copy_from_user((void *)copy_buffer, (void *)axlf_obj_ptr->xclbin, copy_buffer_size)) {
+	if (copy_from_user(axlf, axlf_ptr->xclbin, axlf_size)) {
 		err = -EFAULT;
 		goto done;
 	}
 
-	buffer = (char __user *)axlf_obj_ptr->xclbin;
-	err = !access_ok(VERIFY_READ, buffer, bin_obj.m_header.m_length);
+	buf = (char __user *)axlf_ptr->xclbin;
+	err = !access_ok(VERIFY_READ, buf, bin_obj.m_header.m_length);
 	if (err) {
 		err = -EFAULT;
 		goto done;
 	}
 
-	//----
-	err = xocl_read_ip_layout(xdev, copy_buffer, (char __user *)axlf_obj_ptr->xclbin);
-	if (err)
-		goto done;
-	//----
-	printk(KERN_INFO "Finding DEBUG_IP_LAYOUT section\n");
-	memHeader = get_axlf_section(copy_buffer, DEBUG_IP_LAYOUT);
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find DEBUG_IP_LAYOUT section.\n");
-	} else {
-		printk(KERN_INFO "%s XOCL: DEBUG_IP_LAYOUT offset = %llx, size = %llx, xclbin length = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize, bin_obj.m_header.m_length);
-
-		if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > bin_obj.m_header.m_length) {
-			printk(KERN_INFO "%s XOCL: DEBUG_IP_LAYOUT section extends beyond xclbin boundary %llx\n", __FUNCTION__, bin_obj.m_header.m_length);
-			err = -EINVAL;
+	/* Populating IP_LAYOUT sections */
+	/* zocl_read_sect return size of section when successfully find it */
+	size = xocl_read_sect(IP_LAYOUT, &xdev->layout, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
 			goto done;
-		}
-		printk(KERN_INFO "XOCL: Marker 6.1\n");
-		buffer = (char __user *)axlf_obj_ptr->xclbin;
-		buffer += memHeader->m_sectionOffset;
-		xdev->debug_layout.layout = vmalloc(memHeader->m_sectionSize);
-		err = copy_from_user(xdev->debug_layout.layout, buffer, memHeader->m_sectionSize);
-		printk(KERN_INFO "XOCL: Marker 6.2\n");
-		if (err)
-			goto done;
-		xdev->debug_layout.size = memHeader->m_sectionSize;
-		printk(KERN_INFO "XOCL: Marker 6.3\n");
-	}
-
-
-	//---
-	printk(KERN_INFO "Finding CONNECTIVITY section\n");
-	memHeader = get_axlf_section(copy_buffer, CONNECTIVITY);
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find CONNECTIVITY section.\n");
-	} else {
-		printk(KERN_INFO "%s XOCL: CONNECTIVITY offset = %llx, size = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize);
-		if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > bin_obj.m_header.m_length) {
-			err = -EINVAL;
-			goto done;
-		}
-		buffer = (char __user *)axlf_obj_ptr->xclbin;
-		buffer += memHeader->m_sectionOffset;
-		xdev->connectivity.connections = vmalloc(memHeader->m_sectionSize);
-		err = copy_from_user(xdev->connectivity.connections, buffer, memHeader->m_sectionSize);
-		if (err)
-			goto done;
-		xdev->connectivity.size = memHeader->m_sectionSize;
-	}
-
-	//---
-	printk(KERN_INFO "Finding MEM_TOPOLOGY section\n");
-	memHeader = get_axlf_section(copy_buffer, MEM_TOPOLOGY);
-	if (memHeader == 0) {
-		printk(KERN_INFO "Did not find MEM_TOPOLOGY section.\n");
-		err = -EINVAL;
-		goto done;
-	}
-	printk(KERN_INFO "XOCL: Marker 7\n");
-
-	printk(KERN_INFO "%s XOCL: MEM_TOPOLOGY offset = %llx, size = %llx\n", __FUNCTION__, memHeader->m_sectionOffset , memHeader->m_sectionSize);
-
-	if((memHeader->m_sectionOffset + memHeader->m_sectionSize) > bin_obj.m_header.m_length) {
+	} else if (sizeof_sect(xdev->layout, m_ip_data) != size) {
 		err = -EINVAL;
 		goto done;
 	}
 
+	/* Populating DEBUG_IP_LAYOUT sections */
+	size = xocl_read_sect(DEBUG_IP_LAYOUT, &xdev->debug_layout, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(xdev->debug_layout, m_debug_ip_data) != size) {
+		err = -EINVAL;
+		goto done;
+	}
 
-	printk(KERN_INFO "XOCL: Marker 8\n");
+	/* Populating CONNECTIVITY sections */
+	size = xocl_read_sect(CONNECTIVITY, &xdev->connectivity, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(xdev->connectivity, m_connection) != size) {
+		err = -EINVAL;
+		goto done;
+	}
 
-	buffer = (char __user *)axlf_obj_ptr->xclbin;
-	buffer += memHeader->m_sectionOffset;
+	/* Populating MEM_TOPOLOGY sections */
+	size = xocl_read_sect(MEM_TOPOLOGY, &xdev->topology, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(xdev->topology, m_mem_data) != size) {
+		err = -EINVAL;
+		goto done;
+	}
 
-	xdev->topology.topology = vmalloc(memHeader->m_sectionSize);
-	err = copy_from_user(xdev->topology.topology, buffer, memHeader->m_sectionSize);
+	err = xocl_init_mm(xdev);
 	if (err)
-	    goto done;
-	xdev->topology.size = memHeader->m_sectionSize;
-
-	get_user(bank_count, buffer);
-	xdev->topology.bank_count = bank_count;
-	buffer += offsetof(struct mem_topology, m_mem_data);
-	xdev->topology.m_data_length = bank_count*sizeof(struct mem_data);
-	xdev->topology.m_data = vmalloc(xdev->topology.m_data_length);
-	err = copy_from_user(xdev->topology.m_data, buffer, bank_count*sizeof(struct mem_data));
-	if (err) {
-		err = -EFAULT;
 		goto done;
-	}
-
-
-	printk(KERN_INFO "XOCL: Marker 9\n");
-
-	topology = &xdev->topology;
-
-	printk(KERN_INFO "XOCL: Topology count = %d, data_length = %d\n", topology->bank_count, xdev->topology.m_data_length);
-
-	xdev->mm = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_mm) * topology->bank_count, GFP_KERNEL);
-	xdev->mm_usage_stat = devm_kzalloc(xdev->ddev->dev, sizeof(struct drm_xocl_mm_stat) * topology->bank_count, GFP_KERNEL);
-	if (!xdev->mm || !xdev->mm_usage_stat) {
-		err = -ENOMEM;
-		goto done;
-	}
-
-	for (i=0; i < topology->bank_count; i++)
-	{
-		printk(KERN_INFO "XOCL, DDR Info Index: %d Type:%d Used:%d Size:%llx Base_addr:%llx\n", i,
-			topology->m_data[i].m_type, topology->m_data[i].m_used, topology->m_data[i].m_size,
-			topology->m_data[i].m_base_address);
-	}
-
-//	ddr = 0;
-//	for (i=0; i < topology->bank_count; i++)
-//	{
-//		printk(KERN_INFO "XOCL, DDR Info Index: %d Type:%d Used:%d Size:%llx Base_addr:%llx\n", i,
-//			topology->m_data[i].m_type, topology->m_data[i].m_used, topology->m_data[i].m_size,
-//			topology->m_data[i].m_base_address);
-//		if (topology->m_data[i].m_used)
-//		{
-//			ddr++;
-//			if ((topology->bank_size !=0) && (topology->bank_size != topology->m_data[i].m_size)) {
-//				//we support only same sized banks for initial testing, so return error.
-//				printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
-//				err = -EFAULT;
-//				vfree(xdev->topology.m_data);
-//				memset(&xdev->topology, 0, sizeof(xdev->topology));
-//				goto done;
-//			}
-//			topology->bank_size = topology->m_data[i].m_size;
-//		}
-//	}
-
-//	//xdev->topology.used_bank_count = ddr;
-//	printk(KERN_INFO "XOCL: Unified flow, used bank count :%d bank size(KB):%llx\n", ddr, xdev->topology.bank_size);
-
-	//initialize the used banks and their sizes. Currently only fixed sizes are supported.
-	for (i=0; i < topology->bank_count; i++)
-	{
-		if (topology->m_data[i].m_used) {
-			printk(KERN_INFO "%s Allocating DDR:%d with base_addr:%llx, size %llx \n", __FUNCTION__, i,
-				topology->m_data[i].m_base_address, topology->m_data[i].m_size*1024);
-			drm_mm_init(&xdev->mm[i], topology->m_data[i].m_base_address, topology->m_data[i].m_size*1024);
-			printk(KERN_INFO "drm_mm_init called \n");
-		}
-	}
 
 	//Populate with "this" bitstream, so avoid redownload the next time
 	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
@@ -609,15 +589,14 @@ static int xocl_read_axlf_ioctl_helper(struct xocl_dev *xdev,
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
+	if (size < 0)
+		err = size;
 	if (err != 0) {
 		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 			pid_nr(task_tgid(current)));
-		if (xdev->layout)
-			vfree(xdev->layout);
-		xdev->layout = NULL;
 	}
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
-	vfree(copy_buffer);
+	vfree(axlf);
 	return err;
 }
 
@@ -631,7 +610,7 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	int err = 0;
 
 	mutex_lock(&xdev->ctx_list_lock);
-	err = xocl_read_axlf_ioctl_helper(xdev, axlf_obj_ptr);
+	err = xocl_read_axlf_helper(xdev, axlf_obj_ptr);
 	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
