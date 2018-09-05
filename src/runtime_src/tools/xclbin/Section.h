@@ -45,7 +45,8 @@ class Section {
  public:
   enum FormatType{
     FT_RAW,
-    FT_JSON
+    FT_JSON,
+    FT_HTML
   };
 
  public:
