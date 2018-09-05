@@ -1709,7 +1709,7 @@ add_subdev_failed:
 	}
 done:
 	kfree(res);
-  kfree(subdev_info);
+	kfree(subdev_info);
 	vfree(layout);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	mutex_unlock(&icap->icap_lock);
