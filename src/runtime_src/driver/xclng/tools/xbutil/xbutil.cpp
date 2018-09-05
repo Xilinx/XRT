@@ -594,6 +594,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  query   [-d device [-r region]]\n";
     std::cout << "  reset   [-d device] [-h | -r region]\n";
     std::cout << "  status  [--debug_ip_name]\n";
+    std::cout << "  validate[-d device]\n";
     std::cout << "\nExamples:\n";
     std::cout << "List all devices\n";
     std::cout << "  " << exe << " list\n";
@@ -621,6 +622,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " flash -a all\n";
     std::cout << "Show DSA related information for all boards in the system\n";
     std::cout << "  " << exe << " flash scan\n";
+    std::cout << "Validate installation on device 1\n";
+    std::cout << "  " << exe << " validate -d 1\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
