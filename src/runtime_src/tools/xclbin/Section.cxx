@@ -279,6 +279,9 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       readXclBinBinary(_istream, pt);
       break;
     }
+  case FT_HTML:
+    // Do nothing
+    break;
   }
 }
 
@@ -298,6 +301,16 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType)
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
 
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
+      break;
+    }
+  case FT_HTML:
+    {
+      boost::property_tree::ptree pt;
+      marshalToJSON(m_pBuffer, m_bufferSize, pt);
+
+      _ostream << XUtil::format("<!DOCTYPE html><html><body><h1>Section: %s (%d)</h1><pre>", getSectionKindAsString().c_str(), getSectionKind()) << std::endl;
+      boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
+      _ostream << "</pre></body></html>" << std::endl;
       break;
     }
   }

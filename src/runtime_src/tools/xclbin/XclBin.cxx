@@ -636,6 +636,8 @@ XclBin::dumpSection(const std::string & _sSectionToDump)
     eFormatType = Section::FT_RAW;
   } else if (tokens[2] == "json") {
     eFormatType = Section::FT_JSON;
+  } else if (tokens[2] == "html") {
+    eFormatType = Section::FT_HTML;
   } else {
     std::string errMsg = XUtil::format("Error: Unknown format type '%s'.", tokens[2].c_str());
     throw std::runtime_error(errMsg);
