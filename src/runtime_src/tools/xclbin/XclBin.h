@@ -38,8 +38,11 @@ class XclBin {
   virtual ~XclBin();
 
  public:
-  void readXclBinBinary(const std::string _binaryFileName, bool _bMigrate = false);
-  void writeXclBinBinary(const std::string _binaryFileName);
+  void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
+  void writeXclBinBinary(const std::string &_binaryFileName);
+  void removeSection(const std::string & _sSectionToRemove);
+  void addSection(const std::string & _sSectionToAdd);
+  void dumpSection(const std::string & _sSectionToAdd);
 
  private:
   void readXclBinBinaryHeader(std::fstream& _istream);
@@ -53,6 +56,8 @@ class XclBin {
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
   void addSection(Section* _pSection);
+  void removeSection(Section* _pSection);
+  Section *findSection(enum axlf_section_kind _eKind);
 
   // Should be in their own separate class
  private:

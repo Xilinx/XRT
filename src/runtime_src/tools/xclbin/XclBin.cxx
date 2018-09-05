@@ -19,6 +19,7 @@
 
 #include <stdexcept>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -41,17 +42,6 @@ XclBin::~XclBin() {
   m_sections.clear();
 }
 
-
-void
-XclBin::addSection(Section* _pSection) {
-  // Error check
-  if (_pSection == nullptr) {
-    return;
-  }
-
-  m_sections.push_back(_pSection);
-  m_xclBinHeader.m_header.m_numSections = m_sections.size();
-}
 
 void
 XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
@@ -102,7 +92,7 @@ XclBin::readXclBinBinarySections(std::fstream& _istream) {
 }
 
 void
-XclBin::readXclBinBinary(const std::string _binaryFileName,
+XclBin::readXclBinBinary(const std::string &_binaryFileName,
                          bool _bMigrate) {
   // Error checks
   if (_binaryFileName.empty()) {
@@ -275,7 +265,7 @@ XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
 
 
 void
-XclBin::writeXclBinBinary(const std::string _binaryFileName) {
+XclBin::writeXclBinBinary(const std::string &_binaryFileName) {
   // Error checks
   if (_binaryFileName.empty()) {
     std::string errMsg = "ERROR: Missing file name to write to.";
@@ -311,6 +301,7 @@ XclBin::writeXclBinBinary(const std::string _binaryFileName) {
   ofXclBin.close();
 
   XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
+  std::cout << XUtil::format("Successfully wrote the output file: %s", _binaryFileName.c_str()) << std::endl;
 }
 
 
@@ -491,6 +482,178 @@ XclBin::readXclBinaryMirrorImage(std::fstream& _istream,
   }
 }
 
+void
+XclBin::addSection(Section* _pSection) {
+  // Error check
+  if (_pSection == nullptr) {
+    return;
+  }
+
+  m_sections.push_back(_pSection);
+  m_xclBinHeader.m_header.m_numSections = m_sections.size();
+}
+
+void 
+XclBin::removeSection(Section* _pSection)
+{
+  // Error check
+  if (_pSection == nullptr) {
+    return;
+  }
+
+  for (unsigned int index = 0; index < m_sections.size(); ++index) {
+    XUtil::TRACE(XUtil::format("[%d]: 0x%lx (%s) compared to 0x%lx (%s)",
+                               index, 
+                               (void *) m_sections[index], m_sections[index]->getSectionKind(),
+                               (void *) _pSection, _pSection->getSectionKind()));
+    if ((void *) m_sections[index] == (void *) _pSection) {
+      XUtil::TRACE(XUtil::format("Removing and deleting section '%s' (%d).", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind()));
+      m_sections.erase(m_sections.begin() + index);
+      delete _pSection;
+      m_xclBinHeader.m_header.m_numSections = m_sections.size();
+      return;
+    }
+  }
+
+  std::string errMsg=XUtil::format("Error: Section '%s' (%d) not found", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind());
+  throw std::runtime_error(errMsg);
+}
+
+Section *
+XclBin::findSection(enum axlf_section_kind _eKind)
+{
+  for (unsigned int index = 0; index < m_sections.size(); ++index) {
+    if (m_sections[index]->getSectionKind() == _eKind) {
+      return m_sections[index];
+    }
+  }
+  return nullptr;
+}
+
+void 
+XclBin::removeSection(const std::string & _sSectionToRemove)
+{
+  enum axlf_section_kind _eKind;
+
+  if (Section::translateSectionKindStrToKind(_sSectionToRemove, _eKind) == false) {
+    std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", _sSectionToRemove.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  Section * pSection = findSection(_eKind);
+  if (pSection == nullptr) {
+    std::string errMsg = XUtil::format("Error: Section '%s' is not part of the xclbin archive.", _sSectionToRemove.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  removeSection(pSection);
+  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully removed", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind()) << std::endl;
+}
 
 
+void 
+XclBin::addSection(const std::string & _sSectionToAdd)
+{
+  std::vector<std::string> tokens;
 
+  boost::split(tokens, _sSectionToAdd, boost::is_any_of(":"), boost::token_compress_off);
+
+  if (tokens.size() != 3) {
+    std::string errMsg = XUtil::format("Error: Expected format <section>:<file>:<format> when using adding a section.  Received: %s.", _sSectionToAdd.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  enum axlf_section_kind eKind;
+  if (Section::translateSectionKindStrToKind(tokens[0], eKind) == false) {
+    std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", tokens[0].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  if (findSection(eKind) != nullptr) {
+    std::string errMsg = XUtil::format("Error: Section '%s' already exists.", tokens[0].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+
+  enum Section::FormatType eFormatType = Section::FT_RAW;
+  if (tokens[2] == "raw") {
+    eFormatType = Section::FT_RAW;
+  } else if (tokens[2] == "json") {
+    eFormatType = Section::FT_JSON;
+  } else {
+    std::string errMsg = XUtil::format("Error: Unknown format type '%s'.", tokens[2].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sSectionFileName = tokens[1];
+  // Write the xclbin file image
+  std::fstream iSectionFile;
+  iSectionFile.open(sSectionFileName, std::ifstream::in | std::ifstream::binary);
+  if (!iSectionFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + sSectionFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  Section * pSection = Section::createSectionObjectOfKind(eKind);
+  pSection->readXclBinBinary(iSectionFile, eFormatType);
+  addSection(pSection);
+  XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind(),
+                                          tokens[2].c_str(), sSectionFileName.c_str()) << std::endl;
+}
+
+void 
+XclBin::dumpSection(const std::string & _sSectionToDump) 
+{
+  std::vector<std::string> tokens;
+
+  boost::split(tokens, _sSectionToDump, boost::is_any_of(":"), boost::token_compress_off);
+
+  if (tokens.size() != 3) {
+    std::string errMsg = XUtil::format("Error: Expected format <section>:<file>:<format> when using dumping a section.  Received: %s.", _sSectionToDump.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  enum axlf_section_kind eKind;
+  if (Section::translateSectionKindStrToKind(tokens[0], eKind) == false) {
+    std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", tokens[0].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  Section *pSection = findSection(eKind);
+  if (pSection == nullptr) {
+    std::string errMsg = XUtil::format("Error: Section '%s' does not exists.", tokens[0].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+
+  enum Section::FormatType eFormatType = Section::FT_RAW;
+  if (tokens[2] == "raw") {
+    eFormatType = Section::FT_RAW;
+  } else if (tokens[2] == "json") {
+    eFormatType = Section::FT_JSON;
+  } else {
+    std::string errMsg = XUtil::format("Error: Unknown format type '%s'.", tokens[2].c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sDumpFileName = tokens[1];
+  // Write the xclbin file image
+  std::fstream oDumpFile;
+  oDumpFile.open(sDumpFileName, std::ifstream::out | std::ifstream::binary);
+  if (!oDumpFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  pSection->dumpContents(oDumpFile, eFormatType);
+  XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind(),
+                                          tokens[2].c_str(), sDumpFileName.c_str()) << std::endl;
+}

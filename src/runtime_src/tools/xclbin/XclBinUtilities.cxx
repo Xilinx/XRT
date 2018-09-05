@@ -305,9 +305,9 @@ XclBinUtilities::validateImage(const std::string _sFileName) {
     case CST_SDBM:
       std::cout << "Info: Checksum hash algorithm: SDBM" << std::endl;
       if (fileChecksum.m_64bit == calcChecksum.m_64bit) {
-        std::cout << XUtil::format("Info: The file checksum and calculated checksums match: 0x%lx", fileChecksum.m_64bit) << std::endl;
+        std::cout << XUtil::format("Info: [VALID] The file checksum and calculated checksums match: 0x%lx", fileChecksum.m_64bit) << std::endl;
       } else {
-        std::cout << XUtil::format("Info: The file checksum (0x%lx) does not match the calculated checksum (0x%lx)", fileChecksum.m_64bit, calcChecksum.m_64bit) << std::endl;
+        std::cout << XUtil::format("Info: [INVALID] The file checksum (0x%lx) does not match the calculated checksum (0x%lx)", fileChecksum.m_64bit, calcChecksum.m_64bit) << std::endl;
       }
       break;
     case CST_UNKNOWN:

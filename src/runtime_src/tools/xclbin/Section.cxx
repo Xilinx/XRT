@@ -17,6 +17,8 @@
 #include "Section.h"
 
 #include <iostream>
+#include <boost/property_tree/json_parser.hpp>
+
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -74,6 +76,16 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
+}
+
+bool
+Section::translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind)
+{
+  if (m_mapNameToId.find(_sKindStr) == m_mapNameToId.end()) {
+    return false;   
+  }
+  _eKind = m_mapNameToId[_sKindStr];
+  return true;
 }
 
 
@@ -229,3 +241,64 @@ Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   throw std::runtime_error(errMsg);
 }
 
+
+void 
+Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
+{
+  switch (_eFormatType) {
+  case FT_RAW:
+    {
+      axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+      sectionHeader.m_sectionKind = getSectionKind();
+      sectionHeader.m_sectionOffset = 0;
+      _istream.seekg(0, _istream.end);
+      sectionHeader.m_sectionSize = _istream.tellg();
+
+      readXclBinBinary(_istream, sectionHeader);
+      break;
+    }
+  case FT_JSON:
+    {
+      // Bring the file into memory
+      _istream.seekg(0, _istream.end);
+      unsigned int fileSize = _istream.tellg();
+
+      std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+      _istream.clear();
+      _istream.seekg(0);
+      _istream.read((char*)memBuffer.get(), fileSize);
+
+      XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
+
+      // Convert the JSON file to a boost property tree
+      std::stringstream ss((char*)memBuffer.get());
+
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      readXclBinBinary(_istream, pt);
+      break;
+    }
+  }
+}
+
+
+void 
+Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType)
+{
+  switch (_eFormatType) {
+  case FT_RAW:
+    {
+      writeXclBinSectionBuffer(_ostream);
+      break;
+    }
+  case FT_JSON:
+    {
+      boost::property_tree::ptree pt;
+      marshalToJSON(m_pBuffer, m_bufferSize, pt);
+
+      boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
+      break;
+    }
+  }
+}

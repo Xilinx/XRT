@@ -46,8 +46,13 @@ int main(int argc, char** argv) {
   bool bValidateImage = false;
   bool bAddValidateImage = false;
   bool bMigrateForward = false;
+
   std::string sInputFile;
   std::string sOutputFile;
+
+  std::string sSectionToRemove;
+  std::string sSectionToAdd;
+  std::string sSectionToDump;
 
 
   try {
@@ -62,6 +67,10 @@ int main(int argc, char** argv) {
         ("validate,v", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
         ("add-validation,c", boost::program_options::bool_switch(&bAddValidateImage), "Add image validation")
         ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
+        ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
+        ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
+        ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
+
 
 // --remove-section=section
 //    Remove the section matching the section name. Note that using this option inappropriately may make the output file unusable.
@@ -114,6 +123,17 @@ int main(int argc, char** argv) {
       xclBin.readXclBinBinary(sInputFile, bMigrateForward);
     }
 
+    if (!sSectionToRemove.empty()) {
+      xclBin.removeSection(sSectionToRemove);
+    }
+
+    if (!sSectionToAdd.empty()) {
+      xclBin.addSection(sSectionToAdd);
+    }
+
+    if (!sSectionToDump.empty()) {
+      xclBin.dumpSection(sSectionToDump);
+    }
 
     if (!sOutputFile.empty()) {
       xclBin.writeXclBinBinary(sOutputFile);
