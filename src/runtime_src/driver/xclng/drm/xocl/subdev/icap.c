@@ -1466,7 +1466,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	bool need_download;
 	struct ip_layout* layout = NULL;
-	int i = 0, j = 0;
+	int i = 0, j = 0, k = 0;
 	uint32_t dynamic_subdev_nums = core->dyna_subdevs_num;
 	struct xocl_subdev_info* subdev_info = NULL;
 	struct resource *res = NULL;
@@ -1615,10 +1615,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 
 	/* Destroy all dynamically add sub-devices*/
-	for(i=0;i<dynamic_subdev_nums;++i){
-		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[i]);
-		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[i]);
-		core->dyna_subdevs_id[i] = INVALID_SUBDEVICE;
+	for(k=0;k<dynamic_subdev_nums;++k){
+		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[k]);
+		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[k]);
+		core->dyna_subdevs_id[k] = INVALID_SUBDEVICE;
 		core->dyna_subdevs_num--;
 	}
 
@@ -1636,7 +1636,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 *         "m_base_address": "0x1100000", <--  base address
 	 *         "m_name": "slr0\/dna_self_check_0"
 	 */
-	res = kzalloc(sizeof(struct resource), GFP_KERNEL);
+	res = kzalloc(sizeof(struct resource)*NUMS_OF_DYNA_IP_ADDR, GFP_KERNEL);
 	if(res == NULL){
 		err = -ENOMEM;
 		goto done;

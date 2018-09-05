@@ -103,6 +103,7 @@ int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resourc
 	for(i=0;i<subdev_info->num_res;++i){
 
 		len = subdev_info->res[i].end - subdev_info->res[i].start + 1;
+		/* may have multiple base_address in IP_LAYOUT in the future*/
 		res[i].start = ip_data->m_base_address;
 		res[i].end   = res[i].start + len -1;
 	}
