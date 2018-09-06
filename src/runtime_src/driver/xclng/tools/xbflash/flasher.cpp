@@ -156,7 +156,7 @@ std::string charVec2String(std::vector<char>& v)
 {
     std::stringstream ss;
 
-    for (unsigned i = 0; i < v.size(); i++)
+    for (unsigned i = 0; i < v.size() && v[i]!=0; i++)
     {
         ss << v[i];
     }
