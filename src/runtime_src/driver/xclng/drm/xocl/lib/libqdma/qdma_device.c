@@ -261,6 +261,8 @@ int qdma_device_init(struct xlnx_dma_dev *xdev)
 		}
 	}
 #endif
+	/** STM specific init */
+	xdev->pipe_stm_max_pkt_size = STM_MAX_PKT_SIZE;
 
 	return 0;
 }

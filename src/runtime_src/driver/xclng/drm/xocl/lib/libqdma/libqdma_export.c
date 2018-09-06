@@ -155,7 +155,7 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		qdma_kthread_wakeup(descq->wbthp);
 
 	if (!wait) {
-		pr_info("%s: cb 0x%p, 0x%x NO wait.\n",
+		pr_debug("%s: cb 0x%p, 0x%x NO wait.\n",
 			descq->conf.name, cb, req->count);
 		return 0;
 	}

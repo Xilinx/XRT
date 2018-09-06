@@ -1267,6 +1267,8 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     memset(&q_info, 0, sizeof (q_info));
     q_info.write = 1;
+    q_info.rid = q_ctx->route;
+    q_info.flowid = q_ctx->flow;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1286,6 +1288,9 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     int	rc;
 
     memset(&q_info, 0, sizeof (q_info));
+
+    q_info.rid = q_ctx->route;
+    q_info.flowid = q_ctx->flow;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
