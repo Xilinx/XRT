@@ -1636,7 +1636,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 
 	/* restrict any dynamically added sub-device and has up to 4 base address,
-	 * and can only appear once. Has pre-defined length 
+	 * Has pre-defined length 
 	 *  Ex:    "ip_data": {
 	 *         "m_type": "IP_DNASC",
 	 *         "properties": "0x0",
