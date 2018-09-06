@@ -108,6 +108,7 @@ struct xclDeviceInfo2 {
   unsigned short mFanSpeed;
   bool mMigCalib;
   unsigned long long mXMCVersion;
+  unsigned long long mMBVersion;
   unsigned short m12VPex;
   unsigned short m12VAux;
   unsigned long long mPexCurr;

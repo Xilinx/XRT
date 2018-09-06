@@ -51,6 +51,8 @@
 #define XMA_SUCCESS          (0)
 #define XMA_SEND_MORE_DATA   (1)
 #define XMA_END_OF_FILE      (2)
+#define XMA_EOS      	     (3)
+#define XMA_FLUSH_AGAIN      (4)
 
 #define XMA_ERROR           (-1)
 #define XMA_ERROR_INVALID   (-2)

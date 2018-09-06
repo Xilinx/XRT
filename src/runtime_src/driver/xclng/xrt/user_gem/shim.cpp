@@ -558,6 +558,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mVAux =     xclSysfsGetInt(true, "sysmon", "vcc_aux");
     info->mVBram =    xclSysfsGetInt(true, "sysmon", "vcc_bram");
     info->mXMCVersion =        xclSysfsGetInt(true, "xmc", "version");
+    info->mMBVersion =        xclSysfsGetInt(true, "microblaze", "version");
     info->m12VPex =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_vol");
     info->m12VAux =        xclSysfsGetInt(true, "xmc", "xmc_12v_aux_vol");
     info->mPexCurr =        xclSysfsGetInt(true, "xmc", "xmc_12v_pex_curr");
@@ -750,6 +751,19 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
 
     if (!memcmp(xclbininmemory, "xclbin2", 8)) {
         ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+        if (ret != 0) {
+            if (ret == -EINVAL) {
+                std::stringstream output;
+                output << "Xclbin does not match DSA on board.\n"
+                    << "Please run xbutil flash -a all to flash board."
+                    << std::endl;
+                if (mLogStream.is_open()) {
+                    mLogStream << output.str();
+                } else {
+                    std::cout << output.str();
+                }
+            }
+        }
     } else {
         if (mLogStream.is_open()) {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", Legacy xclbin no longer supported" << std::endl;
@@ -1376,7 +1390,10 @@ std::ifstream xocl::XOCLShim::xclSysfsOpen(bool mgmt,
         (mgmt ? dev.mgmt_name : dev.user_name) + "/";
 
     if (!subDevName.empty()) {
-        path += getSubdevDirName(path, subDevName);
+        std::string subdir = getSubdevDirName(path, subDevName);
+        if (subdir.empty())
+            return std::ifstream();
+        path += subdir;
         path += "/";
     }
 
