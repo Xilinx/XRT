@@ -33,11 +33,6 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 
-static int dna_chk_enable = 0;
-module_param(dna_chk_enable, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(dna_chk_enable,
-	"Enable dna_chk_enable to enable dna check, (0 = disable check, 1 = enable check)");
-
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
