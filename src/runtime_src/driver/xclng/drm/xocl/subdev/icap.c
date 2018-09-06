@@ -1466,10 +1466,17 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	bool need_download;
 	struct ip_layout* layout = NULL;
-	int i = 0, j = 0, k = 0;
+	int i = 0, k = 0;
 	uint32_t dynamic_subdev_nums = core->dyna_subdevs_num;
 	struct xocl_subdev_info* subdev_info = NULL;
 	struct resource *res = NULL;
+	bool dna_check = false;
+	//uint32_t ip_type = ~(0U), ip_res_count = 0;
+	uint32_t range = 0;
+	uint32_t base_addr[XOCL_SUBDEV_NUM][NUMS_OF_DYNA_IP_ADDR];
+	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];// = {0};
+	uint8_t sub_id;
+	uint32_t id, idx;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1642,38 +1649,68 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
+	memset(base_addr, 0, sizeof(uint32_t)*XOCL_SUBDEV_NUM*NUMS_OF_DYNA_IP_ADDR);
+	memset(nums_of_ip_section, 0, sizeof(uint32_t)*XOCL_SUBDEV_NUM);
+
+
 	/* Add sub device dynamically*/
 	for(i=0;i<layout->m_count;++i){
-		if(layout->m_ip_data[i].m_type!=IP_KERNEL){
-			
+
+		if(layout->m_ip_data[i].m_type==IP_DNASC)
+			dna_check = true;
+
+		if(layout->m_ip_data[i].m_type==IP_KERNEL)
+			continue;	
+
+		if(layout->m_ip_data[i].m_type == IP_DNASC){
+
+			sub_id = xocl_subdev_get_subid(layout->m_ip_data[i].m_type);
+			if (sub_id == 0xff) {
+				err = -ENODEV;
+				ICAP_ERR(icap, "failed to get IP type: %d ", layout->m_ip_data[i].m_type);
+				goto done;
+			}
+
+			idx = nums_of_ip_section[sub_id];
+			base_addr[sub_id][idx] = layout->m_ip_data[i].m_base_address;
+			nums_of_ip_section[sub_id]++;
+		}
+	}
+
+	for(id=0;id<XOCL_SUBDEV_NUM;++id) {
+
+		if(nums_of_ip_section[id]!=0){
 			memset(subdev_info, 0, sizeof(struct xocl_subdev_info));
 			memset(res, 0, sizeof(struct resource)*NUMS_OF_DYNA_IP_ADDR);
 
-			err = xocl_subdev_get_devinfo(subdev_info, res, &layout->m_ip_data[i]);
+			err = xocl_subdev_get_devinfo(subdev_info, res, id);
 			if (err) {
-				ICAP_ERR(icap, "failed to find IP type: %d ", layout->m_ip_data[i].m_type);
+				ICAP_ERR(icap, "failed to find sub device id: %d ", id);
 				goto add_subdev_failed;
 			}
 			ICAP_INFO(icap, "%s, num_res: %d", subdev_info->name, subdev_info->num_res);
 
-			for(j=0;j<subdev_info->num_res;++j)
-				ICAP_INFO(icap,	"  start: 0x%llx, end: 0x%llx", subdev_info->res[j].start, subdev_info->res[j].end);
+			for(i=0;i<nums_of_ip_section[id];++i){
+				range = subdev_info->res[i].end - subdev_info->res[i].start;
+				subdev_info->res[i].start = base_addr[id][i];
+				subdev_info->res[i].end = subdev_info->res[i].start + range;
+			}
 
 			err = xocl_subdev_create_one(xdev, subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "failed to create subdev %s ", subdev_info->name);
 				goto add_subdev_failed;
 			}
-			core->dyna_subdevs_id[core->dyna_subdevs_num++] = subdev_info->id;
+			core->dyna_subdevs_id[core->dyna_subdevs_num++] = id;
 		}
+	}
 
-		if(layout->m_ip_data[i].m_type==IP_DNASC){
-			ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
-			err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
-			if (err){
-				ICAP_ERR(icap, "DNA inside xclbin is invalid");
-				goto dna_check_failed;
-			}
+	if(dna_check){
+		ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
+		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
+		if (err){
+			ICAP_ERR(icap, "DNA inside xclbin is invalid");
+			goto dna_check_failed;
 		}
 	}
 
@@ -1701,11 +1738,13 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 dna_check_failed:	
 add_subdev_failed:
-	for(;i>=0;--i){
-		ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[i]);
-		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[i]);
-		core->dyna_subdevs_id[i] = INVALID_SUBDEVICE;
-		core->dyna_subdevs_num--;
+	for(;id>=0;--id){
+		if(nums_of_ip_section[id]!=0){
+			ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[id]);
+			xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[id]);
+			core->dyna_subdevs_id[id] = INVALID_SUBDEVICE;
+			core->dyna_subdevs_num--;
+	  }
 	}
 done:
 	kfree(res);

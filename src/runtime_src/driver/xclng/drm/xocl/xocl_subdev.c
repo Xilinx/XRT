@@ -78,14 +78,25 @@ error:
 	return ERR_PTR(retval);
 }	
 
-int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, struct ip_data* ip_data){
+uint8_t xocl_subdev_get_subid(uint32_t ip_type){
+
+  uint8_t sub_id = 0xff;
+	switch(ip_type){
+		case IP_DNASC:
+		  sub_id = XOCL_SUBDEV_DNA;
+			break;
+		default:
+			printk(KERN_ERR "%s Can't find the IP type, maybe a new IP?", __func__);
+			break;
+	}
+	return sub_id;
+}
+int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, uint32_t subdev_id){
 
 	void *target;
-	uint32_t len;
-	uint8_t i;
-
-	switch(ip_data->m_type){
-		case IP_DNASC:
+	
+	switch(subdev_id){
+		case XOCL_SUBDEV_DNA:
 		  target = &(struct xocl_subdev_info)XOCL_DEVINFO_DNA;
 			break;
 		default:
@@ -100,13 +111,6 @@ int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resourc
 
 	memcpy(res, subdev_info->res, sizeof(*res)*subdev_info->num_res);
 
-	for(i=0;i<subdev_info->num_res;++i){
-
-		len = subdev_info->res[i].end - subdev_info->res[i].start + 1;
-		/* may have multiple base_address in IP_LAYOUT in the future*/
-		res[i].start = ip_data->m_base_address;
-		res[i].end   = res[i].start + len -1;
-	}
 	subdev_info->res = res;
 	return 0;
 }

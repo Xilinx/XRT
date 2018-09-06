@@ -197,8 +197,8 @@ struct xocl_dev_core {
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
 
-	u32	    dyna_subdevs_id[XOCL_SUBDEV_NUM];
-	u32			dyna_subdevs_num;
+	u32     dyna_subdevs_id[XOCL_SUBDEV_NUM];
+  u32			dyna_subdevs_num;
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -565,7 +565,8 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 
-int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, struct ip_data* ip_data);
+uint8_t xocl_subdev_get_subid(uint32_t ip_type);
+int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, uint32_t sub_id);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
