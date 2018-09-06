@@ -544,23 +544,9 @@ allocate_buffer_object(memory* mem)
       return boh;
     }
     catch (const std::bad_alloc&) {
+      throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"could not allocate with memidx: "+std::to_string(memidx));
     }
   }
-
-  // If buffer could not be allocated on the requested bank,
-  // or if no bank was specified, then allocate on the bank
-  // (memidx) matching the CU connectivity of CUs in device.
-  auto memidx = get_cu_memidx();
-  if (memidx>=0) {
-    try {
-      auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in bank with idx(",memidx,")\n");
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-    }
-  }
-
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
   return alloc(mem);
