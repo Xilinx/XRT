@@ -51,6 +51,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR:
       return "ACCEL_MONITOR";
+    case AXI_STREAM_MONITOR: 
+      return "AXI_STREAM_MONITOR";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
@@ -78,6 +80,9 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 
   if (_sDebugIPType == "ACCEL_MONITOR")
     return ACCEL_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
+      return AXI_STREAM_MONITOR;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
@@ -128,12 +133,15 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_base_address: 0x%lx, m_name: '%s'",
-                               index,
-                               getDebugIPTypeStr((enum DEBUG_IP_TYPE)pHdr->m_debug_ip_data[index].m_type),
-                               (unsigned int)pHdr->m_debug_ip_data[index].m_index,
-                               pHdr->m_debug_ip_data[index].m_base_address,
-                               pHdr->m_debug_ip_data[index].m_name));
+    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+                             index,
+                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_properties,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_major,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_minor,
+                             pHdr->m_debug_ip_data[index].m_base_address,
+                             pHdr->m_debug_ip_data[index].m_name));
 
     // Write out the entire structure
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
@@ -141,6 +149,8 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE)pHdr->m_debug_ip_data[index].m_type).c_str());
     debug_ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_debug_ip_data[index].m_index).c_str());
     debug_ip_data.put("m_properties", XUtil::format("%d", (unsigned int)pHdr->m_debug_ip_data[index].m_properties).c_str());
+    debug_ip_data.put("m_major", XUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_major).c_str());
+    debug_ip_data.put("m_minor", XUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_minor).c_str());
     debug_ip_data.put("m_base_address", XUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address).c_str());
     debug_ip_data.put("m_name", XUtil::format("%s", pHdr->m_debug_ip_data[index].m_name).c_str());
 
@@ -186,8 +196,18 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
     debugIpDataHdr.m_type = getDebugIPType(sm_type);
-    debugIpDataHdr.m_index = ptDebugIPData.get<int8_t>("m_index");
-    debugIpDataHdr.m_properties = ptDebugIPData.get<int8_t>("m_properties");
+    debugIpDataHdr.m_index = ptDebugIPData.get<uint8_t>("m_index");
+    debugIpDataHdr.m_properties = ptDebugIPData.get<uint8_t>("m_properties");
+
+    boost::optional<uint8_t> m_major = ptDebugIPData.get_optional<uint8_t>("m_major");
+    if ( m_major.is_initialized() ) {
+      debugIpDataHdr.m_major = (uint8_t) m_major.get();
+    }
+
+    boost::optional<uint8_t> m_minor = ptDebugIPData.get_optional<uint8_t>("m_minor");
+    if ( m_minor.is_initialized() ) {
+      debugIpDataHdr.m_minor = (uint8_t) m_minor.get();
+    }
 
     std::string sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
     debugIpDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
@@ -202,13 +222,15 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     // We already know that there is enough room for this string
     memcpy(debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_base_address: 0x%lx, m_name: '%s'",
-                               count,
-                               (unsigned int)debugIpDataHdr.m_type,
-                               (unsigned int)debugIpDataHdr.m_index,
-                               (unsigned int)debugIpDataHdr.m_properties,
-                               debugIpDataHdr.m_base_address,
-                               debugIpDataHdr.m_name));
+    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+                             count,
+                             (unsigned int) debugIpDataHdr.m_type,
+                             (unsigned int) debugIpDataHdr.m_index,
+                             (unsigned int) debugIpDataHdr.m_properties,
+                             (unsigned int) debugIpDataHdr.m_major,
+                             (unsigned int) debugIpDataHdr.m_minor,
+                             debugIpDataHdr.m_base_address,
+                             debugIpDataHdr.m_name));
 
     // Write out the entire structure
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&debugIpDataHdr), sizeof(debug_ip_data));

@@ -237,7 +237,8 @@ void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
                                     "", mdev.device_name,
                                     mdev.user_bar, mdev.user_bar_size,
                                     mdev.domain, mdev.bus, mdev.dev,
-                                    mdev.func, 0, mdev.flash_type };
+                                    mdev.func, 0, mdev.flash_type,
+                                    mdev.board_name, mdev.is_mfg };
 
         if( skipValidDeviceCheck ) {
             device_list.emplace_back(temp);
@@ -292,6 +293,7 @@ int xcldev::pci_device_scanner::scan(bool print)
     mgmt_devices.clear();
     user_devices.clear();
     device_list.clear();
+    bool foundNoDriverDev = false;
 
     if( print ) {
         if( !print_system_info() ) {
@@ -361,6 +363,9 @@ int xcldev::pci_device_scanner::scan(bool print)
         device.user_bar_size = bar_size(subdir, bar);
         if (board_info->priv_data->flash_type)
             device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->board_name)
+            device.board_name = board_info->priv_data->board_name;
+        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -370,6 +375,7 @@ int xcldev::pci_device_scanner::scan(bool print)
         if( err >= 0 ) {
             driverName[err] = 0; // null terminate after successful readlink()
         } else {
+            foundNoDriverDev = true;
             add_device(device); // add device even if it is incomplete
             continue;
         }
@@ -418,6 +424,11 @@ int xcldev::pci_device_scanner::scan(bool print)
     }
 
     if ( print ) {
+        if (foundNoDriverDev) {
+            std::cout << "WARNING: Found devices without driver, "
+                << "run xbutil flash scan to check if DSA is flashed on FPGA."
+                << std::endl;
+        }
         return print_pci_info() ? 0 : -1;
     } else {
         return 0;
@@ -519,6 +530,9 @@ int xcldev::pci_device_scanner::scan_without_driver( void )
         device.user_bar_size = bar_size(subdir, device.user_bar);
         if (board_info->priv_data->flash_type)
             device.flash_type = board_info->priv_data->flash_type;
+        if (board_info->priv_data->board_name)
+            device.board_name = board_info->priv_data->board_name;
+        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
         if( !add_device(device) )
         {
             closedir( dir );

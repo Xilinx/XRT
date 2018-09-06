@@ -104,7 +104,11 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
 
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
     ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
-    ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
+      ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    } else {
+      ip_data.put("m_base_address", "not_used");
+    }
     ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
     m_ip_data.add_child("ip_data", ip_data);
@@ -155,6 +159,13 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
     ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
+
+    if ( sBaseAddress != "not_used" ) {
+      ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
+    }
+    else {
+      ipDataHdr.m_base_address = (uint64_t) -1;
+    }
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {

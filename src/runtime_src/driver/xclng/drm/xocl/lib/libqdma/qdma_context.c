@@ -1,26 +1,14 @@
-/*******************************************************************************
+/*
+ * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Xilinx XDMA IP Core Linux Driver
- * Copyright(c) 2015 - 2017 Xilinx, Inc.
+ * Copyright (c) 2017-present,  Xilinx, Inc.
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * The full GNU General Public License is included in this distribution in
- * the file called "LICENSE".
- *
- * Karen Xie <karen.xie@xilinx.com>
- *
- ******************************************************************************/
+ * This source code is licensed under both the BSD-style license (found in the
+ * LICENSE file in the root directory of this source tree) and the GPLv2 (found
+ * in the COPYING file in the root directory of this source tree).
+ * You may select, at your option, one of the above-listed licenses.
+ */
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
@@ -56,7 +44,7 @@ static int make_intr_context(struct xlnx_dma_dev *xdev, u32 *data, int cnt)
 	for (i = 0, j = 0; i < QDMA_DATA_VEC_PER_PF_MAX; i++) {
 		u64 bus_64;
 		u32 v;
-		struct intr_coal_conf *entry = (xdev->intr_coal_list + i );
+		struct intr_coal_conf *entry = (xdev->intr_coal_list + i);
 
 		/* TBD:
 		 * Assume that Qid is irrelevant for interrupt context
@@ -77,13 +65,63 @@ static int make_intr_context(struct xlnx_dma_dev *xdev, u32 *data, int cnt)
 
 		v = (bus_64 >> L_INT_COAL_W0_BADDR_64) & M_INT_COAL_W1_BADDR_64;
 		data[++j] = ((V_INT_COAL_W1_BADDR_64(v)) |
-					  V_INT_COAL_W1_VEC_SIZE(xdev->conf.intr_rngsz));
+				V_INT_COAL_W1_VEC_SIZE(xdev->conf.intr_rngsz));
 
 		j++;
 	}
 
 	return 0;
 }
+
+/* STM */
+#ifndef __QDMA_VF__
+static int make_stm_context(struct qdma_descq *descq, u32 *data, int cnt)
+{
+	int pipe_slr_id = descq->conf.pipe_slr_id;
+	int pipe_flow_id = descq->conf.pipe_flow_id;
+	int pipe_tdest = descq->conf.pipe_tdest;
+	int tdest2_slr = 0;
+	int tdest2_rid = 0;
+	int fid2 = 0;
+	int pkt_lim = 0;
+	int max_ask = 8;
+	int dppkt = 1;
+	int log2_dppkt = ilog2(dppkt);
+
+	if (cnt < 5 ) {
+		pr_warn("%s: stm context count %d < 5. \n",
+			descq->xdev->conf.name, cnt);
+		return -EINVAL;
+	}
+	memset(data, 0, cnt * sizeof(u32));
+
+	/* 128..159 */
+	data[4] = (descq->qidx_hw << S_STM_CTXT_QID) |
+		  (tdest2_rid << S_STM_CTXT_C2H_TDEST);
+
+	/* 96..127 */
+	data[3] = (tdest2_slr << S_STM_CTXT_C2H_SLR) |
+		  (fid2 << S_STM_CTXT_C2H_FID) |
+		  (pipe_tdest << S_STM_CTXT_H2C_TDEST);
+
+	/* 64..95 */
+	data[2] = (pipe_slr_id << S_STM_CTXT_H2C_SLR) |
+		  (pipe_flow_id << S_STM_CTXT_H2C_FID) |
+		  (pkt_lim << S_STM_CTXT_PKT_LIM) |
+		  (max_ask << S_STM_CTXT_MAX_ASK);
+
+	/* 32..63 */
+	data[1] = (dppkt << S_STM_CTXT_DPPKT) |
+		  (log2_dppkt << S_STM_CTXT_LOG2_DPPKT);
+
+	/* 0..31 */
+	data[0] = 0;
+
+	pr_debug("%s, STM 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x.\n",
+		 descq->conf.name, data[0], data[1], data[2], data[3], data[4]);
+	return 0;
+}
+#endif
 
 static int make_sw_context(struct qdma_descq *descq, u32 *data, int cnt)
 {
@@ -116,8 +154,9 @@ static int make_sw_context(struct qdma_descq *descq, u32 *data, int cnt)
 		data[1] |= (V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_32B)) |
 			   (descq->channel << S_DESC_CTXT_W1_F_MM_CHN);
 	} else if (descq->conf.c2h) {  /* st c2h */
-		data[1] |= (descq->conf.fetch_credit << S_DESC_CTXT_W1_F_FCRD_EN) |
-			   (V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_8B));
+		data[1] |=
+			(descq->conf.fetch_credit << S_DESC_CTXT_W1_F_FCRD_EN) |
+			(V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_8B));
 	} else { /* st h2c */
 		data[1] |= V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_16B);
 	}
@@ -144,13 +183,10 @@ static int make_prefetch_context(struct qdma_descq *descq, u32 *data, int cnt)
 
 	/* prefetch context */
 	data[1] = 1 << S_PFTCH_W1_F_VALID;
-	if (descq->conf.pfetch_en) {
-		data[0] = (descq->conf.bypass << S_PFTCH_W0_F_BYPASS) |
-			  (descq->conf.c2h_buf_sz_idx <<
-					  S_PFTCH_W0_BUF_SIZE_IDX) |
+	data[0] = (descq->conf.bypass << S_PFTCH_W0_F_BYPASS) |
+		  (descq->conf.c2h_buf_sz_idx << S_PFTCH_W0_BUF_SIZE_IDX) |
 			  /* TODO port id*/
-			  (descq->conf.pfetch_en << S_PFTCH_W0_F_EN_PFTCH);
-	}
+		  (descq->conf.pfetch_en << S_PFTCH_W0_F_EN_PFTCH);
 
 	pr_debug("%s, PFTCH 0x%08x 0x%08x\n",
 		descq->conf.name, data[1], data[0]);
@@ -201,9 +237,9 @@ static int make_wrb_context(struct qdma_descq *descq, u32 *data, int cnt)
 	return 0;
 }
 
-#ifndef __QDMA_VF__
 /* QID2VEC Interrupt Context */
-static int make_qid2vec_context(struct xlnx_dma_dev *xdev, struct qdma_descq *descq,  u32 *data, int cnt)
+static int make_qid2vec_context(struct xlnx_dma_dev *xdev,
+	struct qdma_descq *descq,  u32 *data, int cnt)
 {
 	u32 mask;
 	u32 shift;
@@ -211,13 +247,13 @@ static int make_qid2vec_context(struct xlnx_dma_dev *xdev, struct qdma_descq *de
 	int rv = 0;
 	int ring_index = 0;
 
+#ifndef __QDMA_VF__
 	memset(data, 0, (sizeof(u32) * cnt));
-
 	rv = hw_indirect_ctext_prog(xdev, descq->qidx_hw, QDMA_CTXT_CMD_RD,
 			QDMA_CTXT_SEL_QID2VEC, data, 1, 0);
 	if (rv < 0)
 		return rv;
-
+#endif
 	if (descq->conf.c2h) {
 		mask = C2H_QID2VEC_MAP_QID_C2H_VEC_MASK;
 		shift = C2H_QID2VEC_MAP_QID_C2H_VEC_SHIFT;
@@ -236,15 +272,13 @@ static int make_qid2vec_context(struct xlnx_dma_dev *xdev, struct qdma_descq *de
 		data[0] |= 1 << coal_shift;
 		ring_index = get_intr_ring_index(xdev, descq->intr_id);
 		data[0] |= ring_index << shift;
-	}
-	else
+	} else
 		data[0] |= (descq->intr_id) << shift;
 
 	pr_debug("qid2vec context = 0x%08x\n", data[0]);
 	return rv;
 }
 
-#endif
 
 #ifdef __QDMA_VF__
 int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
@@ -260,19 +294,17 @@ int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
 	if (rv < 0)
 		return rv;
 	do {
-		struct mbox_msg m;
-		struct mbox_msg_hdr *hdr = &m.hdr;
-		struct mbox_msg_intr_ctxt *ictxt = &m.intr_ctxt;
+		struct mbox_msg *m = qdma_mbox_msg_alloc(xdev,
+						 MBOX_OP_INTR_CTXT);
+		struct mbox_msg_hdr *hdr = m ? &m->hdr : NULL;
+		struct mbox_msg_intr_ctxt *ictxt = m ? &m->intr_ctxt : NULL;
 		u8 copy = xdev->num_vecs  - i;
+
+		if (!m)
+			return -ENOMEM;
 
 		if (copy > MBOX_INTR_CTXT_VEC_MAX)
 			copy = MBOX_INTR_CTXT_VEC_MAX;
-
-		memset(&m, 0, sizeof(struct mbox_msg));
-
-		hdr->src = xdev->func_id;
-		hdr->dst = xdev->func_id_parent;
-		hdr->op = MBOX_OP_INTR_CTXT;
 
 		ictxt->clear = 1;
 		ictxt->vec_base = i;
@@ -280,20 +312,20 @@ int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
 
 		memcpy(ictxt->w, data + 2 * i, copy * sizeof(u32));
 
-		rv = qdma_mbox_send_msg(xdev, &m, 1);
+		rv = qdma_mbox_msg_send(xdev, m, 1, MBOX_OP_INTR_CTXT_RESP,
+					QDMA_MBOX_MSG_TIMEOUT_MS);
 		if (rv < 0) {
-			pr_info("%s, vec %d, +%d mbox failed %d.\n",
-				xdev->conf.name, i, copy, rv);
+			if (rv != -ENODEV)
+				pr_info("%s, vec %d, +%d mbox failed %d.\n",
+					xdev->conf.name, i, copy, rv);
+			goto free_msg;
+		}
+
+		rv = hdr->status;
+free_msg:
+		qdma_mbox_msg_free(m);
+		if (rv < 0)
 			return rv;
-		}
-		if (hdr->ack) {
-			if (hdr->status)
-				return hdr->status;
-		} else {
-			pr_info("%s, vec %d, +%d mbox, rcv status %d.\n",
-				xdev->conf.name, i, copy, hdr->status);
-			return -EINVAL;
-		}
 
 		i += copy;
 
@@ -305,117 +337,123 @@ int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
 int qdma_descq_context_clear(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				bool st, bool c2h, bool clr)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
-	struct mbox_msg_qctxt *qctxt = &m.qctxt;
+	struct mbox_msg *m = qdma_mbox_msg_alloc(xdev, MBOX_OP_QCTXT_CLR);
+	struct mbox_msg_hdr *hdr = m ? &m->hdr : NULL;
+	struct mbox_msg_qctxt *qctxt = m ? &m->qctxt : NULL ;
 	int rv;
 
-	memset(&m, 0, sizeof(m));
-
-	hdr->src = xdev->func_id;
-	hdr->dst = xdev->func_id_parent;
-	hdr->op = MBOX_OP_QCTXT_CLR;
+	if (!m)
+		return -ENOMEM;
 
 	qctxt->qid = qid_hw;
 	qctxt->st = st;
 	qctxt->c2h = c2h;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 1);
+	rv = qdma_mbox_msg_send(xdev, m, 1, MBOX_OP_QCTXT_CLR_RESP,
+				QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
-		pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
-			xdev->conf.name, qid_hw, rv);
-		return rv;
-	}
-	pr_debug("%s, mbox rcv ack:%d, status 0x%x.\n",
-		xdev->conf.name, hdr->ack, hdr->status);
-	if (hdr->ack)
-		return hdr->status;
-	else {
-		return -EINVAL;
+		if (rv != -ENODEV)
+			pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
+				xdev->conf.name, qid_hw, rv);
+		goto err_out;
 	}
 
+	rv = hdr->status;
+
+err_out:
+	qdma_mbox_msg_free(m);
+	return rv;
 }
 
 int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				bool st, bool c2h,
 				struct hw_descq_context *context)
 {
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
-	struct mbox_msg_qctxt *qctxt = &m.qctxt;
+	struct mbox_msg *m = qdma_mbox_msg_alloc(xdev, MBOX_OP_QCTXT_RD);
+	struct mbox_msg_hdr *hdr = m ? &m->hdr : NULL;
+	struct mbox_msg_qctxt *qctxt = m ? &m->qctxt : NULL;
 	int rv;
 
-	memset(&m, 0, sizeof(m));
-
-	hdr->op = MBOX_OP_QCTXT_RD;
-	hdr->dst = xdev->func_id_parent;
-	hdr->src = xdev->func_id;
+	if (!m)
+		return -ENOMEM;
 
 	qctxt->qid = qid_hw;
 	qctxt->st = st;
 	qctxt->c2h = c2h;
 
-	pr_debug("%s, mbox send to PF, QCTXT RD 0x%x.\n",
-		xdev->conf.name, qid_hw);
-
-	rv = qdma_mbox_send_msg(xdev, &m, 1);
+	rv = qdma_mbox_msg_send(xdev, m, 1, MBOX_OP_QCTXT_RD_RESP,
+				QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
-		pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
-			xdev->conf.name, qid_hw, rv);
-		return rv;
+		if (rv != -ENODEV)
+			pr_info("%s, qid_hw 0x%x mbox failed %d.\n",
+				xdev->conf.name, qid_hw, rv);
+		goto err_out;
 	}
-	pr_debug("%s, mbox rcv ack:%d, status 0x%x.\n",
-		xdev->conf.name, hdr->ack, hdr->status);
-	if (hdr->ack) {
-		if (hdr->status)
-			return hdr->status;
-	} else
-		return -EINVAL;
+
+	if (hdr->status) {
+		rv = hdr->status;
+		goto err_out;
+	}
 
 	memcpy(context, &qctxt->context, sizeof(struct hw_descq_context));
+
 	return 0;
+
+err_out:
+	qdma_mbox_msg_free(m);
+	return rv;
 }
 
 int qdma_descq_context_setup(struct qdma_descq *descq)
 {
 	struct xlnx_dma_dev *xdev = descq->xdev;
-	struct mbox_msg m;
-	struct mbox_msg_hdr *hdr = &m.hdr;
-	struct mbox_msg_qctxt *qctxt = &m.qctxt;
-	struct hw_descq_context *context = &qctxt->context;
+	struct mbox_msg *m = qdma_mbox_msg_alloc(xdev, MBOX_OP_QCTXT_WRT);
+	struct mbox_msg_hdr *hdr = m ? &m->hdr : NULL;
+	struct mbox_msg_qctxt *qctxt = m ? &m->qctxt : NULL;
+	struct hw_descq_context *context = m ? &qctxt->context : NULL;
 	int rv;
 
-	memset(&m, 0, sizeof(m));
-
+	if (!m)
+		return -ENOMEM;
+	
+		
+	rv = qdma_descq_context_read(xdev, descq->qidx_hw,
+				descq->conf.st, descq->conf.c2h,
+				context);
+	if (rv < 0) {
+		pr_info("%s, qid_hw 0x%x, %s mbox failed %d.\n",
+			xdev->conf.name, descq->qidx_hw, descq->conf.name, rv);
+		goto err_out;
+	}
+	
 	make_sw_context(descq, context->sw, 4);
+	make_qid2vec_context(xdev, descq,  context->qid2vec, 1);
 	if (descq->conf.st && descq->conf.c2h) {
 		make_prefetch_context(descq, context->prefetch, 2);
 		make_wrb_context(descq, context->wrb, 4);
 	}
-
-	hdr->op = MBOX_OP_QCTXT_WRT;
-	hdr->src = xdev->func_id;
-	hdr->dst = xdev->func_id_parent;
-
+	
 	qctxt->clear = 1;
 	qctxt->verify = 1;
 	qctxt->st = descq->conf.st;
 	qctxt->c2h = descq->conf.c2h;
-
 	qctxt->qid = descq->qidx_hw;
 
-	rv = qdma_mbox_send_msg(xdev, &m, 1);
+	rv = qdma_mbox_msg_send(xdev, m, 1, MBOX_OP_QCTXT_WRT_RESP,
+				QDMA_MBOX_MSG_TIMEOUT_MS);
 	if (rv < 0) {
-		pr_info("%s, qid_hw 0x%x, %s mbox failed %d.\n",
-			xdev->conf.name, descq->qidx_hw, descq->conf.name, rv);
-		return rv;
+		if (rv != -ENODEV)
+			pr_info("%s, qid_hw 0x%x, %s mbox failed %d.\n",
+				xdev->conf.name, descq->qidx_hw,
+				descq->conf.name, rv);
+		goto err_out;
 	}
-	pr_debug("%s, mbox rcv ack:%d, status 0x%x.\n",
-		xdev->conf.name, hdr->ack, hdr->status);
-	if (hdr->ack)
-		return hdr->status;
-	else
-		return -EINVAL;
+
+	rv = hdr->status;
+
+err_out:
+	qdma_mbox_msg_free(m);
+	return rv;
 }
 
 #else /* PF only */
@@ -436,13 +474,14 @@ int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
 		return rv;
 
 	for (i = 0; i < QDMA_DATA_VEC_PER_PF_MAX; i++) {
-		ring_index = get_intr_ring_index(xdev, (i + xdev->dvec_start_idx));
+		ring_index = get_intr_ring_index(xdev,
+				(i + xdev->dvec_start_idx));
 		/* INTR COALESCING Context Programming */
 		rv = hw_indirect_ctext_prog(xdev,
-									ring_index,
-									QDMA_CTXT_CMD_CLR,
-									QDMA_CTXT_SEL_COAL,
-									NULL, 4, 0);
+					ring_index,
+					QDMA_CTXT_CMD_CLR,
+					QDMA_CTXT_SEL_COAL,
+					NULL, 4, 0);
 		if (rv < 0)
 			return rv;
 
@@ -452,18 +491,23 @@ int qdma_intr_context_setup(struct xlnx_dma_dev *xdev)
 			return rv;
 
 		pr_debug("intr_ctxt WR: ring_index(Qid) = %d, data[1] = %x data[0] = %x\n",
-						ring_index, *(data + ((2*i) + 1)), *(data + (2*i)));
+				ring_index,
+				*(data + ((2*i) + 1)),
+				*(data + (2*i)));
 
 		rv = hw_indirect_ctext_prog(xdev,
-									ring_index,
-									QDMA_CTXT_CMD_RD,
-									QDMA_CTXT_SEL_COAL,
-									intr_ctxt, 4, 1);
+					ring_index,
+					QDMA_CTXT_CMD_RD,
+					QDMA_CTXT_SEL_COAL,
+					intr_ctxt, 4, 1);
 		if (rv < 0)
 			return rv;
 
 		pr_debug("intr_ctxt RD: ring_index(Qid) = %d, data[3] = %x data[2] = %x data[1] = %x data[0] = %x\n",
-				ring_index, intr_ctxt[3],  intr_ctxt[2], intr_ctxt[1], intr_ctxt[0]);
+				ring_index, intr_ctxt[3],
+				intr_ctxt[2],
+				intr_ctxt[1],
+				intr_ctxt[0]);
 	}
 
 	return 0;
@@ -536,6 +580,32 @@ int qdma_descq_context_setup(struct qdma_descq *descq)
 				descq->conf.st, descq->conf.c2h, &context);
 }
 
+/* STM */
+int qdma_descq_stm_setup(struct qdma_descq *descq)
+{
+	struct stm_descq_context context;
+
+	memset(&context, 0, sizeof(context));
+	if (descq->conf.st && !descq->conf.c2h)
+		make_stm_context(descq, context.stm, 5);
+
+	return qdma_descq_stm_program(descq->xdev, descq->qidx_hw,
+				      descq->conf.pipe_flow_id,
+				      descq->conf.c2h, false,
+				      &context);
+}
+
+int qdma_descq_stm_clear(struct qdma_descq *descq)
+{
+	struct stm_descq_context context;
+
+	memset(&context, 0, sizeof(context));
+	return qdma_descq_stm_program(descq->xdev, descq->qidx_hw,
+				      descq->conf.pipe_flow_id,
+				      descq->conf.c2h, true,
+				      &context);
+}
+
 int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				bool st, bool c2h,
 				struct hw_descq_context *context)
@@ -583,13 +653,15 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	return 0;
 }
 
-int qdma_intr_context_read(struct xlnx_dma_dev *xdev, int ring_index, u32 *context)
+int qdma_intr_context_read(struct xlnx_dma_dev *xdev,
+	int ring_index, u32 *context)
 {
 	int rv = 0;
 
 	memset(context, 0, (sizeof(u32) * 4));
 
-	rv = hw_indirect_ctext_prog(xdev, ring_index, QDMA_CTXT_CMD_RD, QDMA_CTXT_SEL_COAL,
+	rv = hw_indirect_ctext_prog(xdev, ring_index,
+				QDMA_CTXT_CMD_RD, QDMA_CTXT_SEL_COAL,
 				context, 4, 0);
 	if (rv < 0)
 		return rv;
@@ -617,6 +689,7 @@ int qdma_descq_context_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		return rv;
 
 	/* qid2vec context */
+	pr_debug("QDMA_CTXT_SEL_QID2VEC, context->qid2vec = 0x%08x\n", context->qid2vec[0]);
 	rv = hw_indirect_ctext_prog(xdev, qid_hw, QDMA_CTXT_CMD_WR,
 			QDMA_CTXT_SEL_QID2VEC, context->qid2vec, 1, 1);
 	if (rv < 0)
@@ -641,4 +714,39 @@ int qdma_descq_context_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	return 0;
 }
 
+/* STM */
+int qdma_descq_stm_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
+			   u8 pipe_flow_id, bool c2h, bool clear,
+			   struct stm_descq_context *context)
+{
+	int rv;
+
+	if (!c2h) {
+		/* need to program stm context */
+		rv = hw_indirect_stm_prog(xdev, qid_hw, pipe_flow_id,
+					  STM_CSR_CMD_WR,
+					  STM_IND_ADDR_Q_CTX_H2C,
+					  context->stm, 5, clear);
+		if (rv < 0)
+			return rv;
+		rv = hw_indirect_stm_prog(xdev, qid_hw, pipe_flow_id,
+					  STM_CSR_CMD_WR,
+					  STM_IND_ADDR_H2C_MAP,
+					  context->stm, 1, clear);
+		if (rv < 0)
+			return rv;
+	}
+
+	/* Only c2h st specific setup done below*/
+	if (!c2h)
+		return 0;
+
+	rv = hw_indirect_stm_prog(xdev, qid_hw, pipe_flow_id,
+				  STM_CSR_CMD_WR, STM_IND_ADDR_C2H_MAP,
+				  context->stm, 1, clear);
+	if (rv < 0)
+		return rv;
+
+	return 0;
+}
 #endif

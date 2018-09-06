@@ -11,11 +11,15 @@ file(GLOB XCLBINCAT_FILES
   "xclbincat1.cxx"
   "xclbindata.cxx"
   "xclbinutils.cxx"
-)
+  )
 
 set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
 add_executable(xclbincat ${XCLBINCAT_SRC})
+target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+
+# -----------------------------------------------------------------------------
+
 target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
 
 # -----------------------------------------------------------------------------
@@ -68,3 +72,4 @@ target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
 # -----------------------------------------------------------------------------
 
 install (TARGETS xclbincat xclbinsplit xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+

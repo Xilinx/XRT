@@ -1,0 +1,23 @@
+args: vadd.xclbin
+board_copy: [vadd.xclbin]
+copy: [main.cpp, vadd.cl]
+devices:
+- [xilinx_.*]
+flags: -DDSA64 -g -Wall -D C_KERNEL -D FPGA_DEVICE 
+flow: hw
+krnls:
+- compile_flags: --nk vadd:1:kernel --sp kernel.m_axi_gmem0:bank3 --sp kernel.m_axi_gmem1:bank3 --sp kernel.m_axi_gmem2:bank3 --sp kernel.m_axi_gmem3:bank3  --max_memory_ports all
+  name: vadd
+  srcs: [vadd.cl]
+  type: clc
+levels:
+- {hw: 1}
+name: vadd_bank3
+owner: thuyp
+srcs: [main.cpp]
+xclbins:
+- cus:
+  - {krnl: vadd, name: kernel}
+  link_flags: --sp kernel.m_axi_gmem0:bank3 --sp kernel.m_axi_gmem1:bank3 --sp kernel.m_axi_gmem2:bank3 --sp kernel.m_axi_gmem3:bank3  --max_memory_ports all
+  name: vadd
+  region: OCL_REGION_0

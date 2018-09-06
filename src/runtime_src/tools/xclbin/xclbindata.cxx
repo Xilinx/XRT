@@ -900,7 +900,12 @@ XclBinData::createIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     ipDataHdr.properties = (uint32_t) XclBinUtil::stringToUInt64(sProperties);
 
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
-    ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    if ( sBaseAddress != "not_used" ) {
+      ipDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
+    }
+    else {
+      ipDataHdr.m_base_address = (uint64_t) -1;
+    }
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if ( sm_name.length() >= sizeof(ip_data::m_name) ) {
@@ -957,6 +962,9 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
   if ( _sDebugIPType == "ACCEL_MONITOR" )
       return ACCEL_MONITOR;
 
+  if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
+      return AXI_STREAM_MONITOR;
+
   if ( _sDebugIPType == "UNDEFINED" )
       return UNDEFINED;
 
@@ -996,8 +1004,19 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
     debugIpDataHdr.m_type = getDebugIPType( sm_type );
-    debugIpDataHdr.m_index = ptDebugIPData.get<int8_t>("m_index");
-    debugIpDataHdr.m_properties = ptDebugIPData.get<int8_t>("m_properties");
+    debugIpDataHdr.m_index = ptDebugIPData.get<uint8_t>("m_index");
+    debugIpDataHdr.m_properties = ptDebugIPData.get<uint8_t>("m_properties");
+
+    boost::optional<uint8_t> m_major = ptDebugIPData.get_optional<uint8_t>("m_major");
+    if ( m_major.is_initialized() ) {
+      debugIpDataHdr.m_major = (uint8_t) m_major.get();
+    }
+
+    boost::optional<uint8_t> m_minor = ptDebugIPData.get_optional<uint8_t>("m_minor");
+    if ( m_minor.is_initialized() ) {
+      debugIpDataHdr.m_minor = (uint8_t) m_minor.get();
+    }
+
 
     std::string sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
     debugIpDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);
@@ -1012,13 +1031,15 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     // We already know that there is enough room for this string
     memcpy( debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_base_address: 0x%lx, m_name: '%s'", 
-              count,
-              (unsigned int) debugIpDataHdr.m_type,
-              (unsigned int) debugIpDataHdr.m_index,
-              (unsigned int) debugIpDataHdr.m_properties,
-              debugIpDataHdr.m_base_address,
-              debugIpDataHdr.m_name));
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+                             count,
+                             (unsigned int) debugIpDataHdr.m_type,
+                             (unsigned int) debugIpDataHdr.m_index,
+                             (unsigned int) debugIpDataHdr.m_properties,
+                             (unsigned int) debugIpDataHdr.m_major,
+                             (unsigned int) debugIpDataHdr.m_minor,
+                             debugIpDataHdr.m_base_address,
+                             debugIpDataHdr.m_name));
 
     // Write out the entire structure 
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&debugIpDataHdr), sizeof(debug_ip_data));
@@ -1227,9 +1248,9 @@ XclBinData::addPTreeSchemaVersion( boost::property_tree::ptree &_pt, SchemaVersi
                      _schemaVersion.minor, 
                      _schemaVersion.patch));
 
-  pt_schemaVersion.put("major", XclBinUtil::format("%d", _schemaVersion.major));
-  pt_schemaVersion.put("minor", XclBinUtil::format("%d", _schemaVersion.minor));
-  pt_schemaVersion.put("patch", XclBinUtil::format("%d", _schemaVersion.patch));
+  pt_schemaVersion.put("major", XclBinUtil::format("%d", _schemaVersion.major).c_str());
+  pt_schemaVersion.put("minor", XclBinUtil::format("%d", _schemaVersion.minor).c_str());
+  pt_schemaVersion.put("patch", XclBinUtil::format("%d", _schemaVersion.patch).c_str());
   _pt.add_child("schema_version", pt_schemaVersion);
 }
 
@@ -1325,7 +1346,7 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr);
-  mem_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  mem_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_mem_data[0]) - (unsigned long) pHdr)  + (sizeof(mem_data) * pHdr->m_count);
 
@@ -1340,7 +1361,7 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
 
     TRACE(XclBinUtil::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx", 
                        index,
-                       getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type),
+                       getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type).c_str(),
                        (unsigned int) pHdr->m_mem_data[index].m_used,
                        pHdr->m_mem_data[index].m_size,
                        pHdr->m_mem_data[index].m_tag,
@@ -1349,11 +1370,11 @@ XclBinData::extractMemTopologyData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("mem_data", reinterpret_cast<const char*>(&(pHdr->m_mem_data[index])), sizeof(mem_data));
 
-    mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type));
-    mem_data.put("m_used", XclBinUtil::format("%d", (unsigned int) pHdr->m_mem_data[index].m_used));
-    mem_data.put("m_sizeKB", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_size));
-    mem_data.put("m_tag", XclBinUtil::format("%s", pHdr->m_mem_data[index].m_tag));
-    mem_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address));
+    mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE) pHdr->m_mem_data[index].m_type).c_str());
+    mem_data.put("m_used", XclBinUtil::format("%d", (unsigned int) pHdr->m_mem_data[index].m_used).c_str());
+    mem_data.put("m_sizeKB", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_size).c_str());
+    mem_data.put("m_tag", XclBinUtil::format("%s", pHdr->m_mem_data[index].m_tag).c_str());
+    mem_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address).c_str());
 
     m_mem_data.add_child("mem_data", mem_data);
   }
@@ -1387,7 +1408,7 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr);
-  connectivity.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  connectivity.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_connection[0]) - (unsigned long) pHdr)  + (sizeof(connection) * pHdr->m_count);
 
@@ -1410,9 +1431,9 @@ XclBinData::extractConnectivityData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));
 
-    connection.put("arg_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].arg_index));
-    connection.put("m_ip_layout_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].m_ip_layout_index));
-    connection.put("mem_data_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].mem_data_index));
+    connection.put("arg_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].arg_index).c_str());
+    connection.put("m_ip_layout_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].m_ip_layout_index).c_str());
+    connection.put("mem_data_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_connection[index].mem_data_index).c_str());
 
     m_connection.add_child("connection", connection);
   }
@@ -1458,7 +1479,7 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
    // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr);
-  ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   unsigned int expectedSize = ((unsigned long) &(pHdr->m_ip_data[0]) - (unsigned long) pHdr)  + (sizeof(ip_data) * pHdr->m_count);
 
@@ -1473,7 +1494,7 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
 
     TRACE(XclBinUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
                        index,
-                       getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type),
+                       getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type).c_str(),
                        pHdr->m_ip_data[index].properties,
                        pHdr->m_ip_data[index].m_base_address,
                        pHdr->m_ip_data[index].m_name));
@@ -1481,10 +1502,14 @@ XclBinData::extractIPLayoutData( char * _pDataSegment,
     // Write out the entire structure 
     TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
-    ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type));
-    ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties));
-    ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address));
-    ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name));
+    ip_data.put("m_type", getIPTypeStr((enum IP_TYPE) pHdr->m_ip_data[index].m_type).c_str());
+    ip_data.put("properties", XclBinUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
+    if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
+      ip_data.put("m_base_address", XclBinUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    } else {
+      ip_data.put("m_base_address", "not_used");
+    }
+    ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
     m_ip_data.add_child("ip_data", ip_data);
   }
@@ -1507,6 +1532,7 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case AXI_MONITOR_FIFO_LITE: return "AXI_MONITOR_FIFO_LITE";
     case AXI_MONITOR_FIFO_FULL: return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
+    case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _debugIpType);
@@ -1535,7 +1561,7 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_debug_ip_data[0]) - (unsigned long) pHdr);
-  debug_ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  debug_ip_layout.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   debug_ip_data mydata = (debug_ip_data){0};
   
@@ -1555,21 +1581,26 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              index,
-                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type),
+                             getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
                              (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_properties,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_major,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_minor,
                              pHdr->m_debug_ip_data[index].m_base_address,
                              pHdr->m_debug_ip_data[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
-    debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type));
-    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index));
-    debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties));
-    debug_ip_data.put("m_base_address", XclBinUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address));
-    debug_ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_debug_ip_data[index].m_name));
+    debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str());
+    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index).c_str());
+    debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties).c_str());
+    debug_ip_data.put("m_major", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_major).c_str());
+    debug_ip_data.put("m_minor", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_minor).c_str());
+    debug_ip_data.put("m_base_address", XclBinUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address).c_str());
+    debug_ip_data.put("m_name", XclBinUtil::format("%s", pHdr->m_debug_ip_data[index].m_name).c_str());
 
     m_debug_ip_data.add_child("debug_ip_data", debug_ip_data);
   }
@@ -1616,7 +1647,7 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
 
   // Write out the entire structure except for the array structure
   TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), (unsigned long) &(pHdr->m_clock_freq[0]) - (unsigned long) pHdr);
-  clock_freq_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count));
+  clock_freq_topology.put("m_count", XclBinUtil::format("%d", (unsigned int) pHdr->m_count).c_str());
 
   clock_freq mydata = (clock_freq){0};
   
@@ -1635,18 +1666,18 @@ XclBinData::extractClockFreqTopology( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree clock_freq;
 
-    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'", 
+    TRACE(XclBinUtil::format("[%d]: m_freq_Mhz: %d, m_type: %s, m_name: '%s'", 
                              index,
                              (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz,
-                             getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type),
+                             getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type).c_str(),
                              pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure 
     TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
-    clock_freq.put("m_freq_Mhz", XclBinUtil::format("%d", (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz));
-    clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type));
-    clock_freq.put("m_name", XclBinUtil::format("%s", pHdr->m_clock_freq[index].m_name));
+    clock_freq.put("m_freq_Mhz", XclBinUtil::format("%d", (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz).c_str());
+    clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE) pHdr->m_clock_freq[index].m_type).c_str());
+    clock_freq.put("m_name", XclBinUtil::format("%s", pHdr->m_clock_freq[index].m_name).c_str());
 
     m_clock_freq.add_child("clock_freq", clock_freq);
   }

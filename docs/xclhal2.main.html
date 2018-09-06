@@ -383,7 +383,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="si
 between host and device memory</p>
 <dl class="function">
 <dt id="c.xclAllocBO">
-XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, xclBOKind<em>&nbsp;domain</em>, uint64_t<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, xclBOKind<em>&nbsp;domain</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO of requested size with appropriate flags</p>
 </dd></dl>
 
@@ -395,14 +395,14 @@ XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span c
 <dd>Size of buffer</dd>
 <dt><code class="docutils literal"><span class="pre">xclBOKind</span> <span class="pre">domain</span></code></dt>
 <dd>Memory domain</dd>
-<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">flags</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">flags</span></code></dt>
 <dd>Specify bank information, etc</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>BO handle</p>
 <dl class="function">
 <dt id="c.xclAllocUserPtrBO">
-XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocUserPtrBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, void *<em>&nbsp;userptr</em>, size_t<em>&nbsp;size</em>, uint64_t<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocUserPtrBO" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocUserPtrBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, void *<em>&nbsp;userptr</em>, size_t<em>&nbsp;size</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocUserPtrBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO using userptr provided by the user</p>
 </dd></dl>
 
@@ -414,7 +414,7 @@ XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocUserPtrBO</code>
 <dd>Pointer to 4K aligned user memory</dd>
 <dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
 <dd>Size of buffer</dd>
-<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">flags</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">flags</span></code></dt>
 <dd>Specify bank information, etc</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -892,20 +892,20 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclRegisterInterruptNotify</code>
 eventfd system call. Caller should use standard poll/read eventfd framework in order to wait for
 interrupts. The handles are automatically unregistered on process exit.</p>
 <dl class="type">
-<dt id="c.xclQueueWbe">
-struct <code class="descname">xclQueueWbe</code><a class="headerlink" href="#c.xclQueueWbe" title="Permalink to this definition">¶</a></dt>
-<dd><p>structure to describe a Queue struct xclQueueWbe - write back event</p>
+<dt id="c.xclQueueContext">
+struct <code class="descname">xclQueueContext</code><a class="headerlink" href="#c.xclQueueContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>structure to describe a Queue</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclQueueWbe {
+<div class="highlight-none"><div class="highlight"><pre>struct xclQueueContext {
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
 <dl class="function">
 <dt id="c.xclCreateWriteQueue">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclQueueContext *<em>&nbsp;q_ctx</em>, uint64_t *<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCreateWriteQueue" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, <a class="reference internal" href="#c.xclQueueContext" title="xclQueueContext">xclQueueContext</a> *<em>&nbsp;q_ctx</em>, uint64_t *<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCreateWriteQueue" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create Write Queue xclCreateReadQueue - Create Read Queue</p>
 </dd></dl>
 
@@ -921,6 +921,24 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span c
 <p><strong>Description</strong></p>
 <p>This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
 successes.</p>
+<dl class="function">
+<dt id="c.xclAllocQDMABuf">
+XCL_DRIVER_DLLESPEC void * <code class="descname">xclAllocQDMABuf</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, uint64_t *<em>&nbsp;buf_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocQDMABuf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate DMA buffer xclFreeQDMABuf - Free DMA buffer</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Buffer size</dd>
+<dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">buf_hdl</span></code></dt>
+<dd>Buffer handle</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>return val: buffer pointer</p>
+<p>These functions allocate and free DMA buffers which is used for queue read and write</p>
 <dl class="function">
 <dt id="c.xclDestroyQueue">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclDestroyQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclDestroyQueue" title="Permalink to this definition">¶</a></dt>
@@ -966,7 +984,8 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclStartQueue</code><span class="
 <dd>Queue handle</dd>
 </dl>
 <p><strong>Description</strong></p>
-<p>This function set xclStartQueue to running state. xclStartQueue starts to process Read and Write requests.</p>
+<p>This function set xclStartQueue to running state. xclStartQueue starts to process Read and Write requests.
+TODO: remove this</p>
 <dl class="function">
 <dt id="c.xclStopQueue">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclStopQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclStopQueue" title="Permalink to this definition">¶</a></dt>
@@ -982,7 +1001,19 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclStopQueue</code><span class="s
 </dl>
 <p><strong>Description</strong></p>
 <p>This function set Queue to init state. all pending read and write requests will be flushed.
-wr_complete and rd_complete will be called with error wbe for flushed requests.</p>
+wr_complete and rd_complete will be called with error wbe for flushed requests.
+TODO: remove this</p>
+<dl class="type">
+<dt id="c.xclWRBuffer">
+struct <code class="descname">xclWRBuffer</code><a class="headerlink" href="#c.xclWRBuffer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre>struct xclWRBuffer {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
 <dl class="type">
 <dt id="c.xclQueueRequest">
 struct <code class="descname">xclQueueRequest</code><a class="headerlink" href="#c.xclQueueRequest" title="Permalink to this definition">¶</a></dt>

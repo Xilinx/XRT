@@ -447,6 +447,7 @@ XclBin::readXclBinSection(std::fstream& _istream,
   Section* pSection = Section::createSectionObjectOfKind(eKind);
 
   pSection->readXclBinBinary(_istream, _ptSection);
+  addSection(pSection);
 }
 
 

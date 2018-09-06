@@ -54,7 +54,7 @@ static ssize_t status_show(struct device *dev, struct device_attribute *attr,
 
 	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
 
-	return sprintf(buf, "%d\n", status);
+	return sprintf(buf, "0x%x\n", status);
 }
 static DEVICE_ATTR_RO(status);
 
@@ -80,7 +80,7 @@ static ssize_t capability_show(struct device *dev, struct device_attribute *attr
 
 	capability = ioread32(xlnx_dna->base+XLNX_DNA_CAPABILITY_REGISTER_OFFSET);
 
-	return sprintf(buf, "%d\n", capability);
+	return sprintf(buf, "0x%x\n", capability);
 }
 static DEVICE_ATTR_RO(capability);
 
@@ -93,7 +93,7 @@ static ssize_t dna_version_show(struct device *dev, struct device_attribute *att
 
 	version = ioread32(xlnx_dna->base+XLNX_DNA_MAJOR_MINOR_VERSION_REGISTER_OFFSET);
 
-	return sprintf(buf, "%d\n", version);
+	return sprintf(buf, "%d.%d\n", version>>16,version&0xffff);
 }
 static DEVICE_ATTR_RO(dna_version);
 

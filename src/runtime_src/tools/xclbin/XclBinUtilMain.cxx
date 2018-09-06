@@ -23,6 +23,7 @@
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <stdexcept>
 
 // System - Include Files
 #include <iostream>
@@ -121,6 +122,9 @@ int main(int argc, char** argv) {
     XclBin xclBin;
     if (!sInputFile.empty()) {
       xclBin.readXclBinBinary(sInputFile, bMigrateForward);
+    } else {
+      std::string errMsg = "ERROR: No input file specified.";
+      throw std::runtime_error(errMsg);
     }
 
     if (!sSectionToRemove.empty()) {

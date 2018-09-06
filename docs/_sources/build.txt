@@ -37,14 +37,14 @@ Install the XRT RPM package
 
 ::
 
-   yum install ./XRT-2.1.0-Linux.rpm
+   yum reinstall ./XRT-2.1.0-Linux.rpm
 
 Install the XRT DEB package
 ...........................
 
 ::
 
-   apt install ./XRT-2.1.0-Linux.deb
+   apt install --reinstall ./XRT-2.1.0-Linux.deb
 
 XRT Documentation
 ~~~~~~~~~~~~~~~~~
