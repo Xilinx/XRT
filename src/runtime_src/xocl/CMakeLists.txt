@@ -18,6 +18,7 @@ file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/*.cpp"
   "${XRT_XOCL_API_DIR}/detail/*.h"
   "${XRT_XOCL_API_DIR}/detail/*.cpp"
+  "${XRT_XOCL_API_DIR}/icd/*.cpp"
   "${XRT_XOCL_API_DIR}/khronos/*.h"
   "${XRT_XOCL_API_DIR}/khronos/*.cpp"
   "${XRT_XOCL_API_DIR}/xlnx/*.h"

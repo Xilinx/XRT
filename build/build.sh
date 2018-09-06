@@ -10,6 +10,7 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
+    echo "[-j <n>]                   Compile parallel (default: 4)"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
     echo "[-verbose]                 Turn on verbosity when compiling"
@@ -23,6 +24,7 @@ clean=0
 covbuild=0
 ccache=0
 verbose=""
+jpar=4
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -30,6 +32,11 @@ while [ $# -gt 0 ]; do
             ;;
         clean|-clean)
             clean=1
+            shift
+            ;;
+        -j)
+            shift
+            jpar=$1
             shift
             ;;
         -ccache)
@@ -104,11 +111,11 @@ fi
 mkdir -p Debug Release
 cd Debug
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
+make -j$jpar $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
+make -j$jpar $verbose DESTDIR=$PWD install
 make package
 cd $here
