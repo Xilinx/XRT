@@ -1466,7 +1466,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	bool need_download;
 	struct ip_layout* layout = NULL;
-	int i = 0, k = 0;
+	int i = 0, j = 0;
 	uint32_t dynamic_subdev_nums = core->dyna_subdevs_num;
 	struct xocl_subdev_info* subdev_info = NULL;
 	struct resource *res = NULL;
@@ -1475,7 +1475,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	uint32_t range = 0;
 	uint32_t base_addr[XOCL_SUBDEV_NUM][NUMS_OF_DYNA_IP_ADDR];
 	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];// = {0};
-	uint8_t sub_id;
+	uint32_t sub_id;
 	uint32_t id, idx;
 
 	/* Can only be done from mgmt pf. */
@@ -1622,10 +1622,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 
 	/* Destroy all dynamically add sub-devices*/
-	for(k=0;k<dynamic_subdev_nums;++k){
-		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[k]);
-		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[k]);
-		core->dyna_subdevs_id[k] = INVALID_SUBDEVICE;
+	for(j=0;j<dynamic_subdev_nums;++j){
+		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[j]);
+		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[j]);
+		core->dyna_subdevs_id[j] = INVALID_SUBDEVICE;
 		core->dyna_subdevs_num--;
 	}
 
@@ -1662,10 +1662,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if(layout->m_ip_data[i].m_type==IP_KERNEL)
 			continue;	
 
+		/*!= IP_KERNEL in the future*/
 		if(layout->m_ip_data[i].m_type == IP_DNASC){
 
 			sub_id = xocl_subdev_get_subid(layout->m_ip_data[i].m_type);
-			if (sub_id == 0xff) {
+			if (sub_id == INVALID_SUBDEVICE) {
 				err = -ENODEV;
 				ICAP_ERR(icap, "failed to get IP type: %d ", layout->m_ip_data[i].m_type);
 				goto done;

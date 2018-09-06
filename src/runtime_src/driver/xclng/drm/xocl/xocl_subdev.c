@@ -78,12 +78,12 @@ error:
 	return ERR_PTR(retval);
 }	
 
-uint8_t xocl_subdev_get_subid(uint32_t ip_type){
+uint32_t xocl_subdev_get_subid(uint32_t ip_type){
 
-  uint8_t sub_id = 0xff;
+	uint32_t sub_id = INVALID_SUBDEVICE;
 	switch(ip_type){
 		case IP_DNASC:
-		  sub_id = XOCL_SUBDEV_DNA;
+			sub_id = XOCL_SUBDEV_DNA;
 			break;
 		default:
 			printk(KERN_ERR "%s Can't find the IP type, maybe a new IP?", __func__);
@@ -97,7 +97,7 @@ int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resourc
 	
 	switch(subdev_id){
 		case XOCL_SUBDEV_DNA:
-		  target = &(struct xocl_subdev_info)XOCL_DEVINFO_DNA;
+			target = &(struct xocl_subdev_info)XOCL_DEVINFO_DNA;
 			break;
 		default:
 			printk(KERN_ERR "Can't find the IP type, maybe a new IP?");
