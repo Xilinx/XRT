@@ -274,6 +274,30 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
 		descq->cur_req_count = req->count;
 		descq->cur_req_count_completed = 0;
 		desc->flags |= S_H2C_DESC_F_SOP;
+
+		if (descq->xdev->stm_en) {
+			if (sg_max > descq->conf.pipe_gl_max) {
+				pr_err("%s configured gl_max %u > given gls %u\n",
+				       descq->conf.name,
+				       descq->conf.pipe_gl_max, sg_max);
+				return -EINVAL;
+			}
+
+			if (req->count > descq->xdev->pipe_stm_max_pkt_size) {
+				pr_err("%s max stm pkt size %u > given %u\n",
+				       descq->conf.name,
+				       descq->xdev->pipe_stm_max_pkt_size,
+				       req->count);
+				return -EINVAL;
+			}
+
+			desc->cdh_flags = (1 << S_H2C_DESC_F_ZERO_CDH);
+			desc->cdh_flags |= V_H2C_DESC_NUM_GL(sg_max);
+			desc->pld_len = req->count;
+
+			desc->cdh_flags |= (req->h2c_eot << S_H2C_DESC_F_EOT) |
+				(1 << S_H2C_DESC_F_REQ_WRB);
+		}
 	}
 
 	for (; i < sg_max && desc_cnt < desc_max; i++, sg++) {
@@ -297,9 +321,6 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
 				pr_info("inducing %d err", len_mismatch);
 			}
 #endif
-			desc->pld_len = len;
-			desc->cdh_flags |= (1 << S_H2C_DESC_F_ZERO_CDH);
-			desc->cdh_flags |= V_H2C_DESC_NUM_GL(1);
 
 			data_cnt += len;
 			addr += len;
@@ -308,8 +329,6 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
 
 			if ((i == sg_max - 1)) {
 				desc->flags |= S_H2C_DESC_F_EOP;
-				desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT) |
-						   (1 << S_H2C_DESC_F_REQ_WRB);
 			}
 
 #if 0
@@ -329,6 +348,24 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
 			if (desc_cnt == desc_max)
 				break;
 		} while (tlen);
+	}
+
+	if (descq->xdev->stm_en) {
+		u16 pidx_diff = 0;
+
+		if (desc_cnt < descq->conf.pipe_gl_max)
+			pidx_diff = descq->conf.pipe_gl_max - desc_cnt;
+
+		if ((descq->pidx + pidx_diff) >= descq->conf.rngsz) {
+			descq->pidx = descq->pidx + pidx_diff -
+				descq->conf.rngsz;
+			desc = (struct qdma_h2c_desc *)(descq->desc +
+							descq->pidx);
+		} else {
+			descq->pidx += pidx_diff;
+			desc += pidx_diff;
+		}
+		desc_cnt += pidx_diff;
 	}
 
 	descq_h2c_pidx_update(descq, descq->pidx);
@@ -778,6 +815,7 @@ void qdma_descq_config(struct qdma_descq *descq, struct qdma_queue_conf *qconf,
 		descq->conf.pfetch_en = qconf->pfetch_en;
 		descq->conf.cmpl_udd_en = qconf->cmpl_udd_en;
 		descq->conf.cmpl_desc_sz = qconf->cmpl_desc_sz;
+		descq->conf.pipe_gl_max = qconf->pipe_gl_max;
 		descq->conf.pipe_flow_id = qconf->pipe_flow_id;
 		descq->conf.pipe_slr_id = qconf->pipe_slr_id;
 		descq->conf.pipe_tdest = qconf->pipe_tdest;
@@ -896,6 +934,12 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		pr_err("%s: No supported STM rev found in hw\n",
 		       descq->conf.name);
 		return -ENODEV;
+	}
+
+	if (!descq->conf.c2h && !descq->conf.bypass) {
+		pr_err("%s: H2C queue needs to be in bypass with STM\n",
+		       descq->conf.name);
+		return -EINVAL;
 	}
 
 	if (clear)

@@ -30,6 +30,8 @@
 #include "qdma_descq.h"
 #include "qdma_wq.h"
 
+#define	QDMA_ST_H2C_MASK	0x3f
+
 int qdma_wq_destroy(struct qdma_wq *queue)
 {
 	int			ret = 0;
@@ -271,22 +273,25 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 			wqe->unproc_sg_off = 0;
 			next = sg_next(sg);
 		}
+		if ((len & QDMA_ST_H2C_MASK) &&
+			i + 1 < wqe->unproc_sg_num) {
+			pr_err("Invalid alignment for st h2c sg_num:%d, "
+				"len %ld", i, len);
+			return -EINVAL;
+		}
 
 		dma_addr = sg_dma_address(sg) + off;
 		desc->src_addr = dma_addr;
 		desc->len = len;
+		if (descq->xdev->stm_en) {
+			desc->pld_len = len;
 
-		desc->pld_len = len;
-		/* desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH; */
+			desc->cdh_flags = (1 << S_H2C_DESC_F_ZERO_CDH);
+			desc->cdh_flags |= V_H2C_DESC_NUM_GL(1);
+		}
 
-		desc->cdh_flags |= (1 << S_H2C_DESC_F_ZERO_CDH);
-		desc->cdh_flags |= V_H2C_DESC_NUM_GL(1);
-		
 		descq->pidx++;
-		descq->pidx &= descq->conf.rngsz - 1;
 		descq->avail--;
-
-		descq_h2c_pidx_update(descq, descq->pidx);
 
 		wqe->unproc_bytes -= len;
 		total += len;
@@ -300,10 +305,15 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	}
 	desc->flags |= S_H2C_DESC_F_EOP;
-	desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT) |
-		(1 << S_H2C_DESC_F_REQ_WRB);
+	if (descq->xdev->stm_en) {
+		desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT) |
+			(1 << S_H2C_DESC_F_REQ_WRB);
+	}
 
 	BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0);
+
+	descq->pidx &= descq->conf.rngsz - 1;
+	descq_h2c_pidx_update(descq, descq->pidx);
 
 	wqe->unproc_sg = sg;
 	wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
@@ -504,6 +514,11 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 			break;
 		}
 		off -= sg->length;
+	}
+	if (off & QDMA_ST_H2C_MASK) {
+		pr_err("Invalid alignment.h2c buffer has to be 64B aligned"
+			"offset: %lld", off);
+		return -EINVAL;
 	}
 	BUG_ON(i == sg_num && off > sg->length);
 	sg_num -= i;
