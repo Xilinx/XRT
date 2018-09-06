@@ -111,6 +111,7 @@ UB_LIST=(\
      lm-sensors \
      lsb \
      make \
+     ocl-icd-dev \
      ocl-icd-libopencl1 \
      opencl-headers \
      ocl-icd-opencl-dev \
