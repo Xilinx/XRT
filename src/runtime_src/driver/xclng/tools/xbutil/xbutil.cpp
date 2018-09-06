@@ -583,7 +583,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   [-d device] [-d device] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d device] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d device] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
     std::cout << "  help\n";
