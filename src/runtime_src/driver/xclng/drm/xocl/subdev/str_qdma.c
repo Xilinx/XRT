@@ -186,7 +186,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	struct qdma_wr wr;
 	long	ret = 0;
 
-	xocl_debug(&sdev->pdev->dev, "Read / Write Queue %ld",
+	xocl_dbg(&sdev->pdev->dev, "Read / Write Queue %ld",
 		queue->queue.qhdl);
 
 	if (sz == 0)
