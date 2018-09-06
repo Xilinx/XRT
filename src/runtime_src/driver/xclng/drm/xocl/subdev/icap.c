@@ -1473,7 +1473,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	bool dna_check = false;
 	uint32_t range = 0;
 	uint32_t base_addr[XOCL_SUBDEV_NUM][NUMS_OF_DYNA_IP_ADDR];
-	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];// = {0};
+	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];
 	uint32_t sub_id;
 	uint32_t id, idx;
 
