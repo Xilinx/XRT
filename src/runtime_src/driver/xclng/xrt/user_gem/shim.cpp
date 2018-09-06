@@ -1175,7 +1175,7 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
     }
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    int ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
     return ret ? -errno : ret;
 }
 
@@ -1191,7 +1191,7 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, u
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
     drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+    int ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
     return ret ? -errno : ret;
 }
 
