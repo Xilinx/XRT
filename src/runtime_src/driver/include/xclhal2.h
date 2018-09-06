@@ -799,6 +799,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  *
  * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
+ * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
  */
 
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
@@ -816,6 +817,7 @@ XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace spac
  *
  * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
+ * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
  */
 XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                    void *hostbuf, size_t size);
@@ -955,9 +957,10 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 /*
  * DOC: HAL Stream Queue APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~
- * These functions are used for next generation DMA Engine: QDMA. QDMA provide not only memory mapped dma which
- * moves data between host memory and board memory, but also stream dma which moves data between host memory and
- * kernel directly. Current memory mapped DMA APIs are supported on QDMA. And new stream APIs are provided here.
+ * These functions are used for next generation DMA Engine, QDMA. QDMA provide not only memory mapped DMA which
+ * moves data between host memory and board memory, but also stream DMA which moves data between host memory and
+ * kernel directly. Current memory mapped DMA APIs are supported on QDMA. New stream APIs are provided here for
+ * preview. These can only be used with DSAs with QDMA engine under the hood.
  */
 
 /**
@@ -984,6 +987,7 @@ struct xclQueueContext {
  *
  * This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
  * successes.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx,  uint64_t *q_hdl);
 XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -998,7 +1002,8 @@ XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, xclQueueConte
  *
  * return val: buffer pointer
  *
- * These functions allocate and free DMA buffers which is used for queue read and write
+ * These functions allocate and free DMA buffers which is used for queue read and write.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
 XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
@@ -1011,6 +1016,7 @@ XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
  * @q_hdl:		Queue handle
  *
  * This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
@@ -1110,6 +1116,7 @@ struct xclQueueRequest {
  *     complete callback:
  *         used only with non-blocking.
  *         (there should be a way to poll wr complete to avoid too many notifications)
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
 
@@ -1138,6 +1145,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  *     complete:
  *         used only with non-blocking.
  *         good place to do polling which will decrease the completion notifciaton.
+ * This feature will be enabled in a future release.
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
