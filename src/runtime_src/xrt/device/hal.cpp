@@ -156,7 +156,12 @@ loadDevices()
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
   if (!xrt.empty() && !isEmulationMode()) {
     directoryOrError(xrt);
-    //bfs::path p(xrt / "lib/libxrt_core.so");
+    bfs::path p(xrt / "lib/libxrt_core.so");
+    if (isDLL(p))
+      createHalDevices(devices,p.string());
+  }
+
+  if (devices.empty()) { // if failed libxrt_core load, try libxrt_aws
     bfs::path p(xrt / "lib/libxrt_aws.so");
     if (isDLL(p))
       createHalDevices(devices,p.string());

@@ -67,7 +67,7 @@
 // TODO - define this in a header file
 extern char* get_afi_from_xclBin(const xclBin *);
 extern char* get_afi_from_axlf(const axlf *);
-#define DEFAULT_GLOBAL_AFI "agfi-030f81b34a27e8cd3" // 1.4 shell and 2018.2 runtime
+#define DEFAULT_GLOBAL_AFI "agfi-069ddd533a748059b" // 1.4 shell
 #endif
 
 namespace awsbwhal {
