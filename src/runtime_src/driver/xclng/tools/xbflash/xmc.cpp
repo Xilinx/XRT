@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2018 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  * Author(s): Max Zhen
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
