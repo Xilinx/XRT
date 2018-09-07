@@ -240,7 +240,6 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
 
@@ -250,13 +249,26 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
     auto mems = m_xclbin.get_mem_topology();
     
-    if (!mems)
+    if (!mems) 
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count)
+    if((memidx+1) > mems->m_count) 
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
-    route = mems->m_mem_data[memidx].route_id;
-    flow = mems->m_mem_data[memidx].flow_id;
+    auto& mem = mems->m_mem_data[memidx];
+    route = mem.route_id;
+    flow = mem.flow_id;
+
+    char* read = strstr((char*)mem.m_tag, "_r");
+    char* write = strstr((char*)mem.m_tag, "_w");
+
+    //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
+
+    if(read && !(flags & CL_STREAM_READ_ONLY)) 
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a read stream to non-read stream, argument " + ext->flags);
+
+    if(write &&  !(flags & CL_STREAM_WRITE_ONLY)) 
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
+
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
