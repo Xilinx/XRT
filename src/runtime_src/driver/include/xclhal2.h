@@ -137,6 +137,7 @@ struct xclDeviceInfo2 {
   unsigned short mPCIeLinkSpeedMax;
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
+  unsigned short mNumCDMA;
   // More properties here
 };
 

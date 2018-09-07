@@ -592,6 +592,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mVccIntVol  = xclSysfsGetInt(true, "xmc", "xmc_vccint_vol");
     info->mVccIntCurr =  xclSysfsGetInt(true, "xmc", "xmc_vccint_curr");
 
+    info->mNumCDMA = xclSysfsGetInt(false,"mb_scheduler", "kds_numcdmas");
 
     auto freqs = xclSysfsGetInts(true, "icap", "clock_freqs");
     for (unsigned i = 0;
@@ -634,7 +635,7 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mDDRSize = GB(obj.ddr_channel_size);
     info->mDDRBankCount = obj.ddr_channel_num;
     info->mDDRSize *= info->mDDRBankCount;
-  
+
     info->mFanRpm = obj.fan_speed;
 
     const std::string name = newDeviceName(obj.vbnv);
@@ -1267,6 +1268,8 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     memset(&q_info, 0, sizeof (q_info));
     q_info.write = 1;
+    q_info.rid = q_ctx->route;
+    q_info.flowid = q_ctx->flow;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1286,6 +1289,9 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     int	rc;
 
     memset(&q_info, 0, sizeof (q_info));
+
+    q_info.rid = q_ctx->route;
+    q_info.flowid = q_ctx->flow;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1455,7 +1461,7 @@ std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
     if (!v.empty()) {
         s = v[0];
     }
-#ifdef SYSFS_DEBUG 
+#ifdef SYSFS_DEBUG
     else {
         std::cerr << __func__ << " ERROR: Failed to read string from ";
         std::cerr << (mgmt ? "mgmt" : "user") << " sysfs ";
@@ -1463,7 +1469,7 @@ std::string xocl::XOCLShim::xclSysfsGetString(bool mgmt,
         std::cerr << " entry" << std::endl;
     }
 #endif
-    
+
     return s;
 }
 
@@ -1479,7 +1485,7 @@ unsigned long long xocl::XOCLShim::xclSysfsGetInt(bool mgmt,
 
     if (!v.empty()) {
         l = v[0];
-    } 
+    }
 #ifdef SYSFS_DEBUG
     else {
         std::cerr << __func__ << " ERROR: Failed to read integer from ";

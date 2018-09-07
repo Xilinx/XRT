@@ -646,14 +646,26 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		if (op == STM_CSR_CMD_WR) {
 			switch (addr) {
 			case STM_IND_ADDR_Q_CTX_H2C:
-			case STM_IND_ADDR_Q_CTX_C2H:
 				reg = STM_REG_BASE + STM_REG_IND_CTXT_DATA_BASE;
+
 				for (i = 0; i < cnt; i++, reg += 4) {
 					pr_debug("%s: i = %d; reg = 0x%x; data[%d] = 0x%x\n",
 						 __func__, i, reg, i, data[i]);
 					writel(data[i], xdev->stm_regs + reg);
 				}
 				break;
+
+			case STM_IND_ADDR_Q_CTX_C2H:
+				reg = STM_REG_BASE + STM_REG_IND_CTXT_DATA3;
+
+				for (i = 0; i < cnt; i++, reg += 4) {
+					pr_debug("%s: i = %d; reg = 0x%x; data[%d] = 0x%x\n",
+						 __func__, i, reg, i, data[i]);
+					writel(data[i], xdev->stm_regs + reg);
+				}
+
+				break;
+
 			case STM_IND_ADDR_H2C_MAP:
 				reg = STM_REG_BASE +
 					STM_REG_IND_CTXT_DATA_BASE + (4 * 4);
@@ -664,6 +676,7 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				else
 					writel(qid_hw, xdev->stm_regs + reg);
 				break;
+
 			case STM_IND_ADDR_C2H_MAP: {
 				u32 c2h_map;
 
@@ -674,7 +687,8 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 					 __func__, reg, c2h_map);
 				writel(c2h_map, xdev->stm_regs + reg);
 				break;
-			}
+				}
+
 			default:
 				pr_err("%s: not supported address.. \n",
 				       __func__);
@@ -684,7 +698,8 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		}
 	}
 
-	v = (qid_hw << 0) | (op << 28) | (addr << 24) | (fid << 12);
+	v = (qid_hw << S_STM_CMD_QID) | (op << S_STM_CMD_OP) |
+		(addr << S_STM_CMD_ADDR) | (fid << S_STM_CMD_FID);
 
 	pr_debug("ctxt_cmd reg 0x%x, qid 0x%x, op 0x%x, fid 0x%x addr 0x%x -> 0x%08x.\n",
 		 STM_REG_BASE + STM_REG_IND_CTXT_CMD, qid_hw, op, fid, addr, v);
@@ -905,7 +920,6 @@ int hw_init_qctxt_memory(struct xlnx_dma_dev *xdev, unsigned int qbase,
 	u32 data[QDMA_REG_IND_CTXT_REG_COUNT];
 	unsigned int i = qbase;
 
-	/* queue context memory */
 	memset(data, 0, sizeof(u32) * QDMA_REG_IND_CTXT_REG_COUNT);
 	for (; i < qmax; i++) {
 		enum ind_ctxt_cmd_sel sel = QDMA_CTXT_SEL_SW_C2H;
