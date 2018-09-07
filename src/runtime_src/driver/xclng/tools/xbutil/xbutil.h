@@ -550,7 +550,10 @@ public:
             numDDR = map->m_count;
             if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
                numSupportedMems = numDDR;
-            for( unsigned i = 0; i <numDDR; i++ ) {
+            for(unsigned i = 0; i <numDDR; i++ ) 
+	    {
+		if(map->m_mem_data[i].m_type == MEM_STREAMING)
+		    continue;	
 
                 percentage = (float)devstat.ddrMemUsed[i]*100 / (map->m_mem_data[ i ].m_size<<10);
                 nums_fiftieth = (int)percentage/2;
@@ -884,6 +887,8 @@ public:
                     std::cout << "Reporting from mem_topology:" << std::endl;
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
+		    if(map->m_mem_data[i].m_type == MEM_STREAMING)
+		       continue;	
                     if( map->m_mem_data[i].m_used ) {
                         if (verbose)
                             std::cout << "Data Validity & DMA Test on " << map->m_mem_data[i].m_tag << "\n";

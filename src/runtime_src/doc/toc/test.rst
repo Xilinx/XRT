@@ -76,3 +76,53 @@ run all tests that were previously synced into the current directory.
 While tests run a file named ``results.all`` will list the test with
 PASS/FAIL keyword.  This file is appended (not removed between runs).
 A complete run should take 5-10 mins for approximately 70 tests.
+
+
+Unit Testing XRT
+~~~~~~~~~~~~~~~~
+
+We use GTest to do unit testing. The GTest package is installed by
+running ``XRT/src/runtime_src/tools/scripts/xrtdeps.sh``.
+
+The GTest package on CentOS/RHEL 7.5 provides the GTest libraries here:
+ * /usr/lib64/libgtest.so 
+ * /usr/lib64/libgtest_main.so
+
+However, the GTest package on Ubuntu 16.04 provides source only!
+
+To use GTest on Ubuntu 16.04 use:
+
+::
+
+   cd /usr/src/gtest
+   sudo cmake CMakeLists.txt
+   sudo make
+   cd /usr/lib
+   sudo ln -s /usr/src/gtest/libgtest.a
+   sudo ln -s /usr/src/gtest/libgtest_main.a
+   # Validate:
+   ls *gtest*
+
+This will add GTest static library symbolic links here:
+ * /usr/lib/libgtest.a
+ * /usr/lib/libgtest_main.a
+
+CMake will handle linking, finding etc. for you.
+
+To add GTest support to a CMakeLists.txt use the following, and this is using 
+an example executable called 'xclbintest':
+
+::
+
+   find_package(GTest)
+   if (GTEST_FOUND)
+     enable_testing()
+     message (STATUS "GTest include dirs: '${GTEST_INCLUDE_DIRS}'")
+     include_directories(${GTEST_INCLUDE_DIRS})
+     add_executable(xclbintest unittests/main.cpp unittests/test.cpp)
+     message (STATUS "GTest libraries: '${GTEST_BOTH_LIBRARIES}'")
+     target_link_libraries(xclbintest ${GTEST_BOTH_LIBRARIES} pthread)
+   else()
+     message (STATUS "GTest was not found, skipping generation of test executables")
+   endif()
+
