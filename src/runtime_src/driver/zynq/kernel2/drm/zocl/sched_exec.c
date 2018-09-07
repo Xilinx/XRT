@@ -1675,7 +1675,8 @@ int sched_fini_exec(struct drm_device *drm)
 	struct drm_zocl_dev *zdev = drm->dev_private;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
-	kthread_stop(zdev->exec->cq_thread);
+	if (zdev->exec->cq_thread)
+		kthread_stop(zdev->exec->cq_thread);
 	fini_scheduler_thread();
 	SCHED_DEBUG("<- sched_fini_exec\n");
 
