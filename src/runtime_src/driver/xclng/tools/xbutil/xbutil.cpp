@@ -589,7 +589,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  status  [--debug_ip_name]\n";   
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
-    std::cout << "  validate[-d device]\n";
+    std::cout << "  validate [-d device]\n";
     std::cout << " Requires root privileges:\n";
     std::cout << "  boot    [-d device]\n";
     std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
