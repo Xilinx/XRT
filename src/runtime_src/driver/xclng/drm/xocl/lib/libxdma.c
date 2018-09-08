@@ -3448,12 +3448,12 @@ static int probe_engines(struct xdma_dev *xdev)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+static void pci_enable_capability(struct pci_dev *pdev, int cap)
 {
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, cap);
 }
 #else
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+static void pci_enable_capability(struct pci_dev *pdev, int cap)
 {
 	u16 v;
 	int pos;
@@ -3461,49 +3461,11 @@ static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
 	pos = pci_pcie_cap(pdev);
 	if (pos > 0) {
 		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_RELAX_EN;
+		v |= cap;
 		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
 	}
 }
 #endif
-
-static void pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
-{
-	u16 cap;
-	u32 v;
-	void *__iomem reg;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
-	pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &cap);
-#else
-	int pos;
-
-	pos = pci_pcie_cap(pdev);
-	if (pos > 0)
-		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &cap);
-	else {
-		pr_info("pdev 0x%p, unable to access pcie cap.\n", pdev);
-		return;
-	}
-#endif
-
-	if ((cap & PCI_EXP_DEVCTL_EXT_TAG))
-		return;
-
-	/* extended tag not enabled */
-	pr_info("0x%p EXT_TAG disabled.\n", pdev);
-
-	if (xdev->config_bar_idx < 0) {
-		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
-			pdev, xdev);
-                return;
-	}
-
-	reg = xdev->bar[xdev->config_bar_idx] + XDMA_OFS_CONFIG + 0x4C;
-	v =  read_register(reg);
-	v = (v & 0xFF) | (((u32)32) << 8);
-	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
-}
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 			int *h2c_channel_max, int *c2h_channel_max)
@@ -3544,9 +3506,10 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	pci_check_intr_pend(pdev);
 
 	/* enable relaxed ordering */
-	pci_enable_relaxed_ordering(pdev);
+	pci_enable_capability(pdev, PCI_EXP_DEVCTL_RELAX_EN);
 
-	pci_check_extended_tag(xdev, pdev);
+	/* enable extended tag */
+	pci_enable_capability(pdev, PCI_EXP_DEVCTL_EXT_TAG);
 
 	/* force MRRS to be 512 */
 	rv = pcie_set_readrq(pdev, 512);
