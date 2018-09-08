@@ -582,7 +582,7 @@ if [ "${license_dir}" != "" ] ; then
     cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/platforms/$opt_dsa/license/
   fi
 fi
-
+chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_dsa
 
 %files
 %defattr(-,root,root,-)
@@ -639,6 +639,8 @@ if [ "${license_dir}" != "" ] ; then
     cp -f ${license_dir}/*  %{buildroot}/opt/xilinx/dsa/$opt_dsa/license/
   fi
 fi
+chmod -R o=g %{buildroot}/opt/xilinx/dsa/$opt_dsa
+chmod -R o=g %{buildroot}/lib/firmware/xilinx
 
 %files
 %defattr(-,root,root,-)
