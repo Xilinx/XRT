@@ -267,6 +267,8 @@ typedef struct XmaDecoderSession XmaDecoderSession;
  *
  *  @return          Not NULL on success
  *  @return          NULL on failure
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props);
@@ -282,6 +284,8 @@ xma_dec_session_create(XmaDecoderProperties *dec_props);
  *
  *  @return        XMA_SUCCESS on success
  *  @return        XMA_ERROR on failure.
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 int32_t
 xma_dec_session_destroy(XmaDecoderSession *session);
