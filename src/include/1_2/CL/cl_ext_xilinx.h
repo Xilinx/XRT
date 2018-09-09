@@ -118,6 +118,14 @@ typedef struct cl_mem_ext_ptr_t {
 /* Additional cl_device_partition_property */
 #define CL_DEVICE_PARTITION_BY_CONNECTIVITY         (1 << 31)
 
+#ifdef CL_VERSION_1_0
+extern cl_int
+clSetCommandQueueProperty(cl_command_queue command_queue,
+                          cl_command_queue_properties properties,
+                          cl_bool enable,
+                          cl_command_queue_properties *old_properties);
+#endif
+
 /**
  * Aquire the device address associated with a cl_mem buffer on
  * a specific device.
