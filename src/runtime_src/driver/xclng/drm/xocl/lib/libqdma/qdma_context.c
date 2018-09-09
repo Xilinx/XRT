@@ -75,37 +75,44 @@ static int make_intr_context(struct xlnx_dma_dev *xdev, u32 *data, int cnt)
 
 /* STM */
 #ifndef __QDMA_VF__
-static int make_stm_context(struct qdma_descq *descq, u32 *data, int cnt)
+static int make_stm_c2h_context(struct qdma_descq *descq, u32 *data)
 {
 	int pipe_slr_id = descq->conf.pipe_slr_id;
 	int pipe_flow_id = descq->conf.pipe_flow_id;
 	int pipe_tdest = descq->conf.pipe_tdest;
-	int tdest2_slr = 0;
-	int tdest2_rid = 0;
-	int fid2 = 0;
-	int pkt_lim = 0;
-	int max_ask = 8;
-	int dppkt = 1;
-	int log2_dppkt = ilog2(dppkt);
-
-	if (cnt < 5 ) {
-		pr_warn("%s: stm context count %d < 5. \n",
-			descq->xdev->conf.name, cnt);
-		return -EINVAL;
-	}
-	memset(data, 0, cnt * sizeof(u32));
 
 	/* 128..159 */
-	data[4] = (descq->qidx_hw << S_STM_CTXT_QID) |
-		  (tdest2_rid << S_STM_CTXT_C2H_TDEST);
+	data[1] = (pipe_slr_id << S_STM_CTXT_C2H_SLR) |
+		  ((pipe_tdest & 0xFF00) << S_STM_CTXT_C2H_TDEST_H);
 
 	/* 96..127 */
-	data[3] = (tdest2_slr << S_STM_CTXT_C2H_SLR) |
-		  (fid2 << S_STM_CTXT_C2H_FID) |
-		  (pipe_tdest << S_STM_CTXT_H2C_TDEST);
+	data[0] = ((pipe_tdest & 0xFF) << S_STM_CTXT_C2H_TDEST_L) |
+		  (pipe_flow_id << S_STM_CTXT_C2H_FID);
+
+	pr_debug("%s, STM 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x.\n",
+		 descq->conf.name, data[0], data[1], data[2], data[3], data[4]);
+	return 0;
+}
+
+static int make_stm_h2c_context(struct qdma_descq *descq, u32 *data)
+{
+	int pipe_slr_id = descq->conf.pipe_slr_id;
+	int pipe_flow_id = descq->conf.pipe_flow_id;
+	int pipe_tdest = descq->conf.pipe_tdest;
+	int dppkt = descq->conf.pipe_gl_max;
+	int log2_dppkt = ilog2(dppkt);
+	int pkt_lim = 0;
+	int max_ask = 8;
+
+	/* 128..159 */
+	data[4] = (descq->qidx_hw << S_STM_CTXT_QID);
+
+	/* 96..127 */
+	data[3] = (pipe_slr_id << S_STM_CTXT_H2C_SLR) |
+		  ((pipe_tdest & 0xFF00) << S_STM_CTXT_H2C_TDEST_H);
 
 	/* 64..95 */
-	data[2] = (pipe_slr_id << S_STM_CTXT_H2C_SLR) |
+	data[2] = ((pipe_tdest & 0xFF) << S_STM_CTXT_H2C_TDEST_L) |
 		  (pipe_flow_id << S_STM_CTXT_H2C_FID) |
 		  (pkt_lim << S_STM_CTXT_PKT_LIM) |
 		  (max_ask << S_STM_CTXT_MAX_ASK);
@@ -586,8 +593,10 @@ int qdma_descq_stm_setup(struct qdma_descq *descq)
 	struct stm_descq_context context;
 
 	memset(&context, 0, sizeof(context));
-	if (descq->conf.st && !descq->conf.c2h)
-		make_stm_context(descq, context.stm, 5);
+	if (descq->conf.c2h)
+		make_stm_c2h_context(descq, context.stm);
+	else
+		make_stm_h2c_context(descq, context.stm);
 
 	return qdma_descq_stm_program(descq->xdev, descq->qidx_hw,
 				      descq->conf.pipe_flow_id,
@@ -740,6 +749,13 @@ int qdma_descq_stm_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	/* Only c2h st specific setup done below*/
 	if (!c2h)
 		return 0;
+
+	rv = hw_indirect_stm_prog(xdev, qid_hw, pipe_flow_id,
+				  STM_CSR_CMD_WR,
+				  STM_IND_ADDR_Q_CTX_C2H,
+				  context->stm, 2, clear);
+	if (rv < 0)
+		return rv;
 
 	rv = hw_indirect_stm_prog(xdev, qid_hw, pipe_flow_id,
 				  STM_CSR_CMD_WR, STM_IND_ADDR_C2H_MAP,

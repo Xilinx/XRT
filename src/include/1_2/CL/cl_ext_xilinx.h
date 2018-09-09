@@ -93,8 +93,6 @@ typedef struct cl_mem_ext_ptr_t {
       cl_kernel kernel;
     };
   };
-  cl_mem_ext_ptr_t()
-  : flags(0),obj(0),param(0) {}
 } cl_mem_ext_ptr_t;
 
 /* Make clCreateBuffer to interpret host_ptr argument as cl_mem_ext_ptr_t */
@@ -210,8 +208,10 @@ typedef cl_uint             cl_stream_attributes;
  * Used in clReadStream() and clWriteStream()
  */
 typedef cl_uint             cl_stream_xfer_req;
-#define CL_STREAM_CDH                               (1 << 0)
-#define CL_STREAM_PARTIAL                           (1 << 1)
+#define CL_STREAM_DEFAULT                           (1 << 0)
+#define CL_STREAM_EOT                               (1 << 1)
+#define CL_STREAM_CDH                               (1 << 2)
+#define CL_STREAM_NONBLOCKING                       (1 << 3)
 
 typedef struct _cl_stream *      cl_stream;
 typedef struct _cl_stream_mem *  cl_stream_mem;

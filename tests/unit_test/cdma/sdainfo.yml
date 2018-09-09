@@ -1,0 +1,45 @@
+# Copyright (C) 2016-2017 Xilinx, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may
+# not use this file except in compliance with the License. A copy of the
+# License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+args: addone.xclbin
+board_copy: [addone.xclbin]
+copy: [main.cpp, addone.cl]
+devices:
+- [xilinx_.*]
+flags: -g -Wall
+flows: [hw_all]
+krnls:
+- name: add0
+  srcs: [addone.cl]
+  type: clc
+- name: add1
+  srcs: [addone.cl]
+  type: clc
+- name: add2
+  srcs: [addone.cl]
+  type: clc
+- name: add3
+  srcs: [addone.cl]
+  type: clc
+name: cdma
+owner: soeren
+srcs: [main.cpp]
+xclbins:
+- cus:
+  - {krnl: add0, name: add00}
+  - {krnl: add1, name: add10}
+  - {krnl: add2, name: add20}
+  - {krnl: add2, name: add30}
+  link_flags: --nk add0:1:add00 --nk add1:1:add10 --nk add2:1:add20 --nk add3:1:add30 --sp add00.m_axi_gmem:bank0 --sp add10.m_axi_gmem:bank1 --sp add20.m_axi_gmem:bank2 --sp add30.m_axi_gmem:bank3
+  name: addone
+  region: OCL_REGION_0
