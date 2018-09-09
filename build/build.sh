@@ -3,6 +3,7 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+CORE=`grep -c ^processor /proc/cpuinfo`
 
 usage()
 {
@@ -96,7 +97,7 @@ if [[ $covbuild == 1 ]]; then
     mkdir -p Coverity
     cd Coverity
     cmake -DCMAKE_BUILD_TYPE=Release ../../src
-    make -j4 COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    make -j $CORE COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
     cd $here
     exit 0
 fi
@@ -104,11 +105,11 @@ fi
 mkdir -p Debug Release
 cd Debug
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
+make -j $CORE $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
 cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
+make -j $CORE $verbose DESTDIR=$PWD install
 make package
 cd $here
