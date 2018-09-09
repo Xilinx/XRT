@@ -37,7 +37,12 @@ extern "C" {
 */
 
 /**
- * @enum XmLogLevelType
+ * @typedef XmaLogLevelType
+ * Describes the logging level associated with a log message.
+*/
+
+/**
+ * @enum XmaLogLevelType
  * Describes the logging level associated with a log message.
 */
 typedef enum XmaLogLevelType
