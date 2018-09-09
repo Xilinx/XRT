@@ -118,6 +118,7 @@ file(GLOB XRT_EULA
   "license/*.txt"
   )
 install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
 message("-- XRT EA eula files ${XRT_EULA}")
 
 include (CMake/version.cmake)
