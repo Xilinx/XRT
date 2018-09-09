@@ -113,8 +113,11 @@ std::ostream& xocl::operator<< (std::ostream &strm, const AddressRange &rng)
 xocl::XOCLShim::XOCLShim(unsigned index,
                          const char *logfileName,
                          xclVerbosityLevel verbosity) : mVerbosity(verbosity),
+                                                        mUserHandle(-1),
+                                                        mMgtHandle(-1),
+                                                        mUserMap(nullptr),
                                                         mBoardNumber(index),
-                                                        mMgtMap(0),
+                                                        mMgtMap(nullptr),
                                                         mLocked(false),
                                                         mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
                                                         mMemoryProfilingNumberSlots(0),
@@ -130,26 +133,35 @@ xocl::XOCLShim::XOCLShim(unsigned index,
  */
 void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
 {
-    const std::string devName = "/dev/dri/renderD" + std::to_string(xcldev::pci_device_scanner::device_list[index].user_instance);
-    mUserHandle = open(devName.c_str(), O_RDWR);
-    if(mUserHandle > 0) {
-        // Lets map 4M
-        mUserMap = (char *)mmap(0, xcldev::pci_device_scanner::device_list[index].user_bar_size, PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
-        if (mUserMap == MAP_FAILED) {
-            std::cout << "Map failed: " << devName << std::endl;
-            close(mUserHandle);
-            mUserHandle = -1;
+    auto &dev = xcldev::pci_device_scanner::device_list[index];
+
+    // Should only open user pf when mgmt pf is ready.
+    if (xclSysfsGetInt(true, "", "ready") == 1) {
+        const std::string devName = "/dev/dri/renderD" +
+            std::to_string(dev.user_instance);
+        mUserHandle = open(devName.c_str(), O_RDWR);
+        if(mUserHandle > 0) {
+            // Lets map 4M
+            mUserMap = (char *)mmap(0, dev.user_bar_size,
+                PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
+            if (mUserMap == MAP_FAILED) {
+                std::cout << "Map failed: " << devName << std::endl;
+                close(mUserHandle);
+                mUserHandle = -1;
+                mUserMap = nullptr;
+            }
+        } else {
+            std::cout << "Cannot open: " << devName << std::endl;
         }
-    } else {
-        std::cout << "Cannot open: " << devName << std::endl;
     }
+
     if( logfileName != nullptr ) {
         mLogStream.open(logfileName);
         mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    std::string mgmtFile = "/dev/xclmgmt"+ std::to_string(xcldev::pci_device_scanner::device_list[index].mgmt_instance);
+    std::string mgmtFile = "/dev/xclmgmt"+ std::to_string(dev.mgmt_instance);
     mMgtHandle = open(mgmtFile.c_str(), O_RDWR | O_SYNC);
     if(mMgtHandle < 0) {
         std::cout << "Could not open " << mgmtFile << std::endl;
@@ -199,10 +211,10 @@ xocl::XOCLShim::~XOCLShim()
         mLogStream.close();
     }
 
-    if (mUserMap != MAP_FAILED)
+    if (mUserMap != nullptr)
         munmap(mUserMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
-    if (mMgtMap)
+    if (mMgtMap != nullptr)
         munmap(mMgtMap, xcldev::pci_device_scanner::device_list[mBoardNumber].user_bar_size);
 
     if (mUserHandle > 0)
@@ -1578,15 +1590,13 @@ unsigned xclProbe()
 {
     std::lock_guard<std::mutex> lock(xocl::deviceListMutex);
 
-    if(xcldev::pci_device_scanner::device_list.size()) {
-        return xcldev::pci_device_scanner::device_list.size();
+    if(xcldev::pci_device_scanner::device_list.empty()) {
+        xcldev::pci_device_scanner devScanner;
+        devScanner.scan(false);
     }
 
-    xcldev::pci_device_scanner devScanner;
-    devScanner.scan(false);
-    return xcldev::pci_device_scanner::device_list.size();
+    return xcldev::pci_device_scanner::num_ready;
 }
-
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
 {
@@ -1967,4 +1977,21 @@ ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr
 {
 	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
 	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
+}
+
+xclDeviceHandle xclOpenMgmt(unsigned deviceIndex)
+{
+    if(xcldev::pci_device_scanner::device_list.size() <= deviceIndex) {
+        printf("Cannot find index %u \n", deviceIndex);
+        return nullptr;
+    }
+
+    xocl::XOCLShim *handle = new xocl::XOCLShim(deviceIndex, nullptr, XCL_QUIET);
+    return static_cast<xclDeviceHandle>(handle);
+}
+
+char *xclMapMgmt(xclDeviceHandle handle)
+{
+  xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
+  return drv ? drv->xclMapMgmt() : nullptr;
 }
