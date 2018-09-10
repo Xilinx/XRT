@@ -28,8 +28,8 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
-    modprobe xocl
     modprobe xclmgmt
+    modprobe xocl
 else
     echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi
