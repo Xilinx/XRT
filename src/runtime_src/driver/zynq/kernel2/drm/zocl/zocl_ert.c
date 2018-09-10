@@ -27,7 +27,7 @@ int
 zocl_ert_irq_handler_register(struct platform_device *pdev, unsigned int irq,
 				irq_handler_t handler)
 {
-	ert_dbg(pdev, "irq %d handler %p\n", irq, handler);
+	ert_dbg(pdev, "irq %d handler %p", irq, handler);
 	return 0;
 }
 
@@ -46,7 +46,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	void __iomem *map;
 
 	id = of_match_node(zocl_ert_of_match, pdev->dev.of_node);
-	ert_info(pdev, "Probing for %s\n", id->compatible);
+	ert_info(pdev, "Probing for %s", id->compatible);
 
 	ert = devm_kzalloc(&pdev->dev, sizeof(*ert), GFP_KERNEL);
 	ert->pdev = pdev;
@@ -55,28 +55,28 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, ZOCL_ERT_HW_RES);
 	map = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(map)) {
-		ert_err(pdev, "Failed to map ERT HW registers: %0lx\n",
+		ert_err(pdev, "Failed to map ERT HW registers: %0lx",
 				PTR_ERR(map));
 		return PTR_ERR(map);
 	}
 	ert->hw_ioremap = map;
-	ert_info(pdev, "IP(embedded_scheduler_hw) IO start %llx, end %llx\n",
+	ert_info(pdev, "IP(embedded_scheduler_hw) IO start %llx, end %llx",
 			      res->start, res->end);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, ZOCL_ERT_CQ_RES);
 	map = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(map)) {
-		ert_err(pdev, "Failed to map Command Queue: %0lx\n",
+		ert_err(pdev, "Failed to map Command Queue: %0lx",
 				PTR_ERR(map));
 		return PTR_ERR(map);
 	}
 	ert->cq_ioremap = map;
-	ert_info(pdev, "Command Queue IO start %llx, end %llx\n",
+	ert_info(pdev, "Command Queue IO start %llx, end %llx",
 			res->start, res->end);
 
 	ert->irq[ZOCL_ERT_CQ_IRQ] = platform_get_irq(pdev, ZOCL_ERT_CQ_IRQ);
 	ert->irq[ZOCL_ERT_CU_IRQ] = platform_get_irq(pdev, ZOCL_ERT_CU_IRQ);
-	ert_info(pdev, "CQ irq %d, CU irq %d\n", ert->irq[ZOCL_ERT_CQ_IRQ],
+	ert_info(pdev, "CQ irq %d, CU irq %d", ert->irq[ZOCL_ERT_CQ_IRQ],
 			ert->irq[ZOCL_ERT_CU_IRQ]);
 
 	platform_set_drvdata(pdev, ert);
@@ -85,7 +85,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 
 static int zocl_ert_remove(struct platform_device *pdev)
 {
-	ert_dbg(pdev, "Release resource\n");
+	ert_dbg(pdev, "Release resource");
 	return 0;
 }
 

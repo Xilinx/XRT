@@ -393,9 +393,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
 
-	subdev = find_pdev("xlnx,embedded_sched");
-	if (subdev)
+	subdev = find_pdev("80180000.ert_hw");
+	if (subdev) {
+		DRM_INFO("ert_hw found -> %p\n", subdev);
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+	}
 
 #if defined(XCLBIN_DOWNLOAD)
 	fnode = of_get_child_by_name(of_root, "pcap");
