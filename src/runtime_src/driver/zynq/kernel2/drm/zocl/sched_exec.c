@@ -1330,6 +1330,7 @@ ps_ert_query(struct sched_cmd *cmd)
 			break;
 	case OP_CONFIGURE:
 		mark_cmd_complete(cmd);
+		break;
 	default:
 		SCHED_DEBUG("unknow op");
 	}
@@ -1566,6 +1567,7 @@ iterate_packets(struct drm_device *drm)
 	slot_sz = slot_size(zdev->ddev);
 	for (slot_idx = 0; slot_idx < num_slots; slot_idx++) {
 		buffer = create_cmd_buffer(packet, slot_sz);
+		packet = get_next_packet(packet, slot_sz);
 		if (IS_ERR(buffer))
 			continue;
 
@@ -1573,7 +1575,6 @@ iterate_packets(struct drm_device *drm)
 			ret = -EINVAL;
 			goto err;
 		}
-		packet = get_next_packet(packet, slot_sz);
 	}
 
 	return 0;
