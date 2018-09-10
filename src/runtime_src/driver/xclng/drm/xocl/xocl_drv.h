@@ -81,7 +81,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 ({ \
 	size_t ret; \
 	size_t data_size; \
-	data_size = sect->m_count * sizeof(typeof(sect->data)); \
+	data_size = (sect) ? sect->m_count * sizeof(typeof(sect->data)) : 0; \
 	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
 	(ret); \
 })
