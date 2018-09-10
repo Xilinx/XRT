@@ -1185,11 +1185,11 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
  */
 int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    int ret;
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
                    << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
     }
+    int ret;
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
     drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
