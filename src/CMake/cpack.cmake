@@ -40,5 +40,7 @@ message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 
 SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
 SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx FPGA platforms")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
 
 INCLUDE(CPack)
