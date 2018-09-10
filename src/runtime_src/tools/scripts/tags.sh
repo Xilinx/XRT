@@ -16,6 +16,8 @@ usage()
 }
 
 out=TAGS
+cscope=0
+etags=0
 
 while [ $# -gt 0 ]; do
     key=$1
@@ -44,6 +46,11 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+if [ $cscope == 1 ]; then
+    echo "Generating cscope database is currently not supported"
+fi
+
 
 if [ $etags == 1 ]; then
     echo "Generating Emacs TAGS file for XRT userspace code..."

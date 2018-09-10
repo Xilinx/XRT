@@ -42,7 +42,6 @@ RH_LIST=(\
      cppcheck \
      curl \
      dkms \
-     dmidecode \
      gcc \
      gcc-c++ \
      gdb \
@@ -87,7 +86,6 @@ UB_LIST=(\
      cppcheck \
      curl \
      dkms \
-     dmidecode \
      g++ \
      gcc \
      gdb \
@@ -111,6 +109,7 @@ UB_LIST=(\
      lm-sensors \
      lsb \
      make \
+     ocl-icd-dev \
      ocl-icd-libopencl1 \
      opencl-headers \
      ocl-icd-opencl-dev \
@@ -129,6 +128,17 @@ UB_LIST=(\
 
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
+ARCH=`uname -m`
+
+#dmidecode is only applicable for x86_64
+if [ $ARCH == "x86_64" ]; then
+    if [ $FLAVOR == "ubuntu" ]; then
+	UB_LIST+=( dmidecode )
+    fi
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
+	RH_LIST+=( dmidecode )
+    fi
+fi
 
 validate()
 {
