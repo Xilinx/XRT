@@ -258,7 +258,7 @@ validOrError(cl_command_queue command_queue,
         auto cu_memidx_mask = cu->get_memidx(argidx);
         if ((cu_memidx_mask & mem_memidx_mask).none()) {
           std::stringstream ostr;
-          ostr << "Memory bank specified in the host code for kernel instance \""
+          ostr << "Memory bank specified for kernel instance \""
                << cu->get_name()
                << "\" of kernel \""
                << xkernel->get_name()
