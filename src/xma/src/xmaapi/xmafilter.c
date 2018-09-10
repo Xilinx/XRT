@@ -241,10 +241,11 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
             {
                 XmaEncoderSession *e_ses =
                     to_xma_encoder(recv->session);
-                if (!e_ses->encoder_plugin->get_dev_input_paddr)
+                if (!e_ses->encoder_plugin->get_dev_input_paddr) {
                     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
                         "encoder plugin does not support zero copy\n");
-                goto send;
+                    goto send;
+		}
                 session->out_dev_addr =
                     e_ses->encoder_plugin->get_dev_input_paddr(e_ses);
                 session->zerocopy_dest = true;
