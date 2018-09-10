@@ -1,4 +1,4 @@
-All userspace code is released under the following license:
+All userspace code authored by Xilinx is released under the following license:
 
 Copyright (C) 2016-2018 Xilinx, Inc
 
@@ -15,7 +15,7 @@ License for the specific language governing permissions and limitations
 under the License.
 
 
-All Linux kernel driver code is released under the following license:
+All Linux kernel driver code authored by Xilinx is released under the following license:
 
 Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
 
