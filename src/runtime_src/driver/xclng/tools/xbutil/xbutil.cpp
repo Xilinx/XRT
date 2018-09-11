@@ -847,7 +847,7 @@ int xcldev::device::runTestCase(const std::string& exe,
 /*
  * validate
  */
-int xcldev::device::validate()
+int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
@@ -893,6 +893,9 @@ int xcldev::device::validate()
     }
     std::cout << "PASSED" << std::endl;
 
+    // Skip the rest of test cases for quicker turn around.
+    if (quick)
+        return 0;
 
     // Perform DMA test
     std::cout << "INFO: Starting DMA test" << std::endl;
@@ -931,8 +934,9 @@ int xcldev::xclValidate(int argc, char *argv[])
     unsigned index = UINT_MAX;
     const std::string usage("Options: [-d index]");
     int c;
+    bool quick = false;
 
-    while ((c = getopt(argc, argv, "d:")) != -1) {
+    while ((c = getopt(argc, argv, "d:q")) != -1) {
         switch (c) {
         case 'd': {
             int ret = str2index(optarg, index);
@@ -940,6 +944,9 @@ int xcldev::xclValidate(int argc, char *argv[])
                 return ret;
             break;
         }
+        case 'q':
+            quick = true;
+            break;
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
@@ -984,7 +991,7 @@ int xcldev::xclValidate(int argc, char *argv[])
         std::cout << std::endl << "INFO: Validating device[" << i << "]: "
             << dev->name() << std::endl;
 
-        if (dev->validate() != 0) {
+        if (dev->validate(quick) != 0) {
             validated = false;
             std::cout << "INFO: Device[" << i << "] failed to validate." << std::endl;
         } else {
