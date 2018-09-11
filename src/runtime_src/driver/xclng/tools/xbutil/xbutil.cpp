@@ -577,23 +577,25 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbutil for 4.0+ DSA's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  boot    [-d device]\n";
     std::cout << "  clock   [-d device] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
     std::cout << "  dmatest [-d device] [-b [0x]block_size_KB]\n";
-    std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
-    std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   [-d device] [-d device] -a <all | dsa> [-t timestamp]\n";
-    std::cout << "  flash   [-d device] -p msp432_firmware\n";
-    std::cout << "  flash   scan [-v]\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
-    std::cout << "  scan\n";
-    std::cout << "  top [-i seconds]\n";
+    std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
+    std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  program [-d device] [-r region] -p xclbin\n";
     std::cout << "  query   [-d device [-r region]]\n";
     std::cout << "  reset   [-d device] [-h | -r region]\n";
-    std::cout << "  status  [--debug_ip_name]\n";
+    std::cout << "  status  [--debug_ip_name]\n";   
+    std::cout << "  scan\n";
+    std::cout << "  top [-i seconds]\n";
+    std::cout << "  validate [-d device]\n";
+    std::cout << " Requires root privileges:\n";
+    std::cout << "  boot    [-d device]\n";
+    std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d device] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d device] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
     std::cout << "List all devices\n";
     std::cout << "  " << exe << " list\n";
@@ -618,9 +620,11 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
     std::cout << "Flash all installed DSA for all boards, if not done\n";
-    std::cout << "  " << exe << " flash -a all\n";
+    std::cout << "  sudo " << exe << " flash -a all\n";
     std::cout << "Show DSA related information for all boards in the system\n";
-    std::cout << "  " << exe << " flash scan\n";
+    std::cout << "  sudo " << exe << " flash scan\n";
+    std::cout << "Validate installation on device 1\n";
+    std::cout << "  " << exe << " validate -d 1\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)

@@ -525,14 +525,6 @@ eexist:
         return g_xma_singleton->shm_res_cfg;
     }
 
-    while (!xma_res_xma_init_completed()) {
-        struct stat stat_buf;
-
-        if (stat(shm_filename, &stat_buf))
-            return NULL;
-        sched_yield();
-    }
-
     fd = open(shm_filename, O_RDWR, 0666);
     if (fd < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
@@ -543,14 +535,22 @@ eexist:
     shm_map = (XmaResConfig *)mmap(NULL, sizeof(XmaResConfig),
                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-
     close(fd);
 
     /* verify processes and update ref cnt */
-    if (xma_verify_shm_client_procs(shm_map, config)) {
+    ret = xma_verify_shm_client_procs(shm_map, config);
+    if (ret < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
                    "Problem verifying clients of shared mem database\n");
         return NULL;
+    }
+
+    while (ret != 1 && !xma_res_xma_init_completed()) {
+        struct stat stat_buf;
+
+        if (stat(shm_filename, &stat_buf))
+            return NULL;
+        sched_yield();
     }
 
     return shm_map;
@@ -854,7 +854,7 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
     for (dev_id = -1; !kern_aquired && (dev_id < MAX_XILINX_DEVICES);)
     {
         XmaDevice *dev;
-        int ret;
+        int ret = 0;
         bool dev_exclusive = kern_props->dev_excl;
 
         dev_id = xma_res_alloc_next_dev(shm_cfg, dev_id, dev_exclusive);
@@ -1170,6 +1170,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
                                        XmaSystemCfg *config)
 {
     int i, ret, max_refs;
+    bool shm_reinit = false;
 
     max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
 
@@ -1208,15 +1209,16 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
             return ret;
 
         unlink(XMA_SHM_FILE_SIG);
+        shm_reinit = true;
     }
 
-    if (xma_inc_ref_shm(xma_shm)) {
+    if (!shm_reinit && xma_inc_ref_shm(xma_shm)) {
         xma_shm_unlock(xma_shm);
         return XMA_ERROR;
     }
     xma_shm_unlock(xma_shm);
 
-    return XMA_SUCCESS;
+    return shm_reinit ? 1 : XMA_SUCCESS;
 }
 
 /* call while holding lock */

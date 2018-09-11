@@ -453,7 +453,7 @@ public:
 
 
         ss << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW";
-        ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
+        ss << std::setw(16) << "MGT VTT" << "\n";
 
 
         if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV_S)
@@ -473,19 +473,12 @@ public:
 
 
         if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support";
+            ss << std::setw(16) << "Not support" << "\n\n";
         else if(m_devinfo->mMgtVtt == XCL_INVALID_SENSOR_VAL)
-            ss << std::setw(16) << "Not support";
-        else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
-
-
-        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n\n";
-        else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
         else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n\n";
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V" << "\n\n";
+
 
         ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
         if(m_devinfo->mVccIntVol == XCL_NO_SENSOR_DEV_S)

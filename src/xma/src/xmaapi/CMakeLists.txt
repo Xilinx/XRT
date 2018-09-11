@@ -33,6 +33,7 @@ set_target_properties(xmaapi PROPERTIES VERSION ${XMA_VERSION_STRING}
 #removed xrt_core lib as name is different for aws and xbb
 target_link_libraries(xmaapi
   m
+  dl
   gcc_s
   stdc++
   xml2
