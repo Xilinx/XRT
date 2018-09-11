@@ -334,7 +334,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	}
 	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
 	    && rom->dsa_version>=51
-	    && !strstr(rom->header.VBNVName,"kcu1500")) {
+	    && !strstr(rom->header.VBNVName,"kcu1500")
+	    && !strstr(rom->header.VBNVName,"vega-4000")) {
 		rom->mb_sche_enabled = true;
 	}
 	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
