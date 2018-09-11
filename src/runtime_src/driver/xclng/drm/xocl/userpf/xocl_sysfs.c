@@ -102,18 +102,20 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->debug_layout.size)
+	size = sizeof_sect(xdev->debug_layout, m_debug_ip_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->debug_layout.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->debug_layout.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->debug_layout.layout) + offset, nread);
+	memcpy(buffer, ((char *)xdev->debug_layout) + offset, nread);
 
 	return nread;
 }
@@ -134,16 +136,18 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 {
 	const struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= sizeof_ip_layout(xdev->layout))
+	size = sizeof_sect(xdev->layout, m_ip_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < sizeof_ip_layout(xdev->layout) - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = sizeof_ip_layout(xdev->layout) - offset;
+		nread = size - offset;
 
 	memcpy(buffer, ((char *)xdev->layout) + offset, nread);
 
@@ -160,25 +164,26 @@ static struct bin_attribute ip_layout_attr = {
 	.size = 0
 };
 
-
 //-Connectivity--
 static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->connectivity.size)
+	size = sizeof_sect(xdev->connectivity, m_connection);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->connectivity.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->connectivity.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->connectivity.connections) + offset, nread);
+	memcpy(buffer, ((char *)xdev->connectivity) + offset, nread);
 
 	return nread;
 
@@ -200,18 +205,20 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->topology.size)
+	size = sizeof_sect(xdev->topology, m_mem_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->topology.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->topology.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->topology.topology) + offset, nread);
+	memcpy(buffer, ((char *)xdev->topology) + offset, nread);
 
 	return nread;
 }
