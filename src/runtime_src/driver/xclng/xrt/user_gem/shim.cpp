@@ -1762,7 +1762,7 @@ int xclBootFPGA(xclDeviceHandle handle)
     if( retVal == 0 )
     {
         xcldev::pci_device_scanner devScanner;
-        devScanner.scan( true ); // rescan pci devices
+        devScanner.scan(false); // rescan pci devices
     }
 
     return retVal;
