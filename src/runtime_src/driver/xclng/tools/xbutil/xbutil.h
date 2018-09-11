@@ -165,12 +165,12 @@ public:
         mMgmtFunc = dev.mgmt_func;
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
         if (!m_handle)
-            throw std::runtime_error("Failed to open device index, " + std::to_string(m_idx));
+            throw std::runtime_error("Failed to open device: " + dev.mgmt_name);
         if (xclGetDeviceInfo2(m_handle, &m_devinfo))
-            throw std::runtime_error("Unable to query device index, " + std::to_string(m_idx));
+            throw std::runtime_error("Unable to query device index, " + dev.mgmt_name);
 #ifdef AXI_FIREWALL
         if (xclGetErrorStatus(m_handle, &m_errinfo))
-            throw std::runtime_error("Unable to query device index for AXI error, " + std::to_string(m_idx));
+            throw std::runtime_error("Unable to query device index for AXI error, " + dev.mgmt_name);
 #endif
     }
 

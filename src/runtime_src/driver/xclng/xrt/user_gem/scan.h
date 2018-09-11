@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <iomanip>
 
 //TODO: can get this from config.h : PCI_PATH_SYS_BUS_PCI
 #define ROOT_DIR "/sys/bus/pci"
@@ -43,22 +44,21 @@ public:
         std::string mgmt_name;
         int user_bar;
         size_t user_bar_size;
-        int domain;
-        uint8_t bus, device, mgmt_func, user_func;
+        int domain, bus, device, mgmt_func, user_func;
         std::string flash_type;
         std::string board_name;
         bool is_mfg;
+        bool is_ready;
     };
     static std::vector<struct device_info> device_list; // userpf instance, mgmt instance, device
+    static int num_ready; // number of ready-to-use device
     int scan(bool print);
-    int scan_without_driver();
     bool get_mgmt_device_name(std::string &devName, unsigned int devIdx);
     int get_feature_rom_bar_offset(unsigned int devIdx, unsigned long long &offset);
 
 private:
     struct pci_device {
-        int domain;
-        uint8_t bus, dev, func;
+        int domain, bus, dev, func;
         uint16_t vendor_id = 0, device_id = 0, subsystem_id = 0;
         uint16_t instance = INVALID_DEV;
         std::string device_name;
@@ -68,12 +68,13 @@ private:
         std::string flash_type;
         std::string board_name; // E.g. u200, u250
         bool is_mfg;
+        bool is_ready;
     };
     bool add_device(struct pci_device& device);
-    bool print_paths();
-    bool print_system_info();
-    bool print_pci_info();
-    void add_to_device_list( bool skipValidDeviceCheck = false );
+    bool print_paths(void);
+    bool print_system_info(void);
+    void print_pci_info(void);
+    void add_to_device_list(void);
     const size_t bar_size(const std::string &dir, unsigned bar);
     std::vector<pci_device> mgmt_devices;
     std::vector<pci_device> user_devices;

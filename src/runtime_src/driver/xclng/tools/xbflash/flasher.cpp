@@ -37,34 +37,13 @@
 #define MFG_REV_OFFSET  0x131008
 
 /*
- * constructor
- */
-Flasher::Flasher(unsigned int index) :
-  mIdx(index), mIsValid(false), mMgmtMap(nullptr), mFd(-1)
-{
-    if( mapDevice( mIdx ) < 0 )
-    {
-        std::cout << "ERROR: Failed to map pcie device." << std::endl;
-    }
-    else
-    {
-        mIsValid = true;
-    }
-}
-
-/*
  * destructor
  */
 Flasher::~Flasher()
 {
-    if( mMgmtMap != nullptr )
+    if(mHandle != nullptr)
     {
-        munmap( mMgmtMap, mSb.st_size );
-    }
-
-    if( mFd >= 0 )
-    {
-        close( mFd );
+        xclClose(mHandle);
     }
 }
 
@@ -193,53 +172,32 @@ int Flasher::getBoardInfo(BoardInfo& board)
 }
 
 /*
- * mapDevice
+ * constructor
  */
-int Flasher::mapDevice(unsigned int devIdx)
+Flasher::Flasher(unsigned int index) :
+    mIdx(index), mMgmtMap(nullptr), mFRHeader{}
 {
     xcldev::pci_device_scanner scanner;
-    scanner.scan_without_driver();
+    scanner.scan(false);
 
-    memset( &mFRHeader, 0, sizeof(mFRHeader) ); // initialize before access
-
-    if( devIdx >= scanner.device_list.size() ) {
+    if(mIdx >= scanner.device_list.size()) {
         std::cout << "ERROR: Invalid device index." << std::endl;
-        return -EINVAL;
+        return;
     }
+    mDev = scanner.device_list.at(mIdx);
 
-    char cDBDF[128]; // size of dbdf string
-    mDev = scanner.device_list.at( devIdx );
-    sprintf( cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device, mDev.mgmt_func );
-    mDBDF = std::string( cDBDF );
-    std::string devPath = "/sys/bus/pci/devices/" + mDBDF;
-
-    char bar[5];
-    snprintf(bar, sizeof (bar) - 1, "%d", mDev.user_bar);
-    std::string resourcePath = devPath + "/resource" + bar;
-
-    void *p;
-    void *addr = (caddr_t)0;
-    mFd = open( resourcePath.c_str(), O_RDWR );
-    if( mFd <= 0 )
+    mHandle = xclOpenMgmt(mIdx);
+    if (!mHandle)
     {
-        std::cout << "ERROR: open sysfs failed\n";
-        return -EINVAL;
+        std::cout << "open device failed: " << errno << std::endl;
+        return;
     }
-    if( fstat( mFd, &mSb ) == -1 )
+    mMgmtMap = xclMapMgmt(mHandle);
+    if (!mMgmtMap)
     {
-        std::cout << "ERROR: unable to fstat sysfs\n";
-        return -EINVAL;
+        std::cout << "map device failed" << std::endl;
+        return;
     }
-    p = mmap( addr, mSb.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, mFd, 0 );
-    if( p == MAP_FAILED )
-    {
-        std::cout << "mmap failed: " << errno << std::endl;
-        perror( "mmap" );
-        close( mFd );
-        return errno;
-    }
-    mMgmtMap = (char *)p;
-    close( mFd );
 
     unsigned long long feature_rom_base;
     if (scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base) == 0)
@@ -250,7 +208,6 @@ int Flasher::mapDevice(unsigned int devIdx)
         if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
         {
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
-            return -EINVAL;
         }
     }
     else if (mDev.is_mfg)
@@ -260,10 +217,7 @@ int Flasher::mapDevice(unsigned int devIdx)
     else
     {
         std::cout << "ERROR: Device not supported." << std::endl;
-        return -EINVAL;
     }
-
-    return 0;
 }
 
 /*
@@ -399,4 +353,13 @@ DSAInfo Flasher::getOnBoardDSA()
         bmc = info.mBMCVer;
 
     return DSAInfo(vbnv, ts, bmc);
+}
+
+std::string Flasher::sGetDBDF()
+{
+    char cDBDF[128];
+
+    sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device,
+        mDev.mgmt_func);
+    return std::string(cDBDF);
 }
