@@ -1120,7 +1120,7 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    int validate();
+    int validate(bool quick);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
