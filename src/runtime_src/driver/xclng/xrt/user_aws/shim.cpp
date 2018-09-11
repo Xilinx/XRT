@@ -458,7 +458,7 @@ namespace awsbwhal {
       std::lock_guard<std::mutex> lock(awsbwhal::deviceListMutex);
       if(xcldev::pci_device_scanner::device_list.size() == 0) {
         xcldev::pci_device_scanner devices;
-        devices.scan(true);
+        devices.scan(false);
       }
 
       unsigned i  = 0;
@@ -1134,7 +1134,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbos
         /* workaround necessary to load a default afi and program with xclbin when device is in a cleared state */
         xcldev::pci_device_scanner rescan;
         rescan.clear_device_list();
-        rescan.scan( true );
+        rescan.scan(false);
         for (unsigned int i=0; i<rescan.device_list.size(); i++) {
             std::cout << "device[" << i << "].user_instance : " << rescan.device_list[ i ].user_instance << std::endl;
             if (rescan.device_list[i].user_instance == 128) {
@@ -1294,7 +1294,7 @@ int xclBootFPGA(xclDeviceHandle handle)
     if( retVal == 0 )
     {
         xcldev::pci_device_scanner devScanner;
-        devScanner.scan( true ); // rescan pci devices
+        devScanner.scan(false); // rescan pci devices
     }
 
     return retVal;
