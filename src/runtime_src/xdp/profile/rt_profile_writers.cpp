@@ -146,11 +146,12 @@ namespace XCL {
     //   * device counter profiling is turned on (default: true)
     //   * it was run on a board
     //   * at least one device has stall profiling in the dynamic region
-    unsigned numStallSlots = 0;
+    unsigned numStallSlots = 0, numStrSlots = 0;
     auto platform = rts->getcl_platform_id();
     for (auto device_id : platform->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
       numStallSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STALL, deviceName);
+      numStrSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
     }
 
     if (profile->isDeviceProfileOn() && 
@@ -192,6 +193,17 @@ namespace XCL {
     }
     writeTableFooter(getSummaryStream());
 
+    // Table 6.1 : Stream Data Transfers
+    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStrSlots > 0)) {
+    std::vector<std::string> StrTransferSummaryColumnLabels = {
+        "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
+		    "Average Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+        };
+      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StrTransferSummaryColumnLabels);
+      profile->writeKernelStreamSummary(this);
+      writeTableFooter(getSummaryStream());
+    }
+
     // Table 7: Top Data Transfer: Kernel & Global
     std::vector<std::string> TopKernelDataTransferSummaryColumnLabels = {
         "Device", "Compute Unit", "Number of Transfers", "Average Bytes per Transfer",
@@ -223,6 +235,15 @@ namespace XCL {
     writeTableRowStart(getSummaryStream());
     writeTableCells(getSummaryStream(),cuName,cuRunCount, cuRunTimeMsec,
      cuStallInt, cuStallExt, cuStallStr);
+    writeTableRowEnd(getSummaryStream());
+  }
+
+  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
+	  		double avgSize, double avgUtil, double linkStarve, double linkStall)
+  {
+    writeTableRowStart(getSummaryStream());
+    writeTableCells(getSummaryStream(), deviceName , cuPortName, strNumTranx, 
+      avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getSummaryStream());
   }
 
