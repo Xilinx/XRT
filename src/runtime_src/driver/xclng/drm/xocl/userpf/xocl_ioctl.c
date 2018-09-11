@@ -388,18 +388,20 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	size_t ddr_bank_size;
 	struct mem_topology *topo;
 	struct mem_data *mem_data;
-	struct device *dev = xdev->ddev->dev;
 	int i = 0;
 
 	topo = xdev->topology;
 	length = topo->m_count * sizeof(struct mem_data);
 	mm_size = topo->m_count * sizeof(struct drm_mm);
+	mm_stat_size = topo->m_count * sizeof(struct drm_xocl_mm_stat);
 
 	DRM_INFO("XOCL: Topology count = %d, data_length = %ld\n",
 			topo->m_count, length);
 
-	xdev->mm = devm_kzalloc(dev, mm_size, GFP_KERNEL);
-	xdev->mm_usage_stat = devm_kzalloc(dev, mm_stat_size, GFP_KERNEL);
+	xdev->mm = vmalloc(mm_size);
+	memset(xdev->mm, 0, mm_size);
+	xdev->mm_usage_stat = vmalloc(mm_stat_size);
+	memset(xdev->mm_usage_stat, 0, mm_stat_size);
 	if (!xdev->mm || !xdev->mm_usage_stat)
 		return -ENOMEM;
 
@@ -409,7 +411,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 		DRM_INFO("DDR bank%d Info", i);
 		DRM_INFO("  Base Address:0x%llx\n", mem_data->m_base_address);
-		DRM_INFO("  Size:0x%llx", ddr_bank_size);
+		DRM_INFO("  Size:0x%lx", ddr_bank_size);
 		DRM_INFO("  Type:%d", mem_data->m_type);
 		DRM_INFO("  Used:%d", mem_data->m_used);
 	}
@@ -421,7 +423,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 		if (mem_data->m_used) {
 			ddr_bank_size = mem_data->m_size * 1024;
 			DRM_INFO("XOCL: Allocating DDR bank%d", i);
-			DRM_INFO("  base_addr:0x%llx, size:0x%llx\n",
+			DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
 					mem_data->m_base_address,
 					ddr_bank_size);
 			drm_mm_init(&xdev->mm[i], mem_data->m_base_address,

@@ -347,6 +347,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	int			i, ret = 0;
 	u32			ddr_count = 0;
 	u64			ddr_size;
+	size_t mm_size = 0, mm_stat_size = 0;
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
@@ -378,17 +379,18 @@ int xocl_drm_init(struct xocl_dev *xdev)
 		ddr_count = xocl_get_ddr_channel_count(xdev);
 		ddr_size = xocl_get_ddr_channel_size(xdev);
 
-		xdev->mm = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_mm) * ddr_count, GFP_KERNEL);
+		mm_size = ddr_count * sizeof(struct drm_mm);
+		mm_stat_size = ddr_count * sizeof(struct drm_xocl_mm_stat);
+		xdev->mm = vmalloc(mm_size);
+		memset(xdev->mm, 0, mm_size);
 		if (!xdev->mm) {
 			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
 				ddr_count, ddr_size);
 			ret = -ENOMEM;
 			goto failed;
 		}
-		xdev->mm_usage_stat = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_xocl_mm_stat) * ddr_count,
-			GFP_KERNEL);
+		xdev->mm_usage_stat = vmalloc(mm_stat_size);
+		memset(xdev->mm_usage_stat, 0, mm_stat_size);
 		if (!xdev->mm_usage_stat) {
 			userpf_err(xdev, "alloc stat failed, ddr %d, sz %lld",
 				ddr_count, ddr_size);
@@ -421,10 +423,10 @@ failed:
 	 	for (i = 0; i < ddr_count; i++) {
 			drm_mm_takedown(&xdev->mm[i]);
 		}
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm);
+		vfree(xdev->mm);
 	}
 	if (xdev->mm_usage_stat)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm_usage_stat);
+		vfree(xdev->mm_usage_stat);
 
 	if (!ddev)
 		drm_dev_unref(ddev);
@@ -434,11 +436,6 @@ failed:
 
 void xocl_drm_fini(struct xocl_dev *xdev)
 {
-	if (xdev->mm)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm);
-	if (xdev->mm_usage_stat)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm_usage_stat);
-
 	xocl_cleanup_mem(xdev);
 
 	drm_put_dev(xdev->ddev);
@@ -508,25 +505,30 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 
 	topology = xdev->topology;
 
-	if (topology != NULL) {
-		ddr = topology->m_count;
-		for (i = 0; i < ddr; i++) {
-			if (topology->m_mem_data[i].m_used) {
-				userpf_info(xdev, "Taking down DDR : %d",
-						ddr);
-				drm_mm_takedown(&xdev->mm[i]);
-			}
-		}
-	}
-
-	vfree(xdev->topology);
-	xdev->topology = NULL;
-	vfree(xdev->connectivity);
-	xdev->connectivity = NULL;
 	vfree(xdev->layout);
 	xdev->layout = NULL;
 	vfree(xdev->debug_layout);
 	xdev->debug_layout = NULL;
+	vfree(xdev->connectivity);
+	xdev->connectivity = NULL;
+
+	if (topology == NULL)
+		return;
+
+	ddr = topology->m_count;
+	for (i = 0; i < ddr; i++) {
+		if (topology->m_mem_data[i].m_used) {
+			userpf_info(xdev, "Taking down DDR : %d", ddr);
+			drm_mm_takedown(&xdev->mm[i]);
+		}
+	}
+
+	if (xdev->mm)
+		vfree(xdev->mm);
+	if (xdev->mm)
+		vfree(xdev->mm_usage_stat);
+	vfree(xdev->topology);
+	xdev->topology = NULL;
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
