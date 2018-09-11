@@ -676,6 +676,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
 	lro->core.pdev = pdev;
+	memset(lro->core.dyna_subdevs_id, 0xff, sizeof(u32) * XOCL_SUBDEV_NUM);
 	lro->pci_dev = pdev;
 
 	rc = pci_request_regions(pdev, DRV_NAME);
