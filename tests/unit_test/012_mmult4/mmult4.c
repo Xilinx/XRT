@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
  *
@@ -16,6 +17,8 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
+=======
+>>>>>>> parent of fc8db38... Add Apache 2.0 license for unit_test
 #include <string.h>
 
 void mmult(int *a, int *b, int *output)

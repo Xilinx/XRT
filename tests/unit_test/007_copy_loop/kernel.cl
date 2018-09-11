@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
  *
@@ -13,6 +14,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+=======
+>>>>>>> parent of fc8db38... Add Apache 2.0 license for unit_test
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 

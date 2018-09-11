@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
  *
@@ -13,6 +14,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+=======
+// Copyright (c) 2014 Xilinx Inc
+// All rights reserved.
+//
+// This code is inspird by the original implementatation by Intel Corporation
+// with many changed for optimal performance on Xilinx FPGA.
+// Need legal review before shipping it outside Xilinx
+>>>>>>> parent of fc8db38... Add Apache 2.0 license for unit_test
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
