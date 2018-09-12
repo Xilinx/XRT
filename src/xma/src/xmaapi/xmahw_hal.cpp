@@ -23,9 +23,9 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-//#include <config.h>
+#include <xclhal2.h>
+//#include <xclbin.h>
 #include "app/xmaerror.h"
-#include "xclhal2.h"
 #include "lib/xmaxclbin.h"
 #include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
@@ -182,7 +182,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
 {
     std::string   xclbinpath = systemcfg->xclbinpath;
     XmaXclbinInfo info;
-    int32_t ddr_table[] = {0, 8, 2, 4};
+    int32_t ddr_table[] = {0, 3, 1, 2};
 
     /* Download the requested image to the associated device */
     /* Make sure to program the reference clock prior to download */
@@ -237,13 +237,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 xma_logmsg("Could not download xclbin file %s to device %d\n",
                            xclfullname.c_str(),
                            systemcfg->imagecfg[i].device_id_map[d]);
-                return false;
-            }
-            /* Set the clock frequencies */
-            rc = xclReClock2(hal->dev_handle, 0, info.freq_list);
-            if (rc != 0)
-            {
-                xma_logmsg("Could not set reference clocks for device %d\n",                           systemcfg->imagecfg[i].device_id_map[d]);
                 return false;
             }
         }

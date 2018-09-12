@@ -329,6 +329,8 @@ int32_t xma_initialize(char *cfgfile);
  *
  * @code
  * SystemCfg:
+ *     - logfile:    ./output.log
+ *     - loglevel:   2
  *     - dsa:        xilinx_1525_dynamic_5_1
  *     - pluginpath: /tmp/libxmaapi/installdir/share/libxmaapi
  *     - xclbinpath: /tmp/xclbins
@@ -365,17 +367,27 @@ int32_t xma_initialize(char *cfgfile);
  * follows:
  *
  * <pre>
- * [SystemCfg]    ::= SystemCfg:CRLF HTAB[dsa]CRLF HTAB[pluginpath]CRLF
- *                    HTAB[xclbinpath]CRLF (HTAB[ImageCfg])+
+ * [SystemCfg]    ::= SystemCfg:CRLF
+ *                    (HTAB[logifile]CRLF)*
+ *                    (HTAB[loglevel]CRLF)*
+ *                    HTAB[dsa]CRLF
+                      HTAB[pluginpath]CRLF
+ *                    HTAB[xclbinpath]CRLF
+ *                    (HTAB[ImageCfg])+
+ * [logfile]      ::= logfile:[filepath]
+ * [loglevel]     ::= loglevel:[0 | 1 | 2| 3]
  * [dsa]          ::= dsa:[name_string]
  * [pluginpath]   ::= pluginpath:[filepath]
  * [xclbinpath]   ::= xclbinpath:[filepath]
- * [ImageCfg]     ::= ImageCfg:CRLF HTAB*2[zerocopy]CRLF HTAB*2[device_id_map]CRLF
+ * [ImageCfg]     ::= ImageCfg:CRLF HTAB*2[zerocopy]CRLF
+ *                    HTAB*2[device_id_map]CRLF
  *                    HTAB*2[KernelCfg]CRLF
  * [zerocopy]     ::= zerocopy:(enable | disable)
  * [device_id_map]::= device_id_map:[number_list] CRLF
- * [KernelCfg]    ::= KernelCfg:%5B (%5B HTAB*3[instances]CRLF HTAB*3[function]CRLF
- *                    HTAB*3[plugin]CRLF  HTAB*3[vendor]CRLF HTAB*3[name]CRLF
+ * [KernelCfg]    ::= KernelCfg:%5B (%5B HTAB[instances]CRLF
+ *                    HTAB*3[function]CRLF
+ *                    HTAB*3[plugin]CRLF
+ *                    HTAB*3[vendor]CRLF HTAB*3[name]CRLF
  *                    HTAB*3[ddr_map]CRLF %5D)+ %5D
  * [instances]    ::= instances:digit+
  * [function]     ::= encoder | scaler | decoder | filter | kernel
@@ -391,6 +403,14 @@ int32_t xma_initialize(char *cfgfile);
  * A description of each YAML key:
  *
  * @param SystemCfg  Mandatory header property.  Takes no arguments.
+ * @param logifile   Optional property of SystemCfg; specifies filename to write
+ *     log output.  If logfile and loglevel parameters are not specified, the
+ *     log level will default to INFO and the output file will be stdout.
+ * @param loglevel   Optional property of SystemCfg; specifies the level of logging
+ *     of which there are four: CRITICAL, ERROR, INFO, DEBUG.  Logs of a the level
+ *     specified or lower will be output to the specified logfile.  The level mapping
+ *     is as follows: 0 = CRITICAL, 1 = ERROR, 2 = INFO, 3 = DEBUG.
+ *     For more information regarding the logging capability see @ref xmalog.
  * @param dsa        Property of SystemCfg; The name of the "Dynamic System Archive"
  *     used for all images.
  * @param pluginpath Property of SystemCfg; The path to directory containing all
@@ -434,6 +454,8 @@ int32_t xma_initialize(char *cfgfile);
  * Below is a sample of a more complex, multi-image YAML configuration file:
  * @code
  * SystemCfg:
+ *     - logfile:    ./output.log
+ *     - loglevel:   2
  *     - dsa:        xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_2
  *     - pluginpath: /plugin/path
  *     - xclbinpath: /xcl/path
@@ -471,6 +493,8 @@ int32_t xma_initialize(char *cfgfile);
  * two hevc kernels mapped to DDR banks 0 and 0.  The third kernel is the video
  * scaler.  The second image file is instructed to be deployed to device 2 and
  * consists of a single h264 kernel mapped to ddr bank 0.
+ * Logging is set to a local file called output.log and at the INFO level (i.e.
+ * all logging of type CRITICAL, ERROR and INFO will be output to the log).
  *
  * This YAML file will be consumed by the application code as the first step in
  * the initalization process.
