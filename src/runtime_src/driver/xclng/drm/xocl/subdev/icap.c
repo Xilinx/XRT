@@ -32,6 +32,7 @@
 #include <linux/pid.h>
 #include "xclbin.h"
 #include "../xocl_drv.h"
+#include "mgmt-ioctl.h"
 
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
@@ -591,15 +592,42 @@ static int platform_free_axi_gate(struct platform_device *pdev)
 	return err;
 }
 
-static int icap_ocl_set_freqscaling(struct platform_device *pdev,
-	unsigned int region, unsigned short *freqs, int num_freqs)
+static int set_freqs(struct icap* icap, unsigned short* freqs, int num_freqs)
 {
 	int i;
 	int err;
 	u32 val;
-	struct icap *icap;
-	
-	icap = platform_get_drvdata(pdev);
+
+	for(i = 0; i < min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
+		if (freqs[i] == 0)
+			continue;
+
+		val = reg_rd(icap->icap_clock_bases[i] +
+			OCL_CLKWIZ_STATUS_OFFSET);
+		if ((val & 0x1) == 0) {
+			ICAP_ERR(icap, "clockwiz %d is busy", i);
+			err = -EBUSY;
+			goto done;
+		}
+	}
+
+	memcpy(icap->icap_ocl_frequency, freqs,
+		sizeof(*freqs) * min(ICAP_MAX_NUM_CLOCKS, num_freqs));
+
+	icap_freeze_axi_gate(icap);
+	err = icap_ocl_freqscaling(icap, false);
+	icap_free_axi_gate(icap);
+
+done:
+	return err;
+
+}
+
+static int icap_ocl_set_freqscaling(struct platform_device *pdev,
+	unsigned int region, unsigned short *freqs, int num_freqs)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -611,37 +639,48 @@ static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 
 	mutex_lock(&icap->icap_lock);
 
-	for(i = 0; i < min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
-		if (freqs[i] == 0)
-			continue;
-
-		val = reg_rd(icap->icap_clock_bases[i] +
-			OCL_CLKWIZ_STATUS_OFFSET);
-		if ((val & 0x1) == 0) {
-			ICAP_ERR(icap, "clockwiz %d is busy", i);
-			mutex_unlock(&icap->icap_lock);
-			return -EBUSY;
-		}
-	}
-
-	memcpy(icap->icap_ocl_frequency, freqs,
-		sizeof(*freqs) * min(ICAP_MAX_NUM_CLOCKS, num_freqs));
-
-	icap_freeze_axi_gate(icap);
-	err = icap_ocl_freqscaling(icap, false);
-	icap_free_axi_gate(icap);
+	err = set_freqs(icap, freqs, num_freqs);
 
 	mutex_unlock(&icap->icap_lock);
 
 	return err;
 }
-static char* icap_ocl_get_clock_freq_topology(struct platform_device *pdev)
+
+static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling* freq_obj)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	//mutex_lock(&icap->icap_lock);
-	return icap->icap_clock_freq_topology;
-	//mutex_unlock(&icap->icap_lock);
-	return 0;
+	struct clock_freq_topology *topology = 0;
+	int num_clocks = 0;
+	int i = 0;
+	int err = 0;
+
+	mutex_lock(&icap->icap_lock);
+	if(icap->icap_clock_freq_topology) {
+	        topology = (struct clock_freq_topology*)icap->icap_clock_freq_topology;
+		num_clocks = topology->m_count;
+		ICAP_INFO(icap, "Num clocks is %d", num_clocks);
+		for(i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
+			ICAP_INFO(icap, "requested frequency is : "
+				"%d xclbin freq is: %d",
+				freq_obj->ocl_target_freq[i],
+				topology-> m_clock_freq[i].m_freq_Mhz);
+			if(freq_obj->ocl_target_freq[i] >
+				topology-> m_clock_freq[i].m_freq_Mhz) {
+				ICAP_ERR(icap, "Unable to set frequency as "
+					"requested frequency %d is greater "
+					"than set by xclbin %d",
+					freq_obj->ocl_target_freq[i],
+					topology-> m_clock_freq[i].m_freq_Mhz);
+				err = -EDOM;
+				goto done;
+			}
+		}
+	}
+
+	err = set_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
+done:
+	mutex_unlock(&icap->icap_lock);
+	return err;
 }
 
 static int icap_ocl_get_freqscaling(struct platform_device *pdev,
@@ -654,10 +693,10 @@ static int icap_ocl_get_freqscaling(struct platform_device *pdev,
 	if (region != 0)
 		return -EINVAL;
 
-	//mutex_lock(&icap->icap_lock);
+	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < min(ICAP_MAX_NUM_CLOCKS, num_freqs); i++)
 		freqs[i] = icap_get_ocl_frequency(icap, i);
-	//mutex_unlock(&icap->icap_lock);
+	mutex_unlock(&icap->icap_lock);
 
 	return 0;
 }
@@ -1906,7 +1945,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.download_bitstream_axlf = icap_download_bitstream_axlf,
 	.ocl_set_freq = icap_ocl_set_freqscaling,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
-	.ocl_get_clock_freq_topology = icap_ocl_get_clock_freq_topology,
+	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 };
@@ -1914,12 +1953,18 @@ static struct xocl_icap_funcs icap_ops = {
 static ssize_t clock_freq_topology_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	struct icap *icap;
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
 
-	icap = platform_get_drvdata(to_platform_device(dev));
+	mutex_lock(&icap->icap_lock);
 	memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
-	return icap->icap_clock_freq_topology_length;
+	cnt = icap->icap_clock_freq_topology_length;
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+	
 }
+
 static DEVICE_ATTR_RO(clock_freq_topology);
 
 static ssize_t clock_freqs_show(struct device *dev,
