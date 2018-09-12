@@ -262,14 +262,14 @@ validOrError(cl_command_queue command_queue,
                << cu->get_name()
                << "\" of kernel \""
                << xkernel->get_name()
-               << "\" for argument \"" << arg->get_name() << "\" "
-               << "does not match the physical connectivity from the binary.\n"
+               << "\" for argument name \"" << arg->get_name() << "\" "
+               << "does not match the connectivity from the xclbin.\n"
                << "Memory bank mask specified for argument ";
           if (mem_memidx_mask.any())
             ostr << "is \"" << mem_memidx_mask << "\"";
           else
             ostr << "does not exist";
-          ostr << " while memory bank mask in binary is \"" << cu_memidx_mask << "\".";
+          ostr << " while memory bank mask in xclbin is \"" << cu_memidx_mask << "\".";
           XOCL_DEBUG(std::cout,ostr.str(),"\n");
           if (!is_sw_emulation()) // pr Amit
             throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,ostr.str());
