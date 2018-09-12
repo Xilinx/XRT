@@ -518,7 +518,7 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 	ddr = topology->m_count;
 	for (i = 0; i < ddr; i++) {
 		if (topology->m_mem_data[i].m_used) {
-			userpf_info(xdev, "Taking down DDR : %d", ddr);
+			userpf_info(xdev, "Taking down DDR : %d", i);
 			drm_mm_takedown(&xdev->mm[i]);
 		}
 	}
