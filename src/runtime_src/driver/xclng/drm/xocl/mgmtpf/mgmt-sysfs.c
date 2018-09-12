@@ -113,7 +113,8 @@ static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", MGMT_READ_REG32(lro, GENERAL_STATUS_BASE));
+	return sprintf(buf, "%d\n",
+		lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0);
 }
 static DEVICE_ATTR_RO(mig_calibration);
 
@@ -124,6 +125,14 @@ static ssize_t xpr_show(struct device *dev,
     return sprintf(buf, "%d\n", XOCL_DSA_XPR_ON(lro));
 }
 static DEVICE_ATTR_RO(xpr);
+
+static ssize_t ready_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+    struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+    return sprintf(buf, "%d\n", lro->ready);
+}
+static DEVICE_ATTR_RO(ready);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -137,6 +146,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_link_width_max.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_xpr.attr,
+	&dev_attr_ready.attr,
 	NULL,
 };
 
@@ -159,5 +169,3 @@ void mgmt_fini_sysfs(struct device *dev)
 {
 	sysfs_remove_group(&dev->kobj, &mgmt_attr_group);
 }
-
-

@@ -16,6 +16,7 @@ SHIM_INC := -I../../../../ -I../../include -I../../../include
 SHIM_INC += -I../user_common
 CXXFLAGS += $(CXXFLAGS) $(XCLHAL_VER) $(SHIM_INC) -fpic -fvisibility=hidden -lrt
 CFLAGS += $(SHIM_INC) -fpic
+debug=1
 
 ifeq ($(debug),1)
 	CXXFLAGS += -g -DDEBUG

@@ -3,7 +3,7 @@ include_directories(
   )
 
 find_package(Boost REQUIRED COMPONENTS system filesystem)
-
+ 
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINCAT_FILES
@@ -31,6 +31,20 @@ set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
 
 target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
+
+# -----------------------------------------------------------------------------
+
+find_package(GTest)
+if (GTEST_FOUND)
+  enable_testing()
+  message (STATUS "GTest include dirs: '${GTEST_INCLUDE_DIRS}'")
+  include_directories(${GTEST_INCLUDE_DIRS})
+  add_executable(xclbintest unittests/main.cpp unittests/test.cpp)
+  message (STATUS "GTest libraries: '${GTEST_BOTH_LIBRARIES}'")
+  target_link_libraries(xclbintest ${GTEST_BOTH_LIBRARIES} pthread)
+else()
+  message (STATUS "GTest was not found, skipping generation of test executables")
+endif()
 
 # -----------------------------------------------------------------------------
 

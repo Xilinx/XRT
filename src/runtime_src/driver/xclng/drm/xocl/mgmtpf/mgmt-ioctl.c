@@ -88,17 +88,15 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct xclmgmt_char *lro_char = (struct xclmgmt_char *)filp->private_data;
 	struct xclmgmt_dev *lro;
 	long result = 0;
+
 	BUG_ON(!lro_char);
 	lro = lro_char->lro;
 	BUG_ON(!lro);
 
-	//printk(KERN_DEBUG "MGMT IOCTL request %u\n", cmd & 0xff);
-    //printk(KERN_INFO "%s %s PCI Slot: %d \n", DRV_NAME, __FUNCTION__, PCI_SLOT(lro->pci_dev->devfn));
-
 	if (lro_char != lro->user_char_dev)
 		return -ENOTTY;
 
-	if (_IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
+	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 
 	if (_IOC_DIR(cmd) & _IOC_READ)

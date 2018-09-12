@@ -240,7 +240,6 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
 
@@ -250,9 +249,9 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
     auto mems = m_xclbin.get_mem_topology();
     
-    if (!mems)
+    if (!mems) 
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count)
+    if((memidx+1) > mems->m_count) 
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];
@@ -272,6 +271,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     if(mem.m_type != MEM_STREAMING) 
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
+    
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 

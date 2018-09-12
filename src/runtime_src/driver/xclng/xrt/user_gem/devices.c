@@ -22,7 +22,6 @@
 
 static struct xocl_board_info  mgmt_devices[] = {
     XOCL_MGMT_PCI_IDS,
-    XOCL_MFG_PCI_IDS,
     { 0, }
 };
 

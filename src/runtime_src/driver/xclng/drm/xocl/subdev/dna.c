@@ -126,7 +126,7 @@ static uint32_t dna_status(struct platform_device *pdev)
 {
 	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
 	uint32_t status = 0;
-	uint8_t retries = 5;
+	uint8_t retries = 10;
 	bool rsa4096done = false;
 	if (!xlnx_dna)
 		return status;
@@ -137,7 +137,7 @@ static uint32_t dna_status(struct platform_device *pdev)
 			rsa4096done = true;
 			break;
 		}
-		msleep(50);
+		msleep(1);
 		retries--;
 	}
 

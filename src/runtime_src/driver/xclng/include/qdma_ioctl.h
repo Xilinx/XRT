@@ -64,6 +64,7 @@ struct xocl_qdma_ioc_create_queue {
 	uint32_t		write;		/* read or write */
 	uint32_t		pkt_mode;	/* stream or packet */
 	uint64_t		rid;		/* route id */
+	uint64_t		flowid;
 	uint32_t		qsize;		/* number of desc */
 	uint32_t		desc_size;	/* size of each desc */
 	uint64_t		flags;		/* isr en, wb en, etc */
