@@ -293,10 +293,10 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		pr_debug("idx:%d, len:%ld, addr %p, avail %d\n",
 			descq->pidx, len, (void *)dma_addr, descq->avail);
 
+		descq->pidx++;
+		descq->pidx &= descq->conf.rngsz - 1;
 		descq->avail--;
 
-		descq->pidx++;
-		descq->pidx &= (descq->conf.rngsz - 1);
 		wqe->unproc_bytes -= len;
 		total += len;
 		if (wqe->unproc_bytes == 0 || descq->avail == 0) {
@@ -308,7 +308,8 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	}
 	/* BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0); */
 
-	pr_debug("Out of loop %d, ring size %d\n", descq->pidx, descq->conf.rngsz);
+	pr_debug("Out of loop %d, ring size %d\n", descq->pidx,
+		descq->conf.rngsz);
 	pr_debug("unproc_sg_num %d, uproc_bytes %lld\n", wqe->unproc_sg_num,
 		wqe->unproc_bytes);
 	if (i > 0) {
@@ -316,7 +317,8 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		if (descq->xdev->stm_en && wqe->unproc_bytes == 0)
 			desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT);
 
-		descq_h2c_pidx_update(descq, (descq->pidx) & (descq->conf.rngsz - 1));
+		descq_h2c_pidx_update(descq, (descq->pidx) &
+			(descq->conf.rngsz - 1));
 
 		wqe->unproc_sg = sg;
 		wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
