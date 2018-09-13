@@ -448,7 +448,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t num_of_sections;
 	size_t size;
         int preserve_mem = 0;
-        struct mem_topology new_topology;
+        struct mem_topology *new_topology;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -539,11 +539,11 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
         /* 1, read MEM_TOPOLOGY */        
         /* Populating MEM_TOPOLOGY sections */
-	size = xocl_read_sect(MEM_TOPOLOGY, new_toplogy.topology, axlf, buf);
+	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
 	if (size <= 0) {
 		if (size != 0)
 			goto done;
-	} else if (sizeof_sect(new_toplogy.topology, m_mem_data) != size) {
+	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
 		err = -EINVAL;
 		goto done;
 	}
@@ -571,7 +571,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
         /* 4, copy MEM_TOPOLOGY from new_toplogy if !preserve_mem */
         if (!preserve_mem) {
                 xdev->topology = new_topology;
-                new_topology = NULL;
         }
         
 	/* Populating IP_LAYOUT sections */
