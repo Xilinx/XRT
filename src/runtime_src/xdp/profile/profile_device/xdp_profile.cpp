@@ -373,7 +373,7 @@ namespace XDP {
       double cuRunTimeMsec = (double) cuExecCycles / deviceCyclesMsec;
       double cuMaxExecCyclesMsec = (double) cuMaxExecCycles / deviceCyclesMsec;
       double cuMinExecCyclesMsec = (double) cuMinExecCycles / deviceCyclesMsec;
-      PerfCounters.logComputeUnitStats(cuName, kernelName, cuRunTimeMsec, cuMaxExecCyclesMsec, 
+      PerfCounters.logComputeUnitStats(cuName, kernelName, deviceName, cuRunTimeMsec, cuMaxExecCyclesMsec,
                                         cuMinExecCyclesMsec, cuExecCount, kernelClockMhz);
     }
   }

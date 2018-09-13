@@ -186,10 +186,13 @@ namespace XDP {
     ComputeUnitExecutionStats[cuName].logEnd(timePoint);
   }
 
-  void PerformanceCounter::logComputeUnitStats(const std::string& cuName, const std::string& kernelName, double totalTimeStat,
-    double maxTimeStat,  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz)
+  void PerformanceCounter::logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
+                                               const std::string& deviceName, double totalTimeStat,
+                                               double maxTimeStat,  double minTimeStat, uint32_t totalCalls,
+											   uint32_t clockFreqMhz)
   {
     std::string newCU;
+#if 0
     bool foundKernel = false;
     for (const auto &pair : ComputeUnitExecutionStats) {
       auto fullName = pair.first;
@@ -213,6 +216,11 @@ namespace XDP {
     if (foundKernel && totalTimeStat > 0.0) {
       ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
     }
+#else
+    newCU = deviceName + "|" + kernelName + "|1:1:1|1:1:1|" + cuName + "|0";
+    //printf("newCU = %s\n", newCU.c_str());
+    ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
+#endif
   }
 
   void PerformanceCounter::logDeviceEvent(std::string deviceName, std::string kernelName, size_t size,
