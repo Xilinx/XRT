@@ -37,7 +37,7 @@ add_dependencies(common_em generated_code)
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 set_target_properties(common_em PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(common_em
   ${BOOST_FILESYSTEM_LIBRARY}

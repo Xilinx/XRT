@@ -24,7 +24,7 @@ add_subdirectory(user_common)
 add_subdirectory(user_gem)
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_core
   pthread
@@ -53,7 +53,7 @@ add_compile_options("-fPIC" "-fvisibility=hidden")
 add_subdirectory(user_aws)
 
 set_target_properties(xrt_aws PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 if(${INTERNAL_TESTING})
   target_link_libraries(xrt_aws
