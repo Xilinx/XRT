@@ -3467,6 +3467,44 @@ static void pci_enable_capability(struct pci_dev *pdev, int cap)
 }
 #endif
 
+static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
+{
+	u16 cap;
+	u32 v;
+	void *__iomem reg;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
+	pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &cap);
+#else
+	int pos;
+
+	pos = pci_pcie_cap(pdev);
+	if (pos > 0)
+		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &cap);
+	else {
+		pr_info("pdev 0x%p, unable to access pcie cap.\n", pdev);
+		return -EACCES;
+	}
+#endif
+
+	if ((cap & PCI_EXP_DEVCTL_EXT_TAG))
+		return 0;
+
+	/* extended tag not enabled */
+	pr_info("0x%p EXT_TAG disabled.\n", pdev);
+
+	if (xdev->config_bar_idx < 0) {
+		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
+				pdev, xdev);
+		return -EINVAL;
+	}
+
+	reg = xdev->bar[xdev->config_bar_idx] + XDMA_OFS_CONFIG + 0x4C;
+	v =  read_register(reg);
+	v = (v & 0xFF) | (((u32)32) << 8);
+	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
+}
+
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 			int *h2c_channel_max, int *c2h_channel_max)
 {
@@ -3508,8 +3546,11 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	/* enable relaxed ordering */
 	pci_enable_capability(pdev, PCI_EXP_DEVCTL_RELAX_EN);
 
-	/* enable extended tag */
-	pci_enable_capability(pdev, PCI_EXP_DEVCTL_EXT_TAG);
+	/* if extended tag check failed, enable it */
+	if (pci_check_extended_tag(xdev, pdev)) {
+		pr_info("ExtTag is disabled, try enable it.\n");
+		pci_enable_capability(pdev, PCI_EXP_DEVCTL_EXT_TAG);
+	}
 
 	/* force MRRS to be 512 */
 	rv = pcie_set_readrq(pdev, 512);
