@@ -1,0 +1,32 @@
+SystemCfg:
+    - logfile:    ./output.log
+    - loglevel:   3         
+    - dsa:        xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_2 
+    - pluginpath: /plugin/path
+    - xclbinpath: /xcl/path
+    - ImageCfg:
+        xclbin: filename1.xclbin
+        zerocopy: enable
+        device_id_map: [0, 1]
+        KernelCfg: [[ instances: 2, 
+                      function: scaler,
+                      plugin:  libtstscalerplg.so,
+                      vendor: Xilinx,
+                      name:   virtual_scaler,
+                      ddr_map: [0, 0]],
+                    [ instances: 1, 
+                      function: scaler,
+                      plugin: libtstscalerplg.so,
+                      vendor: Xilinx,
+                      name: virtual_scaler,
+                      ddr_map: [0]]]
+    - ImageCfg:
+        xclbin: filename2.xclbin
+        zerocopy: disable
+        device_id_map: [2]
+        KernelCfg: [[ instances: 1,
+                      function: encoder,
+                      plugin:  libtstencoderplg.so,
+                      vendor: Xilinx,
+                      name: virtual_encoder,
+                      ddr_map: [0]]]
