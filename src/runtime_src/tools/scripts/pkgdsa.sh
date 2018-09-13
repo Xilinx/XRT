@@ -464,29 +464,30 @@ dodsabin()
 
 dodebdev()
 {
-    dir=debbuild/$dsa-$version-dev
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version-dev-${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-Package: $dsa-dev
-Architecture: amd64
-Version: $version-$revision
-Priority: optional
-Depends: $dsa (>= $version)
-Description: Xilinx $dsa development DSA. Built on $build_date.
-Maintainer: Xilinx Inc
-Section: devel
+package: $dsa-dev
+architecture: amd64
+version: $version-$revision
+priority: optional
+depends: $dsa (>= $version)
+description: Xilinx $dsa development DSA. Built on $build_date.
+maintainer: Xilinx Inc
+
 EOF
 
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw
     if [ "${license_dir}" != "" ] ; then
-	if [ -d ${license_dir} ] ; then
-	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
-	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
-	fi
+        if [ -d ${license_dir} ] ; then
+          mkdir -p $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
+          cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/license
+        fi
     fi
-    
+
     rsync -avz $opt_dsadir/$opt_dsa.xpfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/
     rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw/
     rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw/
@@ -498,35 +499,42 @@ EOF
     echo "================================================================"
 }
 
+
 dodeb()
 {
-    dir=debbuild/$dsa-$version
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version-${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
-
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-Package: $dsa
-Architecture: all
-Version: $version-$revision
-Priority: optional
-Depends: xrt (>= $opt_xrt)
-Description: Xilinx $dsa deployment DSA. 
+package: $dsa
+architecture: all
+version: $version-$revision
+priority: optional
+depends: xrt (>= $opt_xrt)
+description: Xilinx $dsa deployment DSA.
  This DSA depends on xrt >= $opt_xrt.
-Maintainer: Xilinx Inc.
-Section: devel
+maintainer: Xilinx Inc.
+
 EOF
 
+cat <<EOF > $opt_pkgdir/$dir/DEBIAN/preinst
+echo "${pre_inst_msg}"
+EOF
+    chmod 755 $opt_pkgdir/$dir/DEBIAN/preinst
+
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/postinst
-echo "${post_inst_msg} ${featureRomTimestamp}"
+${XBUTIL} flash -f -a ${opt_dsa} -t ${featureRomTimestamp} > ${flash_progress_file} 2>&1 || echo "${post_inst_flash_fail_msg}"
+echo "${post_inst_msg}"
 EOF
     chmod 755 $opt_pkgdir/$dir/DEBIAN/postinst
 
     mkdir -p $opt_pkgdir/$dir/lib/firmware/xilinx
     if [ "${license_dir}" != "" ] ; then
-	if [ -d ${license_dir} ] ; then
-	  mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
-	  cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
-	fi
+        if [ -d ${license_dir} ] ; then
+          mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
+          cp -f ${license_dir}/*  $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/license
+        fi
     fi
     rsync -avz $opt_pkgdir/dsabin/firmware/ $opt_pkgdir/$dir/lib/firmware/xilinx
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
@@ -538,6 +546,7 @@ EOF
     echo "* Please locate dep for $dsa in: $opt_pkgdir/$dir"
     echo "================================================================"
 }
+
 
 dorpmdev()
 {
