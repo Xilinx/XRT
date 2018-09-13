@@ -36,6 +36,7 @@
 #include <utility>
 #include <cassert>
 #include <vector>
+#include <linux/aio_abi.h>
 
 namespace xocl {
 
@@ -254,6 +255,7 @@ public:
     int xclFreeQDMABuf(uint64_t buf_hdl);
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -372,6 +374,10 @@ private:
     std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
+
+    // QDMA AIO
+    aio_context_t mAioContext;
+    bool mAioEnabled;
 }; /* XOCLShim */
 
 } /* xocl */
