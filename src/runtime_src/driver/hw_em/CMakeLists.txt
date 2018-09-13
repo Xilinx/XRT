@@ -27,7 +27,7 @@ add_library(xrt_hwemu SHARED ${CURR_SOURCE}
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_hwemu
   ${BOOST_FILESYSTEM_LIBRARY}
