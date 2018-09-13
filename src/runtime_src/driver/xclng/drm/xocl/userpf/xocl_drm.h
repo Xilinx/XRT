@@ -28,6 +28,7 @@ int xocl_drm_init(struct xocl_dev *xdev);
 void xocl_drm_fini(struct xocl_dev *xdev);
 
 void xocl_cleanup_mem(struct xocl_dev *xdev);
+void xocl_cleanup_connectivity(struct xocl_dev *xdev);
 int xocl_check_topology(struct xocl_dev *xdev);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
