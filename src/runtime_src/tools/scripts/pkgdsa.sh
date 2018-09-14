@@ -177,7 +177,7 @@ dsabinOutputFile=""
 
 XBUTIL=/opt/xilinx/xrt/bin/xbutil
 post_inst_msg="DSA package installed successfully.
-Please flash board manually by running below command:
+Please flash card manually by running below command:
 sudo ${XBUTIL} flash -a ${opt_dsa} -t"
 
 createEntityAttributeArray ()
