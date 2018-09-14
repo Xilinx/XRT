@@ -464,7 +464,8 @@ dodsabin()
 
 dodebdev()
 {
-    dir=debbuild/$dsa-$version-dev
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version-dev_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
@@ -500,7 +501,8 @@ EOF
 
 dodeb()
 {
-    dir=debbuild/$dsa-$version
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
