@@ -1082,7 +1082,7 @@ enum xclQueueRequestFlag {
     XCL_QUEUE_REQ_EOT			= 1 << 0,
     XCL_QUEUE_REQ_CDH			= 1 << 1,
     XCL_QUEUE_REQ_NONBLOCKING		= 1 << 2,
-    XCL_QUEUE_REQ_SILIENT		= 1 << 3,
+    XCL_QUEUE_REQ_SILENT		= 1 << 3,
 };
 
 /**
@@ -1130,7 +1130,7 @@ struct xclReqCompletion {
  *         return 0 immediatly.
  *     EOT:
  *         end of transmit signal will be added at last
- *     silient: (only used with non-blocking);
+ *     silent: (only used with non-blocking);
  *         No event generated after write completes
  */
 XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
