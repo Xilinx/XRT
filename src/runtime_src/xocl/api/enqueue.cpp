@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,7 +30,25 @@
 #include "xocl/core/device.h"
 #include "xocl/core/kernel.h"
 
+
 namespace {
+
+// Command based enqueue needs to manage event state
+struct enqueue_command : xrt::command
+{
+  xocl::event* m_ev;
+  enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
+    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
+  {}
+  virtual void start() const
+  {
+    m_ev->set_status(CL_RUNNING);
+  }
+  virtual void done() const
+  {
+    m_ev->set_status(CL_COMPLETE);
+  }
+};
 
 // Exception pointer for device exceptions during enqueue tasks.  The
 // pointer is set with the exception thrown by the task.
@@ -116,9 +134,8 @@ copy_buffer(xocl::event* event,xocl::device* device
             ,cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t dst_offset,size_t size)
 {
   try {
-    event->set_status(CL_RUNNING);
-    device->copy_buffer(xocl::xocl(src_buffer),xocl::xocl(dst_buffer),src_offset,dst_offset,size);
-    event->set_status(CL_COMPLETE);
+    auto cmd = std::make_shared<enqueue_command>(device,event,ERT_START_CU);
+    device->copy_buffer(xocl::xocl(src_buffer),xocl::xocl(dst_buffer),src_offset,dst_offset,size,cmd);
   }
   catch (const std::exception& ex) {
     handle_device_exception(event,ex);
@@ -298,8 +315,7 @@ action_copy_buffer(cl_mem src_buffer,cl_mem dst_buffer,size_t src_offset,size_t 
   return [=](xocl::event* ev) {
     auto command_queue = ev->get_command_queue();
     auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
-    xdevice->schedule(copy_buffer,async_type::misc,ev,device,src_buffer,dst_buffer, src_offset, dst_offset, size);
+    copy_buffer(ev,device,src_buffer,dst_buffer,src_offset,dst_offset,size);
   };
 }
 

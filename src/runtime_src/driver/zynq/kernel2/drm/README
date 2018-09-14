@@ -15,7 +15,7 @@ For MPSoC
 $ make LINUXDIR=path/to/your/petalinux/build/directory CROSS_COMPILE=aarch64-linux-gnu- modules
 
 For Zynq7000
-$ make LINUXDIR=path/to/your/petalinux/build/directory CROSS_COMPILE=arm-linux-gnueabihf- target=arm modules
+$ make LINUXDIR=path/to/your/petalinux/build/directory CROSS_COMPILE=arm-linux-gnueabihf- TARGET=arm modules
 
 
 #############################################
