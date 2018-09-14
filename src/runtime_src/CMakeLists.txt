@@ -49,7 +49,7 @@ add_subdirectory(tools/scripts)
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xdp
   xilinxopencl

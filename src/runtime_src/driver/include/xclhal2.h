@@ -1139,14 +1139,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
 
-/**
- * xclPollCompletion - for non-blocking read/write, check if there is any request been completed.
- * @min_compl		unblock only when receiving min_compl completions
- * @max_compl		Max number of completion with one poll
- * @req:		Completed request
- * @timeout:		timeout
- */ 
-XCL_DRIVER_DLLESPEC int xclPollCompletion(int min_compl, int max_compl, xclQueueRequest **req, struct timespec *timeout); 
+
 /** @} */
 
 #ifdef __cplusplus

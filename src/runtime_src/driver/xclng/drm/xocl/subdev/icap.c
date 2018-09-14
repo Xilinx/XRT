@@ -1608,10 +1608,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if(layout == NULL)
 		goto done;
 	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
-	if (sizeof_ip_layout(layout) > ipLayout->m_sectionSize) {
-	    err = -EINVAL;
-	    goto done;
-  }
+	if (sizeof_sect(layout, m_ip_data) > ipLayout->m_sectionSize) {
+		err = -EINVAL;
+		goto done;
+	}
   
 	ICAP_INFO(icap, "finding bitstream sections");
 	primaryHeader = get_axlf_section(icap, copy_buffer, BITSTREAM);

@@ -245,6 +245,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;
+	core->priv.subdev_num = in->subdev_num;
 	core->priv.user_bar = in->user_bar;
 	core->priv.intr_bar = in->intr_bar;
 	core->priv.flags = in->flags;

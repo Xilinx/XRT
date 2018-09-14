@@ -77,6 +77,16 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_COPY2IO(ioaddr, buf, len)	\
 	memcpy_toio(ioaddr, buf, len)
 
+/* xclbin helpers */
+#define sizeof_sect(sect, data) \
+({ \
+	size_t ret; \
+	size_t data_size; \
+	data_size = (sect) ? sect->m_count * sizeof(typeof(sect->data)) : 0; \
+	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
+	(ret); \
+})
+
 #define	XOCL_PL_TO_PCI_DEV(pldev)		\
 	to_pci_dev(pldev->dev.parent)
 
@@ -114,25 +124,6 @@ struct client_ctx;
 struct xocl_subdev {
 	struct platform_device 		*pldev;
 	void				*ops;
-};
-
-struct xocl_mem_topology {
-        //TODO : check the first 4 entries - remove unneccessary ones.
-        u32                  bank_count;
-        struct mem_data     *m_data;
-        u32                  m_data_length; /* length of the mem_data section */
-        u64                  size;
-        struct mem_topology *topology;
-};
-
-struct xocl_connectivity {
-        u64                     size;
-        struct connectivity     *connections;
-};
-
-struct xocl_debug_layout {
-        u64                     size;
-        struct debug_ip_layout  *layout;
 };
 
 typedef	void *	xdev_handle_t;
@@ -340,9 +331,9 @@ struct xocl_mb_scheduler_funcs {
 	 MB_SCHEDULER_OPS(xdev)->validate(MB_SCHEDULER_DEV(xdev), client, bo) : \
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
-	(xdev->topology.m_data[ddr].m_used == 1)
+	(xdev->topology->m_mem_data[ddr].m_used == 1)
 #define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? xdev->topology.bank_count :	\
+	((xocl_is_unified(xdev) ? xdev->topology->m_count :	\
 	xocl_get_ddr_channel_count(xdev)))
 
 /* sysmon callbacks */
@@ -639,10 +630,5 @@ void xocl_fini_xmc(void);
 
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);
-/* xclbin helpers */
 
-static inline size_t sizeof_ip_layout(const struct ip_layout *layout)
-{
-	return layout ? offsetof(struct ip_layout, m_ip_data) + layout->m_count * sizeof(struct ip_data) : 0;
-}
 #endif

@@ -443,42 +443,42 @@ int main(int argc, char *argv[])
         break;
     }
 
-    if (cmd == xcldev::SCAN) {
-        xcldev::pci_device_scanner devScanner;
-        try
-        {
-            return devScanner.scan(true);
-        }
-        catch (...)
-        {
-            std::cout << "ERROR: scan failed" << std::endl;
-            return -1;
-        }
+    xcldev::pci_device_scanner devScanner;
+    try
+    {
+        devScanner.scan(cmd == xcldev::SCAN);
     }
+    catch (...)
+    {
+        std::cout << "ERROR: scan failed" << std::endl;
+        return -1;
+    }
+    if (cmd == xcldev::SCAN)
+        return 0;
 
     std::vector<std::unique_ptr<xcldev::device>> deviceVec;
 
-    try {
-        unsigned int count = xclProbe();
-        if (count == 0) {
-            std::cout << "ERROR: No device found\n";
-            return 1;
-        }
+    unsigned int count = xcldev::pci_device_scanner::device_list.size();
 
-        for (unsigned i = 0; i < count; i++) {
-            deviceVec.emplace_back(new xcldev::device(i, nullptr));
-        }
-    }
-    catch (const std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+    if (count == 0) {
+        std::cout << "ERROR: No device found\n";
         return 1;
     }
 
-    std::cout << "INFO: Found " << deviceVec.size() << " device(s)\n";
+    for (unsigned i = 0; i < count; i++) {
+        try {
+            deviceVec.emplace_back(new xcldev::device(i, nullptr));
+        } catch (const std::exception& ex) {
+            std::cout << ex.what() << std::endl;
+        }
+    }
+
+    std::cout << "INFO: Found total " << count << " device(s), "
+        << deviceVec.size() << " are usable" << std::endl;
 
     if (cmd == xcldev::LIST) {
         for (unsigned i = 0; i < deviceVec.size(); i++) {
-            std::cout << '[' << i << "] "
+            std::cout << '[' << i << "] " << std::hex
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->mBus << ":"
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->mDev << "."
                 << deviceVec[i]->mUserFunc << " "
@@ -488,7 +488,11 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        std::cout << "ERROR: Device index " << index << " out of range\n";
+        if (index >= count)
+            std::cout << "ERROR: Device index " << index << "is out of range";
+        else
+            std::cout << "ERROR: Device [" << index << "] is not ready";
+        std::cout << std::endl;
         return 1;
     }
 
@@ -630,7 +634,7 @@ void xcldev::printHelp(const std::string& exe)
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
 {
     try {
-        unsigned int count = xclProbe();
+        unsigned int count = xcldev::pci_device_scanner::device_list.size();
         if (count == 0) {
             std::cout << "ERROR: No devices found" << std::endl;
         } else if (index >= count) {
@@ -843,7 +847,7 @@ int xcldev::device::runTestCase(const std::string& exe,
 /*
  * validate
  */
-int xcldev::device::validate()
+int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
@@ -889,6 +893,9 @@ int xcldev::device::validate()
     }
     std::cout << "PASSED" << std::endl;
 
+    // Skip the rest of test cases for quicker turn around.
+    if (quick)
+        return 0;
 
     // Perform DMA test
     std::cout << "INFO: Starting DMA test" << std::endl;
@@ -927,8 +934,9 @@ int xcldev::xclValidate(int argc, char *argv[])
     unsigned index = UINT_MAX;
     const std::string usage("Options: [-d index]");
     int c;
+    bool quick = false;
 
-    while ((c = getopt(argc, argv, "d:")) != -1) {
+    while ((c = getopt(argc, argv, "d:q")) != -1) {
         switch (c) {
         case 'd': {
             int ret = str2index(optarg, index);
@@ -936,6 +944,9 @@ int xcldev::xclValidate(int argc, char *argv[])
                 return ret;
             break;
         }
+        case 'q':
+            quick = true;
+            break;
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
@@ -946,7 +957,9 @@ int xcldev::xclValidate(int argc, char *argv[])
         return -EINVAL;
     }
 
-    unsigned int count = xclProbe();
+    xcldev::pci_device_scanner scanner;
+    scanner.scan(false);
+    unsigned int count = xcldev::pci_device_scanner::device_list.size();
 
     std::vector<unsigned> boards;
     if (index == UINT_MAX) {
@@ -971,13 +984,14 @@ int xcldev::xclValidate(int argc, char *argv[])
         std::unique_ptr<device> dev = xclGetDevice(i);
         if (!dev) {
             std::cout << "ERROR: Can't open device[" << i << "]" << std::endl;
-            return -EINVAL;
+            validated = false;
+            continue;
         }
 
         std::cout << std::endl << "INFO: Validating device[" << i << "]: "
             << dev->name() << std::endl;
 
-        if (dev->validate() != 0) {
+        if (dev->validate(quick) != 0) {
             validated = false;
             std::cout << "INFO: Device[" << i << "] failed to validate." << std::endl;
         } else {

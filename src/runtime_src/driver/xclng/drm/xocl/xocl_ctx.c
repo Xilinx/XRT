@@ -43,6 +43,9 @@ int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,
 
 void xocl_ctx_fini(struct device *dev, struct xocl_context_hash *ctx_hash)
 {
+	if (ctx_hash->hash == NULL)
+		return;
+
 	if (ctx_hash->count > 0) {
 		xocl_err(dev, "Context table is not NULL");
 	 	return;
@@ -60,6 +63,9 @@ int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg)
 	unsigned long		flags;
 	bool			found = false;
 	int			ret = 0;
+
+	if (ctx_hash->hash == NULL)
+		return ret;
 
 	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
 	hash_idx = ctx_hash->hash_func(arg);
@@ -91,6 +97,9 @@ int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz)
 	u32		hash_idx;
 	unsigned long	flags;
 	int		ret = 0;
+
+	if (ctx_hash->hash == NULL)
+		return ret;
 
 	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
 	hash_idx = ctx_hash->hash_func(arg);
@@ -124,6 +133,9 @@ int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
 	struct xocl_context		*ctx;
 	unsigned long			flags;
 	int				i, ret = 0;
+
+	if (ctx_hash->hash == NULL)
+		return ret;
 
 	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
 	for (i = 0; i < ctx_hash->size; i++) {
