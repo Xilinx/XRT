@@ -124,7 +124,7 @@ struct xclmgmt_dev {
 	struct msix_entry msix_irq_entries[XCLMGMT_MAX_INTR_NUM];
 #endif
 	int msix_user_start_vector;
-
+	bool ready;
 };
 
 struct xclmgmt_char {
