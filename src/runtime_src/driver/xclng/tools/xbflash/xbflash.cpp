@@ -27,9 +27,9 @@
 #include "firmware_image.h"
 
 const char* UsageMessages[] = {
-    "[-d device] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
-    "[-d device] -a <all | dsa> [-t timestamp]",
-    "[-d device] -p msp432_firmware",
+    "[-d card] -m primary_mcs [-n secondary_mcs] [-o spi|bpi]'",
+    "[-d card] -a <all | dsa> [-t timestamp]",
+    "[-d card] -p msp432_firmware",
     "scan [-v]",
 };
 const char* SudoMessage = "ERROR: root privileges required.";
@@ -132,7 +132,7 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
 {
     unsigned candidateDSAIndex = UINT_MAX;
 
-    std::cout << "Probing board[" << idx << "]: ";
+    std::cout << "Probing card[" << idx << "]: ";
 
     Flasher flasher(idx);
     if(!flasher.isValid())
@@ -212,7 +212,7 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
     Flasher flasher(boardIdx);
     if(!flasher.isValid())
     {
-        std::cout << "device not available" << std::endl;
+        std::cout << "card not available" << std::endl;
         return -EINVAL;
     }
 
@@ -237,12 +237,12 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
 
     if (!same_bmc)
     {
-        std::cout << "Updating BMC firmware on board[" << boardIdx << "]"
+        std::cout << "Updating BMC firmware on card[" << boardIdx << "]"
             << std::endl;
         int ret = flashBMC(flasher, candidate);
         if (ret != 0)
         {
-            std::cout << "Failed to update BMC firmware on board["
+            std::cout << "Failed to update BMC firmware on card["
                 << boardIdx << "]" << std::endl;
             return ret;
         }
@@ -250,11 +250,11 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
 
     if (!same_dsa)
     {
-        std::cout << "Updating DSA on board[" << boardIdx << "]" << std::endl;
+        std::cout << "Updating DSA on card[" << boardIdx << "]" << std::endl;
         int ret = flashDSA(flasher, candidate);
         if (ret != 0)
         {
-            std::cout << "Failed to update DSA on board[" << boardIdx << "]"
+            std::cout << "Failed to update DSA on card[" << boardIdx << "]"
                 << std::endl;
             return ret;
         }
@@ -303,7 +303,7 @@ int main( int argc, char *argv[] )
     }
     else
     {
-        std::cout <<"XBFLASH -- Xilinx Board Flash Utility" << std::endl;
+        std::cout <<"XBFLASH -- Xilinx Card Flash Utility" << std::endl;
     }
 
     if( argc <= optind )
@@ -372,7 +372,7 @@ int main( int argc, char *argv[] )
         case 'o': // optional
             notSeenOrDie(seen_o);
             std::cout <<"CAUTION: Overriding flash mode is not recommended. "
-                << "You may damage your device with this option." << std::endl;
+                << "You may damage your card with this option." << std::endl;
             if(!canProceed())
                 exit(-ECANCELED);
             args.flasherType = std::string(optarg);
@@ -436,7 +436,7 @@ int main( int argc, char *argv[] )
         }
 
         if (ret != 0)
-            std::cout << "Failed to flash board." << std::endl;
+            std::cout << "Failed to flash card." << std::endl;
         return ret;
     }
 
@@ -491,7 +491,7 @@ int main( int argc, char *argv[] )
     }
     if (boardsToCheck.empty())
     {
-        std::cout << "Board not found!" << std::endl;
+        std::cout << "Card not found!" << std::endl;
         exit(-ENOENT);
     }
 
@@ -508,10 +508,10 @@ int main( int argc, char *argv[] )
     bool needreboot = false;
     if (!boardsToUpdate.empty())
     {
-        std::cout << "DSA on below boards will be updated:" << std::endl;
+        std::cout << "DSA on below card(s) will be updated:" << std::endl;
         for (auto p : boardsToUpdate)
         {
-            std::cout << "Board [" << p.first << "]" << std::endl;
+            std::cout << "Card [" << p.first << "]" << std::endl;
         }
 
         // Prompt user about what boards will be updated and ask for permission.
@@ -531,7 +531,7 @@ int main( int argc, char *argv[] )
         }
     }
 
-    std::cout << success << " boards flashed successfully." << std::endl;
+    std::cout << success << " Card(s) flashed successfully." << std::endl;
     if (needreboot)
     {
         std::cout << "Cold reboot machine to load the new image on FPGA."
@@ -575,19 +575,19 @@ int scanDevices(int argc, char *argv[])
     scanner.scan(false);
 
     if ( xcldev::pci_device_scanner::device_list.size() == 0 )
-        std::cout << "No device is found!" << std::endl;
+        std::cout << "No card is found!" << std::endl;
 
     for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
     {
-        std::cout << "Board [" << i << "]" << std::endl;
+        std::cout << "Card [" << i << "]" << std::endl;
 
         Flasher f(i);
         if (!f.isValid())
             continue;
 
         DSAInfo board = f.getOnBoardDSA();
-        std::cout << "\tDevice BDF:\t\t" << f.sGetDBDF() << std::endl;
-        std::cout << "\tDevice type:\t\t" << board.board << std::endl;
+        std::cout << "\tCard BDF:\t\t" << f.sGetDBDF() << std::endl;
+        std::cout << "\tCard type:\t\t" << board.board << std::endl;
         std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
         std::cout << "\tDSA running on FPGA:" << std::endl;
         std::cout << "\t\t" << board << std::endl;
@@ -610,9 +610,9 @@ int scanDevices(int argc, char *argv[])
         BoardInfo info;
         if (verbose && f.getBoardInfo(info) == 0)
         {
-            std::cout << "\tBoard name\t\t" << info.mName << std::endl;
-            std::cout << "\tBoard rev\t\t" << info.mRev << std::endl;
-            std::cout << "\tBoard S/N: \t\t" << info.mSerialNum << std::endl;
+            std::cout << "\tCard name\t\t" << info.mName << std::endl;
+            std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
+            std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
             std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
             std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
             std::cout << "\tMax power level:\t" << info.mMaxPowerLvl << std::endl;
