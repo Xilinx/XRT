@@ -595,7 +595,6 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
     std::cout << " Requires root privileges:\n";
-    std::cout << "  boot    [-d card]\n";
     std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
     std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
@@ -605,8 +604,6 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " list\n";
     std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
     std::cout << "  " << exe << " scan\n";
-    std::cout << "Boot card 1 from PROM and retrain the PCIe link without rebooting the host\n";
-    std::cout << "  " << exe << " boot -d 1\n";
     std::cout << "Change the clock frequency of region 0 in card 0 to 100 MHz\n";
     std::cout << "  " << exe << " clock -f 100\n";
     std::cout << "For card 0 which supports multiple clocks, change the clock 1 to 200MHz and clock 2 to 250MHz\n";
