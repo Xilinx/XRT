@@ -8,11 +8,13 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
+    echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
 
     exit 1
 }
 
 validate=0
+docker=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -21,6 +23,10 @@ while [ $# -gt 0 ]; do
             ;;
         -validate)
             validate=1
+            shift
+            ;;
+        -docker)
+            docker=1
             shift
             ;;
         *)
@@ -52,7 +58,6 @@ RH_LIST=(\
      gtest-devel \
      kernel-devel \
      kernel-headers \
-#     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
      libpng12-devel \
@@ -79,7 +84,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
-     )
+)
 
 UB_LIST=(\
      cmake \
@@ -104,7 +109,6 @@ UB_LIST=(\
      libtiff5-dev \
      libxml2-dev \
      libyaml-dev \
-     linux-headers-$(uname -r) \
      linux-libc-dev \
      lm-sensors \
      lsb \
@@ -126,6 +130,11 @@ UB_LIST=(\
      uuid-dev \
 )
 
+if [[ $docker == 0 ]]; then
+    #RH_LIST+=(kernel-headers-$(uname -r))
+    UB_LIST+=(linux-headers-$(uname -r))
+fi
+
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
 ARCH=`uname -m`
@@ -143,7 +152,8 @@ fi
 validate()
 {
     if [ $FLAVOR == "ubuntu" ]; then
-        apt -qq list "${UB_LIST[@]}"
+        #apt -qq list "${UB_LIST[@]}"
+        dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
 	    # Validate we have OpenCL 2.X headers installed
             dpkg-query -s opencl-headers | grep '^Version: 2\.'
