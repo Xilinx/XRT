@@ -1164,6 +1164,11 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  * return number of requests been completed.
  */ 
 XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout); 
+
+/* Hack for xbflash only */
+XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+
 /** @} */
 
 #ifdef __cplusplus

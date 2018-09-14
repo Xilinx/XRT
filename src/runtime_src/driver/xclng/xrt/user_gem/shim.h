@@ -257,6 +257,10 @@ public:
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout);
 
+    // Temporary hack for xbflash use only
+    char *xclMapMgmt(void) { return mMgtMap; }
+    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+
 private:
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;

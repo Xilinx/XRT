@@ -277,7 +277,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
 
-    if(mem.m_type != MEM_STREAMING) 
+    if(mem.m_type != MEM_STREAMING)
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
 
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
