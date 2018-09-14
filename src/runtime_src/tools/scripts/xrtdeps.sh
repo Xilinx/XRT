@@ -195,7 +195,7 @@ install()
         sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
-        sudo yum install centos-release-scl
+        sudo yum --enablerepo=extras install centos-release-scl
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
