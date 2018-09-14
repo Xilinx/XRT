@@ -201,7 +201,6 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
         std::cout << "DSA on FPGA is up-to-date" << std::endl;
         return UINT_MAX;
     }
-
     std::cout << "DSA on FPGA needs updating" << std::endl;
     return candidateDSAIndex;
 }
@@ -314,7 +313,6 @@ int main( int argc, char *argv[] )
     std::string subcmd(argv[optind]);
     if(subcmd.compare("scan") == 0 )
     {
-        sudoOrDie();
         optind++;
         return scanDevices(argc, argv);
     }
@@ -479,7 +477,7 @@ int main( int argc, char *argv[] )
 
     // Collect all indexes of boards need checking
     xcldev::pci_device_scanner scanner;
-    scanner.scan_without_driver();
+    scanner.scan(false);
     if (args.devIdx == UINT_MAX)
     {
         for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size();
@@ -571,8 +569,10 @@ int scanDevices(int argc, char *argv[])
     if (argc != optind)
         usageAndDie();
 
+    sudoOrDie();
+
     xcldev::pci_device_scanner scanner;
-    scanner.scan_without_driver();
+    scanner.scan(false);
 
     if ( xcldev::pci_device_scanner::device_list.size() == 0 )
         std::cout << "No device is found!" << std::endl;
