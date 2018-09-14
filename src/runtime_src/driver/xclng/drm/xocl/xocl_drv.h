@@ -26,6 +26,7 @@
 #include "xclbin.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
+#include "mgmt-ioctl.h"
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
@@ -519,7 +520,7 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
-	char* (*ocl_get_clock_freq_topology)(struct platform_device *pdev);
+	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling* freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -540,8 +541,8 @@ struct xocl_icap_funcs {
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev))
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num)
-#define	xocl_icap_ocl_get_clock_freq_topology(xdev)		\
-	ICAP_OPS(xdev)->ocl_get_clock_freq_topology(ICAP_DEV(xdev))
+#define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs)
 #define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
 	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num)
 #define	xocl_icap_lock_bitstream(xdev, uuid, pid)			\

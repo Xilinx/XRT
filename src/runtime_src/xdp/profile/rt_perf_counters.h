@@ -108,7 +108,7 @@ namespace XCL {
     void writeHostTransferSummary(WriterI* writer, bool isRead, uint64_t totalBytes,
         double totalTimeMsec, double maxTransferRateMBps) const;
     void writeKernelTransferSummary(WriterI* writer, std::string& deviceName,
-    	std::string& cuPortName, const std::string& argNames, uint32_t ddrBank,
+    	std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
     	bool isRead, uint64_t totalBytes, uint64_t totalTranx, double totalKernelTimeMsec,
         double totalTransferTimeMsec, double maxTransferRateMBps) const;
     void writeDeviceTransferSummary(WriterI* writer, bool isRead) const;

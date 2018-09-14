@@ -25,6 +25,7 @@
 #include <linux/iommu.h>
 #include <linux/pagemap.h>
 #include <linux/io.h>
+#include <linux/kernel.h>
 #include "zocl_drv.h"
 #include "sched_exec.h"
 
@@ -54,23 +55,21 @@ static const struct vm_operations_struct reg_physical_vm_ops = {
 
 void zocl_free_sections(struct drm_zocl_dev *zdev)
 {
-	if (zdev->layout.layout) {
-		vfree(zdev->layout.layout);
-		CLEAR(zdev->layout.layout);
+	if (zdev->ip) {
+		vfree(zdev->ip);
+		CLEAR(zdev->ip);
 	}
-	if (zdev->debug_layout.layout) {
-		vfree(zdev->debug_layout.layout);
-		CLEAR(zdev->debug_layout.layout);
+	if (zdev->debug_ip) {
+		vfree(zdev->debug_ip);
+		CLEAR(zdev->debug_ip);
 	}
-	if (zdev->connectivity.connections) {
-		vfree(zdev->connectivity.connections);
-		CLEAR(zdev->connectivity.connections);
+	if (zdev->connectivity) {
+		vfree(zdev->connectivity);
+		CLEAR(zdev->connectivity);
 	}
-	if (zdev->topology.m_data)
-		vfree(zdev->topology.m_data);
-	if (zdev->topology.topology) {
-		vfree(zdev->topology.topology);
-		CLEAR(zdev->topology.topology);
+	if (zdev->topology) {
+		vfree(zdev->topology);
+		CLEAR(zdev->topology);
 	}
 }
 
@@ -87,23 +86,22 @@ static irqreturn_t zocl_h2c_isr(int irq, void *arg)
 }
 
 /**
- * find_platform_dev_by_compatible - Find platform device by the compatible string
+ * find_pdev - Find platform device by name
  *
- * @compat: Compatible string to look for from of_root node.
+ * @name: device name
  *
  * Returns a platform device. Returns NULL if not found.
  */
-static struct platform_device *find_platform_dev_by_compatible(char *compat)
+static struct platform_device *find_pdev(char *name)
 {
+	struct device *dev;
 	struct platform_device *pdev;
-	struct device_node     *fnode;
 
-	fnode = of_find_compatible_node(of_root, NULL, compat);
-	if (!fnode)
+	dev = bus_find_device_by_name(&platform_bus_type, NULL, name);
+	if (!dev)
 		return NULL;
 
-	pdev = of_find_device_by_node(fnode);
-	of_node_put(fnode);
+	pdev = container_of(dev, struct platform_device, dev);
 	return pdev;
 }
 
@@ -126,28 +124,29 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_free_userptr_bo(obj);
 		else
 			drm_gem_cma_free_object(obj);
-	} else {
-		npages = obj->size >> PAGE_SHIFT;
-		drm_gem_object_release(obj);
-
-		if (zocl_obj->vmapping)
-			vunmap(zocl_obj->vmapping);
-		zocl_obj->vmapping = NULL;
-
-		zocl_iommu_unmap_bo(obj->dev, zocl_obj);
-		if (zocl_obj->pages) {
-			if (zocl_bo_userptr(zocl_obj)) {
-				release_pages(zocl_obj->pages, npages, 0);
-				kvfree(zocl_obj->pages);
-			} else
-				drm_gem_put_pages(obj, zocl_obj->pages, false, false);
-		}
-		if (zocl_obj->sgt)
-			sg_free_table(zocl_obj->sgt);
-		zocl_obj->sgt = NULL;
-		zocl_obj->pages = NULL;
-		kfree(zocl_obj);
+		return;
 	}
+
+	npages = obj->size >> PAGE_SHIFT;
+	drm_gem_object_release(obj);
+
+	if (zocl_obj->vmapping)
+		vunmap(zocl_obj->vmapping);
+	zocl_obj->vmapping = NULL;
+
+	zocl_iommu_unmap_bo(obj->dev, zocl_obj);
+	if (zocl_obj->pages) {
+		if (zocl_bo_userptr(zocl_obj)) {
+			release_pages(zocl_obj->pages, npages, 0);
+			kvfree(zocl_obj->pages);
+		} else
+			drm_gem_put_pages(obj, zocl_obj->pages, false, false);
+	}
+	if (zocl_obj->sgt)
+		sg_free_table(zocl_obj->sgt);
+	zocl_obj->sgt = NULL;
+	zocl_obj->pages = NULL;
+	kfree(zocl_obj);
 }
 
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
@@ -159,8 +158,8 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long vsize;
 	int rc;
 
-	/* If the page offset is > 4G (64 bit) or 2G (32 bit), then we are trying
-	 * to map GEM BO
+	/* If the page offset is > 4G (64 bit) or 2G (32 bit),
+	 * then we are trying to map GEM BO
 	 */
 	if (likely(vma->vm_pgoff >= ZOCL_FILE_PAGE_OFFSET)) {
 		if (!zdev->domain)
@@ -224,7 +223,7 @@ static int zocl_bo_fault(struct vm_fault *vmf)
 	page = bo->pages[offset];
 
 	err = vm_insert_page(vma, (unsigned long)vmf->address, page);
-	switch (err)
+	switch (err) {
 	case -EAGAIN:
 	case 0:
 	case -ERESTARTSYS:
@@ -233,7 +232,7 @@ static int zocl_bo_fault(struct vm_fault *vmf)
 		return VM_FAULT_NOPAGE;
 	case -ENOMEM:
 		return VM_FAULT_OOM;
-
+	}
 	return VM_FAULT_SIGBUS;
 }
 
@@ -254,7 +253,6 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct sched_client_ctx *fpriv = filp->driver_priv;
 
 	if (!fpriv)
@@ -286,7 +284,6 @@ static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 	}
 	mutex_unlock(&fpriv->lock);
 
-	DRM_INFO("Pid %d poll device\n", pid_nr(task_tgid(current)));
 	return ret;
 }
 
@@ -371,7 +368,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	const struct of_device_id *id;
 	struct drm_device *drm;
 	struct drm_zocl_dev	*zdev;
-	struct device_node fnode;
+	struct platform_device *subdev;
 	struct resource *res;
 	void __iomem *map;
 	int ret;
@@ -396,7 +393,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
 
-	zdev->ert = find_dev_by_compat(struct zocl_ert_dev, "xlnx,embedded_sched");
+	subdev = find_pdev("80180000.ert_hw");
+	if (subdev) {
+		DRM_INFO("ert_hw found -> %p\n", subdev);
+		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+	}
 
 #if defined(XCLBIN_DOWNLOAD)
 	fnode = of_get_child_by_name(of_root, "pcap");
@@ -407,7 +408,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	zdev->fpga_mgr = of_fpga_mgr_get(fnode);
 	if (IS_ERR(zdev->fpga_mgr)) {
-		DRM_ERROR("FPGA Manager not found %ld\n", PTR_ERR(zdev->fpga_mgr));
+		DRM_ERROR("FPGA Manager not found %ld\n",
+				PTR_ERR(zdev->fpga_mgr));
 		return PTR_ERR(zdev->fpga_mgr);
 	}
 #endif
