@@ -766,8 +766,8 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on board.\n"
-                    << "Please run xbutil flash -a all to flash board."
+                output << "Xclbin does not match DSA on card.\n"
+                    << "Please run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
                     mLogStream << output.str();

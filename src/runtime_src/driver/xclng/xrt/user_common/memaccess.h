@@ -73,7 +73,7 @@ namespace xcldev {
         ifs.read( (char*)&nfound, sizeof(nfound) );
         ifs.seekg( 0, ifs.beg );
         if( nfound == 0 ) {
-            std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device." << std::endl;
+            std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card." << std::endl;
             ifs.close();
             return nfound;
         }
@@ -142,7 +142,7 @@ namespace xcldev {
         std::vector<mem_bank_t> mems;
         int numBanks = getDDRBanks(mems);
         if (!numBanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device \n";
+          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
           return -1;
         }
 
@@ -178,7 +178,7 @@ namespace xcldev {
                 std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) {
         int nbanks = getDDRBanks(vec_banks);
         if (!nbanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device \n";
+          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
           return -1;
         }
 
