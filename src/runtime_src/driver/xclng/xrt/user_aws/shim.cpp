@@ -55,7 +55,7 @@
 #include <iostream>
 #include <fstream>
 #include <mutex>
-
+#include <poll.h>
 #include "xclbin.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
@@ -955,6 +955,17 @@ namespace awsbwhal {
 	ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
 	return ret ? -errno : ret;
     }
+    
+    /*
+     * xclExecWait()
+     */
+    int AwsXcl::xclExecWait(int timeoutMilliSec)
+    {
+	std::vector<pollfd> uifdVector;
+	pollfd info = {mUserHandle, POLLIN, 0};
+	uifdVector.push_back(info);
+	return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
+    }
 
     int AwsXcl::xclExportBO(unsigned int boHandle)
     {
@@ -1445,6 +1456,13 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
+
+int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
+}
+
 
 int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)
 {
