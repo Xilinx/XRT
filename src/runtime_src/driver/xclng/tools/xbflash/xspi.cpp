@@ -127,15 +127,12 @@ static const unsigned  SECTOR_ERASE_BYTES = FOUR_BYTE_ADDRESSING ? 5 :4;
 #define XSP_CR_LOOPBACK_MASK       0x00000001 /**< Local loopback mode */
 #define XSP_CR_ENABLE_MASK         0x00000002 /**< System enable */
 #define XSP_CR_MASTER_MODE_MASK    0x00000004 /**< Enable master mode */
-#define XSP_CR_CLK_POLARITY_MASK   0x00000008 /**< Clock polarity high
-    or low */
+#define XSP_CR_CLK_POLARITY_MASK   0x00000008 /**< Clock polarity high or low */
 #define XSP_CR_CLK_PHASE_MASK      0x00000010 /**< Clock phase 0 or 1 */
 #define XSP_CR_TXFIFO_RESET_MASK   0x00000020 /**< Reset transmit FIFO */
 #define XSP_CR_RXFIFO_RESET_MASK   0x00000040 /**< Reset receive FIFO */
-#define XSP_CR_MANUAL_SS_MASK      0x00000080 /**< Manual slave select
-    assert */
-#define XSP_CR_TRANS_INHIBIT_MASK  0x00000100 /**< Master transaction
-    inhibit */
+#define XSP_CR_MANUAL_SS_MASK      0x00000080 /**< Manual slave select assert */
+#define XSP_CR_TRANS_INHIBIT_MASK  0x00000100 /**< Master transaction inhibit */
 
 /**
  * LSB/MSB first data format select. The default data format is MSB first.
@@ -249,8 +246,7 @@ static int flashVendor = -1;
 static bool TEST_MODE = false;
 static bool TEST_MODE_MCS_ONLY = false;
 
-static const uint32_t CONTROL_REG_START_STATE
-=  XSP_CR_TRANS_INHIBIT_MASK | XSP_CR_MANUAL_SS_MASK |XSP_CR_RXFIFO_RESET_MASK
+static const uint32_t CONTROL_REG_START_STATE =  XSP_CR_TRANS_INHIBIT_MASK | XSP_CR_MANUAL_SS_MASK |XSP_CR_RXFIFO_RESET_MASK
         | XSP_CR_TXFIFO_RESET_MASK | XSP_CR_ENABLE_MASK | XSP_CR_MASTER_MODE_MASK ;
 
 static void clearReadBuffer(unsigned size) {
@@ -461,7 +457,6 @@ int XSPI_Flasher::xclTestXSpi(int index)
 
     }
 
-
     clearBuffers();
 
     //Read the data back, use 2 reads each of 128 bytes, twice to test 2 pages.
@@ -537,16 +532,16 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
                 return -EINVAL;
             }
             if (address != (record.mDataCount+(record.mStartAddress & 0xFFFF))) {
-        if(record.mDataCount == 0) {
-            //First entry only.
-            assert(record.mStartAddress != 0);
-            assert(record.mEndAddress != 0);
-            record.mStartAddress += address;
-            record.mEndAddress += address;
-        }else {
-            std::cout << "Address is not contiguous ! " << std::endl;
-            return -EINVAL;
-        }
+                if(record.mDataCount == 0) {
+                    //First entry only.
+                    assert(record.mStartAddress != 0);
+                    assert(record.mEndAddress != 0);
+                    record.mStartAddress += address;
+                    record.mEndAddress += address;
+                }else {
+                    std::cout << "Address is not contiguous ! " << std::endl;
+                    return -EINVAL;
+                }
             }
             //if ( ((record.mEndAddress-record.mStartAddress)& 0xFFFF) != address) {
               //  return -EINVAL;
@@ -587,7 +582,7 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
                     BITSTREAM_START_LOC = record.mStartAddress;
             }
             // Start a new record
-        record.mStartAddress = std::stoi(newAddress, 0 , 16);
+            record.mStartAddress = std::stoi(newAddress, 0 , 16);
             record.mStartAddress <<= 16;
             record.mDataPos = mcsStream.tellg();
             record.mEndAddress = record.mStartAddress;
@@ -691,8 +686,8 @@ bool XSPI_Flasher::sectorErase(unsigned Addr, unsigned erase_cmd) {
     XSpi_SetControlReg(ControlReg);
 
     /*
-   * Prepare the WriteBuffer.
-   */
+    * Prepare the WriteBuffer.
+    */
     if(!FOUR_BYTE_ADDRESSING) {
         WriteBuffer[BYTE1] = erase_cmd;
         WriteBuffer[BYTE2] = (uint8_t) (Addr >> 16);
@@ -710,9 +705,9 @@ bool XSPI_Flasher::sectorErase(unsigned Addr, unsigned erase_cmd) {
         return false;
 
     /*
-   * Wait till the Transfer is complete and check if there are any errors
-   * in the transaction..
-   */
+    * Wait till the Transfer is complete and check if there are any errors
+    * in the transaction..
+    */
     if(!waitTxEmpty())
         return false;
 
@@ -755,7 +750,7 @@ bool XSPI_Flasher::writeBitstreamGuard(unsigned Addr) {
     memcpy(write_buffer, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
     bufferIndex+=sizeof(BITSTREAM_GUARD);
     for(; bufferIndex<WRITE_DATA_SIZE; bufferIndex++)
-            write_buffer[bufferIndex] = 0xFF; 
+        write_buffer[bufferIndex] = 0xFF; 
         
     return writePage(page_addr);
 }
@@ -894,8 +889,8 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     }
 
     /*
-   * Set up buffer pointers.
-   */
+    * Set up buffer pointers.
+    */
     uint8_t* SendBufferPtr = SendBufPtr;
     uint8_t* RecvBufferPtr = RecvBufPtr;
 
@@ -903,12 +898,12 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     unsigned int BytesTransferred = 0;
 
     /*
-   * Fill the DTR/FIFO with as many bytes as it will take (or as many as
-   * we have to send). We use the tx full status bit to know if the device
-   * can take more data. By doing this, the driver does not need to know
-   * the size of the FIFO or that there even is a FIFO. The downside is
-   * that the status register must be read each loop iteration.
-   */
+    * Fill the DTR/FIFO with as many bytes as it will take (or as many as
+    * we have to send). We use the tx full status bit to know if the device
+    * can take more data. By doing this, the driver does not need to know
+    * the size of the FIFO or that there even is a FIFO. The downside is
+    * that the status register must be read each loop iteration.
+    */
     StatusReg = XSpi_GetStatusReg();
     if((StatusReg & (1<<10)) != 0) {
         std::cout << "status reg in error situation " << std::endl;
@@ -938,9 +933,9 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
 
 
     /*
-   * Set the slave select register to select the device on the SPI before
-   * starting the transfer of data.
-   */
+    * Set the slave select register to select the device on the SPI before
+    * starting the transfer of data.
+    */
     XSpi_SetSlaveSelectReg(SlaveSelectReg);
 
     ControlReg = XSpi_GetControlReg();
@@ -955,11 +950,11 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     }
 
     /*
-   * Start the transfer by no longer inhibiting the transmitter and
-   * enabling the device. For a master, this will in fact start the
-   * transfer, but for a slave it only prepares the device for a transfer
-   * that must be initiated by a master.
-   */
+    * Start the transfer by no longer inhibiting the transmitter and
+    * enabling the device. For a master, this will in fact start the
+    * transfer, but for a slave it only prepares the device for a transfer
+    * that must be initiated by a master.
+    */
     ControlReg = XSpi_GetControlReg();
     ControlReg &= ~XSP_CR_TRANS_INHIBIT_MASK;
     XSpi_SetControlReg(ControlReg);
@@ -1353,14 +1348,13 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) 
 #endif
             const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
             //assert ( (address + dataLen) == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
-        assert ( (address + dataLen - (record.mStartAddress & 0xFFFF)) 
-            == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));      
+            assert ( (address + dataLen - (record.mStartAddress & 0xFFFF)) 
+                == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));      
             if(TEST_MODE) {
                 std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
                 std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;
                 std::cout << " " << address << std::endl;
-            } else
-            {
+            } else {
                 if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
                     return -ENXIO;
                 clearBuffers();
