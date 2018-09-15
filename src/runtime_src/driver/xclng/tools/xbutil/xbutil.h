@@ -166,10 +166,10 @@ public:
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open device: " + dev.mgmt_name);
-        if (xclGetDeviceInfo2(m_handle, &m_devinfo))
+        if (xclGetDeviceInfoExt(m_handle, &m_devinfo, sizeof (m_devinfo)))
             throw std::runtime_error("Unable to query device index, " + dev.mgmt_name);
 #ifdef AXI_FIREWALL
-        if (xclGetErrorStatus(m_handle, &m_errinfo))
+        if (xclGetErrorStatusExt(m_handle, &m_errinfo, sizeof (m_errinfo)))
             throw std::runtime_error("Unable to query device index for AXI error, " + dev.mgmt_name);
 #endif
     }
@@ -652,7 +652,7 @@ public:
      */
     int dump(std::ostream& ostr) const {
         xclDeviceUsage devstat;
-        int result = xclGetUsageInfo(m_handle, &devstat);
+        int result = xclGetUsageInfoExt(m_handle, &devstat, sizeof (devstat));
         unsigned numDDR = m_devinfo.mDDRBankCount;
         
         std::vector<std::string> lines, usage_lines;
@@ -1113,11 +1113,11 @@ public:
     }
 
     int usageInfo(xclDeviceUsage& devstat) const {
-        return xclGetUsageInfo(m_handle, &devstat);
+        return xclGetUsageInfoExt(m_handle, &devstat, sizeof (devstat));
     }
 
     int deviceInfo(xclDeviceInfo2& devinfo) const {
-        return xclGetDeviceInfo2(m_handle, &devinfo);
+        return xclGetDeviceInfoExt(m_handle, &devinfo, sizeof (devinfo));
     }
 
     int validate(bool quick);

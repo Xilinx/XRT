@@ -302,28 +302,37 @@ XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, xclResetKind kind
  * xclGetDeviceInfo2() - Obtain various bits of information from the device
  *
  * @handle:        Device handle
- * @info:          Information record
+ * @info:          Pointer to information record buffer
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info);
+/* Private API */
+XCL_DRIVER_DLLESPEC int xclGetDeviceInfoExt(xclDeviceHandle handle,
+    xclDeviceInfo2 *info, size_t size);
 
 /**
  * xclGetUsageInfo() - Obtain usage information from the device
  *
  * @handle:        Device handle
- * @info:          Information record
+ * @info:          Pointer to information record buffer
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info);
+/* Private API */
+XCL_DRIVER_DLLESPEC int xclGetUsageInfoExt(xclDeviceHandle handle,
+    xclDeviceUsage *info, size_t size);
 
 /**
  * xclGetErrorStatus() - Obtain error information from the device
  *
  * @handle:        Device handle
- * @info:          Information record
+ * @info:          Pointer to information record buffer
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info);
+/* Private API */
+XCL_DRIVER_DLLESPEC int xclGetErrorStatusExt(xclDeviceHandle handle,
+    xclErrorStatus *info, size_t size);
 
 /**
  * xclLoadXclBin() - Download FPGA image (xclbin) to the device
