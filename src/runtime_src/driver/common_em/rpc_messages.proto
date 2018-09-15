@@ -62,10 +62,12 @@ message xclLoadBitstream_response {
 message xclAllocDeviceBuffer_call {
      required uint64 ddraddress = 1;
      required uint64 size = 2;
+     optional bool peertopeer = 3;
 }
 
 message xclAllocDeviceBuffer_response {
      required bool ack = 1;
+     optional string filename = 2;
 }
 
 //xclFreeDeviceBuffer
@@ -259,4 +261,77 @@ message xclGetDebugMessages_response {
      optional bytes display_msgs = 1;
      optional bytes log_msgs = 2;
      optional bytes stop_msgs = 3;
+}
+//P2P support
+// xclImportBO
+message xclImportBO_call {
+  optional string dst_filename = 1;
+  optional uint64 offset = 2;
+  optional uint64 size = 3;
+}
+
+message xclImportBO_response {
+  optional bool ack = 1;
+}
+
+// xclCopyBO
+message xclCopyBO_call {
+  optional uint64 src_handle = 1;
+  optional string dst_filename = 2;
+  optional uint64 size = 3;
+  optional uint64 src_offset = 4;
+  optional uint64 dst_offset = 5;
+}
+
+message xclCopyBO_response {
+  optional bool ack = 1;
+}
+
+//QDMA SUPPORT
+// xclCreateQueue
+message xclCreateQueue_call {
+  optional bool   write     = 1;
+  optional uint32	type      = 2;
+	optional uint32	state     = 3;
+	optional uint32	route     = 4;
+  optional uint64 flow      = 5;
+  optional uint32 qsize     = 6;
+  optional uint32 desc_size = 7;
+  optional uint64 flags     = 8;
+}
+
+message xclCreateQueue_response {
+  optional uint64 q_handle = 1;
+}
+
+// xclWriteQueue
+message xclWriteQueue_call {
+  optional uint64 q_handle = 1;
+  optional bytes src = 2;
+  optional uint64 size = 3;
+}
+
+message xclWriteQueue_response {
+  optional uint64 written_size = 1;
+}
+
+// xclReadQueue
+message xclReadQueue_call {
+  optional uint64 q_handle = 1;
+  optional bytes dest = 2;
+  optional uint64 size = 3;
+}
+
+message xclReadQueue_response {
+  optional bytes dest = 1;
+  optional uint64 size = 2;
+}
+
+// xclDestroyQueue
+message xclDestroyQueue_call {
+  optional uint64 q_handle =1;
+}
+
+message xclDestroyQueue_response {
+  optional bool success =1;
 }

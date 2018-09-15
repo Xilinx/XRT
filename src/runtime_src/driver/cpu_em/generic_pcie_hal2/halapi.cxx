@@ -103,7 +103,9 @@ uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDom
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclAllocDeviceBuffer2(size, domain, flags);
+  bool p2pBuffer = false;
+  std::string fileName("");
+  return drv->xclAllocDeviceBuffer2(size, domain, flags,p2pBuffer,fileName);
 }
 
 void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
@@ -364,12 +366,18 @@ int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
   return drv->xclExportBO(boHandle);
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle) 
+unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags) 
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclImportBO(boGlobalHandle);
+  return drv->xclImportBO(boGlobalHandle,flags);
+}
+
+int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+{
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    return drv ? drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
@@ -436,4 +444,48 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
   if (!drv)
     return -1;
   return drv->xclGetBOProperties(boHandle, properties);
+}
+
+//QDMA Support
+
+int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
+}
+
+int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
+}
+
+int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
+}
+
+void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+}
+
+int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
+}
+
+ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
+}
+
+ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }

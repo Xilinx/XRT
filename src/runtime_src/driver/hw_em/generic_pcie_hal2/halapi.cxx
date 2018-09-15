@@ -31,13 +31,20 @@ int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
   return drv->xclExportBO(boHandle);
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle) 
+unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags) 
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclImportBO(boGlobalHandle);
+  return drv->xclImportBO(boGlobalHandle,flags);
 }
+
+int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
+}
+
 
 //########################################## THESE HAS TO BE DEFINED END ##########################################
 
@@ -428,3 +435,49 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
     return -1;
   return drv->xclPerfMonReadTrace(type,traceVector);
 }
+
+//QDMA Support
+//
+
+int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
+}
+
+int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
+}
+
+int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
+}
+
+void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
+}
+
+int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
+}
+
+ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
+}
+
+ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
+}
+
