@@ -106,10 +106,11 @@ launch(command_type cmd)
 
   // Submit the command
   auto device = cmd->get_device();
-  command_queue_type& submitted_cmds = s_device_cmds[device];
-
   auto exec_bo = cmd->get_exec_bo();
   device->exec_buf(exec_bo);
+
+  // thread safe access, since guaranteed to be inserted in init
+  auto& submitted_cmds = s_device_cmds[device];
 
   // Store command so completion can be tracked
   std::lock_guard<std::mutex> lk(s_mutex);
@@ -123,7 +124,8 @@ monitor_loop(const xrt::device* device)
   unsigned long loops = 0;           // number of outer loops
   unsigned long sleeps = 0;          // number of sleeps
 
-  command_queue_type& submitted_cmds = s_device_cmds[device];
+  // thread safe access, since guaranteed to be inserted in init
+  auto& submitted_cmds = s_device_cmds[device];
 
   while (1) {
     ++loops;
@@ -271,11 +273,13 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
   while (!is_command_done(configure))
     while (device->exec_wait(1000)==0) ;
 
+  // create a submitted command queue for this device if necessary,
   // create a command monitor thread for this device if necessary
   std::lock_guard<std::mutex> lk(s_mutex);
   auto itr = s_device_monitor_threads.find(device);
   if (itr==s_device_monitor_threads.end()) {
-    XRT_DEBUG(std::cout,"creating monitor thread for device '",device->getName(),"'\n");
+    XRT_DEBUG(std::cout,"creating monitor thread and queue for device '",device->getName(),"'\n");
+    s_device_cmds.emplace(device,command_queue_type());
     s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
   }
 

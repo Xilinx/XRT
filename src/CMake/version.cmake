@@ -19,3 +19,5 @@ configure_file(
   ${CMAKE_SOURCE_DIR}/CMake/config/version.h.in
   ${CMAKE_BINARY_DIR}/gen/version.h
 )
+
+install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_INSTALL_DIR}/include)

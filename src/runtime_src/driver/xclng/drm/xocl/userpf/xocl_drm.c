@@ -347,6 +347,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	int			i, ret = 0;
 	u32			ddr_count = 0;
 	u64			ddr_size;
+	size_t mm_size = 0, mm_stat_size = 0;
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
@@ -378,17 +379,18 @@ int xocl_drm_init(struct xocl_dev *xdev)
 		ddr_count = xocl_get_ddr_channel_count(xdev);
 		ddr_size = xocl_get_ddr_channel_size(xdev);
 
-		xdev->mm = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_mm) * ddr_count, GFP_KERNEL);
+		mm_size = ddr_count * sizeof(struct drm_mm);
+		mm_stat_size = ddr_count * sizeof(struct drm_xocl_mm_stat);
+		xdev->mm = vmalloc(mm_size);
+		memset(xdev->mm, 0, mm_size);
 		if (!xdev->mm) {
 			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
 				ddr_count, ddr_size);
 			ret = -ENOMEM;
 			goto failed;
 		}
-		xdev->mm_usage_stat = devm_kzalloc(&xdev->core.pdev->dev,
-			sizeof(struct drm_xocl_mm_stat) * ddr_count,
-			GFP_KERNEL);
+		xdev->mm_usage_stat = vmalloc(mm_stat_size);
+		memset(xdev->mm_usage_stat, 0, mm_stat_size);
 		if (!xdev->mm_usage_stat) {
 			userpf_err(xdev, "alloc stat failed, ddr %d, sz %lld",
 				ddr_count, ddr_size);
@@ -397,7 +399,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 		}
 
 		for (i = 0; i < ddr_count; i++) {
-			xdev->topology.m_data[i].m_used = 1;
+			xdev->topology->m_mem_data[i].m_used = 1;
 			drm_mm_init(&xdev->mm[i], segment, ddr_size);
 			segment += ddr_size;
 		}
@@ -421,10 +423,10 @@ failed:
 	 	for (i = 0; i < ddr_count; i++) {
 			drm_mm_takedown(&xdev->mm[i]);
 		}
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm);
+		vfree(xdev->mm);
 	}
 	if (xdev->mm_usage_stat)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm_usage_stat);
+		vfree(xdev->mm_usage_stat);
 
 	if (!ddev)
 		drm_dev_unref(ddev);
@@ -434,11 +436,6 @@ failed:
 
 void xocl_drm_fini(struct xocl_dev *xdev)
 {
-	if (xdev->mm)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm);
-	if (xdev->mm_usage_stat)
-		devm_kfree(&xdev->core.pdev->dev, xdev->mm_usage_stat);
-
 	xocl_cleanup_mem(xdev);
 
 	drm_put_dev(xdev->ddev);
@@ -479,15 +476,17 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
 
 int xocl_check_topology(struct xocl_dev *xdev)
 {
-        struct xocl_mem_topology    *topology;
+	struct mem_topology    *topology;
         u16     i;
         int     err = 0;
 
-        topology = &xdev->topology;
+	topology = xdev->topology;
+	if (topology == NULL)
+		return 0;
 
-        for (i= 0; i < topology->bank_count; i++) {
-                if (topology->m_data[i].m_used) {
-                        if (xdev->mm_usage_stat[i].bo_count !=0 ) {
+	for (i = 0; i < topology->m_count; i++) {
+		if (topology->m_mem_data[i].m_used) {
+			if (xdev->mm_usage_stat[i].bo_count != 0) {
                                 err = -EPERM;
                                 userpf_err(xdev, "The ddr %d has "
                                         "pre-existing buffer allocations, "
@@ -501,29 +500,35 @@ int xocl_check_topology(struct xocl_dev *xdev)
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
-	struct xocl_mem_topology *topology;
+	struct mem_topology *topology;
 	u16 i, ddr;
 
-	topology = &xdev->topology;
+	topology = xdev->topology;
 
-	ddr = topology->bank_count;
+	vfree(xdev->layout);
+	xdev->layout = NULL;
+	vfree(xdev->debug_layout);
+	xdev->debug_layout = NULL;
+	vfree(xdev->connectivity);
+	xdev->connectivity = NULL;
+
+	if (topology == NULL)
+		return;
+
+	ddr = topology->m_count;
 	for (i = 0; i < ddr; i++) {
-		if(topology->m_data[i].m_used) {
-			userpf_info(xdev, "Taking down DDR : %d",
-				ddr);
+		if (topology->m_mem_data[i].m_used) {
+			userpf_info(xdev, "Taking down DDR : %d", i);
 			drm_mm_takedown(&xdev->mm[i]);
 		}
 	}
 
-	vfree(topology->m_data);
-	vfree(topology->topology);
-	memset(topology, 0, sizeof(struct xocl_mem_topology));
-	vfree(xdev->connectivity.connections);
-	memset(&xdev->connectivity, 0, sizeof(xdev->connectivity));
-	vfree(xdev->layout);
-	xdev->layout = NULL;
-	vfree(xdev->debug_layout.layout);
-	memset(&xdev->debug_layout, 0, sizeof(xdev->debug_layout));
+	if (xdev->mm)
+		vfree(xdev->mm);
+	if (xdev->mm)
+		vfree(xdev->mm_usage_stat);
+	vfree(xdev->topology);
+	xdev->topology = NULL;
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
@@ -533,7 +538,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	ssize_t size = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
-	struct mem_topology *topo = xdev->topology.topology;
+	struct mem_topology *topo = xdev->topology;
 	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);

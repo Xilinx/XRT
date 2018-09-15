@@ -238,10 +238,10 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 
 static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
 {
-	struct xocl_mem_topology *topology;
-	topology = &xdev->topology;
+	struct mem_topology *topology;
 
-	if(topology->m_data[ddr].m_base_address > xdev->bypass_bar_len){
+	topology = xdev->topology;
+	if (topology->m_mem_data[ddr].m_base_address > xdev->bypass_bar_len) {
 		userpf_err(xdev, "Bank %d is not a p2p memory bank", ddr);
 		return -EINVAL;
 	}
@@ -1181,16 +1181,16 @@ void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 
 static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 {
-	struct xocl_mem_topology *topology;
+	struct mem_topology *topology;
 	int	i;
 
-	topology = &xdev->topology;
-	for (i=0; i < topology->bank_count; i++) {
-		if (topology->m_data[i].m_used &&
-			paddr >= topology->m_data[i].m_base_address &&
+	topology = xdev->topology;
+	for (i = 0; i < topology->m_count; i++) {
+		if (topology->m_mem_data[i].m_used &&
+			paddr >= topology->m_mem_data[i].m_base_address &&
 			paddr + size <=
-			topology->m_data[i].m_base_address +
-			topology->m_data[i].m_size * 1024)
+			topology->m_mem_data[i].m_base_address +
+			topology->m_mem_data[i].m_size * 1024)
 			return true;
 	}
 

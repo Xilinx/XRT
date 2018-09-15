@@ -1145,8 +1145,13 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  * @max_compl		Max number of completion with one poll
  * @req:		Completed request
  * @timeout:		timeout
- */ 
-XCL_DRIVER_DLLESPEC int xclPollCompletion(int min_compl, int max_compl, xclQueueRequest **req, struct timespec *timeout); 
+ */
+XCL_DRIVER_DLLESPEC int xclPollCompletion(int min_compl, int max_compl, xclQueueRequest **req, struct timespec *timeout);
+
+/* Hack for xbflash only */
+XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+
 /** @} */
 
 #ifdef __cplusplus
