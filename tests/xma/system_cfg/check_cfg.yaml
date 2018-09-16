@@ -1,0 +1,69 @@
+SystemCfg:
+    - logfile:    ./output.log
+    - loglevel:   3
+    - dsa:        xilinx_vcu1525_dynamic_5_0
+    - pluginpath: ../plugins
+    - xclbinpath: ../xclbins
+    - ImageCfg:
+        xclbin: encoder.xclbin
+        zerocopy: disable
+        device_id_map: [0, 1]
+        KernelCfg: [[ instances: 2,
+                      function: encoder,
+                      plugin: xma_encoder_tst_plg.so,
+                      vendor: Xilinx,
+                      name: virtual_encoder,
+                      ddr_map: [0, 0]]]
+    - ImageCfg:
+        xclbin: scaler.xclbin
+        zerocopy: enable
+        device_id_map: [2, 3]
+        KernelCfg: [[ instances: 2,
+                      function: scaler,
+                      plugin: xma_scaler_tst_plg.so,
+                      vendor: Xilinx,
+                      name: virtual_scaler,
+                      ddr_map: [0, 0]],
+                    [ instances: 2,
+                      function: encoder,
+                      plugin: xma_encoder_tst_plg.so,
+                      vendor: ACME,
+                      name: virtual_encoder,
+                      ddr_map: [0, 0]],
+                    [ instances: 2,
+                      function: filter,
+                      plugin: xma_filter_tst_plg.so,
+                      vendor: ACME,
+                      name: virtual_filter,
+                      ddr_map: [0, 0]]]
+    - ImageCfg:
+        xclbin: decoder.xclbin
+        zerocopy: disable
+        device_id_map: [4, 5]
+        KernelCfg: [[ instances: 2,
+                      function: decoder,
+                      plugin: xma_decoder_tst_plg.so,
+                      vendor: Xilinx,
+                      name: virtual_decoder,
+                      ddr_map: [0, 0]]]
+    - ImageCfg:
+        xclbin: filter.xclbin
+        zerocopy: disable
+        device_id_map: [6, 7]
+        KernelCfg: [[ instances: 2,
+                      function: filter,
+                      plugin: xma_filter_tst_plg.so,
+                      vendor: Xilinx,
+                      name: virtual_filter,
+                      ddr_map: [0, 0]]]
+    - ImageCfg:
+        xclbin: kernel.xclbin
+        zerocopy: disable
+        device_id_map: [8, 9]
+        KernelCfg: [[ instances: 2,
+                      function: kernel,
+                      plugin: xma_kernel_tst_plg.so,
+                      vendor: Xilinx,
+                      name: virtual_kernel,
+                      ddr_map: [0, 0]]]
+

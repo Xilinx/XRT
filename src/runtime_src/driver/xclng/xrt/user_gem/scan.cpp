@@ -260,7 +260,7 @@ void xcldev::pci_device_scanner::print_pci_info(void)
     }
 
     if (disabled != 0) {
-        std::cout << "WARNING: " << disabled << " board(s) marked by '*' are not ready, "
+        std::cout << "WARNING: " << disabled << " card(s) marked by '*' are not ready, "
             << "run xbutil flash scan -v to further check the details."
             << std::endl;
     }

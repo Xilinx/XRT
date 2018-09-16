@@ -1772,7 +1772,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 dna_check_failed:	
 add_subdev_failed:
-	for(;id>=0;--id){
+	for(;id>=0 && id < XOCL_SUBDEV_NUM;--id){
 		if(nums_of_ip_section[id]!=0){
 			ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[id]);
 			xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[id]);
