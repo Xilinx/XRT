@@ -181,7 +181,7 @@ Flasher::Flasher(unsigned int index) :
     scanner.scan(false);
 
     if(mIdx >= scanner.device_list.size()) {
-        std::cout << "ERROR: Invalid device index." << std::endl;
+        std::cout << "ERROR: Invalid card index." << std::endl;
         return;
     }
     mDev = scanner.device_list.at(mIdx);
@@ -189,13 +189,13 @@ Flasher::Flasher(unsigned int index) :
     mHandle = xclOpenMgmt(mIdx);
     if (!mHandle)
     {
-        std::cout << "open device failed: " << errno << std::endl;
+        std::cout << "open card failed: " << errno << std::endl;
         return;
     }
     mMgmtMap = xclMapMgmt(mHandle);
     if (!mMgmtMap)
     {
-        std::cout << "map device failed" << std::endl;
+        std::cout << "map card failed" << std::endl;
         return;
     }
 
@@ -216,7 +216,7 @@ Flasher::Flasher(unsigned int index) :
     }
     else
     {
-        std::cout << "ERROR: Device not supported." << std::endl;
+        std::cout << "ERROR: card not supported." << std::endl;
     }
 }
 
@@ -307,7 +307,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     DSAInfo onBoard = getOnBoardDSA();
     if (onBoard.vendor.empty() || onBoard.board.empty())
     {
-        std::cout << "Onboard DSA is unknown" << std::endl;
+        std::cout << "DSA on FPGA is unknown" << std::endl;
         return DSAs;
     }
 

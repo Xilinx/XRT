@@ -46,7 +46,7 @@ int bdf2index(std::string& bdfStr, unsigned& index)
     try {
         devScanner.scan(false);
     } catch (...) {
-        std::cout << "ERROR: failed to scan device" << std::endl;
+        std::cout << "ERROR: Failed to scan card" << std::endl;
         return -EINVAL;
     }
 
@@ -59,7 +59,7 @@ int bdf2index(std::string& bdfStr, unsigned& index)
         }
     }
 
-    std::cout << "ERROR: no device found for " << bdfStr << std::endl;
+    std::cout << "ERROR: No card found for " << bdfStr << std::endl;
     return -ENOENT;
 }
 
@@ -73,7 +73,7 @@ int str2index(const char *arg, unsigned& index)
         char *endptr;
         i = std::strtoul(arg, &endptr, 0);
         if (*endptr != '\0' || i >= UINT_MAX) {
-            std::cout << "ERROR: " << devStr << " is not a valid board index."
+            std::cout << "ERROR: " << devStr << " is not a valid card index."
                 << std::endl;
             return -EINVAL;
         }
@@ -461,7 +461,7 @@ int main(int argc, char *argv[])
     unsigned int count = xcldev::pci_device_scanner::device_list.size();
 
     if (count == 0) {
-        std::cout << "ERROR: No device found\n";
+        std::cout << "ERROR: No card found\n";
         return 1;
     }
 
@@ -473,7 +473,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    std::cout << "INFO: Found total " << count << " device(s), "
+    std::cout << "INFO: Found total " << count << " card(s), "
         << deviceVec.size() << " are usable" << std::endl;
 
     if (cmd == xcldev::LIST) {
@@ -489,9 +489,9 @@ int main(int argc, char *argv[])
 
     if (index >= deviceVec.size()) {
         if (index >= count)
-            std::cout << "ERROR: Device index " << index << "is out of range";
+            std::cout << "ERROR: Card index " << index << "is out of range";
         else
-            std::cout << "ERROR: Device [" << index << "] is not ready";
+            std::cout << "ERROR: Card [" << index << "] is not ready";
         std::cout << std::endl;
         return 1;
     }
@@ -581,39 +581,36 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbutil for 4.0+ DSA's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d device] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
-    std::cout << "  dmatest [-d device] [-b [0x]block_size_KB]\n";
+    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
+    std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
-    std::cout << "  mem     --read [-d device] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
-    std::cout << "  mem     --write [-d device] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  program [-d device] [-r region] -p xclbin\n";
-    std::cout << "  query   [-d device [-r region]]\n";
-    std::cout << "  reset   [-d device] [-h | -r region]\n";
+    std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
+    std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
+    std::cout << "  program [-d card] [-r region] -p xclbin\n";
+    std::cout << "  query   [-d card [-r region]]\n";
+    std::cout << "  reset   [-d card] [-h | -r region]\n";
     std::cout << "  status  [--debug_ip_name]\n";   
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
-    std::cout << "  validate [-d device]\n";
+    std::cout << "  validate [-d card]\n";
     std::cout << " Requires root privileges:\n";
-    std::cout << "  boot    [-d device]\n";
-    std::cout << "  flash   [-d device] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   [-d device] -a <all | dsa> [-t timestamp]\n";
-    std::cout << "  flash   [-d device] -p msp432_firmware\n";
+    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
-    std::cout << "List all devices\n";
+    std::cout << "List all cards\n";
     std::cout << "  " << exe << " list\n";
-    std::cout << "Scan for Xilinx PCIe device(s) & associated drivers (if any) and relevant system information\n";
+    std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
     std::cout << "  " << exe << " scan\n";
-    std::cout << "Boot device 1 from PROM and retrain the PCIe link without rebooting the host\n";
-    std::cout << "  " << exe << " boot -d 1\n";
-    std::cout << "Change the clock frequency of region 0 in device 0 to 100 MHz\n";
+    std::cout << "Change the clock frequency of region 0 in card 0 to 100 MHz\n";
     std::cout << "  " << exe << " clock -f 100\n";
-    std::cout << "For device 0 which supports multiple clocks, change the clock 1 to 200MHz and clock 2 to 250MHz\n";
+    std::cout << "For card 0 which supports multiple clocks, change the clock 1 to 200MHz and clock 2 to 250MHz\n";
     std::cout << "  " << exe << " clock -f 200 -g 250\n";
-    std::cout << "Download the accelerator program for device 2\n";
+    std::cout << "Download the accelerator program for card 2\n";
     std::cout << "  " << exe << " program -d 2 -p a.xclbin\n";
-    std::cout << "Run DMA test on device 1 with 32 KB blocks of buffer\n";
+    std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
     std::cout << "  " << exe << " dmatest -d 1 -b 0x2000\n";
     std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
@@ -623,11 +620,11 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
-    std::cout << "Flash all installed DSA for all boards, if not done\n";
+    std::cout << "Flash all installed DSA for all cards, if not done\n";
     std::cout << "  sudo " << exe << " flash -a all\n";
-    std::cout << "Show DSA related information for all boards in the system\n";
+    std::cout << "Show DSA related information for all cards in the system\n";
     std::cout << "  sudo " << exe << " flash scan\n";
-    std::cout << "Validate installation on device 1\n";
+    std::cout << "Validate installation on card 1\n";
     std::cout << "  " << exe << " validate -d 1\n";
 }
 
@@ -636,9 +633,9 @@ std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
     try {
         unsigned int count = xcldev::pci_device_scanner::device_list.size();
         if (count == 0) {
-            std::cout << "ERROR: No devices found" << std::endl;
+            std::cout << "ERROR: No card found" << std::endl;
         } else if (index >= count) {
-            std::cout << "ERROR: Device index " << index << " out of range";
+            std::cout << "ERROR: Card index " << index << " out of range";
             std::cout << std::endl;
         } else {
             return std::unique_ptr<xcldev::device>
@@ -857,7 +854,7 @@ int xcldev::device::validate(bool quick)
     if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
         m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
         std::cout << "FAILED" << std::endl;
-        std::cout << "WARNING: Device trained to lower spec. "
+        std::cout << "WARNING: Card trained to lower spec. "
             << "Expect: Gen" << m_devinfo.mPCIeLinkSpeedMax << "x"
             << m_devinfo.mPCIeLinkWidthMax
             << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x"
@@ -873,9 +870,10 @@ int xcldev::device::validate(bool quick)
     // Run various test cases
 
     // Test verify kernel
-    std::cout << "INFO: Testing verify kernel: " << std::flush;
+    std::cout << "INFO: Starting verify kernel test: " << std::flush;
     int ret = runTestCase(std::string("validate.exe"),
         std::string("verify.xclbin"), output);
+    std::cout << std::endl;
     if (ret == -ENOENT) {
         if (m_idx == 0) {
             // Fall back to verify.exe
@@ -888,10 +886,11 @@ int xcldev::device::validate(bool quick)
         }
     }
     if (ret != 0 || output.find("Hello World") == std::string::npos) {
-        std::cout << "FAILED" << std::endl << output << std::endl;
+        std::cout << output << std::endl;
+        std::cout << "ERROR: verify kernel test FAILED" << std::endl;
         return ret == 0 ? -EINVAL : ret;
     }
-    std::cout << "PASSED" << std::endl;
+    std::cout << "INFO: verify kernel test PASSED" << std::endl;
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
@@ -901,7 +900,7 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: Starting DMA test" << std::endl;
     ret = dmatest(0, false);
     if (ret != 0) {
-        std::cout << "INFO: DMA test FAILED" << std::endl;
+        std::cout << "ERROR: DMA test FAILED" << std::endl;
         return ret;
     }
     std::cout << "INFO: DMA test PASSED" << std::endl;
@@ -914,17 +913,19 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: Starting DDR bandwidth test: " << std::flush;
     ret = runTestCase(std::string("kernel_bw.exe"),
         std::string("bandwidth.xclbin"), output);
+    std::cout << std::endl;
     if (ret != 0 || output.find("PASS") == std::string::npos) {
-        std::cout << "FAILED" << std::endl << output << std::endl;
+        std::cout << output << std::endl;
+        std::cout << "ERROR: DDR bandwidth test FAILED" << std::endl;
         return ret == 0 ? -EINVAL : ret;
     }
-    std::cout << "PASSED" << std::endl;
     // Print out max thruput
     size_t st = output.find("Maximum");
     if (st != std::string::npos) {
         size_t end = output.find("\n", st);
         std::cout << output.substr(st, end - st) << std::endl;
     }
+    std::cout << "INFO: DDR bandwidth test PASSED" << std::endl;
 
     return 0;
 }
@@ -964,47 +965,47 @@ int xcldev::xclValidate(int argc, char *argv[])
     std::vector<unsigned> boards;
     if (index == UINT_MAX) {
         if (count == 0) {
-            std::cout << "ERROR: No device found" << std::endl;
+            std::cout << "ERROR: No card found" << std::endl;
             return -ENOENT;
         }
         for (unsigned i = 0; i < count; i++)
             boards.push_back(i);
     } else {
         if (index >= count) {
-            std::cout << "ERROR: Device[" << index << "] not found" << std::endl;
+            std::cout << "ERROR: Card[" << index << "] not found" << std::endl;
             return -ENOENT;
         }
         boards.push_back(index);
     }
 
-    std::cout << "INFO: Found " << boards.size() << " devices" << std::endl;
+    std::cout << "INFO: Found " << boards.size() << " cards" << std::endl;
 
     bool validated = true;
     for (unsigned i : boards) {
         std::unique_ptr<device> dev = xclGetDevice(i);
         if (!dev) {
-            std::cout << "ERROR: Can't open device[" << i << "]" << std::endl;
+            std::cout << "ERROR: Can't open card[" << i << "]" << std::endl;
             validated = false;
             continue;
         }
 
-        std::cout << std::endl << "INFO: Validating device[" << i << "]: "
+        std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
 
         if (dev->validate(quick) != 0) {
             validated = false;
-            std::cout << "INFO: Device[" << i << "] failed to validate." << std::endl;
+            std::cout << "INFO: Card[" << i << "] failed to validate." << std::endl;
         } else {
-            std::cout << "INFO: Device[" << i << "] validated successfully." << std::endl;
+            std::cout << "INFO: Card[" << i << "] validated successfully." << std::endl;
         }
     }
     std::cout << std::endl;
 
     if (!validated) {
-        std::cout << "ERROR: Some devices failed to validate." << std::endl;
+        std::cout << "ERROR: Some cards failed to validate." << std::endl;
         return -EINVAL;
     }
 
-    std::cout << "INFO: All devices validated successfully." << std::endl;
+    std::cout << "INFO: All cards validated successfully." << std::endl;
     return 0;
 }

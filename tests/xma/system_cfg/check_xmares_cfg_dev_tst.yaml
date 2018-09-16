@@ -1,0 +1,16 @@
+SystemCfg:
+    - logfile:    ./output.log
+    - loglevel:   3         
+    - dsa:        xilinx_vcu1525_dynamic_5_0
+    - pluginpath: /proj/rdi-xsj/staff/sarabjee/xma_git/libxmaapi/tests/plugins
+    - xclbinpath: /proj/rdi-xsj/staff/sarabjee/xma_git/libxmaapi/tests/xclbins
+    - ImageCfg:
+        xclbin: encoder.xclbin
+        zerocopy: disable
+        device_id_map: [0]
+        KernelCfg: [[ instances: 2,
+                      function: encoder,
+                      plugin: libtstencoderplg.so,
+                      vendor: Xilinx,
+                      name: virtual_encoder,
+                      ddr_map: [0, 0]]]

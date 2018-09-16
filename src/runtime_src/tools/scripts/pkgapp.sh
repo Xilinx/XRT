@@ -125,17 +125,19 @@ done < "$app_dep"
 
 dodeb()
 {
-    dir=debbuild/$app_name-$app_ver
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$app_name-$app_ver_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
-package: $app_name
-architecture: all
-version: $app_ver-$app_rev
-priority: optional
-depends: $dependencies
-description: Xilinx $app_name application
-maintainer: soren.soe@xilinx.com
+Package: $app_name
+Architecture: all
+Version: $app_ver-$app_rev
+Priority: optional
+Depends: $dependencies
+Description: Xilinx $app_name application
+Maintainer: Xilinx Inc.
+Section: devel
 
 EOF
 
