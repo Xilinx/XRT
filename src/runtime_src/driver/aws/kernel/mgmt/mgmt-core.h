@@ -34,6 +34,7 @@ struct awsmgmt_dev {
 	struct pci_dev *user_pci_dev;
 	int instance;
 	void *__iomem bar[AWSMGMT_MAX_BAR];
+	void *__iomem *pf1_addr_reg;
 	resource_size_t bar_map_size[AWSMGMT_MAX_BAR];
 	struct awsmgmt_char *user_char_dev;
 	struct awsmgmt_bitstream_container stash;
@@ -128,5 +129,3 @@ int mgmt_init_sysfs(struct device *dev);
 void mgmt_fini_sysfs(struct device *dev);
 
 #endif
-
-

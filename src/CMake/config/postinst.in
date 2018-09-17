@@ -28,6 +28,7 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
+    udevadm control --reload-rules
     modprobe xclmgmt
     modprobe xocl
     udevadm trigger

@@ -27,17 +27,17 @@
 
 #define AWSMGMT_NUM_ACTUAL_CLOCKS 3
 
-extern void __iomem *pf1_addr_reg;
-static inline void pf1_iowrite32(u32 value, u32 addr)
+//extern void __iomem *pf1_addr_reg;
+static inline void pf1_iowrite32(struct awsmgmt_dev *lro, u32 value, u32 addr)
 {
-	iowrite32(addr, pf1_addr_reg);
-	iowrite32(value, (pf1_addr_reg + 0x4));
+	iowrite32(addr, lro->pf1_addr_reg);
+	iowrite32(value, (lro->pf1_addr_reg + 0x4));
 }
 
-static inline u32 pf1_ioread32(u32 addr)
+static inline u32 pf1_ioread32(const struct awsmgmt_dev *lro, u32 addr)
 {
-	iowrite32(addr, pf1_addr_reg);
-	return ioread32((pf1_addr_reg + 0x4));
+	iowrite32(addr, lro->pf1_addr_reg);
+	return ioread32((lro->pf1_addr_reg + 0x4));
 }
 /*
  * Precomputed table with config0 and config2 register values together with target
@@ -132,12 +132,12 @@ static unsigned get_ocl_frequency(const struct awsmgmt_dev *lro, unsigned offset
 	u64 freq;
 
 	printk(KERN_INFO "%s:%s offset: %x\n", DRV_NAME, __FUNCTION__, offset);
-	val = pf1_ioread32(offset + OCL_CLKWIZ_STATUS_OFFSET);
+	val = pf1_ioread32(lro, offset + OCL_CLKWIZ_STATUS_OFFSET);
 	printk(KERN_INFO "%s: ClockWiz SR %x\n", DRV_NAME, val);
 	if ((val & 1) == 0)
 		return 0;
 
-	val = pf1_ioread32(offset + OCL_CLKWIZ_CONFIG_OFFSET(0));
+	val = pf1_ioread32(lro, offset + OCL_CLKWIZ_CONFIG_OFFSET(0));
 	printk(KERN_INFO "%s: ClockWiz CONFIG(0) %x\n", DRV_NAME, val);
 
 	div0 = val & 0xff;
@@ -145,7 +145,7 @@ static unsigned get_ocl_frequency(const struct awsmgmt_dev *lro, unsigned offset
 	if (val & BIT(26)) {
 		mul_frac0 = val >> 16;
 		mul_frac0 &= 0x3ff;
-    printk(KERN_INFO "%s: Doing fractional mult: %x\n", DRV_NAME, mul_frac0);
+		printk(KERN_INFO "%s: Doing fractional mult: %x\n", DRV_NAME, mul_frac0);
 	}
 
 	/*
@@ -156,7 +156,7 @@ static unsigned get_ocl_frequency(const struct awsmgmt_dev *lro, unsigned offset
 	mul0 += (mul_frac0 * 100);
 	div0 *= 1000;
 
-	val = pf1_ioread32(offset + OCL_CLKWIZ_CONFIG_OFFSET(2));
+	val = pf1_ioread32(lro, offset + OCL_CLKWIZ_CONFIG_OFFSET(2));
 	printk(KERN_INFO "%s: ClockWiz CONFIG(2) %x\n", DRV_NAME, val);
 	div1 = val &0xff;
 	if (val & BIT(18)) {
@@ -211,7 +211,7 @@ long ocl_freqscaling(struct awsmgmt_dev *lro, bool force)
 		if (!force && (find_matching_freq_config(curr_freq) == idx))
 			continue;
 
-		val = pf1_ioread32(clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		val = pf1_ioread32(lro, clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		if (val != 1) {
 			printk(KERN_INFO "%s: ClockWiz BUSY %x\n", DRV_NAME, val);
 			err = -EBUSY;
@@ -219,17 +219,17 @@ long ocl_freqscaling(struct awsmgmt_dev *lro, bool force)
 		}
 
 		config = frequency_table[idx].config0;
-		pf1_iowrite32(config, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(0));
+		pf1_iowrite32(lro, config, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(0));
 		config = frequency_table[idx].config2;
-		pf1_iowrite32(config, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(2));
+		pf1_iowrite32(lro, config, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(2));
 		msleep(10);
-		pf1_iowrite32(0x00000007, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
+		pf1_iowrite32(lro, 0x00000007, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
 		msleep(1);
-		pf1_iowrite32(0x00000002, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
+		pf1_iowrite32(lro, 0x00000002, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
 		printk(KERN_INFO "%s: ClockWiz waiting for locked signal\n", DRV_NAME);
 		msleep(100);
 		for (j = 0; j < 100; j++) {
-			val = pf1_ioread32(clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
+			val = pf1_ioread32(lro, clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
 			if (val != 1) {
 				msleep(100);
 				continue;
@@ -238,15 +238,15 @@ long ocl_freqscaling(struct awsmgmt_dev *lro, bool force)
 		if (val != 1) {
 			printk(KERN_ERR "%s: ClockWiz MMCM/PLL did not lock after %d ms, restoring the original configuration\n", DRV_NAME, 100 * 100);
 			/* restore the original clock configuration */
-			pf1_iowrite32(0x00000004, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
+			pf1_iowrite32(lro, 0x00000004, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
 			msleep(10);
-			pf1_iowrite32(0x00000000, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
+			pf1_iowrite32(lro, 0x00000000, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(23));
 			err = -ETIMEDOUT;
 			break;
 		}
-		val = pf1_ioread32(clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(0));
+		val = pf1_ioread32(lro, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(0));
 		printk(KERN_INFO "%s: ClockWiz CONFIG(0) %x\n", DRV_NAME, val);
-		val = pf1_ioread32(clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(2));
+		val = pf1_ioread32(lro, clock_baseaddr[i] + OCL_CLKWIZ_CONFIG_OFFSET(2));
 		printk(KERN_INFO "%s: ClockWiz CONFIG(2) %x\n", DRV_NAME, val);
 	}
 	return err;
@@ -269,7 +269,7 @@ int ocl_freqscaling_ioctl(struct awsmgmt_dev *lro, const void __user *arg)
 
 		if (!freq_obj.ocl_target_freq[i])
 			continue;
-		val = pf1_ioread32(clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
+		val = pf1_ioread32(lro, clock_baseaddr[i] + OCL_CLKWIZ_STATUS_OFFSET);
 		if ((val & 0x1) == 0)
 			return -EBUSY;
 	}
@@ -293,5 +293,3 @@ void fill_frequency_info(struct awsmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 		obj->ocl_frequency[i] = get_ocl_frequency(lro, clock_baseaddr[i]);
 	}
 }
-
-

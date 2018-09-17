@@ -20,6 +20,7 @@
  */
 #include <linux/ioctl.h>
 #include <linux/types.h>
+#include <linux/uaccess.h>
 
 #include "mgmt-core.h"
 #include "mgmt-ioctl.h"
@@ -103,7 +104,7 @@ static const struct timeout_pair timeout_moderation_table[] = {
 static int instance = 0;
 static dev_t awsmgmt_devnode;
 static struct class *awsmgmt_class;
-void __iomem *pf1_addr_reg;
+//void __iomem *pf1_addr_reg;
 
 /*
  * Unmap the BAR regions that had been mapped earlier using map_bars()
@@ -735,7 +736,7 @@ static int awsmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (rc)
 		goto err_map;
 
-	pf1_addr_reg = lro->bar[AWSMGMT_MAIN_BAR] + PF1_TUNNEL_BASE;
+	lro->pf1_addr_reg = lro->bar[AWSMGMT_MAIN_BAR] + PF1_TUNNEL_BASE;
 
 	lro->instance = instance++;
 	lro->user_char_dev = create_char(lro, 0);
@@ -848,7 +849,6 @@ static struct pci_driver awsmgmt_driver = {
 static int __init awsmgmt_init(void)
 {
 	int res;
-	int i;
 
 	printk(KERN_INFO DRV_NAME " init()\n");
 	awsmgmt_class = class_create(THIS_MODULE, DRV_NAME);
@@ -881,5 +881,3 @@ static void awsmgmt_exit(void)
 
 module_init(awsmgmt_init);
 module_exit(awsmgmt_exit);
-
-
