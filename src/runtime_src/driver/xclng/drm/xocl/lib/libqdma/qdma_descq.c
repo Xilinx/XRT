@@ -555,11 +555,9 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	struct qdma_desc_wb *wb;
 	unsigned int max_io_block;
 
-	pr_debug("descq 0x%p, %s, pidx %u, cidx %u.\n",
-		descq, descq->conf.name, descq->pidx, descq->cidx);
-
 	if (descq->pidx == descq->cidx) { /* queue empty? */
-		pr_debug("descq %s empty, return.\n", descq->conf.name);
+		pr_debug("descq %s empty pidx %d, cidx %d, return.\n",
+			descq->conf.name, descq->pidx, descq->cidx);
 		return 0;
 	}
 
@@ -930,12 +928,6 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		return -EINVAL;
 	}
 
-	if (descq->xdev->stm_rev != STM_SUPPORTED_REV) {
-		pr_err("%s: No supported STM rev found in hw\n",
-		       descq->conf.name);
-		return -ENODEV;
-	}
-
 	if (!descq->conf.c2h && !descq->conf.bypass) {
 		pr_err("%s: H2C queue needs to be in bypass with STM\n",
 		       descq->conf.name);
@@ -987,9 +979,11 @@ void qdma_notify_cancel(struct qdma_descq *descq)
         /* calling routine should hold the lock */
         list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
 		req = (struct qdma_request *)cb;
-		if (req->fp_done)
+		if (req->fp_done) {
+			unlock_descq(descq);
 			req->fp_done(req, 0, 0);
-		else {
+			lock_descq(descq);
+		} else {
 			cb->done = 1;
 			qdma_waitq_wakeup(&cb->wq);
 		}
@@ -1021,8 +1015,11 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		}
 		cb->status = error;
 		cb->done = 1;
-		if (!cb->canceled)
+		if (!cb->canceled) {
+			unlock_descq(descq);
 			req->fp_done(req, cb->offset, error);
+			lock_descq(descq);
+		}
 	} else {
 		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
 		cb->status = error;
