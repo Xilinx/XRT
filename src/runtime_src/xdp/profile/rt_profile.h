@@ -233,11 +233,6 @@ namespace XCL {
       return (timeNsec / 1.0e6);
     }
 
-    int getCUPortsToDDRBank(int banknum) {
-   	  if (banknum >= MAX_DDR_BANKS) return 0;
-      return CUPortsToDDRBanks[banknum];
-    }
-
   public:
     void addToActiveDevices(const std::string& deviceName);
     bool isDeviceActive(const std::string& deviceName) const;
@@ -270,14 +265,15 @@ namespace XCL {
   public:
     void getArgumentsBank(const std::string& deviceName, const std::string& cuName,
     	                  const std::string& portName, std::string& argNames,
-						  uint32_t& banknum) const;
+						  std::string& memoryName) const;
 
   private:
-    typedef std::tuple<std::string, std::string, std::string, uint32_t, uint32_t> CUPortArgsBankType;
+    typedef std::tuple<std::string, std::string, std::string, std::string, uint32_t> CUPortArgsBankType;
     std::vector<CUPortArgsBankType> CUPortVector;
 
   public:
     std::vector<CUPortArgsBankType> getCUPortVector() const {return CUPortVector;}
+    std::map<std::string, int> getCUPortsToMemoryMap() const {return CUPortsToMemoryMap;}
 
   private:
     bool IsZynq = false;
@@ -315,9 +311,7 @@ namespace XCL {
   private:
     std::vector<WriterI*> Writers;
     std::set<std::string> ActiveDevices;
-
-    const static int MAX_DDR_BANKS = 8;
-    int CUPortsToDDRBanks[MAX_DDR_BANKS];
+    std::map<std::string, int> CUPortsToMemoryMap;
 
   // Platform data and Device data
   private:

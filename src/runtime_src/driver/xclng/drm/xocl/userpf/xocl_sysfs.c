@@ -49,19 +49,6 @@ static ssize_t userbar_show(struct device *dev,
 
 static DEVICE_ATTR_RO(userbar);
 
-//-Command scheduler reset
-static ssize_t sche_reset_show(struct device *dev,
-        struct device_attribute *attr, char *buf)
-{
-        struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int	ret;
-
-        device_release_driver(&MB_SCHEDULER_DEV(xdev)->dev);
-        ret = device_attach(&MB_SCHEDULER_DEV(xdev)->dev);
-	return sprintf(buf,"command scheduler was reset\n");
-}
-static DEVICE_ATTR_RO(sche_reset);
-
 /* -live client contects-- */
 static ssize_t kdsstat_show(struct device *dev,
     struct device_attribute *attr, char *buf)
@@ -72,7 +59,6 @@ static ssize_t kdsstat_show(struct device *dev,
 		       atomic_read(&xdev->outstanding_execs),
 		       atomic64_read(&xdev->total_execs));
 }
-
 static DEVICE_ATTR_RO(kdsstat);
 
 /* -live memory usage-- */
@@ -237,7 +223,6 @@ static struct bin_attribute mem_topology_attr = {
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_xclbinuuid.attr,
-	&dev_attr_sche_reset.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,

@@ -287,14 +287,17 @@ extern "C" {
         AXI_TRACE_FUNNEL,
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
-        ACCEL_MONITOR
+        ACCEL_MONITOR,
+        AXI_STREAM_MONITOR
     };
 
     struct debug_ip_data {
         uint8_t m_type; // type of enum DEBUG_IP_TYPE
         uint8_t m_index;
         uint8_t m_properties;
-        uint8_t m_reserved[5];
+        uint8_t m_major;
+        uint8_t m_minor;
+        uint8_t m_reserved[3];
         uint64_t m_base_address;
         uint8_t m_name[128];
     };
