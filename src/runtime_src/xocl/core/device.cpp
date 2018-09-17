@@ -248,10 +248,10 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
     auto mems = m_xclbin.get_mem_topology();
-    
-    if (!mems) 
+
+    if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count) 
+    if((memidx+1) > mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];
@@ -269,9 +269,9 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
 
-    if(mem.m_type != MEM_STREAMING) 
+    if(mem.m_type != MEM_STREAMING)
       throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
-    
+
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
@@ -989,7 +989,8 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-
+  get_xrt_device()->write_register(offset,ptr,size);
+#if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
   auto packet = cmd->get_packet();
   auto idx = packet.size() + 1; // past header is start of payload
@@ -1010,6 +1011,7 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 
   xrt::scheduler::schedule(cmd);
   cmd->wait();
+#endif
 }
 
 void
