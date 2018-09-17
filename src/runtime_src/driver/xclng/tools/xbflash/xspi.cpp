@@ -666,7 +666,7 @@ bool XSPI_Flasher::sectorErase(unsigned Addr, unsigned erase_cmd) {
         //Select sector when only using 24bit address  
         if(!setSector(Addr)) {
             std::cout << "ERROR: Unable to set sector for sectorErase cmd" << std::endl;
-            return -EINVAL;
+            return false;
         } 
     }        
 
@@ -1108,7 +1108,7 @@ bool XSPI_Flasher::writePage(unsigned Addr, uint8_t writeCmd)
         //Select sector when only using 24bit address  
         if(!setSector(Addr)) {
             std::cout << "ERROR: Unable to set sector for writePage cmd" << std::endl;
-            return -EINVAL;
+            return false;
         } 
     }      
     
@@ -1468,7 +1468,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
             //std::cout << "DEBUG: Erasing subsector @ 0x" << std::hex << j << std::dec << std::endl;
             if(!sectorErase(j, COMMAND_4KB_SUBSECTOR_ERASE)) {
                 std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
-                return false;
+                return -EINVAL;
             }
             nanosleep(&req, 0); //Pause before next sector erase
         }
@@ -1494,7 +1494,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
         bool ready = isFlashReady();
         if(!ready){
             std::cout << "\nERROR: Unable to get flash ready" << std::endl;
-            return false;
+            return -EINVAL;
         }
 
         clearBuffers();
