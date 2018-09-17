@@ -41,6 +41,7 @@ struct qdma_wr {
 	size_t			len;
 	bool			write;
 	bool			block;
+	bool			eot;
 
 	int (*complete)(struct qdma_complete_event *compl_event);
 	void			*priv_data;

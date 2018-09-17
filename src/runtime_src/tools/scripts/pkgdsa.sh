@@ -177,7 +177,7 @@ dsabinOutputFile=""
 
 XBUTIL=/opt/xilinx/xrt/bin/xbutil
 post_inst_msg="DSA package installed successfully.
-Please flash board manually by running below command:
+Please flash card manually by running below command:
 sudo ${XBUTIL} flash -a ${opt_dsa} -t"
 
 createEntityAttributeArray ()
@@ -486,7 +486,8 @@ dodsabin()
 
 dodebdev()
 {
-    dir=debbuild/$dsa-$version-dev
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version-dev_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
 
@@ -522,7 +523,8 @@ EOF
 
 dodeb()
 {
-    dir=debbuild/$dsa-$version
+    uRel=`lsb_release -r -s`
+    dir=debbuild/$dsa-$version_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control

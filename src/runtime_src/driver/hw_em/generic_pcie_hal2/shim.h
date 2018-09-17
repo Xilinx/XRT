@@ -37,6 +37,10 @@
 #include <sys/wait.h>
 #include <thread>
 #include <signal.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -85,8 +89,11 @@ using addr_type = uint64_t;
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
+
+      //P2P Support
       int xclExportBO(unsigned int boHandle); 
-      unsigned int xclImportBO(int boGlobalHandle);
+      unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
+      int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
       //MB scheduler related API's
       int xclExecBuf( unsigned int cmdBO);
@@ -119,7 +126,7 @@ using addr_type = uint64_t;
 
       // Buffer management
       uint64_t xclAllocDeviceBuffer(size_t size);
-      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags);
+      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool p2pBuffer, std::string &sFileName);
 
       void xclOpen(const char* logfileName);
       void xclFreeDeviceBuffer(uint64_t buf);
@@ -183,6 +190,16 @@ using addr_type = uint64_t;
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
+
+      //QDMA Support
+      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
+      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
+      int xclDestroyQueue(uint64_t q_hdl);
+      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
+      int xclFreeQDMABuf(uint64_t buf_hdl);
+      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+
 
     private:
       //hw_em_profile* _profile_inst;
@@ -256,6 +273,7 @@ using addr_type = uint64_t;
       uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
+      static std::map<int, std::pair<std::string,int> > mFdToFileNameMap;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

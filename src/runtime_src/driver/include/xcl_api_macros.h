@@ -112,21 +112,23 @@ mtx.unlock();
     xclLoadBitstream_RETURN();
 
 
-#define xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size) \
+#define xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size,p2pbuffer) \
     c_msg.set_ddraddress(ddraddress); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_peertopeer(p2pbuffer);
 
 
 #define xclAllocDeviceBuffer_SET_PROTO_RESPONSE() \
-    ack = r_msg.ack()
-
+    ack = r_msg.ack();\
+    sFileName = r_msg.filename();
+    
 
 #define xclAllocDeviceBuffer_RETURN()\
     //return size;
 
-#define xclAllocDeviceBuffer_RPC_CALL(func_name,ddraddress,size) \
+#define xclAllocDeviceBuffer_RPC_CALL(func_name,ddraddress,size, p2pbuffer) \
     RPC_PROLOGUE(func_name); \
-    xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size); \
+    xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size,p2pbuffer); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclAllocDeviceBuffer_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
@@ -476,3 +478,106 @@ mtx.unlock();
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
+
+//----------xclCopyBO-------------------
+#define xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset) \
+    c_msg.set_src_handle(src_boHandle); \
+    c_msg.set_dst_filename(filename); \
+    c_msg.set_size(size); \
+    c_msg.set_src_offset(src_offset); \
+    c_msg.set_dst_offset(dst_offset);
+
+#define xclCopyBO_SET_PROTO_RESPONSE() \
+  ack = r_msg.ack();
+
+#define xclCopyBO_RPC_CALL(func_name,src_boHandle,filename,size,src_offset,dst_offset) \
+  RPC_PROLOGUE(func_name); \
+  xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclCopyBO_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
+//----------xclImportBO-------------------
+#define xclImportBO_SET_PROTOMESSAGE(filename,offset,size) \
+    c_msg.set_dst_filename(filename); \
+    c_msg.set_offset(offset); \
+    c_msg.set_size(size);
+
+#define xclImportBO_SET_PROTO_RESPONSE() \
+  ack = r_msg.ack();
+
+#define xclImportBO_RPC_CALL(func_name,filename,offset,size) \
+  RPC_PROLOGUE(func_name); \
+  xclImportBO_SET_PROTOMESSAGE(filename,offset,size); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclImportBO_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
+//----------xclCreateQueue-------------------
+#define xclCreateQueue_SET_PROTOMESSAGE(q_ctx,bWrite) \
+    c_msg.set_write(bWrite); \
+    c_msg.set_type(q_ctx->type); \
+    c_msg.set_state(q_ctx->state); \
+    c_msg.set_route(q_ctx->route); \
+    c_msg.set_flow(q_ctx->flow); \
+    c_msg.set_qsize(q_ctx->qsize); \
+    c_msg.set_desc_size(q_ctx->desc_size); \
+    c_msg.set_flags(q_ctx->flags);
+
+#define xclCreateQueue_SET_PROTO_RESPONSE() \
+  q_handle = r_msg.q_handle();
+
+#define xclCreateQueue_RPC_CALL(func_name, q_ctx,bWrite) \
+  RPC_PROLOGUE(func_name); \
+  xclCreateQueue_SET_PROTOMESSAGE(q_ctx, bWrite); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclCreateQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
+//----------xclWriteQueue-------------------
+#define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
+    c_msg.set_q_handle(q_handle); \
+    c_msg.set_src((char*)src,size); \
+    c_msg.set_size(size);
+
+#define xclWriteQueue_SET_PROTO_RESPONSE() \
+  uint64_t written_size = r_msg.written_size();
+
+#define xclWriteQueue_RPC_CALL(func_name,q_handle,src,size) \
+  RPC_PROLOGUE(func_name); \
+  xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclWriteQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
+//----------xclReadQueue-------------------
+#define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
+    c_msg.set_q_handle(q_handle); \
+    c_msg.set_dest((char*)dest,size); \
+    c_msg.set_size(size);
+
+#define xclReadQueue_SET_PROTO_RESPONSE(dest) \
+    read_size = r_msg.size();\
+    memcpy(dest,r_msg.dest().c_str(),read_size);
+
+#define xclReadQueue_RPC_CALL(func_name,q_handle,dest,size) \
+  RPC_PROLOGUE(func_name); \
+  xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclReadQueue_SET_PROTO_RESPONSE(dest); \
+  FREE_BUFFERS();
+
+//----------xclDestroyQueue-------------------
+#define xclDestroyQueue_SET_PROTOMESSAGE(q_handle) \
+    c_msg.set_q_handle(q_handle);
+
+#define xclDestroyQueue_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define xclDestroyQueue_RPC_CALL(func_name, q_handle) \
+  RPC_PROLOGUE(func_name); \
+  xclDestroyQueue_SET_PROTOMESSAGE(q_handle); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclDestroyQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
