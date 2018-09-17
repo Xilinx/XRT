@@ -90,10 +90,10 @@ struct xocl_dev	{
 	struct drm_xocl_mm_stat	       *mm_usage_stat;
 	struct mutex			stat_lock;
 
-	struct xocl_mem_topology	topology;
+	struct mem_topology	       *topology;
         struct ip_layout	       *layout;
-        struct xocl_debug_layout	debug_layout;
-        struct xocl_connectivity	connectivity;
+	struct debug_ip_layout	       *debug_layout;
+	struct connectivity	       *connectivity;
 
 	/* context table */
 	struct xocl_context_hash	ctx_table;

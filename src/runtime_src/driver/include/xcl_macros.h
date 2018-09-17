@@ -47,5 +47,11 @@
 #define xclGetDebugMessages_n 19
 #define xclSetEnvironment_n 20
 #define xclWriteHostEvent_n 21
+#define xclCopyBO_n 22
+#define xclCreateQueue_n 23
+#define xclWriteQueue_n 24
+#define xclReadQueue_n 25
+#define xclDestroyQueue_n 26
+#define xclImportBO_n 27
 
 #endif

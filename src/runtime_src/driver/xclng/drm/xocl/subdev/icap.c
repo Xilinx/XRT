@@ -1608,10 +1608,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if(layout == NULL)
 		goto done;
 	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
-	if (sizeof_ip_layout(layout) > ipLayout->m_sectionSize) {
-	    err = -EINVAL;
-	    goto done;
-  }
+	if (sizeof_sect(layout, m_ip_data) > ipLayout->m_sectionSize) {
+		err = -EINVAL;
+		goto done;
+	}
   
 	ICAP_INFO(icap, "finding bitstream sections");
 	primaryHeader = get_axlf_section(icap, copy_buffer, BITSTREAM);
@@ -1772,7 +1772,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 dna_check_failed:	
 add_subdev_failed:
-	for(;id>=0;--id){
+	for(;id>=0 && id < XOCL_SUBDEV_NUM;--id){
 		if(nums_of_ip_section[id]!=0){
 			ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[id]);
 			xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[id]);

@@ -583,7 +583,7 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
 //  req,op_code = XCL_QUEUE_WRITE;
 //  req.bufs.buf = const_cast<char*>(ptr);
 //  req.bufs.len = size;
-//  req.flag = XCL_QUEUE_DEFAULT;
+  req.flag = flags;
   return m_ops->mWriteQueue(m_handle,stream,&req);
 }
 
@@ -605,7 +605,7 @@ readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal:
 //  req,op_code = XCL_QUEUE_READ;
 //  req.bufs.buf = ptr;
 //  req.bufs.len = size;
-//  req.flag = XCL_QUEUE_DEFAULT;
+  req.flag = flags;
   return m_ops->mReadQueue(m_handle,stream,&req);
 }
 

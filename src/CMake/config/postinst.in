@@ -30,6 +30,7 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     echo "Loading new XRT Linux kernel modules"
     modprobe xclmgmt
     modprobe xocl
+    udevadm trigger
 else
     echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi

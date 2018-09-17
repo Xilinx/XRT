@@ -262,9 +262,51 @@ namespace xclemulation{
     return xclEmConfigfile;
   }
  
+  static std::string getCurrenWorkingDir()
+  {
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+      return std::string(cwd);
+    } 
+    return "";
+  }
+  
+  static bool checkWritable(std::string &sDir)
+  {
+    if(sDir.empty())
+      return false;
+    std::string sPermissionCheckFile = sDir +"/.permission_check.txt";
+    FILE *fp = fopen(sPermissionCheckFile.c_str(), "w");
+    if (fp == NULL) 
+    {
+      if (errno == EACCES)
+        return false;
+    }
+    fclose(fp);
+    std::remove(sPermissionCheckFile.c_str());
+    return true;
+  }
+
   std::string getRunDirectory()
   {
     std::string executablePath = getExecutablePath();
+    std::string sUserRunDir = valueOrEmpty(std::getenv("SDACCEL_EM_RUN_DIR"));
+    if(!sUserRunDir.empty())
+      executablePath = sUserRunDir;
+    bool bWritable = checkWritable(executablePath);
+    if(!bWritable)
+    {
+      std::string sCurrWorkDir = getCurrenWorkingDir();
+      bWritable = checkWritable(sCurrWorkDir);
+      if(bWritable)
+      {
+        executablePath = sCurrWorkDir;
+      }
+    }
+    if(!bWritable)
+    {
+      std::cout<<"Unable to find writable directory. Please provide writable directory using SDACCEL_EM_RUN_DIR"<<std::endl;
+    }
     std::string sRunDir = executablePath.empty()? ".run" :executablePath+ "/.run";
     return sRunDir;
   }

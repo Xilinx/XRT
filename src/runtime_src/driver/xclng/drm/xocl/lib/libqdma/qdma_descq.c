@@ -555,11 +555,9 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	struct qdma_desc_wb *wb;
 	unsigned int max_io_block;
 
-	pr_debug("descq 0x%p, %s, pidx %u, cidx %u.\n",
-		descq, descq->conf.name, descq->pidx, descq->cidx);
-
 	if (descq->pidx == descq->cidx) { /* queue empty? */
-		pr_debug("descq %s empty, return.\n", descq->conf.name);
+		pr_debug("descq %s empty pidx %d, cidx %d, return.\n",
+			descq->conf.name, descq->pidx, descq->cidx);
 		return 0;
 	}
 
@@ -928,12 +926,6 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		pr_err("%s: QID for STM cannot be > %d\n",
 			descq->conf.name, STM_MAX_SUPPORTED_QID);
 		return -EINVAL;
-	}
-
-	if (descq->xdev->stm_rev != STM_SUPPORTED_REV) {
-		pr_err("%s: No supported STM rev found in hw\n",
-		       descq->conf.name);
-		return -ENODEV;
 	}
 
 	if (!descq->conf.c2h && !descq->conf.bypass) {

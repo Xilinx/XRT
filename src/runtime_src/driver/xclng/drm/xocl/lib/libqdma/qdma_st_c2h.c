@@ -561,13 +561,13 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	}
 
 #if 0
-	print_hex_dump(KERN_INFO, "cmpl status: ", DUMP_PREFIX_OFFSET,
+	print_hex_dump(KERN_DEBUG, "cmpl status: ", DUMP_PREFIX_OFFSET,
 				16, 1, (void *)wb, sizeof(*wb),
 				false);
-	pr_info("cmpl status: pidx 0x%x, cidx %x, color %d, int_state 0x%x.\n",
+#endif
+	pr_debug("cmpl status: pidx 0x%x, cidx %x, color %d, int_state 0x%x.\n",
 		wb->pidx, wb->cidx, wb->color_isr_status & 0x1,
 		(wb->color_isr_status >> 1) & 0x3);
-#endif
 
 	if (!budget || budget > pend)
 		budget = pend;

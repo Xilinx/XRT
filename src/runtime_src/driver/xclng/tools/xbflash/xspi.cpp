@@ -456,7 +456,6 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
 }
 
 int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
-    std::cout << "INFO: Using new flash" << std::endl;
     clearBuffers();
     recordList.clear();
 
@@ -493,7 +492,6 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
             }
             if (address != (record.mDataCount+(record.mStartAddress & 0xFFFF))) {
 		if(record.mDataCount == 0) {
-		    //std::cout << "lineno with address skip " << lineno << std::endl;
 		    //First entry only.
 		    assert(record.mStartAddress != 0);
 		    assert(record.mEndAddress != 0);
