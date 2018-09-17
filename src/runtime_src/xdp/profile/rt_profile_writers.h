@@ -77,7 +77,7 @@ namespace XCL {
           double totalTimeMsec, double maxTransferRateMBps);
       // Write Read/Write Kernel transfer stats
       void writeKernelTransferSummary(const std::string& deviceName,
-          const std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
+          const std::string& cuPortName, const std::string& argNames, uint32_t ddrBank,
 		  const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
 		  double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
 	  void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,

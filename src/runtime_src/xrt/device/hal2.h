@@ -29,6 +29,7 @@
 #include <memory>
 #include <map>
 
+
 namespace xrt { namespace hal2 {
 
 namespace hal  = xrt::hal;
@@ -252,12 +253,6 @@ public:
   virtual std::ostream&
   printDeviceInfo(std::ostream& ostr) const;
 
-  virtual size_t
-  get_cdma_count() const
-  {
-    return m_devinfo.mNumCDMA;
-  }
-
   virtual ExecBufferObjectHandle
   allocExecBuffer(size_t sz);
 
@@ -323,25 +318,25 @@ public:
 
 public:
 
-  virtual int
+  virtual int 
   createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
 
-  virtual int
+  virtual int 
   createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
 
-  virtual int
+  virtual int 
   closeStream(hal::StreamHandle stream);
 
   virtual hal::StreamBuf
   allocStreamBuf(size_t size, hal::StreamBufHandle *buf);
 
-  virtual int
+  virtual int 
   freeStreamBuf(hal::StreamBufHandle buf);
 
-  virtual ssize_t
+  virtual ssize_t 
   writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
 
-  virtual ssize_t
+  virtual ssize_t 
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags);
 
 public:

@@ -27,14 +27,30 @@
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
 
-#define sizeof_section(sect, data) \
-({ \
-	size_t ret; \
-	size_t data_size; \
-	data_size = sect->m_count * sizeof(typeof(sect->data)); \
-	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
-	(ret); \
-})
+struct zocl_mem_topology {
+	u32                  bank_count;
+	struct mem_data      *m_data;
+	u32                  m_data_length; /* length of the mem_data section */
+	/* Bank size in KB. Only fixed sizes are supported. */
+	u64                  bank_size;
+	u64                  size;
+	struct mem_topology  *topology;
+};
+
+struct zocl_connectivity {
+	u64                   size;
+	struct connectivity  *connections;
+};
+
+struct zocl_layout {
+	u64                   size;
+	struct ip_layout     *layout;
+};
+
+struct zocl_debug_layout {
+	u64                     size;
+	struct debug_ip_layout *layout;
+};
 
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
@@ -47,11 +63,11 @@ struct drm_zocl_dev {
 	unsigned int             irq;
 	struct sched_exec_core  *exec;
 
-	struct mem_topology	*topology;
-	struct ip_layout	*ip;
-	struct debug_ip_layout	*debug_ip;
-	struct connectivity	*connectivity;
-	u64			 unique_id_last_bitstream;
+	struct zocl_mem_topology topology;
+	struct zocl_layout       layout;
+	struct zocl_debug_layout debug_layout;
+	struct zocl_connectivity connectivity;
+	u64                      unique_id_last_bitstream;
 };
 
 #endif

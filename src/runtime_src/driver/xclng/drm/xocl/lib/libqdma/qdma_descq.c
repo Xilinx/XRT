@@ -987,11 +987,9 @@ void qdma_notify_cancel(struct qdma_descq *descq)
         /* calling routine should hold the lock */
         list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
 		req = (struct qdma_request *)cb;
-		if (req->fp_done) {
-			unlock_descq(descq);
+		if (req->fp_done)
 			req->fp_done(req, 0, 0);
-			lock_descq(descq);
-		} else {
+		else {
 			cb->done = 1;
 			qdma_waitq_wakeup(&cb->wq);
 		}
@@ -1023,11 +1021,8 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 		}
 		cb->status = error;
 		cb->done = 1;
-		if (!cb->canceled) {
-			unlock_descq(descq);
+		if (!cb->canceled)
 			req->fp_done(req, cb->offset, error);
-			lock_descq(descq);
-		}
 	} else {
 		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
 		cb->status = error;

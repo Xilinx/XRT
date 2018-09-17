@@ -1,6 +1,5 @@
 /**
- * Compute unit execution, interrupt management and
- * client context core data structures.
+ * Compute unit execution, interrupt management and client context core data structures.
  *
  * Copyright (C) 2017 Xilinx, Inc. All rights reserved.
  *
@@ -228,11 +227,15 @@ struct sched_client_ctx {
  * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
  * @cq_interrupt: If set then X86 host will trigger interrupt to PS
- * @configured: Flag of the core data structure has been initialized
- * @slot_status: Status (busy(1)/free(0)) of slots in command queue
- * @num_slot_masks: Number of slots status masks used
- * @cu_status: Status (busy(1)/free(0)) of CUs. Unused in ERT mode.
+ * @configured: Flag to indicate that the core data structure has been initialized
+ * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
+ * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
+ * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
+ * @sr0: If set, then status register [0..31] is pending with completed commands (ERT only).
+ * @sr1: If set, then status register [32..63] is pending with completed commands (ERT only).
+ * @sr2: If set, then status register [64..95] is pending with completed commands (ERT only).
+ * @sr3: If set, then status register [96..127] is pending with completed commands (ERT only).
  * @ops: Scheduler operations vtable
  */
 struct sched_exec_core {
@@ -262,31 +265,33 @@ struct sched_exec_core {
 	u32                        cu_status[MAX_U32_CU_MASKS];
 	unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
 
+	/* Operations for dynamic indirection dependt on MB or kernel scheduler */
 	struct sched_ops          *ops;
-	struct task_struct        *cq_thread;
+	struct task_struct        *hw_cq_check;
 	wait_queue_head_t          cq_wait_queue;
 };
 
 /**
  * struct scheduler: scheduler for sched_cmd objects
  *
- * @sched_thread: thread associated with this scheduler
+ * @scheduler_thread: thread associated with this scheduler
  * @use_count: use count for this scheduler
  * @wait_queue: conditional wait queue for scheduler thread
  * @error: set to 1 to indicate scheduler error
  * @stop: set to 1 to indicate scheduler should stop
- * @cq: list of command objects managed by scheduler
+ * @command_queue: list of command objects managed by scheduler
+ * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
  */
 struct scheduler {
-	struct task_struct        *sched_thread;
+	struct task_struct        *scheduler_thread;
 	unsigned int               use_count;
 
 	wait_queue_head_t          wait_queue;
 	unsigned int               error;
 	unsigned int               stop;
 
-	struct list_head           cq;
+	struct list_head           command_queue;
 	unsigned int               poll; /* number of cmds to poll */
 };
 

@@ -41,8 +41,6 @@
 
 #if defined(__KERNEL__)
 #include <linux/types.h>
-#include <linux/uuid.h>
-#include <linux/version.h>
 #elif defined(__cplusplus)
 #include <cstdlib>
 #include <cstdint>
@@ -50,29 +48,6 @@
 #else
 #include <stdlib.h>
 #include <stdint.h>
-#endif
-
-#if !defined(__KERNEL__)
-#if !defined _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
-typedef uuid_t xuid_t;
-#else //(__KERNEL__)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-typedef uuid_t xuid_t;
-#elif defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
-typedef uuid_t xuid_t;
-#else
-typedef uuid_le xuid_t;
-#endif
-#else
-typedef uuid_le xuid_t;
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -100,29 +75,29 @@ extern "C" {
     };
 
 
-//    struct xclBin {
-//        char m_magic[8];                    /* should be xclbin0\0  */
-//        uint64_t m_length;                  /* total size of the xclbin file */
-//        uint64_t m_timeStamp;               /* number of seconds since epoch when xclbin was created */
-//        uint64_t m_version;                 /* tool version used to create xclbin */
-//        unsigned m_mode;                    /* XCLBIN_MODE */
-//        char m_nextXclBin[24];              /* Name of next xclbin file in the daisy chain */
-//        uint64_t m_metadataOffset;          /* file offset of embedded metadata */
-//        uint64_t m_metadataLength;          /* size of the embedded metdata */
-//        uint64_t m_primaryFirmwareOffset;   /* file offset of bitstream or emulation archive */
-//        uint64_t m_primaryFirmwareLength;   /* size of the bistream or emulation archive */
-//        uint64_t m_secondaryFirmwareOffset; /* file offset of clear bitstream if any */
-//        uint64_t m_secondaryFirmwareLength; /* size of the clear bitstream */
-//        uint64_t m_driverOffset;            /* file offset of embedded device driver if any (currently unused) */
-//        uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
-//
-//        // Extra debug information for hardware and hardware emulation debug
-//
-//        uint64_t m_dwarfOffset ;
-//        uint64_t m_dwarfLength ;
-//        uint64_t m_ipiMappingOffset ;
-//        uint64_t m_ipiMappingLength ;
-//    };
+    struct xclBin {
+        char m_magic[8];                    /* should be xclbin0\0  */
+        uint64_t m_length;                  /* total size of the xclbin file */
+        uint64_t m_timeStamp;               /* number of seconds since epoch when xclbin was created */
+        uint64_t m_version;                 /* tool version used to create xclbin */
+        unsigned m_mode;                    /* XCLBIN_MODE */
+        char m_nextXclBin[24];              /* Name of next xclbin file in the daisy chain */
+        uint64_t m_metadataOffset;          /* file offset of embedded metadata */
+        uint64_t m_metadataLength;          /* size of the embedded metdata */
+        uint64_t m_primaryFirmwareOffset;   /* file offset of bitstream or emulation archive */
+        uint64_t m_primaryFirmwareLength;   /* size of the bistream or emulation archive */
+        uint64_t m_secondaryFirmwareOffset; /* file offset of clear bitstream if any */
+        uint64_t m_secondaryFirmwareLength; /* size of the clear bitstream */
+        uint64_t m_driverOffset;            /* file offset of embedded device driver if any (currently unused) */
+        uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
+
+        // Extra debug information for hardware and hardware emulation debug
+
+        uint64_t m_dwarfOffset ;
+        uint64_t m_dwarfLength ;
+        uint64_t m_ipiMappingOffset ;
+        uint64_t m_ipiMappingLength ;
+    };
 
     /*
      *  AXLF LAYOUT
@@ -152,9 +127,7 @@ extern "C" {
         IP_LAYOUT,
         DEBUG_IP_LAYOUT,
         DESIGN_CHECK_POINT,
-        CLOCK_FREQ_TOPOLOGY,
-        MCS,
-        BMC
+        CLOCK_FREQ_TOPOLOGY
     };
 
     enum MEM_TYPE {
@@ -171,8 +144,7 @@ extern "C" {
 
     enum IP_TYPE {
         IP_MB = 0,
-        IP_KERNEL, //kernel instance
-        IP_DNASC
+        IP_KERNEL //kernel instance
     };
 
     struct axlf_section_header {
@@ -188,18 +160,10 @@ extern "C" {
         uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
         uint32_t m_version;                 /* Tool version used to create xclbin */
         uint32_t m_mode;                    /* XCLBIN_MODE */
-	union {
-	    struct {
-		uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
-		uint64_t m_featureId;       /* 64 bit feature id */
-	    } rom;
-	    unsigned char rom_uuid[16];     /* feature ROM UUID for which this xclbin was generated */
-	};
+        uint64_t m_platformId;              /* 64 bit platform ID: vendor-device-subvendor-subdev */
+        uint64_t m_featureId;               /* 64 bit feature id */
         unsigned char m_platformVBNV[64];   /* e.g. xilinx:xil-accel-rd-ku115:4ddr-xpr:3.4: null terminated */
-	union {
-	    char m_next_axlf[16];           /* Name of next xclbin file in the daisy chain */
-	    xuid_t uuid;                    /* uuid of this xclbin*/
-	};
+        char m_next_axlf[16];               /* Name of next xclbin file in the daisy chain */
         char m_debug_bin[16];               /* Name of binary with debug information */
         uint32_t m_numSections;             /* Number of section headers */
     };
@@ -212,8 +176,6 @@ extern "C" {
         struct axlf_header m_header;                /* Inline header */
         struct axlf_section_header m_sections[1];   /* One or more section headers follow */
     };
-
-    typedef struct axlf xclBin;
 
     /**** BEGIN : Xilinx internal section *****/
 
@@ -228,11 +190,11 @@ extern "C" {
 	uint8_t m_type; //enum corresponding to mem_type.
 	uint8_t m_used; //if 0 this bank is not present
 	union {
-	    uint64_t m_size; //if mem_type DDR, then size in KB;
+	    uint64_t m_size; //if mem_type DDR, then size in KB; 
 	    uint64_t route_id; //if streaming then "route_id"
 	};
 	union {
-	    uint64_t m_base_address;//if DDR then the base address;
+	    uint64_t m_base_address;//if DDR then the base address; 
 	    uint64_t flow_id; //if streaming then "flow id"
 	};
 	unsigned char m_tag[16]; //DDR: BANK0,1,2,3, has to be null terminated; if streaming then stream0, 1 etc
@@ -304,7 +266,8 @@ extern "C" {
         struct debug_ip_data m_debug_ip_data[1];
     };
 
-    enum CLOCK_TYPE {                      /* Supported clock frequency types */
+    enum CLOCK_TYPE                        /* Supported clock frequency types */
+    {
         CT_UNUSED = 0,                     /* Initialized value */
         CT_DATA   = 1,                     /* Data clock */
         CT_KERNEL = 2,                     /* Kernel clock */
@@ -315,42 +278,15 @@ extern "C" {
         u_int16_t m_freq_Mhz;              /* Frequency in MHz */
         u_int8_t m_type;                   /* Clock type (enum CLOCK_TYPE) */
         u_int8_t m_unused[5];              /* Not used - padding */
-        char m_name[128];                  /* Clock Name */
+        char m_name[32];                   /* Clock Name */
     };
 
     struct clock_freq_topology {           /* Clock frequency section */
         int16_t m_count;                   /* Number of entries */
-        struct clock_freq m_clock_freq[1]; /* Clock array */
+        struct clock_freq m_clock_freq[1]; /* Clock array */ 
     };
 
-    enum MCS_TYPE {                        /* Supported MCS file types */
-        MCS_UNKNOWN = 0,                   /* Initialized value */
-        MCS_PRIMARY = 1,                   /* The primary mcs file data */
-        MCS_SECONDARY = 2,                 /* The secondary mcs file data */
-    };
 
-    struct mcs_chunk {                     /* One chunk of MCS data */
-        uint8_t m_type;                    /* MCS data type */
-        uint8_t m_unused[7];               /* padding */
-        uint64_t m_offset;                 /* data offset from the start of the section */
-        uint64_t m_size;                   /* data size */
-    };
-
-    struct mcs {                           /* MCS data section */
-        int8_t m_count;                    /* Number of chunks */
-        int8_t m_unused[7];                /* padding */
-        struct mcs_chunk m_chunk[1];       /* MCS chunks followed by data */
-    };
-
-    struct bmc {                           /* bmc data section  */
-        uint64_t m_offset;                 /* data offset from the start of the section */
-        uint64_t m_size;                   /* data size (bytes)*/
-        char m_image_name[64];             /* Name of the image (e.g., MSP432P401R) */
-        char m_device_name[64];            /* Device ID         (e.g., VCU1525)  */
-        char m_version[64];
-        char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
-        char m_padding[7];                 /* Padding */
-    };
 
     /**** END : Xilinx internal section *****/
 
