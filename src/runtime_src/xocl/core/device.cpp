@@ -1150,8 +1150,6 @@ load_program(program* program)
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
-      else if (xbrv.get() == -EPERM)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
       else if (xbrv.get() == -EBUSY)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
       else if (xbrv.get() == -ETIMEDOUT)
