@@ -111,12 +111,12 @@ fi
 
 mkdir -p Debug Release
 cd Debug
-cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j $jcore $verbose DESTDIR=$PWD install
+time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time make -j $jcore $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
-cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j $jcore $verbose DESTDIR=$PWD install
-make package
+time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time make -j $jcore $verbose DESTDIR=$PWD install
+time make package
 cd $here
