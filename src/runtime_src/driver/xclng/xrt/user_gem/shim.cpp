@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/uio.h>
 #include <cstring>
 #include <thread>
 #include <chrono>
@@ -34,6 +35,8 @@
 #include <sys/file.h>
 #include <poll.h>
 #include <dirent.h>
+#include <sys/syscall.h>
+#include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
 
@@ -49,6 +52,8 @@
 #define GB(x)           ((size_t) (x) << 30)
 #define	USER_PCIID(x)   (((x).bus << 8) | ((x).device << 3) | (x).user_func)
 #define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
+
+#define	SHIM_QDMA_AIO_EVT_MAX	1024 * 64
 
 inline bool
 is_multiprocess_mode()
@@ -105,6 +110,27 @@ std::ostream& xocl::operator<< (std::ostream &strm, const AddressRange &rng)
 {
     strm << "[" << rng.first << ", " << rng.second << "]";
     return strm;
+}
+
+inline int io_setup(unsigned nr, aio_context_t *ctxp)
+{
+        return syscall(__NR_io_setup, nr, ctxp);
+}
+
+inline int io_destroy(aio_context_t ctx)
+{
+        return syscall(__NR_io_destroy, ctx);
+}
+
+inline int io_submit(aio_context_t ctx, long nr,  struct iocb **iocbpp)
+{
+        return syscall(__NR_io_submit, ctx, nr, iocbpp);
+}
+
+inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
+                struct io_event *events, struct timespec *timeout)
+{
+        return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
 /*
@@ -199,6 +225,14 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName, xclVerbosityL
     mMemoryProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0x00;
     mPerfMonFifoReadBaseAddress = 0x00;
+
+    memset(&mAioContext, 0, sizeof(mAioContext));
+    if (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) != 0) {
+        mAioEnabled = false;
+        std::cout << "Failed create AIO context" << std::endl;
+    } else {
+        mAioEnabled = true;
+    }
 }
 
 /*
@@ -225,6 +259,9 @@ xocl::XOCLShim::~XOCLShim()
 
     if (mStreamHandle > 0)
         close(mStreamHandle);
+
+    if (mAioEnabled)
+	    io_destroy(mAioContext);
 }
 
 /*
@@ -1371,6 +1408,26 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
     return rc;
 }
 
+/*
+ * xclPollCompletion()
+ */
+int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, struct timespec *timeout)
+{
+    int num_evt, i;
+
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, timeout);
+    if (num_evt < min_compl) {
+        std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
+        goto done;
+    }
+
+    for (i = num_evt - 1; i >= 0; i--)
+        comps[i].req = (struct xclQueueRequest *)((struct io_event *)comps)[i].data;
+
+done:
+    return num_evt;
+}
+
 // Helper to find subdevice directory name
 // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
 static std::string getSubdevDirName(const std::string& dir,
@@ -1517,8 +1574,32 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     ssize_t rc = 0;
 
     for (unsigned i = 0; i < wr->buf_num; i++) {
-        auto buf = reinterpret_cast<const void *>(wr->bufs[i].va);
-        rc = write((int)q_hdl, buf, wr->bufs[i].len);
+        void *buf = (void *)wr->bufs[i].va;
+        struct iovec iov[2];
+        struct xocl_qdma_req_header header;
+
+        header.flags = (wr->flag & XCL_QUEUE_REQ_EOT) ? XOCL_QDMA_REQ_FLAG_EOT : 0;
+        iov[0].iov_base = &header;
+        iov[0].iov_len = sizeof(header);
+        iov[1].iov_base = buf;
+        iov[1].iov_len = wr->bufs[i].len;
+
+        if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
+            struct iocb cb;
+            struct iocb *cbs[1];
+
+            memset(&cb, 0, sizeof(cb));
+            cb.aio_fildes = (int)q_hdl;
+            cb.aio_lio_opcode = IOCB_CMD_PWRITEV;
+            cb.aio_buf = (uint64_t)iov;
+            cb.aio_offset = 0;
+            cb.aio_nbytes = 2;
+            cb.aio_data = (uint64_t)wr;
+
+            cbs[0] = &cb;
+            rc = io_submit(mAioContext, 1, cbs);
+        } else
+            rc = writev((int)q_hdl, iov, 2);
     }
     return rc;
 }
@@ -1532,7 +1613,31 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 
     for (unsigned i = 0; i < wr->buf_num; i++) {
         void *buf = (void *)wr->bufs[i].va;
-        rc = read((int)q_hdl, buf, wr->bufs[i].len);
+        struct iovec iov[2];
+        struct xocl_qdma_req_header header;
+
+        header.flags = wr->flag;
+        iov[0].iov_base = &header;
+        iov[0].iov_len = sizeof(header);
+        iov[1].iov_base = buf;
+        iov[1].iov_len = wr->bufs[i].len;
+
+        if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
+            struct iocb cb;
+            struct iocb *cbs[1];
+
+            memset(&cb, 0, sizeof(cb));
+            cb.aio_fildes = (int)q_hdl;
+            cb.aio_lio_opcode = IOCB_CMD_PREADV;
+            cb.aio_buf = (uint64_t)iov;
+            cb.aio_offset = 0;
+            cb.aio_nbytes = 2;
+            cb.aio_data = (uint64_t)wr;
+
+            cbs[0] = &cb;
+            rc = io_submit(mAioContext, 1, cbs);
+        } else 
+        	rc = readv((int)q_hdl, iov, 2);
     }
     return rc;
 
@@ -1978,6 +2083,12 @@ ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr
 {
 	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
 	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
+}
+
+int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout)
+{
+        xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, timeout) : -ENODEV;
 }
 
 xclDeviceHandle xclOpenMgmt(unsigned deviceIndex)
