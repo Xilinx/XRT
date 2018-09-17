@@ -277,7 +277,7 @@ private:
     uint32_t mMemoryProfilingNumberSlots;
     uint32_t mAccelProfilingNumberSlots;
     uint32_t mStallProfilingNumberSlots;
-    uint32_t mStrProfilingNumberSlots;
+    uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
 
     bool zeroOutDDR();
@@ -373,13 +373,13 @@ private:
     uint64_t mTraceFunnelAddress = 0;
     uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS] = {};
     uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint64_t mStrMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS] = {};
     std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS] = {};
     std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
-    std::string mStrMonSlotName[XSSPM_MAX_NUMBER_SLOTS] = {};
+    std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mStrmonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
 }; /* XOCLShim */
 
 } /* xocl */

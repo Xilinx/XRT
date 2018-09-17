@@ -145,7 +145,7 @@ namespace xocl {
   uint64_t XOCLShim::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
     if (type == XCL_PERF_MON_MEMORY)         return mPerfMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_ACCEL)     return mAccelMonBaseAddress[slotNum];
-    if (type == XCL_PERF_MON_STR)       return mStrMonBaseAddress[slotNum];
+    if (type == XCL_PERF_MON_STR)       return mStreamMonBaseAddress[slotNum];
     return 0;
   }
 
@@ -185,7 +185,7 @@ namespace xocl {
       return count;
     }
     if (type == XCL_PERF_MON_STR)
-      return mStrProfilingNumberSlots;
+      return mStreamProfilingNumberSlots;
     return 0;
   }
 
@@ -199,7 +199,7 @@ namespace xocl {
       str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
     }
     if (type == XCL_PERF_MON_STR) {
-      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStrMonSlotName[slotnum] : "";
+      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
     }
     strncpy(slotName, str.c_str(), length);
   }

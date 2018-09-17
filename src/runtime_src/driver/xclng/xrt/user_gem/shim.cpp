@@ -123,7 +123,7 @@ xocl::XOCLShim::XOCLShim(unsigned index,
                                                         mMemoryProfilingNumberSlots(0),
                                                         mAccelProfilingNumberSlots(0),
                                                         mStallProfilingNumberSlots(0),
-                                                        mStrProfilingNumberSlots(0)
+                                                        mStreamProfilingNumberSlots(0)
 {
     mLogfileName = nullptr;
     init(index, logfileName, verbosity);
