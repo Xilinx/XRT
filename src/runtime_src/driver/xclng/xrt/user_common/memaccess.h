@@ -84,7 +84,7 @@ namespace xcldev {
         ifs.read( buffer, buf_size ); // TODO: read entry by entry instead of entire mem_topology struct.
         mem_topology *map = (mem_topology *)buffer;
         for( int i = 0; i < map->m_count; i++ ) {
-            if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING ) {
+            if( map->m_mem_data[i].m_used ) {
                 aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i );
             }
         }

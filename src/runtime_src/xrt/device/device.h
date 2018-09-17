@@ -25,7 +25,6 @@
 #include <thread>
 #include <mutex>
 #include <algorithm>
-
 namespace xrt {
 
 /**
@@ -129,12 +128,6 @@ public:
   copyDeviceInfo(const device* src)
   {
     m_hal->copyDeviceInfo(src->m_hal.get());
-  }
-
-  size_t
-  get_cdma_count() const
-  {
-    return m_hal->get_cdma_count();
   }
 
   /**
@@ -358,20 +351,18 @@ public:
   { return m_hal->exec_wait(timeout_ms); }
 
 public:
-  /**
-   * Get the device address of a buffer object
-   *
-   * @param boh
-   *   Handle to buffer object
-   * @returns
-   *   Device side address of buffer object
-   * @throws
-   *   std::runtime_error if buffer object is unknown to this device
-   */
+//  //TODO: BufferObject accessors. These are intermediary functions.
   uint64_t getDeviceAddr(const BufferObjectHandle& boh)
   {
+      //TODO: check for the device match
     return m_hal->getDeviceAddr(boh);
   }
+//
+//  void* getHostAddr(const BufferObjectHandle& boh)
+//  {
+//      //TODO: check for the device match
+//    return m_hal->getHostAddr(boh);
+//  }
 
   /**
    * Export FD of buffer object handle on this device.
@@ -446,19 +437,19 @@ public:
 #endif
 
 //Streaming APIs
-  int
+  int 
   createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
-  {
+  { 
     return m_hal->createWriteStream(flags, attr, route, flow, stream);
   }
 
-  int
+  int 
   createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
   {
     return m_hal->createReadStream(flags, attr, route, flow, stream);
   };
 
-  int
+  int 
   closeStream(hal::StreamHandle stream)
   {
     return m_hal->closeStream(stream);
@@ -470,19 +461,19 @@ public:
     return m_hal->allocStreamBuf(size, buf);
   };
 
-  int
+  int 
   freeStreamBuf(hal::StreamBufHandle buf)
   {
     return m_hal->freeStreamBuf(buf);
   };
 
-  ssize_t
+  ssize_t 
   writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
   {
     return m_hal->writeStream(stream, ptr, offset, size, flags);
   };
 
-  ssize_t
+  ssize_t 
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
   {
     return m_hal->readStream(stream, ptr, offset, size, flags);

@@ -16,7 +16,6 @@
  */
 
 #include "zocl_drv.h"
-#include "xclbin.h"
 
 static ssize_t xclbinid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -42,11 +41,10 @@ static ssize_t mem_topology_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	size_t size = sizeof_section(zdev->topology, m_mem_data);
 
-	memcpy(buf, zdev->topology, size);
+	memcpy(buf, zdev->topology.topology, zdev->topology.size);
 
-	return size;
+	return zdev->topology.size;
 }
 
 static DEVICE_ATTR_RO(mem_topology);
@@ -55,11 +53,10 @@ static ssize_t connectivity_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	size_t size = sizeof_section(zdev->connectivity, m_connection);
 
-	memcpy(buf, zdev->connectivity, size);
+	memcpy(buf, zdev->connectivity.connections, zdev->connectivity.size);
 
-	return size;
+	return zdev->connectivity.size;
 }
 
 static DEVICE_ATTR_RO(connectivity);
@@ -68,11 +65,10 @@ static ssize_t ip_layout_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	size_t size = sizeof_section(zdev->ip, m_ip_data);
 
-	memcpy(buf, zdev->ip, size);
+	memcpy(buf, zdev->layout.layout, zdev->layout.size);
 
-	return size;
+	return zdev->layout.size;
 }
 
 static DEVICE_ATTR_RO(ip_layout);
@@ -81,21 +77,19 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
-	size_t size;
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	size = sizeof_section(zdev->debug_ip, m_debug_ip_data);
 
-	if (off >= size)
+	if (off >= zdev->debug_layout.size)
 		return 0;
 
-	if (count < size - off)
+	if (count < zdev->debug_layout.size - off)
 		nread = count;
 	else
-		nread = size - off;
+		nread = zdev->debug_layout.size - off;
 
-	memcpy(buf, ((char *)zdev->debug_ip) + off, nread);
+	memcpy(buf, ((char *)zdev->debug_layout.layout) + off, nread);
 
 	return nread;
 }

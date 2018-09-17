@@ -374,28 +374,6 @@ initDsaBinEnvAndVars()
     initBMCVar
 }
 
-docentos()
-{
- echo "Packaging for CentOS..."
- if [ $opt_dev == 1 ]; then
-     dorpmdev
- else
-     dodsabin
-     dorpm
- fi
-}
-
-doubuntu()
-{
- echo "Packaging for Ubuntu..."
- if [ $opt_dev == 1 ]; then
-     dodebdev
- else
-     dodsabin
-     dodeb
- fi
-}
-
 dodsabin()
 {
     pushd $opt_pkgdir > /dev/null
@@ -690,10 +668,21 @@ EOF
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
 
+if [ $FLAVOR == "centos" ]; then
+ if [ $opt_dev == 1 ]; then
+     dorpmdev
+ else
+     dodsabin
+     dorpm
+ fi
+fi
 
-case "$FLAVOR" in
-  ("centos") docentos ;;
-  ("ubuntu") doubuntu ;;
-  (*) echo "Unsupported OS '${FLAVOR}'" && exit 1 ;;
-esac
+if [ $FLAVOR == "ubuntu" ]; then
+ if [ $opt_dev == 1 ]; then
+     dodebdev
+ else
+     dodsabin
+     dodeb
+ fi
+fi
 

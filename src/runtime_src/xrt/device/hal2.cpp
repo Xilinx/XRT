@@ -572,7 +572,7 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
   (void)offset;
   (void)flags;
   xclQueueRequest req;
-  xclReqBuffer buffer;
+  xclWRBuffer buffer;
 
   buffer.va = (uint64_t)ptr;
   buffer.len = size;
@@ -594,7 +594,7 @@ readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal:
   (void)offset;
   (void)flags;
   xclQueueRequest req;
-  xclReqBuffer buffer;
+  xclWRBuffer buffer;
 
   buffer.va = (uint64_t)ptr;
   buffer.len = size;
