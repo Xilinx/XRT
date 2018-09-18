@@ -8,7 +8,13 @@ configure_file (
   @ONLY
   )
 
-set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
+if (${LINUX_FLAVOR} STREQUAL Ubuntu)
+  set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
+  set(XRT_PKG_CONFIG_DIR "/usr/lib64/pkgconfig")
+else ()
+  set(XRT_PKG_CONFIG_DIR "/usr/share/pkgconfig")
+endif ()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${PKG_CONFIG_FILE_NAME} DESTINATION ${XRT_PKG_CONFIG_DIR})
 
