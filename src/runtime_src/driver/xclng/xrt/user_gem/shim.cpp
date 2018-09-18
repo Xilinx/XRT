@@ -1421,8 +1421,11 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
         goto done;
     }
 
-    for (i = num_evt - 1; i >= 0; i--)
-        comps[i].req = (struct xclQueueRequest *)((struct io_event *)comps)[i].data;
+    for (i = num_evt - 1; i >= 0; i--) {
+        comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
+        comps[i].nbytes = ((struct io_event *)comps)[i].res;
+        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+    }
 
 done:
     return num_evt;
@@ -1594,7 +1597,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_buf = (uint64_t)iov;
             cb.aio_offset = 0;
             cb.aio_nbytes = 2;
-            cb.aio_data = (uint64_t)wr;
+            cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
             rc = io_submit(mAioContext, 1, cbs);
@@ -1632,7 +1635,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_buf = (uint64_t)iov;
             cb.aio_offset = 0;
             cb.aio_nbytes = 2;
-            cb.aio_data = (uint64_t)wr;
+            cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
             rc = io_submit(mAioContext, 1, cbs);

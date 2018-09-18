@@ -103,6 +103,7 @@ enum {
 enum {
 	QDMA_EVT_SUCCESS,
 	QDMA_EVT_CANCELED,
+	QDMA_EVT_ERROR
 };
 
 #define	_wqe(q, i)	((struct qdma_wqe *)((char *)q->wq + q->wqe_sz * i))

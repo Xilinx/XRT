@@ -444,14 +444,15 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	spin_lock(&queue->wq_lock);
 	wqe->done_bytes += bytes_done;
 	queue->sgc_avail += req->sgcnt;
-	if (wqe->done_bytes == wqe->wr.len &&
+	if ((err != 0 || req->eot || req->count == wqe->done_bytes) &&
 		wqe->state != QDMA_WQE_STATE_CANCELED &&
 		wqe->state != QDMA_WQE_STATE_CANCELED_HW) {
 		if (wqe->wr.block) {
 			wake_up(&wqe->req_comp);
 		} else {
 			compl_evt.done_bytes = wqe->done_bytes;
-			compl_evt.error = QDMA_EVT_SUCCESS;
+			compl_evt.error = err ? QDMA_EVT_ERROR :
+				QDMA_EVT_SUCCESS;
 			compl_evt.req_priv = wqe->priv_data;
 			wqe->wr.complete(&compl_evt);
 		}
@@ -556,6 +557,7 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 	wqe->unproc_sg_off = off;
 	wqe->wr.req.fp_done = qdma_wqe_complete;
 	wqe->wr.req.write = wr->write;
+	wqe->wr.req.eot = wr->eot;
 
 	if (wr->priv_data) {
 		memcpy(wqe->priv_data, wr->priv_data, queue->priv_data_len);
