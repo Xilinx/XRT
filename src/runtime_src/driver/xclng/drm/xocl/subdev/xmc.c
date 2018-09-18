@@ -203,7 +203,7 @@ static ssize_t xmc_12v_pex_curr_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 pes_val;
 
-	safe_read32(xmc, XMC_12V_PEX_I_IN_REG, &pes_val);
+	safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
 
 	return sprintf(buf, "%d\n", pes_val);
 }
@@ -215,7 +215,7 @@ static ssize_t xmc_12v_aux_curr_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read32(xmc, XMC_12V_AUX_I_IN_REG, &val);
+	safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
