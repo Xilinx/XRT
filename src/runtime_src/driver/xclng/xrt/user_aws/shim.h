@@ -237,6 +237,14 @@ public:
         uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
         size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+        // Execute and interrupt abstraction
+        int xclExecBuf(unsigned int cmdBO);
+        int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
+        int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
+        int xclExecWait(int timeoutMilliSec);
+        int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+        int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
+
         // Sanity checks
         int xclGetDeviceInfo2(xclDeviceInfo2 *info);
         static AwsXcl *handleCheck(void *handle);

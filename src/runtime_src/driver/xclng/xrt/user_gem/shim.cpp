@@ -826,7 +826,7 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         std::ifstream errorLog( path );
         if( !errorLog.is_open() ) {
             std::cout << "Error opening: " << path << std::endl;
-            return errno;
+            return -errno;
         } else {
             std::string line;
             std::getline( errorLog, line );
@@ -850,6 +850,7 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
     }
 
     if (!mLocked) {
+         std::cout << __func__ << " ERROR: Device is not locked" << std::endl;
         return -EPERM;
     }
 
@@ -1900,14 +1901,14 @@ int xclRemoveAndScanFPGA( void )
         std::ofstream userFile( dev_name_pf_user );
         if( !userFile.is_open() ) {
             perror( dev_name_pf_user.c_str() );
-            return errno;
+            return -errno;
         }
         userFile << input;
 
         std::ofstream mgmtFile( dev_name_pf_mgmt );
         if( !mgmtFile.is_open() ) {
             perror( dev_name_pf_mgmt.c_str() );
-            return errno;
+            return -errno;
         }
         mgmtFile << input;
     }

@@ -26,6 +26,9 @@
 #include "lib/xmahw.h"
 #include "lib/xmahw_private.h"
 
+static inline int32_t check_xmaapi_probe(XmaHwCfg *hwcfg) {
+    return 0;
+}
 
 static inline bool check_xmaapi_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg) {
     return true;
@@ -47,6 +50,7 @@ int main()
 
     hw_if.is_compatible = check_xmaapi_is_compatible;
     hw_if.configure = check_xmaapi_hw_configure;
+    hw_if.probe = check_xmaapi_probe;
 
     rc = xma_initialize("../system_cfg/check_cfg.yaml");
     if (rc != 0) {
