@@ -124,7 +124,8 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
 
 static ssize_t stream_post_bo(struct str_device *sdev,
 	struct stream_queue *queue, struct drm_gem_object *gem_obj,
-	loff_t offset, size_t len, bool write, struct kiocb *kiocb)
+	loff_t offset, size_t len, bool write,
+	struct xocl_qdma_req_header *header, struct kiocb *kiocb)
 {
 	struct drm_xocl_bo *xobj;
 	struct xocl_dev *xdev;
@@ -148,6 +149,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	wr.write = write;
 	wr.len = len;
 	wr.sgt = xobj->sgt;
+	wr.eot = (header->flags & XOCL_QDMA_REQ_FLAG_EOT) ? true : false;
 	if (kiocb) {
 		cb_arg.is_unmgd = false;
 		cb_arg.kiocb = kiocb;
@@ -174,7 +176,8 @@ failed:
 }
 
 static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
-	char __user *buf, size_t sz, bool write, struct kiocb *kiocb)
+	char __user *buf, size_t sz, bool write, char __user *u_header,
+	struct kiocb *kiocb)
 {
 	struct vm_area_struct	*vma;
 	struct xocl_dev *xdev;
@@ -182,6 +185,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	unsigned long buf_addr = (unsigned long)buf;
 	struct stream_async_arg cb_arg;
 	enum dma_data_direction dir;
+	struct xocl_qdma_req_header header;
 	u32 nents;
 	struct qdma_wr wr;
 	long	ret = 0;
@@ -199,6 +203,13 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		goto failed;
 	}
 
+	memset (&header, 0, sizeof (header));
+	if (u_header &&  copy_from_user((void *)&header, u_header,
+		sizeof (struct xocl_qdma_req_header))) {
+		xocl_err(&sdev->pdev->dev, "copy header failed.");
+		return -EFAULT;
+	}
+
 	xdev = xocl_get_xdev(sdev->pdev);
 
 	vma = find_vma(current->mm, buf_addr);
@@ -207,7 +218,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 			return -EINVAL;
 		}
 		ret = stream_post_bo(sdev, queue, vma->vm_private_data,
-			(buf_addr - vma->vm_start), sz, write, kiocb);
+			(buf_addr - vma->vm_start), sz, write, &header, kiocb);
 		return ret;
 	}
 
@@ -232,6 +243,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	wr.write = write;
 	wr.len = sz;
 	wr.sgt = unmgd.sgt;
+	wr.eot = (header.flags & XOCL_QDMA_REQ_FLAG_EOT) ? true : false;
 
 	if (kiocb) {
 		memcpy(&cb_arg.unmgd, &unmgd, sizeof (unmgd));
@@ -256,30 +268,6 @@ failed:
 	return ret;
 }
 
-static ssize_t queue_read(struct file *filp, char __user *buf, size_t sz,
-	loff_t *off)
-{
-	struct stream_queue	*queue;
-	struct str_device	*sdev;
-
-	queue = (struct stream_queue *)filp->private_data;
-	sdev = queue->sdev;
-
-	return queue_rw(sdev, queue, buf, sz, false, NULL);
-}
-
-static ssize_t queue_write(struct file *filp, const char __user *buf, size_t sz,
-	loff_t *off)
-{
-	struct stream_queue	*queue;
-	struct str_device	*sdev;
-
-	queue = (struct stream_queue *)filp->private_data;
-	sdev = queue->sdev;
-
-	return queue_rw(sdev, queue, (char *)buf, sz, true, NULL);
-}
-
 static int queue_wqe_cancel(struct kiocb *kiocb)
 {
 	struct stream_queue	*queue;
@@ -294,22 +282,22 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	int			i;
 	ssize_t			total = 0, ret = 0;
 
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 	sdev = queue->sdev;
 
+	if (nr != 2) {
+		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
+		return -EINVAL;
+	}
+
 	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
 
-	for (i = 0; i < nr; i++) {
-		ret = queue_rw(sdev, queue, iov[i].iov_base, iov[i].iov_len,
-			false, kiocb);
-		if (ret < 0) {
-			break;
-		}
+	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
+		false, iov[0].iov_base, kiocb);
+	if (ret > 0)
 		total += ret;
-	}
 
 	return total > 0 ? -EIOCBQUEUED : ret;
 }
@@ -319,22 +307,22 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	int			i;
 	ssize_t			total = 0, ret = 0;
 
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 	sdev = queue->sdev;
 
+	if (nr != 2) {
+		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
+		return -EINVAL;
+	}
+
 	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
 
-	for (i = 0; i < nr; i++) {
-		ret = queue_rw(sdev, queue, iov[i].iov_base, iov[i].iov_len,
-			true, kiocb);
-		if (ret < 0) {
-			break;
-		}
+	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
+		true, iov[0].iov_base, kiocb);
+	if (ret > 0)
 		total += ret;
-	}
 
 	return total > 0 ? -EIOCBQUEUED : ret;
 }
@@ -344,7 +332,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	unsigned long		i, nr;
+	unsigned long		nr;
 	ssize_t			total = 0, ret = 0;
 
 
@@ -352,7 +340,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 	sdev = queue->sdev;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || !nr) {
+	if (!iter_is_iovec(io) || nr != 2) {
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		goto end;
 	}
@@ -362,14 +350,10 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 		goto end;
 	}
 
-	for (i = 0; i < nr; i++) {
-		ret = queue_rw(sdev, queue, io->iov[i].iov_base,
-			io->iov[i].iov_len, true, NULL);
-		if (ret < 0) {
-			break;
-		}
+	ret = queue_rw(sdev, queue, io->iov[1].iov_base,
+		io->iov[1].iov_len, true, io->iov[0].iov_base, NULL);
+	if (ret > 0)
 		total += ret;
-	}
 
 	ret = total > 0 ? total : ret;
 
@@ -381,7 +365,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
 	struct stream_queue	*queue;
 	struct str_device	*sdev;
-	unsigned long		i, nr;
+	unsigned long		nr;
 	ssize_t			total = 0, ret = 0;
 
 
@@ -389,7 +373,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	sdev = queue->sdev;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || !nr) {
+	if (!iter_is_iovec(io) || nr != 2) {
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		goto end;
 	}
@@ -399,14 +383,10 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 		goto end;
 	}
 
-	for (i = 0; i < nr; i++) {
-		ret = queue_rw(sdev, queue, io->iov[i].iov_base,
-			io->iov[i].iov_len, false, NULL);
-		if (ret < 0) {
-			break;
-		}
+	ret = queue_rw(sdev, queue, io->iov[1].iov_base,
+		io->iov[1].iov_len, false, io->iov[0].iov_base, NULL);
+	if (ret > 0)
 		total += ret;
-	}
 
 	ret = total > 0 ? total : ret;
 
@@ -449,8 +429,6 @@ failed:
 
 static struct file_operations queue_fops = {
 	.owner = THIS_MODULE,
-	.read = queue_read,
-	.write = queue_write,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 	.write_iter = queue_write_iter,
 	.read_iter = queue_read_iter,

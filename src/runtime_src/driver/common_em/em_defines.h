@@ -58,10 +58,9 @@ const uint64_t mNullBO = 0xffffffff;
 namespace xclemulation {
 
 #define XOCL_BO_USERPTR (1 << 31)
-#define XOCL_BO_IMPORT  (1 << 30)
 #define XOCL_BO_EXECBUF (1 << 29)
 #define XOCL_BO_CMA     (1 << 28)
-#define XOCL_BO_P2P     (1 << 27)
+#define XOCL_BO_P2P     (1 << 30)
 
 #define XOCL_BO_DDR0 (1 << 0)
 #define XOCL_BO_DDR1 (1 << 1)
@@ -187,6 +186,8 @@ namespace xclemulation {
     unsigned              flags;
     uint32_t              handle;
     uint32_t              topology;
+    std::string           filename;
+    int                   fd;
   };
 
   static inline unsigned xocl_bo_ddr_idx(unsigned flags)
@@ -205,14 +206,14 @@ namespace xclemulation {
     return (bo->flags & XOCL_BO_USERPTR);
   }
 
-  static inline bool xocl_bo_import(const struct drm_xocl_bo *bo)
-  {
-    return (bo->flags & XOCL_BO_IMPORT);
-  }
-
   static inline bool xocl_bo_execbuf(const struct drm_xocl_bo *bo)
   {
     return (bo->flags & XOCL_BO_EXECBUF);
+  }
+  
+  static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
+  {
+    return (bo->flags & XOCL_BO_P2P);
   }
 
 }
