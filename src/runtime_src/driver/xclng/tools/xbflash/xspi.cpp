@@ -576,10 +576,6 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
             if (startAddress.size()) {
                 // Finish the old record
                 recordList.push_back(record);
-                
-                //Ensure we set bitstream guard to the first location
-                if(record.mStartAddress < BITSTREAM_START_LOC)
-                    BITSTREAM_START_LOC = record.mStartAddress;
             }
             // Start a new record
             record.mStartAddress = std::stoi(newAddress, 0 , 16);
@@ -595,6 +591,9 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     mcsStream.seekg(0);
     std::cout << "INFO: ***Found " << recordList.size() << " ELA Records" << std::endl;
 
+    //Ensure we set bitstream guard to the first location
+    BITSTREAM_START_LOC = recordList.front().mStartAddress;
+    
     return programXSpi(mcsStream);
 }
 
@@ -667,7 +666,7 @@ bool XSPI_Flasher::sectorErase(unsigned Addr, unsigned erase_cmd) {
         //Select sector when only using 24bit address  
         if(!setSector(Addr)) {
             std::cout << "ERROR: Unable to set sector for sectorErase cmd" << std::endl;
-            return -EINVAL;
+            return false;
         } 
     }        
 
@@ -744,7 +743,8 @@ bool XSPI_Flasher::writeBitstreamGuard(unsigned Addr) {
     unsigned char* write_buffer = &WriteBuffer[READ_WRITE_EXTRA_BYTES];
     
     //Clear whatever was at bitstream guard location
-    sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE);
+    if(!sectorErase(Addr, COMMAND_4KB_SUBSECTOR_ERASE))
+        return false;
     
     //Write fallback instruction sequence
     memcpy(write_buffer, BITSTREAM_GUARD, sizeof(BITSTREAM_GUARD));
@@ -1108,7 +1108,7 @@ bool XSPI_Flasher::writePage(unsigned Addr, uint8_t writeCmd)
         //Select sector when only using 24bit address  
         if(!setSector(Addr)) {
             std::cout << "ERROR: Unable to set sector for writePage cmd" << std::endl;
-            return -EINVAL;
+            return false;
         } 
     }      
     
@@ -1468,7 +1468,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
             //std::cout << "DEBUG: Erasing subsector @ 0x" << std::hex << j << std::dec << std::endl;
             if(!sectorErase(j, COMMAND_4KB_SUBSECTOR_ERASE)) {
                 std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
-                return false;
+                return -EINVAL;
             }
             nanosleep(&req, 0); //Pause before next sector erase
         }
@@ -1494,7 +1494,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream)
         bool ready = isFlashReady();
         if(!ready){
             std::cout << "\nERROR: Unable to get flash ready" << std::endl;
-            return false;
+            return -EINVAL;
         }
 
         clearBuffers();
