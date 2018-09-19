@@ -121,7 +121,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mReClock2 = (reClock2FuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");
   mLockDevice = (lockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
   mUnlockDevice = (unlockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnlockDevice");
-  mGetDeviceInfo = (getDeviceInfoFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfo2");
+  mGetDeviceInfo = (getDeviceInfoFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfoExt");
 
   mCreateWriteQueue = (createWriteQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateWriteQueue");
   mCreateReadQueue = (createReadQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateReadQueue");

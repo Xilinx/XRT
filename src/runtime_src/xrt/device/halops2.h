@@ -85,7 +85,7 @@ private:
   typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
   typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
 
-  typedef int (* getDeviceInfoFuncType)(xclDeviceHandle handle, xclDeviceInfo2 *info);
+  typedef int (* getDeviceInfoFuncType)(xclDeviceHandle handle, xclDeviceInfo2 *info, size_t size);
 
   typedef size_t (* getDeviceTimeFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
