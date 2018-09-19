@@ -62,11 +62,10 @@ int get_device_list(XmaHALDevice   *xlnx_devices,
         xlnx_devices[i].handle = xclOpen(i, NULL, XCL_QUIET);
         printf("get_device_list xclOpen handle = %p\n",
             xlnx_devices[i].handle);
-        rc = xclGetDeviceInfoExt(xlnx_devices[i].handle, &xlnx_devices[i].info,
-            sizeof (xlnx_devices[i].info));
+        rc = xclGetDeviceInfo2(xlnx_devices[i].handle, &xlnx_devices[i].info);
         if (rc != 0)
         {
-            xma_logmsg("xclGetDeviceInfoExt failed for device id: %d, rc=%d\n",
+            xma_logmsg("xclGetDeviceInfo2 failed for device id: %d, rc=%d\n",
                         i, rc);
             break;
         }
