@@ -1641,87 +1641,19 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
 
-int xclGetErrorStatusExt(xclDeviceHandle handle, xclErrorStatus *info, size_t size)
+int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     if (!drv) {
         return -1;
     }
-
-    xclErrorStatus err;
-    int ret = drv->xclGetErrorStatus(&err);
-    if (ret != 0)
-        return ret;
-
-    // Do not copy more than what user is asking for.
-    memcpy((void *)info, (void *)&err, std::min(size, sizeof (err)));
-    return 0;
-}
-
-int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
-{
-    // Only for obtain the size of original data structure.
-    struct xclErrorStatus_obsolete {
-            unsigned  mNumFirewalls;
-            struct xclAXIErrorStatus mAXIErrorStatus[8];
-            struct xclPCIErrorStatus mPCIErrorStatus;
-    };
-
-    return xclGetErrorStatusExt(handle, info,
-        sizeof (struct xclErrorStatus_obsolete));
-}
-
-int xclGetDeviceInfoExt(xclDeviceHandle handle, xclDeviceInfo2 *info, size_t size)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    if (drv == nullptr)
-        return -ENODEV;
-
-    xclDeviceInfo2 devinfo;
-    int ret = drv->xclGetDeviceInfo2(&devinfo);
-    if (ret != 0)
-        return ret;
-
-    // Do not copy more than what user is asking for.
-    memcpy((void *)info, (void *)&devinfo, std::min(size, sizeof (devinfo)));
-    return 0;
+    return drv->xclGetErrorStatus(info);
 }
 
 int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 {
-    // Only for obtain the size of original data structure.
-    struct xclDeviceInfo2_obsolete {
-      unsigned mMagic;
-      char mName[256];
-      unsigned short mHALMajorVersion;
-      unsigned short mHALMinorVersion;
-      unsigned short mVendorId;
-      unsigned short mDeviceId;
-      unsigned short mSubsystemId;
-      unsigned short mSubsystemVendorId;
-      unsigned short mDeviceVersion;
-      size_t mDDRSize;
-      size_t mDataAlignment;
-      size_t mDDRFreeSize;
-      size_t mMinTransferSize;
-      unsigned short mDDRBankCount;
-      unsigned short mOCLFrequency[4];
-      unsigned short mPCIeLinkWidth;
-      unsigned short mPCIeLinkSpeed;
-      unsigned short mDMAThreads;
-      short mOnChipTemp;
-      short mFanTemp;
-      unsigned short  mVInt;
-      unsigned short  mVAux;
-      unsigned short  mVBram;
-      float mCurrent;
-      unsigned short mNumClocks;
-      unsigned short mFanSpeed;
-      bool mMigCalib;
-    };
-
-    return xclGetDeviceInfoExt(handle, info,
-        sizeof (struct xclDeviceInfo2_obsolete));
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclGetDeviceInfo2(info) : -ENODEV;
 }
 
 unsigned int xclVersion ()
@@ -1956,35 +1888,10 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
 }
 
-int xclGetUsageInfoExt(xclDeviceHandle handle, xclDeviceUsage *info, size_t size)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    if (drv == nullptr)
-        return -ENODEV;
-
-    xclDeviceUsage usage;
-    int ret = drv->xclGetUsageInfo(&usage);
-    if (ret != 0)
-        return ret;
-
-    // Do not copy more than what user is asking for.
-    memcpy((void *)info, (void *)&usage, std::min(size, sizeof (usage)));
-    return 0;
-}
-
 int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
 {
-    // Only for obtain the size of original data structure.
-    struct xclDeviceUsage_obsolete {
-        size_t h2c[8];
-        size_t c2h[8];
-        size_t ddrMemUsed[8];
-        unsigned ddrBOAllocated[8];
-        unsigned totalContexts;
-        uint64_t xclbinId[4];
-    };
-
-    return xclGetUsageInfoExt(handle, info, sizeof (struct xclDeviceUsage_obsolete));
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclGetUsageInfo(info) : -ENODEV;
 }
 
 int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size,
