@@ -109,7 +109,7 @@ class device : public xrt::hal::device
     assert(0);
     return 0;
 #else
-    return m_ops->mGetDeviceInfo(m_handle,info,sizeof(hal2::device_info));
+    return m_ops->mGetDeviceInfo(m_handle,info);
 #endif
   }
 
