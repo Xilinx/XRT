@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 usage()
 {
     echo "Usage: xrtdeps.sh [options]"
