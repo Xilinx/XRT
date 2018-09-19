@@ -145,6 +145,7 @@ namespace xocl {
   uint64_t XOCLShim::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
     if (type == XCL_PERF_MON_MEMORY)         return mPerfMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_ACCEL)     return mAccelMonBaseAddress[slotNum];
+    if (type == XCL_PERF_MON_STR)       return mStreamMonBaseAddress[slotNum];
     return 0;
   }
 
@@ -183,6 +184,8 @@ namespace xocl {
       }
       return count;
     }
+    if (type == XCL_PERF_MON_STR)
+      return mStreamProfilingNumberSlots;
     return 0;
   }
 
@@ -194,6 +197,9 @@ namespace xocl {
     }
     if (type == XCL_PERF_MON_ACCEL) {
       str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+    }
+    if (type == XCL_PERF_MON_STR) {
+      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
     }
     strncpy(slotName, str.c_str(), length);
   }
@@ -544,6 +550,43 @@ namespace xocl {
           mLogStream << "Reading SAM ...CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
           mLogStream << "Reading SAM ...CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
         }
+      }
+    }
+    /*
+     * Read SDx Axi Stream Monitor Data
+     */
+    if (mLogStream.is_open()) {
+        mLogStream << "Reading SSPMs.." << std::endl;
+    }
+    numSlots = getPerfMonNumberSlots(XCL_PERF_MON_STR);
+    for (uint32_t s=0; s < numSlots; s++) {
+      baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_STR,s);
+      // Sample Register
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_SAMPLE_OFFSET, 
+                      &sampleInterval, 4);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_NUM_TRANX_OFFSET, 
+                      &counterResults.StrNumTranx, 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_DATA_BYTES_OFFSET, 
+                      &counterResults.StrDataBytes, 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_BUSY_CYCLES_OFFSET, 
+                      &counterResults.StrBusyCycles, 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_STALL_CYCLES_OFFSET, 
+                      &counterResults.StrStallCycles, 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
+                      &counterResults.StrStarveCycles, 8);
+      if (mLogStream.is_open()) {
+        mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
+        mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
+        mLogStream << "Reading SSPM ...DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
+        mLogStream << "Reading SSPM ...BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
+        mLogStream << "Reading SSPM ...StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
+        mLogStream << "Reading SSPM ...StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
       }
     }
     return size;

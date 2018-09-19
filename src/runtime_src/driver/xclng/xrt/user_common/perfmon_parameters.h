@@ -100,6 +100,15 @@
 /* SAM Trace Control Masks */
 #define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
 
+/************************** SDx Axi Stream Monitor (SSPM) *********************/
+
+#define XSSPM_SAMPLE_OFFSET            0x20
+#define XSSPM_NUM_TRANX_OFFSET         0x80
+#define XSSPM_DATA_BYTES_OFFSET        0x88
+#define XSSPM_BUSY_CYCLES_OFFSET       0x90
+#define XSSPM_STALL_CYCLES_OFFSET      0x98
+#define XSSPM_STARVE_CYCLES_OFFSET     0xA0
+
 /************************ APM Constant Definitions ****************************/
 
 /* Register offsets of AXIMONITOR in the Device Config */
