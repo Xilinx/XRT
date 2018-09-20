@@ -687,7 +687,8 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		xocl_err(&pdev->dev, "failed to register firewall\n");
 		goto fail_firewall;
 	}
-	platform_axilite_flush(lro);
+	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
 		dev_info->subdev_num);
@@ -700,7 +701,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto fail_all_subdev;
-	xocl_mb_reset(lro);
 
 	ret = xocl_ctx_init(&pdev->dev, &lro->ctx_table,
 		MGMT_PROC_TABLE_HASH_SZ, proc_hash, proc_cmp);

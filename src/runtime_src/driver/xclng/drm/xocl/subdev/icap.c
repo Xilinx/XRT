@@ -136,7 +136,7 @@ struct icap {
 
 static inline u32 reg_rd(void __iomem *reg)
 {
-	return ioread32(reg);
+	return XOCL_READ_REG32(reg);
 }
 
 static inline void reg_wr(void __iomem *reg, u32 val)
@@ -1096,6 +1096,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	const struct axlf_section_header* primaryHeader = 0;
 	const struct axlf_section_header* secondaryHeader = 0;
 	const struct axlf_section_header* mbHeader = 0;
+	bool load_mbs = false;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1132,6 +1133,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
 			ICAP_INFO(icap, "stashed mb sche binary");
+			load_mbs = true;
 		}
 	}
 
@@ -1146,8 +1148,14 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
 			ICAP_INFO(icap, "stashed mb mgmt binary");
+			load_mbs = true;
 		}
 	}
+
+	//For XMC we need to load fw here.
+	//TODO: Can we move this to probe? We need .dsabin parsed before we do subdev creation
+	if(load_mbs && XMC_DEV(xdev))
+		xocl_mb_reset(xdev);
 
 	/* Retry with the legacy dsabin. */
 	if(err) {
