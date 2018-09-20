@@ -1007,16 +1007,10 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     debugIpDataHdr.m_index = ptDebugIPData.get<uint8_t>("m_index");
     debugIpDataHdr.m_properties = ptDebugIPData.get<uint8_t>("m_properties");
 
-    boost::optional<uint8_t> m_major = ptDebugIPData.get_optional<uint8_t>("m_major");
-    if ( m_major.is_initialized() ) {
-      debugIpDataHdr.m_major = (uint8_t) m_major.get();
-    }
-
-    boost::optional<uint8_t> m_minor = ptDebugIPData.get_optional<uint8_t>("m_minor");
-    if ( m_minor.is_initialized() ) {
-      debugIpDataHdr.m_minor = (uint8_t) m_minor.get();
-    }
-
+    // Optional value, will set to 0 if not set (as it was initialized)
+    debugIpDataHdr.m_major = ptDebugIPData.get<uint8_t>("m_major", 0);
+    // Optional value, will set to 0 if not set (as it was initialized)
+    debugIpDataHdr.m_minor = ptDebugIPData.get<uint8_t>("m_minor", 0);
 
     std::string sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
     debugIpDataHdr.m_base_address = XclBinUtil::stringToUInt64(sBaseAddress);

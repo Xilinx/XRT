@@ -1,5 +1,9 @@
 #!/bin/sh
 
+echo "Unloading old XRT Linux kernel modules"
+modprobe -r xocl
+modprobe -r xclmgmt
+
 echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
 dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
 find /lib/modules -type f -name xocl.ko -delete

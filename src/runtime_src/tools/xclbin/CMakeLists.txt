@@ -73,3 +73,20 @@ target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
 
 install (TARGETS xclbincat xclbinsplit xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
+=======
+find_package(GTest)
+if (GTEST_FOUND)
+  enable_testing()
+  message (STATUS "GTest include dirs: '${GTEST_INCLUDE_DIRS}'")
+  include_directories(${GTEST_INCLUDE_DIRS})
+  add_executable(xclbintest unittests/main.cpp unittests/test.cpp)
+  message (STATUS "GTest libraries: '${GTEST_BOTH_LIBRARIES}'")
+  target_link_libraries(xclbintest ${GTEST_BOTH_LIBRARIES} pthread)
+else()
+  message (STATUS "GTest was not found, skipping generation of test executables")
+endif()
+
+# -----------------------------------------------------------------------------
+
+install (TARGETS xclbincat xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+>>>>>>> origin

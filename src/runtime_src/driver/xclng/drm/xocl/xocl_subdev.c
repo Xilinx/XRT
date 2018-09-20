@@ -76,6 +76,43 @@ static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 error:
 	platform_device_put(pldev);
 	return ERR_PTR(retval);
+}	
+
+uint32_t xocl_subdev_get_subid(uint32_t ip_type){
+
+	uint32_t sub_id = INVALID_SUBDEVICE;
+	switch(ip_type){
+		case IP_DNASC:
+			sub_id = XOCL_SUBDEV_DNA;
+			break;
+		default:
+			printk(KERN_ERR "%s Can't find the IP type, maybe a new IP?", __func__);
+			break;
+	}
+	return sub_id;
+}
+int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, uint32_t subdev_id){
+
+	void *target;
+	
+	switch(subdev_id){
+		case XOCL_SUBDEV_DNA:
+			target = &(struct xocl_subdev_info)XOCL_DEVINFO_DNA;
+			break;
+		default:
+			printk(KERN_ERR "Can't find the IP type, maybe a new IP?");
+			return -ENODEV;
+	}
+
+	memcpy(subdev_info, target, sizeof(*subdev_info));
+
+	if(subdev_info->num_res > NUMS_OF_DYNA_IP_ADDR)
+		subdev_info->num_res = NUMS_OF_DYNA_IP_ADDR;
+
+	memcpy(res, subdev_info->res, sizeof(*res)*subdev_info->num_res);
+
+	subdev_info->res = res;
+	return 0;
 }
 
 int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
@@ -143,6 +180,18 @@ failed:
 	return ret;
 }
 
+void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, uint32_t subdev_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	if (subdev_id==INVALID_SUBDEVICE)
+		return;
+	if (core->subdevs[subdev_id].pldev) {
+		device_release_driver(&core->subdevs[subdev_id].pldev->dev);
+		platform_device_unregister(core->subdevs[subdev_id].pldev);
+		core->subdevs[subdev_id].pldev = NULL;
+	}
+}
+
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -196,6 +245,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;
+	core->priv.subdev_num = in->subdev_num;
 	core->priv.user_bar = in->user_bar;
 	core->priv.intr_bar = in->intr_bar;
 	core->priv.flags = in->flags;

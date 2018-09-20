@@ -31,7 +31,13 @@
 #include <gnu/libc-version.h>
 #include "devices.h"
 
+// Full list of discovered supported devices. Index 0 ~ (num_ready - 1) are
+// boards ready for use. The rest, if any, are not ready, according to what
+// is indicated by driver's "ready" sysfs entry. The applications only see
+// ready-for-use boards since xclProbe returns num_ready, not the size of the
+// full list.
 std::vector<xcldev::pci_device_scanner::device_info> xcldev::pci_device_scanner::device_list;
+int xcldev::pci_device_scanner::num_ready = 0;
 
 /*
  * get_val_string()
@@ -193,73 +199,111 @@ bool xcldev::pci_device_scanner::print_system_info()
 /*
  * print_pci_info()
  */
-bool xcldev::pci_device_scanner::print_pci_info()
+void xcldev::pci_device_scanner::print_pci_info(void)
 {
     auto print = [](struct pci_device& dev) {
-        std::cout << std::hex << dev.device_id << ":0x" << dev.subsystem_id << ":[" << std::dec;
+        std::cout << std::hex;
+        std::cout << ":[" << std::setw(2) << std::setfill('0') << dev.bus
+            << ":" << std::setw(2) << std::setfill('0') << dev.dev
+            << "." << dev.func << "]";
+
+        std::cout << std::hex;
+        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev.device_id;
+        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev.subsystem_id;
+
+        std::cout << std::dec;
+        std::cout << ":[";
         if(!dev.driver_name.empty()) {
+            std::cout << dev.driver_name << ":" << dev.driver_version << ":";
             if( dev.instance == INVALID_DEV ) {
-                std::cout << dev.driver_name << ":" << dev.driver_version << ":" << "???" << "]" << std::endl;
+                std::cout << "???";
             } else {
-                std::cout << dev.driver_name << ":" << dev.driver_version << ":" << dev.instance << "]" << std::endl;
+                std::cout << dev.instance;
             }
-        } else {
-            std::cout << "]" << std::endl;
         }
+        std::cout << "]" << std::endl;;
     };
 
     int i = 0;
-    for (auto mdev : mgmt_devices) {
-        std::cout << "[" << i << "]" << "mgmt:0x";
-        print(mdev);
-        for (auto udev : user_devices) {
-            if ( (mdev.domain == udev.domain) &&
-                 (mdev.bus == udev.bus) &&
-                 (mdev.dev == udev.dev) )
+    int disabled = 0;
+    for (auto& dev : device_list) {
+        bool ready = false;
+
+        for (auto& mdev : mgmt_devices) {
+            if ((mdev.domain == dev.domain) &&
+                 (mdev.bus == dev.bus) &&
+                 (mdev.dev == dev.device))
             {
-                std::cout << "[" << i << "]" << "user:0x";
-                print(udev);
+                ready = mdev.is_ready;
+                std::cout << (ready ? "" : "*");
+                std::cout << "[" << i << "]" << "mgmt";
+                print(mdev);
+                break;
             }
         }
+
+        for (auto& udev : user_devices) {
+            if ((udev.domain == dev.domain) &&
+                 (udev.bus == dev.bus) &&
+                 (udev.dev == dev.device))
+            {
+                std::cout << (ready ? "" : "*");
+                std::cout << "[" << i << "]" << "user";
+                print(udev);
+                break;
+            }
+        }
+
+        if (!ready)
+            disabled++;
         ++i;
     }
 
-    return true;
+    if (disabled != 0) {
+        std::cout << "WARNING: " << disabled << " card(s) marked by '*' are not ready, "
+            << "run xbutil flash scan -v to further check the details."
+            << std::endl;
+    }
 }
 
 /*
  * add_to_device_list()
  */
-void xcldev::pci_device_scanner::add_to_device_list( bool skipValidDeviceCheck )
+void xcldev::pci_device_scanner::add_to_device_list(void)
 {
+    int good_dev = 0;
+
     for (auto &mdev : mgmt_devices) {
         struct device_info temp = { 0, mdev.instance,
                                     "", mdev.device_name,
                                     mdev.user_bar, mdev.user_bar_size,
                                     mdev.domain, mdev.bus, mdev.dev,
                                     mdev.func, 0, mdev.flash_type,
-                                    mdev.board_name, mdev.is_mfg };
+                                    mdev.board_name, mdev.is_mfg, mdev.is_ready };
 
-        if( skipValidDeviceCheck ) {
+        // Boards not ready go to end of list.
+        if(!mdev.is_ready) {
             device_list.emplace_back(temp);
             continue;
         }
+        // Boards ready go to front of list.
         for (auto &udev : user_devices) {
             if( (mdev.domain == udev.domain) &&
                     (mdev.bus == udev.bus) &&
                     (mdev.dev == udev.dev) )
-
             {
                 if( (temp.user_instance != INVALID_DEV) && (temp.mgmt_instance != INVALID_DEV) ) {
                     temp.user_instance = udev.instance;
                     temp.user_name = udev.device_name;
                     temp.user_func = udev.func;
 
-                    device_list.emplace_back(temp);
+                    device_list.emplace(device_list.begin(), temp);
+                    good_dev++;
                 }
             }
         }
     }
+    num_ready = good_dev;
 }
 
 /*
@@ -293,7 +337,6 @@ int xcldev::pci_device_scanner::scan(bool print)
     mgmt_devices.clear();
     user_devices.clear();
     device_list.clear();
-    bool foundNoDriverDev = false;
 
     if( print ) {
         if( !print_system_info() ) {
@@ -348,24 +391,28 @@ int xcldev::pci_device_scanner::scan(bool print)
         device.subsystem_id = get_val_long(subdir, "subsystem_device");
 
         struct xocl_board_info *board_info;
+        struct xocl_board_private *priv;
         bool is_mgmt = false;
 
-        if ((board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
+        if ((board_info = get_mgmt_devinfo(device.vendor_id,
+            device.device_id, device.subsystem_id))) {
             is_mgmt = true;
-            bar = board_info->priv_data->user_bar;
-        } else if ((board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
-            bar = board_info->priv_data->user_bar;
+        } else if ((board_info = get_user_devinfo(device.vendor_id,
+            device.device_id, device.subsystem_id))) {
+            is_mgmt = false;
         } else {
             continue;
         }
 
+        priv = board_info->priv_data;
+        bar = priv->user_bar;
         device.user_bar = bar;
         device.user_bar_size = bar_size(subdir, bar);
-        if (board_info->priv_data->flash_type)
-            device.flash_type = board_info->priv_data->flash_type;
-        if (board_info->priv_data->board_name)
-            device.board_name = board_info->priv_data->board_name;
-        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
+        if (priv->flash_type)
+            device.flash_type = priv->flash_type;
+        if (priv->board_name)
+            device.board_name = priv->board_name;
+        device.is_mfg = ((priv->flags & XOCL_DSAFLAG_MFG) != 0);
 
         //Get the driver name.
         char driverName[DRIVER_BUF_SIZE];
@@ -375,7 +422,6 @@ int xcldev::pci_device_scanner::scan(bool print)
         if( err >= 0 ) {
             driverName[err] = 0; // null terminate after successful readlink()
         } else {
-            foundNoDriverDev = true;
             add_device(device); // add device even if it is incomplete
             continue;
         }
@@ -399,6 +445,7 @@ int xcldev::pci_device_scanner::scan(bool print)
 
         if (is_mgmt) {
             device.instance = get_val_long(subdir2, "instance");
+            device.is_ready = get_val_long(subdir2, "ready");
         } else {
             std::string drm_dir = subdir2;
             drm_dir += "/drm";
@@ -423,16 +470,9 @@ int xcldev::pci_device_scanner::scan(bool print)
         add_to_device_list();
     }
 
-    if ( print ) {
-        if (foundNoDriverDev) {
-            std::cout << "WARNING: Found devices without driver, "
-                << "run xbutil flash scan to check if DSA is flashed on FPGA."
-                << std::endl;
-        }
-        return print_pci_info() ? 0 : -1;
-    } else {
-        return 0;
-    }
+    if (print)
+        print_pci_info();
+    return 0;
 }
 
 bool xcldev::pci_device_scanner::get_mgmt_device_name(std::string &devName , unsigned int devIdx)
@@ -451,17 +491,33 @@ int xcldev::pci_device_scanner::get_feature_rom_bar_offset(unsigned int devIdx,
 {
     int ret = -ENOENT;
 
-    if( !mgmt_devices.empty() )
+    if (devIdx >= device_list.size())
+        return ret;
+    auto& dev = device_list[devIdx];
+
+    pci_device *mdevice = nullptr;
+    for (auto& mdev : mgmt_devices) {
+        if ((mdev.domain == dev.domain) &&
+             (mdev.bus == dev.bus) &&
+             (mdev.dev == dev.device))
+        {
+            mdevice = &mdev;
+            break;
+        }
+    }
+
+    if(mdevice != nullptr)
     {
-        pci_device device = mgmt_devices[ devIdx ];
         struct xocl_board_info *board_info;
 
-        if ((board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id))) {
-            for (unsigned int i = 0; i < board_info->priv_data->subdev_num; i++)
+        if ((board_info = get_mgmt_devinfo(mdevice->vendor_id,
+            mdevice->device_id, mdevice->subsystem_id))) {
+            struct xocl_board_private *priv = board_info->priv_data;
+            for (unsigned int i = 0; i < priv->subdev_num; i++)
             {
-                if (board_info->priv_data->subdev_info[i].id == XOCL_SUBDEV_FEATURE_ROM)
+                if (priv->subdev_info[i].id == XOCL_SUBDEV_FEATURE_ROM)
                 {
-                    offset = board_info->priv_data->subdev_info[i].res[0].start;
+                    offset = priv->subdev_info[i].res[0].start;
                     ret = 0;
                     break;
                 }
@@ -470,82 +526,4 @@ int xcldev::pci_device_scanner::get_feature_rom_bar_offset(unsigned int devIdx,
     }
 
     return ret;
-}
-
-int xcldev::pci_device_scanner::scan_without_driver( void )
-{
-    // need to clear the following lists: mgmt_devices, user_devices, xcldev::device_list
-    mgmt_devices.clear();
-    user_devices.clear();
-    device_list.clear();
-
-    std::string dirname;
-    DIR *dir;
-    struct dirent *entry;
-    unsigned int dom, bus, dev, func;
-
-    dirname = ROOT_DIR;
-    dirname += "/devices/";
-    dir = opendir(dirname.c_str());
-    if( !dir ) {
-        perror( "opendir" );
-        return errno;
-    }
-
-    while( ( entry = readdir(dir) ) ) {
-        if( entry->d_name[0] == '.' ) {
-            continue;
-        }
-
-        if( sscanf(entry->d_name, "%x:%x:%x.%d", &dom, &bus, &dev, &func) < 4 ) {
-            std::cout << "scan: Couldn't parse entry name " << entry->d_name << std::endl;
-        }
-
-        std::string subdir = dirname + entry->d_name;
-
-        pci_device device; // generic pci device
-        device.domain = dom;
-        device.bus = bus;
-        device.dev = dev;
-        device.func = func;
-        device.device_name = entry->d_name;
-        device.vendor_id = get_val_long(subdir, "vendor");
-        if( ( device.vendor_id != XILINX_ID ) && ( device.vendor_id != ADVANTECH_ID ) ) {
-            continue;
-        }
-        device.device_id = get_val_long(subdir, "device");
-        device.subsystem_id = get_val_long(subdir, "subsystem_device");
-
-        struct xocl_board_info *board_info;
-
-        board_info = get_mgmt_devinfo(device.vendor_id, device.device_id, device.subsystem_id);
-        if(!board_info) {
-            board_info = get_user_devinfo(device.vendor_id, device.device_id, device.subsystem_id);
-        }
-        if (!board_info) {
-            continue;
-        }
-
-        device.user_bar = board_info->priv_data->user_bar;
-        device.user_bar_size = bar_size(subdir, device.user_bar);
-        if (board_info->priv_data->flash_type)
-            device.flash_type = board_info->priv_data->flash_type;
-        if (board_info->priv_data->board_name)
-            device.board_name = board_info->priv_data->board_name;
-        device.is_mfg = ((board_info->priv_data->flags & XOCL_DSAFLAG_MFG) != 0);
-        if( !add_device(device) )
-        {
-            closedir( dir );
-            return -1;
-        }
-    }
-
-    add_to_device_list( true ); // skip valid device check
-
-    if( closedir(dir) < 0 ) {
-        perror( "closedir" );
-        return errno;
-    }
-
-    return 0;
 }

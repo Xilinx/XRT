@@ -173,6 +173,8 @@ struct xlnx_dma_dev {
 	/**< DMA private device to hold the qdma que details */
 	u8 intr_coal_en;
 	/**< flag to indicate the interrupt aggregation enable status */
+	u32 pipe_stm_max_pkt_size;
+	/**< dsa configured max pkt size that STM can support */
 	struct intr_coal_conf  *intr_coal_list;
 	/**< list of interrupt coalescing configuration for each vector */
 	unsigned int dev_ulf_extra[0];

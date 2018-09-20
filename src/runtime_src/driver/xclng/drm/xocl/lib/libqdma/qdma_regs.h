@@ -528,13 +528,17 @@ struct qdma_c2h_wrb_wb {
 
 #define STM_REG_BASE			0x02000000
 #define STM_REG_IND_CTXT_DATA_BASE	0x0
+#define STM_REG_IND_CTXT_DATA3		0xC
 #define STM_REG_IND_CTXT_CMD		0x14
 #define STM_REG_REV			0x18
 #define STM_REG_C2H_DATA8		0x20
+#define STM_REG_H2C_MODE		0x30
 #define STM_REG_IND_CTXT_REG_COUNT	5
-#define STM_SUPPORTED_REV		0x3
+#define STM_SUPPORTED_REV		0x6
 #define STM_ENABLED_DEVICE		0x6aa0
 #define	STM_MAX_SUPPORTED_QID		64
+#define STM_MAX_PKT_SIZE		4096
+#define STM_PORT_MAP			0xE1E1
 
 enum ind_stm_addr {
 	STM_IND_ADDR_C2H_MAP=0x2,
@@ -550,16 +554,23 @@ enum ind_stm_cmd_op {
 };
 
 #define S_STM_CTXT_QID		16
-#define S_STM_CTXT_C2H_TDEST	0
-#define S_STM_CTXT_C2H_SLR	24
+#define S_STM_CTXT_C2H_SLR	8
+#define S_STM_CTXT_C2H_TDEST_H	0
+#define S_STM_CTXT_C2H_TDEST_L	24
 #define S_STM_CTXT_C2H_FID	16
-#define S_STM_CTXT_H2C_TDEST	0
-#define S_STM_CTXT_H2C_SLR	24
+#define S_STM_CTXT_H2C_SLR	8
+#define S_STM_CTXT_H2C_TDEST_H	0
+#define S_STM_CTXT_H2C_TDEST_L	24
 #define S_STM_CTXT_H2C_FID	16
 #define S_STM_CTXT_PKT_LIM	8
 #define S_STM_CTXT_MAX_ASK	0
 #define S_STM_CTXT_DPPKT	24
 #define S_STM_CTXT_LOG2_DPPKT	18
+
+#define S_STM_CMD_QID		0
+#define S_STM_CMD_FID		12
+#define S_STM_CMD_ADDR		24
+#define S_STM_CMD_OP		28
 
 /*
  * HW API

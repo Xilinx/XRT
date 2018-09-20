@@ -1,0 +1,16 @@
+SystemCfg:
+    - logfile:    ./output.log
+    - loglevel:   3         
+    - dsa:        xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_2 
+    - pluginpath: /plugin/path
+    - xclbinpath: /xcl/path
+    - ImageCfg:
+        xclbin: filename1.xclbin
+        zerocopy: disable
+        device_id_map: [1, 2, 3]
+        KernelCfg: [[ instances: 6,
+                      function: H264,
+                      plugin:  libtstencoderplg.so,
+                      vendor: Xilinx,
+                      name: virtual_encoder,
+                      ddr_map: [0, 1, 2]]]

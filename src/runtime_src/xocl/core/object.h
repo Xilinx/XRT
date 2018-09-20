@@ -17,18 +17,15 @@
 #ifndef xocl_core_object_h_
 #define xocl_core_object_h_
 
-#include "CL/cl.h"
-#include "xocl/api/khronos/khrICD.h"
-
 #include "xocl/config.h"
+#include "xocl/api/icd/ocl_icd_bindings.h"
 
+#include <CL/cl.h>
 #include <type_traits>
 
 #if defined(__GNUC__) && __GNUC__ >= 6
 # pragma GCC diagnostic ignored "-Wignored-attributes"
 #endif
-
-struct _cl_icd_dispatch; // TBD
 
 namespace xocl {
 
@@ -50,21 +47,21 @@ class stream_mem;
 template <typename XOCLTYPE, typename XCLTYPE, typename CLTYPE>
 class object
 {
-  const KHRicdVendorDispatch* m_dispatch;
+  const _cl_icd_dispatch* m_dispatch;
 
 public:
   typedef XOCLTYPE xocl_type;
   typedef XCLTYPE  xcl_type;
   typedef CLTYPE   cl_type;
 
-  object() : m_dispatch(&cl_khr_icd_dispatch) {}
+  object() : m_dispatch(&cl_icd_dispatch) {}
 };
 
 namespace detail {
 
 template <typename CLTYPE>
 struct cl_object_traits;
-  
+
 template <typename CLTYPE>
 struct cl_object_traits<CLTYPE*>
 {
@@ -95,7 +92,7 @@ struct cl_object_traits<CLTYPE*>
  *
  * This function simply does a static downcast of the API object.
  * The static downcast is safe as long as the CL API object is a
- * standard layout object. 
+ * standard layout object.
  */
 template <typename CLTYPE>
 typename detail::cl_object_traits<CLTYPE>::xocl_type*
@@ -164,7 +161,7 @@ retobj(CLTYPE c)
 }
 
 // Wire in old xilinxopencl classes until their content is moved
-// to xocl:: objects. the XCLTYPE disappears once everything is 
+// to xocl:: objects. the XCLTYPE disappears once everything is
 // ported to new xocl objects.
 class _xcl_platform_id;
 class _xcl_device_id;
@@ -191,5 +188,3 @@ struct _cl_stream :        public xocl::object<xocl::stream,       _xcl_stream, 
 struct _cl_stream_mem :    public xocl::object<xocl::stream_mem,   _xcl_stream_mem,   _cl_stream_mem> {};
 
 #endif
-
-
