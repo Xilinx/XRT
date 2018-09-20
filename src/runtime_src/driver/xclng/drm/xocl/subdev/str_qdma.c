@@ -362,6 +362,13 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		goto failed;
 	}
 
+	memset (&header, 0, sizeof (header));
+	if (u_header &&  copy_from_user((void *)&header, u_header,
+		sizeof (struct xocl_qdma_req_header))) {
+		xocl_err(&sdev->pdev->dev, "copy header failed.");
+		return -EFAULT;
+	}
+
 	if (!queue->queue.qconf->c2h &&
 		!(header.flags & XOCL_QDMA_REQ_FLAG_EOT) &&
 		(sz & 0xfff)) {
@@ -370,12 +377,6 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 			sz);
 	}
 
-	memset (&header, 0, sizeof (header));
-	if (u_header &&  copy_from_user((void *)&header, u_header,
-		sizeof (struct xocl_qdma_req_header))) {
-		xocl_err(&sdev->pdev->dev, "copy header failed.");
-		return -EFAULT;
-	}
 
 	xdev = xocl_get_xdev(sdev->pdev);
 

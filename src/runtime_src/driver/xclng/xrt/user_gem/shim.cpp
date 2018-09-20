@@ -1583,7 +1583,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         struct iovec iov[2];
         struct xocl_qdma_req_header header;
 
-        header.flags = (wr->flag & XCL_QUEUE_REQ_EOT) ? XOCL_QDMA_REQ_FLAG_EOT : 0;
+        header.flags = wr->flag;
         iov[0].iov_base = &header;
         iov[0].iov_len = sizeof(header);
         iov[1].iov_base = buf;
@@ -1593,7 +1593,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb cb;
             struct iocb *cbs[1];
 
-            if (wr->flag & XCL_QUEUE_REQ_EOT && (wr->bufs[i].len & 0xfff)) {
+            if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
                 std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
                 break;
             }
@@ -1614,7 +1614,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
                 break;
             }
         } else {
-            if (wr->flag & XCL_QUEUE_REQ_EOT && (wr->bufs[i].len & 0xfff)) {
+            if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
                 std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
                 rc = -EINVAL;
                 break;
