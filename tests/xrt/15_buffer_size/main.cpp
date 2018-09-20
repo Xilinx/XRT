@@ -347,7 +347,7 @@ int main(int argc, char** argv)
         xclDeviceHandle handle;
         uint64_t cu_base_addr = 0;
         //xclHALProxy proxy(sharedLibrary.c_str(), bitstreamFile.c_str(), index, halLogfile.c_str());
-        test_size =  getMemBankSize(handle, MEM_TOPOLOGY, 0);
+        //test_size =  getMemBankSize(handle, MEM_TOPOLOGY, 0);
          if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
                 return 1;
             }
