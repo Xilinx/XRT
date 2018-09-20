@@ -86,6 +86,12 @@ struct qdma_wq {
 	u32			sgc_len;
 };
 
+struct qdma_wq_stat {
+	u32			free_slots;
+	u32			pending_slots;
+	u32			unproc_slots;
+};
+
 enum {
 	QDMA_WQ_QUEUE_ADDED		= 0x1,
 	QDMA_WQ_QUEUE_STARTED		= 0x2,
@@ -163,5 +169,6 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 int qdma_wq_destroy(struct qdma_wq *queue);
 ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
 int qdma_cancel_req(struct qdma_wq *queue);
+void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat);
 
 #endif /* _QDMA_WR_H */

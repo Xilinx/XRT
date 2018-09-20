@@ -322,6 +322,7 @@ static inline int qdma_c2h_pending_data(struct qdma_descq *descq)
 	unsigned int pidx = flq->pidx_pend;
 	unsigned int fsgcnt = ring_idx_delta(descq->pidx, pidx, flq->size);
 
+	pr_debug("pending %d \n", fsgcnt);
 	return fsgcnt;
 }
 
@@ -341,6 +342,8 @@ static inline void qdma_c2h_drop_pending_data(struct qdma_descq *descq)
 		pidx = ring_idx_incr(pidx, 1, descq->conf.rngsz);
 
 	}	
+	pr_debug("dropping pend %d, fsgcnt %d, cidx_wrb_pend, %d, descq->pidx %d\n",
+		flq->pidx_pend, fsgcnt, descq->cidx_wrb_pend, descq->pidx);
 
 	flq->pidx_pend = ring_idx_incr(flq->pidx_pend, fsgcnt, flq->size);
 	
@@ -451,6 +454,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 
 err_out:
 	descq->err = 1;
+	qdma_descq_cancel_all(descq);
 	print_hex_dump(KERN_INFO, "cmpl entry: ", DUMP_PREFIX_OFFSET,
 			16, 1, (void *)wrb, descq->wb_entry_len,
 			false);
@@ -567,8 +571,8 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 				descq->desc_wrb_wb;
 	unsigned int rngsz_wrb = descq->conf.rngsz_wrb;
 	unsigned int pidx = descq->pidx;
-	unsigned int cidx_wrb = wb->cidx;
-	unsigned int pidx_wrb = descq->pidx_wrb;
+	unsigned int cidx_wrb;
+	unsigned int pidx_wrb;
 	struct qdma_flq *flq = &descq->flq;
 	unsigned int pidx_pend = flq->pidx_pend;
 	bool uld_handler = descq->conf.fp_descq_c2h_packet ? true : false;
@@ -578,13 +582,13 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 	/* once an error happens, stop processing of the Q */
 	if (descq->err) {
-		pr_debug("%s: err.\n", descq->conf.name);
 		qdma_notify_cancel(descq);
 		return 0;
 	}
 
 	dma_rmb();
 
+	cidx_wrb = descq->cidx_wrb;
 	pidx_wrb = wb->pidx;
 
 	pend = ring_idx_delta(pidx_wrb, cidx_wrb, rngsz_wrb);
@@ -631,7 +635,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 		wrb_next(descq);
 		proc_cnt++;
-
+		pr_debug("EOT %d\n", cmpl.f.eot);
 		if (cmpl.f.eot)
 			break;
 	}
@@ -643,6 +647,8 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 		if (!descq->conf.fp_descq_c2h_packet)
 			qdma_c2h_packets_proc_dflt(descq, &cmpl);
 
+		pr_debug("pidx_pend %d,flq->pidx_pend %d,cidx_wrb_pend %d,descq->pidx %d\n",
+			pidx_pend, flq->pidx_pend, descq->cidx_wrb_pend, descq->pidx);
 		/* some descq entries have been consumed */
 		if (flq->pidx_pend != pidx_pend) {
 			pend = ring_idx_delta(flq->pidx_pend, pidx_pend,
@@ -660,6 +666,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 				descq_wrb_cidx_update(descq, descq->cidx_wrb_pend);
 
 				pend = ring_idx_decr(flq->pidx_pend, 1, flq->size);
+				pr_debug("update wrb %d, pidx %d\n", descq->cidx_wrb_pend, pend);
 				descq_c2h_pidx_update(descq, pend);
 			}
 		}

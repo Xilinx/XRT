@@ -314,7 +314,8 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		wqe->unproc_bytes);
 	if (i > 0) {
 		desc->flags |= S_H2C_DESC_F_EOP;
-		if (descq->xdev->stm_en && wqe->unproc_bytes == 0)
+		if (descq->xdev->stm_en && wqe->unproc_bytes == 0 &&
+			wqe->wr.req.eot)
 			desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT);
 
 		descq_h2c_pidx_update(descq, (descq->pidx) &
@@ -591,4 +592,14 @@ again:
 	spin_unlock(&queue->wq_lock);
 
 	return ret;
+}
+
+void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat)
+{
+	stat->free_slots = (queue->wq_pending - queue->wq_free) &
+		(queue->wq_len - 1);
+	stat->pending_slots = (queue->wq_unproc - queue->wq_pending) &
+		(queue->wq_len - 1);
+	stat->unproc_slots = (queue->wq_free - queue->wq_unproc) &
+		(queue->wq_len - 1);
 }

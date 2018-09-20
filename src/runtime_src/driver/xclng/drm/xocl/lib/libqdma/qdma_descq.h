@@ -588,6 +588,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update, bool refill);
 
+void qdma_descq_cancel_all(struct qdma_descq *descq);
 void qdma_notify_cancel(struct qdma_descq *descq);
 static inline void descq_cancel_req(struct qdma_descq *descq,
 	struct qdma_request *req)

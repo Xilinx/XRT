@@ -1593,6 +1593,11 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb cb;
             struct iocb *cbs[1];
 
+            if (wr->flag & XCL_QUEUE_REQ_EOT && (wr->bufs[i].len & 0xfff)) {
+                std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
+                break;
+            }
+
             memset(&cb, 0, sizeof(cb));
             cb.aio_fildes = (int)q_hdl;
             cb.aio_lio_opcode = IOCB_CMD_PWRITEV;
@@ -1602,9 +1607,29 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
-            rc = io_submit(mAioContext, 1, cbs);
-        } else
+            if (io_submit(mAioContext, 1, cbs) > 0)
+                rc++;
+            else {
+                std::cerr << "ERROR: async write stream failed" << std::endl;
+                break;
+            }
+        } else {
+            if (wr->flag & XCL_QUEUE_REQ_EOT && (wr->bufs[i].len & 0xfff)) {
+                std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
+                rc = -EINVAL;
+                break;
+            }
+
             rc = writev((int)q_hdl, iov, 2);
+            if (rc < 0) {
+                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                break;
+            } else if ((size_t)rc != wr->bufs[i].len) {
+                std::cerr << "ERROR: only " << rc << "/" << wr->bufs[i].len;
+                std::cerr << " bytes is written" << std::endl;
+                break;
+            }
+        }
     }
     return rc;
 }
@@ -1640,9 +1665,19 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
-            rc = io_submit(mAioContext, 1, cbs);
-        } else 
-        	rc = readv((int)q_hdl, iov, 2);
+            if (io_submit(mAioContext, 1, cbs) > 0)
+                rc++;
+            else {
+                std::cerr << "ERROR: async read stream failed" << std::endl;
+                break;
+            }
+        } else {
+            rc = readv((int)q_hdl, iov, 2);
+            if (rc < 0) {
+                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                break;
+            }
+        }
     }
     return rc;
 
