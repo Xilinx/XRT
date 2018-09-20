@@ -275,8 +275,9 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		}
 		if ((len & QDMA_ST_H2C_MASK) &&
 			i + 1 < wqe->unproc_sg_num) {
+			/* should never hit here */
 			pr_err("Invalid alignment for st h2c sg_num:%d, "
-				"len %ld", i, len);
+				"len %ld\n", i, len);
 			return -EINVAL;
 		}
 
@@ -533,7 +534,8 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 		}
 		off -= sg->length;
 	}
-	if (off & QDMA_ST_H2C_MASK) {
+	if (wr->write && ((sg->length - off) & QDMA_ST_H2C_MASK) &&
+		i + 1 < sg_num) {
 		pr_err("Invalid alignment.h2c buffer has to be 64B aligned"
 			"offset: %lld", off);
 		return -EINVAL;
@@ -548,6 +550,10 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 		goto again;
 	}
 	wqe->state = QDMA_WQE_STATE_SUBMITTED;
+
+	pr_debug("post %s %ld bytes, off %lld, sg_num %d, i %d\n",
+		wr->write ? "write" : "read",
+		wr->len, wr->offset, wr->sgt->nents, i);
 
 	memcpy(&wqe->wr, wr, sizeof (*wr));
 	wqe->done_bytes = 0;
