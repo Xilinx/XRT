@@ -347,6 +347,13 @@ enum ert_cmd_type {
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)
 
 /**
+ * State machine for both CUDMA and CUISR modules
+ */
+#define ERT_HLS_MODULE_IDLE               0x1
+#define ERT_CUDMA_STATE                   (ERT_CSR_ADDR + 0x318)
+#define ERT_CUISR_STATE                   (ERT_CSR_ADDR + 0x328)
+
+/**
  * Interrupt address masks written by MB when interrupts from
  * CU are enabled
  */

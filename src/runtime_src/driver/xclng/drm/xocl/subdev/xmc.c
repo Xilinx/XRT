@@ -21,8 +21,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define MAX_RETRY       50
-#define RETRY_INTERVAL  100       //ms
+#define MAX_RETRY       300	//Retry is set to 30s which is overkill
+#define RETRY_INTERVAL  100       //100ms
 
 #define	MAX_IMAGE_LEN	0x20000
 
@@ -75,6 +75,8 @@
 #define	GPIO_ENABLED		0x1
 
 #define	SELF_JUMP(ins)		(((ins) & 0xfc00ffff) == 0xb8000000)
+#define	ERT_STOP_CMD		0x01800001
+#define	ERT_STOP_ACK		0x00000004
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
@@ -94,9 +96,11 @@ enum cap_mask {
 };
 
 enum {
-	XMC_STATE_INIT,
-	XMC_STATE_RUN,
+	XMC_STATE_UNKNOWN,
+	XMC_STATE_ENABLED,
 	XMC_STATE_RESET,
+	XMC_STATE_STOPPED,
+	XMC_STATE_ERROR
 };
 
 enum {
@@ -104,6 +108,7 @@ enum {
 	IO_GPIO,
 	IO_IMAGE_MGMT,
 	IO_IMAGE_SCHE,
+	IO_CQ,
 	NUM_IOADDR
 };
 
@@ -148,15 +153,14 @@ struct xocl_xmc {
 };
 
 
-static int xmc_stop(struct xocl_xmc *xmc);
-static int xmc_start(struct xocl_xmc *xmc);
+static int load_xmc(struct xocl_xmc *xmc);
 
 
 /* sysfs support */
 static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
 {
 	mutex_lock(&xmc->xmc_lock);
-	if (xmc->enabled && xmc->state != XMC_STATE_RESET) {
+	if (xmc->enabled && xmc->state == XMC_STATE_ENABLED) {
 		*val = READ_REG32(xmc, reg);
 	} else {
 		*val = 0;
@@ -167,7 +171,7 @@ static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
 static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 {
 	mutex_lock(&xmc->xmc_lock);
-	if (xmc->enabled && xmc->state != XMC_STATE_RESET) {
+	if (xmc->enabled && xmc->state == XMC_STATE_ENABLED) {
 		WRITE_REG32(xmc, val, reg);
 	}
 	mutex_unlock(&xmc->xmc_lock);
@@ -639,8 +643,7 @@ static ssize_t reset_store(struct device *dev,
 	}
 
 	if (val) {
-		xmc_stop(xmc);
-		xmc_start(xmc);
+		load_xmc(xmc);
 	}
 
 
@@ -884,68 +887,8 @@ create_attr_failed:
 	return err;
 }
 
-static int xmc_stop(struct xocl_xmc *xmc)
-{
-	int retry = 0;
-	int ret = 0;
-	u32 reg_val = 0;
 
-	if (!xmc->enabled) {
-		return 0;
-	}
-
-	mutex_lock(&xmc->xmc_lock);
-	reg_val = READ_GPIO(xmc, 0);
-	xocl_info(&xmc->pdev->dev, "Reset GPIO 0x%x", reg_val);
-	if (reg_val == GPIO_RESET) {
-		/* xmc in reset status */
-		xmc->state = XMC_STATE_RESET;
-		goto out;
-	}
-
-	xocl_info(&xmc->pdev->dev,
-		"MGMT Image magic word, 0x%x, status 0x%x, id 0x%x",
-		READ_IMAGE_MGMT(xmc, 0),
-		READ_REG32(xmc, XMC_STATUS_REG),
-		READ_REG32(xmc, XMC_MAGIC_REG));
-
-	if (!SELF_JUMP(READ_IMAGE_MGMT(xmc, 0))) {
-		/* non cold boot */
-		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-		if (!(reg_val & STATUS_MASK_STOPPED)) {
-			// need to stop microblaze
-			xocl_info(&xmc->pdev->dev, "stopping microblaze...");
-			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
-			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
-			while (retry++ < MAX_RETRY &&
-				!(READ_REG32(xmc, XMC_STATUS_REG) &
-				STATUS_MASK_STOPPED)) {
-				msleep(RETRY_INTERVAL);
-			}
-			if (retry >= MAX_RETRY) {
-				xocl_err(&xmc->pdev->dev,
-					"Failed to stop microblaze");
-				xocl_err(&xmc->pdev->dev,
-					"Error Reg 0x%x",
-					READ_REG32(xmc, XMC_ERROR_REG));
-				ret = -EIO;
-				goto out;
-			}
-		}
-		xocl_info(&xmc->pdev->dev, "Microblaze Stopped, retry %d",
-			retry);
-	}
-
-	/* hold reset */
-	WRITE_GPIO(xmc, GPIO_RESET, 0);
-	xmc->state = XMC_STATE_RESET;
-out:
-	mutex_unlock(&xmc->xmc_lock);
-
-	return ret;
-}
-
-static int xmc_start(struct xocl_xmc *xmc)
+static int load_xmc(struct xocl_xmc *xmc)
 {
 	int retry = 0;
 	u32 reg_val = 0;
@@ -960,17 +903,69 @@ static int xmc_start(struct xocl_xmc *xmc)
 
 	mutex_lock(&xmc->xmc_lock);
 	reg_val = READ_GPIO(xmc, 0);
-	xocl_info(&xmc->pdev->dev, "Reset GPIO 0x%x", reg_val);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+
+	//Stop XMC and ERT if its currently running
 	if (reg_val == GPIO_ENABLED) {
+		xocl_info(&xmc->pdev->dev,
+			"XMC info, version 0x%x, status 0x%x, id 0x%x",
+			READ_REG32(xmc, XMC_VERSION_REG),
+			READ_REG32(xmc, XMC_STATUS_REG),
+			READ_REG32(xmc, XMC_MAGIC_REG));
+
+		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+		if(!(reg_val & STATUS_MASK_STOPPED)) {
+			xocl_info(&xmc->pdev->dev, "Stopping XMC...");
+			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
+			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
+		}
+		reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
+		if(!(reg_val & ERT_STOP_ACK)) {
+			xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
+			XOCL_WRITE_REG32(ERT_STOP_CMD, xmc->base_addrs[IO_CQ]);
+		}
+
+		retry=0;
+		while (retry++ < MAX_RETRY && 
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED) && 
+			!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) 
+			msleep(RETRY_INTERVAL);
+		if (retry >= MAX_RETRY) {
+			xocl_err(&xmc->pdev->dev,
+				"Failed to stop XMC/scheduler");
+			xocl_err(&xmc->pdev->dev,
+				"XMC Error Reg 0x%x",
+				READ_REG32(xmc, XMC_ERROR_REG));
+			xocl_err(&xmc->pdev->dev,
+				"Scheduler CQ 0x%x",
+				XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
+			ret = -EIO;
+			xmc->state = XMC_STATE_ERROR;
+			goto out;
+		}
+
+		xocl_info(&xmc->pdev->dev, "XMC Stopped, retry %d",
+			retry);
+	}
+
+	// Hold XMC in reset now that its safely stopped
+	xocl_info(&xmc->pdev->dev,
+		"XMC info, version 0x%x, status 0x%x, id 0x%x",
+		READ_REG32(xmc, XMC_VERSION_REG),
+		READ_REG32(xmc, XMC_STATUS_REG),
+		READ_REG32(xmc, XMC_MAGIC_REG));
+	WRITE_GPIO(xmc, GPIO_RESET, 0);
+	xmc->state = XMC_STATE_RESET;
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+	if (reg_val != GPIO_RESET) {//Shouldnt make it here but if we do then exit
+		xmc->state = XMC_STATE_ERROR;
 		goto out;
 	}
 
-	xocl_info(&xmc->pdev->dev, "Start Microblaze...");
-	xocl_info(&xmc->pdev->dev, "MGMT Image magic word, 0x%x",
-		READ_IMAGE_MGMT(xmc, 0));
-
+	// Load XMC and ERT Image
 	if (xocl_mb_mgmt_on(xdev_hdl)) {
-		xocl_info(&xmc->pdev->dev, "Copying mgmt image len %d",
+		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
 			xmc->mgmt_binary_length);
 		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 	}
@@ -982,37 +977,48 @@ static int xmc_start(struct xocl_xmc *xmc)
 		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
 	}
 
+	// Take XMC and ERT out of reset
 	WRITE_GPIO(xmc, GPIO_ENABLED, 0);
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+	if (reg_val != GPIO_ENABLED) {//Shouldnt make it here but if we do then exit
+		xmc->state = XMC_STATE_ERROR;
+		goto out;
+	}
+
+	//Wait for XMC to start
+	//Note that ERT will start long before XMC so we don't check anything
+	reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+	if(!(reg_val & STATUS_MASK_INIT_DONE)) {
+		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
+		retry=0;
+		while (retry++ < MAX_RETRY && 
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE)) 
+			msleep(RETRY_INTERVAL);
+		if (retry >= MAX_RETRY) {
+			xocl_err(&xmc->pdev->dev,
+				"XMC did not finish init sequence!");
+			xocl_err(&xmc->pdev->dev,
+				"Error Reg 0x%x",
+				READ_REG32(xmc, XMC_ERROR_REG));
+			xocl_err(&xmc->pdev->dev,
+				"Status Reg 0x%x",
+				READ_REG32(xmc, XMC_STATUS_REG));
+			ret = -EIO;
+			xmc->state = XMC_STATE_ERROR;
+			goto out;
+		}
+	}
+	xocl_info(&xmc->pdev->dev, "XMC and scheduler Enabled, retry %d",
+			retry);
 	xocl_info(&xmc->pdev->dev,
-		"MGMT Image magic word, 0x%x, status 0x%x, id 0x%x",
-		READ_IMAGE_MGMT(xmc, 0),
+		"XMC info, version 0x%x, status 0x%x, id 0x%x",
+		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-	do {
-		msleep(RETRY_INTERVAL);
-	} while (retry++ < MAX_RETRY && (READ_REG32(xmc, XMC_STATUS_REG) &
-		STATUS_MASK_STOPPED));
-
-	/* Extra pulse needed as workaround for axi interconnect issue in DSA */
-	if (retry >= MAX_RETRY) {
-		retry = 0;
-		WRITE_GPIO(xmc, GPIO_RESET, 0);
-		WRITE_GPIO(xmc, GPIO_ENABLED, 0);
-		do {
-			msleep(RETRY_INTERVAL);
-		} while (retry++ < MAX_RETRY && (READ_REG32(xmc, XMC_STATUS_REG) &
-			STATUS_MASK_STOPPED));
-	}
-
-	if (retry >= MAX_RETRY) {
-		xocl_err(&xmc->pdev->dev, "Failed to start microblaze");
-		xocl_err(&xmc->pdev->dev, "Error Reg 0x%x",
-				READ_REG32(xmc, XMC_ERROR_REG));
-			ret = -EIO;
-	}
+	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
-	xmc->state = XMC_STATE_RUN;
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1028,8 +1034,7 @@ static void xmc_reset(struct platform_device *pdev)
 	if (!xmc)
 		return;
 
-	xmc_stop(xmc);
-	xmc_start(xmc);
+	load_xmc(xmc);
 }
 
 static int load_mgmt_image(struct platform_device *pdev, const char *image,
@@ -1106,13 +1111,6 @@ static int xmc_remove(struct platform_device *pdev)
 		devm_kfree(&pdev->dev, xmc->mgmt_binary);
 	if (xmc->sche_binary)
 		devm_kfree(&pdev->dev, xmc->sche_binary);
-
-	/*
-	 * It is more secure that xmc keeps running even driver is unloaded.
-	 * Even user unload our driver and use their own stuff, xmc will still
-	 * be able to monitor the board unless user stops it explicitly
-	 */
-	xmc_stop(xmc);
 
 	mgmt_sysfs_destroy_xmc(pdev);
 

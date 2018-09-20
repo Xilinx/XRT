@@ -52,6 +52,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 	xuid_t uuid_null = NULL_UUID_LE;
 	return uuid_equal(uuid, &uuid_null);
 }
+
+
 #endif
 
 #define	XOCL_DRV_CHANGE		"$Change$"
