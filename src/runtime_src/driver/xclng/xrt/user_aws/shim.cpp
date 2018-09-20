@@ -166,22 +166,29 @@ namespace awsbwhal {
           if( int retVal = xclGetXclBinIdFromSysfs( xclbin_id_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
-              // proceed with download
-              retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
-              if (!retVal) {
-                  retVal = sleepUntilLoaded( std::string(afi_id) );
+          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkA     ndSkipReload(afi_id, &orig_info) ) {
+              // force data retention option
+              union fpga_mgmt_load_local_image_options opt;
+              fpga_mgmt_init_load_local_image_options(&opt);
+              opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
+              opt.afi_id = afi_id;
+              opt.slot_id = mBoardNumber;
+              retVal = fpga_mgmt_load_local_image_with_options(&opt);
+              if (retVal) {
+                  std::cout << "fpga_mgmt_load_local_image_with_options() failed, error: " << retVal <<      std::endl;        
+                  return -EINVAL;
               }
+              retVal = sleepUntilLoaded( std::string(afi_id) );
               if (!retVal) {
                   drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
                   retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
                   if (retVal) {
                       std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
                   } else {
-                      std::cout << "AFI load complete." << std::endl; 
-                  }
+                      std::cout << "AFI load complete." << std::endl;
+                  }   
               }
-          } 
+          }
           return retVal;
       } else {
           //char* afi_id = get_afi_from_xclBin(buffer);
