@@ -1044,7 +1044,8 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-
+  get_xrt_device()->write_register(offset,ptr,size);
+#if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
   auto packet = cmd->get_packet();
   auto idx = packet.size() + 1; // past header is start of payload
@@ -1065,6 +1066,7 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 
   xrt::scheduler::schedule(cmd);
   cmd->wait();
+#endif
 }
 
 void
@@ -1148,8 +1150,6 @@ load_program(program* program)
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
-      else if (xbrv.get() == -EPERM)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
       else if (xbrv.get() == -EBUSY)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
       else if (xbrv.get() == -ETIMEDOUT)

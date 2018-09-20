@@ -41,6 +41,7 @@ struct qdma_wr {
 	size_t			len;
 	bool			write;
 	bool			block;
+	bool			eot;
 
 	int (*complete)(struct qdma_complete_event *compl_event);
 	void			*priv_data;
@@ -102,6 +103,7 @@ enum {
 enum {
 	QDMA_EVT_SUCCESS,
 	QDMA_EVT_CANCELED,
+	QDMA_EVT_ERROR
 };
 
 #define	_wqe(q, i)	((struct qdma_wqe *)((char *)q->wq + q->wqe_sz * i))

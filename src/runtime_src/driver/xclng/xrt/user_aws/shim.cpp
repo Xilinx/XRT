@@ -55,7 +55,7 @@
 #include <iostream>
 #include <fstream>
 #include <mutex>
-
+#include <poll.h>
 #include "xclbin.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
@@ -924,6 +924,86 @@ namespace awsbwhal {
       drm_xocl_pread_unmgd unmgd = {0, 0, offset, count, reinterpret_cast<uint64_t>(buf)};
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
     }
+    
+    /*
+     * xclExecBuf()
+     */
+    int AwsXcl::xclExecBuf(unsigned int cmdBO)
+    {
+      int ret;
+      if (mLogStream.is_open()) {
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
+      }
+      drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
+      ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+      return ret ? -errno : ret;
+    }
+    
+    /*
+     * xclExecBuf()
+     */
+    int AwsXcl::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
+    {
+      if (mLogStream.is_open()) {
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+                     << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
+      }
+      int ret;
+      unsigned int bwl[8] = {0};
+      std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
+      drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
+      ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
+      return ret ? -errno : ret;
+    }
+    
+    /*
+     * xclRegisterEventNotify()
+     */
+    int AwsXcl::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
+    {
+      int ret ;
+      drm_xocl_user_intr userIntr = {0, fd, (int)userInterrupt};
+      ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_USER_INTR, &userIntr);
+      return ret ? -errno : ret;
+    }
+    /*
+     * xclExecWait()
+     */
+    int AwsXcl::xclExecWait(int timeoutMilliSec)
+    {
+      std::vector<pollfd> uifdVector;
+      pollfd info = {mUserHandle, POLLIN, 0};
+      uifdVector.push_back(info);
+      return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
+    }
+    
+    /*
+     * xclOpenContext
+     */
+    int AwsXcl::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+    {
+        unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+        int ret;
+        drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
+        std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+        ctx.cu_index = ipIndex;
+        ctx.flags = flags;
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+        return ret ? -errno : ret;
+    }
+    
+    /*
+     * xclCloseContext
+     */
+    int AwsXcl::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+    {
+        int ret;
+        drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
+        std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+        ctx.cu_index = ipIndex;
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+        return ret ? -errno : ret;
+    }
 
     int AwsXcl::xclExportBO(unsigned int boHandle)
     {
@@ -1407,6 +1487,36 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+}
+
+int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
+{
+    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+    return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
+}
+
+int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
+{
+    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+    return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
+}
+
+int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
+}
+
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
 int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)

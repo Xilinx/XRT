@@ -992,6 +992,16 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
           RolloverCounterResultsMap[key].CuStallStrCycles[s] += prevCuStallStrCycles;
         }
       }
+      /*
+       * Streaming IP Counters are 64 bit and unlikely to roll over
+       */
+      numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+      deviceDataExists = (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()) ? false : true;
+      for (int s=0; s < numSlots; ++s) {
+        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
+        if (!deviceDataExists)
+          DeviceBinaryDataSlotsMap[key].push_back(slotName);
+      }
       FinalCounterResultsMap[key] = counterResults;
     }
     /*
@@ -1172,6 +1182,36 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
         double cuStallInt =    (double) cuStallIntCycles / deviceCyclesMsec;
         writer->writeStallSummary(cuName, cuExecCount, cuRunTimeMsec,
                                   cuStallExt, cuStallStr, cuStallInt);
+      }
+    }
+  }
+
+  void RTProfile::writeKernelStreamSummary(WriterI* writer) const
+  {
+    auto iter = FinalCounterResultsMap.begin();
+    for (; iter != FinalCounterResultsMap.end(); ++iter) {
+      std::string key = iter->first;
+      std::string deviceName = key.substr(0, key.find_first_of("|"));
+      if (!isDeviceActive(deviceName) || (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()))
+        continue;
+
+    // Get results
+      xclCounterResults counterResults = iter->second;
+      std::string cuPortName = "";
+      uint32_t numSlots = DeviceBinaryStrSlotsMap.at(key).size();
+
+      for (int s=0; s < numSlots; ++s) {
+        cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
+        uint64_t strNumTranx = counterResults.StrNumTranx[s];
+        uint64_t strBusyCycles = counterResults.StrBusyCycles[s];
+        uint64_t strDataBytes = counterResults.StrDataBytes[s];
+        uint64_t strStallCycles = counterResults.StrStallCycles[s];
+        uint64_t strStarveCycles = counterResults.StrStarveCycles[s];
+        double avgSize    = (double) strDataBytes / strNumTranx;
+        double linkStarve = (double) ((strStarveCycles / strBusyCycles) * 100);
+        double linkStall =  (double) ((strStallCycles / strBusyCycles) * 100);
+        double avgUtil =  100 - linkStarve - linkStall;
+        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, avgUtil, linkStarve, linkStall);
       }
     }
   }

@@ -53,7 +53,9 @@ private:
     int writeReg(unsigned regOffset, unsigned value);
     bool waitTxEmpty();
     bool isFlashReady();
-    bool sectorErase(unsigned Addr);
+    bool sectorErase(unsigned Addr, unsigned erase_cmd);
+    bool writeBitstreamGuard(unsigned Addr);
+    bool clearBitstreamGuard(unsigned Addr);
     bool bulkErase();
     bool writeEnable();
     bool getFlashId();
@@ -65,6 +67,8 @@ private:
     int programXSpi(std::istream& mcsStream);
     bool readRegister(unsigned commandCode, unsigned bytes);
     bool writeRegister(unsigned commandCode, unsigned value, unsigned bytes);
+    bool setSector(unsigned address);
+    unsigned getSector(unsigned address);
 };
 
 #endif

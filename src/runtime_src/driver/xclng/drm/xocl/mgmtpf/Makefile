@@ -46,6 +46,9 @@ ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include
 
 ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=MGMT_SUFFIX
+ifeq ($(DEBUG),1)
+ccflags-y += -DDEBUG
+endif
 
 all:
 	echo $(PWD)

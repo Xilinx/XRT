@@ -865,7 +865,7 @@ public:
             }
             ifs.read((char*)&numDDR, sizeof(numDDR));
             ifs.seekg(0, ifs.beg);
-            if( numDDR == 0 ) {
+            if( !ifs.good() || numDDR == 0 ) {
                 std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
                 return -1;
             }else {

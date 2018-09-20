@@ -153,7 +153,11 @@ dorpm()
 {
     dir=rpmbuild
     mkdir -p $opt_pkgdir/$dir/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-    approot=$(basename $app_root)
+    # all files installed by app (/<appdir>/opt/{files})
+    appfiles=(`find $app_root -type f`)
+    appdir=${app_root%/*}
+    # all files relative to install dir (/opt/{files})
+    appfiles=( "${appfiles[@]/$appdir/}" )
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_name.spec
 
@@ -175,15 +179,19 @@ Xilinx $opt_name application.
 %install
 rsync -avz $app_root %{buildroot}/
 
-%files
-%defattr(-,root,root,-)
-/$approot
 
 %changelog
 * Fri May 18 2018 Soren Soe <soren.soe@xilinx.com>
   Created by script
 
+%files
+%defattr(-,root,root,-)
 EOF
+
+    # append appfiles to spec, one file per line
+    for f in "${appfiles[@]}"; do
+        echo $f >> $opt_pkgdir/$dir/SPECS/$opt_name.spec
+    done
 
     echo "rpmbuild --define '_topdir $opt_pkgdir/$dir' -ba $opt_pkgdir/$dir/SPECS/$opt_name.spec"
     $dir --define '_topdir '"$opt_pkgdir/$dir" -ba $opt_pkgdir/$dir/SPECS/$opt_name.spec

@@ -28,6 +28,10 @@
 #include "xcl_macros.h"
 #include "xclbin.h"
 
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <thread>
 #include <sys/wait.h>
 #ifndef _WINDOWS
@@ -36,7 +40,6 @@
 
 
 namespace xclcpuemhal2 {
-
   // XDMA Shim
   class CpuemShim {
     public:
@@ -66,8 +69,10 @@ namespace xclcpuemhal2 {
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
+      //P2P buffer support
       int xclExportBO(unsigned int boHandle); 
-      unsigned int xclImportBO(int boGlobalHandle);
+      unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
+      int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
       xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
@@ -89,7 +94,7 @@ namespace xclcpuemhal2 {
 
       // Buffer management
       uint64_t xclAllocDeviceBuffer(size_t size);
-      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags);
+      uint64_t xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, std::string &sFileName);
 
       void xclFreeDeviceBuffer(uint64_t buf);
       size_t xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek);
@@ -127,6 +132,15 @@ namespace xclcpuemhal2 {
 
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
+
+      //QDMA Support
+      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
+      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
+      int xclDestroyQueue(uint64_t q_hdl);
+      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
+      int xclFreeQDMABuf(uint64_t buf_hdl);
+      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
 
     private:
       std::mutex mMemManagerMutex;
@@ -196,6 +210,7 @@ namespace xclcpuemhal2 {
       // HAL2 RELATED member variables start
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
+      static std::map<int, std::pair<std::string,int> > mFdToFileNameMap;
       // HAL2 RELATED member variables end 
 
   };
