@@ -385,27 +385,21 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq, struct cmpl_info
 	return 0;
 }
 
-static inline void wrb_next(struct qdma_descq *descq)
+static inline void wrb_update(struct qdma_descq *descq, unsigned int new)
 {
-	u8 *desc_wrb_cur = descq->desc_wrb_cur + descq->wb_entry_len;
-
-	descq->desc_wrb_cur = desc_wrb_cur;
-	if (unlikely(++descq->cidx_wrb == descq->conf.rngsz_wrb)) {
-		descq->cidx_wrb = 0;
-		descq->color ^= 1;
-		descq->desc_wrb_cur = descq->desc_wrb;
-	}
+	
 }
 
 static inline bool is_new_cmpl_entry(struct qdma_descq *descq,
-					struct cmpl_info *cmpl)
+					struct cmpl_info *cmpl, u8 color)
 {
-	return cmpl->f.color == descq->color;
+	return cmpl->f.color == color;
 }
 
-static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
+static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl,
+	unsigned int wrb_idx)
 {
-	__be64 *wrb = (__be64 *)descq->desc_wrb_cur;
+	__be64 *wrb = (__be64 *)(descq->desc_wrb + wrb_idx);
 
 	dma_rmb();
 
@@ -573,12 +567,14 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	unsigned int pidx = descq->pidx;
 	unsigned int cidx_wrb;
 	unsigned int pidx_wrb;
+	unsigned int wrb_idx;
 	struct qdma_flq *flq = &descq->flq;
 	unsigned int pidx_pend = flq->pidx_pend;
 	bool uld_handler = descq->conf.fp_descq_c2h_packet ? true : false;
 	int pend;
 	int proc_cnt = 0;
 	struct cmpl_info cmpl;
+	u8 color;
 
 	/* once an error happens, stop processing of the Q */
 	if (descq->err) {
@@ -609,15 +605,25 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	if (!budget || budget > pend)
 		budget = pend;
 
+	color = descq->color;
 	while (likely(proc_cnt < budget)) {
-		int rv = parse_cmpl_entry(descq, &cmpl);
+		int rv;
 
+		wrb_idx = descq->cidx_wrb_pend + proc_cnt;
+		if (wrb_idx == descq->conf.rngsz_wrb) {
+			color ^= 1;
+			wrb_idx = 0;
+		}
+
+		rv = parse_cmpl_entry(descq, &cmpl, wrb_idx);
 		/* completion entry error, q is halted */
 		if (rv < 0)
 			return rv;
 
-		if (!is_new_cmpl_entry(descq, &cmpl))
+		if (!is_new_cmpl_entry(descq, &cmpl, color)) {
+			pr_debug("color does not match");
 			break;
+		}
 
 		cmpl.pidx = pidx;
 
@@ -633,7 +639,6 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 		pidx = cmpl.pidx;
 
-		wrb_next(descq);
 		proc_cnt++;
 		pr_debug("EOT %d\n", cmpl.f.eot);
 		if (cmpl.f.eot)
@@ -649,6 +654,10 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 		pr_debug("pidx_pend %d,flq->pidx_pend %d,cidx_wrb_pend %d,descq->pidx %d\n",
 			pidx_pend, flq->pidx_pend, descq->cidx_wrb_pend, descq->pidx);
+		if (descq->cidx_wrb_pend < descq->cidx_wrb)
+			descq->color ^= 1;
+		descq->cidx_wrb = descq->cidx_wrb_pend;
+
 		/* some descq entries have been consumed */
 		if (flq->pidx_pend != pidx_pend) {
 			pend = ring_idx_delta(flq->pidx_pend, pidx_pend,

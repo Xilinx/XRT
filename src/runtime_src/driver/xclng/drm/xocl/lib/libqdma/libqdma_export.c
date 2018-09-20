@@ -130,7 +130,7 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		list_add_tail(&cb->list, &descq->pend_list);
 		/* any rcv'ed packet not yet read ? */
 		/** read the data from the device */
-		if (!wait) {
+		if (wait) {
 			descq_st_c2h_read(descq, req, 1, 1);
 			if (!cb->left) {
 				list_del(&cb->list);
