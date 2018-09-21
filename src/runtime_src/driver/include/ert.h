@@ -347,6 +347,12 @@ enum ert_cmd_type {
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)
 
 /**
+ * ERT stop command/ack
+ */
+#define	ERT_STOP_CMD			  0x01800001
+#define	ERT_STOP_ACK			  0x00000004
+
+/**
  * State machine for both CUDMA and CUISR modules
  */
 #define ERT_HLS_MODULE_IDLE               0x1

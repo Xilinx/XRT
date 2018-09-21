@@ -1152,9 +1152,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		}
 	}
 
-	//For XMC we need to load fw here.
-	//TODO: Can we move this to probe? We need .dsabin parsed before we do subdev creation
-	if(load_mbs && XMC_DEV(xdev))
+	if(load_mbs)
 		xocl_mb_reset(xdev);
 
 	/* Retry with the legacy dsabin. */

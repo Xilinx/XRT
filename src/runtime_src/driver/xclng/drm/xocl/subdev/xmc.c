@@ -18,6 +18,7 @@
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/vmalloc.h>
+#include <ert.h>
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
@@ -75,8 +76,6 @@
 #define	GPIO_ENABLED		0x1
 
 #define	SELF_JUMP(ins)		(((ins) & 0xfc00ffff) == 0xb8000000)
-#define	ERT_STOP_CMD		0x01800001
-#define	ERT_STOP_ACK		0x00000004
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
@@ -107,7 +106,7 @@ enum {
 	IO_REG,
 	IO_GPIO,
 	IO_IMAGE_MGMT,
-	IO_IMAGE_SCHE,
+	IO_IMAGE_SCHED,
 	IO_CQ,
 	NUM_IOADDR
 };
@@ -131,10 +130,13 @@ enum {
 #define	READ_IMAGE_MGMT(xmc, off)		\
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_MGMT] + off)
 
+#define	READ_IMAGE_SCHED(xmc, off)		\
+	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_SCHED] + off)
+
 #define	COPY_MGMT(xmc, buf, len)		\
 	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
 #define	COPY_SCHE(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHE], buf, len)
+	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;
@@ -919,32 +921,48 @@ static int load_xmc(struct xocl_xmc *xmc)
 			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
-		reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
-		if(!(reg_val & ERT_STOP_ACK)) {
-			xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
-			XOCL_WRITE_REG32(ERT_STOP_CMD, xmc->base_addrs[IO_CQ]);
+		//Need to check if ERT is loaded before we attempt to stop it
+		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
+			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
+			if(!(reg_val & ERT_STOP_ACK)) {
+				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
+				XOCL_WRITE_REG32(ERT_STOP_CMD, xmc->base_addrs[IO_CQ]);
+			}
 		}
 
 		retry=0;
 		while (retry++ < MAX_RETRY && 
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED) && 
-			!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) 
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED)) 
 			msleep(RETRY_INTERVAL);
+
+		//Wait for XMC to stop and then check that ERT has also finished 
 		if (retry >= MAX_RETRY) {
 			xocl_err(&xmc->pdev->dev,
-				"Failed to stop XMC/scheduler");
+				"Failed to stop XMC");
 			xocl_err(&xmc->pdev->dev,
 				"XMC Error Reg 0x%x",
 				READ_REG32(xmc, XMC_ERROR_REG));
-			xocl_err(&xmc->pdev->dev,
-				"Scheduler CQ 0x%x",
-				XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
-			ret = -EIO;
+			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
 			goto out;
+		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) && 
+			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
+			while (retry++ < MAX_RETRY && 
+				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) 
+				msleep(RETRY_INTERVAL);
+			if (retry >= MAX_RETRY) {
+				xocl_err(&xmc->pdev->dev,
+					"Failed to stop sched");
+				xocl_err(&xmc->pdev->dev,
+					"Scheduler CQ status 0x%x",
+					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
+				ret = -ETIMEDOUT;
+				xmc->state = XMC_STATE_ERROR;
+				goto out;
+			}
 		}
 
-		xocl_info(&xmc->pdev->dev, "XMC Stopped, retry %d",
+		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
 			retry);
 	}
 
@@ -1004,7 +1022,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 			xocl_err(&xmc->pdev->dev,
 				"Status Reg 0x%x",
 				READ_REG32(xmc, XMC_STATUS_REG));
-			ret = -EIO;
+			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
 			goto out;
 		}

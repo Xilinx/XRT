@@ -855,7 +855,6 @@ stop_mb(size_type slot_idx)
   
   // Update registers so host drivers are aware ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-  notify_host(slot_idx); //Update KDS so it knows ERT has stopped (does KDS care?)
   exit(0);
   return true;
 }
