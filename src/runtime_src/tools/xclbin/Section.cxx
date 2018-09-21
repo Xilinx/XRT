@@ -28,7 +28,6 @@ std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
 
-
 Section::Section()
     : m_eKind(BITSTREAM)
     , m_sKindName("")
@@ -46,7 +45,12 @@ Section::~Section() {
   m_bufferSize = 0;
 }
 
-
+void
+Section::getKinds(std::vector< std::string > & kinds) {
+  for (auto & item : m_mapNameToId) {
+    kinds.push_back(item.first);
+  }
+}
 
 void
 Section::registerSectionCtor(enum axlf_section_kind _eKind,

@@ -55,6 +55,7 @@ class Section {
   virtual ~Section();
 
  public:
+  static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind);
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
 

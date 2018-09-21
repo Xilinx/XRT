@@ -16,12 +16,15 @@
 
 #include "XclBinUtilities.h"
 
+#include "Section.h"
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <memory>
 #include <string.h>
 #include <inttypes.h>
+#include <vector>
 
 namespace XUtil = XclBinUtilities;
 
@@ -448,3 +451,14 @@ XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
   std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
   throw std::runtime_error(errMsg);
 }
+
+void
+XclBinUtilities::printKinds() {
+  std::vector< std::string > kinds;
+  Section::getKinds(kinds);
+  std::cout << "All available section names:\n";
+  for (auto & kind : kinds) {
+    std::cout << "  " << kind << "\n";
+  }
+}
+
