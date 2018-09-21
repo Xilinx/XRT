@@ -63,6 +63,18 @@ struct qdma_wqe {
 	u64			priv_data[1];
 };
 
+struct qdma_wq_stat {
+	u32			total_slots;
+	u32			free_slots;
+	u32			pending_slots;
+	u32			unproc_slots;
+
+	u64			total_req_bytes;
+        u64			total_complete_bytes;
+        u32			total_req_num;
+        u32			total_complete_num;
+};
+
 struct qdma_wq {
 	unsigned long		dev_hdl;
 	unsigned long		qhdl;
@@ -84,12 +96,11 @@ struct qdma_wq {
 	u32			sgc_avail;
 	u32			sgc_pidx;
 	u32			sgc_len;
-};
 
-struct qdma_wq_stat {
-	u32			free_slots;
-	u32			pending_slots;
-	u32			unproc_slots;
+	u64			req_nbytes;
+        u64			compl_nbytes;
+        u32			req_num;
+        u32			compl_num;
 };
 
 enum {

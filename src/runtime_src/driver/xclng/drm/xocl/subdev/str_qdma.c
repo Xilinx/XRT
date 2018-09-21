@@ -57,14 +57,6 @@ struct stream_queue {
 	int			refcnt;
 	struct str_device	*sdev;
 	kuid_t			uid;
-
-	/* statistics */
-	u64			posted_bytes;
-	u64			completed_bytes;
-	u64			posted_reqs;
-	u64			completed_reqs;
-	uint			post_error;
-	uint			total_req_slots;
 };
 
 struct str_device {
@@ -142,16 +134,17 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 		return sprintf(buf, "Permission denied\n");
 
 	qdma_wq_getstat(&queue->queue, &stat);
-	__SHOW_MEMBER(queue, posted_bytes);
-	__SHOW_MEMBER(queue, completed_bytes);
-	__SHOW_MEMBER(queue, posted_reqs);
-	__SHOW_MEMBER(queue, completed_reqs);
-	__SHOW_MEMBER(queue, total_req_slots);
-
 	pstat = &stat;
+	__SHOW_MEMBER(pstat, total_slots);
 	__SHOW_MEMBER(pstat, free_slots);
 	__SHOW_MEMBER(pstat, pending_slots);
 	__SHOW_MEMBER(pstat, unproc_slots);
+
+	__SHOW_MEMBER(pstat, total_req_bytes);
+	__SHOW_MEMBER(pstat, total_req_num);
+	__SHOW_MEMBER(pstat, total_complete_bytes);
+	__SHOW_MEMBER(pstat, total_complete_num);
+
 	
 	return off;
 }
@@ -269,9 +262,6 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
         aio_complete(kiocb, compl_event->done_bytes, compl_event->error);
 #endif
 
-	cb_arg->queue->completed_reqs++;
-	cb_arg->queue->completed_bytes += compl_event->done_bytes;
-
 	return 0;
 }
 
@@ -318,16 +308,10 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	ret = qdma_wq_post(&queue->queue, &wr);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
-		queue->post_error++;
-	} else {
-		queue->posted_bytes += len;
-		queue->posted_reqs++;
 	}
 
 failed:
 	if (wr.block) {
-		queue->completed_reqs++;
-		queue->completed_bytes += ret;
 		drm_gem_object_unreference_unlocked(gem_obj);
 	}
 
@@ -428,15 +412,9 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	ret = qdma_wq_post(&queue->queue, &wr);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
-		queue->post_error++;
-	} else {
-		queue->posted_bytes += sz;
-		queue->posted_reqs++;
 	}
 
 	if (wr.block) {
-		queue->completed_reqs++;
-		queue->completed_bytes += ret;
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
 	}
@@ -709,7 +687,6 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	}
 
 	queue->uid = current_uid();
-	queue->total_req_slots = queue->queue.wq_len;
 
 	return 0;
 

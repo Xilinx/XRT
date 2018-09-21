@@ -449,6 +449,8 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	if ((err != 0 || req->eot || req->count == wqe->done_bytes) &&
 		wqe->state != QDMA_WQE_STATE_CANCELED &&
 		wqe->state != QDMA_WQE_STATE_CANCELED_HW) {
+		queue->compl_nbytes += wqe->done_bytes;
+		queue->compl_num++;
 		if (wqe->wr.block) {
 			wake_up(&wqe->req_comp);
 		} else {
@@ -537,7 +539,7 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 	if (wr->write && ((sg->length - off) & QDMA_ST_H2C_MASK) &&
 		i + 1 < sg_num) {
 		pr_err("Invalid alignment.h2c buffer has to be 64B aligned"
-			"offset: %lld", off);
+			"offset: %lld\n", off);
 		return -EINVAL;
 	}
 	BUG_ON(i == sg_num && off > sg->length);
@@ -574,6 +576,8 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 	memset(cb, 0, QDMA_REQ_OPAQUE_SIZE);
 	qdma_waitq_init(&cb->wq);;
 
+	queue->req_nbytes += wr->len;
+	queue->req_num++;
 again:
 	descq_proc_req(queue);
 	if (!ret) {
@@ -602,7 +606,13 @@ again:
 
 void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat)
 {
-	stat->free_slots = (queue->wq_pending - queue->wq_free) &
+	stat->total_req_bytes = queue->req_nbytes;
+	stat->total_req_num = queue->req_num;
+	stat->total_complete_bytes = queue->compl_nbytes;
+	stat->total_complete_num = queue->compl_num;
+
+	stat->total_slots = queue->wq_len;
+	stat->free_slots = (queue->wq_pending - queue->wq_free-1) &
 		(queue->wq_len - 1);
 	stat->pending_slots = (queue->wq_unproc - queue->wq_pending) &
 		(queue->wq_len - 1);
