@@ -37,8 +37,8 @@
 
 #define ERT_UNUSED __attribute__((unused))
 
-#define ERT_VERBOSE
-#define INIT_VERBOSE
+//#define ERT_VERBOSE
+//#define INIT_VERBOSE
 //#define DEBUG_SLOT_STATE
 
 // Assert macro implementation
@@ -853,7 +853,7 @@ stop_mb(size_type slot_idx)
     cu_isr_state = read_reg(ERT_CUISR_STATE);
   }
   
-  // Update registers so host drivers are aware ERT has exited
+  // Update registers so mgmt driver knows ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   exit(0);
   return true;
