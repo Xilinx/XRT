@@ -54,6 +54,9 @@ class xclbin
   struct impl;
   std::shared_ptr<impl> m_impl;
 
+  impl*
+  impl_or_error() const;
+
 public:
   using addr_type = uint64_t;
   //Max 64 mem banks for now.
@@ -365,9 +368,9 @@ public:
   memidx_to_banktag(memidx_type memidx) const;
 
   /**
-   * Get the memory index for a given kernel name for specific arg. 
+   * Get the memory index for a given kernel name for specific arg.
    *
-   * @param kernel_name 
+   * @param kernel_name
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
