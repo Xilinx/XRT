@@ -15,7 +15,7 @@ class printSPMInfo (infCallUtil):
 
 		if (spm_ptr == 0):
 			if (jsonformat == True):
-				print ("[{{\"error\": \"{}\"}}]".format (errmsg))
+				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
 				print (errmsg)
 			return				
@@ -42,7 +42,7 @@ class printLAPCInfo (infCallUtil):
 
 		if (lapc_ptr == 0):
 			if (jsonformat == True):
-				print ("[{{\"error\": \"{}\"}}]".format (errmsg))
+				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
 				print (errmsg)
 			return				
