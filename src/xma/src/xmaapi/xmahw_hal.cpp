@@ -198,7 +198,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
             return false;
         }
         int32_t rc = xma_xclbin_info_get(buffer, &info);
-        if (rc != 0)
+        if (rc != XMA_SUCCESS)
         {
             xma_logmsg("Could not get info for xclbin file %s\n",
                        xclfullname.c_str());

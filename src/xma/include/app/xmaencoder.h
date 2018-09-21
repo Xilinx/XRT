@@ -24,6 +24,7 @@
  */
 
 #include "app/xmabuffers.h"
+#include "app/xmaparam.h"
 #include "lib/xmalimits.h"
 
 #ifdef __cplusplus
@@ -284,7 +285,12 @@ typedef struct XmaEncoderProperties
     /** aq_mode  */
     int32_t         aq_mode;
     int32_t         minQP;
+    /** force property values to be accepted by encoder plugin */
     int32_t         force_param;
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaEncoderProperties;
 
 /* Forward declaration */
