@@ -73,7 +73,6 @@ target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
 
 install (TARGETS xclbincat xclbinsplit xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
-=======
 find_package(GTest)
 if (GTEST_FOUND)
   enable_testing()
@@ -89,4 +88,3 @@ endif()
 # -----------------------------------------------------------------------------
 
 install (TARGETS xclbincat xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
->>>>>>> origin

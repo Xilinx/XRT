@@ -42,6 +42,111 @@ XclBin::~XclBin() {
   m_sections.clear();
 }
 
+// String Getters
+std::string 
+XclBin::getMagic() { 
+  return XUtil::format("%s", m_xclBinHeader.m_magic); 
+}
+
+std::string 
+XclBin::getCipher() { 
+  std::string sTemp("");
+  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_cipher, sizeof(m_xclBinHeader.m_cipher), sTemp);
+  return sTemp; // TBD: "0x" + sTemp; ? do the others too...
+}
+
+std::string 
+XclBin::getKeyBlock() { 
+  std::string sTemp("");
+  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_keyBlock, sizeof(m_xclBinHeader.m_keyBlock), sTemp);
+  return sTemp;
+}
+
+std::string 
+XclBin::getUniqueId() { 
+  std::string sTemp("");
+  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_uniqueId, sizeof(m_xclBinHeader.m_uniqueId), sTemp);
+  return sTemp;
+}
+
+std::string
+XclBin::getSize() {
+  return XUtil::format("%ld", m_xclBinHeader.m_header.m_length);
+}
+
+std::string
+XclBin::getTimeStamp() {
+  return XUtil::format("%ld", m_xclBinHeader.m_header.m_timeStamp);
+}
+
+std::string
+XclBin::getFeatureRomTimeStamp() {
+  return XUtil::format("%d", m_xclBinHeader.m_header.m_featureRomTimeStamp);
+}
+
+std::string
+XclBin::getVersion() {
+  return XUtil::format("%d", m_xclBinHeader.m_header.m_version);
+}
+
+std::string
+XclBin::getMode() {
+  return XUtil::format("%d", m_xclBinHeader.m_header.m_mode);
+}
+
+std::string
+XclBin::getFeatureRomUuid() {
+  std::string sTemp("");
+  XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid), sTemp);
+  return sTemp;
+}
+
+std::string
+XclBin::getPlatformVbnv() {
+  return XUtil::format("%s", m_xclBinHeader.m_header.m_platformVBNV);
+}
+
+std::string
+XclBin::getXclBinUuid() {
+  std::string sTemp("");
+  XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid), sTemp);
+  return sTemp;
+}
+
+std::string
+XclBin::getDebugBin() {
+  return XUtil::format("%s", m_xclBinHeader.m_header.m_debug_bin);
+}
+
+std::string
+XclBin::getNumSection() {
+  return XUtil::format("%d", m_xclBinHeader.m_header.m_numSections);
+}
+
+void
+XclBin::printHeader() {
+  XUtil::TRACE("Printing Binary Header");
+
+  std::cout << "OpenCL Binary Header\n";
+  //std::cout << "  Magic                   : '" << getMagic() << "'\n";
+  //std::cout << "  Cipher                  : '" << getCipher() << "'\n";
+  //std::cout << "  Key Block               : '" << getKeyBlock() << "'\n";
+  //std::cout << "  Unique ID               : '" << getUniqueId() << "'\n";
+  //std::cout << "  Size                    : '" << getSize() << "' bytes\n";
+  std::cout << "  Time Stamp              : '" << getTimeStamp() << "'\n";
+  std::cout << "  Feature ROM Time Stamp  : '" << getFeatureRomTimeStamp() << "'\n";
+  std::cout << "  Version                 : '" << getVersion() << "'\n";
+  std::cout << "  Mode                    : '" << getMode() << "'\n";
+  std::cout << "  Feature ROM UUID        : '" << getFeatureRomUuid() << "'\n";
+  std::cout << "  Platform VBNV           : '" << getPlatformVbnv() << "'\n";
+  std::cout << "  XCLBIN UUID             : '" << getXclBinUuid() << "'\n";
+  std::cout << "  Debug Bin               : '" << getDebugBin() << "'\n";
+  std::cout << "  Section Count           : '" << getNumSection() << "'\n";
+  for(unsigned int i = 0; i < m_xclBinHeader.m_header.m_numSections; i++) {
+    std::cout << "  Section[" << i << "]\n";
+    //std::cout << "  Section[" << i << "]: '" << m_xclBinHeader.m_section_header[i] << "'\n";
+  }
+}
 
 void
 XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
@@ -56,7 +161,10 @@ XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
     throw std::runtime_error(errMsg);
   }
 
-  // TODO: Check for magic value being correct
+  if (getMagic().c_str() != std::string("xclbin2")) {
+    std::string errMsg = "ERROR: The XCLBIN appears to be corrupted (header start key value is not what is expected).";
+    throw std::runtime_error(errMsg);
+  }
 }
 
 void
@@ -128,33 +236,26 @@ XclBin::readXclBinBinary(const std::string &_binaryFileName,
 
 void
 XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header) {
-  struct axlf* pHeader = &m_xclBinHeader;
-
   XUtil::TRACE("Creating Header Mirror ptree");
-  std::string tmpStr;
 
   // Axlf structure
   {
-    _pt_header.put("Magic", XUtil::format("%s", pHeader->m_magic).c_str());
-    XUtil::binaryBufferToHexString(pHeader->m_cipher, sizeof(axlf::m_cipher), tmpStr);
-    _pt_header.put("Cipher", tmpStr.c_str());
-    XUtil::binaryBufferToHexString(pHeader->m_keyBlock, sizeof(axlf::m_keyBlock), tmpStr);
-    _pt_header.put("KeyBlock", tmpStr.c_str());
-    _pt_header.put("UniqueID", XUtil::format("0x%lx", pHeader->m_uniqueId).c_str());
+    _pt_header.put("Magic", getMagic().c_str());
+    _pt_header.put("Cipher", getCipher().c_str());
+    _pt_header.put("KeyBlock", getKeyBlock().c_str());
+    _pt_header.put("UniqueID", getUniqueId().c_str());
   }
 
   // Axlf_header structure
   {
-    _pt_header.put("TimeStamp", XUtil::format("%ld", pHeader->m_header.m_timeStamp).c_str());
-    _pt_header.put("FeatureRomTimeStamp", XUtil::format("%ld", pHeader->m_header.m_featureRomTimeStamp).c_str());
-    _pt_header.put("Version", XUtil::format("%d", pHeader->m_header.m_version).c_str());
-    _pt_header.put("Mode", XUtil::format("%d", pHeader->m_header.m_mode).c_str());
-    XUtil::binaryBufferToHexString(pHeader->m_header.rom_uuid, sizeof(axlf_header::rom_uuid), tmpStr);
-    _pt_header.put("FeatureRomUUID", tmpStr.c_str());
-    _pt_header.put("PlatformVBNV", XUtil::format("%s", pHeader->m_header.m_platformVBNV).c_str());
-    XUtil::binaryBufferToHexString((unsigned char*)&(pHeader->m_header.uuid), sizeof(axlf_header::uuid), tmpStr);
-    _pt_header.put("XclBinUUID", tmpStr.c_str());
-    _pt_header.put("DebugBin", XUtil::format("%s", pHeader->m_header.m_debug_bin).c_str());
+    _pt_header.put("TimeStamp", getTimeStamp().c_str());
+    _pt_header.put("FeatureRomTimeStamp", getFeatureRomTimeStamp().c_str());
+    _pt_header.put("Version", getVersion().c_str());
+    _pt_header.put("Mode", getMode().c_str());
+    _pt_header.put("FeatureRomUUID", getFeatureRomUuid().c_str());
+    _pt_header.put("PlatformVBNV", getPlatformVbnv().c_str());
+    _pt_header.put("XclBinUUID", getXclBinUuid().c_str());
+    _pt_header.put("DebugBin", getDebugBin().c_str());
   }
 }
 

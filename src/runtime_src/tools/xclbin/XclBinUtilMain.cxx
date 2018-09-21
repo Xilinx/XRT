@@ -47,6 +47,8 @@ int main(int argc, char** argv) {
   bool bValidateImage = false;
   bool bAddValidateImage = false;
   bool bMigrateForward = false;
+  bool bListNames = false;
+  bool bListSections = false;
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -71,6 +73,9 @@ int main(int argc, char** argv) {
         ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
         ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
         ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
+
+        ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
+        ("list-sections,l", boost::program_options::bool_switch(&bListSections), "List the sections")
 
 
 // --remove-section=section
@@ -112,7 +117,16 @@ int main(int argc, char** argv) {
     // Examine the options
     // TODO: Clean up this flow.  Currently, its flow is that of testing features
     //       and not how the customer would use it.
-    XclBinUtilities::setVerbose(bVerbose);
+    XUtil::setVerbose(bVerbose);
+
+    // Actions not requiring --input
+
+    if (bListNames) {
+      XUtil::printKinds();
+      return RC_SUCCESS;
+    }
+
+    // Actions requiring --input
 
     if (bValidateImage && !sInputFile.empty()) {
       XUtil::validateImage(sInputFile);
@@ -127,25 +141,44 @@ int main(int argc, char** argv) {
       throw std::runtime_error(errMsg);
     }
 
+    // User requested actions
+
+    bool bUserActionSpecified = false;
+
+    //if (bListSections) {
+    //  xclBin.listSections();
+    //}
+
     if (!sSectionToRemove.empty()) {
+      bUserActionSpecified = true;
       xclBin.removeSection(sSectionToRemove);
     }
 
     if (!sSectionToAdd.empty()) {
+      bUserActionSpecified = true;
       xclBin.addSection(sSectionToAdd);
     }
 
     if (!sSectionToDump.empty()) {
+      bUserActionSpecified = true;
       xclBin.dumpSection(sSectionToDump);
     }
 
     if (!sOutputFile.empty()) {
+      bUserActionSpecified = true;
       xclBin.writeXclBinBinary(sOutputFile);
     }
 
     if (bAddValidateImage && !sOutputFile.empty()) {
+      bUserActionSpecified = true;
       XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
     }
+
+    if ( ! bUserActionSpecified) {
+      //xclBin.readXclBinBinaryHeader();
+      xclBin.printHeader();
+    }
+
   } catch(std::exception& e){
     std::cerr << "Unhandled Exception caught in main(): " << std::endl
         << e.what() << std::endl

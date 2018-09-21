@@ -38,6 +38,22 @@ class XclBin {
   virtual ~XclBin();
 
  public:
+  std::string getMagic();
+  std::string getCipher();
+  std::string getKeyBlock();
+  std::string getUniqueId();
+  std::string getSize();
+  std::string getTimeStamp();
+  std::string getFeatureRomTimeStamp();
+  std::string getVersion();
+  std::string getMode();
+  std::string getFeatureRomUuid();
+  std::string getPlatformVbnv();
+  std::string getXclBinUuid();
+  std::string getDebugBin();
+  std::string getNumSection();
+  void printHeader();
+
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
   void writeXclBinBinary(const std::string &_binaryFileName);
   void removeSection(const std::string & _sSectionToRemove);
