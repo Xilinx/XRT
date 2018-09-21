@@ -17,6 +17,7 @@
 #ifndef _XMA_BUFFERS_H_
 #define _XMA_BUFFERS_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 #include "lib/xmalimits.h"
@@ -95,12 +96,14 @@ typedef enum XmaBufferType
 /**
  * @struct XmaBufferRef
  * Reference counted buffer used in XmaFrame and XmaDataBuffer
+ *
 */
 typedef struct XmaBufferRef
 {
     int32_t         refcount; /**< references to buffer */
     XmaBufferType   buffer_type; /**< location of buffer */
     void           *buffer; /**< data */
+    bool            is_clone; /**< buffer member allocated externally */
 } XmaBufferRef;
 
 /**
@@ -212,9 +215,9 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
  *
  * @param frame frame instance to free
  *
- * @todo frame contains buffer pointers that are not freed.  Consider
- * freeing or adding flag to arg list to indicate that they should
- * be freed.  Operation is also not atomic and not thread safe.
+ * @note: A buffer with is_clone flag set will not be freed
+ * by XMA when the refcount is == 0.  Any XMA container with
+ * references to this buffer will be freed (e.g. XmaFrame), however.
 */
 void
 xma_frame_free(XmaFrame *frame);
@@ -246,6 +249,8 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size);
  *
  * @param data structure to be freed
  *
+ * @note: A buffer with is_clone flag set will not be freed
+ * by XMA when the refcount is == 0.
 */
 void
 xma_data_buffer_free(XmaDataBuffer *data);

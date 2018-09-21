@@ -282,9 +282,14 @@ typedef enum XmaKernelType
 */
 typedef struct XmaKernelProperties
 {
-    XmaKernelType   hwkernel_type; /**< requested kernel type */
-    char            hwvendor_string[MAX_VENDOR_NAME]; /**< requested vendor */
-    XmaParameter    *param; /**< kernel-specific custom initialization parameters */
+    /** requested kernel type */
+    XmaKernelType   hwkernel_type;
+    /** requested vendor */
+    char            hwvendor_string[MAX_VENDOR_NAME];
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaKernelProperties;
 /**
  * @}

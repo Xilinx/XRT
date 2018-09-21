@@ -49,17 +49,12 @@ char *xma_xclbin_file_open(const char *xclbin_name)
 
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
 {
-    int rc;
-
-    rc = get_xclbin_iplayout(buffer, info->ip_layout);
-    if (rc != 0)
-        return rc;
-    return XMA_SUCCESS;
+    return get_xclbin_iplayout(buffer, info->ip_layout);
 }
 
 static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
 {
-    int rc = 0;
+    //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
     const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin,
@@ -79,8 +74,11 @@ static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
         }
     }
     else
-        rc = XMA_ERROR;
+    {
+        printf("Could not find IP_LAYOUT in xclbin ip_hdr=%p\n", ip_hdr);
+        //rc = XMA_ERROR;
+        return XMA_ERROR;
+    }
 
-    return rc;
+    return XMA_SUCCESS;
 }
-
