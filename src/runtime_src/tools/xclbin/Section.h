@@ -62,6 +62,8 @@ class Section {
  public:
   enum axlf_section_kind getSectionKind() const;
   const std::string& getSectionKindAsString() const;
+  std::string getName() const;
+  unsigned int getSize() const;
 
  public:
   // Xclbin Binary helper methods - child classes can override them if they choose

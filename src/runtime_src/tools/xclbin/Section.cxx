@@ -123,6 +123,15 @@ Section::getSectionKindAsString() const {
   return m_sKindName;
 }
 
+std::string
+Section::getName() const {
+  return m_name;
+}
+
+unsigned int
+Section::getSize() const {
+  return m_bufferSize;
+}
 
 void
 Section::initXclBinSectionHeader(axlf_section_header& _sectionHeader) {
