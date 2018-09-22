@@ -23,7 +23,8 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "xclbin.h"
-#include "Section.h"
+
+class Section;
 
 class XclBin {
  public:
@@ -38,20 +39,25 @@ class XclBin {
   virtual ~XclBin();
 
  public:
-  std::string getMagic();
-  std::string getCipher();
-  std::string getKeyBlock();
-  std::string getUniqueId();
-  std::string getSize();
-  std::string getTimeStamp();
-  std::string getFeatureRomTimeStamp();
-  std::string getVersion();
-  std::string getMode();
-  std::string getFeatureRomUuid();
-  std::string getPlatformVbnv();
-  std::string getXclBinUuid();
-  std::string getDebugBin();
-  std::string getNumSection();
+  std::string getMagicAsString();
+  std::string getCipherAsString();
+  std::string getKeyBlockAsString();
+  std::string getUniqueIdAsString();
+  std::string getSizeAsString();
+  std::string getTimeStampAsString();
+  std::string getFeatureRomTimeStampAsString();
+  std::string getVersionAsString();
+  std::string getModeAsString();
+  std::string getModeAsPrettyString();
+  std::string getFeatureRomUuidAsString();
+  std::string getPlatformVbnvAsString();
+  std::string getXclBinUuidAsString();
+  std::string getDebugBinAsString();
+  std::string getNumSectionAsString();
+  std::string getSectionKindAsString(unsigned int i);
+  unsigned int getSectionCount();
+  void printSections();
+  void printSectionHeader(Section* pSection);
   void printHeader();
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);

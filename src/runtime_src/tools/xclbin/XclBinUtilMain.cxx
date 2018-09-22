@@ -141,13 +141,19 @@ int main(int argc, char** argv) {
       throw std::runtime_error(errMsg);
     }
 
+    if (bAddValidateImage && sOutputFile.empty()) {
+      std::string errMsg = "ERROR: Add validate image requires output file.";
+      throw std::runtime_error(errMsg);
+    }
+
     // User requested actions
 
     bool bUserActionSpecified = false;
 
-    //if (bListSections) {
-    //  xclBin.listSections();
-    //}
+    if (bListSections) {
+      bUserActionSpecified = true;
+      xclBin.printSections();
+    }
 
     if (!sSectionToRemove.empty()) {
       bUserActionSpecified = true;
@@ -174,8 +180,7 @@ int main(int argc, char** argv) {
       XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
     }
 
-    if ( ! bUserActionSpecified) {
-      //xclBin.readXclBinBinaryHeader();
+    if (!bUserActionSpecified) {
       xclBin.printHeader();
     }
 
