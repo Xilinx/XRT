@@ -24,6 +24,7 @@
  */
 
 #include "app/xmabuffers.h"
+#include "app/xmaparam.h"
 #include "lib/xmalimits.h"
 
 #ifdef __cplusplus
@@ -247,6 +248,10 @@ typedef struct XmaDecoderProperties
     char            hwvendor_string[MAX_VENDOR_NAME];
     /** todo */
     int32_t         intraOnly;
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaDecoderProperties;
 
 /* Forward declaration */
