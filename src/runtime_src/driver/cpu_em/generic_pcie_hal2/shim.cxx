@@ -24,7 +24,7 @@ namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
   unsigned int CpuemShim::mBufferCount = 0;
-  std::map<int, std::pair<std::string,int> > CpuemShim::mFdToFileNameMap;
+  std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
   bool CpuemShim::mFirstBinary = true;
   const unsigned CpuemShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
   const unsigned CpuemShim::CONTROL_AP_START = 1;
@@ -853,6 +853,9 @@ namespace xclcpuemhal2 {
     for (auto it: mFdToFileNameMap)
     {
       int fd=it.first;
+      int sSize = std::get<1>(it.second);
+      void* addr = std::get<2>(it.second);
+      munmap(addr,sSize);
       close(fd);
     }
     mFdToFileNameMap.clear();
@@ -888,6 +891,9 @@ namespace xclcpuemhal2 {
     for (auto it: mFdToFileNameMap)
     {
       int fd=it.first;
+      int sSize = std::get<1>(it.second);
+      void* addr = std::get<2>(it.second);
+      munmap(addr,sSize);
       close(fd);
     }
       mFdToFileNameMap.clear();
@@ -1111,7 +1117,7 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
   int fR = ftruncate(fd, bo->size);
   if(fR == -1)
     return -1;
-  mFdToFileNameMap [fd] = std::make_pair(sFileName,size);
+  mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data);
   PRINTENDFUNC;
   return fd;
 }
@@ -1128,8 +1134,8 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
   if(itr != mFdToFileNameMap.end())
   {
-    std::string fileName = (*itr).second.first;
-    int size = (*itr).second.second;
+    std::string fileName = std::get<0>((*itr).second);
+    int size = std::get<1>((*itr).second);
     unsigned int importedBo = xclAllocBO(size, xclBOKind::XCL_BO_DEVICE_RAM,flags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo)
@@ -1182,7 +1188,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
   auto fItr = mFdToFileNameMap.find(dBO->fd);
   if(fItr != mFdToFileNameMap.end())
   {
-    std::string sFileName = ((*fItr).second).first;
+    std::string sFileName = std::get<0>((*fItr).second);
     xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
   }
   if(!ack)
@@ -1223,7 +1229,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
     int fR = ftruncate(fd, bo->size);
     if(fR == -1)
       return nullptr;
-    mFdToFileNameMap [fd] = std::make_pair(sFileName,bo->size);
+    mFdToFileNameMap [fd] = std::make_tuple(sFileName,bo->size,(void*)data);
     bo->buf = data;
     PRINTENDFUNC;
     return data;

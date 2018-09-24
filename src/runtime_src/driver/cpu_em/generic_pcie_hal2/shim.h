@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <thread>
+#include <tuple>
 #include <sys/wait.h>
 #ifndef _WINDOWS
 #include <dlfcn.h>
@@ -210,7 +211,7 @@ namespace xclcpuemhal2 {
       // HAL2 RELATED member variables start
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
-      static std::map<int, std::pair<std::string,int> > mFdToFileNameMap;
+      static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       // HAL2 RELATED member variables end 
 
   };
