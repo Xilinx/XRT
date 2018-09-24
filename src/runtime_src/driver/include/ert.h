@@ -349,8 +349,8 @@ enum ert_cmd_type {
 /**
  * ERT stop command/ack
  */
-#define	ERT_STOP_CMD			  0x01800001
-#define	ERT_STOP_ACK			  0x00000004
+#define	ERT_STOP_CMD			  ((ERT_STOP << 23) | ERT_CMD_STATE_NEW)
+#define	ERT_STOP_ACK			  (ERT_CMD_STATE_COMPLETED)
 
 /**
  * State machine for both CUDMA and CUISR modules
