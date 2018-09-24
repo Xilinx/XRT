@@ -166,7 +166,7 @@ namespace awsbwhal {
           if( int retVal = xclGetXclBinIdFromSysfs( xclbin_id_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkA     ndSkipReload(afi_id, &orig_info) ) {
+          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
               // force data retention option
               union fpga_mgmt_load_local_image_options opt;
               fpga_mgmt_init_load_local_image_options(&opt);
@@ -174,9 +174,17 @@ namespace awsbwhal {
               opt.afi_id = afi_id;
               opt.slot_id = mBoardNumber;
               retVal = fpga_mgmt_load_local_image_with_options(&opt);
+	      if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
+		  retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
+		  retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
+                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
+                            << " - Loading in classic mode." << std::endl;
+		  retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+	      }	  
+              // check retVal from image load
               if (retVal) {
-                  std::cout << "fpga_mgmt_load_local_image_with_options() failed, error: " << retVal <<      std::endl;        
-                  return -EINVAL;
+                  std::cout << "Failed to load AFI, error: " << retVal << std::endl;
+                  return -retVal;
               }
               retVal = sleepUntilLoaded( std::string(afi_id) );
               if (!retVal) {
