@@ -30,7 +30,7 @@ validOrError(cl_device_id        device_id,
 	     void*               ptr,
 	     size_t              offset,
 	     size_t              size,
-	     cl_stream_xfer_req  attributes,
+	     cl_stream_xfer_req* attributes,
 	     cl_int*             errcode_ret)
 
 {
@@ -42,11 +42,12 @@ clReadStream(cl_device_id          device,
 	      void*                ptr,
 	      size_t               offset,
 	      size_t               size,
-	      cl_stream_xfer_req   attributes,
+	      cl_stream_xfer_req*  attributes,
 	      cl_int*              errcode_ret)
 {
   validOrError(device,stream,ptr,offset,size,attributes,errcode_ret);
   return xocl::xocl(stream)->read(xocl::xocl(device), ptr, offset, size, attributes);
+  //return -1;
 }
 
 } //xocl
@@ -57,7 +58,7 @@ clReadStream(cl_device_id         device,
 	      void*               ptr,
 	      size_t              offset,
 	      size_t              size,
-	      cl_stream_xfer_req  attributes,
+	      cl_stream_xfer_req* attributes,
 	      cl_int*             errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {

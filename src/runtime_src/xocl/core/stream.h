@@ -32,6 +32,7 @@ class stream : public _cl_stream // TODO: public refcount
 protected:
   using stream_handle = xrt::hal::StreamHandle;
   using stream_xfer_flags = xrt::hal::StreamXferFlags;
+  using stream_xfer_req = xrt::hal::StreamXferReq;
 public:
   stream(stream_flags_type flags, stream_attributes_type attr, cl_mem_ext_ptr_t* ext);
 private:
@@ -43,8 +44,8 @@ private:
   device* m_device {nullptr};
 public:
   int get_stream(device* device); 
-  ssize_t read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_flags flags);
-  ssize_t write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_flags flags);
+  ssize_t read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_req* req );
+  ssize_t write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_req* req);
   int close();
 };
 
