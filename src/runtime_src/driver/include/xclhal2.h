@@ -1104,7 +1104,7 @@ struct xclQueueRequest {
  */
 struct xclReqCompletion {
     char			resv[64]; /* reserved for meta data */
-    struct xclQueueRequest	*req;
+    void			*priv_data;
     size_t			nbytes;
     int				err_code;
 };

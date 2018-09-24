@@ -827,7 +827,7 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         std::ifstream errorLog( path );
         if( !errorLog.is_open() ) {
             std::cout << "Error opening: " << path << std::endl;
-            return errno;
+            return -errno;
         } else {
             std::string line;
             std::getline( errorLog, line );
@@ -851,6 +851,7 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
     }
 
     if (!mLocked) {
+         std::cout << __func__ << " ERROR: Device is not locked" << std::endl;
         return -EPERM;
     }
 
@@ -1422,8 +1423,11 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
         goto done;
     }
 
-    for (i = num_evt - 1; i >= 0; i--)
-        comps[i].req = (struct xclQueueRequest *)((struct io_event *)comps)[i].data;
+    for (i = num_evt - 1; i >= 0; i--) {
+        comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
+        comps[i].nbytes = ((struct io_event *)comps)[i].res;
+        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+    }
 
 done:
     return num_evt;
@@ -1595,7 +1599,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_buf = (uint64_t)iov;
             cb.aio_offset = 0;
             cb.aio_nbytes = 2;
-            cb.aio_data = (uint64_t)wr;
+            cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
             rc = io_submit(mAioContext, 1, cbs);
@@ -1633,7 +1637,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_buf = (uint64_t)iov;
             cb.aio_offset = 0;
             cb.aio_nbytes = 2;
-            cb.aio_data = (uint64_t)wr;
+            cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
             rc = io_submit(mAioContext, 1, cbs);
@@ -1901,14 +1905,14 @@ int xclRemoveAndScanFPGA( void )
         std::ofstream userFile( dev_name_pf_user );
         if( !userFile.is_open() ) {
             perror( dev_name_pf_user.c_str() );
-            return errno;
+            return -errno;
         }
         userFile << input;
 
         std::ofstream mgmtFile( dev_name_pf_mgmt );
         if( !mgmtFile.is_open() ) {
             perror( dev_name_pf_mgmt.c_str() );
-            return errno;
+            return -errno;
         }
         mgmtFile << input;
     }

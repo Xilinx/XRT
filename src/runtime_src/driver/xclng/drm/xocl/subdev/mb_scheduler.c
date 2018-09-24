@@ -853,6 +853,8 @@ configure(struct xocl_cmd *xcmd)
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
 		cfg->cdma = cdma ? 1 : 0;
+		/* reserve slot 0 for control commands */
+		exec->slot_status[0] = 1;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");

@@ -14,7 +14,6 @@ add_compile_options("-fPIC")
 add_compile_options("-Wall" "-Werror")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DXMA_RES_TEST -DXMA_DEBUG")
 
-#Uncomment when dep xml2 yaml are installed
 add_subdirectory(src)
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")

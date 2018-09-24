@@ -295,7 +295,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
 			desc->cdh_flags |= V_H2C_DESC_NUM_GL(sg_max);
 			desc->pld_len = req->count;
 
-			desc->cdh_flags |= (req->h2c_eot << S_H2C_DESC_F_EOT) |
+			desc->cdh_flags |= (req->eot << S_H2C_DESC_F_EOT) |
 				(1 << S_H2C_DESC_F_REQ_WRB);
 		}
 	}
@@ -1008,11 +1008,6 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 	}
 
 	if (req->fp_done) {
-		if (cb->offset != req->count) {
-			pr_info("req not completed %u != %u.\n",
-				cb->offset, req->count);
-			error = -EINVAL;
-		}
 		cb->status = error;
 		cb->done = 1;
 		if (!cb->canceled) {
