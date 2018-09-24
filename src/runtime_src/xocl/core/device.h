@@ -475,16 +475,20 @@ public:
   close_stream(xrt::device::stream_handle stream);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   xrt::device::stream_buf
   alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
 
   int
   free_stream_buf(xrt::device::stream_buf_handle handle);
+
+  int 
+  poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
   /**
    * Read a device register at specified offset
    *
