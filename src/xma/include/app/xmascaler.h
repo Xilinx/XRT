@@ -317,14 +317,26 @@ typedef struct XmaScalerSession XmaScalerSession;
 */
 typedef struct XmaScalerProperties
 {
-    XmaScalerType             hwscaler_type; /**< specific filter function requested */
-    XmaSession                *destination; /**< downstream kernel receiving data from this filter */
-    uint32_t                  max_dest_cnt; /**< maximum number of scaled outputs */
-    char                      hwvendor_string[MAX_VENDOR_NAME]; /**< specific vendor filter originated from */
-    int32_t                   num_outputs; /**< number of actual scaled outputs */
-    XmaScalerFilterProperties filter_coefficients; /**< application-specified filter coefficients */
-    XmaScalerInOutProperties  input; /**< input properties */
-    XmaScalerInOutProperties  output[MAX_SCALER_OUTPUTS]; /**< output properties array */
+    /** specific filter function requested */
+    XmaScalerType             hwscaler_type;
+    /** downstream kernel receiving data from this filter */
+    XmaSession                *destination;
+    /** maximum number of scaled outputs */
+    uint32_t                  max_dest_cnt;
+    /** specific vendor filter originated from */
+    char                      hwvendor_string[MAX_VENDOR_NAME];
+    /** number of actual scaled outputs */
+    int32_t                   num_outputs;
+    /** application-specified filter coefficients */
+    XmaScalerFilterProperties filter_coefficients;
+    /** input properties */
+    XmaScalerInOutProperties  input;
+    /** output properties array */
+    XmaScalerInOutProperties  output[MAX_SCALER_OUTPUTS];
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaScalerProperties;
 
 /**
