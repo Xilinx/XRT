@@ -998,9 +998,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
       deviceDataExists = (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()) ? false : true;
       for (int s=0; s < numSlots; ++s) {
-        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
+        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_STR, deviceName, s, slotName);
         if (!deviceDataExists)
-          DeviceBinaryDataSlotsMap[key].push_back(slotName);
+          DeviceBinaryStrSlotsMap[key].push_back(slotName);
       }
       FinalCounterResultsMap[key] = counterResults;
     }
@@ -1202,15 +1202,15 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
       for (int s=0; s < numSlots; ++s) {
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
-        uint64_t strNumTranx = counterResults.StrNumTranx[s];
-        uint64_t strBusyCycles = counterResults.StrBusyCycles[s];
-        uint64_t strDataBytes = counterResults.StrDataBytes[s];
-        uint64_t strStallCycles = counterResults.StrStallCycles[s];
-        uint64_t strStarveCycles = counterResults.StrStarveCycles[s];
-        double avgSize    = (double) strDataBytes / strNumTranx;
-        double linkStarve = (double) ((strStarveCycles / strBusyCycles) * 100);
-        double linkStall =  (double) ((strStallCycles / strBusyCycles) * 100);
-        double avgUtil =  100 - linkStarve - linkStall;
+        double strNumTranx =     (double) counterResults.StrNumTranx[s];
+        double strBusyCycles =   (double) counterResults.StrBusyCycles[s];
+        double strDataKBytes =    (double) counterResults.StrDataBytes[s] / 1000.0;
+        double strStallCycles =  (double) counterResults.StrStallCycles[s];
+        double strStarveCycles = (double) counterResults.StrStarveCycles[s];
+        double avgSize    =  strDataKBytes / strNumTranx ;
+        double linkStarve = (strStarveCycles / strBusyCycles) * 100.0;
+        double linkStall =  (strStallCycles / strBusyCycles) * 100.0;
+        double avgUtil =  100.0 - linkStarve - linkStall;
         writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, avgUtil, linkStarve, linkStall);
       }
     }

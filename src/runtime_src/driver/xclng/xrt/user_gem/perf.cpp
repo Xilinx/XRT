@@ -567,19 +567,19 @@ namespace xocl {
                       &sampleInterval, 4);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_NUM_TRANX_OFFSET, 
-                      &counterResults.StrNumTranx, 8);
+                      &counterResults.StrNumTranx[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_DATA_BYTES_OFFSET, 
-                      &counterResults.StrDataBytes, 8);
+                      &counterResults.StrDataBytes[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_BUSY_CYCLES_OFFSET, 
-                      &counterResults.StrBusyCycles, 8);
+                      &counterResults.StrBusyCycles[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STALL_CYCLES_OFFSET, 
-                      &counterResults.StrStallCycles, 8);
+                      &counterResults.StrStallCycles[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
-                      &counterResults.StrStarveCycles, 8);
+                      &counterResults.StrStarveCycles[s], 8);
       if (mLogStream.is_open()) {
         mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
         mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
