@@ -447,7 +447,17 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 		return -EINVAL;
 	}
 
-	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+	if (is_sync_kiocb(kiocb)) {
+		ret = queue_rw(sdev, queue, iov[1].iov_base,
+			iov[1].iov_len, false, iov[0].iov_base, NULL);
+		if (ret > 0)
+			total += ret;
+
+		ret = total > 0 ? total : ret;
+		return ret;
+	}
+
+	kiocb_set_cancel_fn(kiocb, (kiocb_cancel_fn *)queue_wqe_cancel);
 
 	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
 		false, iov[0].iov_base, kiocb);
@@ -472,7 +482,17 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 		return -EINVAL;
 	}
 
-	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+	if (is_sync_kiocb(kiocb)) {
+		ret = queue_rw(sdev, queue, iov[1].iov_base,
+			iov[1].iov_len, true, iov[0].iov_base, NULL);
+		if (ret > 0)
+			total += ret;
+
+		ret = total > 0 ? total : ret;
+		return ret;
+	}
+
+	kiocb_set_cancel_fn(kiocb, (kiocb_cancel_fn *)queue_wqe_cancel);
 
 	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
 		true, iov[0].iov_base, kiocb);

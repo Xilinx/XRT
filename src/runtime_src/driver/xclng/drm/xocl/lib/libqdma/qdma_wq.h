@@ -137,12 +137,15 @@ static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q)
 
 static inline struct qdma_wqe *wq_next_pending(struct qdma_wq *q)
 {
-	while (q->wq_pending != q->wq_unproc &&
-		( _wqe(q, q->wq_pending)->state == QDMA_WQE_STATE_DONE)) {
+	u32 curr;
+
+	if (q->wq_pending != q->wq_unproc) {
+		curr = q->wq_pending;
 		q->wq_pending++;
 		q->wq_pending &= q->wq_len - 1;
+		return _wqe(q, curr);
 	}
-	return (q->wq_pending != q->wq_unproc) ? _wqe(q, q->wq_pending) : NULL;
+	return NULL;
 }
 
 static inline struct qdma_wqe *wq_next_free(struct qdma_wq *q)

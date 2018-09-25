@@ -556,8 +556,6 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	unsigned int max_io_block;
 
 	if (descq->pidx == descq->cidx) { /* queue empty? */
-		pr_debug("descq %s empty pidx %d, cidx %d, return.\n",
-			descq->conf.name, descq->pidx, descq->cidx);
 		return 0;
 	}
 
