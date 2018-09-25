@@ -10,9 +10,7 @@ else
 $(info XILINX_SDACCEL = $(XILINX_SDACCEL))
 endif
 
-CROSS_COMPILE := 
-
-CXX := $(CROSS_COMPILE)g++
+CXX := $(XILINX_SDACCEL)/bin/xcpp
 CXX_EXT := cpp
 CL_EXT := cl
 
@@ -99,9 +97,9 @@ all : exe xclbin
 
 xclbin : $(CL_XCLBIN)
 
-exe : $(EXENAME)
+exe : $(ODIR)/$(EXENAME)
 
-$(EXENAME): $(OBJS)
+$(ODIR)/$(EXENAME): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) -L${XILINX_XRT}/lib -lxrt_core -lxdp -ldl -pthread
 
 endif
