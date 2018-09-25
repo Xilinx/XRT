@@ -22,10 +22,11 @@
 // #includes here - please keep these to a bare minimum!
 #include "xclbin.h"
 
-#include <string>
 #include <fstream>
-#include <map>
 #include <functional>
+#include <map>
+#include <string>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 
