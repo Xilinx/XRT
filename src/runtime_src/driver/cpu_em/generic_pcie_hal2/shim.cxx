@@ -850,7 +850,7 @@ namespace xclcpuemhal2 {
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
-    for (auto it: mFdToFileNameMap)
+    for (auto& it: mFdToFileNameMap)
     {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
@@ -888,7 +888,7 @@ namespace xclcpuemhal2 {
         systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
       return;
     }
-    for (auto it: mFdToFileNameMap)
+    for (auto& it: mFdToFileNameMap)
     {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
@@ -1134,7 +1134,7 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
   if(itr != mFdToFileNameMap.end())
   {
-    std::string fileName = std::get<0>((*itr).second);
+    const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
     unsigned int importedBo = xclAllocBO(size, xclBOKind::XCL_BO_DEVICE_RAM,flags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
@@ -1188,7 +1188,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
   auto fItr = mFdToFileNameMap.find(dBO->fd);
   if(fItr != mFdToFileNameMap.end())
   {
-    std::string sFileName = std::get<0>((*fItr).second);
+    const std::string& sFileName = std::get<0>((*fItr).second);
     xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
   }
   if(!ack)

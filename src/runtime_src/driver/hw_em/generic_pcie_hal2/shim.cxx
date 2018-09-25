@@ -1108,7 +1108,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
    
-    for (auto it: mFdToFileNameMap)
+    for (auto& it: mFdToFileNameMap)
     {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
@@ -1167,7 +1167,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
     
-     for (auto it: mFdToFileNameMap)
+     for (auto& it: mFdToFileNameMap)
     {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
@@ -1803,7 +1803,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
   if(itr != mFdToFileNameMap.end())
   {
-    std::string fileName = std::get<0>((*itr).second);
+    const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
 
     unsigned int importedBo = xclAllocBO(size, xclBOKind::XCL_BO_DEVICE_RAM,flags);
@@ -1860,7 +1860,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   auto fItr = mFdToFileNameMap.find(dBO->fd);
   if(fItr != mFdToFileNameMap.end())
   {
-    std::string sFileName = std::get<0>((*fItr).second);
+    const std::string& sFileName = std::get<0>((*fItr).second);
     xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
   }
   if(!ack)
