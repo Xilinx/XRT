@@ -173,7 +173,6 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	desc = (struct qdma_mm_desc *)descq->desc + descq->pidx;
 	cb = qdma_req_cb_get(&wqe->wr.req);
 	desc->flag_len |= (1 << S_DESC_F_SOP);
-	wqe->state = QDMA_WQE_STATE_PENDING;
 	sg = wqe->unproc_sg;
 	cb->desc_nr = 0;
 	for(i = 0; i < wqe->unproc_sg_num; i++, sg = next) {
@@ -218,9 +217,15 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		wqe->unproc_ep_addr += len;
 		total += len;
 		if (wqe->unproc_bytes == 0 || descq->avail == 0) {
-			wqe->wr.req.count = total;
-			cb->offset = total;
-			list_add_tail(&cb->list, &descq->pend_list);
+			if (wqe->state == QDMA_WQE_STATE_PENDING) {
+				wqe->wr.req.count += total;
+				cb->offset += total;
+			} else {
+				wqe->wr.req.count = total;
+				cb->offset = total;
+				list_add_tail(&cb->list, &descq->pend_list);
+				wqe->state = QDMA_WQE_STATE_PENDING;
+			}
 			break;
 		}
 		desc = (struct qdma_mm_desc *)descq->desc + descq->pidx;
@@ -253,7 +258,6 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		return -ENOENT;
 
 	cb = qdma_req_cb_get(&wqe->wr.req);
-	wqe->state = QDMA_WQE_STATE_PENDING;
 	sg = wqe->unproc_sg;
 	desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	desc->flags = S_H2C_DESC_F_SOP;
@@ -327,9 +331,15 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 
 		wqe->unproc_sg = sg;
 		wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
-		wqe->wr.req.count = total;
-		cb->offset = total;
-		list_add_tail(&cb->list, &descq->pend_list);
+		if (wqe->state == QDMA_WQE_STATE_PENDING) {
+			wqe->wr.req.count += total;
+			cb->offset += total;
+		} else {
+			wqe->wr.req.count = total;
+			cb->offset = total;
+			list_add_tail(&cb->list, &descq->pend_list);
+			wqe->state = QDMA_WQE_STATE_PENDING;
+		}
 	}
 
 	return 0;
@@ -450,6 +460,8 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 	spin_lock(&queue->wq_lock);
 	wqe->done_bytes += bytes_done;
 	queue->sgc_avail += req->sgcnt;
+	if (wqe->state == QDMA_WQE_STATE_PENDING)
+		wqe->state = QDMA_WQE_STATE_SUBMITTED;
 	if ((err != 0 || req->eot || wqe->wr.len == wqe->done_bytes) &&
 		wqe->state != QDMA_WQE_STATE_CANCELED &&
 		wqe->state != QDMA_WQE_STATE_CANCELED_HW) {
