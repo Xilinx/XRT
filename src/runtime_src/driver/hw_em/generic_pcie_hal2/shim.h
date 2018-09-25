@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <tuple>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -273,7 +274,7 @@ using addr_type = uint64_t;
       uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
-      static std::map<int, std::pair<std::string,int> > mFdToFileNameMap;
+      static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;
