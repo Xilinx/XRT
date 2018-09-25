@@ -1,5 +1,6 @@
 set(XRT_HEADER_SRC
   ert.h
+  stream.h
   xcl_axi_checker_codes.h
   xclbin.h
   xclerr.h

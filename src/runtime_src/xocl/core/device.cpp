@@ -301,16 +301,16 @@ close_stream(xrt::device::stream_handle stream)
 
 ssize_t
 device::
-write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req)
 {
-  return m_xdevice->writeStream(stream, ptr, offset, size, flags);
+  return m_xdevice->writeStream(stream, ptr, offset, size, req);
 }
 
 ssize_t
 device::
-read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req)
 {
-  return m_xdevice->readStream(stream, ptr, offset, size, flags);
+  return m_xdevice->readStream(stream, ptr, offset, size, req);
 }
 
 xrt::device::stream_buf
@@ -325,6 +325,13 @@ device::
 free_stream_buf(xrt::device::stream_buf_handle handle)
 {
   return m_xdevice->freeStreamBuf(handle);
+}
+
+int
+device::
+poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+{
+  return m_xdevice->pollStreams(comps, min,max,actual,timeout);
 }
 
 device::

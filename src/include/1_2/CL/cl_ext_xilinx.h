@@ -43,6 +43,8 @@
 // Do *not* include cl_ext.h from this directory
 #include_next <CL/cl_ext.h>
 
+#include "stream.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -195,36 +197,6 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 
 
 /**
- * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
- * read only. Used in clCreateStream()
- */
-typedef cl_bitfield         cl_stream_flags;
-#define CL_STREAM_READ_ONLY			    (1 << 0)
-#define CL_STREAM_WRITE_ONLY                        (1 << 1)
-
-/**
- * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
- * in clCreateStream()
- */
-typedef cl_uint             cl_stream_attributes;
-#define CL_STREAM                                   (1 << 0)
-#define CL_PACKET                                   (1 << 1)
-
-/**
- * cl_stream_attributes.
- * eg set it to CL_STREAM_CDH for Customer Defined Header.
- * Used in clReadStream() and clWriteStream()
- */
-typedef cl_uint             cl_stream_xfer_req;
-#define CL_STREAM_EOT                               (1 << 0)
-#define CL_STREAM_CDH                               (1 << 1)
-#define CL_STREAM_NONBLOCKING                       (1 << 2)
-#define CL_STREAM_SILENT                            (1 << 3)
-
-typedef struct _cl_stream *      cl_stream;
-typedef struct _cl_stream_mem *  cl_stream_mem;
-
-/**
  * clCreateStream - create the stream for reading or writing.
  * @device_id   : The device handle on which stream is to be created.
  * @flags       : The cl_stream_flags
@@ -265,7 +237,7 @@ clWriteStream(cl_device_id    /* device_id*/,
 	const void *          /* ptr */,
 	size_t                /* offset */,
 	size_t                /* size */,
-	cl_stream_xfer_req    /* req_type*/,
+	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
@@ -275,7 +247,7 @@ clWriteStream(cl_device_id    /* device_id*/,
  * @ptr       : The ptr to write from.
  * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
- * @req_type  : The write request type.
+ * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int.
  */
@@ -285,7 +257,7 @@ clReadStream(cl_device_id     /* device_id*/,
 	     void *                /* ptr */,
 	     size_t                /* offset */,
 	     size_t                /* size */,
-	     cl_stream_xfer_req    /* attributes */,
+	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 
@@ -305,6 +277,25 @@ clCreateStreamBuffer(cl_device_id device,
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
 clReleaseStreamBuffer(cl_stream_mem /*stream memobj */) CL_API_SUFFIX__VERSION_1_0;
+
+/* clPollStreams - Poll streams on a device for completion.
+ * @device_id             : The device
+ * @completions           : Completions array
+ * @min_num_completions   : Minimum number of completions requested
+ * @max_num_completions   : Maximum number of completions requested
+ * @actual_num_completions: Actual number of completions returned.
+ * @timeout               : Timeout in milliseconds (ms)
+ * @errcode_ret :         : The return value eg CL_SUCCESS
+ * Return a cl_int.
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL
+clPollStreams(cl_device_id /*device*/,
+       	cl_streams_poll_req_completions* /*completions*/, 
+	cl_int  /*min_num_completion*/,
+	cl_int  /*max_num_completion*/,
+	cl_int* /*actual num_completion*/,
+	cl_uint /*timeout in ms*/,
+	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 //End QDMA APIs
 
