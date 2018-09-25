@@ -15,7 +15,7 @@
  * under the License.
  */
 
-#include <CL/cl_ext.h>
+#include <stdint.h>
 
 #ifndef __CL_EXT_XILINX_STREAM_H
 #define __CL_EXT_XILINX_STREAM_H
@@ -28,7 +28,7 @@ extern "C" {
  * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
  * read only. Used in clCreateStream()
  */
-typedef cl_bitfield         cl_stream_flags;
+typedef uint64_t cl_stream_flags;
 #define CL_STREAM_READ_ONLY			    (1 << 0)
 #define CL_STREAM_WRITE_ONLY                        (1 << 1)
 
@@ -36,7 +36,7 @@ typedef cl_bitfield         cl_stream_flags;
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
  * in clCreateStream()
  */
-typedef cl_uint             cl_stream_attributes;
+typedef uint32_t cl_stream_attributes;
 #define CL_STREAM                                   (1 << 0)
 #define CL_PACKET                                   (1 << 1)
 
@@ -45,7 +45,7 @@ typedef cl_uint             cl_stream_attributes;
  * eg set it to CL_STREAM_CDH for Customer Defined Header.
  * Used in clReadStream() and clWriteStream()
  */
-typedef cl_uint             cl_stream_xfer_req_type;
+typedef uint32_t cl_stream_xfer_req_type;
 #define CL_STREAM_EOT                               (1 << 0)
 #define CL_STREAM_CDH                               (1 << 1)
 #define CL_STREAM_NONBLOCKING                       (1 << 2)
@@ -59,9 +59,9 @@ typedef cl_uint             cl_stream_xfer_req_type;
 typedef struct cl_stream_xfer_req {
     cl_stream_xfer_req_type flags;
     char*                   cdh;
-    cl_uint                 cdh_len;
+    uint32_t                cdh_len;
     void*		    priv_data;
-    cl_uint                 timeout; //in ms
+    uint32_t                timeout; //in ms
     char                    reserved[64];
 } cl_stream_xfer_req;
 
