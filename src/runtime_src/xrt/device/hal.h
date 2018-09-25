@@ -71,8 +71,8 @@ typedef uint32_t StreamAttributes;
 typedef uint32_t StreamXferFlags;
 typedef uint64_t StreamFlags;
 
-using StreamXferReq = cl_stream_xfer_req;
-using StreamXferCompletions = cl_streams_poll_req_completions;
+using StreamXferReq = stream_xfer_req;
+using StreamXferCompletions = streams_poll_req_completions;
 /**
  * Helper class to encapsulate return values from HAL operations.
  *
@@ -288,7 +288,7 @@ public:
   virtual ssize_t
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req) = 0;
 
-  virtual int 
+  virtual int
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
 public:

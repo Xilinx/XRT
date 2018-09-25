@@ -195,6 +195,38 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
  * These structs and functions are used for the new DMA engine QDMA.
  */
 
+/**
+ * cl_stream_flags. Type of the stream , eg set to CL_STREAM_READ_ONLY for
+ * read only. Used in clCreateStream()
+ */
+typedef uint64_t cl_stream_flags;
+#define CL_STREAM_READ_ONLY			    (1 << 0)
+#define CL_STREAM_WRITE_ONLY                        (1 << 1)
+
+/**
+ * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
+ * in clCreateStream()
+ */
+typedef uint32_t cl_stream_attributes;
+#define CL_STREAM                                   (1 << 0)
+#define CL_PACKET                                   (1 << 1)
+
+/**
+ * cl_stream_attributes.
+ * eg set it to CL_STREAM_CDH for Customer Defined Header.
+ * Used in clReadStream() and clWriteStream()
+ */
+
+#define CL_STREAM_EOT                               (1 << 0)
+#define CL_STREAM_CDH                               (1 << 1)
+#define CL_STREAM_NONBLOCKING                       (1 << 2)
+#define CL_STREAM_SILENT                            (1 << 3)
+
+typedef stream_xfer_req_type         cl_stream_xfer_req_type;
+typedef streams_poll_req_completions cl_streams_poll_req_completions;
+typedef stream_xfer_req              cl_stream_xfer_req;
+typedef struct _cl_stream *          cl_stream;
+typedef struct _cl_stream_mem *      cl_stream_mem;
 
 /**
  * clCreateStream - create the stream for reading or writing.
@@ -290,7 +322,7 @@ clReleaseStreamBuffer(cl_stream_mem /*stream memobj */) CL_API_SUFFIX__VERSION_1
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
 clPollStreams(cl_device_id /*device*/,
-       	cl_streams_poll_req_completions* /*completions*/, 
+       	cl_streams_poll_req_completions* /*completions*/,
 	cl_int  /*min_num_completion*/,
 	cl_int  /*max_num_completion*/,
 	cl_int* /*actual num_completion*/,
