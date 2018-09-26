@@ -128,7 +128,9 @@ enum {
 static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q) 
 {
 	while (q->wq_unproc != q->wq_free &&
-		(_wqe(q, q->wq_unproc)->unproc_bytes == 0)) {
+		((_wqe(q, q->wq_unproc)->unproc_bytes == 0) ||
+		_wqe(q, q->wq_unproc)->state == QDMA_WQE_STATE_CANCELED ||
+		_wqe(q, q->wq_unproc)->state == QDMA_WQE_STATE_CANCELED_HW)) {
 		q->wq_unproc++;
 		q->wq_unproc &= q->wq_len - 1;
 	}
