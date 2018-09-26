@@ -26,6 +26,7 @@
 #include <fstream>
 #include <map>
 #include <functional>
+#include <vector>
 
 #include <boost/property_tree/ptree.hpp>
 
