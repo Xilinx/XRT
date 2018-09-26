@@ -147,7 +147,7 @@ void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
  */
 void platform_axilite_flush(struct xclmgmt_dev *lro)
 {
-	u32 val, i;
+	u32 val, i, gpio_val;
 
 	mgmt_info(lro, "Flushing axilite busses.");
 
@@ -164,7 +164,7 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, MB_GPIO);
+		gpio_val = MGMT_READ_REG32(lro, MB_GPIO);
 		xocl_af_clear(lro);
 	}
 
@@ -173,9 +173,12 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 		xocl_af_clear(lro);
 	}
 
-	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
-		xocl_af_clear(lro);
+	//Can only read this safely if not in reset
+	if (gpio_val == 1) {
+		for (i = 0; i < 4; i++) {
+			val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
+			xocl_af_clear(lro);
+		}
 	}
 
 	for (i = 0; i < 4; i++) {
@@ -204,6 +207,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	long err = 0;
 	const char *ep_name;
 	struct pci_dev *pdev = lro->pci_dev;
+	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
 
 
@@ -257,7 +261,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
-	platform_axilite_flush(lro);
+	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
 
 	/*
 	 * Check firewall status. Status should be 0 (cleared)
@@ -286,11 +291,9 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
-	platform_axilite_flush(lro);
-	/*
- 	 * Potential redudant stop on MB in case it was in a bad state
- 	 * TODO: We should not need to reload elf, but doing anyways
- 	 */
+	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
+
 	xocl_mb_reset(lro);
 
 #endif

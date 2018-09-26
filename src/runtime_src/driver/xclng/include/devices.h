@@ -462,6 +462,11 @@ enum {
 			.end 	= 0x17FFFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
+			{				\
+			.start	= 0x190000,		\
+			.end 	= 0x19FFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
 		})
 
 #define	XOCL_DEVINFO_XMC					\
