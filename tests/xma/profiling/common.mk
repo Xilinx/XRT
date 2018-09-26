@@ -24,7 +24,7 @@ AR := ar
 CPP := g++
 XOCC := $(XILINX_SDACCEL)/bin/xocc
 
-CXXFLAGS := -Wall -Werror -std=c++14
+CXXFLAGS := -Wall -Werror -std=c++14 -g
 # For DSAs with 64bit addressing
 CXXFLAGS += -DDSA64
 CXXFLAGS += -DHAL2
@@ -100,7 +100,7 @@ xclbin : $(CL_XCLBIN)
 exe : $(ODIR)/$(EXENAME)
 
 $(ODIR)/$(EXENAME): $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJS) -L${XILINX_XRT}/lib -lxrt_core -lxdp -ldl -pthread
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) -L${XILINX_XRT}/lib -lxrt_core -lxdp -ldl -pthread -g
 
 endif
 

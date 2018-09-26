@@ -959,8 +959,8 @@ namespace XDP {
     for (; iter != FinalCounterResultsMap.end(); ++iter) {
       std::string key = iter->first;
       std::string deviceName = key.substr(0, key.find_first_of("|"));
-      //if (!isDeviceActive(deviceName) || (DeviceBinaryDataSlotsMap.find(key) == DeviceBinaryDataSlotsMap.end()))
-      //  continue;
+      if (!isDeviceActive(deviceName) || (DeviceBinaryDataSlotsMap.find(key) == DeviceBinaryDataSlotsMap.end()))
+        continue;
 
       // Get results
       xclCounterResults counterResults = iter->second;
