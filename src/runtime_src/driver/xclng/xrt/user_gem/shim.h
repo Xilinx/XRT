@@ -255,7 +255,7 @@ public:
     int xclFreeQDMABuf(uint64_t buf_hdl);
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-    int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout);
+    int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
 
     // Temporary hack for xbflash use only
     char *xclMapMgmt(void) { return mMgtMap; }

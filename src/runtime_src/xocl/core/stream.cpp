@@ -39,20 +39,20 @@ stream::get_stream(device* device)
 
 ssize_t 
 stream
-::read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_flags flags)
+::read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_req* req)
 {
   if(device != m_device)
     throw xocl::error(CL_INVALID_OPERATION,"Stream read on a bad device");
-  return m_device->read_stream(m_handle, ptr, offset, size, flags);
+  return m_device->read_stream(m_handle, ptr, offset, size, req);
 }
 
 ssize_t 
 stream
-::write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_flags flags)
+::write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_req* req)
 {
   if(device != m_device)
     throw xocl::error(CL_INVALID_OPERATION,"Stream write on a bad device");
-  return m_device->write_stream(m_handle, ptr, offset, size, flags);
+  return m_device->write_stream(m_handle, ptr, offset, size, req);
 }
 
 int

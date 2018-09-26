@@ -29,7 +29,7 @@ validOrError(cl_device_id        device,
 	     const void*         ptr,
 	     size_t              offset,
 	     size_t              size,
-	     cl_stream_xfer_req  attributes,
+	     cl_stream_xfer_req* attributes,
 	     cl_int*             errcode_ret)
 
 {
@@ -41,11 +41,12 @@ clWriteStream(cl_device_id        device,
 	      const void*         ptr,
 	      size_t              offset,
 	      size_t              size,
-	      cl_stream_xfer_req  attributes,
+	      cl_stream_xfer_req* attributes,
 	      cl_int*             errcode_ret)
 {
   validOrError(device,stream,ptr,offset,size,attributes,errcode_ret);
   return xocl::xocl(stream)->write(xocl::xocl(device), ptr, offset, size, attributes);
+  //return -1;
 }
 
 } //xocl
@@ -56,7 +57,7 @@ clWriteStream(cl_device_id        device,
 	      const void*         ptr,
 	      size_t              offset,
 	      size_t              size,
-	      cl_stream_xfer_req  attributes,
+	      cl_stream_xfer_req* attributes,
 	      cl_int*             errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {

@@ -1413,11 +1413,15 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 /*
  * xclPollCompletion()
  */
-int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, struct timespec *timeout)
+int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
+    /* TODO: populate actual and timeout args correctly */
+    struct timespec time;
+    time.tv_nsec = timeout*1000000;
+
     int num_evt, i;
 
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, timeout);
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
@@ -2090,10 +2094,10 @@ ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr
 	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }
 
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout)
+int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
         xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, timeout) : -ENODEV;
+        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
 xclDeviceHandle xclOpenMgmt(unsigned deviceIndex)
