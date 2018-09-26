@@ -998,9 +998,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
       deviceDataExists = (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()) ? false : true;
       for (int s=0; s < numSlots; ++s) {
-        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
+        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_STR, deviceName, s, slotName);
         if (!deviceDataExists)
-          DeviceBinaryDataSlotsMap[key].push_back(slotName);
+          DeviceBinaryStrSlotsMap[key].push_back(slotName);
       }
       FinalCounterResultsMap[key] = counterResults;
     }
@@ -1202,16 +1202,20 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
       for (int s=0; s < numSlots; ++s) {
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
-        uint64_t strNumTranx = counterResults.StrNumTranx[s];
-        uint64_t strBusyCycles = counterResults.StrBusyCycles[s];
-        uint64_t strDataBytes = counterResults.StrDataBytes[s];
-        uint64_t strStallCycles = counterResults.StrStallCycles[s];
-        uint64_t strStarveCycles = counterResults.StrStarveCycles[s];
-        double avgSize    = (double) strDataBytes / strNumTranx;
-        double linkStarve = (double) ((strStarveCycles / strBusyCycles) * 100);
-        double linkStall =  (double) ((strStallCycles / strBusyCycles) * 100);
-        double avgUtil =  100 - linkStarve - linkStall;
-        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, avgUtil, linkStarve, linkStall);
+        uint64_t strNumTranx =     counterResults.StrNumTranx[s];
+        uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
+        uint64_t strDataBytes =   counterResults.StrDataBytes[s];
+        uint64_t strStallCycles =   counterResults.StrStallCycles[s];
+        uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
+        // Skip ports without activity
+        if (strBusyCycles <= 0 || strNumTranx == 0)
+                continue;
+
+        double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
+        double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
+        double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
+        double linkUtil =  100.0 - linkStarve - linkStall;
+        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, linkUtil, linkStarve, linkStall);
       }
     }
   }

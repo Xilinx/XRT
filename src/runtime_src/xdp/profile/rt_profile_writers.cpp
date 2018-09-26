@@ -198,7 +198,7 @@ namespace XCL {
     if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStreamSlots > 0)) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
-		    "Average Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
       writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
