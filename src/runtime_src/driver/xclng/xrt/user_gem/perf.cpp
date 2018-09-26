@@ -685,8 +685,9 @@ namespace xocl {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << std::endl;
     }
+    uint64_t fifoBaseAddress = getPerfMonFifoBaseAddress(type, 0);
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoBaseAddress)
    	  return 0;
 
     xclAddressSpace addressSpace = (type == XCL_PERF_MON_ACCEL) ?
@@ -695,7 +696,7 @@ namespace xocl {
     uint32_t fifoCount = 0;
     uint32_t numSamples = 0;
     uint32_t numBytes = 0;
-    xclRead(addressSpace, getPerfMonFifoBaseAddress(type, 0) + AXI_FIFO_RLR, &fifoCount, 4);
+    xclRead(addressSpace, fifoBaseAddress + AXI_FIFO_RLR, &fifoCount, 4);
     // Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
     numBytes = fifoCount & 0x7FFFFF;
     numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);

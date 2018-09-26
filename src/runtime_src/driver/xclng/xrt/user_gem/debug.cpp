@@ -90,7 +90,7 @@ namespace xocl {
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
-    uint64_t fifoCtrlBaseAddr = mOffsets[XCL_ADDR_SPACE_DEVICE_PERFMON];
+    uint64_t fifoCtrlBaseAddr = 0x0;
     getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 

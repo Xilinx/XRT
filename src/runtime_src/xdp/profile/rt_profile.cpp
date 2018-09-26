@@ -1202,16 +1202,20 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
       for (int s=0; s < numSlots; ++s) {
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
-        double strNumTranx =     (double) counterResults.StrNumTranx[s];
-        double strBusyCycles =   (double) counterResults.StrBusyCycles[s];
-        double strDataKBytes =    (double) counterResults.StrDataBytes[s] / 1000.0;
-        double strStallCycles =  (double) counterResults.StrStallCycles[s];
-        double strStarveCycles = (double) counterResults.StrStarveCycles[s];
-        double avgSize    =  strDataKBytes / strNumTranx ;
-        double linkStarve = (strStarveCycles / strBusyCycles) * 100.0;
-        double linkStall =  (strStallCycles / strBusyCycles) * 100.0;
-        double avgUtil =  100.0 - linkStarve - linkStall;
-        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, avgUtil, linkStarve, linkStall);
+        uint64_t strNumTranx =     counterResults.StrNumTranx[s];
+        uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
+        uint64_t strDataBytes =   counterResults.StrDataBytes[s];
+        uint64_t strStallCycles =   counterResults.StrStallCycles[s];
+        uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
+        // Skip ports without activity
+        if (strBusyCycles <= 0 || strNumTranx == 0)
+                continue;
+
+        double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
+        double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
+        double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
+        double linkUtil =  100.0 - linkStarve - linkStall;
+        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, linkUtil, linkStarve, linkStall);
       }
     }
   }
