@@ -51,6 +51,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR:
       return "ACCEL_MONITOR";
+    case AXI_STREAM_MONITOR:
+      return "AXI_STREAM_MONITOR";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
