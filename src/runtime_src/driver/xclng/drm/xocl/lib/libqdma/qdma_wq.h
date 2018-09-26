@@ -63,6 +63,18 @@ struct qdma_wqe {
 	u64			priv_data[1];
 };
 
+struct qdma_wq_stat {
+	u32			total_slots;
+	u32			free_slots;
+	u32			pending_slots;
+	u32			unproc_slots;
+
+	u64			total_req_bytes;
+        u64			total_complete_bytes;
+        u32			total_req_num;
+        u32			total_complete_num;
+};
+
 struct qdma_wq {
 	unsigned long		dev_hdl;
 	unsigned long		qhdl;
@@ -84,6 +96,11 @@ struct qdma_wq {
 	u32			sgc_avail;
 	u32			sgc_pidx;
 	u32			sgc_len;
+
+	u64			req_nbytes;
+        u64			compl_nbytes;
+        u32			req_num;
+        u32			compl_num;
 };
 
 enum {
@@ -111,7 +128,9 @@ enum {
 static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q) 
 {
 	while (q->wq_unproc != q->wq_free &&
-		(_wqe(q, q->wq_unproc)->unproc_bytes == 0)) {
+		((_wqe(q, q->wq_unproc)->unproc_bytes == 0) ||
+		_wqe(q, q->wq_unproc)->state == QDMA_WQE_STATE_CANCELED ||
+		_wqe(q, q->wq_unproc)->state == QDMA_WQE_STATE_CANCELED_HW)) {
 		q->wq_unproc++;
 		q->wq_unproc &= q->wq_len - 1;
 	}
@@ -120,12 +139,15 @@ static inline struct qdma_wqe *wq_next_unproc(struct qdma_wq *q)
 
 static inline struct qdma_wqe *wq_next_pending(struct qdma_wq *q)
 {
-	while (q->wq_pending != q->wq_unproc &&
-		( _wqe(q, q->wq_pending)->state == QDMA_WQE_STATE_DONE)) {
+	u32 curr;
+
+	if (q->wq_pending != q->wq_unproc) {
+		curr = q->wq_pending;
 		q->wq_pending++;
 		q->wq_pending &= q->wq_len - 1;
+		return _wqe(q, curr);
 	}
-	return (q->wq_pending != q->wq_unproc) ? _wqe(q, q->wq_pending) : NULL;
+	return NULL;
 }
 
 static inline struct qdma_wqe *wq_next_free(struct qdma_wq *q)
@@ -163,5 +185,6 @@ int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 int qdma_wq_destroy(struct qdma_wq *queue);
 ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
 int qdma_cancel_req(struct qdma_wq *queue);
+void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat);
 
 #endif /* _QDMA_WR_H */

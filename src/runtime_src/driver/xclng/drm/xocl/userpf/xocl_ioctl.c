@@ -420,7 +420,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
-		if (mem_data->m_used) {
+		if (mem_data->m_used && mem_data->m_type != MEM_STREAMING) {
 			ddr_bank_size = mem_data->m_size * 1024;
 			DRM_INFO("XOCL: Allocating DDR bank%d", i);
 			DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",

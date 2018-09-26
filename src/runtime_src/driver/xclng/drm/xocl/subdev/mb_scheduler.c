@@ -796,7 +796,7 @@ configure(struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	bool ert = xocl_mb_sched_on(xdev);
+	bool ert = xocl_mb_sched_on(xdev) && !XOCL_DSA_MB_SCHE_OFF(xdev);
 	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;

@@ -556,8 +556,6 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	unsigned int max_io_block;
 
 	if (descq->pidx == descq->cidx) { /* queue empty? */
-		pr_debug("descq %s empty pidx %d, cidx %d, return.\n",
-			descq->conf.name, descq->pidx, descq->cidx);
 		return 0;
 	}
 
@@ -715,11 +713,21 @@ err_out:
 	return QDMA_ERR_OUT_OF_MEMORY;
 }
 
-void qdma_descq_free_resource(struct qdma_descq *descq)
+void qdma_descq_cancel_all(struct qdma_descq *descq)
 {
 	struct qdma_sgt_req_cb *cb, *tmp;
 	struct qdma_request *req;
 
+	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
+		req = (struct qdma_request *)cb;
+		descq_cancel_req(descq, req);
+		list_del(&cb->list);
+	}
+	schedule_work(&descq->work);
+}
+
+void qdma_descq_free_resource(struct qdma_descq *descq)
+{
 	if (!descq)
 		return;
 
@@ -728,13 +736,8 @@ void qdma_descq_free_resource(struct qdma_descq *descq)
 
 	/* free all pending requests */
 	if (!list_empty(&descq->pend_list)) {
-		list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
-			req = (struct qdma_request *)cb;
-			descq_cancel_req(descq, req);
-			list_del(&cb->list);
-		}
+		qdma_descq_cancel_all(descq);
 		reinit_completion(&descq->cancel_comp);
-		schedule_work(&descq->work);
 		unlock_descq(descq);
 		wait_for_completion(&descq->cancel_comp);
 		lock_descq(descq);

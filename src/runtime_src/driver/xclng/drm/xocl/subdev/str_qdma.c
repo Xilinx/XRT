@@ -49,14 +49,14 @@ struct stream_async_arg {
 };
 
 struct stream_queue {
+	struct device		dev;
 	struct qdma_wq		queue;
 	u32			state;
 	struct file		*file;
 	int			qfd;
 	int			refcnt;
 	struct str_device	*sdev;
-
-	u64			trans_bytes;
+	kuid_t			uid;
 };
 
 struct str_device {
@@ -70,6 +70,149 @@ struct str_device {
 
 	struct qdma_dev_conf	dev_info;
 };
+
+/* sysfs */
+#define	__SHOW_MEMBER(P, M)		off += snprintf(buf + off, 32,		\
+	"%s:%lld\n", #M, (int64_t)P->M)
+
+static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct stream_queue *queue = dev_get_drvdata(dev);
+	kuid_t uid;
+	int off = 0;
+	struct qdma_queue_conf *qconf;
+
+	uid = current_uid();
+	if (memcmp(&uid, &queue->uid, sizeof(uid)))
+		return sprintf(buf, "Permission denied\n");
+
+	qconf = queue->queue.qconf;
+	__SHOW_MEMBER(qconf, pipe);
+	__SHOW_MEMBER(qconf, irq_en);
+	__SHOW_MEMBER(qconf, desc_rng_sz_idx);
+	__SHOW_MEMBER(qconf, wbk_en);
+	__SHOW_MEMBER(qconf, wbk_acc_en);
+	__SHOW_MEMBER(qconf, wbk_pend_chk);
+	__SHOW_MEMBER(qconf, bypass);
+	__SHOW_MEMBER(qconf, pfetch_en);
+	__SHOW_MEMBER(qconf, st_pkt_mode);
+	__SHOW_MEMBER(qconf, c2h_use_fl);
+	__SHOW_MEMBER(qconf, c2h_buf_sz_idx);
+	__SHOW_MEMBER(qconf, cmpl_rng_sz_idx);
+	__SHOW_MEMBER(qconf, cmpl_desc_sz);
+	__SHOW_MEMBER(qconf, cmpl_stat_en);
+	__SHOW_MEMBER(qconf, cmpl_udd_en);
+	__SHOW_MEMBER(qconf, cmpl_timer_idx);
+	__SHOW_MEMBER(qconf, cmpl_cnt_th_idx);
+	__SHOW_MEMBER(qconf, cmpl_trig_mode);
+	__SHOW_MEMBER(qconf, cmpl_en_intr);
+	__SHOW_MEMBER(qconf, cdh_max);
+	__SHOW_MEMBER(qconf, pipe_gl_max);
+	__SHOW_MEMBER(qconf, pipe_flow_id);
+	__SHOW_MEMBER(qconf, pipe_slr_id);
+	__SHOW_MEMBER(qconf, pipe_tdest);
+	__SHOW_MEMBER(qconf, quld);
+	__SHOW_MEMBER(qconf, rngsz);
+	__SHOW_MEMBER(qconf, rngsz_wrb);
+	__SHOW_MEMBER(qconf, c2h_bufsz);
+
+	return off;
+}
+static DEVICE_ATTR_RO(qinfo);
+
+static ssize_t stat_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct stream_queue *queue = dev_get_drvdata(dev);
+	kuid_t uid;
+	int off = 0;
+	struct qdma_wq_stat stat, *pstat;
+
+	uid = current_uid();
+	if (memcmp(&uid, &queue->uid, sizeof(uid)))
+		return sprintf(buf, "Permission denied\n");
+
+	qdma_wq_getstat(&queue->queue, &stat);
+	pstat = &stat;
+	__SHOW_MEMBER(pstat, total_slots);
+	__SHOW_MEMBER(pstat, free_slots);
+	__SHOW_MEMBER(pstat, pending_slots);
+	__SHOW_MEMBER(pstat, unproc_slots);
+
+	__SHOW_MEMBER(pstat, total_req_bytes);
+	__SHOW_MEMBER(pstat, total_req_num);
+	__SHOW_MEMBER(pstat, total_complete_bytes);
+	__SHOW_MEMBER(pstat, total_complete_num);
+
+	
+	return off;
+}
+static DEVICE_ATTR_RO(stat);
+
+static struct attribute *stream_attributes[] = {
+	&dev_attr_stat.attr,
+	&dev_attr_qinfo.attr,
+	NULL,
+};
+
+static const struct attribute_group stream_attrgroup = {
+	.attrs = stream_attributes,
+};
+
+static void stream_sysfs_destroy(struct stream_queue *queue)
+{
+	if (get_device(&queue->dev)) {
+		sysfs_remove_group(&queue->dev.kobj, &stream_attrgroup);
+		put_device(&queue->dev);
+		device_unregister(&queue->dev);
+	}
+
+}
+
+static void stream_device_release(struct device *dev)
+{
+	xocl_dbg(dev, "dummy device release callback");
+}
+
+static int stream_sysfs_create(struct stream_queue *queue)
+{
+	struct platform_device	*pdev = queue->sdev->pdev;
+	int			ret;
+
+#if 0
+	queue->dev = device_create(NULL, &pdev->dev,
+                0, queue, "%sq%d", queue->queue.qconf->c2h ? "r" : "w",
+                queue->queue.qconf->qidx);
+#endif
+	queue->dev.parent = &pdev->dev;
+	queue->dev.release = stream_device_release;
+	dev_set_drvdata(&queue->dev, queue);
+	dev_set_name(&queue->dev, "%sq%d",
+		queue->queue.qconf->c2h ? "r" : "w",
+		queue->queue.qconf->qidx);
+	ret = device_register(&queue->dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "device create failed");
+		goto failed;
+	}
+
+	ret = sysfs_create_group(&queue->dev.kobj, &stream_attrgroup);
+	if (ret) {
+		xocl_err(&pdev->dev, "create sysfs group failed");
+		goto failed;
+	}
+
+	return 0;
+
+failed:
+	if (get_device(&queue->dev)) {
+		put_device(&queue->dev);
+		device_unregister(&queue->dev);
+	}
+	return ret;
+}
+/* end of sysfs */
 
 static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
 {
@@ -210,6 +353,15 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		return -EFAULT;
 	}
 
+	if (!queue->queue.qconf->c2h &&
+		!(header.flags & XOCL_QDMA_REQ_FLAG_EOT) &&
+		(sz & 0xfff)) {
+		xocl_err(&sdev->pdev->dev,
+			"H2C without EOT has to be multiple of 4k, sz 0x%lx",
+			sz);
+	}
+
+
 	xdev = xocl_get_xdev(sdev->pdev);
 
 	vma = find_vma(current->mm, buf_addr);
@@ -258,6 +410,9 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	}
 
 	ret = qdma_wq_post(&queue->queue, &wr);
+	if (ret < 0) {
+		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
+	}
 
 	if (wr.block) {
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
@@ -292,7 +447,17 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 		return -EINVAL;
 	}
 
-	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+	if (is_sync_kiocb(kiocb)) {
+		ret = queue_rw(sdev, queue, iov[1].iov_base,
+			iov[1].iov_len, false, iov[0].iov_base, NULL);
+		if (ret > 0)
+			total += ret;
+
+		ret = total > 0 ? total : ret;
+		return ret;
+	}
+
+	kiocb_set_cancel_fn(kiocb, (kiocb_cancel_fn *)queue_wqe_cancel);
 
 	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
 		false, iov[0].iov_base, kiocb);
@@ -317,7 +482,17 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 		return -EINVAL;
 	}
 
-	kiocb_set_cancel_fn(kiocb, queue_wqe_cancel);
+	if (is_sync_kiocb(kiocb)) {
+		ret = queue_rw(sdev, queue, iov[1].iov_base,
+			iov[1].iov_len, true, iov[0].iov_base, NULL);
+		if (ret > 0)
+			total += ret;
+
+		ret = total > 0 ? total : ret;
+		return ret;
+	}
+
+	kiocb_set_cancel_fn(kiocb, (kiocb_cancel_fn *)queue_wqe_cancel);
 
 	ret = queue_rw(sdev, queue, iov[1].iov_base, iov[1].iov_len,
 		true, iov[0].iov_base, kiocb);
@@ -413,6 +588,8 @@ static int queue_release(struct inode *inode, struct file *file)
 		xocl_err(&sdev->pdev->dev, "Queue is busy");
 		return -EBUSY;
 	}
+
+	stream_sysfs_destroy(queue);
 
 	ret = qdma_wq_destroy(&queue->queue);
 	if (ret < 0) {
@@ -522,6 +699,14 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	}
 
 	queue->sdev = sdev;
+
+	ret = stream_sysfs_create(queue);
+	if (ret) {
+		xocl_err(&sdev->pdev->dev, "sysfs create failed");
+		goto failed;
+	}
+
+	queue->uid = current_uid();
 
 	return 0;
 

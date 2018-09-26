@@ -567,7 +567,7 @@ enum {
 
 #define	XOCL_BOARD_USER_QDMA						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
 		.subdev_info	= USER_RES_QDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
 		.user_bar = 2,						\
