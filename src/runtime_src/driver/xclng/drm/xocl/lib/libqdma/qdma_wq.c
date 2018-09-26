@@ -161,7 +161,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 {
 	struct qdma_mm_desc	*desc;
 	struct qdma_sgt_req_cb	*cb;
-	struct scatterlist	*sg, *next;
+	struct scatterlist	*sg, *next = NULL;
 	dma_addr_t		dma_addr;
 	loff_t			off;
 	ssize_t			len, total = 0;
@@ -226,6 +226,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 				list_add_tail(&cb->list, &descq->pend_list);
 				wqe->state = QDMA_WQE_STATE_PENDING;
 			}
+			i++;
 			break;
 		}
 		desc = (struct qdma_mm_desc *)descq->desc + descq->pidx;
@@ -233,7 +234,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	desc->flag_len |= (1 << S_DESC_F_EOP);
 	BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0);
 
-	wqe->unproc_sg = sg;
+	wqe->unproc_sg = next;
 	wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
 
 	if (descq->conf.c2h)
@@ -248,7 +249,7 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 {
 	struct qdma_h2c_desc	*desc;
 	struct qdma_sgt_req_cb	*cb;
-	struct scatterlist	*sg, *next;
+	struct scatterlist	*sg, *next = NULL;
 	dma_addr_t		dma_addr;
 	loff_t			off;
 	ssize_t			len, total = 0;
@@ -320,26 +321,25 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		descq->conf.rngsz);
 	pr_debug("unproc_sg_num %d, uproc_bytes %lld\n", wqe->unproc_sg_num,
 		wqe->unproc_bytes);
-	if (i > 0) {
-		desc->flags |= S_H2C_DESC_F_EOP;
-		if (descq->xdev->stm_en && wqe->unproc_bytes == 0 &&
-			wqe->wr.req.eot)
-			desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT);
 
-		descq_h2c_pidx_update(descq, (descq->pidx) &
-			(descq->conf.rngsz - 1));
+	desc->flags |= S_H2C_DESC_F_EOP;
+	if (descq->xdev->stm_en && wqe->unproc_bytes == 0 &&
+		wqe->wr.req.eot)
+		desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT);
 
-		wqe->unproc_sg = sg;
-		wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
-		if (wqe->state == QDMA_WQE_STATE_PENDING) {
-			wqe->wr.req.count += total;
-			cb->offset += total;
-		} else {
-			wqe->wr.req.count = total;
-			cb->offset = total;
-			list_add_tail(&cb->list, &descq->pend_list);
-			wqe->state = QDMA_WQE_STATE_PENDING;
-		}
+	descq_h2c_pidx_update(descq, (descq->pidx) &
+		(descq->conf.rngsz - 1));
+
+	wqe->unproc_sg = next;
+	wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
+	if (wqe->state == QDMA_WQE_STATE_PENDING) {
+		wqe->wr.req.count += total;
+		cb->offset += total;
+	} else {
+		wqe->wr.req.count = total;
+		cb->offset = total;
+		list_add_tail(&cb->list, &descq->pend_list);
+		wqe->state = QDMA_WQE_STATE_PENDING;
 	}
 
 	return 0;
@@ -390,7 +390,9 @@ static int descq_st_c2h_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		if (wqe->unproc_bytes == 0 || queue->sgc_avail == 0) {
 			sgc->next = NULL;
 			wqe->wr.req.count = total;
-			wqe->wr.req.sgcnt = i + 1;
+			i++;
+			wqe->wr.req.sgcnt = i;
+			sg = sg_next(sg);
 			break;
 		}
 		sgc = next_sgc;
