@@ -17,6 +17,7 @@
 #include "Section.h"
 
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 
@@ -38,6 +39,12 @@ Section::Section()
 }
 
 Section::~Section() {
+  purgeBuffers();
+}
+
+void
+Section::purgeBuffers()
+{
   if (m_pBuffer != nullptr) {
     delete m_pBuffer;
     m_pBuffer = nullptr;
@@ -80,6 +87,8 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
+
+  //std::cout << "Kind(" << _eKind << "): " << _sKindStr << std::endl;
 }
 
 bool
@@ -92,6 +101,22 @@ Section::translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_s
   return true;
 }
 
+
+enum Section::FormatType 
+Section::getFormatType(const std::string _sFormatType)
+{
+  std::string sFormatType = _sFormatType;
+
+  boost::to_upper(sFormatType);
+
+  if (sFormatType == "") { return FT_UNDEFINED; }
+  if (sFormatType == "RAW") { return FT_RAW; }
+  if (sFormatType == "JSON") { return FT_JSON; }
+  if (sFormatType == "HTML") { return FT_HTML; }
+  if (sFormatType == "TXT") { return FT_TXT; }
+  
+  return FT_UNKNOWN;
+}
 
 Section*
 Section::createSectionObjectOfKind(enum axlf_section_kind _eKind) {
@@ -141,7 +166,8 @@ Section::initXclBinSectionHeader(axlf_section_header& _sectionHeader) {
 }
 
 void
-Section::writeXclBinSectionBuffer(std::fstream& _ostream) {
+Section::writeXclBinSectionBuffer(std::fstream& _ostream) const
+{
   if ((m_pBuffer == nullptr) ||
       (m_bufferSize == 0)) {
     return;
@@ -295,12 +321,21 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
   case FT_HTML:
     // Do nothing
     break;
+  case FT_TXT:
+    // Do nothing
+    break;
+  case FT_UNKNOWN:
+    // Do nothing
+    break;
+  case FT_UNDEFINED:
+    // Do nothing
+    break;
   }
 }
 
 
 void 
-Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType)
+Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const
 {
   switch (_eFormatType) {
   case FT_RAW:
@@ -326,5 +361,14 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType)
       _ostream << "</pre></body></html>" << std::endl;
       break;
     }
+  case FT_UNKNOWN:
+    // Do nothing;
+    break;
+  case FT_TXT:
+    // Do nothing;
+    break;
+  case FT_UNDEFINED:
+    // Do nothing;
+    break;
   }
 }

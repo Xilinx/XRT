@@ -94,7 +94,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
 
     XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
                                index,
-                               getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type),
+                               getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
                                pHdr->m_ip_data[index].properties,
                                pHdr->m_ip_data[index].m_base_address,
                                pHdr->m_ip_data[index].m_name));
@@ -104,7 +104,11 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
 
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
     ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
-    ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
+      ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+    } else {
+      ip_data.put("m_base_address", "not_used");
+    }
     ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
     m_ip_data.add_child("ip_data", ip_data);
@@ -156,6 +160,13 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
     ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
 
+    if ( sBaseAddress != "not_used" ) {
+      ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
+    }
+    else {
+      ipDataHdr.m_base_address = (uint64_t) -1;
+    }
+
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
@@ -184,6 +195,16 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     std::string errMsg = XUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
                                        (unsigned int)count, (unsigned int)ipLayoutHdr.m_count);
     throw std::runtime_error(errMsg);
+  }
+
+  // -- Buffer needs to be less than 64K--
+  unsigned int bufferSize = _buf.str().size();
+  const unsigned int maxBufferSize = 64 * 1024;
+  if ( bufferSize > maxBufferSize ) {
+    std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
+                                       (unsigned int) bufferSize, (unsigned int) maxBufferSize);
+    std::cout << errMsg << std::endl;
+    // throw std::runtime_error(errMsg);
   }
 }
 

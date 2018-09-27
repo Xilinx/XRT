@@ -23,6 +23,7 @@
 #include <boost/property_tree/ptree.hpp>
 
 #include "xclbin.h"
+#include "ParameterSectionData.h"
 
 class Section;
 
@@ -61,10 +62,14 @@ class XclBin {
   void printHeader();
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
-  void writeXclBinBinary(const std::string &_binaryFileName);
+  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion = false);
   void removeSection(const std::string & _sSectionToRemove);
-  void addSection(const std::string & _sSectionToAdd);
-  void dumpSection(const std::string & _sSectionToAdd);
+  void addSection(ParameterSectionData &_PSD);
+  void replaceSection(ParameterSectionData &_PSD);
+  void dumpSection(ParameterSectionData &_PSD);
+
+ public:
+  Section *findSection(enum axlf_section_kind _eKind);
 
  private:
   void readXclBinBinaryHeader(std::fstream& _istream);
@@ -78,8 +83,9 @@ class XclBin {
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
   void addSection(Section* _pSection);
-  void removeSection(Section* _pSection);
-  Section *findSection(enum axlf_section_kind _eKind);
+  void removeSection(const Section* _pSection);
+
+  void updateUUID();
 
   // Should be in their own separate class
  private:
