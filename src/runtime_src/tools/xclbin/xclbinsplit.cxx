@@ -23,7 +23,7 @@
 
 //#include "xclbinsplit0.h"
 #include "xclbinsplit1.h"
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <cstdlib>
 #include <cstring>
 #include <iostream>

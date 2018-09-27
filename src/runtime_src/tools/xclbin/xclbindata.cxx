@@ -24,7 +24,7 @@
 #include "xclbindata.h"
 
 
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <iostream>
 #include <memory>
 #include <stdlib.h>
@@ -374,6 +374,7 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
   }
+  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
 
 
   std::string id = "";
