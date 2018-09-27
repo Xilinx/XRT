@@ -165,12 +165,12 @@ public:
         mMgmtFunc = dev.mgmt_func;
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
         if (!m_handle)
-            throw std::runtime_error("Failed to open device index, " + std::to_string(m_idx));
+            throw std::runtime_error("Failed to open device: " + dev.mgmt_name);
         if (xclGetDeviceInfo2(m_handle, &m_devinfo))
-            throw std::runtime_error("Unable to query device index, " + std::to_string(m_idx));
+            throw std::runtime_error("Unable to query device index, " + dev.mgmt_name);
 #ifdef AXI_FIREWALL
         if (xclGetErrorStatus(m_handle, &m_errinfo))
-            throw std::runtime_error("Unable to query device index for AXI error, " + std::to_string(m_idx));
+            throw std::runtime_error("Unable to query device index for AXI error, " + dev.mgmt_name);
 #endif
     }
 
@@ -453,7 +453,7 @@ public:
 
 
         ss << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW";
-        ss << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BOTTOM" << "\n";
+        ss << std::setw(16) << "MGT VTT" << "\n";
 
 
         if(m_devinfo->mMgt0v9 == XCL_NO_SENSOR_DEV_S)
@@ -473,19 +473,12 @@ public:
 
 
         if(m_devinfo->mMgtVtt == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support";
+            ss << std::setw(16) << "Not support" << "\n\n";
         else if(m_devinfo->mMgtVtt == XCL_INVALID_SENSOR_VAL)
-            ss << std::setw(16) << "Not support";
-        else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V";
-
-
-        if(m_devinfo->m1v2Bottom == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n\n";
-        else if(m_devinfo->m1v2Bottom == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support" << "\n\n";
         else
-            ss << std::setw(16) << std::to_string((float)m_devinfo->m1v2Bottom/1000).substr(0,4) + "V" << "\n\n";
+            ss << std::setw(16) << std::to_string((float)m_devinfo->mMgtVtt/1000).substr(0,4) + "V" << "\n\n";
+
 
         ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
         if(m_devinfo->mVccIntVol == XCL_NO_SENSOR_DEV_S)
@@ -550,7 +543,10 @@ public:
             numDDR = map->m_count;
             if(numDDR <= 8) //Driver side limit, ddrMemUsed etc
                numSupportedMems = numDDR;
-            for( unsigned i = 0; i <numDDR; i++ ) {
+            for(unsigned i = 0; i <numDDR; i++ ) 
+	    {
+		if(map->m_mem_data[i].m_type == MEM_STREAMING)
+		    continue;	
 
                 percentage = (float)devstat.ddrMemUsed[i]*100 / (map->m_mem_data[ i ].m_size<<10);
                 nums_fiftieth = (int)percentage/2;
@@ -869,7 +865,7 @@ public:
             }
             ifs.read((char*)&numDDR, sizeof(numDDR));
             ifs.seekg(0, ifs.beg);
-            if( numDDR == 0 ) {
+            if( !ifs.good() || numDDR == 0 ) {
                 std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbutil program'." << std::endl;
                 return -1;
             }else {
@@ -884,6 +880,8 @@ public:
                     std::cout << "Reporting from mem_topology:" << std::endl;
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
+		    if(map->m_mem_data[i].m_type == MEM_STREAMING)
+		       continue;	
                     if( map->m_mem_data[i].m_used ) {
                         if (verbose)
                             std::cout << "Data Validity & DMA Test on " << map->m_mem_data[i].m_tag << "\n";
@@ -1122,7 +1120,7 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    int validate();
+    int validate(bool quick);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect

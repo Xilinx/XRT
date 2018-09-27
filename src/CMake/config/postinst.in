@@ -1,13 +1,17 @@
 #!/bin/sh
 
 if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
-   echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-   dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
-   find /lib/modules -type f -name xocl.ko -delete
-   find /lib/modules -type f -name xclmgmt.ko -delete
-   find /lib/modules -type f -name xocl.ko.kz -delete
-   find /lib/modules -type f -name xclmgmt.ko.kz -delete
-   depmod -A
+    echo "Unloading old XRT Linux kernel modules"
+    modprobe -r xocl
+    modprobe -r xclmgmt
+
+    echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+    dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+    find /lib/modules -type f -name xocl.ko -delete
+    find /lib/modules -type f -name xclmgmt.ko -delete
+    find /lib/modules -type f -name xocl.ko.kz -delete
+    find /lib/modules -type f -name xclmgmt.ko.kz -delete
+    depmod -A
 fi
 
 if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
@@ -22,6 +26,12 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     dkms install -m xrt -v "@XRT_VERSION_STRING@" --force
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
+
+    echo "Loading new XRT Linux kernel modules"
+    udevadm control --reload-rules
+    modprobe xclmgmt
+    modprobe xocl
+    udevadm trigger
 else
     echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi

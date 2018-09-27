@@ -3,6 +3,7 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+CORE=`grep -c ^processor /proc/cpuinfo`
 
 usage()
 {
@@ -10,6 +11,7 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
+    echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
     echo "[-verbose]                 Turn on verbosity when compiling"
@@ -23,6 +25,7 @@ clean=0
 covbuild=0
 ccache=0
 verbose=""
+jcore=$CORE
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -30,6 +33,11 @@ while [ $# -gt 0 ]; do
             ;;
         clean|-clean)
             clean=1
+            shift
+            ;;
+        -j)
+            shift
+            jcore=$1
             shift
             ;;
         -ccache)
@@ -96,19 +104,19 @@ if [[ $covbuild == 1 ]]; then
     mkdir -p Coverity
     cd Coverity
     cmake -DCMAKE_BUILD_TYPE=Release ../../src
-    make -j4 COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    make -j $CORE COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
     cd $here
     exit 0
 fi
 
 mkdir -p Debug Release
 cd Debug
-cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
+time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time make -j $jcore $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
-cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make -j4 $verbose DESTDIR=$PWD install
-make package
+time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time make -j $jcore $verbose DESTDIR=$PWD install
+time make package
 cd $here

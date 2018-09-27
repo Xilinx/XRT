@@ -125,13 +125,12 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 	/** update the completion cidx */
 	lock_descq(descq);
 	if (descq->q_state == Q_STATE_ONLINE) {
-		cb->offset = req->count;
 		/* add to pend list even before cidx/pidx update as it could
 		 *  cause an interrupt and may miss processing of writeback */
 		list_add_tail(&cb->list, &descq->pend_list);
 		/* any rcv'ed packet not yet read ? */
 		/** read the data from the device */
-		if (!wait) {
+		if (wait) {
 			descq_st_c2h_read(descq, req, 1, 1);
 			if (!cb->left) {
 				list_del(&cb->list);
@@ -155,7 +154,7 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		qdma_kthread_wakeup(descq->wbthp);
 
 	if (!wait) {
-		pr_info("%s: cb 0x%p, 0x%x NO wait.\n",
+		pr_debug("%s: cb 0x%p, 0x%x NO wait.\n",
 			descq->conf.name, cb, req->count);
 		return 0;
 	}

@@ -1,4 +1,6 @@
-ccflags-y := -Iinclude/drm
+ROOT	:= $(dir $(M))
+
+ccflags-y := -Iinclude/drm -I${ROOT}/../../../include
 zocl-y := \
 	sched_exec.o \
 	zocl_sysfs.o \

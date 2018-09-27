@@ -23,6 +23,7 @@ namespace xclhwemhal2 {
   namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
+  std::map<int, std::tuple<std::string,int,void*> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
   bool HwEmShim::mFirstBinary = true;
   unsigned int HwEmShim::mBufferCount = 0;
@@ -838,6 +839,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     return 0;
   }
+  if(mMembanks[topology].tag.find("HBM") != std::string::npos)
+  {
+	  return 2;
+  }
   return 1;
 }
   size_t HwEmShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek, uint32_t topology)
@@ -956,7 +961,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize);
+      bool p2pBuffer = false;
+      std::string sFileName("");
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
 
       PRINTENDFUNC;
       if(!ack)
@@ -965,7 +972,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -993,7 +1000,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize);
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
 
       PRINTENDFUNC;
       if(!ack)
@@ -1100,7 +1107,18 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
-    if (!sock)
+   
+    for (auto& it: mFdToFileNameMap)
+    {
+      int fd=it.first;
+      int sSize = std::get<1>(it.second);
+      void* addr = std::get<2>(it.second);
+      munmap(addr,sSize);
+      close(fd);
+    }
+    mFdToFileNameMap.clear();
+
+    if (!sock) 
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
         systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE);
@@ -1148,6 +1166,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
+    
+     for (auto& it: mFdToFileNameMap)
+    {
+      int fd=it.first;
+      int sSize = std::get<1>(it.second);
+      void* addr = std::get<2>(it.second);
+      munmap(addr,sSize);
+      close(fd);
+    }
+    mFdToFileNameMap.clear();
+
     if(!sock)
     {
       PRINTENDFUNC;
@@ -1629,7 +1658,8 @@ inline unsigned long long HwEmShim::xocl_ddr_channel_size()
 
 int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
-  if (mLogStream.is_open())
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1666,13 +1696,18 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
-
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr);
-  xobj->size = size;
   xobj->flags=info->flags;
+  /* check whether buffer is p2p or not*/
+  bool p2pBuffer = xocl_bo_p2p(xobj); 
+  std::string sFileName("");
+  
+  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  xobj->filename = sFileName;
+  xobj->size = size;
   xobj->userptr = NULL;
   xobj->buf = NULL;
   xobj->topology=ddr;
+  xobj->fd = -1;
 
   info->handle = mBufferCount;
   mXoclObjMap[mBufferCount++] = xobj;
@@ -1720,19 +1755,116 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
+  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  if(!bo)
+    return -1;
+
+  std::string sFileName = bo->filename;
+  if(sFileName.empty())
+  {
+    std::cout<<"Exported Buffer is not P2P "<<std::endl;
+    PRINTENDFUNC;
+    return -1;
+  }
+
+  uint64_t size = bo->size;
+  int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
+  if (fd == -1) 
+  {
+    printf("Error opening exported BO file.\n");
+    PRINTENDFUNC;
+    return -1;
+  };
+
+  char* data = (char*) mmap(0, bo->size , PROT_READ |PROT_WRITE |PROT_EXEC ,  MAP_SHARED, fd, 0);
+  if(!data)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+
+  int rf = ftruncate(fd, bo->size);
+  if(rf == -1 )
+    return -1;
+  mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data);
   PRINTENDFUNC;
-  return 0;
+  return fd;
 }
 /***************************************************************************************/
 
 /******************************** xclImportBO *******************************************/
-unsigned int HwEmShim::xclImportBO(int boGlobalHandle)
+unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
 {
   //TODO
   if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boGlobalHandle << std::endl;
   }
+  auto itr = mFdToFileNameMap.find(boGlobalHandle);
+  if(itr != mFdToFileNameMap.end())
+  {
+    const std::string& fileName = std::get<0>((*itr).second);
+    int size = std::get<1>((*itr).second);
+
+    unsigned int importedBo = xclAllocBO(size, xclBOKind::XCL_BO_DEVICE_RAM,flags);
+    xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
+    if(!bo)
+    {
+      std::cout<<"ERROR HERE in importBO "<<std::endl;
+      return -1;
+    }
+    bo->fd = boGlobalHandle;
+    bool ack;
+    xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
+    PRINTENDFUNC;
+    if(!ack)
+      return -1;
+    return importedBo;
+  }
+  PRINTENDFUNC;
+  return -1;
+
+}
+/***************************************************************************************/
+
+/******************************** xclCopyBO *******************************************/
+int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+{
+   std::lock_guard<std::mutex> lk(mApiMtx);
+  //TODO
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << dst_boHandle 
+      <<" , "<< src_boHandle << " , "<< size <<"," << dst_offset << "," <<src_offset<< std::endl;
+  }
+  xclemulation::drm_xocl_bo* sBO = xclGetBoByHandle(src_boHandle);
+  if(!sBO)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+
+  xclemulation::drm_xocl_bo* dBO = xclGetBoByHandle(dst_boHandle);
+  if(!dBO)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  if(dBO->fd < 0)
+  {
+    std::cout<<"bo is not exported for copying"<<std::endl;
+    return -1;
+  }
+
+  int ack = false;
+  auto fItr = mFdToFileNameMap.find(dBO->fd);
+  if(fItr != mFdToFileNameMap.end())
+  {
+    const std::string& sFileName = std::get<0>((*fItr).second);
+    xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
+  }
+  if(!ack)
+    return -1;
   PRINTENDFUNC;
   return 0;
 }
@@ -1750,6 +1882,29 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   if (!bo) {
     PRINTENDFUNC;
     return nullptr;
+  }
+
+  std::string sFileName = bo->filename;
+  if(!sFileName.empty() )
+  {
+    int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
+    if (fd == -1) 
+    {
+      printf("Error opening exported BO file.\n");
+      return nullptr;
+    };
+
+    char* data = (char*) mmap(0, bo->size , PROT_READ |PROT_WRITE |PROT_EXEC ,  MAP_SHARED, fd, 0);
+    if(!data)
+      return nullptr;
+
+    int rf = ftruncate(fd, bo->size);
+    if(rf == -1)
+      return nullptr;
+    mFdToFileNameMap [fd] = std::make_tuple(sFileName,bo->size,(void*)data);
+    bo->buf = data;
+    PRINTENDFUNC;
+    return data;
   }
 
   void *pBuf=nullptr;
@@ -1771,8 +1926,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
 int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-
-  if (mLogStream.is_open())
+  if (mLogStream.is_open()) 
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
@@ -1814,8 +1968,11 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     return;
   }
   xclemulation::drm_xocl_bo* bo = (*it).second;;
-  xclFreeDeviceBuffer(bo->base);
-  mXoclObjMap.erase(it);
+  if(bo)
+  {
+    xclFreeDeviceBuffer(bo->base);
+    mXoclObjMap.erase(it);
+  }
   PRINTENDFUNC;
 }
 /***************************************************************************************/
@@ -1908,6 +2065,116 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
   return 1;
 }
 
-/**********************************************HAL2 API's END HERE **********************************************/
 
+/********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
+
+/*
+ * xclCreateWriteQueue()
+ */
+int HwEmShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  uint64_t q_handle = 0;
+  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
+  if(q_handle <= 0)
+  {
+    std::cout<<"unable to create write queue "<<std::endl;
+    return -1;
+  }
+  *q_hdl = q_handle;
+  return 0;
+}
+
+/*
+ * xclCreateReadQueue()
+ */
+int HwEmShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
+{
+  uint64_t q_handle = 0;
+  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
+  if(q_handle <= 0)
+  {
+    std::cout<<"unable to create read queue "<<std::endl;
+    return -1;
+  }
+  *q_hdl = q_handle;
+  return 0;
+}
+
+/*
+ * xclDestroyQueue()
+ */
+int HwEmShim::xclDestroyQueue(uint64_t q_hdl)
+{
+  uint64_t q_handle = q_hdl;
+  bool success = false;
+  xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
+  if(!success)
+  {
+    std::cout<<"unable to destroy the queue"<<std::endl;
+    return -1;
+  }
+
+  return 0;
+}
+
+/*
+ * xclWriteQueue()
+ */
+ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
+{
+  uint64_t fullSize = 0;
+  for (unsigned i = 0; i < wr->buf_num; i++) 
+  {
+    xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
+    fullSize += written_size;
+  }
+  return fullSize;
+}
+
+/*
+ * xclReadQueue()
+ */
+ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
+{
+  void *dest;
+
+  uint64_t fullSize = 0;
+  for (unsigned i = 0; i < rd->buf_num; i++) {
+    dest = (void *)rd->bufs[i].va;
+    uint64_t read_size = 0;
+    while(read_size == 0)
+    {
+      xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
+    }
+    fullSize += read_size;
+  }
+  return fullSize;
+
+}
+/*
+ * xclAllocQDMABuf()
+ */
+void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
+{
+  void *pBuf=nullptr;
+  if (posix_memalign(&pBuf, sizeof(double)*16, size))
+  {
+    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
+    pBuf=nullptr;
+    return pBuf;
+  }
+  memset(pBuf, 0, size);
+  return pBuf;
+}
+
+/*
+ * xclFreeQDMABuf()
+ */
+int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
+{
+  return 0;//TODO
+}
+
+/********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
+/**********************************************HAL2 API's END HERE **********************************************/
 }  // end namespace xclhwemhal2

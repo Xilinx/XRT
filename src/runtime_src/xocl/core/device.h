@@ -23,6 +23,7 @@
 #include "xocl/core/compute_unit.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
+#include "xrt/scheduler/command.h"
 
 #include <unistd.h>
 
@@ -40,6 +41,7 @@ public:
   using compute_unit_vector_type = std::vector<compute_unit_type>;
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
+  using cmd_type = std::shared_ptr<xrt::command>;
 
   /**
    * Construct an xocl::device.
@@ -430,12 +432,11 @@ public:
    *  The offset in buffer read from
    * @param size
    *  Number of bytes to copy
+   * @param cmd
+   *  Copy command buffer to be scheduled for execution
    */
   void
-  copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
-
-
-
+  copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd);
 
   void
   copy_p2p_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
@@ -474,16 +475,20 @@ public:
   close_stream(xrt::device::stream_handle stream);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   xrt::device::stream_buf
   alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
 
   int
   free_stream_buf(xrt::device::stream_buf_handle handle);
+
+  int 
+  poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
   /**
    * Read a device register at specified offset
    *
@@ -644,6 +649,12 @@ public:
   get_num_cus() const
   {
     return m_computeunits.size();
+  }
+
+  size_t
+  get_num_cdmas() const
+  {
+    return m_xdevice->get_cdma_count();
   }
 
 protected:

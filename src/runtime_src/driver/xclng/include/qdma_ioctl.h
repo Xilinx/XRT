@@ -54,6 +54,13 @@ enum XOCL_QDMA_QUEUE_STATE {
 	XOCL_QDMA_QSTATE_STARTED,
 };
 
+/* has to keep in sync with xrt and opencl flags */
+enum XOCL_QDMA_REQ_FLAG {
+	XOCL_QDMA_REQ_FLAG_EOT		= (1 << 0),
+	XOCL_QDMA_REQ_FLAG_CDH		= (1 << 1),
+	XOCL_QDMA_REQ_FLAG_SILENT	= (1 << 3),
+};
+
 /**
  * struct xocl_qdma_ioc_create_queue - Create streaming queue
  * used with XOCL_QDMA_IOC_CREATE_QUEUE ioctl
@@ -64,6 +71,7 @@ struct xocl_qdma_ioc_create_queue {
 	uint32_t		write;		/* read or write */
 	uint32_t		pkt_mode;	/* stream or packet */
 	uint64_t		rid;		/* route id */
+	uint64_t		flowid;
 	uint32_t		qsize;		/* number of desc */
 	uint32_t		desc_size;	/* size of each desc */
 	uint64_t		flags;		/* isr en, wb en, etc */
@@ -79,6 +87,14 @@ struct xocl_qdma_ioc_create_queue {
 struct xocl_qdma_ioc_alloc_buf {
 	size_t		size;
 	int		buf_fd;
+};
+
+/**
+ * struct xocl_qdma_req_header - per request header for out bind data
+ *
+ */
+struct xocl_qdma_req_header {
+	uint64_t	flags;		/* EOT, etc */
 };
 
 /**

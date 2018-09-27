@@ -55,6 +55,7 @@
 #else
 # define SCHED_DEBUG(msg)
 # define SCHED_DEBUGF(format,...)
+# define SCHED_PRINTF(format,...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet,size)
 #endif
 
@@ -74,11 +75,13 @@ static bool queued_to_running(struct xocl_cmd *xcmd);
  * @submitted_cmds: Tracking of command submitted for execution on this device
  * @num_slots: Number of command queue slots
  * @num_cus: Number of CUs in loaded program
+ * @num_cdma: Number of CDMAs in hardware
  * @cu_shift_offset: CU idx to CU address shift value
  * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
  * @cq_interrupt: If set then trigger interrupt to MB on new commands
  * @configured: Flag to indicate that the core data structure has been initialized
+ * @cu_addr_map: CU idx to CU base address
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
  * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
@@ -104,6 +107,7 @@ struct exec_core {
 
         unsigned int               num_slots;
         unsigned int               num_cus;
+        unsigned int               num_cdma;
         unsigned int               cu_shift_offset;
         u32                        cu_base_addr;
         unsigned int               polling_mode;
@@ -133,19 +137,33 @@ struct exec_core {
 /**
  * exec_get_pdev() -
  */
-inline struct platform_device *
+static inline struct platform_device *
 exec_get_pdev(struct exec_core *exec)
 {
 	return exec->pdev;
 }
 
+static inline struct exec_core *
+dev_get_exec(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	return pdev ? platform_get_drvdata(pdev) : NULL;
+}
+
 /**
  * exec_get_xdev() -
  */
-inline struct xocl_dev *
+static inline struct xocl_dev *
 exec_get_xdev(struct exec_core *exec)
 {
 	return xocl_get_xdev(exec->pdev);
+}
+
+static inline struct xocl_dev *
+dev_get_xdev(struct device *dev)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	return exec ? exec_get_xdev(exec) : NULL;
 }
 
 /**
@@ -241,7 +259,7 @@ static struct sched_ops penguin_ops;
  * @cmd: Command object
  * Return: Opcode per command packet
  */
-inline u32
+static inline u32
 opcode(struct xocl_cmd* xcmd)
 {
 	return xcmd->packet->opcode;
@@ -253,7 +271,7 @@ opcode(struct xocl_cmd* xcmd)
  * @cmd: Command object
  * Return: Type of command
  */
-inline u32
+static inline u32
 type(struct xocl_cmd* xcmd)
 {
 	return xcmd->packet->type;
@@ -265,7 +283,7 @@ type(struct xocl_cmd* xcmd)
  * @xcmd: Command object
  * Return: Size in number of words of command packet payload
  */
-inline u32
+static inline u32
 payload_size(struct xocl_cmd *xcmd)
 {
 	return xcmd->packet->count;
@@ -277,7 +295,7 @@ payload_size(struct xocl_cmd *xcmd)
  * @xcmd: Command object
  * Return: Size in number of words of command packet
  */
-inline u32
+static inline u32
 packet_size(struct xocl_cmd *xcmd)
 {
 	return payload_size(xcmd) + 1;
@@ -289,7 +307,7 @@ packet_size(struct xocl_cmd *xcmd)
  * @xcmd: Command object
  * Return: Total number of CU masks in command packet
  */
-inline u32
+static inline u32
 cu_masks(struct xocl_cmd *xcmd)
 {
 	struct ert_start_kernel_cmd *sk;
@@ -305,7 +323,7 @@ cu_masks(struct xocl_cmd *xcmd)
  * @xcmd: Command object
  * Return: Size of register map in number of words
  */
-inline u32
+static inline u32
 regmap_size(struct xocl_cmd* xcmd)
 {
 	return payload_size(xcmd) - cu_masks(xcmd);
@@ -314,7 +332,7 @@ regmap_size(struct xocl_cmd* xcmd)
 /**
  * cmd_get_xdev() -
  */
-inline struct xocl_dev *
+static inline struct xocl_dev *
 cmd_get_xdev(struct xocl_cmd *xcmd)
 {
 	return exec_get_xdev(xcmd->exec);
@@ -326,7 +344,7 @@ cmd_get_xdev(struct xocl_cmd *xcmd)
  * @xcmd: command to change internal state on
  * @state: new command state per ert.h
  */
-inline void
+static inline void
 set_cmd_int_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 {
         SCHED_DEBUGF("-> set_cmd_int_state(%lu,%d)\n",xcmd->id,state);
@@ -343,7 +361,7 @@ set_cmd_int_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
  * @xcmd: command object
  * @state: new state
  */
-inline void
+static inline void
 set_cmd_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 {
         SCHED_DEBUGF("->set_cmd_state(%lu,%d)\n",xcmd->id,state);
@@ -352,7 +370,7 @@ set_cmd_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
         SCHED_DEBUG("<-set_cmd_state\n");
 }
 
-inline enum ert_cmd_state
+static inline enum ert_cmd_state
 update_cmd_state(struct xocl_cmd *xcmd)
 {
 	if (xcmd->state!=ERT_CMD_STATE_RUNNING && atomic_read(&xcmd->client->abort))
@@ -602,7 +620,7 @@ reset_all(void)
  *
  * Return: %true of ert mode, %false otherwise
  */
-inline bool
+static inline bool
 is_ert(struct exec_core *exec)
 {
 	return exec->ops == &mb_ops;
@@ -617,7 +635,7 @@ is_ert(struct exec_core *exec)
  *
  * Return: Position of first set bit, or -1 if none
  */
-inline int
+static inline int
 ffs_or_neg_one(u32 mask)
 {
 	if (!mask)
@@ -631,7 +649,7 @@ ffs_or_neg_one(u32 mask)
  * @mask: mask to check
  * Return: Position of first zero bit, or -1 if none
  */
-inline int
+static inline int
 ffz_or_neg_one(u32 mask)
 {
 	if (mask==XOCL_U32_MASK)
@@ -645,7 +663,7 @@ ffz_or_neg_one(u32 mask)
  *
  * Return: Command queue slot size
  */
-inline unsigned int
+static inline unsigned int
 slot_size(struct exec_core *exec)
 {
 	return ERT_CQ_SIZE / exec->num_slots;
@@ -657,7 +675,7 @@ slot_size(struct exec_core *exec)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU mask containing the CU with cu_idx
  */
-inline unsigned int
+static inline unsigned int
 cu_mask_idx(unsigned int cu_idx)
 {
 	return cu_idx >> 5; /* 32 cus per mask */
@@ -669,7 +687,7 @@ cu_mask_idx(unsigned int cu_idx)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU within the mask that contains it
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_in_mask(unsigned int cu_idx)
 {
 	return cu_idx - (cu_mask_idx(cu_idx) << 5);
@@ -682,7 +700,7 @@ cu_idx_in_mask(unsigned int cu_idx)
  * @mask_idx: Mask index of the has CU with cu_idx
  * Return: Global cu_idx [0..127]
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_from_mask(unsigned int cu_idx, unsigned int mask_idx)
 {
 	return cu_idx + (mask_idx << 5);
@@ -694,7 +712,7 @@ cu_idx_from_mask(unsigned int cu_idx, unsigned int mask_idx)
  * @slot_idx: Global [0..127] index of a CQ slot
  * Return: Index of the slot mask containing the slot_idx
  */
-inline unsigned int
+static inline unsigned int
 slot_mask_idx(unsigned int slot_idx)
 {
 	return slot_idx >> 5;
@@ -706,7 +724,7 @@ slot_mask_idx(unsigned int slot_idx)
  * @slot_idx: Global [0..127] index of a CQ slot
  * Return: Index of slot within the mask that contains it
  */
-inline unsigned int
+static inline unsigned int
 slot_idx_in_mask(unsigned int slot_idx)
 {
 	return slot_idx - (slot_mask_idx(slot_idx) << 5);
@@ -719,7 +737,7 @@ slot_idx_in_mask(unsigned int slot_idx)
  * @mask_idx: Mask index of the mask hat has slot with slot_idx
  * Return: Global slot_idx [0..127]
  */
-inline unsigned int
+static inline unsigned int
 slot_idx_from_mask_idx(unsigned int slot_idx,unsigned int mask_idx)
 {
 	return slot_idx + (mask_idx << 5);
@@ -733,7 +751,7 @@ slot_idx_from_mask_idx(unsigned int slot_idx,unsigned int mask_idx)
  * @cu_idx: Global CU idx
  * Return: Address of CU relative to bar
  */
-inline u32
+static inline u32
 cu_idx_to_addr(struct exec_core *exec,unsigned int cu_idx)
 {
 	return exec->cu_addr_map[cu_idx];
@@ -757,7 +775,7 @@ cu_idx_to_addr(struct exec_core *exec,unsigned int cu_idx)
  *
  * Return: Bitmask with bit set for corresponding CU
  */
-inline u32
+static inline u32
 cu_idx_to_bitmask(struct exec_core *exec, u32 cu_idx)
 {
 	return 1 << (cu_idx - (cu_mask_idx(cu_idx)<<5));
@@ -778,7 +796,7 @@ configure(struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	bool ert = xocl_mb_sched_on(xdev);
+	bool ert = xocl_mb_sched_on(xdev) && !XOCL_DSA_MB_SCHE_OFF(xdev);
 	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
@@ -817,9 +835,15 @@ configure(struct xocl_cmd *xcmd)
 	}
 
 	if (cdma) {
-		exec->cu_addr_map[exec->num_cus] = 0x250000;
-		SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",exec->num_cus,exec->cu_addr_map[exec->num_cus]);
-		exec->num_cus = ++cfg->num_cus;
+		exec->num_cdma = 1; /* TBD */
+		exec->num_cus += exec->num_cdma;
+		for (; i<exec->num_cus; ++i) {
+			++cfg->num_cus;
+			++cfg->count;
+			exec->cu_addr_map[i] = 0x250000; // TBD
+			cfg->data[i] = 0x250000;
+			SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+		}
 	}
 
 	if (ert && cfg->ert) {
@@ -829,6 +853,8 @@ configure(struct xocl_cmd *xcmd)
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
 		cfg->cdma = cdma ? 1 : 0;
+		/* reserve slot 0 for control commands */
+		exec->slot_status[0] = 1;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -925,7 +951,7 @@ release_slot_idx(struct exec_core *exec, unsigned int slot_idx)
  *
  * Return: Index of CU, or -1 on error
  */
-inline unsigned int
+static inline unsigned int
 get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
 {
 	struct xocl_cmd *xcmd = exec->submitted_cmds[cmd_idx];
@@ -944,7 +970,7 @@ get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
  *
  * Return: %true if cu done, %false otherwise
  */
-inline bool
+static inline bool
 cu_done(struct exec_core *exec, unsigned int cu_idx)
 {
 	u32 cu_addr = cu_idx_to_addr(exec,cu_idx);
@@ -1544,8 +1570,9 @@ static int
 get_free_cu(struct xocl_cmd *xcmd)
 {
 	int mask_idx=0;
+	int num_masks = cu_masks(xcmd);
 	SCHED_DEBUG("-> get_free_cu\n");
-	for (mask_idx=0; mask_idx<xcmd->exec->num_cu_masks; ++mask_idx) {
+	for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
 		u32 cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
 		u32 busy_mask = xcmd->exec->cu_status[mask_idx];
 		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
@@ -1637,7 +1664,6 @@ penguin_submit(struct xocl_cmd *xcmd)
 
 	return true;
 }
-
 
 /**
  * mb_ops: operations for ERT scheduling
@@ -1843,6 +1869,51 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.validate = validate,
 };
 
+/* sysfs */
+static ssize_t
+kds_numcus_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	unsigned int cus = exec ? exec->num_cus - exec->num_cdma : 0;
+	return sprintf(buf,"%d\n",cus);
+}
+static DEVICE_ATTR_RO(kds_numcus);
+
+static ssize_t
+kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_xdev(dev);
+	bool cdma = xocl_cdma_on(xdev);
+	unsigned int cdmas = cdma ? 1 : 0; //TBD
+	return sprintf(buf,"%d\n",cdmas);
+}
+static DEVICE_ATTR_RO(kds_numcdmas);
+
+static struct attribute *kds_sysfs_attrs[] = {
+	&dev_attr_kds_numcus.attr,
+	&dev_attr_kds_numcdmas.attr,
+	NULL
+};
+
+static const struct attribute_group kds_sysfs_attr_group = {
+	.attrs = kds_sysfs_attrs,
+};
+
+static void
+user_sysfs_destroy_kds(struct platform_device *pdev)
+{
+	sysfs_remove_group(&pdev->dev.kobj, &kds_sysfs_attr_group);
+}
+
+static int
+user_sysfs_create_kds(struct platform_device *pdev)
+{
+	int err = sysfs_create_group(&pdev->dev.kobj, &kds_sysfs_attr_group);
+	if (err)
+		xocl_err(&pdev->dev, "create kds attr failed: 0x%x", err);
+	return err;
+}
+
 /**
  * Init scheduler
  */
@@ -1856,6 +1927,9 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 	exec = devm_kzalloc(&pdev->dev, sizeof(*exec), GFP_KERNEL);
 	if (!exec)
 		return -ENOMEM;
+
+	if (user_sysfs_create_kds(pdev))
+		goto err;
 
 	/* uses entire bar for now, because scheduler directly program
  	 * CUs.
@@ -1887,6 +1961,10 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 	DRM_INFO("command scheduler started\n");
 
 	return 0;
+
+err:
+	devm_kfree(&pdev->dev, exec);
+	return 1;
 }
 
 /**
@@ -1907,14 +1985,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 			NULL, NULL);
 		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
 	}
-	/* ????? should be deref in drm drv*/
-#if 0
-	for (i=0; i<16; i++) {
-		if (exec->user_msix_table[i])
-			eventfd_ctx_put(exec->user_msix_table[i]);
-	}
-#endif
-
+	user_sysfs_destroy_kds(pdev);
 	devm_kfree(&pdev->dev, exec);
 	platform_set_drvdata(pdev, NULL);
 

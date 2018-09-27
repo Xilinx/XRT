@@ -60,8 +60,6 @@ namespace XCL {
     // Profile rule checks
     RuleChecks = new ProfileRuleChecks();
     
-    memset(&CUPortsToDDRBanks, 0, MAX_DDR_BANKS*sizeof(int));
-
     // Indeces are now same for HW and emulation
     OclSlotIndex  = XPAR_SPM0_FIRST_KERNEL_SLOT;
     HostSlotIndex = XPAR_SPM0_HOST_SLOT;
@@ -994,6 +992,16 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
           RolloverCounterResultsMap[key].CuStallStrCycles[s] += prevCuStallStrCycles;
         }
       }
+      /*
+       * Streaming IP Counters are 64 bit and unlikely to roll over
+       */
+      numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+      deviceDataExists = (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()) ? false : true;
+      for (int s=0; s < numSlots; ++s) {
+        XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_STR, deviceName, s, slotName);
+        if (!deviceDataExists)
+          DeviceBinaryStrSlotsMap[key].push_back(slotName);
+      }
       FinalCounterResultsMap[key] = counterResults;
     }
     /*
@@ -1178,6 +1186,40 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     }
   }
 
+  void RTProfile::writeKernelStreamSummary(WriterI* writer) const
+  {
+    auto iter = FinalCounterResultsMap.begin();
+    for (; iter != FinalCounterResultsMap.end(); ++iter) {
+      std::string key = iter->first;
+      std::string deviceName = key.substr(0, key.find_first_of("|"));
+      if (!isDeviceActive(deviceName) || (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()))
+        continue;
+
+    // Get results
+      xclCounterResults counterResults = iter->second;
+      std::string cuPortName = "";
+      uint32_t numSlots = DeviceBinaryStrSlotsMap.at(key).size();
+
+      for (int s=0; s < numSlots; ++s) {
+        cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
+        uint64_t strNumTranx =     counterResults.StrNumTranx[s];
+        uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
+        uint64_t strDataBytes =   counterResults.StrDataBytes[s];
+        uint64_t strStallCycles =   counterResults.StrStallCycles[s];
+        uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
+        // Skip ports without activity
+        if (strBusyCycles <= 0 || strNumTranx == 0)
+                continue;
+
+        double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
+        double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
+        double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
+        double linkUtil =  100.0 - linkStarve - linkStall;
+        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, linkUtil, linkStarve, linkStall);
+      }
+    }
+  }
+
   void RTProfile::writeKernelTransferSummary(WriterI* writer) const
   {
     auto iter = FinalCounterResultsMap.begin();
@@ -1222,9 +1264,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
         std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
         std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
 
-        uint32_t ddrBank;
+        std::string memoryName;
         std::string argNames;
-        getArgumentsBank(deviceName, cuName, portName, argNames, ddrBank);
+        getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
 
         double totalCUTimeMsec = PerfCounters.getComputeUnitTotalTime(deviceName, cuName);
 
@@ -1251,11 +1293,11 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
         // First do READ, then WRITE
         if (totalReadTranx > 0) {
-          PerfCounters.writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, ddrBank,
+          PerfCounters.writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
         	  true,  totalReadBytes, totalReadTranx, totalCUTimeMsec, totalReadTimeMsec, maxTransferRateMBps);
         }
         if (totalWriteTranx > 0) {
-          PerfCounters.writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, ddrBank,
+          PerfCounters.writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
         	  false, totalWriteBytes, totalWriteTranx, totalCUTimeMsec, totalWriteTimeMsec, maxTransferRateMBps);
         }
       }
@@ -1581,7 +1623,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
           std::get<1>(row) = portName;
 
           bool firstArg = true;
-          uint32_t ddrBank = 0;
+          std::string memoryName = "N/A";
 
           for (auto arg : currSymbol->arguments) {
             auto currPort = arg.port;
@@ -1605,43 +1647,35 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
                 for (auto memidx=0; memidx<memidx_mask.size(); ++memidx) {
                   if (memidx_mask.test(memidx)) {
                     // Get bank tag string from index
-                    std::string ddrBankStr("bank0");
-                    if (device_id->is_active()) {
-                      ddrBankStr = device_id->get_xclbin().memidx_to_banktag(memidx);
+                    memoryName = "DDR[0]";
+                    if (device_id->is_active())
+                      memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
 
-                      auto found = ddrBankStr.find("]");
-                      if (found != std::string::npos)
-                        ddrBankStr.erase(found, 1);
-                    }
-
-                    // Convert to integer
-                    auto found = ddrBankStr.find_last_not_of(numerical);
-                    if (found != std::string::npos)
-                      ddrBank = std::atoi(ddrBankStr.substr(found+1).c_str());
-
-                    XOCL_DEBUGF("setArgumentsBank: idx = %d, str = %s, bank = %d\n", memidx, ddrBankStr.c_str(), ddrBank);
+                    XOCL_DEBUGF("setArgumentsBank: idx = %d, memory = %s\n", memidx, memoryName.c_str());
                     break;
                   }
                 }
               }
               catch (const std::runtime_error& ex) {
-                XOCL_DEBUGF("setArgumentsBank: caught error, using default of bank 0\n");
-                ddrBank = 0;
+                memoryName = "DDR[0]";
+                XOCL_DEBUGF("setArgumentsBank: caught error, using default of %s\n", memoryName.c_str());
               }
 
-              std::get<3>(row) = ddrBank;
+              std::get<3>(row) = memoryName;
               std::get<4>(row) = portWidth;
               firstArg = false;
             }
           }
 
-          // Increment total CU ports connected to this DDR bank
-          ddrBank = (ddrBank >= MAX_DDR_BANKS) ? MAX_DDR_BANKS-1 : ddrBank;
-          CUPortsToDDRBanks[ddrBank]++;
+          // Increment total CU ports connected to this memory resource
+          //CUPortsToMemoryMap[memoryName]++;
+          auto iter = CUPortsToMemoryMap.find(memoryName);
+          int numPorts = (iter == CUPortsToMemoryMap.end()) ? 1 : (iter->second + 1);
+          CUPortsToMemoryMap[memoryName] = numPorts;
 
-          XOCL_DEBUGF("setArgumentsBank: %s/%s, args = %s, bank = %d, width = %d\n",
+          XOCL_DEBUGF("setArgumentsBank: %s/%s, args = %s, memory = %s, width = %d\n",
               std::get<0>(row).c_str(), std::get<1>(row).c_str(), std::get<2>(row).c_str(),
-              std::get<3>(row), std::get<4>(row));
+              std::get<3>(row).c_str(), std::get<4>(row));
           CUPortVector.push_back(row);
         }
 
@@ -1652,10 +1686,10 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
   void RTProfile::getArgumentsBank(const std::string& deviceName, const std::string& cuName,
 	                               const std::string& portName, std::string& argNames,
-								   uint32_t& banknum) const
+								   std::string& memoryName) const
   {
     argNames = "All";
-    banknum = 0;
+    memoryName = "N/A";
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 
@@ -1665,8 +1699,8 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       std::string currPort = std::get<1>(row);
 
       if ((currCU == cuName) && (currPort == portName)) {
-        argNames  = std::get<2>(row);
-        banknum   = std::get<3>(row);
+        argNames   = std::get<2>(row);
+        memoryName = std::get<3>(row);
         break;
       }
     }

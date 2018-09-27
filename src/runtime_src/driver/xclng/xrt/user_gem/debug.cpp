@@ -83,11 +83,14 @@ namespace xocl {
     
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
+
+    mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
+      mStreamMonSlotName, mStreammonProperties, XSSPM_MAX_NUMBER_SLOTS);
     
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
-    uint64_t fifoCtrlBaseAddr = mOffsets[XCL_ADDR_SPACE_DEVICE_PERFMON];
+    uint64_t fifoCtrlBaseAddr = 0x0;
     getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
@@ -117,6 +120,11 @@ namespace xocl {
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;
       }
+      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
+        mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
+                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
+                   << ", name = " << mStreamMonSlotName[i] << std::endl;
+     }
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
                  << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_FULL: "

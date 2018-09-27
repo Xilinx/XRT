@@ -25,6 +25,7 @@
 #include <thread>
 #include <mutex>
 #include <algorithm>
+
 namespace xrt {
 
 /**
@@ -49,6 +50,9 @@ public:
   using stream_xfer_flags = hal::StreamXferFlags;
   using stream_buf = hal::StreamBuf;
   using stream_buf_handle = hal::StreamBufHandle;
+
+  using stream_xfer_req = hal::StreamXferReq;
+  using stream_xfer_completions = hal::StreamXferCompletions;
 
   explicit
   device(std::unique_ptr<hal::device>&& hal)
@@ -128,6 +132,12 @@ public:
   copyDeviceInfo(const device* src)
   {
     m_hal->copyDeviceInfo(src->m_hal.get());
+  }
+
+  size_t
+  get_cdma_count() const
+  {
+    return m_hal->get_cdma_count();
   }
 
   /**
@@ -351,18 +361,20 @@ public:
   { return m_hal->exec_wait(timeout_ms); }
 
 public:
-//  //TODO: BufferObject accessors. These are intermediary functions.
+  /**
+   * Get the device address of a buffer object
+   *
+   * @param boh
+   *   Handle to buffer object
+   * @returns
+   *   Device side address of buffer object
+   * @throws
+   *   std::runtime_error if buffer object is unknown to this device
+   */
   uint64_t getDeviceAddr(const BufferObjectHandle& boh)
   {
-      //TODO: check for the device match
     return m_hal->getDeviceAddr(boh);
   }
-//
-//  void* getHostAddr(const BufferObjectHandle& boh)
-//  {
-//      //TODO: check for the device match
-//    return m_hal->getHostAddr(boh);
-//  }
 
   /**
    * Export FD of buffer object handle on this device.
@@ -437,19 +449,19 @@ public:
 #endif
 
 //Streaming APIs
-  int 
+  int
   createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
-  { 
+  {
     return m_hal->createWriteStream(flags, attr, route, flow, stream);
   }
 
-  int 
+  int
   createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
   {
     return m_hal->createReadStream(flags, attr, route, flow, stream);
   };
 
-  int 
+  int
   closeStream(hal::StreamHandle stream)
   {
     return m_hal->closeStream(stream);
@@ -461,22 +473,28 @@ public:
     return m_hal->allocStreamBuf(size, buf);
   };
 
-  int 
+  int
   freeStreamBuf(hal::StreamBufHandle buf)
   {
     return m_hal->freeStreamBuf(buf);
   };
 
-  ssize_t 
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  ssize_t
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->writeStream(stream, ptr, offset, size, flags);
+    return m_hal->writeStream(stream, ptr, offset, size, req);
   };
 
-  ssize_t 
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  ssize_t
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->readStream(stream, ptr, offset, size, flags);
+    return m_hal->readStream(stream, ptr, offset, size, req);
+  };
+
+  int
+  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)    
+  {
+    return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
 
 //End Streaming APIs

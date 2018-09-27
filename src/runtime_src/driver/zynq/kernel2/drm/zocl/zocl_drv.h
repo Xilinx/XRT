@@ -29,9 +29,6 @@
 #include "zocl_ert.h"
 #include "zocl_util.h"
 
-#define find_dev_by_compat(dev, compat) \
-	((dev *)platform_get_drvdata(find_platform_dev_by_compatible(compat)))
-
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;

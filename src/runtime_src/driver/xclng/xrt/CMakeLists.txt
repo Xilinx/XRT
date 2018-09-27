@@ -24,7 +24,7 @@ add_subdirectory(user_common)
 add_subdirectory(user_gem)
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_core
   pthread
@@ -53,12 +53,21 @@ add_compile_options("-fPIC" "-fvisibility=hidden")
 add_subdirectory(user_aws)
 
 set_target_properties(xrt_aws PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(xrt_aws
-  pthread
-  rt
+if(${INTERNAL_TESTING})
+  target_link_libraries(xrt_aws
+    pthread
+    rt
   )
+else()
+  set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../sdk/userspace/lib)
+  target_link_libraries(xrt_aws
+    pthread
+    rt
+    ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
+    )
+endif()
 
 install (TARGETS xrt_aws LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 

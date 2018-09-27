@@ -147,10 +147,12 @@ namespace XCL {
     //   * it was run on a board
     //   * at least one device has stall profiling in the dynamic region
     unsigned numStallSlots = 0;
+    unsigned numStreamSlots = 0;
     auto platform = rts->getcl_platform_id();
     for (auto device_id : platform->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
       numStallSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STALL, deviceName);
+      numStreamSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
     }
 
     if (profile->isDeviceProfileOn() && 
@@ -181,7 +183,7 @@ namespace XCL {
 
     // Table 6: Data Transfer: Kernel & Global
     std::vector<std::string> KernelDataTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Kernel Arguments", "DDR Bank",
+        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
 		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
 		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };
@@ -191,6 +193,17 @@ namespace XCL {
       profile->writeKernelTransferSummary(this);
     }
     writeTableFooter(getSummaryStream());
+
+    // Table 6.1 : Stream Data Transfers
+    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStreamSlots > 0)) {
+    std::vector<std::string> StreamTransferSummaryColumnLabels = {
+        "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
+		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+        };
+      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
+      profile->writeKernelStreamSummary(this);
+      writeTableFooter(getSummaryStream());
+    }
 
     // Table 7: Top Data Transfer: Kernel & Global
     std::vector<std::string> TopKernelDataTransferSummaryColumnLabels = {
@@ -223,6 +236,15 @@ namespace XCL {
     writeTableRowStart(getSummaryStream());
     writeTableCells(getSummaryStream(),cuName,cuRunCount, cuRunTimeMsec,
      cuStallInt, cuStallExt, cuStallStr);
+    writeTableRowEnd(getSummaryStream());
+  }
+
+  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
+	  		double avgSize, double avgUtil, double linkStarve, double linkStall)
+  {
+    writeTableRowStart(getSummaryStream());
+    writeTableCells(getSummaryStream(), deviceName , cuPortName, strNumTranx, 
+      avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getSummaryStream());
   }
 
@@ -286,7 +308,7 @@ namespace XCL {
   // Device, CU Port, Kernel Arguments, DDR Bank, Transfer Type, Number Of Transfers,
   // Transfer Rate (MB/s), Average Size (KB), Maximum Size (KB), Average Latency (ns)
   void WriterI::writeKernelTransferSummary(const std::string& deviceName,
-      const std::string& cuPortName, const std::string& argNames, uint32_t ddrBank,
+      const std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
 	  const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
 	  double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps)
   {
@@ -320,7 +342,7 @@ namespace XCL {
     }
 
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName, cuPortName, argNames, ddrBank,
+    writeTableCells(getSummaryStream(), deviceName, cuPortName, argNames, memoryName,
     	transferType, totalTranx, transferRateMBps, aveBWUtil,
         aveBytes/1000.0, 1.0e6*aveTimeMsec);
 
@@ -724,7 +746,7 @@ namespace XCL {
 
       bool showKernelCUNames = true;
       bool showPortName = false;
-      uint32_t ddrBank;
+      std::string memoryName;
       std::string traceName;
       std::string cuName;
       std::string argNames;
@@ -773,8 +795,8 @@ namespace XCL {
           traceName += ("|" + kernelName + "|" + cuName);
 
         if (showPortName) {
-          rts->getProfileManager()->getArgumentsBank(deviceName, cuName, portName, argNames, ddrBank);
-          traceName += ("|" + portName + "|" + std::to_string(ddrBank));
+          rts->getProfileManager()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+          traceName += ("|" + portName + "|" + memoryName);
         }
       }
 
@@ -861,20 +883,14 @@ namespace XCL {
     writeTableCells(getSummaryStream(), checkName4, "host", migrateMemCalls);
     writeTableRowEnd(getSummaryStream());
 
-    // 5. Usage of DDR banks
+    // 5. Usage of memory resources
     std::string checkName5;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::DDR_BANKS, checkName5);
 
-    int ddrBanks = 0;
-    auto platform = XCL::RTSingleton::Instance()->getcl_platform_id();
-    for (auto device_id : platform->get_device_range()) {
-      int currBanks = device_id->get_ddr_bank_count();
-      ddrBanks = (currBanks > ddrBanks) ? currBanks : ddrBanks;
-    }
-
-    for (int banknum=0; banknum < ddrBanks; ++banknum) {
-      int numPorts = profile->getCUPortsToDDRBank(banknum);
-      writeTableCells(getSummaryStream(), checkName5, banknum, numPorts);
+    auto cuPortsToMemory = profile->getCUPortsToMemoryMap();
+    auto memoryIter = cuPortsToMemory.begin();
+    for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
+      writeTableCells(getSummaryStream(), checkName5, memoryIter->first, memoryIter->second);
       writeTableRowEnd(getSummaryStream());
     }
 
@@ -1339,7 +1355,7 @@ namespace XCL {
 
     // Table 5: Data Transfer: Accelerators and DDR Memory
     std::vector<std::string> AcceleratorTransferColumnLabels = {
-        "Location", "Accelerator/Port Name", "Accelerator Arguments", "DDR Bank",
+        "Location", "Accelerator/Port Name", "Accelerator Arguments", "Memory Resources",
 		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
 		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };

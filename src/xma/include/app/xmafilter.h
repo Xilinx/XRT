@@ -125,6 +125,8 @@ typedef struct XmaFilterProperties
  *
  *  @return      Not NULL on success
  *  @return      NULL on failure
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *props);
@@ -140,6 +142,8 @@ xma_filter_session_create(XmaFilterProperties *props);
  *
  *  @return        XMA_SUCCESS on success
  *  @return        XMA_ERROR on failure.
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 int32_t
 xma_filter_session_destroy(XmaFilterSession *session);
@@ -151,12 +155,22 @@ xma_filter_session_destroy(XmaFilterSession *session);
  *  buffer is not available and this interface will block.
  *
  *  @param session  Pointer to session created by xma_filter_session_create
- *  @param frame    Pointer to a frame to be filtered
+ *  @param frame    Pointer to a frame to be filtered. If the filter is
+ *      buffering input, then an XmaFrame with a NULL data buffer
+ *      pointer to the first data buffer must be sent to flush the filter and
+ *      to indicate that no more data will be sent:
+ *      XmaFrame.data[0].buffer = NULL
+ *      The application must then check for XMA_FLUSH_AGAIN for each such call
+ *      when flushing the last few frames.  When XMA_EOS is returned, no new
+ *      data may be collected from the filter.
  *
- *  @return        XMA_SUCCESS on success.
- *  @return        XMA_SEND_MORE_DATA if more data is needed before output can
- *                  be generated
- *  @return        XMA_ERROR on error.
+ *  @return        XMA_SUCCESS on success and the filter is ready to
+ *                  produce output
+ *  @return        XMA_SEND_MORE_DATA if the filter is buffering input frames
+ *  @return        XMA_FLUSH_AGAIN when flushing filter with a null frame
+ *  @return        XMA_EOS when the filter has been flushed of all residual
+ *                  frames
+ *  @return        XMA_ERROR on error
 */
 int32_t
 xma_filter_session_send_frame(XmaFilterSession *session,

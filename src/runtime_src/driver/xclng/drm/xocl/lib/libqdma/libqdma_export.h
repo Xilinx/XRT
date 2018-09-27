@@ -571,17 +571,13 @@ struct qdma_queue_conf {
 	/** max 16. CDH length per packet */
 	u8 cdh_max;
 	/** <= 7, max # gather buf. per packet */
-	u8 gl_max;
+	u8 pipe_gl_max;
 	/** pipe flow id */
 	u8 pipe_flow_id;
 	/** pipe SLR id */
 	u8 pipe_slr_id;
 	/** pipe route id */
 	u16 pipe_tdest;
-	/** depth at STM */
-	u32 pipe_stm_qdepth;
-	/** <= 64K-1, hw STM buffer size */
-	u32 pipe_stm_max_pkt_sz;
 
 	/** user provided per-Q irq handler */
 	unsigned long quld;		/* set by user for per Q data */
@@ -687,6 +683,21 @@ int qdma_queue_start(unsigned long dev_hndl, unsigned long id,
  *****************************************************************************/
 int qdma_queue_stop(unsigned long dev_hndl, unsigned long id, char *buf,
 				int buflen);
+
+/*****************************************************************************/
+/**
+ *  * qdma_queue_prog_stm() - Program STM for queue (context, map, etc)
+ *   *
+ * @param[in]   dev_hndl:       dev_hndl returned from qdma_device_open()
+ * @param[in]   id:             queue index
+ * @param[in]   buflen:         length of the input buffer
+ * @param[out]  buf:            message buffer
+ *
+ * @return      0: success
+ * @return      <0: error
+ *****************************************************************************/
+int qdma_queue_prog_stm(unsigned long dev_hndl, unsigned long id, char *buf,
+			int buflen);
 
 /*****************************************************************************/
 /**
@@ -846,6 +857,8 @@ struct qdma_request {
 	/** if sgt is already dma mapped */
 	u8 dma_mapped:1;
 	/** user defined data present */
+	u8 eot:1;
+	/** indicates end of transfer towards user kernel */
 	u8 udd_len;
 	/** # of scatter-gather entries < 64K */
 	unsigned int sgcnt;

@@ -28,6 +28,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 namespace {
 
@@ -132,6 +133,13 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
   return swem;
+}
+
+static bool
+is_emulation_mode()
+{
+  static bool val = is_sw_emulation() || is_hw_emulation();
+  return val;
 }
 
 static void
@@ -240,7 +248,6 @@ int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
 {
-
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
 
@@ -249,14 +256,30 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
     auto mems = m_xclbin.get_mem_topology();
-    
+
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
     if((memidx+1) > mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
-    route = mems->m_mem_data[memidx].route_id;
-    flow = mems->m_mem_data[memidx].flow_id;
+    auto& mem = mems->m_mem_data[memidx];
+    route = mem.route_id;
+    flow = mem.flow_id;
+
+    char* read = strstr((char*)mem.m_tag, "_r");
+    char* write = strstr((char*)mem.m_tag, "_w");
+
+    //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
+
+    if(read && !(flags & CL_STREAM_READ_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a read stream to non-read stream, argument " + ext->flags);
+
+    if(write &&  !(flags & CL_STREAM_WRITE_ONLY))
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a write stream to non-write stream, argument " + ext->flags);
+
+    if(mem.m_type != MEM_STREAMING)
+      throw xocl::error(CL_INVALID_OPERATION,"Connecting a streaming argument to non-streaming bank");
+
     xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
   }
 
@@ -278,16 +301,16 @@ close_stream(xrt::device::stream_handle stream)
 
 ssize_t
 device::
-write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req)
 {
-  return m_xdevice->writeStream(stream, ptr, offset, size, flags);
+  return m_xdevice->writeStream(stream, ptr, offset, size, req);
 }
 
 ssize_t
 device::
-read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags)
+read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req)
 {
-  return m_xdevice->readStream(stream, ptr, offset, size, flags);
+  return m_xdevice->readStream(stream, ptr, offset, size, req);
 }
 
 xrt::device::stream_buf
@@ -302,6 +325,13 @@ device::
 free_stream_buf(xrt::device::stream_buf_handle handle)
 {
   return m_xdevice->freeStreamBuf(handle);
+}
+
+int
+device::
+poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
+{
+  return m_xdevice->pollStreams(comps, min,max,actual,timeout);
 }
 
 device::
@@ -850,13 +880,60 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
 
 void
 device::
-copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size, const cmd_type& cmd)
 {
-  char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
-  char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
-  std::memcpy(hbuf_dst,hbuf_src,size);
-  unmap_buffer(src_buffer,hbuf_src);
-  unmap_buffer(dst_buffer,hbuf_dst);
+  auto xdevice = get_xrt_device();
+
+  if (!get_num_cdmas() || is_emulation_mode()) {
+    auto cb = [this](memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size,const cmd_type& cmd) {
+      cmd->start();
+      char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
+      char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
+      std::memcpy(hbuf_dst,hbuf_src,size);
+      unmap_buffer(src_buffer,hbuf_src);
+      unmap_buffer(dst_buffer,hbuf_dst);
+      cmd->done();
+    };
+    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer, src_offset, dst_offset, size,cmd);
+    return;
+  }
+
+  // CDMA.  TODO, this needs to be done at lower shim level, not in OCL land
+  auto sk_cmd = xrt::command_cast<ert_start_kernel_cmd*>(cmd);
+  auto packet = cmd->get_packet();
+  size_t offset = 1; // packet offset past header
+
+  auto maxidx = get_num_cus() + get_num_cdmas();
+
+  for (auto cu_idx=get_num_cus(); cu_idx<maxidx; ++cu_idx) {
+    auto mask_idx = cu_idx/32;
+    auto cu_mask_idx = cu_idx - mask_idx*32;
+    packet[offset + mask_idx] |= 1 << cu_mask_idx;
+  }
+  sk_cmd->extra_cu_masks = maxidx/32;
+  sk_cmd->opcode = ERT_START_CU;
+  offset += maxidx/32 + 1; // packet offset past cumasks
+
+  // Insert copy command content
+  auto src_boh = xocl::xocl(src_buffer)->get_buffer_object(this);
+  auto src_addr = xdevice->getDeviceAddr(src_boh) + src_offset;
+  auto dst_boh = xocl::xocl(dst_buffer)->get_buffer_object(this);
+  auto dst_addr = xdevice->getDeviceAddr(dst_boh) + dst_offset;
+
+  packet[offset++] = 0; // 0x0 reserved CU AP_CTRL
+  packet[offset++] = 0; // 0x4 reserved CU GIE
+  packet[offset++] = 0; // 0xc reserved CU IER
+  packet[offset++] = 0; // 0xc reserved CU ISR
+  packet[offset++] = src_addr;                       // 0x10
+  packet[offset++] = (src_addr >> 32) & 0xFFFFFFFF;  // 0x14
+  packet[offset++] = 0;                              // 0x18
+  packet[offset++] = dst_addr;                       // 0x1c
+  packet[offset++] = (dst_addr >> 32) & 0xFFFFFFFF;  // 0x20
+  packet[offset++] = 0;                              // 0x24
+  packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
+
+  sk_cmd->count = offset-1; // number of words in payload (excludes header)
+  xrt::scheduler::schedule(cmd);
 }
 
 void
@@ -974,7 +1051,8 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
     throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
-
+  get_xrt_device()->write_register(offset,ptr,size);
+#if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
   auto packet = cmd->get_packet();
   auto idx = packet.size() + 1; // past header is start of payload
@@ -995,6 +1073,7 @@ write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 
   xrt::scheduler::schedule(cmd);
   cmd->wait();
+#endif
 }
 
 void
@@ -1078,8 +1157,6 @@ load_program(program* program)
     if (xbrv.valid() && xbrv.get()){
       if(xbrv.get() == -EACCES)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
-      else if (xbrv.get() == -EPERM)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Must download xclbin via mgmt pf");
       else if (xbrv.get() == -EBUSY)
         throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
       else if (xbrv.get() == -ETIMEDOUT)

@@ -73,7 +73,7 @@ namespace xcldev {
         ifs.read( (char*)&nfound, sizeof(nfound) );
         ifs.seekg( 0, ifs.beg );
         if( nfound == 0 ) {
-            std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device." << std::endl;
+            std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card." << std::endl;
             ifs.close();
             return nfound;
         }
@@ -84,7 +84,7 @@ namespace xcldev {
         ifs.read( buffer, buf_size ); // TODO: read entry by entry instead of entire mem_topology struct.
         mem_topology *map = (mem_topology *)buffer;
         for( int i = 0; i < map->m_count; i++ ) {
-            if( map->m_mem_data[i].m_used ) {
+            if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING ) {
                 aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i );
             }
         }
@@ -142,7 +142,7 @@ namespace xcldev {
         std::vector<mem_bank_t> mems;
         int numBanks = getDDRBanks(mems);
         if (!numBanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device \n";
+          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
           return -1;
         }
 
@@ -178,7 +178,7 @@ namespace xcldev {
                 std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) {
         int nbanks = getDDRBanks(vec_banks);
         if (!nbanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the device \n";
+          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
           return -1;
         }
 

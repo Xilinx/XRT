@@ -137,6 +137,7 @@ struct xclDeviceInfo2 {
   unsigned short mPCIeLinkSpeedMax;
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
+  unsigned short mNumCDMA;
   // More properties here
 };
 
@@ -799,6 +800,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  *
  * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
+ * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
  */
 
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
@@ -816,6 +818,7 @@ XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace spac
  *
  * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
+ * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
  */
 XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                    void *hostbuf, size_t size);
@@ -955,9 +958,10 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 /*
  * DOC: HAL Stream Queue APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~
- * These functions are used for next generation DMA Engine: QDMA. QDMA provide not only memory mapped dma which
- * moves data between host memory and board memory, but also stream dma which moves data between host memory and
- * kernel directly. Current memory mapped DMA APIs are supported on QDMA. And new stream APIs are provided here.
+ * These functions are used for next generation DMA Engine, QDMA. QDMA provide not only memory mapped DMA which
+ * moves data between host memory and board memory, but also stream DMA which moves data between host memory and
+ * kernel directly. Current memory mapped DMA APIs are supported on QDMA. New stream APIs are provided here for
+ * preview. These can only be used with DSAs with QDMA engine under the hood.
  */
 
 /**
@@ -984,6 +988,7 @@ struct xclQueueContext {
  *
  * This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
  * successes.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx,  uint64_t *q_hdl);
 XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -998,7 +1003,8 @@ XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, xclQueueConte
  *
  * return val: buffer pointer
  *
- * These functions allocate and free DMA buffers which is used for queue read and write
+ * These functions allocate and free DMA buffers which is used for queue read and write.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
 XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
@@ -1011,6 +1017,7 @@ XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
  * @q_hdl:		Queue handle
  *
  * This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
+ * This feature will be enabled in a future release.
  */
 XCL_DRIVER_DLLESPEC int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl);
 
@@ -1049,7 +1056,7 @@ XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 /**
  * struct xclWRBuffer
  */
-struct xclWRBuffer {
+struct xclReqBuffer {
     union {
 	char*    buf;    // ptr or,
 	uint64_t va;	 // offset
@@ -1070,10 +1077,12 @@ enum xclQueueRequestKind {
 /**
  * enum xclQueueRequestFlag - flags associated with the request.
  */
+/* this has to be the same with Xfer flags defined in opencl CL_STREAM* */
 enum xclQueueRequestFlag {
-    XCL_QUEUE_DEFAULT,
-    XCL_QUEUE_BLOCKING,
-    XCL_QUEUE_PARTIAL
+    XCL_QUEUE_REQ_EOT			= 1 << 0,
+    XCL_QUEUE_REQ_CDH			= 1 << 1,
+    XCL_QUEUE_REQ_NONBLOCKING		= 1 << 2,
+    XCL_QUEUE_REQ_SILENT		= 1 << 3,
 };
 
 /**
@@ -1081,11 +1090,25 @@ enum xclQueueRequestFlag {
  */
 struct xclQueueRequest {
     xclQueueRequestKind op_code;
-    xclWRBuffer*        bufs;
+    xclReqBuffer*       bufs;
     uint32_t	        buf_num;
     char*               cdh;
     uint32_t	        cdh_len;
-    xclQueueRequestFlag flag;
+    uint32_t		flag;
+    void*		priv_data;
+    uint32_t            timeout;
+};
+
+/**
+ * struct xclReqCompletion - read/write completion
+ * keep this in sync with cl_streams_poll_req_completions
+ * in driver/include/stream.h
+ */
+struct xclReqCompletion {
+    char			resv[64]; /* reserved for meta data */
+    void			*priv_data;
+    size_t			nbytes;
+    int				err_code;
 };
 
 /**
@@ -1106,10 +1129,11 @@ struct xclQueueRequest {
  *     blocking:
  *         return only when the entire buf has been written, or error.
  *     non-blocking:
- *         return 0 immediatly. wr_complete is called when DMA is completed.
- *     complete callback:
- *         used only with non-blocking.
- *         (there should be a way to poll wr complete to avoid too many notifications)
+ *         return 0 immediatly.
+ *     EOT:
+ *         end of transmit signal will be added at last
+ *     silent: (only used with non-blocking);
+ *         No event generated after write completes
  */
 XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
 
@@ -1123,24 +1147,29 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  * Return: number of bytes been read or error code.
  *     stream Queue:
  *         read until all the requested bytes is read or error happens.
- *     packet Queue:
- *         read until packet boundary arrives.
- *         any incoming packet beyond requested buffer size will be dropped and rd_complete will be
- *         called with error code. (will HW be able to do this??)
- * This function supports blocking, non-blocking and polling
  *     blocking:
  *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
  *     non-blocking:
- *         return 0 immediatly. rd_complete is called when DMA is completed.
- *     polling: do not need buffer
- *         return number of bytes or packets which is ready. it could call blocking read to get the data
- *         if there is any.
- *     complete:
- *         used only with non-blocking.
- *         good place to do polling which will decrease the completion notifciaton.
+ *         return 0 immediatly.
+ *     TODO: EOT
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
+
+/**
+ * xclPollCompletion - for non-blocking read/write, check if there is any request been completed.
+ * @min_compl		unblock only when receiving min_compl completions
+ * @max_compl		Max number of completion with one poll
+ * @req:		Completed requests
+ * @timeout:		timeout
+ *
+ * return number of requests been completed.
+ */ 
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout); 
+
+/* Hack for xbflash only */
+XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
 
 /** @} */
 
