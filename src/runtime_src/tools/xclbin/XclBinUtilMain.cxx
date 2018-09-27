@@ -19,10 +19,12 @@
 #include "XclBinUtilMain.h"
 #include "XclBinUtilities.h"
 #include "XclBin.h"
+#include "ParameterSectionData.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <stdexcept>
 
 // System - Include Files
 #include <iostream>
@@ -40,14 +42,17 @@ enum ReturnCodes {
 
 
 // Program entry point
-int main(int argc, char** argv) {
+int main_(int argc, char** argv) {
 
   bool bVerbose = false;
+  bool bTrace = false;
   bool bValidateImage = false;
   bool bAddValidateImage = false;
   bool bMigrateForward = false;
   bool bListNames = false;
   bool bListSections = false;
+  bool bInfo = false;
+  bool bSkipUUIDInsertion = false;
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -55,27 +60,27 @@ int main(int argc, char** argv) {
   std::string sSectionToRemove;
   std::string sSectionToAdd;
   std::string sSectionToDump;
+  std::string sSectionToReplace;
 
+  namespace po = boost::program_options;
 
-  try {
-    namespace po = boost::program_options;
+  po::options_description desc("Options");
+  desc.add_options()
+      ("help,h", "Print help messages")
+      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name")
+      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name")
+      ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information")
+      ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
+      ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
+      ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
+      ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
+      ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
+      ("replace-section", boost::program_options::value<std::string>(&sSectionToReplace), "Section to replace")
 
-    po::options_description desc("Options");
-    desc.add_options()
-        ("help,h", "Print help messages")
-        ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name")
-        ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name")
-        ("trace,t", boost::program_options::bool_switch(&bVerbose), "Trace")
-        ("validate,v", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
-        ("add-validation,c", boost::program_options::bool_switch(&bAddValidateImage), "Add image validation")
-        ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
-        ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
-        ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
-        ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
-
-        ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
-        ("list-sections,l", boost::program_options::bool_switch(&bListSections), "List the sections")
-
+      ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
+      ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
+      ("list-sections,l", boost::program_options::bool_switch(&bListSections), "List the sections")
+  ;
 
 // --remove-section=section
 //    Remove the section matching the section name. Note that using this option inappropriately may make the output file unusable.
@@ -92,99 +97,118 @@ int main(int argc, char** argv) {
 // --migrate-forward
 //    Migrates the xclbin forward to the new binary structure using the backup mirror metadata.
 
+  // hidden options
+  boost::program_options::options_description hidden("Hidden options");
+  hidden.add_options()
+    ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
+    ("add-validation", boost::program_options::bool_switch(&bAddValidateImage), "Add image validation")
+    ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
+  ;
 
-    ;
+  boost::program_options::options_description all("Allowed options");
+  all.add(desc).add(hidden);
 
-    po::variables_map vm;
-    try {
-      po::store(po::parse_command_line(argc, argv, desc), vm); // Can throw
 
-      if (vm.count("help")) {
-        std::cout << "Command Line Options" << std::endl
-            << desc
-            << std::endl;
-        return RC_SUCCESS;
-      }
+  po::variables_map vm;
+  try {
+    po::store(po::parse_command_line(argc, argv, all), vm); // Can throw
 
-      po::notify(vm); // Can throw
-    } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-      std::cerr << desc << std::endl;
-      return RC_ERROR_IN_COMMAND_LINE;
-    }
-
-    // Examine the options
-    // TODO: Clean up this flow.  Currently, its flow is that of testing features
-    //       and not how the customer would use it.
-    XUtil::setVerbose(bVerbose);
-
-    // Actions not requiring --input
-
-    if (bListNames) {
-      XUtil::printKinds();
+    if (vm.count("help")) {
+      std::cout << "Command Line Options" << std::endl
+          << desc
+          << std::endl;
       return RC_SUCCESS;
     }
 
-    // Actions requiring --input
+    po::notify(vm); // Can throw
+  } catch (po::error& e) {
+    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+    std::cerr << desc << std::endl;
+    return RC_ERROR_IN_COMMAND_LINE;
+  }
 
-    if (bValidateImage && !sInputFile.empty()) {
-      XUtil::validateImage(sInputFile);
-      return RC_SUCCESS;
-    }
+  // Examine the options
+  // TODO: Clean up this flow.  Currently, its flow is that of testing features
+  //       and not how the customer would use it.
+  XUtil::setVerbose(bTrace);
 
-    XclBin xclBin;
-    if (!sInputFile.empty()) {
-      xclBin.readXclBinBinary(sInputFile, bMigrateForward);
-    }
+  if (argc == 1) {
+    std::cout << "This utility operations on a xclbin produced by xocc." << std::endl << std::endl;
+    std::cout << "For example:" << std::endl;
+    std::cout << "1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
+    std::cout << "2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
+    std::cout << "3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
+    std::cout << "4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
+    std::cout << "5) Checking xclbin integrity     : xclbinutil --validate --input binary_containter_1.xclbin" <<std::endl;
 
-    if (bAddValidateImage && sOutputFile.empty()) {
-      std::string errMsg = "ERROR: Add validate image requires output file.";
-      throw std::runtime_error(errMsg);
-    }
+    std::cout << std::endl 
+              << "Command Line Options" << std::endl
+              << desc
+              << std::endl;
 
-    // User requested actions
+    return RC_SUCCESS;
+  }
 
-    bool bUserActionSpecified = false;
+  // Actions not requiring --input
 
-    if (bListSections) {
-      bUserActionSpecified = true;
-      xclBin.printSections();
-    }
+  if (bListNames) {
+    XUtil::printKinds();
+    return RC_SUCCESS;
+  }
 
-    if (!sSectionToRemove.empty()) {
-      bUserActionSpecified = true;
-      xclBin.removeSection(sSectionToRemove);
-    }
+  // Actions requiring --input
 
-    if (!sSectionToAdd.empty()) {
-      bUserActionSpecified = true;
-      xclBin.addSection(sSectionToAdd);
-    }
+  if (bValidateImage && !sInputFile.empty()) {
+    XUtil::validateImage(sInputFile);
+    return RC_SUCCESS;
+  }
 
-    if (!sSectionToDump.empty()) {
-      bUserActionSpecified = true;
-      xclBin.dumpSection(sSectionToDump);
-    }
+  XclBin xclBin;
+  if (!sInputFile.empty()) {
+    xclBin.readXclBinBinary(sInputFile, bMigrateForward);
+  } else {
+    std::string errMsg = "ERROR: No input file specified.";
+    throw std::runtime_error(errMsg);
+  }
 
-    if (!sOutputFile.empty()) {
-      bUserActionSpecified = true;
-      xclBin.writeXclBinBinary(sOutputFile);
-    }
+  if (bAddValidateImage && sOutputFile.empty()) {
+    std::string errMsg = "ERROR: Add validate image requires output file.";
+    throw std::runtime_error(errMsg);
+  }
 
-    if (bAddValidateImage && !sOutputFile.empty()) {
-      bUserActionSpecified = true;
-      XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
-    }
+  if (bListSections) {
+    xclBin.printSections();
+  }
 
-    if (!bUserActionSpecified) {
-      xclBin.printHeader();
-    }
+  if (!sSectionToRemove.empty()) {
+    xclBin.removeSection(sSectionToRemove);
+  }
 
-  } catch(std::exception& e){
-    std::cerr << "Unhandled Exception caught in main(): " << std::endl
-        << e.what() << std::endl
-        << "exiting" << std::endl;
-    return RC_ERROR_UNHANDLED_EXCEPTION;
+  if (!sSectionToReplace.empty()) {
+    ParameterSectionData psd(sSectionToReplace);
+    xclBin.replaceSection( psd );
+  }
+
+  if (!sSectionToAdd.empty()) {
+    ParameterSectionData psd(sSectionToAdd);
+    xclBin.addSection( psd );
+  }
+
+  if (!sSectionToDump.empty()) {
+    ParameterSectionData psd(sSectionToDump);
+    xclBin.dumpSection(psd);
+  }
+
+  if (!sOutputFile.empty()) {
+    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
+  }
+
+  if (bAddValidateImage && !sOutputFile.empty()) {
+    XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
+  }
+
+  if (bInfo) {
+    xclBin.printHeader();
   }
 
   return RC_SUCCESS;

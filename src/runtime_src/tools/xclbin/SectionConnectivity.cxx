@@ -140,4 +140,14 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
                                        (unsigned int)count, (unsigned int)connectivityHdr.m_count);
     throw std::runtime_error(errMsg);
   }
+  
+  // -- Buffer needs to be less than 64K--
+  unsigned int bufferSize = _buf.str().size();
+  const unsigned int maxBufferSize = 64 * 1024;
+  if ( bufferSize > maxBufferSize ) {
+    std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
+                                       (unsigned int) bufferSize, (unsigned int) maxBufferSize);
+    std::cout << errMsg << std::endl;
+    // throw std::runtime_error(errMsg);
+  }
 }

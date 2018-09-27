@@ -17,6 +17,6 @@
 #ifndef __XclBinUtilMain_h_
 #define __XclBinUtilMain_h_
 
-
+int main_(int argc, char** argv);
 
 #endif
