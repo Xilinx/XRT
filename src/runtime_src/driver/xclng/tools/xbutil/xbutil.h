@@ -97,12 +97,14 @@ enum subcommand {
     MEM_WRITE,
     STATUS_SPM,
     STATUS_LAPC,
+    STATUS_SSPM,
     STATUS_UNSUPPORTED
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
-    STATUS_LAPC_MASK = 0x2
+    STATUS_LAPC_MASK = 0x2,
+    STATUS_SSPM_MASK = 0x4
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -127,7 +129,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("read", MEM_READ),
     std::make_pair("write", MEM_WRITE),
     std::make_pair("spm", STATUS_SPM),
-    std::make_pair("lapc", STATUS_LAPC)
+    std::make_pair("lapc", STATUS_LAPC),
+    std::make_pair("sspm", STATUS_SSPM)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -1034,6 +1037,7 @@ public:
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
     int readSPMCounters();
+    int readSSPMCounters();
     int readLAPCheckers(int aVerbose);
     int print_debug_ip_list (int aVerbose);
 

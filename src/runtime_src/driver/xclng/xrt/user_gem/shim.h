@@ -228,6 +228,7 @@ public:
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
+    size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
