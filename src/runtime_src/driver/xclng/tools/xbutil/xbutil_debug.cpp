@@ -34,7 +34,7 @@
 #include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
-static const int depug_ip_max_type = 8;
+static const int debug_ip_max_type = 9;
 
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;
@@ -267,10 +267,10 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
-    static const char * debug_ip_names[depug_ip_max_type] = {
-        "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
+    static const char * debug_ip_names[debug_ip_max_type] = {
+      "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor", "sspm"
     };
-    int available_ip [depug_ip_max_type] = {0};
+    int available_ip [debug_ip_max_type] = {0};
     debug_ip_layout *map;
     std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
