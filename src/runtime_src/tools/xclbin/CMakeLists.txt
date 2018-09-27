@@ -71,6 +71,7 @@ target_link_libraries(lib_xclbinutil -static ${Boost_LIBRARIES})
 
 add_library(lib_shared_xclbinutil SHARED ${XCLBINUTIL_LIBRARY_SRC})
 set_target_properties(lib_shared_xclbinutil PROPERTIES OUTPUT_NAME "_xclbinutil")
+set_property(TARGET lib_shared_xclbinutil PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(lib_shared_xclbinutil ${Boost_LIBRARIES})
 
 file(GLOB XCLBINUTIL_FILES
