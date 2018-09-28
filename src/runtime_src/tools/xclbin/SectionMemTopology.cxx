@@ -128,7 +128,7 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
 
     XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx",
                                index,
-                               getMemTypeStr((enum MEM_TYPE)pHdr->m_mem_data[index].m_type),
+                               getMemTypeStr((enum MEM_TYPE)pHdr->m_mem_data[index].m_type).c_str(),
                                (unsigned int)pHdr->m_mem_data[index].m_used,
                                pHdr->m_mem_data[index].m_size,
                                pHdr->m_mem_data[index].m_tag,
@@ -239,5 +239,15 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     std::string errMsg = XUtil::format("ERROR: Number of mem_data sections (%d) does not match expected encoded value: %d",
                                        (unsigned int)count, (unsigned int)memTopologyHdr.m_count);
     throw std::runtime_error(errMsg);
+  }
+
+  // -- Buffer needs to be less than 64K--
+  unsigned int bufferSize = _buf.str().size();
+  const unsigned int maxBufferSize = 64 * 1024;
+  if ( bufferSize > maxBufferSize ) {
+    std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the MEM_TOPOLOGY (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
+                                       (unsigned int) bufferSize, (unsigned int) maxBufferSize);
+    std::cout << errMsg << std::endl;
+    // throw std::runtime_error(errMsg);
   }
 }

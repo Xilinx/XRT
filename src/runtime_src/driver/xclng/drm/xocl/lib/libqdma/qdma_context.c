@@ -166,6 +166,9 @@ static int make_sw_context(struct qdma_descq *descq, u32 *data, int cnt)
 			(V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_8B));
 	} else { /* st h2c */
 		data[1] |= V_DESC_CTXT_W1_DSC_SZ(DESC_SZ_16B);
+		if (descq->xdev->stm_en)
+			data[1] |= (descq->conf.fetch_credit <<
+				S_DESC_CTXT_W1_F_FCRD_EN);
 	}
 	data[0] = 0; /* pidx = 0; irq_ack = 0 */
 

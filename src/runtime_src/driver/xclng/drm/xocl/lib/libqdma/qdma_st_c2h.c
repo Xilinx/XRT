@@ -240,6 +240,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	int i = 0, j = 0;
 	unsigned int copied = 0, flen = 0;
 
+	pr_debug("fsgcnt %d, sg_idx %d\n", fsgcnt, cb->sg_idx);
 	if (!fsgcnt)
 		return 0;
 
@@ -399,7 +400,7 @@ static inline bool is_new_cmpl_entry(struct qdma_descq *descq,
 static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl,
 	unsigned int wrb_idx)
 {
-	__be64 *wrb = (__be64 *)(descq->desc_wrb + wrb_idx);
+	__be64 *wrb = (__be64 *)(descq->desc_wrb + wrb_idx * descq->wb_entry_len);
 
 	dma_rmb();
 

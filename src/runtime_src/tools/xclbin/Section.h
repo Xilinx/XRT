@@ -45,9 +45,12 @@
 class Section {
  public:
   enum FormatType{
+    FT_UNDEFINED,
+    FT_UNKNOWN,
     FT_RAW,
     FT_JSON,
-    FT_HTML
+    FT_HTML,
+    FT_TXT
   };
 
  public:
@@ -59,6 +62,7 @@ class Section {
   static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind);
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
+  static enum FormatType getFormatType(const std::string _sFormatType);
 
  public:
   enum axlf_section_kind getSectionKind() const;
@@ -73,10 +77,11 @@ class Section {
   void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
 
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
-  virtual void writeXclBinSectionBuffer(std::fstream& _ostream);
-  void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType);
+  virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
+  void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
 
   void addMirrorPayload(boost::property_tree::ptree& _pt) const;
+  void purgeBuffers();
 
  protected:
   // Child class option to create an JSON metadata

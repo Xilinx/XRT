@@ -1,0 +1,143 @@
+{
+    "FlowMetadata": {
+        "schemaVersion": {
+           "major": "1",
+           "minor": "0",
+           "patch": "0"
+        }
+    },
+    "DSA" : {
+        "vendor" : "xilinx",
+        "boardID" : "kcu1500",
+        "versionMajor" : "5",
+        "versionMinor" : "0",
+        "description" : "This platform targets the Kintex UltraScale KCU1500 Acceleration Development Board. This high-performance acceleration platform features up to four channels of DDR4-2400 SDRAM which are instantiated as required by the user kernels for high fabric resource availability, and Xilinx DMA Subsystem for PCI Express with PCIe Gen3 x8 connectivity.",
+        "board" : {
+            "name" : "xilinx.com:kcu1500:1.1",
+            "vendor" : "xilinx.com",
+            "part" : "XCKU115-FLVB2104-2-E",
+            "boardPart" : "xilinx.com:kcu1500:part0:1.1"
+        },
+        "featureRom" : {
+            "versionMajor" : "10",
+            "versionMinor" : "0",
+            "vivadoBuildID" : "2251194",
+            "IPBuildID" : "2250834",
+            "timeEpoch" : "1528338249",
+            "FPGAPartName" : "xcvu9p-fsgd2104-2L-e",
+            "VBNVName" : "xilinx_vcu1525_dynamic_5_2",
+            "DDRChannelCount" : "4",
+            "DDRChannelSize" : "16",
+            "DRBaseAddress" : "0",
+            "FeatureBitMap" : {
+                "value" : "0x20D",
+                "unifiedPlatform" : "enabled",
+                "auroraLink" : "disabled",
+                "boardMgmt" : "enabled",
+                "scheduler" : "enabled",
+                "promMask" : "0x0",
+                "debugMask" : "0x0",
+                "peerToPeer" : "disabled",
+                "UUID" : "enabled"
+            },
+            "UUID" : "7702e878-5660-42dd-be74-1605d6967909"
+        },
+        "xclbin" : {
+            "genAppInfo" : {
+                "name" : "xocc",
+                "version" : "2018.3",
+                "cl" : "2077092",
+                "timeStamp" : "Wed Jul  25 05:43:40 2017",
+                "versionPatch" : "XXX",
+                "options" : ""
+            },
+            "packageAppInfo" : {
+                "timeStamp" : "Fri Jul  27 05:43:40 2017",
+                "versionMajor" : "1",
+                "versionMinor" : "0"
+            }
+        },
+        "userRegions" : {
+            "userRegion" : {
+                "name" : "OCL_REGION",
+                "type" : "clc_region",
+                "instancePath" : "pfm_top_i/dynamic_region",
+                "baseAddress" : "0",
+                "kernels" : {
+                    "kernel" : {
+                        "name": "bandwidth",
+                        "ports" : {
+                            "port" : {
+                                "name" : "M_AXI_GMEM0",
+                                "mode" : "master",
+                                "range" : "0xFFFFFFFF",
+                                "dataWidth" : "512",
+                                "portType" : "addressable",
+                                "base" : "0x0"
+                            },
+                            "port" : {
+                                "name" : "M_AXI_GMEM1",
+                                "mode" : "master",
+                                "range" : "0xFFFFFFFF",
+                                "dataWidth" : "512",
+                                "portType" : "addressable",
+                                "base" :"0x0"
+                            },
+                            "port" : {
+                                "name" : "S_AXI_CONTROL",
+                                "mode" : "slave",
+                                "range" : "0x1000",
+                                "dataWidth" : "32",
+                                "portType" : "addressable",
+                                "base" : "0x0"
+                            }
+                        },
+                        "arguments" : {
+                            "argument" : {
+                                "name" : "input0",
+                                "addressQualifier" : "1",
+                                "id" : "0",
+                                "port" : "M_AXI_GMEM0",
+                                "size" : "0x8",
+                                "offset" : "0x10",
+                                "hostOffset" : "0x0",
+                                "hostSize" : "0x8",
+                                "type" : "uint16"
+                            },
+                            "argument" : {
+                                "name" : "output0",
+                                "addressQualifier" : "1",
+                                "id" : "1",
+                                "port" : "M_AXI_GMEM1",
+                                "size" : "0x8",
+                                "offset" : "0x1C",
+                                "hostOffset" : "0x0",
+                                "hostSize" : "0x8",
+                                "type" : "uint16*"
+                            },
+                            "argument" : {
+                                "name" : "num_blocks",
+                                "addressQualifier" : "0",
+                                "id" : "2",
+                                "port" : "S_AXI_CONTROL",
+                                "size" : "0x8",
+                                "offset" : "0x28",
+                                "hostOffset" : "0x0",
+                                "hostSize" : "0x8",
+                                "type" : "ulong"
+                            }
+                        },
+                        "instances" : {
+                           "instance" : {
+                               "name" : "bandwidth_1",
+                               "address" : "0x1800000",
+                               "port" : "S_AXI_CONTROL"
+                           }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

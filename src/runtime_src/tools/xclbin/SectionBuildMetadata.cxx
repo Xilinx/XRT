@@ -63,9 +63,6 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
                                       std::ostringstream& _buf) const
 {
    XUtil::TRACE("BUILD_METADATA");
-   boost::property_tree::write_json(_buf, _ptSection);
+   boost::property_tree::write_json(_buf, _ptSection, false );
 }
-
-
-
 
