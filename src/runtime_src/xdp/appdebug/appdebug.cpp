@@ -1255,6 +1255,7 @@ struct sspm_debug_view {
   unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS];
 
   unsigned int NumSlots ;
+  std::string  DevUserName ;
 
   sspm_debug_view() 
   {
@@ -1334,9 +1335,6 @@ sspm_debug_view::getXGDBString(bool aVerbose) {
 app_debug_view<sspm_debug_view>*
 clGetDebugStreamCounters()
 {
-  //cl_int ret = CL_SUCCESS;
-  //xclStreamingDebugCountersResults streamingDebugCounters;
-
   // Check for error conditions where we cannot read the streaming counters
   if (isEmulationMode()) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
@@ -1363,44 +1361,39 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
   }
 
-  /*
-  auto platform = rts->getcl_platform_id();
-  // Iterates over all devices, but assumes only one device
-  memset(&debugResults,0, sizeof(xclDebugCountersResults));
-  for (auto device : platform->get_device_range()) {
-    if (device->is_active()) {
-      //memset(&debugResults,0, sizeof(xclDebugCountersResults));
-      //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
-    }
-  }
-
-  if (ret) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
+  if (ret) 
+  {
+    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error reading sspm counters");
     return adv;
   }
-  auto spm_view = new spm_debug_view ();
-  std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteBytes);
-  std::copy(debugResults.WriteTranx, debugResults.WriteTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteTranx);
-  std::copy(debugResults.ReadBytes, debugResults.ReadBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->ReadBytes);
-  std::copy(debugResults.ReadTranx, debugResults.ReadTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->ReadTranx);
-  std::copy(debugResults.OutStandCnts, debugResults.OutStandCnts+XSPM_MAX_NUMBER_SLOTS, spm_view->OutStandCnts);
-  std::copy(debugResults.LastWriteAddr, debugResults.LastWriteAddr+XSPM_MAX_NUMBER_SLOTS, spm_view->LastWriteAddr);
-  std::copy(debugResults.LastWriteData, debugResults.LastWriteData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastWriteData);
-  std::copy(debugResults.LastReadAddr, debugResults.LastReadAddr+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadAddr);
-  std::copy(debugResults.LastReadData, debugResults.LastReadData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadData);
-  spm_view->NumSlots = debugResults.NumSlots;
-  spm_view->DevUserName = debugResults.DevUserName;
 
-  auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
-  return adv;
-*/
+  auto sspm_view = new sspm_debug_view () ;
+  
+  std::copy(streamingDebugCounters.StrNumTranx,
+	    streamingDebugCounters.StrNumTranx+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrNumTranx);
+  std::copy(streamingDebugCounters.StrDataBytes,
+	    streamingDebugCounters.StrDataBytes+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrDataBytes);
+  std::copy(streamingDebugCounters.StrBusyCycles,
+	    streamingDebugCounters.StrBusyCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrBusyCycles);
+  std::copy(streamingDebugCounters.StrStallCycles,
+	    streamingDebugCounters.StrStallCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrStallCycles);
+  std::copy(streamingDebugCounters.StrStarveCycles,
+	    streamingDebugCounters.StrStarveCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrStarveCycles);
+  
+  sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
+  sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
 
-  return nullptr ;
+  auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
+  return adv ;
 }
 
 struct lapc_debug_view {
