@@ -24,12 +24,17 @@
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 #include <stdexcept>
 
 // System - Include Files
 #include <iostream>
 #include <string>
 
+// Generated include files
+#include <version.h>
+ 
 namespace XUtil = XclBinUtilities;
 
 namespace {
@@ -53,6 +58,7 @@ int main_(int argc, char** argv) {
   bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
+  bool bVersion = false;
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -80,7 +86,8 @@ int main_(int argc, char** argv) {
       ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
       ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
       ("list-sections,l", boost::program_options::bool_switch(&bListSections), "List the sections")
-  ;
+      ("version", boost::program_options::bool_switch(&bVersion), "Version information regarding this executable")
+ ;
 
 // --remove-section=section
 //    Remove the section matching the section name. Note that using this option inappropriately may make the output file unusable.
@@ -132,14 +139,33 @@ int main_(int argc, char** argv) {
   //       and not how the customer would use it.
   XUtil::setVerbose(bTrace);
 
+  if (bVersion) {
+    std::cout << std::endl;
+    std::cout << XUtil::format("XRT Build Version: %s", GIT_XRT_VERSION) << std::endl;
+    std::cout << XUtil::format(" Last commit hash: %s", GIT_LAST_COMMIT_HASH) << std::endl;
+    std::cout << XUtil::format("       Build Date: %s", BUILD_DATE) << std::endl;
+    std::vector<std::string> modifiedFiles;
+    boost::split(modifiedFiles, GIT_MODIFIED_FILES, boost::is_any_of(","), boost::token_compress_on);
+
+    if (!modifiedFiles.empty()) {
+      std::cout << std::endl << "Note: This program was build with the following modified / unknown file(s):" << std::endl;
+      unsigned int index;
+      for (index = 0; index < modifiedFiles.size(); ++index) {
+        std::cout << XUtil::format("  %d) %s", index, modifiedFiles[index].c_str()) << std::endl;
+      }
+    }
+    std::cout << std::endl;
+    return RC_SUCCESS;
+  }
+
   if (argc == 1) {
     std::cout << "This utility operations on a xclbin produced by xocc." << std::endl << std::endl;
     std::cout << "For example:" << std::endl;
-    std::cout << "1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
-    std::cout << "2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
-    std::cout << "3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
-    std::cout << "4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
-    std::cout << "5) Checking xclbin integrity     : xclbinutil --validate --input binary_containter_1.xclbin" <<std::endl;
+    std::cout << "  1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
+    std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
+    std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
+    std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
+    std::cout << "  5) Checking xclbin integrity     : xclbinutil --validate --input binary_containter_1.xclbin" <<std::endl;
 
     std::cout << std::endl 
               << "Command Line Options" << std::endl
