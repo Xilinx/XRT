@@ -567,19 +567,19 @@ namespace xocl {
                       &sampleInterval, 4);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_NUM_TRANX_OFFSET, 
-                      &counterResults.StrNumTranx, 8);
+                      &counterResults.StrNumTranx[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_DATA_BYTES_OFFSET, 
-                      &counterResults.StrDataBytes, 8);
+                      &counterResults.StrDataBytes[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_BUSY_CYCLES_OFFSET, 
-                      &counterResults.StrBusyCycles, 8);
+                      &counterResults.StrBusyCycles[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STALL_CYCLES_OFFSET, 
-                      &counterResults.StrStallCycles, 8);
+                      &counterResults.StrStallCycles[s], 8);
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
-                      &counterResults.StrStarveCycles, 8);
+                      &counterResults.StrStarveCycles[s], 8);
       if (mLogStream.is_open()) {
         mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
         mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
@@ -685,8 +685,9 @@ namespace xocl {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << std::endl;
     }
+    uint64_t fifoBaseAddress = getPerfMonFifoBaseAddress(type, 0);
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoBaseAddress)
    	  return 0;
 
     xclAddressSpace addressSpace = (type == XCL_PERF_MON_ACCEL) ?
@@ -695,7 +696,7 @@ namespace xocl {
     uint32_t fifoCount = 0;
     uint32_t numSamples = 0;
     uint32_t numBytes = 0;
-    xclRead(addressSpace, getPerfMonFifoBaseAddress(type, 0) + AXI_FIFO_RLR, &fifoCount, 4);
+    xclRead(addressSpace, fifoBaseAddress + AXI_FIFO_RLR, &fifoCount, 4);
     // Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
     numBytes = fifoCount & 0x7FFFFF;
     numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);

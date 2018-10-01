@@ -1413,11 +1413,15 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 /*
  * xclPollCompletion()
  */
-int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, struct timespec *timeout)
+int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
+    /* TODO: populate actual and timeout args correctly */
+    struct timespec time;
+    time.tv_nsec = timeout*1000000;
+
     int num_evt, i;
 
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, timeout);
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
@@ -1583,7 +1587,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         struct iovec iov[2];
         struct xocl_qdma_req_header header;
 
-        header.flags = (wr->flag & XCL_QUEUE_REQ_EOT) ? XOCL_QDMA_REQ_FLAG_EOT : 0;
+        header.flags = wr->flag;
         iov[0].iov_base = &header;
         iov[0].iov_len = sizeof(header);
         iov[1].iov_base = buf;
@@ -1592,6 +1596,11 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
             struct iocb cb;
             struct iocb *cbs[1];
+
+            if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
+                std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
+                break;
+            }
 
             memset(&cb, 0, sizeof(cb));
             cb.aio_fildes = (int)q_hdl;
@@ -1602,9 +1611,29 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
-            rc = io_submit(mAioContext, 1, cbs);
-        } else
+            if (io_submit(mAioContext, 1, cbs) > 0)
+                rc++;
+            else {
+                std::cerr << "ERROR: async write stream failed" << std::endl;
+                break;
+            }
+        } else {
+            if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
+                std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
+                rc = -EINVAL;
+                break;
+            }
+
             rc = writev((int)q_hdl, iov, 2);
+            if (rc < 0) {
+                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                break;
+            } else if ((size_t)rc != wr->bufs[i].len) {
+                std::cerr << "ERROR: only " << rc << "/" << wr->bufs[i].len;
+                std::cerr << " bytes is written" << std::endl;
+                break;
+            }
+        }
     }
     return rc;
 }
@@ -1640,9 +1669,19 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             cb.aio_data = (uint64_t)wr->priv_data;
 
             cbs[0] = &cb;
-            rc = io_submit(mAioContext, 1, cbs);
-        } else 
-        	rc = readv((int)q_hdl, iov, 2);
+            if (io_submit(mAioContext, 1, cbs) > 0)
+                rc++;
+            else {
+                std::cerr << "ERROR: async read stream failed" << std::endl;
+                break;
+            }
+        } else {
+            rc = readv((int)q_hdl, iov, 2);
+            if (rc < 0) {
+                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                break;
+            }
+        }
     }
     return rc;
 
@@ -2090,10 +2129,10 @@ ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr
 	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }
 
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, struct timespec *timeout)
+int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
         xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, timeout) : -ENODEV;
+        return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
 xclDeviceHandle xclOpenMgmt(unsigned deviceIndex)

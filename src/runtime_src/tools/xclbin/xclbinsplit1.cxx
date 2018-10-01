@@ -25,7 +25,7 @@
 #include "xclbinsplit1.h"
 
 #include "xclbindata.h"
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <getopt.h>
 #include <iostream>
 

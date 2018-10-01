@@ -222,13 +222,6 @@ static_assert(ERT_INTC_ADDR==XPAR_INTC_SINGLE_BASEADDR,"update driver/include/er
 // Marker for invalid index
 const size_type no_index = std::numeric_limits<size_type>::max();
 
-// ERT states
-enum {
-    ERT_STATE_INIT
-    ,ERT_STATE_RUNNING
-    ,ERT_STATE_STOPPED
-};
-
 ////////////////////////////////////////////////////////////////
 // Configuarable constants
 // Statically allcoated array size is reduced in debug otherwise
@@ -270,7 +263,6 @@ static value_type cq_status_enabled         = 0;
 static value_type mb_host_interrupt_enabled = 0;
 static value_type cu_dma_52                 = 0;
 static value_type cdma_enabled              = 0;
-static value_type ert_state                 = ERT_STATE_INIT;
 
 // Struct slot_info is per command slot in command queue
 struct slot_info
@@ -837,14 +829,14 @@ static bool
 stop_mb(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
-  
+
   // disable CUDMA module
   cu_dma_enabled = 0;
   write_reg(ERT_CU_DMA_ENABLE_ADDR,cu_dma_enabled);
   // disable CUISR module
   cu_interrupt_enabled = 0;
   write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0);
-  
+
   //Wait for both to go back to IDLE. If system is in bad state we expect host to reset ERT properly
   value_type cu_dma_state = read_reg(ERT_CUDMA_STATE);
   value_type cu_isr_state = read_reg(ERT_CUISR_STATE);
@@ -852,7 +844,7 @@ stop_mb(size_type slot_idx)
     cu_dma_state = read_reg(ERT_CUDMA_STATE);
     cu_isr_state = read_reg(ERT_CUISR_STATE);
   }
-  
+
   // Update registers so mgmt driver knows ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   exit(0);

@@ -70,6 +70,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mFreeQDMABuf(0)
   ,mWriteQueue(0)
   ,mReadQueue(0)
+  ,mPollQueues(0)
 {
   mProbe = (probeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
   if (!mProbe)
@@ -130,6 +131,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mFreeQDMABuf = (freeQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
   mWriteQueue = (writeQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
   mReadQueue = (readQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
+  mPollQueues = (pollQueuesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
 
   mGetDeviceTime = (getDeviceTimeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
   if (!mGetDeviceTime)

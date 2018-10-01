@@ -22,7 +22,7 @@
 // ============================================================================
 
 #include "xclbincat1.h"
-#include "xclbinutil.h"
+#include "xclbinutils.h"
 #include <cstdlib>
 #include <cstring>
 #include <map>
