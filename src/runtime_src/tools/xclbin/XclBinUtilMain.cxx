@@ -61,10 +61,11 @@ int main_(int argc, char** argv) {
   std::string sInputFile;
   std::string sOutputFile;
 
-  std::string sSectionToRemove;
-  std::string sSectionToAdd;
-  std::string sSectionToDump;
-  std::string sSectionToReplace;
+  std::vector<std::string> sectionToReplace;
+  std::vector<std::string> sectionsToAdd;
+  std::vector<std::string> sectionsToRemove;
+  std::vector<std::string> sectionsToDump;
+
 
   namespace po = boost::program_options;
 
@@ -76,10 +77,10 @@ int main_(int argc, char** argv) {
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information")
       ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
-      ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
-      ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
-      ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
-      ("replace-section", boost::program_options::value<std::string>(&sSectionToReplace), "Section to replace")
+      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove")
+      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add")
+      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump")
+      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace")
 
       ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
       ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
@@ -176,9 +177,6 @@ int main_(int argc, char** argv) {
   XclBin xclBin;
   if (!sInputFile.empty()) {
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
-  } else {
-    std::string errMsg = "ERROR: No input file specified.";
-    throw std::runtime_error(errMsg);
   }
 
   if (bAddValidateImage && sOutputFile.empty()) {
@@ -190,22 +188,22 @@ int main_(int argc, char** argv) {
     xclBin.printSections();
   }
 
-  if (!sSectionToRemove.empty()) {
-    xclBin.removeSection(sSectionToRemove);
+  for (auto section : sectionsToRemove) {
+    xclBin.removeSection(section);
   }
 
-  if (!sSectionToReplace.empty()) {
-    ParameterSectionData psd(sSectionToReplace);
+  for (auto section : sectionToReplace) {
+    ParameterSectionData psd(section);
     xclBin.replaceSection( psd );
   }
 
-  if (!sSectionToAdd.empty()) {
-    ParameterSectionData psd(sSectionToAdd);
+  for (auto section : sectionsToAdd) {
+    ParameterSectionData psd(section);
     xclBin.addSection( psd );
   }
 
-  if (!sSectionToDump.empty()) {
-    ParameterSectionData psd(sSectionToDump);
+  for (auto section : sectionsToDump) {
+    ParameterSectionData psd(section);
     xclBin.dumpSection(psd);
   }
 
