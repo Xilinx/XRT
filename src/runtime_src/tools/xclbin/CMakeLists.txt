@@ -2,16 +2,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../driver/include
   )
 
-# -----------------------------------------------------------------------------
-
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 # -----------------------------------------------------------------------------
-
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
-
-# -----------------------------------------------------------------------------
-
 
 file(GLOB XCLBINCAT_FILES
   "xclbincat.cxx"
@@ -75,27 +68,10 @@ set(XCLBINUTIL_FILES_SRCS ${XCLBINUTIL_FILES})
 file(GLOB XCLBINUTIL_MAIN_FILE
   "xclbinutil.cxx"
 )
-
-set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS} "${CMAKE_CURRENT_BINARY_DIR}/generated)/version.h")
+set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
 add_executable(xclbinutil ${XCLBINUTIL_SRCS})
-target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
-
-# --- NOTE ---
-# It is intential that the version.h file is regenerated each time the build
-# is performed. This causes xclbintil and any sources that includes this header
-# file to be rebuilt. 
-# 
-# Ultimately, this functionality should be moved to the top most CMakeList target
-# ---
-add_custom_command(
-OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated)/version.h"
-COMMAND ${CMAKE_COMMAND}
-    -Dlocal_dir="${CMAKE_CURRENT_SOURCE_DIR}"
-    -Doutput_dir="${CMAKE_CURRENT_BINARY_DIR}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake"
-#  COMMENT "Generating generated/version.h header file"
-)
+target_link_libraries(xclbinutil -static ${Boost_LIBRARIES} )
 
 # -----------------------------------------------------------------------------
 
