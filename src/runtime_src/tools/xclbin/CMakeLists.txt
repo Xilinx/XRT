@@ -6,6 +6,10 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 # -----------------------------------------------------------------------------
 
+include_directories(${CMAKE_BINARY_DIR}/gen)
+
+# -----------------------------------------------------------------------------
+
 file(GLOB XCLBINCAT_FILES
   "xclbincat.cxx"
   "xclbincat1.cxx"
