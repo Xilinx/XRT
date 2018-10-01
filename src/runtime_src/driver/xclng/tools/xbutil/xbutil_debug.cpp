@@ -34,7 +34,7 @@
 #include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
-static const int depug_ip_max_type = 8;
+static const int debug_ip_max_type = 9;
 
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;
@@ -144,6 +144,45 @@ int xcldev::device::readSPMCounters() {
     return 0;
 }
 
+int xcldev::device::readSSPMCounters() {
+    xclStreamingDebugCountersResults debugResults = {0};
+    std::vector<std::string> slotNames;
+    std::vector< std::pair<std::string, std::string> > cuNameportNames;
+    unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, nullptr, &slotNames);
+    if (numSlots == 0) {
+        std::cout << "ERROR: SSPM IP does not exist on the platform" << std::endl;
+        return 0;
+    }
+    std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
+
+    std::cout << "SDx Streaming Performance Monitor Counters\n";
+    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    int col2 = std::max(widths.second, strlen("AXI Portname"));
+
+    std::cout << std::left
+            << std::setw(col1) << "CU Name"
+            << " " << std::setw(col2) << "AXI Portname"
+            << "  " << std::setw(16)  << "Num Trans."
+            << "  " << std::setw(16)  << "Data Bytes"
+            << "  " << std::setw(16)  << "Busy Cycles"
+            << "  " << std::setw(16)  << "Stall Cycles"
+            << "  " << std::setw(16)  << "Starve Cycles"
+            << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+        std::cout << std::left
+            << std::setw(col1) << cuNameportNames[i].first
+            << " " << std::setw(col2) << cuNameportNames[i].second
+            << "  " << std::setw(16) << debugResults.StrNumTranx[i]
+            << "  " << std::setw(16) << debugResults.StrDataBytes[i]
+            << "  " << std::setw(16) << debugResults.StrBusyCycles[i]
+            << "  " << std::setw(16) << debugResults.StrStallCycles[i]
+            << "  " << std::setw(16) << debugResults.StrStarveCycles[i]
+            << std::endl;
+    }
+    return 0;
+}
+
 int xcldev::device::readLAPCheckers(int aVerbose) {
     xclDebugCheckersResults debugResults = {0};
     //if (getuid() && geteuid()) {
@@ -228,10 +267,10 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
-    static const char * debug_ip_names[depug_ip_max_type] = {
-        "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
+    static const char * debug_ip_names[debug_ip_max_type] = {
+      "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor", "sspm"
     };
-    int available_ip [depug_ip_max_type] = {0};
+    int available_ip [debug_ip_max_type] = {0};
     debug_ip_layout *map;
     std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
