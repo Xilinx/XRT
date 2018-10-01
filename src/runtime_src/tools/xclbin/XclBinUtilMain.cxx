@@ -138,7 +138,7 @@ int main_(int argc, char** argv) {
   XUtil::setVerbose(bTrace);
 
   if (bVersion) {
-    XRTVersion::printVersion(std::cout);
+    xrt::version::print(std::cout);
     return RC_SUCCESS;
   }
 
