@@ -14,11 +14,11 @@ const char xrt_build_version_date[] = "@XRT_DATE@";
 const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 
 # ifdef __cplusplus
-namespace XRTVersion {
+namespace xrt { namespace version {
 #include <iostream>
 #include <string>
 
-void printVersion(std::ostream & output)
+void print(std::ostream & output)
 {
    output << "       XRT Build Version: " << xrt_build_version << std::endl;
    output << "  Build Version Extended: " << xrt_build_version_branch_extended << std::endl;
@@ -53,7 +53,7 @@ void printVersion(std::ostream & output)
    }
 }
 
-}
+}}
 #endif
 
 #endif 
