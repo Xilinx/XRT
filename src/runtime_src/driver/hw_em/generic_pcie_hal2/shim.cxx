@@ -1785,7 +1785,11 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
 
   int rf = ftruncate(fd, bo->size);
   if(rf == -1 )
+  {
+    close(fd);
+    munmap(data,size);
     return -1;
+  }
   mFdToFileNameMap [fd] = std::make_tuple(sFileName,size,(void*)data);
   PRINTENDFUNC;
   return fd;
@@ -1900,7 +1904,11 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
 
     int rf = ftruncate(fd, bo->size);
     if(rf == -1)
+    {
+      close(fd);
+      munmap(data,bo->size);
       return nullptr;
+    }
     mFdToFileNameMap [fd] = std::make_tuple(sFileName,bo->size,(void*)data);
     bo->buf = data;
     PRINTENDFUNC;
