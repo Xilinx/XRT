@@ -279,11 +279,12 @@ namespace xclemulation{
     FILE *fp = fopen(sPermissionCheckFile.c_str(), "w");
     if (fp == NULL) 
     {
-      if (errno == EACCES)
-        return false;
+      return false;
     }
     fclose(fp);
-    std::remove(sPermissionCheckFile.c_str());
+    int rV = std::remove(sPermissionCheckFile.c_str());
+    if(rV < 0 )
+      return false;
     return true;
   }
 
