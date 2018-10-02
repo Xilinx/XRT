@@ -104,7 +104,7 @@ if [[ $covbuild == 1 ]]; then
     mkdir -p Coverity
     cd Coverity
     cmake -DCMAKE_BUILD_TYPE=Release ../../src
-    make -j $CORE COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
     cd $here
     exit 0
 fi
