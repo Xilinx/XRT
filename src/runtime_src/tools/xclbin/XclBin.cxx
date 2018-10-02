@@ -824,6 +824,59 @@ XclBin::addSection(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
 }
 
+
+void 
+XclBin::addSections(ParameterSectionData &_PSD)
+{
+  if (!_PSD.getSectionName().empty()) {
+    std::string errMsg = "Error: Section given for a wildcard JSON section add call.";
+    throw std::runtime_error(errMsg);
+  }
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = XUtil::format("Error: Expecting JSON format type, got '%s'.", _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sJSONFileName = _PSD.getFile();
+
+  std::fstream fs;
+  fs.open(sJSONFileName, std::ifstream::in | std::ifstream::binary);
+  if (!fs.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + sJSONFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  //  Add a new element to the collection and parse the jason file
+  XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json( fs, pt );
+  
+  XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
+  XUtil::TRACE("Property Tree: Root");
+  XUtil::TRACE_PrintTree("Root", pt);
+
+  for (boost::property_tree::ptree::iterator ptSection = pt.begin(); ptSection != pt.end(); ++ptSection) {
+    const std::string & sectionName = ptSection->first;
+    if (sectionName == "schema_version") {
+      XUtil::TRACE("Skipping: '" + sectionName + "'");
+      continue;
+    }
+
+    XUtil::TRACE("Processing: '" + sectionName + "'");
+
+    Section * pSection = Section::createSectionObjectOfJSON(sectionName);
+    pSection->readJSONSectionImage(pt);
+    addSection(pSection);
+    XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+    std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()) << std::endl;
+  }
+}
+
+
 void 
 XclBin::dumpSection(ParameterSectionData &_PSD) 
 {

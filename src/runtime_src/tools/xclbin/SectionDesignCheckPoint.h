@@ -47,7 +47,7 @@ class SectionDesignCheckPoint : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", boost::factory<SectionDesignCheckPoint*>()); }
+    _init() { registerSectionCtor(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", "", boost::factory<SectionDesignCheckPoint*>()); }
   } _initializer;
 };
 

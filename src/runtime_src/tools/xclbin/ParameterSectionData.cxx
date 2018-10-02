@@ -83,7 +83,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 
   if ( tokens[0].empty() && (m_formatType != Section::FT_JSON)) {
-    std::string errMsg = "Error: Empty sections are only permitted with JSON format files.";
+    std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
   m_section = tokens[0];

@@ -199,7 +199,12 @@ int main_(int argc, char** argv) {
 
   for (auto section : sectionsToAdd) {
     ParameterSectionData psd(section);
-    xclBin.addSection( psd );
+    if (psd.getSectionName().empty() &&
+        psd.getFormatType() == Section::FT_JSON) {
+      xclBin.addSections(psd);
+    } else {
+      xclBin.addSection(psd);
+    }
   }
 
   for (auto section : sectionsToDump) {

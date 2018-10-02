@@ -47,7 +47,7 @@ class SectionBitstream : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>()); }
+    _init() { registerSectionCtor(BITSTREAM, "BITSTREAM", "", boost::factory<SectionBitstream*>()); }
   } _initializer;
 };
 

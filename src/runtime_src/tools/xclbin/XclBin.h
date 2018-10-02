@@ -65,6 +65,7 @@ class XclBin {
   void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion = false);
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
+  void addSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
 

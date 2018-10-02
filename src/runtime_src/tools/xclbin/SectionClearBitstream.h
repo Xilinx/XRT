@@ -47,7 +47,7 @@ class SectionClearBitstream : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>()); }
+    _init() { registerSectionCtor(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", "", boost::factory<SectionClearBitstream*>()); }
   } _initializer;
 };
 
