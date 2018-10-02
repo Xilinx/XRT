@@ -326,7 +326,7 @@ clPollStreams(cl_device_id /*device*/,
 	cl_int  /*min_num_completion*/,
 	cl_int  /*max_num_completion*/,
 	cl_int* /*actual num_completion*/,
-	cl_uint /*timeout in ms*/,
+	cl_int /*timeout in ms*/,
 	cl_int * /*errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 //End QDMA APIs
