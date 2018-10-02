@@ -601,15 +601,11 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-
-        
-        
-
-        if (!preserve_mem) {
-            err = xocl_init_mm(xdev);
-            if (err)
-                    goto done;
-        }
+	if (!preserve_mem) {
+		err = xocl_init_mm(xdev);
+		if (err)
+			goto done;
+	}
 
 	//Populate with "this" bitstream, so avoid redownload the next time
 	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
