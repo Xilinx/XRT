@@ -447,8 +447,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size_of_header;
 	size_t num_of_sections;
 	size_t size;
-        int preserve_mem = 0;
-        struct mem_topology *new_topology;
+	int preserve_mem = 0;
+	struct mem_topology *new_topology;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -535,10 +535,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		err = -EFAULT;
 		goto done;
 	}
-        
 
-        /* 1, read MEM_TOPOLOGY */        
-        /* Populating MEM_TOPOLOGY sections */
+	/* Populating MEM_TOPOLOGY sections. */
 	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
 	if (size <= 0) {
 		if (size != 0)
@@ -548,31 +546,30 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-        /* 2, compare MEM_TOPOLOGY */
-        if (xdev->topology != NULL) {
-            if (!memcmp(new_topology, xdev->topology, size)) {
-                printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
-                preserve_mem =1;
-            } else {
-                printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
-            }
-        }
-        
-        /* 3, cleanup */
-        //Switching the xclbin, make sure none of the buffers are used.
-        if (!preserve_mem) {
-            err = xocl_check_topology(xdev);
-            if(err)
-                    goto done;
-            xocl_cleanup_mem(xdev);            
-        }
-        xocl_cleanup_connectivity(xdev);
-        
-        /* 4, copy MEM_TOPOLOGY from new_toplogy if !preserve_mem */
-        if (!preserve_mem) {
-                xdev->topology = new_topology;
-        }
-        
+	/* Compare MEM_TOPOLOGY previous vs new. */
+	if (xdev->topology != NULL) {
+		if (!memcmp(new_topology, xdev->topology, size)) {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
+			preserve_mem =1;
+		} else {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
+		}
+	}
+
+	/* Switching the xclbin, make sure none of the buffers are used. */
+	if (!preserve_mem) {
+		err = xocl_check_topology(xdev);
+		if(err)
+			goto done;
+		xocl_cleanup_mem(xdev);
+	}
+	xocl_cleanup_connectivity(xdev);
+
+	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
+	if (!preserve_mem) {
+		xdev->topology = new_topology;
+	}
+
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
 	size = xocl_read_sect(IP_LAYOUT, &xdev->layout, axlf, buf);
