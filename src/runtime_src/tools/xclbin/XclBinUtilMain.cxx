@@ -50,21 +50,25 @@ int main_(int argc, char** argv) {
   bool bVerbose = false;
   bool bTrace = false;
   bool bValidateImage = false;
-  bool bAddValidateImage = false;
   bool bMigrateForward = false;
   bool bListNames = false;
   bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
+  bool bValidateInsertion = true;
+  bool bSkipValidateInsertion = false;
   bool bVersion = false;
 
   std::string sInputFile;
   std::string sOutputFile;
 
-  std::string sSectionToRemove;
-  std::string sSectionToAdd;
-  std::string sSectionToDump;
-  std::string sSectionToReplace;
+  std::vector<std::string> sectionToReplace;
+  std::vector<std::string> sectionsToAdd;
+  std::vector<std::string> sectionsToRemove;
+  std::vector<std::string> sectionsToDump;
+
+  std::vector<std::string> keyValuePairs;
+
 
   namespace po = boost::program_options;
 
@@ -76,10 +80,11 @@ int main_(int argc, char** argv) {
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information")
       ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
-      ("remove-section", boost::program_options::value<std::string>(&sSectionToRemove), "Section name to remove")
-      ("add-section", boost::program_options::value<std::string>(&sSectionToAdd), "Section name to add")
-      ("dump-section", boost::program_options::value<std::string>(&sSectionToDump), "Section to dump")
-      ("replace-section", boost::program_options::value<std::string>(&sSectionToReplace), "Section to replace")
+      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove")
+      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
+      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump")
+      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace")
+      ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER | SYS}:<key>:<value>")
 
       ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
       ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
@@ -106,8 +111,8 @@ int main_(int argc, char** argv) {
   boost::program_options::options_description hidden("Hidden options");
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
-    ("add-validation", boost::program_options::bool_switch(&bAddValidateImage), "Add image validation")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
+    ("skip-validate-insertion", boost::program_options::bool_switch(&bSkipValidateInsertion), "Do not insert the checksum validation block.")
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -173,49 +178,51 @@ int main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
+  if (bSkipValidateInsertion == true) {
+      bValidateInsertion = false;
+  }
+
   XclBin xclBin;
   if (!sInputFile.empty()) {
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
-  } else {
-    std::string errMsg = "ERROR: No input file specified.";
-    throw std::runtime_error(errMsg);
   }
 
-  if (bAddValidateImage && sOutputFile.empty()) {
-    std::string errMsg = "ERROR: Add validate image requires output file.";
-    throw std::runtime_error(errMsg);
+  for (auto keyValue : keyValuePairs) {
+    xclBin.setKeyValue(keyValue);
+  }
+
+  for (auto section : sectionsToRemove) {
+    xclBin.removeSection(section);
+  }
+
+  for (auto section : sectionToReplace) {
+    ParameterSectionData psd(section);
+    xclBin.replaceSection( psd );
+  }
+
+  for (auto section : sectionsToAdd) {
+    ParameterSectionData psd(section);
+    if (psd.getSectionName().empty() &&
+        psd.getFormatType() == Section::FT_JSON) {
+      xclBin.addSections(psd);
+    } else {
+      xclBin.addSection(psd);
+    }
+  }
+
+  for (auto section : sectionsToDump) {
+    ParameterSectionData psd(section);
+    xclBin.dumpSection(psd);
+  }
+
+  if (!sOutputFile.empty()) {
+    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion, bValidateInsertion);
   }
 
   if (bListSections) {
     xclBin.printSections();
   }
 
-  if (!sSectionToRemove.empty()) {
-    xclBin.removeSection(sSectionToRemove);
-  }
-
-  if (!sSectionToReplace.empty()) {
-    ParameterSectionData psd(sSectionToReplace);
-    xclBin.replaceSection( psd );
-  }
-
-  if (!sSectionToAdd.empty()) {
-    ParameterSectionData psd(sSectionToAdd);
-    xclBin.addSection( psd );
-  }
-
-  if (!sSectionToDump.empty()) {
-    ParameterSectionData psd(sSectionToDump);
-    xclBin.dumpSection(psd);
-  }
-
-  if (!sOutputFile.empty()) {
-    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
-  }
-
-  if (bAddValidateImage && !sOutputFile.empty()) {
-    XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
-  }
 
   if (bInfo) {
     xclBin.printHeader();

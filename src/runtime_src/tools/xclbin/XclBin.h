@@ -62,11 +62,13 @@ class XclBin {
   void printHeader();
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
-  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion = false);
+  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion, bool _bInsertValidationChecksum);
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
+  void addSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
+  void setKeyValue(const std::string & _keyValue);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind);
@@ -86,6 +88,8 @@ class XclBin {
   void removeSection(const Section* _pSection);
 
   void updateUUID();
+
+  void initializeHeader(axlf &_xclBinHeader);
 
   // Should be in their own separate class
  private:
