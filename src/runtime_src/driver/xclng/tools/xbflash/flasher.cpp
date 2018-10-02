@@ -22,15 +22,9 @@
 #include "flasher.h"
 #include "scan.h"
 #include "mgmt-reg.h"
-#include <sys/mman.h>
 #include <stddef.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <cassert>
-#include <cstring>
 #include <vector>
-#include <sstream>
-#include <iomanip>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -49,10 +43,12 @@ Flasher::~Flasher()
 
 Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
+    auto dev = pcidev::get_dev(mIdx);
+
     E_FlasherType type = E_FlasherType::UNKNOWN;
 
     if (typeStr.empty())
-        typeStr = mDev.flash_type;
+        typeStr = dev->flash_type;
 
     if (typeStr.empty())
     {
@@ -177,14 +173,10 @@ int Flasher::getBoardInfo(BoardInfo& board)
 Flasher::Flasher(unsigned int index) :
     mIdx(index), mMgmtMap(nullptr), mFRHeader{}
 {
-    xcldev::pci_device_scanner scanner;
-    scanner.scan(false);
-
-    if(mIdx >= scanner.device_list.size()) {
+    if(mIdx >= pcidev::get_dev_total()) {
         std::cout << "ERROR: Invalid card index." << std::endl;
         return;
     }
-    mDev = scanner.device_list.at(mIdx);
 
     mHandle = xclOpenMgmt(mIdx);
     if (!mHandle)
@@ -199,20 +191,27 @@ Flasher::Flasher(unsigned int index) :
         return;
     }
 
-    unsigned long long feature_rom_base;
-    if (scanner.get_feature_rom_bar_offset(mIdx, feature_rom_base) == 0)
+    std::string err;
+    unsigned long long feature_rom_base = 0;
+    pcidev::get_dev(mIdx)->mgmt->sysfs_get("", "feature_rom_offset", err,
+        feature_rom_base);
+    if (err.empty() && feature_rom_base != 0)
     {
-        pcieBarRead( 0, (unsigned long long)mMgmtMap + feature_rom_base, &mFRHeader, sizeof(struct FeatureRomHeader) );
-        // Something funny going on here. There must be a strange line ending character. Using "<" will check for a match
-        // that EntryPointString starts with magic char sequence "xlnx".
-        if( std::string( reinterpret_cast<const char*>( mFRHeader.EntryPointString ) ).compare( MAGIC_XLNX_STRING ) < 0 )
+        pcieBarRead(0, (unsigned long long)mMgmtMap + feature_rom_base,
+            &mFRHeader, sizeof(struct FeatureRomHeader));
+        // Something funny going on here. There must be a strange line ending
+        // character. Using "<" will check for a match that EntryPointString
+        // starts with magic char sequence "xlnx".
+        if(std::string(reinterpret_cast<const char*>(mFRHeader.EntryPointString))
+            .compare(MAGIC_XLNX_STRING) < 0)
         {
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
         }
     }
-    else if (mDev.is_mfg)
+    else if (pcidev::get_dev(mIdx)->is_mfg)
     {
-        pcieBarRead( 0, (unsigned long long)mMgmtMap + MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer) );
+        pcieBarRead(0, (unsigned long long)mMgmtMap + MFG_REV_OFFSET,
+            &mGoldenVer, sizeof(mGoldenVer));
     }
     else
     {
@@ -330,12 +329,13 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string vbnv;
     std::string bmc;
     uint64_t ts = NULL_TIMESTAMP;
+    auto dev = pcidev::get_dev(mIdx);
 
-    if (mDev.is_mfg)
+    if (dev->is_mfg)
     {
         std::stringstream ss;
 
-        ss << "xilinx_" << mDev.board_name << "_GOLDEN_" << mGoldenVer;
+        ss << "xilinx_" << dev->board_name << "_GOLDEN_" << mGoldenVer;
         vbnv = ss.str();
     }
     else if (mFRHeader.VBNVName[0] != '\0')
@@ -358,8 +358,9 @@ DSAInfo Flasher::getOnBoardDSA()
 std::string Flasher::sGetDBDF()
 {
     char cDBDF[128];
+    auto& mdev = pcidev::get_dev(mIdx)->mgmt;
 
-    sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x", mDev.domain, mDev.bus, mDev.device,
-        mDev.mgmt_func);
+    sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x",
+        mdev->domain, mdev->bus, mdev->dev, mdev->func);
     return std::string(cDBDF);
 }

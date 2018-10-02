@@ -15,13 +15,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <climits>
-#include <iostream>
-#include <fstream>
 #include <unistd.h>
 #include <getopt.h>
-#include <memory>
-#include <iomanip>
 #include "flasher.h"
 #include "scan.h"
 #include "firmware_image.h"
@@ -476,17 +471,15 @@ int main( int argc, char *argv[] )
     }
 
     // Collect all indexes of boards need checking
-    xcldev::pci_device_scanner scanner;
-    scanner.scan(false);
+    unsigned total = pcidev::get_dev_total();
     if (args.devIdx == UINT_MAX)
     {
-        for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size();
-            i++)
+        for(unsigned i = 0; i < total; i++)
             boardsToCheck.push_back(i);
     }
     else
     {
-        if (args.devIdx < xcldev::pci_device_scanner::device_list.size())
+        if (args.devIdx < total)
             boardsToCheck.push_back(args.devIdx);
     }
     if (boardsToCheck.empty())
@@ -571,13 +564,13 @@ int scanDevices(int argc, char *argv[])
 
     sudoOrDie();
 
-    xcldev::pci_device_scanner scanner;
-    scanner.scan(false);
-
-    if ( xcldev::pci_device_scanner::device_list.size() == 0 )
+    unsigned total = pcidev::get_dev_total();
+    if (total == 0) {
         std::cout << "No card is found!" << std::endl;
+        return 0;
+    }
 
-    for(unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++)
+    for(unsigned i = 0; i < total; i++)
     {
         std::cout << "Card [" << i << "]" << std::endl;
 

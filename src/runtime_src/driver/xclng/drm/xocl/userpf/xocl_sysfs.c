@@ -21,7 +21,7 @@
 /* -Attributes -- */
 /* -xclbinid-- */
 static ssize_t xclbinid_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%llx\n", xdev->unique_id_last_bitstream);
@@ -31,7 +31,7 @@ static DEVICE_ATTR_RO(xclbinid);
 
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%pUb\n", &xdev->xclbin_id);
@@ -49,21 +49,30 @@ static ssize_t userbar_show(struct device *dev,
 
 static DEVICE_ATTR_RO(userbar);
 
+static ssize_t user_pf_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	// The existence of entry indicates user function.
+	return sprintf(buf, "%s", "");
+}
+static DEVICE_ATTR_RO(user_pf);
+
 /* -live client contects-- */
 static ssize_t kdsstat_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
-		       get_live_client_size(xdev),
-		       atomic_read(&xdev->outstanding_execs),
-		       atomic64_read(&xdev->total_execs));
+	return sprintf(buf,
+		"context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
+		get_live_client_size(xdev),
+		atomic_read(&xdev->outstanding_execs),
+		atomic64_read(&xdev->total_execs));
 }
 static DEVICE_ATTR_RO(kdsstat);
 
 /* -live memory usage-- */
 static ssize_t memstat_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return xocl_mm_sysfs_stat(xdev, buf, false);
@@ -71,10 +80,10 @@ static ssize_t memstat_show(struct device *dev,
 static DEVICE_ATTR_RO(memstat);
 
 static ssize_t memstat_raw_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
-    struct xocl_dev *xdev = dev_get_drvdata(dev);
-    return xocl_mm_sysfs_stat(xdev, buf, true);
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	return xocl_mm_sysfs_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
@@ -227,6 +236,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+	&dev_attr_user_pf.attr,
 	NULL,
 };
 
