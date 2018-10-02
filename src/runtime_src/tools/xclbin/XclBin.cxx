@@ -845,7 +845,7 @@ XclBin::addSection(ParameterSectionData &_PSD)
   }
 
   Section * pSection = Section::createSectionObjectOfKind(eKind);
-  pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+  pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   boost::filesystem::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();

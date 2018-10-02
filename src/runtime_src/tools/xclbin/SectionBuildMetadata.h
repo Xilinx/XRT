@@ -51,7 +51,7 @@ class SectionBuildMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "FlowMetaData", boost::factory<SectionBuildMetadata*>()); }
+    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", boost::factory<SectionBuildMetadata*>()); }
   } _initializer;
 };
 

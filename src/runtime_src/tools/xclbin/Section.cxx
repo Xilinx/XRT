@@ -319,6 +319,62 @@ Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
 
 void 
+Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
+{
+    switch (_eFormatType) {
+    case FT_RAW:
+      {
+        axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+        sectionHeader.m_sectionKind = getSectionKind();
+        sectionHeader.m_sectionOffset = 0;
+        _istream.seekg(0, _istream.end);
+        sectionHeader.m_sectionSize = _istream.tellg();
+
+        readXclBinBinary(_istream, sectionHeader);
+        break;
+      }
+    case FT_JSON:
+      {
+        // Bring the file into memory
+        _istream.seekg(0, _istream.end);
+        unsigned int fileSize = _istream.tellg();
+
+        std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+        _istream.clear();
+        _istream.seekg(0);
+        _istream.read((char*)memBuffer.get(), fileSize);
+
+        XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
+
+        // Convert the JSON file to a boost property tree
+        std::stringstream ss((char*) memBuffer.get());
+
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(ss, pt);
+
+        // O.K. - Lint checking is done and write it to our buffer
+        readJSONSectionImage(pt);
+        break;
+      }
+    case FT_HTML:
+      // Do nothing
+      break;
+    case FT_TXT:
+      // Do nothing
+      break;
+    case FT_UNKNOWN:
+      // Do nothing
+      break;
+    case FT_UNDEFINED:
+      // Do nothing
+      break;
+    }
+}
+
+
+
+
+void 
 Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
 {
   switch (_eFormatType) {
