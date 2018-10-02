@@ -53,7 +53,7 @@ class SectionConnectivity : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CONNECTIVITY, "CONNECTIVITY", boost::factory<SectionConnectivity*>()); }
+    _init() { registerSectionCtor(CONNECTIVITY, "CONNECTIVITY", "connectivity", boost::factory<SectionConnectivity*>()); }
   } _initializer;
 };
 

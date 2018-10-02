@@ -62,6 +62,7 @@ class Section {
   static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind);
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
+  static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
 
  public:
@@ -75,6 +76,7 @@ class Section {
   virtual void readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader);
   virtual void readXclBinBinary(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
   void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
+  void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);
 
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
@@ -82,6 +84,7 @@ class Section {
 
   void addMirrorPayload(boost::property_tree::ptree& _pt) const;
   void purgeBuffers();
+  void setName(const std::string &_sSectionName);
 
  protected:
   // Child class option to create an JSON metadata
@@ -93,7 +96,7 @@ class Section {
 
  protected:
   typedef std::function<Section*()> Section_factory;
-  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, Section_factory _Section_factory);
+  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, Section_factory _Section_factory);
 
  protected:
   enum axlf_section_kind m_eKind;
@@ -107,6 +110,7 @@ class Section {
   static std::map<enum axlf_section_kind, std::string> m_mapIdToName;
   static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
+  static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
 
  private:
   // Purposefully private and undefined ctors...
