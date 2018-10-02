@@ -54,12 +54,12 @@ clPollStreams(cl_device_id              device,
 
 CL_API_ENTRY cl_int CL_API_CALL
 clPollStreams(cl_device_id               device,
-	cl_streams_poll_req_completions* completions, 
+       	cl_streams_poll_req_completions* completions,
 	cl_int                           min_num_completion,
 	cl_int                           max_num_completion,
 	cl_int*                          actual_num_completion,
 	cl_int                           timeout,
-	cl_int*                          errcode_ret) CL_API_SUFFIX__VERSION_1_0
+	cl_int * errcode_ret) CL_API_SUFFIX__VERSION_1_0
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
