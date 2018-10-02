@@ -174,13 +174,13 @@ namespace awsbwhal {
               opt.afi_id = afi_id;
               opt.slot_id = mBoardNumber;
               retVal = fpga_mgmt_load_local_image_with_options(&opt);
-	      if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
-		  retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
-		  retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
+              if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
+                  retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
+                  retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
                   std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
                             << " - Loading in classic mode." << std::endl;
-		  retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
-	      }	  
+                  retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
+              }
               // check retVal from image load
               if (retVal) {
                   std::cout << "Failed to load AFI, error: " << retVal << std::endl;
@@ -194,7 +194,7 @@ namespace awsbwhal {
                       std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
                   } else {
                       std::cout << "AFI load complete." << std::endl;
-                  }   
+                  }
               }
           }
           return retVal;
