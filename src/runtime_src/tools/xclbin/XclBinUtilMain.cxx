@@ -66,6 +66,8 @@ int main_(int argc, char** argv) {
   std::vector<std::string> sectionsToRemove;
   std::vector<std::string> sectionsToDump;
 
+  std::vector<std::string> keyValuePairs;
+
 
   namespace po = boost::program_options;
 
@@ -78,9 +80,10 @@ int main_(int argc, char** argv) {
       ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
       ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove")
-      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add")
+      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace")
+      ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER | SYS}:<key>:<value>")
 
       ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
       ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
@@ -184,8 +187,8 @@ int main_(int argc, char** argv) {
     throw std::runtime_error(errMsg);
   }
 
-  if (bListSections) {
-    xclBin.printSections();
+  for (auto keyValue : keyValuePairs) {
+    xclBin.setKeyValue(keyValue);
   }
 
   for (auto section : sectionsToRemove) {
@@ -219,6 +222,11 @@ int main_(int argc, char** argv) {
   if (bAddValidateImage && !sOutputFile.empty()) {
     XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
   }
+
+  if (bListSections) {
+    xclBin.printSections();
+  }
+
 
   if (bInfo) {
     xclBin.printHeader();

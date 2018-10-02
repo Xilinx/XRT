@@ -865,7 +865,18 @@ XclBin::addSections(ParameterSectionData &_PSD)
 
     XUtil::TRACE("Processing: '" + sectionName + "'");
 
-    Section * pSection = Section::createSectionObjectOfJSON(sectionName);
+    enum axlf_section_kind eKind;
+    if (Section::getKindOfJSON(sectionName, eKind) == false) {
+      std::string errMsg = XUtil::format("ERROR: Unknown JSON section '%s' in file: %s", sectionName.c_str(), sJSONFileName.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    if (findSection(eKind) != nullptr) {
+      std::string errMsg = XUtil::format("Error: Section '%s' already exists.", _PSD.getSectionName().c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    Section * pSection = Section::createSectionObjectOfKind(eKind);
     pSection->readJSONSectionImage(pt);
     addSection(pSection);
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
@@ -907,4 +918,79 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()) << std::endl;
+}
+
+
+void 
+XclBin::setKeyValue(const std::string & _keyValue)
+{
+  const std::string& delimiters = ":";      // Our delimiter
+
+  // Working variables
+  std::string::size_type pos = 0;
+  std::string::size_type lastPos = 0;
+  std::vector<std::string> tokens;
+
+  // Parse the string until the entire string has been parsed or 3 tokens have been found
+  while((lastPos < _keyValue.length() + 1) && 
+        (tokens.size() < 3))
+  {
+    pos = _keyValue.find_first_of(delimiters, lastPos);
+
+    if ( (pos == std::string::npos) ||
+         (tokens.size() == 2) ){
+       pos = _keyValue.length();
+    }
+
+    std::string token = _keyValue.substr(lastPos, pos-lastPos);
+    tokens.push_back(token);
+    lastPos = pos + 1;
+  }
+
+  if (tokens.size() != 3) {
+    std::string errMsg = XUtil::format("Error: Expected format [USER | SYS]:<key>:<value> when using adding a key value pair.  Received: %s.", _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  boost::to_upper(tokens[0]);
+  std::string sDomain = tokens[0];
+  std::string sKey = tokens[1];
+  std::string sValue = tokens[2];
+  
+  XUtil::TRACE(XUtil::format("Setting key-value pair \"%s\":  domain:'%s', key:'%s', value:'%s'", 
+                             _keyValue.c_str(), sDomain.c_str(), sKey.c_str(), sValue.c_str()));
+
+  if (sDomain == "SYS") {
+    if (sKey == "mode") {
+      if (sValue == "flat" ) {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_FLAT;
+      } else if (sValue == "hw_pr") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_PR;
+      } else if (sValue == "tandem") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_TANDEM_STAGE2;
+      } else if (sValue == "tandem_pr") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_TANDEM_STAGE2_WITH_PR;
+      } else if (sValue == "hw_emu") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_HW_EMU;
+      } else if (sValue == "sw_emu") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_SW_EMU;
+      } else {
+        std::string errMsg = XUtil::format("Error: Unknown value '%s' for key '%s'. Key-value pair: '%s'.", sValue.c_str(), sKey.c_str(), _keyValue.c_str());
+        throw std::runtime_error(errMsg);
+      }
+      return; // Key processed 
+    }
+
+    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  } 
+
+  if (sDomain == "USER") {
+
+    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
+  throw std::runtime_error(errMsg);
 }

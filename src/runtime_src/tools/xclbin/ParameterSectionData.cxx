@@ -65,7 +65,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 
   if (tokens.size() != 3) {
-    std::string errMsg = XUtil::format("Error: Expected format <section>:<file>:<format> when using adding a section.  Received: %s.", _formattedString.c_str());
+    std::string errMsg = XUtil::format("Error: Expected format <section>:<format>:<file> when using adding a section.  Received: %s.", _formattedString.c_str());
     throw std::runtime_error(errMsg);
   }
 

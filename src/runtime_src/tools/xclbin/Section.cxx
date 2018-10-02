@@ -130,21 +130,15 @@ Section::getFormatType(const std::string _sFormatType)
   return FT_UNKNOWN;
 }
 
-
-Section*
-Section::createSectionObjectOfJSON(const std::string &_sSectionNameJSON) {
-  if (_sSectionNameJSON.empty()) {
-      return nullptr;
+bool 
+Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind) {
+  if (_sJSONStr.empty() ||
+     (m_mapJSONNameToKind.find(_sJSONStr) == m_mapJSONNameToKind.end()) ) {
+    return false;
   }
 
-  if (m_mapJSONNameToKind.find(_sSectionNameJSON) == m_mapJSONNameToKind.end()) {
-    std::string errMsg = XUtil::format("Error: Unknown JSON header name: '%s'", _sSectionNameJSON.c_str());
-    throw std::runtime_error(errMsg);
-  }
-
-  enum axlf_section_kind eKind = m_mapJSONNameToKind[_sSectionNameJSON];
-
-  return createSectionObjectOfKind(eKind);
+  _eKind = m_mapJSONNameToKind[_sJSONStr];
+  return true;
 }
 
 
