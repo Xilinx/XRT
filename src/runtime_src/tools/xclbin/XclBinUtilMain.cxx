@@ -50,12 +50,13 @@ int main_(int argc, char** argv) {
   bool bVerbose = false;
   bool bTrace = false;
   bool bValidateImage = false;
-  bool bAddValidateImage = false;
   bool bMigrateForward = false;
   bool bListNames = false;
   bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
+  bool bValidateInsertion = true;
+  bool bSkipValidateInsertion = false;
   bool bVersion = false;
 
   std::string sInputFile;
@@ -110,8 +111,8 @@ int main_(int argc, char** argv) {
   boost::program_options::options_description hidden("Hidden options");
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
-    ("add-validation", boost::program_options::bool_switch(&bAddValidateImage), "Add image validation")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
+    ("skip-validate-insertion", boost::program_options::bool_switch(&bSkipValidateInsertion), "Do not insert the checksum validation block.")
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -177,14 +178,13 @@ int main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
+  if (bSkipValidateInsertion == true) {
+      bValidateInsertion = false;
+  }
+
   XclBin xclBin;
   if (!sInputFile.empty()) {
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
-  }
-
-  if (bAddValidateImage && sOutputFile.empty()) {
-    std::string errMsg = "ERROR: Add validate image requires output file.";
-    throw std::runtime_error(errMsg);
   }
 
   for (auto keyValue : keyValuePairs) {
@@ -216,11 +216,7 @@ int main_(int argc, char** argv) {
   }
 
   if (!sOutputFile.empty()) {
-    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
-  }
-
-  if (bAddValidateImage && !sOutputFile.empty()) {
-    XUtil::addCheckSumImage(sOutputFile, CST_SDBM);
+    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion, bValidateInsertion);
   }
 
   if (bListSections) {

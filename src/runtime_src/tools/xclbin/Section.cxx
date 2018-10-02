@@ -54,6 +54,12 @@ Section::purgeBuffers()
 }
 
 void
+Section::setName(const std::string &_sSectionName)
+{
+   m_name = _sSectionName;
+}
+
+void
 Section::getKinds(std::vector< std::string > & kinds) {
   for (auto & item : m_mapNameToId) {
     kinds.push_back(item.first);

@@ -84,6 +84,7 @@ class Section {
 
   void addMirrorPayload(boost::property_tree::ptree& _pt) const;
   void purgeBuffers();
+  void setName(const std::string &_sSectionName);
 
  protected:
   // Child class option to create an JSON metadata

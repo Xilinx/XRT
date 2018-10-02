@@ -25,6 +25,7 @@
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/filesystem.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -37,7 +38,7 @@ static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 XclBin::XclBin()
     : m_xclBinHeader({ 0 })
     , m_SchemaVersionMirrorWrite({ 1, 0, 0 }) {
-  // Empty
+  initializeHeader( m_xclBinHeader);
 }
 
 XclBin::~XclBin() {
@@ -45,6 +46,22 @@ XclBin::~XclBin() {
     delete m_sections[index];
   }
   m_sections.clear();
+}
+
+
+
+void 
+XclBin::initializeHeader(axlf &_xclBinHeader)
+{
+  _xclBinHeader = {0};
+
+  std::string sMagic = "xclbin2";
+  XUtil::safeStringCopy(_xclBinHeader.m_magic, sMagic, sizeof(_xclBinHeader.m_magic));
+  memset( _xclBinHeader.m_cipher, 0xFF, sizeof(_xclBinHeader.m_cipher) );
+  memset( _xclBinHeader.m_keyBlock, 0xFF, sizeof(_xclBinHeader.m_keyBlock) );
+  _xclBinHeader.m_uniqueId = time( nullptr );
+  _xclBinHeader.m_header.m_timeStamp = time( nullptr );
+  _xclBinHeader.m_header.m_version = 2017;
 }
 
 // String Getters
@@ -446,7 +463,9 @@ XclBin::updateUUID() {
 }
 
 void
-XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion) {
+XclBin::writeXclBinBinary(const std::string &_binaryFileName, 
+                          bool _bSkipUUIDInsertion,
+                          bool _bInsertValidationChecksum) {
   // Error checks
   if (_binaryFileName.empty()) {
     std::string errMsg = "ERROR: Missing file name to write to.";
@@ -490,8 +509,12 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDIns
     unsigned int streamSize = ofXclBin.tellg();
 
     // Update Header
-    // Include soon to be added checksum value
-    m_xclBinHeader.m_header.m_length = streamSize + sizeof(struct checksum);
+    m_xclBinHeader.m_header.m_length = streamSize;
+
+    if (_bInsertValidationChecksum) {
+      // Include soon to be added checksum value
+      m_xclBinHeader.m_header.m_length += sizeof(struct checksum);
+    }
 
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);
@@ -502,7 +525,10 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDIns
   // Close file
   ofXclBin.close();
 
-  XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
+  if (_bInsertValidationChecksum) {
+    XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
+  }
+
   std::cout << XUtil::format("Successfully wrote (%ld bytes) to output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()) << std::endl;
 }
 
@@ -784,10 +810,14 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   pSection->purgeBuffers();
   pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
 
+  boost::filesystem::path p(sSectionFileName);
+  std::string sBaseName = p.stem().string();
+  pSection->setName(sBaseName);
+
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize: %ld bytes\nFormat: %s\nFile  : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                                          pSection->getSize(),
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
 }
 
@@ -816,11 +846,16 @@ XclBin::addSection(ParameterSectionData &_PSD)
 
   Section * pSection = Section::createSectionObjectOfKind(eKind);
   pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+
+  boost::filesystem::path p(sSectionFileName);
+  std::string sBaseName = p.stem().string();
+  pSection->setName(sBaseName);
+
   addSection(pSection);
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize: %ld bytes\nFormat: %s\nFile  : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                                          pSection->getSize(),
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
 }
 
