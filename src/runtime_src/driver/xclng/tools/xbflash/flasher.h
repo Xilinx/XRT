@@ -94,7 +94,6 @@ private:
     const char *E_FlasherTypeStrings[3] = { "UNKNOWN", "SPI", "BPI" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     unsigned int mIdx;
-    xcldev::pci_device_scanner::device_info mDev;
 
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
 

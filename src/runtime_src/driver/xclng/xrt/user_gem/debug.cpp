@@ -257,6 +257,65 @@ namespace xocl {
     }
     return size;
   }
+
+  // Read the streaming performance monitors
+
+  size_t XOCLShim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) { 
+
+    size_t size = 0; // The amount of data read from the hardware
+
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id()
+      << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
+      << ", Read streaming device counters..." << std::endl;
+    }
+
+    // Get the base addresses of all the SSPM IPs in the debug IP layout 
+    uint64_t baseAddress[XSSPM_MAX_NUMBER_SLOTS];
+    uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, 
+					    baseAddress, 
+					    nullptr, nullptr, 
+					    XSSPM_MAX_NUMBER_SLOTS);
+
+    // Fill up the portions of the return struct that are known by the runtime
+    aCounterResults->NumSlots = numSlots ;
+    snprintf(aCounterResults->DevUserName, 256, "%s", mDevUserName.c_str());
+
+    // Fill up the return structure with the values read from the hardware
+    uint64_t sspm_offsets[] = {
+      XSSPM_NUM_TRANX_OFFSET,
+      XSSPM_DATA_BYTES_OFFSET,
+      XSSPM_BUSY_CYCLES_OFFSET,
+      XSSPM_STALL_CYCLES_OFFSET,
+      XSSPM_STARVE_CYCLES_OFFSET
+    };
+
+    for (unsigned int i = 0 ; i < numSlots ; ++i)
+    {
+      uint32_t sampleInterval ;
+      // Read sample interval register to latch the sampled metric counters
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+		      baseAddress[i] + XSSPM_SAMPLE_OFFSET,
+		      &sampleInterval, sizeof(uint32_t));
+
+      // Then read all the individual 64-bit counters
+      unsigned long long int tmp[XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
+
+      for (unsigned int j = 0 ; j < XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j)
+      {
+	size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+			baseAddress[i] + sspm_offsets[j],
+			&tmp[j], sizeof(unsigned long long int));
+      }
+      aCounterResults->StrNumTranx[i] = tmp[0] ;
+      aCounterResults->StrDataBytes[i] = tmp[1] ;
+      aCounterResults->StrBusyCycles[i] = tmp[2] ;
+      aCounterResults->StrStallCycles[i] = tmp[3] ;
+      aCounterResults->StrStarveCycles[i] = tmp[4] ;
+    }
+    return size;
+  } 
+
 } // namespace xocl_gem
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
@@ -269,6 +328,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+  case XCL_DEBUG_READ_TYPE_SSPM :
+    return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     default:
       ;
   };

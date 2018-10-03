@@ -213,7 +213,7 @@ load_xdp()
     xdp_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("libxdp.so");
+      bfs::path libname ("liboclxdp.so");
       if (xrt.empty()) {
         throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
       }

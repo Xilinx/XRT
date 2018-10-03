@@ -42,18 +42,10 @@ int bdf2index(std::string& bdfStr, unsigned& index)
         return -EINVAL;
     }
 
-    xcldev::pci_device_scanner devScanner;
-    try {
-        devScanner.scan(false);
-    } catch (...) {
-        std::cout << "ERROR: Failed to scan card" << std::endl;
-        return -EINVAL;
-    }
-
-    for (unsigned i = 0; i < xcldev::pci_device_scanner::device_list.size(); i++) {
-        auto& dev = xcldev::pci_device_scanner::device_list[i];
-        if (dom == dev.domain && b == dev.bus && d == dev.device &&
-            (f == 0 || f == 1)) {
+    for (unsigned i = 0; i < pcidev::get_dev_total(); i++) {
+        auto dev = pcidev::get_dev(i);
+        if (dom == dev->mgmt->domain && b == dev->mgmt->bus &&
+            d == dev->mgmt->dev && (f == 0 || f == 1)) {
             index = i;
             return 0;
         }
@@ -86,6 +78,69 @@ int str2index(const char *arg, unsigned& index)
     }
 
     return 0;
+}
+
+void print_pci_info(void)
+{
+    auto print = [](const std::unique_ptr<pcidev::pci_func>& dev) {
+        std::cout << std::hex;
+        std::cout << ":[" << std::setw(2) << std::setfill('0') << dev->bus
+            << ":" << std::setw(2) << std::setfill('0') << dev->dev
+            << "." << dev->func << "]";
+
+        std::cout << std::hex;
+        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
+        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
+
+        std::cout << std::dec;
+        std::cout << ":[";
+        if(!dev->driver_name.empty()) {
+            std::cout << dev->driver_name << ":" << dev->driver_version << ":";
+            if(dev->instance == INVALID_ID) {
+                std::cout << "???";
+            } else {
+                std::cout << dev->instance;
+            }
+        }
+        std::cout << "]" << std::endl;;
+    };
+
+    if (pcidev::get_dev_total() == 0) {
+        std::cout << "No card found!" << std::endl;
+        return;
+    }
+
+    int i = 0;
+    int not_ready = 0;
+    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
+        auto dev = pcidev::get_dev(j);
+        auto& mdev = dev->mgmt;
+        auto& udev = dev->user;
+        bool ready = dev->is_ready;
+
+        if (mdev != nullptr) {
+            std::cout << (ready ? "" : "*");
+            std::cout << "[" << i << "]" << "mgmt";
+            print(mdev);
+        }
+
+        if (udev != nullptr) {
+            std::cout << (ready ? "" : "*");
+            std::cout << "[" << i << "]" << "user";
+            print(udev);
+        }
+
+        if (!ready)
+            not_ready++;
+        ++i;
+    }
+
+    if (not_ready != 0) {
+        std::cout << "WARNING: " << not_ready
+            << " card(s) marked by '*' are not ready, "
+            << "run xbutil flash scan -v to further check the details."
+            << std::endl;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -169,6 +224,7 @@ int main(int argc, char *argv[])
 	{"write", no_argument, 0, xcldev::MEM_WRITE},
 	{"spm", no_argument, 0, xcldev::STATUS_SPM},
 	{"lapc", no_argument, 0, xcldev::STATUS_LAPC},
+	{"sspm", no_argument, 0, xcldev::STATUS_SSPM},
 	{"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -221,6 +277,14 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
             break;
         }
+	case xcldev::STATUS_SSPM : {
+	  if (cmd != xcldev::STATUS) {
+	    std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
+	    return -1 ;
+	  }
+	  ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+	  break ;
+	}
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
@@ -443,26 +507,20 @@ int main(int argc, char *argv[])
         break;
     }
 
-    xcldev::pci_device_scanner devScanner;
-    try
-    {
-        devScanner.scan(cmd == xcldev::SCAN);
-    }
-    catch (...)
-    {
-        std::cout << "ERROR: scan failed" << std::endl;
-        return -1;
-    }
-    if (cmd == xcldev::SCAN)
-        return 0;
-
     std::vector<std::unique_ptr<xcldev::device>> deviceVec;
 
-    unsigned int count = xcldev::pci_device_scanner::device_list.size();
-
-    if (count == 0) {
+    unsigned int total = pcidev::get_dev_total();
+    unsigned int count = pcidev::get_dev_ready();
+    if (total == 0) {
         std::cout << "ERROR: No card found\n";
         return 1;
+    }
+    std::cout << "INFO: Found total " << total << " card(s), "
+        << count << " are usable" << std::endl;
+
+    if (cmd == xcldev::SCAN) {
+        print_pci_info();
+        return 0;
     }
 
     for (unsigned i = 0; i < count; i++) {
@@ -473,15 +531,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    std::cout << "INFO: Found total " << count << " card(s), "
-        << deviceVec.size() << " are usable" << std::endl;
-
     if (cmd == xcldev::LIST) {
         for (unsigned i = 0; i < deviceVec.size(); i++) {
             std::cout << '[' << i << "] " << std::hex
-                << std::setw(2) << std::setfill('0') << deviceVec[i]->mBus << ":"
-                << std::setw(2) << std::setfill('0') << deviceVec[i]->mDev << "."
-                << deviceVec[i]->mUserFunc << " "
+                << std::setw(2) << std::setfill('0') << deviceVec[i]->bus() << ":"
+                << std::setw(2) << std::setfill('0') << deviceVec[i]->dev() << "."
+                << deviceVec[i]->userFunc() << " "
                 << deviceVec[i]->name() << std::endl;
         }
         return 0;
@@ -561,6 +616,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
             result = deviceVec[index]->readSPMCounters();
         }
+	if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
+	  result = deviceVec[index]->readSSPMCounters() ;
+	}
         break;
     default:
         std::cout << "ERROR: Not implemented\n";
@@ -631,7 +689,7 @@ void xcldev::printHelp(const std::string& exe)
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
 {
     try {
-        unsigned int count = xcldev::pci_device_scanner::device_list.size();
+        unsigned int count = pcidev::get_dev_total();
         if (count == 0) {
             std::cout << "ERROR: No card found" << std::endl;
         } else if (index >= count) {
@@ -656,15 +714,16 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat, xclDeviceInfo2 &devinfo)
+static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
+    xclDeviceInfo2 &devinfo)
 {
     std::vector<std::string> lines;
 
-    dev->m_mem_usage_bar(devstat, lines, 0, devinfo.mDDRBankCount);
+    dev->m_mem_usage_bar(devstat, lines);
 
-    dev->m_devinfo_stringize_power(&devinfo, lines);
+    dev->m_devinfo_stringize_power(devinfo, lines);
     
-    dev->m_mem_usage_stringize_dynamics(devstat, &devinfo, lines, 0, devinfo.mDDRBankCount);
+    dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
     for(auto line:lines){
             printw("%s\n", line.c_str());
@@ -958,9 +1017,7 @@ int xcldev::xclValidate(int argc, char *argv[])
         return -EINVAL;
     }
 
-    xcldev::pci_device_scanner scanner;
-    scanner.scan(false);
-    unsigned int count = xcldev::pci_device_scanner::device_list.size();
+    unsigned int count = pcidev::get_dev_total();
 
     std::vector<unsigned> boards;
     if (index == UINT_MAX) {

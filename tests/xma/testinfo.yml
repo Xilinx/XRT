@@ -1,0 +1,18 @@
+description: XMA software only unit tests
+level: 7
+owner: sarabjee
+platforms: [lnx64]
+products: [sdx]
+tasks:
+  software: {command: xma_tests.sh, cpu_cores: 2, level: 7, memory: 16}
+user:
+  board_check: 0
+  board_recover: 0
+  design: xma_tests
+  name: xma_tests
+  sdx_type: [sdx_full]
+  test_name: xma_tests
+
+
+
+

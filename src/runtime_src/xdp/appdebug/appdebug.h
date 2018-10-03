@@ -300,6 +300,10 @@ struct spm_debug_view;
 app_debug_view<spm_debug_view>*
 clGetDebugCounters();
 
+struct sspm_debug_view;
+app_debug_view<sspm_debug_view>*
+clGetDebugStreamCounters();
+
 struct lapc_debug_view;
 app_debug_view<lapc_debug_view>*
 clGetDebugCheckers();

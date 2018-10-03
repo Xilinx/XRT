@@ -34,34 +34,37 @@
 #include "xbutil.h"
 
 static const int debug_ip_layout_max_size = 65536;
-static const int depug_ip_max_type = 8;
+static const int debug_ip_max_type = 9;
 
-uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
-    debug_ip_layout *map;
+uint32_t xcldev::device::getIPCountAddrNames(int type,
+    std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
+    std::string errmsg;
+    std::vector<char> buf;
+    pcidev::get_dev(m_idx)->user->sysfs_get("", "debug_ip_layout", errmsg, buf);
 
-    std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-    std::ifstream ifs(path.c_str(), std::ifstream::binary);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    debug_ip_layout *map = (debug_ip_layout *)buf.data();
+    if (buf.empty() || map->m_count < 0) {
+        std::cout <<  "ERROR: Failed to open debug IP layout file. "
+            << "Ensure that a valid xclbin is successfully downloaded. \n";
+        return -EINVAL;
+    }
+
     uint32_t count = 0;
-    char buffer[debug_ip_layout_max_size];
-    if( ifs.good() ) {
-        //sysfs max file size is debug_ip_layout_max_size
-        ifs.read(buffer, debug_ip_layout_max_size);
-        if (ifs.gcount() > 0) {
-            map = (debug_ip_layout*)(buffer);
-            for( unsigned int i = 0; i < map->m_count; i++ ) {
-                if (map->m_debug_ip_data[i].m_type == type) {
-                    if(baseAddress)baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
-                    if(portNames) portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
-                    ++count;
-                }
-            }
+    for(unsigned int i = 0; i < map->m_count; i++) {
+        if (map->m_debug_ip_data[i].m_type == type) {
+            if (baseAddress)
+                baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
+            if(portNames)
+                portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+            ++count;
         }
-        ifs.close();
     }
-    else {
-        std::cout <<  "ERROR: Failed to open debug IP layout file. Ensure that a valid xclbin is successfully downloaded. \n";
-        return -1;
-    }
+
     return count;
 }
 
@@ -139,6 +142,45 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16) << debugResults.LastWriteData[i]
             << "  " << std::hex << "0x" << std::setw(16) <<  debugResults.LastReadAddr[i] << std::dec
             << "  " << std::setw(16) << debugResults.LastReadData[i]
+            << std::endl;
+    }
+    return 0;
+}
+
+int xcldev::device::readSSPMCounters() {
+    xclStreamingDebugCountersResults debugResults = {0};
+    std::vector<std::string> slotNames;
+    std::vector< std::pair<std::string, std::string> > cuNameportNames;
+    unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, nullptr, &slotNames);
+    if (numSlots == 0) {
+        std::cout << "ERROR: SSPM IP does not exist on the platform" << std::endl;
+        return 0;
+    }
+    std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
+
+    std::cout << "SDx Streaming Performance Monitor Counters\n";
+    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    int col2 = std::max(widths.second, strlen("AXI Portname"));
+
+    std::cout << std::left
+            << std::setw(col1) << "CU Name"
+            << " " << std::setw(col2) << "AXI Portname"
+            << "  " << std::setw(16)  << "Num Trans."
+            << "  " << std::setw(16)  << "Data Bytes"
+            << "  " << std::setw(16)  << "Busy Cycles"
+            << "  " << std::setw(16)  << "Stall Cycles"
+            << "  " << std::setw(16)  << "Starve Cycles"
+            << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+        std::cout << std::left
+            << std::setw(col1) << cuNameportNames[i].first
+            << " " << std::setw(col2) << cuNameportNames[i].second
+            << "  " << std::setw(16) << debugResults.StrNumTranx[i]
+            << "  " << std::setw(16) << debugResults.StrDataBytes[i]
+            << "  " << std::setw(16) << debugResults.StrBusyCycles[i]
+            << "  " << std::setw(16) << debugResults.StrStallCycles[i]
+            << "  " << std::setw(16) << debugResults.StrStarveCycles[i]
             << std::endl;
     }
     return 0;
@@ -228,48 +270,54 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
-    static const char * debug_ip_names[depug_ip_max_type] = {
-        "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
+    static const char *debug_ip_names[debug_ip_max_type] = {
+        "unknown",
+        "lapc",
+        "ila",
+        "spm",
+        "tracefunnel",
+        "monitorfifolite",
+        "monitorfifofull",
+        "accelmonitor",
+	"sspm"
     };
-    int available_ip [depug_ip_max_type] = {0};
-    debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-    std::ifstream ifs(path.c_str(), std::ifstream::binary);
+    int available_ip [debug_ip_max_type] = {0};
+    std::string errmsg;
+    std::vector<char> buf;
+    pcidev::get_dev(m_idx)->user->sysfs_get("", "debug_ip_layout", errmsg, buf);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    debug_ip_layout *map = (debug_ip_layout *)buf.data();
 
-    char buffer[debug_ip_layout_max_size];
-    std::stringstream sstr;
-    if( ifs.good() ) {
-        ifs.read(buffer, debug_ip_layout_max_size);
-        if (ifs.gcount() > 0) {
-            map = (debug_ip_layout*)(buffer);
-            std::cout << "Number of IPs found: " << map->m_count << "\n";
-            for( unsigned int i = 0; i < map->m_count; i++ ) {
-                if ( map->m_debug_ip_data[i].m_type > sizeof (debug_ip_names)/sizeof(debug_ip_names[0])) {
-                    std::cout  << "Found invalid IP in debug ip layout with type "
-                                << map->m_debug_ip_data[i].m_type << std::endl;
-                    ifs.close();
-                    return -1;
-                }
-                ++available_ip[map->m_debug_ip_data[i].m_type];
-            }
-            for(unsigned int i = 0; i<sizeof(available_ip)/sizeof(available_ip[0]); ++i) {
-                if (available_ip[i])
-                    sstr << debug_ip_names[i] << "(" << available_ip[i] << ") ";
-            }
-                ifs.close();
-        }
-        else {
-            std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
-            ifs.close();
-            return 0;
-        }
-    } else {
-        std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
+    if (buf.empty() || map->m_count <= 0) {
+        std::cout << "INFO: Failed to find any debug IPs on the platform. "
+            << "Ensure that a valid bitstream with debug IPs (SPM, LAPC) is "
+            << "successfully downloaded. \n";
         return 0;
     }
+
+    std::cout << "Number of IPs found: " << map->m_count << "\n";
+    for(unsigned int i = 0; i < map->m_count; i++) {
+        if (map->m_debug_ip_data[i].m_type >
+            sizeof (debug_ip_names) / sizeof (debug_ip_names[0])) {
+            std::cout  << "Found invalid IP in debug ip layout with type "
+                << map->m_debug_ip_data[i].m_type << std::endl;
+            return -EINVAL;
+        }
+        ++available_ip[map->m_debug_ip_data[i].m_type];
+    }
+
+    std::stringstream sstr;
+    for(unsigned int i = 0;
+        i < sizeof (available_ip) / sizeof(available_ip[0]); ++i) {
+        if (available_ip[i])
+            sstr << debug_ip_names[i] << "(" << available_ip[i] << ") ";
+    }
+
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
-    std::cout << "Run 'xbutil status' with option --<ipname> to get more information about the IP" << std::endl;
+    std::cout << "Run 'xbutil status' with option --<ipname> to get more "
+        "information about the IP" << std::endl;
     return 0;
 }
-
-

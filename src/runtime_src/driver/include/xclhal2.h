@@ -98,11 +98,11 @@ struct xclDeviceInfo2 {
   unsigned short mPCIeLinkWidth;
   unsigned short mPCIeLinkSpeed;
   unsigned short mDMAThreads;
-  short mOnChipTemp;
-  short mFanTemp;
-  unsigned short  mVInt;
-  unsigned short  mVAux;
-  unsigned short  mVBram;
+  unsigned short mOnChipTemp;
+  unsigned short mFanTemp;
+  unsigned short mVInt;
+  unsigned short mVAux;
+  unsigned short mVBram;
   float mCurrent;
   unsigned short mNumClocks;
   unsigned short mFanSpeed;
@@ -114,8 +114,8 @@ struct xclDeviceInfo2 {
   unsigned long long mPexCurr;
   unsigned long long mAuxCurr;
   unsigned short mFanRpm;
-  short mDimmTemp[4];
-  short mSE98Temp[4];
+  unsigned short mDimmTemp[4];
+  unsigned short mSE98Temp[4];
   unsigned short m3v3Pex;
   unsigned short m3v3Aux;
   unsigned short mDDRVppBottom;
