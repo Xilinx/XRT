@@ -55,7 +55,7 @@ class SectionClockFrequencyTopology : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", boost::factory<SectionClockFrequencyTopology*>()); }
+    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", boost::factory<SectionClockFrequencyTopology*>()); }
   } _initializer;
 };
 

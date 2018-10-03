@@ -47,7 +47,7 @@ class SectionKeyValueMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", boost::factory<SectionKeyValueMetadata*>()); }
+    _init() { registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", "", boost::factory<SectionKeyValueMetadata*>()); }
   } _initializer;
 };
 

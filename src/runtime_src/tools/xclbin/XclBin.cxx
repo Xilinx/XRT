@@ -25,6 +25,7 @@
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/filesystem.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -37,7 +38,7 @@ static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 XclBin::XclBin()
     : m_xclBinHeader({ 0 })
     , m_SchemaVersionMirrorWrite({ 1, 0, 0 }) {
-  // Empty
+  initializeHeader( m_xclBinHeader);
 }
 
 XclBin::~XclBin() {
@@ -45,6 +46,22 @@ XclBin::~XclBin() {
     delete m_sections[index];
   }
   m_sections.clear();
+}
+
+
+
+void 
+XclBin::initializeHeader(axlf &_xclBinHeader)
+{
+  _xclBinHeader = {0};
+
+  std::string sMagic = "xclbin2";
+  XUtil::safeStringCopy(_xclBinHeader.m_magic, sMagic, sizeof(_xclBinHeader.m_magic));
+  memset( _xclBinHeader.m_cipher, 0xFF, sizeof(_xclBinHeader.m_cipher) );
+  memset( _xclBinHeader.m_keyBlock, 0xFF, sizeof(_xclBinHeader.m_keyBlock) );
+  _xclBinHeader.m_uniqueId = time( nullptr );
+  _xclBinHeader.m_header.m_timeStamp = time( nullptr );
+  _xclBinHeader.m_header.m_version = 2017;
 }
 
 // String Getters
@@ -409,7 +426,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", XUtil::format("0x%lx", sectionHeader[index].m_sectionSize).c_str());
 
       boost::property_tree::ptree pt_Payload;
-      m_sections[index]->addMirrorPayload(pt_Payload);
+      m_sections[index]->getPayload(pt_Payload);
 
       if (pt_Payload.size() != 0) {
         pt_sectionHeader.add_child("payload", pt_Payload);
@@ -446,7 +463,9 @@ XclBin::updateUUID() {
 }
 
 void
-XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion) {
+XclBin::writeXclBinBinary(const std::string &_binaryFileName, 
+                          bool _bSkipUUIDInsertion,
+                          bool _bInsertValidationChecksum) {
   // Error checks
   if (_binaryFileName.empty()) {
     std::string errMsg = "ERROR: Missing file name to write to.";
@@ -490,8 +509,12 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDIns
     unsigned int streamSize = ofXclBin.tellg();
 
     // Update Header
-    // Include soon to be added checksum value
-    m_xclBinHeader.m_header.m_length = streamSize + sizeof(struct checksum);
+    m_xclBinHeader.m_header.m_length = streamSize;
+
+    if (_bInsertValidationChecksum) {
+      // Include soon to be added checksum value
+      m_xclBinHeader.m_header.m_length += sizeof(struct checksum);
+    }
 
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);
@@ -502,7 +525,10 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDIns
   // Close file
   ofXclBin.close();
 
-  XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
+  if (_bInsertValidationChecksum) {
+    XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
+  }
+
   std::cout << XUtil::format("Successfully wrote (%ld bytes) to output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()) << std::endl;
 }
 
@@ -597,7 +623,8 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), bufferSize);
 
   // Convert the JSON file to a boost property tree
-  std::stringstream ss((char*)memBuffer.get());
+  std::stringstream ss;
+  ss.write((char*) memBuffer.get(), bufferSize);
 
   // TODO: Catch the exception (if any) from this call and produce a nice message
   boost::property_tree::read_json(ss, _mirrorData);
@@ -783,12 +810,44 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
 
   pSection->purgeBuffers();
   pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+  updateHeaderFromSection(pSection);
+
+  boost::filesystem::path p(sSectionFileName);
+  std::string sBaseName = p.stem().string();
+  pSection->setName(sBaseName);
 
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), 
-                                          pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                                          pSection->getSize(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+}
+
+void
+XclBin::updateHeaderFromSection(Section *_pSection)
+{
+  if (_pSection == nullptr) {
+    return;
+  }
+
+  if (_pSection->getSectionKind() == BUILD_METADATA) {
+    boost::property_tree::ptree pt;
+    _pSection->getPayload(pt);
+
+    // Feature ROM Time Stamp
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.time_epoch"));
+    
+    // Feature ROM UUID
+    std::string sFeatureRomUUID = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.uuid");
+    sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
+    XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+
+    // Feature ROM VBNV
+    std::string sPlatformVBNV = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.vbnv_name");
+    XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+
+    XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
+  }
 }
 
 void 
@@ -815,14 +874,85 @@ XclBin::addSection(ParameterSectionData &_PSD)
   }
 
   Section * pSection = Section::createSectionObjectOfKind(eKind);
-  pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+  pSection->readPayload(iSectionFile, _PSD.getFormatType());
+
+  boost::filesystem::path p(sSectionFileName);
+  std::string sBaseName = p.stem().string();
+  pSection->setName(sBaseName);
+
   addSection(pSection);
+  updateHeaderFromSection(pSection);
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                                          pSection->getSize(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+}
+
+
+void 
+XclBin::addSections(ParameterSectionData &_PSD)
+{
+  if (!_PSD.getSectionName().empty()) {
+    std::string errMsg = "Error: Section given for a wildcard JSON section add call.";
+    throw std::runtime_error(errMsg);
+  }
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = XUtil::format("Error: Expecting JSON format type, got '%s'.", _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sJSONFileName = _PSD.getFile();
+
+  std::fstream fs;
+  fs.open(sJSONFileName, std::ifstream::in | std::ifstream::binary);
+  if (!fs.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + sJSONFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  //  Add a new element to the collection and parse the jason file
+  XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json( fs, pt );
+  
+  XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
+  XUtil::TRACE("Property Tree: Root");
+  XUtil::TRACE_PrintTree("Root", pt);
+
+  for (boost::property_tree::ptree::iterator ptSection = pt.begin(); ptSection != pt.end(); ++ptSection) {
+    const std::string & sectionName = ptSection->first;
+    if (sectionName == "schema_version") {
+      XUtil::TRACE("Skipping: '" + sectionName + "'");
+      continue;
+    }
+
+    XUtil::TRACE("Processing: '" + sectionName + "'");
+
+    enum axlf_section_kind eKind;
+    if (Section::getKindOfJSON(sectionName, eKind) == false) {
+      std::string errMsg = XUtil::format("ERROR: Unknown JSON section '%s' in file: %s", sectionName.c_str(), sJSONFileName.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    if (findSection(eKind) != nullptr) {
+      std::string errMsg = XUtil::format("Error: Section '%s' already exists.", _PSD.getSectionName().c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    Section * pSection = Section::createSectionObjectOfKind(eKind);
+    pSection->readJSONSectionImage(pt);
+    addSection(pSection);
+    updateHeaderFromSection(pSection);
+    XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+  }
 }
+
 
 void 
 XclBin::dumpSection(ParameterSectionData &_PSD) 
@@ -850,8 +980,83 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
 
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
   XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+}
+
+
+void 
+XclBin::setKeyValue(const std::string & _keyValue)
+{
+  const std::string& delimiters = ":";      // Our delimiter
+
+  // Working variables
+  std::string::size_type pos = 0;
+  std::string::size_type lastPos = 0;
+  std::vector<std::string> tokens;
+
+  // Parse the string until the entire string has been parsed or 3 tokens have been found
+  while((lastPos < _keyValue.length() + 1) && 
+        (tokens.size() < 3))
+  {
+    pos = _keyValue.find_first_of(delimiters, lastPos);
+
+    if ( (pos == std::string::npos) ||
+         (tokens.size() == 2) ){
+       pos = _keyValue.length();
+    }
+
+    std::string token = _keyValue.substr(lastPos, pos-lastPos);
+    tokens.push_back(token);
+    lastPos = pos + 1;
+  }
+
+  if (tokens.size() != 3) {
+    std::string errMsg = XUtil::format("Error: Expected format [USER | SYS]:<key>:<value> when using adding a key value pair.  Received: %s.", _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  boost::to_upper(tokens[0]);
+  std::string sDomain = tokens[0];
+  std::string sKey = tokens[1];
+  std::string sValue = tokens[2];
+  
+  XUtil::TRACE(XUtil::format("Setting key-value pair \"%s\":  domain:'%s', key:'%s', value:'%s'", 
+                             _keyValue.c_str(), sDomain.c_str(), sKey.c_str(), sValue.c_str()));
+
+  if (sDomain == "SYS") {
+    if (sKey == "mode") {
+      if (sValue == "flat" ) {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_FLAT;
+      } else if (sValue == "hw_pr") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_PR;
+      } else if (sValue == "tandem") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_TANDEM_STAGE2;
+      } else if (sValue == "tandem_pr") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_TANDEM_STAGE2_WITH_PR;
+      } else if (sValue == "hw_emu") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_HW_EMU;
+      } else if (sValue == "sw_emu") {
+        m_xclBinHeader.m_header.m_mode = XCLBIN_SW_EMU;
+      } else {
+        std::string errMsg = XUtil::format("Error: Unknown value '%s' for key '%s'. Key-value pair: '%s'.", sValue.c_str(), sKey.c_str(), _keyValue.c_str());
+        throw std::runtime_error(errMsg);
+      }
+      return; // Key processed 
+    }
+
+    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  } 
+
+  if (sDomain == "USER") {
+
+    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
+  throw std::runtime_error(errMsg);
 }
