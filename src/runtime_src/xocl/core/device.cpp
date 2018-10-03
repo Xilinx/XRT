@@ -885,16 +885,16 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   auto xdevice = get_xrt_device();
 
   if (!get_num_cdmas() || is_emulation_mode()) {
-    auto cb = [this](memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size,const cmd_type& cmd) {
-      cmd->start();
-      char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
-      char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
-      std::memcpy(hbuf_dst,hbuf_src,size);
-      unmap_buffer(src_buffer,hbuf_src);
-      unmap_buffer(dst_buffer,hbuf_dst);
-      cmd->done();
+    auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
+      c->start();
+      char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
+      char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
+      std::memcpy(hbuf_dst,hbuf_src,sz);
+      unmap_buffer(sbuf,hbuf_src);
+      unmap_buffer(dbuf,hbuf_dst);
+      c->done();
     };
-    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer, src_offset, dst_offset, size,cmd);
+    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
 
