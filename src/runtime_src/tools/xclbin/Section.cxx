@@ -347,7 +347,8 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
 
         // Convert the JSON file to a boost property tree
-        std::stringstream ss((char*) memBuffer.get());
+        std::stringstream ss;
+        ss.write((char*) memBuffer.get(), fileSize);
 
         boost::property_tree::ptree pt;
         boost::property_tree::read_json(ss, pt);
@@ -403,7 +404,8 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
 
       // Convert the JSON file to a boost property tree
-      std::stringstream ss((char*)memBuffer.get());
+      std::stringstream ss;
+      ss.write((char*) memBuffer.get(), fileSize);
 
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);

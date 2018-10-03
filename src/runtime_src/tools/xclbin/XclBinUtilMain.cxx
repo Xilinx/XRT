@@ -164,6 +164,13 @@ int main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
+  for (auto section : sectionsToAdd) 
+  {
+//      XUtil::TRACE(section);
+      std::cout << "Section to add: '"  << section << "'" << std::endl;
+  }
+
+
   // Actions not requiring --input
 
   if (bListNames) {
@@ -206,6 +213,7 @@ int main_(int argc, char** argv) {
         psd.getFormatType() == Section::FT_JSON) {
       xclBin.addSections(psd);
     } else {
+      std::cout << "Section: " << section << std::endl;
       xclBin.addSection(psd);
     }
   }
