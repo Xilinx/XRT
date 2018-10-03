@@ -74,6 +74,7 @@ class XclBin {
   Section *findSection(enum axlf_section_kind _eKind);
 
  private:
+  void updateHeaderFromSection(Section *_pSection);
   void readXclBinBinaryHeader(std::fstream& _istream);
   void readXclBinBinarySections(std::fstream& _istream);
 

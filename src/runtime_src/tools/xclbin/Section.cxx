@@ -297,7 +297,7 @@ Section::readXclBinBinary(std::fstream& _istream,
 
 
 void
-Section::addMirrorPayload(boost::property_tree::ptree& _pt) const {
+Section::getPayload(boost::property_tree::ptree& _pt) const {
   marshalToJSON(m_pBuffer, m_bufferSize, _pt);
 }
 

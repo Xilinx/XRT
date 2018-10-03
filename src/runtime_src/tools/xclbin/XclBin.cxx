@@ -426,7 +426,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", XUtil::format("0x%lx", sectionHeader[index].m_sectionSize).c_str());
 
       boost::property_tree::ptree pt_Payload;
-      m_sections[index]->addMirrorPayload(pt_Payload);
+      m_sections[index]->getPayload(pt_Payload);
 
       if (pt_Payload.size() != 0) {
         pt_sectionHeader.add_child("payload", pt_Payload);
@@ -821,6 +821,20 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
 }
 
+void
+XclBin::updateHeaderFromSection(Section *_pSection)
+{
+  if (_pSection == nullptr) {
+    return;
+  }
+
+  if (_pSection->getSectionKind() == BUILD_METADATA) {
+    boost::property_tree::ptree pt;
+    _pSection->getPayload(pt);
+    XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
+  }
+}
+
 void 
 XclBin::addSection(ParameterSectionData &_PSD)
 {
@@ -852,6 +866,7 @@ XclBin::addSection(ParameterSectionData &_PSD)
   pSection->setName(sBaseName);
 
   addSection(pSection);
+  updateHeaderFromSection(pSection);
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
   std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize: %ld bytes\nFormat: %s\nFile  : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
@@ -914,6 +929,7 @@ XclBin::addSections(ParameterSectionData &_PSD)
     Section * pSection = Section::createSectionObjectOfKind(eKind);
     pSection->readJSONSectionImage(pt);
     addSection(pSection);
+    updateHeaderFromSection(pSection);
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
     std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 

@@ -83,7 +83,7 @@ class Section {
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
   void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
 
-  void addMirrorPayload(boost::property_tree::ptree& _pt) const;
+  void getPayload(boost::property_tree::ptree& _pt) const;
   void purgeBuffers();
   void setName(const std::string &_sSectionName);
 
