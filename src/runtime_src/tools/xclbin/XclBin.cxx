@@ -817,10 +817,10 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   pSection->setName(sBaseName);
 
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize: %ld bytes\nFormat: %s\nFile  : '%s'", 
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
                                           pSection->getSize(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
 }
 
 void
@@ -883,10 +883,10 @@ XclBin::addSection(ParameterSectionData &_PSD)
   addSection(pSection);
   updateHeaderFromSection(pSection);
   XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize: %ld bytes\nFormat: %s\nFile  : '%s'", 
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
                                           pSection->getSize(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
 }
 
 
@@ -946,10 +946,10 @@ XclBin::addSections(ParameterSectionData &_PSD)
     addSection(pSection);
     updateHeaderFromSection(pSection);
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-    std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully added.\nFormat: %s\nFile  : '%s'", 
+    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
   }
 }
 
@@ -980,10 +980,10 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
 
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
   XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
+  std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
-                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()) << std::endl;
+                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 
 
