@@ -835,15 +835,15 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     _pSection->getPayload(pt);
 
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.time_epoch"));
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.time_epoch", "0"));
     
     // Feature ROM UUID
-    std::string sFeatureRomUUID = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.uuid");
+    std::string sFeatureRomUUID = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.uuid", "00000000000000000000000000000000");
     sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
     XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
-    std::string sPlatformVBNV = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.vbnv_name");
+    std::string sPlatformVBNV = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.vbnv_name", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
 
     XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
