@@ -809,6 +809,7 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
 
   pSection->purgeBuffers();
   pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+  updateHeaderFromSection(pSection);
 
   boost::filesystem::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
