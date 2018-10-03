@@ -242,7 +242,7 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
 	struct xocl_dev		*xdev;
 
 	cb_arg = (struct stream_async_arg *)compl_event->req_priv;
-	kiocb = cb_arg->kiocb;
+	kiocb = compl_event->kiocb;
 
 	if (cb_arg->is_unmgd) {
 		xdev = xocl_get_xdev(cb_arg->queue->sdev->pdev);
@@ -300,8 +300,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 		cb_arg.queue = queue;
 		wr.priv_data = &cb_arg;
 		wr.complete = queue_wqe_complete;
-	} else {
-		wr.block = true;
+		wr.kiocb = kiocb;
 	}
 
 
@@ -311,7 +310,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	}
 
 failed:
-	if (wr.block) {
+	if (!wr.kiocb) {
 		drm_gem_object_unreference_unlocked(gem_obj);
 	}
 
@@ -405,8 +404,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		cb_arg.nsg = nents;
 		wr.priv_data = &cb_arg;
 		wr.complete = queue_wqe_complete;
-	} else {
-		wr.block = true;
+		wr.kiocb = kiocb;
 	}
 
 	ret = qdma_wq_post(&queue->queue, &wr);
@@ -414,7 +412,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
-	if (wr.block) {
+	if (!wr.kiocb) {
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
 	}
@@ -429,7 +427,7 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 
-	return qdma_cancel_req(&queue->queue);
+	return qdma_cancel_req(&queue->queue, kiocb);
 }
 
 static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,

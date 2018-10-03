@@ -846,6 +846,7 @@ struct qdma_request {
 	unsigned long uld_data;
 	/** set fp_done for non-blocking mode */
 	int (*fp_done)(struct qdma_request *, unsigned int bytes_done, int err);
+	int (*fp_cancel)(struct qdma_request *);
 	/** timeout in mili-seconds, 0 - no timeout */
 	unsigned int timeout_ms;
 	/** total data size */

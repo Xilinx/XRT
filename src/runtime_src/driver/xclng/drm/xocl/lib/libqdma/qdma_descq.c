@@ -407,7 +407,8 @@ static void req_update_pend(struct qdma_descq *descq, unsigned int credit)
 			pr_debug("%s, cb 0x%p done, credit %u > %u.\n",
 				descq->conf.name, cb, credit, cb->desc_nr);
 			credit -= cb->desc_nr;
-			qdma_sgt_req_done(descq, cb, 0);
+			cb->done = 1;
+			cb->err_code = 0;
 		} else {
 			pr_debug("%s, cb 0x%p not done, credit %u < %u.\n",
 				descq->conf.name, cb, credit, cb->desc_nr);
@@ -600,6 +601,8 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	else
 		descq_h2c_pidx_update(descq, descq->pidx);
 
+	qdma_sgt_req_done(descq);
+
 	return 0;
 }
 
@@ -613,6 +616,7 @@ void qdma_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	memset(descq, 0, sizeof(struct qdma_descq));
 
 	spin_lock_init(&descq->lock);
+	spin_lock_init(&descq->cancel_lock);
 	INIT_LIST_HEAD(&descq->work_list);
 	INIT_LIST_HEAD(&descq->pend_list);
 	INIT_LIST_HEAD(&descq->intr_list);
@@ -720,8 +724,8 @@ void qdma_descq_cancel_all(struct qdma_descq *descq)
 
 	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
 		req = (struct qdma_request *)cb;
-		descq_cancel_req(descq, req);
 		list_del(&cb->list);
+		descq_cancel_req(descq, req);
 	}
 	schedule_work(&descq->work);
 }
@@ -978,51 +982,53 @@ void qdma_notify_cancel(struct qdma_descq *descq)
 {
 	struct qdma_sgt_req_cb *cb, *tmp;
 	struct qdma_request *req = NULL;
+	unsigned long       flags;
 
+	spin_lock_irqsave(&descq->cancel_lock, flags);
         /* calling routine should hold the lock */
         list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
+		list_del(&cb->list_cancel);
+		spin_unlock_irqrestore(&descq->cancel_lock, flags);
 		req = (struct qdma_request *)cb;
-		if (req->fp_done) {
-			unlock_descq(descq);
-			req->fp_done(req, 0, 0);
-			lock_descq(descq);
+		if (req->fp_cancel) {
+			req->fp_cancel(req);
 		} else {
 			cb->done = 1;
 			qdma_waitq_wakeup(&cb->wq);
 		}
-		list_del(&cb->list_cancel);
+		spin_lock_irqsave(&descq->cancel_lock, flags);
 	}
+	spin_unlock_irqrestore(&descq->cancel_lock, flags);
 }
 
-void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
-			int error)
+void qdma_sgt_req_done(struct qdma_descq *descq)
 {
-	struct qdma_request *req = (struct qdma_request *)cb;
+	struct qdma_request *req;
+	struct qdma_sgt_req_cb *cb, *tmp;
 
-	if (error)
-		pr_info("req 0x%p, cb 0x%p, fp_done 0x%p done, err %d.\n",
-			req, cb, req->fp_done, error);
+        /* calling routine should hold the lock */
+        list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
+		if (!cb->done)
+			break;
 
-	list_del(&cb->list);
-	if (cb->unmap_needed) {
-		sgl_unmap(descq->xdev->conf.pdev, req->sgl, req->sgcnt,
-			descq->conf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
-		cb->unmap_needed = 0;
-	}
-
-	if (req->fp_done) {
-		cb->status = error;
-		cb->done = 1;
-		if (!cb->canceled) {
-			unlock_descq(descq);
-			req->fp_done(req, cb->offset, error);
-			lock_descq(descq);
+		req = (struct qdma_request *)cb;
+		list_del(&cb->list);
+		if (cb->unmap_needed) {
+			sgl_unmap(descq->xdev->conf.pdev, req->sgl, req->sgcnt,
+				descq->conf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+			cb->unmap_needed = 0;
 		}
-	} else {
-		pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
-		cb->status = error;
-		cb->done = 1;
-		qdma_waitq_wakeup(&cb->wq);
+
+		if (req->fp_done) {
+			if (!cb->canceled) {
+				unlock_descq(descq);
+				req->fp_done(req, cb->offset, cb->err_code);
+				lock_descq(descq);
+			}
+		} else {
+			pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
+			qdma_waitq_wakeup(&cb->wq);
+		}
 	}
 }
 
