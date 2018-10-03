@@ -572,6 +572,9 @@ public:
         }
 
         for(unsigned i = 0; i < numDDR; i++) {
+            if (map->m_mem_data[i].m_type == MEM_STREAMING)
+                continue;
+
             ss << " [" << i << "] " <<
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
                 << map->m_mem_data[i].m_tag;
@@ -611,6 +614,61 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
+        lines.push_back(ss.str());
+    }
+
+    void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
+        std::vector<std::string> &lines) const
+    {
+        std::stringstream ss;
+        std::string errmsg;
+        std::vector<char> buf;
+
+        ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        ss << std::setfill(' ') << "\n";
+
+        ss << std::left << std::setw(48) << "Stream Topology" << "\n";
+
+        pcidev::get_dev(m_idx)->user->sysfs_get(
+            "", "mem_topology", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        const mem_topology *map = (mem_topology *)buf.data();
+        unsigned num = 0;
+
+        if(!buf.empty())
+            num = map->m_count;
+
+        if(num == 0) {
+            ss << "-- none found --. See 'xbutil program'.\n";
+        } else if(num < 0) {
+            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
+                << "Has the bitstream been loaded? See 'xbutil program'.";
+            lines.push_back(ss.str());
+            return;
+        } else {
+            ss << std::setw(16) << "Tag"  << std::setw(12) << "Route"
+                << std::setw(12) << "Flow"
+                << "\n";
+        }
+
+        for(unsigned i = 0; i < num; i++) {
+            if (map->m_mem_data[i].m_type != MEM_STREAMING)
+                continue;
+
+            ss << " [" << i << "] " <<
+                std::setw(16 - (std::to_string(i).length()) - 4) << std::left
+                << map->m_mem_data[i].m_tag;
+
+            ss << std::setw(12) << map->m_mem_data[i].route_id;
+            ss << std::setw(12) << map->m_mem_data[i].flow_id <<"\n";
+        }
+
         lines.push_back(ss.str());
     }
 
@@ -693,6 +751,8 @@ public:
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
         m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
+
+	m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
 
         for(auto line:usage_lines){
             ostr << line << "\n";

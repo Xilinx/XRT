@@ -465,6 +465,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	unsigned int cidx_wrb;
 	unsigned int pidx_wrb;
 	struct qdma_flq *flq = &descq->flq;
+	struct qdma_sw_sg *sdesc;
 	unsigned int pidx_pend = flq->pidx_pend;
 	int pend_wrb_num, pend_desc_num;
 	int wrb_cnt = 0;
@@ -519,6 +520,10 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 			descq->pidx = ring_idx_incr(descq->pidx, pend_desc_num,
 				descq->conf.rngsz);
 		}
+		sdesc = flq->sdesc + ring_idx_decr(descq->pidx, 1,
+			descq->conf.rngsz);
+		sdesc->len = cmpl.len & ((1 << flq->pg_shift) - 1);
+
 		descq->cidx_wrb = descq->cidx_wrb_pend;
 
 		rv = qdma_c2h_packets_proc_dflt(descq, &cmpl);
@@ -532,7 +537,8 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 		if (descq->cidx_wrb_pend == 0) {
 			descq->color ^= 1;
 		}
-		pr_debug("wrb_cnt %d, eot %d\n", wrb_cnt, cmpl.f.eot);
+		pr_debug("wrb_cnt %d, eot %d, len %d\n", wrb_cnt, cmpl.f.eot,
+			cmpl.len);
 		pr_debug("pidx_pend %d,flq->pidx_pend %d,cidx_wrb_pend %d,"
 			"descq->pidx %d\n",
 			pidx_pend, flq->pidx_pend, descq->cidx_wrb_pend,

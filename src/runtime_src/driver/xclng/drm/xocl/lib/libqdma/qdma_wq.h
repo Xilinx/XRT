@@ -25,6 +25,7 @@
 #ifndef	_QDMA_WQ_H
 #define	_QDMA_WQ_H
 
+#include <linux/aio.h>
 #include "qdma_device.h"
 #include "libqdma_export.h"
 
