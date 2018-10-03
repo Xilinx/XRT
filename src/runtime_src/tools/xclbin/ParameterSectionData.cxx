@@ -41,7 +41,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 // String being parsed:  <section>:<formatType>:<filename>
 // Example String:       BUILD_METADATA:JSON:MY_FILE.JSON
 {
-  const std::string& delimiters = ":";      // Our delimiter
+  const std::string delimiters = ":";      // Our delimiter
 
   // Working variables
   std::string::size_type pos = 0;

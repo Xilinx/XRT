@@ -44,7 +44,7 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
   std::cout << "Trace: " << _msg;
 
   if (_endl)
-    std::cout << std::endl;
+    std::cout << std::endl << std::flush;
 }
 
 

@@ -623,7 +623,8 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), bufferSize);
 
   // Convert the JSON file to a boost property tree
-  std::stringstream ss((char*)memBuffer.get());
+  std::stringstream ss;
+  ss.write((char*) memBuffer.get(), bufferSize);
 
   // TODO: Catch the exception (if any) from this call and produce a nice message
   boost::property_tree::read_json(ss, _mirrorData);
