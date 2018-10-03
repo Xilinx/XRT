@@ -478,11 +478,15 @@ static int qdma_wqe_cancel(struct qdma_request *req)
         queue = wqe->queue;
 
 	pr_debug("Cancel req %p, queue %p\n", req, queue);
-	compl_evt.done_bytes = 0;
-	compl_evt.error = QDMA_EVT_CANCELED;
-	compl_evt.kiocb = wqe->wr.kiocb;
-	compl_evt.req_priv = wqe->priv_data;
-	wqe->wr.complete(&compl_evt);
+	if (wqe->wr.kiocb) {
+		compl_evt.done_bytes = 0;
+		compl_evt.error = QDMA_EVT_CANCELED;
+		compl_evt.kiocb = wqe->wr.kiocb;
+		compl_evt.req_priv = wqe->priv_data;
+		wqe->wr.complete(&compl_evt);
+	} else {
+		wake_up(&wqe->req_comp);
+	}
 
 	return 0;
 }
