@@ -233,6 +233,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
+	unsigned int i;
 
 	/*
  	 * follow xilinx device id, subsystem id codeing rules to set dsa
@@ -249,8 +250,18 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.user_bar = in->user_bar;
 	core->priv.intr_bar = in->intr_bar;
 	core->priv.flags = in->flags;
+	core->priv.flash_type = in->flash_type;
+	core->priv.board_name = in->board_name;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
 		core->priv.xpr = in->xpr;
+
+	for (i = 0; i < in->subdev_num; i++) {
+		if (in->subdev_info[i].id == XOCL_SUBDEV_FEATURE_ROM) {
+			core->feature_rom_offset =
+				in->subdev_info[i].res[0].start;
+			break;
+		}
+	}
 }

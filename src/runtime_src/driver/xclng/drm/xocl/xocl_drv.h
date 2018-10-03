@@ -180,6 +180,7 @@ struct xocl_dev_core {
 	u32			bar_idx;
         void *__iomem		bar_addr;
 	resource_size_t		bar_size;
+	resource_size_t		feature_rom_offset;
 
 	u32			intr_bar_idx;
         void *__iomem		intr_bar_addr;

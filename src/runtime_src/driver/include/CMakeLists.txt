@@ -8,6 +8,7 @@ set(XRT_HEADER_SRC
   xclhal2.h
   xcl_app_debug.h
   xcl_macros.h
+  xcl_app_debug.h
   xclperf.h)
 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_DIR}/include)

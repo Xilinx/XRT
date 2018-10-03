@@ -1,7 +1,8 @@
 CC    = gcc
-CFLAGS       = -fPIC -g -I. -I../../../src/xma/include
+CFLAGS       = -fPIC -g -I. -I/opt/xilinx/xrt/include
 #LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core -lcheck_pic -lrt -lm -lsubunit -lpthread
-LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core
+#LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core
+LDFLAGS      = -L/opt/xilinx/xrt/lib -lxmaapi -lxrt_core
 
 SOURCES = $(shell echo *.c)
 HEADERS = $(shell echo *.h)

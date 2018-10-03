@@ -29,11 +29,9 @@
 #include "driver/xclng/include/qdma_ioctl.h"
 #include <libdrm/drm.h>
 #include <mutex>
-#include <cstdint>
 #include <fstream>
 #include <list>
 #include <map>
-#include <utility>
 #include <cassert>
 #include <vector>
 #include <linux/aio_abi.h>
@@ -43,7 +41,6 @@ namespace xocl {
 // This list will get populated in xclProbe
 // 0 -> /dev/dri/renderD129
 // 1 -> /dev/dri/renderD130
-static std::mutex deviceListMutex;
 static const std::map<std::string, std::string> deviceOld2NewNameMap = {
     std::pair<std::string, std::string>("xilinx:adm-pcie-7v3:1ddr:3.0", "xilinx_adm-pcie-7v3_1ddr_3_0"),
     std::pair<std::string, std::string>("xilinx:adm-pcie-8k5:2ddr:4.0", "xilinx_adm-pcie-8k5_2ddr_4_0"),
@@ -228,6 +225,7 @@ public:
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
+    size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
@@ -288,17 +286,6 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
-
-    std::ifstream xclSysfsOpen(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::string xclSysfsGetString(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    unsigned long long xclSysfsGetInt(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::vector<std::string> xclSysfsGetStrings(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
