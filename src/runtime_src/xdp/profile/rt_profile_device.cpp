@@ -58,9 +58,9 @@ namespace XCL {
 
   // Constructor
   RTProfileDevice::RTProfileDevice()
-    : mStartTimeNsec(0),
-      NUM_TRAIN(3),
-      PCIE_DELAY_OFFSET_MSEC(0.25)
+    : NUM_TRAIN(3),
+      PCIE_DELAY_OFFSET_MSEC(0.25),
+      mStartTimeNsec(0)      
   {
     mTag = 0X586C0C6C;
 
@@ -117,13 +117,13 @@ namespace XCL {
     if (mNumTraceEvents >= mMaxTraceEvents || traceVector.mLength == 0)
       return;
 
-    uint32_t numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+    //uint32_t numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
     bool isHwEmu = (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM);
     uint8_t flags = 0;
     uint32_t prevHostTimestamp = 0xFFFFFFFF;
     uint32_t slotID = 0;
     uint32_t timestamp = 0;
-    uint64_t deviceStartTimestamp = 0;
+    //uint64_t deviceStartTimestamp = 0;
     uint64_t hostTimestampNsec = 0;
     uint64_t startTime = 0;
     double y1, y2, x1, x2;
@@ -136,7 +136,7 @@ namespace XCL {
     // Find and set minimum timestamp in case of multiple Kernels
     if(isHwEmu) {
       uint64_t minHostTimestampNsec = traceVector.mArray[0].HostTimestamp;
-      for (int i=0; i < traceVector.mLength; i++) {
+      for (unsigned int i=0; i < traceVector.mLength; i++) {
         if (traceVector.mArray[i].HostTimestamp < minHostTimestampNsec)
           minHostTimestampNsec = traceVector.mArray[i].HostTimestamp;
       }
@@ -152,7 +152,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     //
     // Parse recently offloaded trace results
     //
-    for (int i=0; i < traceVector.mLength; i++) {
+    for (unsigned int i=0; i < traceVector.mLength; i++) {
       xclTraceResults trace = traceVector.mArray[i];
       XDP_LOG("[rt_device_profile] Parsing trace sample %d...\n", i);
 
