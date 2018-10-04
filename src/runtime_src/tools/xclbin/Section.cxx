@@ -28,6 +28,7 @@ namespace XUtil = XclBinUtilities;
 std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
+std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
 
 Section::Section()
     : m_eKind(BITSTREAM)
@@ -53,6 +54,12 @@ Section::purgeBuffers()
 }
 
 void
+Section::setName(const std::string &_sSectionName)
+{
+   m_name = _sSectionName;
+}
+
+void
 Section::getKinds(std::vector< std::string > & kinds) {
   for (auto & item : m_mapNameToId) {
     kinds.push_back(item.first);
@@ -62,6 +69,7 @@ Section::getKinds(std::vector< std::string > & kinds) {
 void
 Section::registerSectionCtor(enum axlf_section_kind _eKind,
                              const std::string& _sKindStr,
+                             const std::string& _sHeaderJSONName,
                              Section_factory _Section_factory) {
   // Some error checking
   if (_sKindStr.empty()) {
@@ -82,12 +90,22 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
     throw std::runtime_error(errMsg);
   }
 
+  if (!_sHeaderJSONName.empty()) {
+    if (m_mapJSONNameToKind.find(_sHeaderJSONName) != m_mapJSONNameToKind.end()) {
+      std::string errMsg = XUtil::format("Error: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).",
+                                         (unsigned int)_eKind, _sKindStr.c_str(),
+                                         _sHeaderJSONName.c_str(), (unsigned int)m_mapJSONNameToKind[_sHeaderJSONName]);
+      throw std::runtime_error(errMsg);
+    }
+    m_mapJSONNameToKind[_sHeaderJSONName] = _eKind;
+  }
 
+  
   // At this point we know we are good, lets initialize the arrays
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
-
+  
   //std::cout << "Kind(" << _eKind << "): " << _sKindStr << std::endl;
 }
 
@@ -117,6 +135,18 @@ Section::getFormatType(const std::string _sFormatType)
   
   return FT_UNKNOWN;
 }
+
+bool 
+Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind) {
+  if (_sJSONStr.empty() ||
+     (m_mapJSONNameToKind.find(_sJSONStr) == m_mapJSONNameToKind.end()) ) {
+    return false;
+  }
+
+  _eKind = m_mapJSONNameToKind[_sJSONStr];
+  return true;
+}
+
 
 Section*
 Section::createSectionObjectOfKind(enum axlf_section_kind _eKind) {
@@ -207,6 +237,19 @@ Section::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _se
   XUtil::TRACE(XUtil::format("  m_size: %ld", m_bufferSize));
 }
 
+
+void 
+Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
+{
+  std::ostringstream buffer;
+  marshalFromJSON(_ptSection, buffer);
+
+  // -- Read contents into memory buffer --
+  m_bufferSize = buffer.tellp();
+  m_pBuffer = new char[m_bufferSize];
+  memcpy(m_pBuffer, buffer.str().c_str(), m_bufferSize);
+}
+
 void
 Section::readXclBinBinary(std::fstream& _istream,
                           const boost::property_tree::ptree& _ptSection) {
@@ -229,13 +272,7 @@ Section::readXclBinBinary(std::fstream& _istream,
 
   if (ptPayload.is_initialized()) {
     XUtil::TRACE(XUtil::format("Reading in the section '%s' (%d) via metadata.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
-    std::ostringstream buffer;
-    marshalFromJSON(ptPayload.get(), buffer);
-
-    // -- Read contents into memory buffer --
-    m_bufferSize = buffer.tellp();
-    m_pBuffer = new char[m_bufferSize];
-    memcpy(m_pBuffer, buffer.str().c_str(), m_bufferSize);
+    readJSONSectionImage(ptPayload.get());
   } else {
     // We don't initialize the buffer via any metadata.  Just read in the section as is
     XUtil::TRACE(XUtil::format("Reading in the section '%s' (%d) as a image.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
@@ -260,7 +297,7 @@ Section::readXclBinBinary(std::fstream& _istream,
 
 
 void
-Section::addMirrorPayload(boost::property_tree::ptree& _pt) const {
+Section::getPayload(boost::property_tree::ptree& _pt) const {
   marshalToJSON(m_pBuffer, m_bufferSize, _pt);
 }
 
@@ -279,6 +316,63 @@ Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   std::string errMsg = XUtil::format("Error: Section '%s' (%d) missing payload parser.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind());
   throw std::runtime_error(errMsg);
 }
+
+
+void 
+Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
+{
+    switch (_eFormatType) {
+    case FT_RAW:
+      {
+        axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+        sectionHeader.m_sectionKind = getSectionKind();
+        sectionHeader.m_sectionOffset = 0;
+        _istream.seekg(0, _istream.end);
+        sectionHeader.m_sectionSize = _istream.tellg();
+
+        readXclBinBinary(_istream, sectionHeader);
+        break;
+      }
+    case FT_JSON:
+      {
+        // Bring the file into memory
+        _istream.seekg(0, _istream.end);
+        unsigned int fileSize = _istream.tellg();
+
+        std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+        _istream.clear();
+        _istream.seekg(0);
+        _istream.read((char*)memBuffer.get(), fileSize);
+
+        XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
+
+        // Convert the JSON file to a boost property tree
+        std::stringstream ss;
+        ss.write((char*) memBuffer.get(), fileSize);
+
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(ss, pt);
+
+        // O.K. - Lint checking is done and write it to our buffer
+        readJSONSectionImage(pt);
+        break;
+      }
+    case FT_HTML:
+      // Do nothing
+      break;
+    case FT_TXT:
+      // Do nothing
+      break;
+    case FT_UNKNOWN:
+      // Do nothing
+      break;
+    case FT_UNDEFINED:
+      // Do nothing
+      break;
+    }
+}
+
+
 
 
 void 
@@ -310,7 +404,8 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), fileSize);
 
       // Convert the JSON file to a boost property tree
-      std::stringstream ss((char*)memBuffer.get());
+      std::stringstream ss;
+      ss.write((char*) memBuffer.get(), fileSize);
 
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
