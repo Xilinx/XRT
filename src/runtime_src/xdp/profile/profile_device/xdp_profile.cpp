@@ -41,9 +41,9 @@ namespace XDP {
   // ***********************
   XDPProfile::XDPProfile(int& flag)
   : ProfileFlags(flag),
-    PerfCounters(),
     FileFlags(0),
-	FlowMode(DEVICE)
+    FlowMode(DEVICE),
+    PerfCounters()
   {
     HostSlotIndex = XPAR_SPM0_HOST_SLOT;
     memset(&CUPortsToDDRBanks, 0, MAX_DDR_BANKS*sizeof(int));
@@ -284,7 +284,7 @@ namespace XDP {
       numSlots = getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
       // Traverse all monitor slots (host and all CU ports)
    	   bool deviceDataExists = (DeviceBinaryDataSlotsMap.find(key) == DeviceBinaryDataSlotsMap.end()) ? false : true;
-       for (int s=0; s < numSlots; ++s) {
+       for (unsigned int s=0; s < numSlots; ++s) {
         getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
         if (!deviceDataExists)
           DeviceBinaryDataSlotsMap[key].push_back(slotName);
@@ -324,7 +324,7 @@ namespace XDP {
        * Log SAM Counters
        */     
       numSlots = getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
-      for (int s=0; s < numSlots; ++s) {
+      for (unsigned int s=0; s < numSlots; ++s) {
         uint32_t prevCuExecCount      = FinalCounterResultsMap[key].CuExecCount[s];
         uint32_t prevCuExecCycles     = FinalCounterResultsMap[key].CuExecCycles[s];
         uint32_t prevCuStallExtCycles = FinalCounterResultsMap[key].CuStallExtCycles[s];
@@ -360,7 +360,7 @@ namespace XDP {
     bool deviceDataExists = (DeviceBinaryCuSlotsMap.find(key) == DeviceBinaryCuSlotsMap.end()) ? false : true;
     xclCounterResults rolloverResults = RolloverCounterResultsMap.at(key);
     xclCounterResults rolloverCounts = RolloverCountsMap.at(key);
-    for (int s=0; s < numSlots; ++s) {
+    for (unsigned int s=0; s < numSlots; ++s) {
       getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
       getProfileKernelName(deviceName, cuName, kernelName);
       if (!deviceDataExists)
@@ -398,7 +398,7 @@ namespace XDP {
             const std::string& bank, std::thread::id threadId)
    {
      double timeStamp = getTraceTime();
-     double deviceTimeStamp = timeStamp; //getDeviceTimeStamp(timeStamp, deviceName);
+     //double deviceTimeStamp = timeStamp; //getDeviceTimeStamp(timeStamp, deviceName);
 
      // Collect time trace
      BufferTrace* traceObject = nullptr;
@@ -481,13 +481,13 @@ namespace XDP {
     //printf("[logTrace] Logging %u device trace samples...\n", traceVector.mLength);
 
     // Log device trace results: store in queues and report events as they are completed
-    bool isHwEmu = false;
-    uint8_t flags = 0;
-    uint32_t prevHostTimestamp = 0xFFFFFFFF;
+    //bool isHwEmu = false;
+    //uint8_t flags = 0;
+    //uint32_t prevHostTimestamp = 0xFFFFFFFF;
     uint32_t slotID = 0;
     uint32_t timestamp = 0;
-    uint64_t deviceStartTimestamp = 0;
-    uint64_t hostTimestampNsec = 0;
+    //uint64_t deviceStartTimestamp = 0;
+    //uint64_t hostTimestampNsec = 0;
     uint64_t startTime = 0;
     double y1, y2, x1, x2;
     DeviceTrace kernelTrace;
@@ -496,7 +496,7 @@ namespace XDP {
     //
     // Parse recently offloaded trace results
     //
-    for (int i=0; i < traceVector.mLength; i++) {
+    for (unsigned int i=0; i < traceVector.mLength; i++) {
       xclTraceResults trace = traceVector.mArray[i];
       //printf("[logTrace] Parsing trace sample %d...\n", i);
 
@@ -840,7 +840,7 @@ namespace XDP {
       std::string cuName = "";
 
       uint32_t numSlots = DeviceBinaryCuSlotsMap.at(key).size();
-      for (int s=0; s < numSlots; ++s) {
+      for (unsigned int s=0; s < numSlots; ++s) {
         cuName = DeviceBinaryCuSlotsMap.at(key)[s];
         uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
         uint64_t cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
@@ -893,7 +893,7 @@ namespace XDP {
       //double totalKernelTimeMsec = PerfCounters.getTotalKernelExecutionTime(deviceName);
       double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 
-      int s = 0;
+      unsigned int s = 0;
       if (HostSlotIndex == 0)
         s = numHostSlots;
       for (; s < numSlots; ++s) {
@@ -931,7 +931,7 @@ namespace XDP {
                                      + (rolloverCounts.WriteLatency[s] * 4294967296UL);
         double totalWriteTimeMsec  = totalWriteLatency / (1000.0 * getDeviceClockFreqMHz());
 
-        printf("writeKernelTransferSummary: s=%d, reads=%d, writes=%d, %s time = %f msec\n",
+        printf("writeKernelTransferSummary: s=%d, reads=%ld, writes=%ld, %s time = %f msec\n",
             s, totalReadTranx, totalWriteTranx, cuName.c_str(), totalCUTimeMsec);
 
         // First do READ, then WRITE
@@ -995,7 +995,7 @@ namespace XDP {
 
       // Gather unique names of monitored CUs on this device
       std::map<std::string, uint64_t> cuNameTranxMap;
-      int s;
+      unsigned int s;
       if (HostSlotIndex == 0)
         s = numHostSlots;
       else 

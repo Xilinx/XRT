@@ -95,7 +95,7 @@ profile_initialize(xclDeviceHandle s_handle, int use_profile, int use_trace,
     else if (XDP::mStallTrace == "pipe")   XDP::mTraceOption |= (0x1 << 3);
     else if (XDP::mStallTrace == "memory") XDP::mTraceOption |= (0x1 << 4);
     else if (XDP::mStallTrace == "all")    XDP::mTraceOption |= (0x7 << 2);
-    else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace);
+    else printf("The stall_trace setting of %s is not recognized. Please use memory|dataflow|pipe|all|off.", XDP::mStallTrace.c_str());
   }
 
   // Get design info (clock freqs, device/binary names)

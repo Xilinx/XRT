@@ -56,10 +56,10 @@ namespace XCL {
 
   RTSingleton::RTSingleton()
   : Status( CL_SUCCESS ),
+    Platform( nullptr ),
     ProfileMgr( nullptr ),
     DebugMgr( nullptr ),
-    Platform( nullptr ),
-	ProfileFlags( 0 )
+    ProfileFlags( 0 )
   {
     ProfileMgr = new RTProfile(ProfileFlags);
     startProfiling();

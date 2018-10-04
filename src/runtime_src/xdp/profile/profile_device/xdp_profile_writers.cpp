@@ -233,8 +233,8 @@ namespace XDP {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
@@ -244,7 +244,7 @@ namespace XDP {
       aveBWUtil = 100.0;
 
     if (aveBWUtil > 0) {
-      printf("%s: Transfered %u bytes in %.3f msec\n", name.c_str(), totalBytes, totalTimeMsec);
+      printf("%s: Transfered %lu bytes in %.3f msec\n", name.c_str(), totalBytes, totalTimeMsec);
       printf("  AveBWUtil = %.3f = %.3f / %.3f\n", aveBWUtil, transferRateMBps, maxTransferRateMBps);
     }
 
@@ -292,8 +292,8 @@ namespace XDP {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalKernelTimeMsec == 0) ? 0.0 :
@@ -303,7 +303,7 @@ namespace XDP {
       aveBWUtil = 100.0;
 
     if (aveBWUtil > 0) {
-      printf("Kernel %s: Transfered %u bytes in %.3f msec (device: %s)\n",
+      printf("Kernel %s: Transfered %lu bytes in %.3f msec (device: %s)\n",
           transferType.c_str(), totalBytes, totalKernelTimeMsec, deviceName.c_str());
       printf("  AveBWUtil = %.3f = %.3f / %.3f\n",
           aveBWUtil, transferRateMBps, maxTransferRateMBps);
