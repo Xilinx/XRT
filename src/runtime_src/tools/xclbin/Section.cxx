@@ -467,3 +467,13 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) cons
     break;
   }
 }
+
+
+void 
+Section::printHeader(std::ostream &_ostream) const
+{
+  _ostream << "Section Header\n";
+  _ostream << "  Type    : '" << getSectionKindAsString() << "'" << std::endl;
+  _ostream << "  Name    : '" << getName() << "'" << std::endl;
+  _ostream << "  Size    : '" << getSize() << "' bytes" << std::endl;
+}

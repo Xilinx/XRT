@@ -40,26 +40,8 @@ class XclBin {
   virtual ~XclBin();
 
  public:
-  std::string getMagicAsString();
-  std::string getCipherAsString();
-  std::string getKeyBlockAsString();
-  std::string getUniqueIdAsString();
-  std::string getSizeAsString();
-  std::string getTimeStampAsString();
-  std::string getFeatureRomTimeStampAsString();
-  std::string getVersionAsString();
-  std::string getModeAsString();
-  std::string getModeAsPrettyString();
-  std::string getFeatureRomUuidAsString();
-  std::string getPlatformVbnvAsString();
-  std::string getXclBinUuidAsString();
-  std::string getDebugBinAsString();
-  std::string getNumSectionAsString();
-  std::string getSectionKindAsString(unsigned int i);
-  unsigned int getSectionCount();
-  void printSections();
-  void printSectionHeader(Section* pSection);
-  void printHeader();
+  void printHeader(std::ostream &_ostream) const;
+  void printSections(std::ostream &_ostream) const;
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
   void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion, bool _bInsertValidationChecksum);

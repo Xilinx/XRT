@@ -220,12 +220,11 @@ int main_(int argc, char** argv) {
   }
 
   if (bListSections) {
-    xclBin.printSections();
+    xclBin.printSections(std::cout);
   }
 
-
   if (bInfo) {
-    xclBin.printHeader();
+    xclBin.printHeader(std::cout);
   }
 
   return RC_SUCCESS;
