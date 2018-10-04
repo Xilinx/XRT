@@ -97,6 +97,7 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	ret = xocl_exec_validate(xdev, client, xobj);
 	if (ret) {
 		userpf_err(xdev, "Exec buffer validation failed\n");
+		ret = -EINVAL;
 		goto out;
 	}
 
