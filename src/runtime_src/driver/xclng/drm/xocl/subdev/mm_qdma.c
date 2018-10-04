@@ -78,7 +78,6 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	wr.write = write;
 	wr.len = len;
 	wr.req.ep_addr = paddr;
-	wr.block = true;
 	wr.sgt = sgt;
 
 	chan = &mdev->chans[write][channel];

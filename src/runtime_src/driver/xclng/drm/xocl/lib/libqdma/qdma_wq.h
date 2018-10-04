@@ -25,12 +25,14 @@
 #ifndef	_QDMA_WQ_H
 #define	_QDMA_WQ_H
 
+#include <linux/aio.h>
 #include "qdma_device.h"
 #include "libqdma_export.h"
 
 struct qdma_complete_event {
 	u64			done_bytes;
 	int			error;
+	struct kiocb		*kiocb;
 	void			*req_priv;
 };
 
@@ -39,8 +41,8 @@ struct qdma_wr {
 	struct sg_table		*sgt;
 	loff_t			offset;
 	size_t			len;
+	struct kiocb		*kiocb;
 	bool			write;
-	bool			block;
 	bool			eot;
 
 	int (*complete)(struct qdma_complete_event *compl_event);
@@ -163,6 +165,7 @@ static inline struct qdma_wqe *wq_next_free(struct qdma_wq *q)
 	return NULL;
 }
 
+#if 0
 static inline struct qdma_wqe *wq_last_nonblock(struct qdma_wq *q)
 {
 	u32		last = q->wq_free;
@@ -179,12 +182,13 @@ static inline struct qdma_wqe *wq_last_nonblock(struct qdma_wq *q)
 	}
 	return wqe;
 }
+#endif
 
 int qdma_wq_create(unsigned long dev_hdl, struct qdma_queue_conf *qconf,
 	struct qdma_wq *queue, u32 priv_data_len);
 int qdma_wq_destroy(struct qdma_wq *queue);
 ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
-int qdma_cancel_req(struct qdma_wq *queue);
+int qdma_cancel_req(struct qdma_wq *queue, struct kiocb *kiocb);
 void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat);
 
 #endif /* _QDMA_WR_H */
