@@ -37,6 +37,7 @@ class memory : public refcount, public _cl_mem
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
+  using connidx_type = xclbin::connidx_type;
 
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
@@ -51,6 +52,8 @@ public:
 
   memory(context* cxt, cl_mem_flags flags);
   virtual ~memory();
+
+  void cleanup(); 
 
   unsigned int
   get_uid() const
@@ -81,6 +84,19 @@ public:
   {
     return m_ext_flags |= flags;
   }
+
+  const connidx_type 
+  get_connidx() const
+  {
+    return m_connidx;
+  }
+
+  void
+  set_connidx(connidx_type index)
+  {
+    m_connidx = index;
+  }
+
 
   void
   add_ext_kernel(const kernel* kernel)
@@ -460,6 +476,7 @@ private:
   mutable std::mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
+  connidx_type m_connidx = -1;
 };
 
 class buffer : public memory

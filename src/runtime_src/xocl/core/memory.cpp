@@ -69,6 +69,19 @@ memory(context* cxt, cl_mem_flags flags)
   //appdebug::add_clmem(this);
 }
 
+void
+memory
+::cleanup()
+{
+  if(m_connidx==-1)
+    return;
+  //Not very clean, having to remove a const cast.
+  const auto* xdevice = get_resident_device();
+  if(xdevice)
+    const_cast<device*>(xdevice)->clear_connection(m_connidx);
+}
+
+
 memory::
 ~memory()
 {
@@ -80,6 +93,7 @@ memory::
 
   for (auto& cb: sg_destructor_callbacks)
     cb(this);
+
    //appdebug::remove_clmem(this);
 }
 
