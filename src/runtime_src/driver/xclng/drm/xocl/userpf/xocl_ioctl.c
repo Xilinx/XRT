@@ -568,9 +568,10 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	xocl_cleanup_connectivity(xdev);
 
 	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
-	if (!preserve_mem) {
+	if (!preserve_mem)
 		xdev->topology = new_topology;
-	}
+	else
+		vfree(new_topology);
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
