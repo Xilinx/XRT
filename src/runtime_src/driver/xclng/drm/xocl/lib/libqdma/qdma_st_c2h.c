@@ -522,7 +522,7 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 		}
 		sdesc = flq->sdesc + ring_idx_decr(descq->pidx, 1,
 			descq->conf.rngsz);
-		sdesc->len = cmpl.len & ((1 << flq->pg_shift) - 1);
+		sdesc->len = cmpl.len; // & ((1 << flq->pg_shift) - 1);
 
 		descq->cidx_wrb = descq->cidx_wrb_pend;
 

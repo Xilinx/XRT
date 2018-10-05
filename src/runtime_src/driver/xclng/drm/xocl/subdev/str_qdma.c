@@ -52,6 +52,8 @@ struct stream_queue {
 	struct device		dev;
 	struct qdma_wq		queue;
 	u32			state;
+	int			flowid;
+	int			routeid;
 	struct file		*file;
 	int			qfd;
 	int			refcnt;
@@ -162,7 +164,16 @@ static const struct attribute_group stream_attrgroup = {
 
 static void stream_sysfs_destroy(struct stream_queue *queue)
 {
+	struct platform_device	*pdev = queue->sdev->pdev;
+	char			name[32];
+
+	if (queue->queue.qconf->c2h)
+		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
+	else
+		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
+
 	if (get_device(&queue->dev)) {
+		sysfs_remove_link(&pdev->dev.kobj, (const char *)name);
 		sysfs_remove_group(&queue->dev.kobj, &stream_attrgroup);
 		put_device(&queue->dev);
 		device_unregister(&queue->dev);
@@ -178,6 +189,7 @@ static void stream_device_release(struct device *dev)
 static int stream_sysfs_create(struct stream_queue *queue)
 {
 	struct platform_device	*pdev = queue->sdev->pdev;
+	char			name[32];
 	int			ret;
 
 #if 0
@@ -201,6 +213,17 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
 		goto failed;
+	}
+
+	if (queue->queue.qconf->c2h)
+		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
+	else
+		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
+
+	ret = sysfs_create_link(&pdev->dev.kobj, &queue->dev.kobj, (const char *)name);
+	if (ret) {
+		xocl_err(&pdev->dev, "create sysfs link failed");
+		sysfs_remove_group(&queue->dev.kobj, &stream_attrgroup);
 	}
 
 	return 0;
@@ -658,6 +681,8 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 		qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
 		qconf.pipe_gl_max = 1;
 	}
+	queue->flowid = req.flowid;
+	queue->routeid = req.rid;
 	xocl_info(&sdev->pdev->dev, "Creating queue with tdest %d, flow %d, "
 		"slr %d", qconf.pipe_tdest, qconf.pipe_flow_id,
 		qconf.pipe_slr_id);

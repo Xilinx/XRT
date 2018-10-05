@@ -623,6 +623,7 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
+	std::vector<std::string> attrs;
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ss << std::setfill(' ') << "\n";
@@ -652,12 +653,16 @@ public:
             lines.push_back(ss.str());
             return;
         } else {
-            ss << std::setw(16) << "Tag"  << std::setw(12) << "Route"
-                << std::setw(12) << "Flow"
+            ss << std::setw(16) << "Tag"  << std::setw(10) << "Route"
+                << std::setw(10) << "Flow" << std::setw(10) << "Status"
+                << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
                 << "\n";
         }
 
         for(unsigned i = 0; i < num; i++) {
+            std::string lname;
+            std::map<std::string, std::string> stat_map;
+
             if (map->m_mem_data[i].m_type != MEM_STREAMING)
                 continue;
 
@@ -665,9 +670,41 @@ public:
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
                 << map->m_mem_data[i].m_tag;
 
-            ss << std::setw(12) << map->m_mem_data[i].route_id;
-            ss << std::setw(12) << map->m_mem_data[i].flow_id <<"\n";
+            ss << std::setw(10) << map->m_mem_data[i].route_id;
+            ss << std::setw(10) << map->m_mem_data[i].flow_id;
+
+            lname = std::string((char *)map->m_mem_data[i].m_tag);
+
+            if (lname.back() == 'w')
+                lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
+            else
+                lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
+
+            pcidev::get_dev(m_idx)->user->sysfs_get(
+                "str_dma", lname, errmsg, attrs);
+            if (!errmsg.empty()) {
+                ss << std::setw(10) << "Inactive";
+                ss << std::setw(16) << "N/A" << std::setw(16) << "N/A";
+            } else {
+                ss << std::setw(10) << "Active";
+                for (unsigned k = 0; k < attrs.size(); k++) {
+                    char key[50];
+                    int64_t value;
+
+                    std::sscanf(attrs[k].c_str(), "%[^:]:%ld", key, &value);
+                    stat_map[std::string(key)] = std::to_string(value);
+                }
+
+                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] + 
+                    "/" + stat_map[std::string("total_req_num")];
+
+                ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
+                    "/" + stat_map[std::string("total_complete_num")];
+            }
+
+            ss << "\n";
         }
+
 
         lines.push_back(ss.str());
     }

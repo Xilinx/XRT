@@ -1344,8 +1344,9 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     int num_evt, i;
 
+    *actual = 0;
     if (!mAioEnabled) {
-        num_evt = 0;
+        num_evt = -EINVAL;
         std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
         goto done;
     }
@@ -1354,12 +1355,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
     }
+    *actual = num_evt;
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
         comps[i].nbytes = ((struct io_event *)comps)[i].res;
         comps[i].err_code = ((struct io_event *)comps)[i].res2;
     }
+    num_evt = 0;
 
 done:
     return num_evt;
