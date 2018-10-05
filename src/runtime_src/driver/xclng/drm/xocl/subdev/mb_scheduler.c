@@ -1885,7 +1885,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	bitmap_to_u32array(ctx_cus,cumasks,client->cu_bitmap,MAX_CUS);
 	for (i=0; i<cumasks; ++i) {
 		uint32_t cmd_cus = ecmd->data[i];
-		if (cmd_cus && !(cmd_cus & ctx_cus[i])) {
+		if (cmd_cus && ((cmd_cus ^ ctx_cus[i]) & cmd_cus)) {
 			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
 				     i,cmd_cus,ctx_cus[i]);
 			return 1; /* error */
