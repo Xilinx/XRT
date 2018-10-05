@@ -41,10 +41,6 @@ clReleaseMemObject(cl_mem memobj)
 {
   validOrError(memobj);
 
-  //Cleanup any connection info before decrementing
-  //the reference count and then perhaps proceeding to deletion.
-  xocl(memobj)->cleanup();
-
   if (!xocl(memobj)->release())
     return CL_SUCCESS;
 

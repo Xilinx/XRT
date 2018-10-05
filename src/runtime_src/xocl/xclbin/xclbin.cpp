@@ -952,7 +952,7 @@ class xclbin_data_sections
   };
 
   std::vector<membank> m_membanks;
-  std::list<int> m_used_connections;
+  std::vector<int> m_used_connections;
 
 public:
   explicit
@@ -1027,7 +1027,7 @@ public:
   void
   clear_connection(xocl::xclbin::connidx_type conn)
   {
-    m_used_connections.remove(conn);
+    m_used_connections.erase(std::remove(m_used_connections.begin(), m_used_connections.end(), conn), m_used_connections.end());
   }
 
   const clock_freq_topology*

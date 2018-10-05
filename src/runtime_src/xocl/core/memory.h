@@ -53,8 +53,6 @@ public:
   memory(context* cxt, cl_mem_flags flags);
   virtual ~memory();
 
-  void cleanup(); 
-
   unsigned int
   get_uid() const
   {
