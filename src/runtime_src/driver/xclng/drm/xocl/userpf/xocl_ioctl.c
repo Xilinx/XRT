@@ -548,9 +548,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
 	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
 	if (xocl_is_aws(xdev) && (xdev->topology != NULL)) {
-		// m_mem_data can be of different length but we would not compare them if topology match fails
-		if (!memcmp(new_topology, xdev->topology, size) &&
-		    (sizeof_sect(new_topology, m_mem_data) == sizeof_sect(xdev->topology, m_mem_data))) {
+		if ( (size == sizeof_sect(xdev->topology, m_mem_data)) &&
+		    !memcmp(new_topology, xdev->topology, size) ) {
 			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
 			preserve_mem = 1;
 		} else {
