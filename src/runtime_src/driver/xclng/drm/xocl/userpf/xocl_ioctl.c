@@ -548,9 +548,11 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
 	/* Compare MEM_TOPOLOGY previous vs new. */
 	if (xdev->topology != NULL) {
-		if (!memcmp(new_topology, xdev->topology, size)) {
+		// m_mem_data can be of different length but we would not compare them if topology match fails
+		if (!memcmp(new_topology, xdev->topology, size) &&
+		    (sizeof_sect(new_topology, m_mem_data) == sizeof_sect(xdev->topology, m_mem_data))) {
 			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
-			preserve_mem =1;
+			preserve_mem = 1;
 		} else {
 			printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
 		}
