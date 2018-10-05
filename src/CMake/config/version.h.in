@@ -9,6 +9,10 @@ const char xrt_build_version_branch_extended[] = "@XRT_BRANCH_EXTENDED@";
 
 const char xrt_build_version_hash[] = "@XRT_HASH@";
 
+const char xrt_build_version_hash_date[] = "@XRT_HASH_DATE@";
+
+const char xrt_build_version_date_rfc[] = "@XRT_DATE_RFC@";
+
 const char xrt_build_version_date[] = "@XRT_DATE@";
 
 const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
@@ -24,7 +28,8 @@ void print(std::ostream & output)
    output << "  Build Version Extended: " << xrt_build_version_branch_extended << std::endl;
    output << "    Build Version Branch: " << xrt_build_version_branch << std::endl;
    output << "      Build Version Hash: " << xrt_build_version_hash << std::endl;
-   output << "      Build Version Date: " << xrt_build_version_date << std::endl;
+   output << " Build Version Hash Date: " << xrt_build_version_hash_date << std::endl;
+   output << "      Build Version Date: " << xrt_build_version_date_rfc << std::endl;
 
    std::string modifiedFiles(xrt_modified_files);
    if ( !modifiedFiles.empty() ) {
