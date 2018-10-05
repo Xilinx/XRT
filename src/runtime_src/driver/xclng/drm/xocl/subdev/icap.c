@@ -1116,12 +1116,22 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	snprintf(fw_name, sizeof(fw_name),
 		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
 		le16_to_cpu(pcidev->vendor),
-		funcid != 0 ? le16_to_cpu(deviceid) : le16_to_cpu(deviceid + 1),
+		le16_to_cpu(deviceid),
 		le16_to_cpu(pcidev->subsystem_device),
 		le64_to_cpu(xocl_get_timestamp(xdev)));
-	ICAP_INFO(icap, "dsabin file name is %s", fw_name);
-
+	ICAP_INFO(icap, "try load dsabin %s", fw_name);
 	err = request_firmware(&fw, fw_name, &pcidev->dev);
+
+	if (err) {
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+			le16_to_cpu(pcidev->vendor),
+			le16_to_cpu(deviceid + 1),
+			le16_to_cpu(pcidev->subsystem_device),
+			le64_to_cpu(xocl_get_timestamp(xdev)));
+		err = request_firmware(&fw, fw_name, &pcidev->dev);
+	}
+
 	if(!err && xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
 		bin_obj_axlf = (const struct axlf*)fw->data;
