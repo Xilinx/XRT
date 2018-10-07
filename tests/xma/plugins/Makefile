@@ -1,5 +1,6 @@
 CC    = gcc
-CFLAGS       = -fPIC -g -I. -I../../../src/xma/include
+CFLAGS       = -fPIC -g -I. -I/opt/xilinx/xrt/include
+#CFLAGS       = -fPIC -g -I. -I../../../src/xma/include
 LDFLAGS      = -shared
 
 SOURCES = $(shell echo *.c)
