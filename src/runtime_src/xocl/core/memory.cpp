@@ -80,6 +80,14 @@ memory::
 
   for (auto& cb: sg_destructor_callbacks)
     cb(this);
+
+  if(m_connidx==-1)
+    return;
+  //Not very clean, having to remove a const cast.
+  const device* dev = get_resident_device();
+  if(dev)
+    const_cast<device*>(dev)->clear_connection(m_connidx);
+
    //appdebug::remove_clmem(this);
 }
 
