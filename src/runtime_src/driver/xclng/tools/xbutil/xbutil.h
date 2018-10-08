@@ -695,6 +695,20 @@ public:
                          << std::dec << parseCUStatus( statusBuf ) << "\n";
                     cuCnt++;
                 }
+
+                if( computeUnits.at( i ).m_type == IP_DNASC ) {
+
+                    std::string errmsg;
+                    int dnaStatus;
+                    auto dev = pcidev::get_dev(m_idx);
+
+                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
+                    ostr << "\nIP[" << cuCnt << "]: "
+                         << computeUnits.at( i ).m_name
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
+                    cuCnt++;
+                }
             }
             if(computeUnits.size() == 0) {
                 ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
