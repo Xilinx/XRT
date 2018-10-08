@@ -276,6 +276,9 @@ public:
     {
         std::stringstream ss, subss;
         subss << std::left;
+        std::string errmsg;
+        std::string dna_info;
+
         ss << std::left << "\n";
         unsigned i;
 
@@ -446,7 +449,8 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo.mMgtVtt/1000).substr(0,4) + "V" << "\n\n";
 
 
-        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
+        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(32) << "DNA" <<"\n";
+
         if(m_devinfo.mVccIntVol == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntVol == XCL_INVALID_SENSOR_VAL)
@@ -456,13 +460,22 @@ public:
 
 
         if(m_devinfo.mVccIntCurr == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntCurr == XCL_INVALID_SENSOR_VAL)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else{
-            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A") << "\n";
+            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A");
         }
 
+        auto dev = pcidev::get_dev(m_idx);
+
+        dev->mgmt->sysfs_get("dna", "dna", errmsg, dna_info);
+
+        if(dna_info.empty())
+            ss << std::setw(32) << "Not support" << "\n";
+        else{
+            ss << std::setw(32) << dna_info << "\n";
+        }
 
         m_devinfo_stringize_power(m_devinfo, lines);
 
@@ -775,6 +788,20 @@ public:
                          << computeUnits.at( i ).m_name
                          << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
                          << std::dec << parseCUStatus( statusBuf ) << "\n";
+                    cuCnt++;
+                }
+
+                if( computeUnits.at( i ).m_type == IP_DNASC ) {
+
+                    std::string errmsg;
+                    int dnaStatus;
+                    auto dev = pcidev::get_dev(m_idx);
+
+                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
+                    ostr << "\nIP[" << cuCnt << "]: "
+                         << computeUnits.at( i ).m_name
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
                     cuCnt++;
                 }
             }
