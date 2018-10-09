@@ -239,12 +239,13 @@ namespace XCL {
     writeTableRowEnd(getSummaryStream());
   }
 
-  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
-	  		double avgSize, double avgUtil, double linkStarve, double linkStall)
+  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
+      uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
+      double linkStarve, double linkStall)
   {
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName , cuPortName, strNumTranx, 
-      avgSize, avgUtil, linkStarve, linkStall);
+    writeTableCells(getSummaryStream(), deviceName , cuPortName, argNames,
+        strNumTranx, transferRateMBps, avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getSummaryStream());
   }
 
