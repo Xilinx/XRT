@@ -50,7 +50,7 @@ void addCheckSumImage(const std::string _sFileName, enum CHECKSUM_TYPE _eChecksu
 
 void createCheckSumImage(std::fstream& _istream, struct checksum& _checksum);
 
-void binaryBufferToHexString(unsigned char* _binBuf, unsigned int _size, std::string& _outputString);
+void binaryBufferToHexString(const unsigned char* _binBuf, unsigned int _size, std::string& _outputString);
 void hexStringToBinaryBuffer(const std::string& _inputString, unsigned char* _destBuf, unsigned int _bufferSize);
 uint64_t stringToUInt64(const std::string& _sInteger);
 void printKinds();

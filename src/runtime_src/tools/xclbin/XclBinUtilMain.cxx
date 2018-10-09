@@ -29,6 +29,7 @@
 // System - Include Files
 #include <iostream>
 #include <string>
+#include <set>
 
 // Generated include files
 #include <version.h>
@@ -41,6 +42,44 @@ enum ReturnCodes {
   RC_ERROR_IN_COMMAND_LINE = 1,
   RC_ERROR_UNHANDLED_EXCEPTION = 2,
 };
+}
+
+
+void drcCheckFiles(const std::vector<std::string> & _inputFiles, 
+                   const std::vector<std::string> & _outputFiles,
+                   bool _bForce)
+{
+   std::set<std::string> normalizedInputFiles;
+
+   for( auto file : _inputFiles) {
+     if ( !boost::filesystem::exists(file)) {
+       std::string errMsg = "ERROR: The following input file does not exist: " + file;
+       throw std::runtime_error(errMsg);
+     }
+     boost::filesystem::path filePath(file);
+     normalizedInputFiles.insert(canonical(filePath).string());
+   }
+
+   std::vector<std::string> normalizedOutputFiles;
+   for ( auto file : _outputFiles) {
+     if ( boost::filesystem::exists(file)) {
+       if (_bForce == false) {
+         std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
+         throw std::runtime_error(errMsg);
+       } else {
+         boost::filesystem::path filePath(file);
+         normalizedOutputFiles.push_back(canonical(filePath).string());
+       }
+     }
+   }
+
+   // See if the output file will stomp on an input file
+   for (auto file : normalizedOutputFiles) {
+     if (normalizedInputFiles.find(file) != normalizedInputFiles.end()) {
+       std::string errMsg = "ERROR: The following output file is also used for input : " + file;
+       throw std::runtime_error(errMsg);
+     }
+   }
 }
 
 
@@ -58,6 +97,7 @@ int main_(int argc, char** argv) {
   bool bValidateInsertion = true;
   bool bSkipValidateInsertion = false;
   bool bVersion = false;
+  bool bForce = true;   // Assume true until xocc is updated to use the --force option
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -90,6 +130,7 @@ int main_(int argc, char** argv) {
       ("list-names,n", boost::program_options::bool_switch(&bListNames), "List the available names")
       ("list-sections,l", boost::program_options::bool_switch(&bListSections), "List the sections")
       ("version", boost::program_options::bool_switch(&bVersion), "Version information regarding this executable")
+      ("force", boost::program_options::bool_switch(&bForce), "Forces an file overwrite")
  ;
 
 // --remove-section=section
@@ -172,6 +213,39 @@ int main_(int argc, char** argv) {
   }
 
   // Actions requiring --input
+  
+  // Check to see if there any file conflicts
+  std::vector< std::string> inputFiles;
+  {
+    if (!sInputFile.empty()) {
+       inputFiles.push_back(sInputFile);
+    }
+
+    for (auto section : sectionsToAdd) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
+    for (auto section : sectionToReplace ) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+  }
+
+  std::vector< std::string> outputFiles;
+  {
+    if (!sOutputFile.empty()) {
+      outputFiles.push_back(sOutputFile);
+    }
+
+    for (auto section : sectionsToDump ) {
+      ParameterSectionData psd(section);
+      outputFiles.push_back(psd.getFile());
+    }
+  }
+
+  drcCheckFiles(inputFiles, outputFiles, bForce);
+
 
   if (bValidateImage && !sInputFile.empty()) {
     XUtil::validateImage(sInputFile);
@@ -220,12 +294,11 @@ int main_(int argc, char** argv) {
   }
 
   if (bListSections) {
-    xclBin.printSections();
+    xclBin.printSections(std::cout);
   }
 
-
   if (bInfo) {
-    xclBin.printHeader();
+    xclBin.printHeader(std::cout);
   }
 
   return RC_SUCCESS;

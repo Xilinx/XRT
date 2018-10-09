@@ -30,6 +30,7 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
+#include "FormattedOutput.h"
 
 static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
 static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
@@ -49,7 +50,6 @@ XclBin::~XclBin() {
 }
 
 
-
 void 
 XclBin::initializeHeader(axlf &_xclBinHeader)
 {
@@ -64,174 +64,12 @@ XclBin::initializeHeader(axlf &_xclBinHeader)
   _xclBinHeader.m_header.m_version = 2017;
 }
 
-// String Getters
-std::string 
-XclBin::getMagicAsString() { 
-  return XUtil::format("%s", m_xclBinHeader.m_magic); 
-}
-
-std::string 
-XclBin::getCipherAsString() { 
-  std::string sTemp("");
-  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_cipher, sizeof(m_xclBinHeader.m_cipher), sTemp);
-  return sTemp; // TBD: "0x" + sTemp; ? do the others too...
-}
-
-std::string 
-XclBin::getKeyBlockAsString() { 
-  std::string sTemp("");
-  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_keyBlock, sizeof(m_xclBinHeader.m_keyBlock), sTemp);
-  return sTemp;
-}
-
-std::string 
-XclBin::getUniqueIdAsString() { 
-  std::string sTemp("");
-  XUtil::binaryBufferToHexString((unsigned char*)&m_xclBinHeader.m_uniqueId, sizeof(m_xclBinHeader.m_uniqueId), sTemp);
-  return sTemp;
-}
-
-std::string
-XclBin::getSizeAsString() {
-  return XUtil::format("%ld", m_xclBinHeader.m_header.m_length);
-}
-
-std::string
-XclBin::getTimeStampAsString() {
-  return XUtil::format("%ld", m_xclBinHeader.m_header.m_timeStamp);
-}
-
-std::string
-XclBin::getFeatureRomTimeStampAsString() {
-  return XUtil::format("%d", m_xclBinHeader.m_header.m_featureRomTimeStamp);
-}
-
-std::string
-XclBin::getVersionAsString() {
-  return XUtil::format("%d", m_xclBinHeader.m_header.m_version);
-}
-
-std::string
-XclBin::getModeAsString() {
-  return XUtil::format("%d", m_xclBinHeader.m_header.m_mode);
-}
-
-std::string
-XclBin::getModeAsPrettyString() {
-  switch (m_xclBinHeader.m_header.m_mode) {
-    case MEM_DDR3: 
-      return "MEM_DDR3";
-      break;
-    case MEM_DDR4: 
-      return "MEM_DDR4";
-      break;
-    case MEM_DRAM: 
-      return "MEM_DRAM";
-      break;
-    case MEM_STREAMING: 
-      return "MEM_STREAMING";
-      break;
-    case MEM_PREALLOCATED_GLOB: 
-      return "MEM_PREALLOCATED_GLOB";
-      break;
-    case MEM_ARE: 
-      return "MEM_ARE"; // Aurora
-      break;
-    case MEM_HBM: 
-      return "MEM_HBM";
-      break;
-    case MEM_BRAM: 
-      return "MEM_BRAM";
-      break;
-    case MEM_URAM: 
-      return "MEM_URAM";
-      break;
-    default: 
-      return "UNKNOWN";
-      break;
-  }
-}
-
-std::string
-XclBin::getFeatureRomUuidAsString() {
-  std::string sTemp("");
-  XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid), sTemp);
-  return sTemp;
-}
-
-std::string
-XclBin::getPlatformVbnvAsString() {
-  return XUtil::format("%s", m_xclBinHeader.m_header.m_platformVBNV);
-}
-
-std::string
-XclBin::getXclBinUuidAsString() {
-  std::string sTemp("");
-  XUtil::binaryBufferToHexString(m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid), sTemp);
-  return sTemp;
-}
-
-std::string
-XclBin::getDebugBinAsString() {
-  return XUtil::format("%s", m_xclBinHeader.m_header.m_debug_bin);
-}
-
-std::string
-XclBin::getSectionKindAsString(unsigned int i) {
-  if (m_sections.empty()) { 
-    return "";
-  }
-  return m_sections[i]->getSectionKindAsString();
-}
-
-unsigned int
-XclBin::getSectionCount() {
-  return m_sections.size();
-}
-
 void
-XclBin::printHeader() {
-  XUtil::TRACE("Printing Binary Header");
-
-  std::cout << "OpenCL Binary Header\n";
-  //std::cout << "  Magic                   : '" << getMagicAsString() << "'\n";
-  //std::cout << "  Cipher                  : '" << getCipherAsString() << "'\n";
-  //std::cout << "  Key Block               : '" << getKeyBlockAsString() << "'\n";
-  //std::cout << "  Unique ID               : '" << getUniqueIdAsString() << "'\n";
-  //std::cout << "  Size                    : '" << getSizeAsString() << "' bytes\n";
-  std::cout << "  Time Stamp              : '" << getTimeStampAsString() << "'\n";
-  std::cout << "  Feature ROM Time Stamp  : '" << getFeatureRomTimeStampAsString() << "'\n";
-  std::cout << "  Version                 : '" << getVersionAsString() << "'\n";
-  std::cout << "  Mode                    : '" << getModeAsPrettyString() << "' (" << getModeAsString() << ")\n";
-  std::cout << "  Feature ROM UUID        : '" << getFeatureRomUuidAsString() << "'\n";
-  std::cout << "  Platform VBNV           : '" << getPlatformVbnvAsString() << "'\n";
-  std::cout << "  OpenCL Binary UUID      : '" << getXclBinUuidAsString() << "'\n";
-  std::cout << "  Debug Bin               : '" << getDebugBinAsString() << "'\n";
-  std::cout << "  Section Count           : '" << getSectionCount() << "'\n";
-  std::string sSectionKind("");
-  for(unsigned int i = 0; i < getSectionCount(); i++) {
-    if (i != 0) sSectionKind += ", ";
-    sSectionKind += "'" + getSectionKindAsString(i) + "'";
+XclBin::printSections(std::ostream &_ostream) const {
+  XUtil::TRACE("Printing Section Header(s)");
+  for (Section *pSection : m_sections) {
+    pSection->printHeader(_ostream);
   }
-  std::cout << "  Sections present: " << sSectionKind << "\n";
-}
-
-void
-XclBin::printSections() {
-  for(unsigned int i = 0; i < getSectionCount(); i++) {
-    printSectionHeader(m_sections[i]);
-  }
-}
-
-void
-XclBin::printSectionHeader(Section* pSection) {
-  XUtil::TRACE("Printing Section Header");
-
-  std::cout << "Section Header\n";
-  std::cout << "  Type    : '" << pSection->getSectionKindAsString() << "'\n";
-  std::cout << "  Name    : '" << pSection->getName() << "'\n";
-  //std::cout << "  Offset  : '" << pSection->getOffset() << "'\n";
-  std::cout << "  Size    : '" << pSection->getSize() << "' bytes\n";
 }
 
 void
@@ -247,7 +85,7 @@ XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
     throw std::runtime_error(errMsg);
   }
 
-  if (getMagicAsString().c_str() != std::string("xclbin2")) {
+  if (FormattedOutput::getMagicAsString(m_xclBinHeader).c_str() != std::string("xclbin2")) {
     std::string errMsg = "ERROR: The XCLBIN appears to be corrupted (header start key value is not what is expected).";
     throw std::runtime_error(errMsg);
   }
@@ -326,22 +164,22 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header) {
 
   // Axlf structure
   {
-    _pt_header.put("Magic", getMagicAsString().c_str());
-    _pt_header.put("Cipher", getCipherAsString().c_str());
-    _pt_header.put("KeyBlock", getKeyBlockAsString().c_str());
-    _pt_header.put("UniqueID", getUniqueIdAsString().c_str());
+    _pt_header.put("Magic", FormattedOutput::getMagicAsString(m_xclBinHeader).c_str());
+    _pt_header.put("Cipher", FormattedOutput::getCipherAsString(m_xclBinHeader).c_str());
+    _pt_header.put("KeyBlock", FormattedOutput::getKeyBlockAsString(m_xclBinHeader).c_str());
+    _pt_header.put("UniqueID", FormattedOutput::getUniqueIdAsString(m_xclBinHeader).c_str());
   }
 
   // Axlf_header structure
   {
-    _pt_header.put("TimeStamp", getTimeStampAsString().c_str());
-    _pt_header.put("FeatureRomTimeStamp", getFeatureRomTimeStampAsString().c_str());
-    _pt_header.put("Version", getVersionAsString().c_str());
-    _pt_header.put("Mode", getModeAsString().c_str());
-    _pt_header.put("FeatureRomUUID", getFeatureRomUuidAsString().c_str());
-    _pt_header.put("PlatformVBNV", getPlatformVbnvAsString().c_str());
-    _pt_header.put("XclBinUUID", getXclBinUuidAsString().c_str());
-    _pt_header.put("DebugBin", getDebugBinAsString().c_str());
+    _pt_header.put("TimeStamp", FormattedOutput::getTimeStampAsString(m_xclBinHeader).c_str());
+    _pt_header.put("FeatureRomTimeStamp", FormattedOutput::getFeatureRomTimeStampAsString(m_xclBinHeader).c_str());
+    _pt_header.put("Version", FormattedOutput::getVersionAsString(m_xclBinHeader).c_str());
+    _pt_header.put("Mode", FormattedOutput::getModeAsString(m_xclBinHeader).c_str());
+    _pt_header.put("FeatureRomUUID", FormattedOutput::getFeatureRomUuidAsString(m_xclBinHeader).c_str());
+    _pt_header.put("PlatformVBNV", FormattedOutput::getPlatformVbnvAsString(m_xclBinHeader).c_str());
+    _pt_header.put("XclBinUUID", FormattedOutput::getXclBinUuidAsString(m_xclBinHeader).c_str());
+    _pt_header.put("DebugBin", FormattedOutput::getDebugBinAsString(m_xclBinHeader).c_str());
   }
 }
 
@@ -732,10 +570,6 @@ XclBin::removeSection(const Section* _pSection)
   }
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
-    XUtil::TRACE(XUtil::format("[%d]: 0x%lx (%s) compared to 0x%lx (%s)",
-                               index, 
-                               (void *) m_sections[index], m_sections[index]->getSectionKind(),
-                               (void *) _pSection, _pSection->getSectionKind()));
     if ((void *) m_sections[index] == (void *) _pSection) {
       XUtil::TRACE(XUtil::format("Removing and deleting section '%s' (%d).", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind()));
       m_sections.erase(m_sections.begin() + index);
@@ -764,8 +598,10 @@ XclBin::findSection(enum axlf_section_kind _eKind)
 void 
 XclBin::removeSection(const std::string & _sSectionToRemove)
 {
-  enum axlf_section_kind _eKind;
+  XUtil::TRACE("Removing Section: " + _sSectionToRemove);
 
+  enum axlf_section_kind _eKind;
+  
   if (Section::translateSectionKindStrToKind(_sSectionToRemove, _eKind) == false) {
     std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", _sSectionToRemove.c_str());
     throw std::runtime_error(errMsg);
@@ -809,7 +645,9 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   }
 
   pSection->purgeBuffers();
-  pSection->readXclBinBinary(iSectionFile, _PSD.getFormatType());
+
+  pSection->readPayload(iSectionFile, _PSD.getFormatType());
+
   updateHeaderFromSection(pSection);
 
   boost::filesystem::path p(sSectionFileName);
@@ -936,12 +774,13 @@ XclBin::addSections(ParameterSectionData &_PSD)
       throw std::runtime_error(errMsg);
     }
 
-    if (findSection(eKind) != nullptr) {
-      std::string errMsg = XUtil::format("Error: Section '%s' already exists.", _PSD.getSectionName().c_str());
+    Section *pSection = findSection(eKind);
+    if (pSection != nullptr) {
+      std::string errMsg = XUtil::format("Error: Section '%s' already exists.", pSection->getSectionKindAsString().c_str());
       throw std::runtime_error(errMsg);
     }
 
-    Section * pSection = Section::createSectionObjectOfKind(eKind);
+    pSection = Section::createSectionObjectOfKind(eKind);
     pSection->readJSONSectionImage(pt);
     addSection(pSection);
     updateHeaderFromSection(pSection);
@@ -1059,4 +898,10 @@ XclBin::setKeyValue(const std::string & _keyValue)
 
   std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
   throw std::runtime_error(errMsg);
+}
+
+void
+XclBin::printHeader(std::ostream &_ostream) const
+{
+  FormattedOutput::printHeader(_ostream, m_xclBinHeader, m_sections);
 }
