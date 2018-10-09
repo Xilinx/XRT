@@ -1886,7 +1886,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	for (i=0; i<cumasks; ++i) {
 		uint32_t cmd_cus = ecmd->data[i];
                 /* cmd_cus must be subset of ctx_cus */
-		if (cmd_cus && (cmd_cus & ~ctx_cus[i])) {
+		if (cmd_cus & ~ctx_cus[i]) {
 			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
 				     i,cmd_cus,ctx_cus[i]);
 			return 1; /* error */
