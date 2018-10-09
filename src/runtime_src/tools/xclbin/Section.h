@@ -78,6 +78,7 @@ class Section {
   void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
   void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);
   void readPayload(std::fstream& _istream, enum FormatType _eFormatType);
+  void printHeader(std::ostream &_ostream) const;
 
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
