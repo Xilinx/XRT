@@ -567,7 +567,6 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	cidx_hw = wb->cidx;
 
 	if (cidx_hw == cidx) { /* no new writeback? */
-		qdma_notify_cancel(descq);
 		return 0;
 	}
 
@@ -959,8 +958,8 @@ void qdma_descq_service_wb(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
 	lock_descq(descq);
+	qdma_notify_cancel(descq);
 	if (descq->q_state != Q_STATE_ONLINE) {
-		qdma_notify_cancel(descq);
 		complete(&descq->cancel_comp);
 	} else if (descq->conf.st && descq->conf.c2h)
 		descq_process_completion_st_c2h(descq, budget, c2h_upd_cmpl);

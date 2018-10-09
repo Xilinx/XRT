@@ -543,19 +543,6 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 		}
 	}
 
-	/* walk through all canceled reqs */
-	while (wqe && wqe->state == QDMA_WQE_STATE_CANCELED) {
-		wqe->unproc_bytes = 0;
-		if (wqe->wr.kiocb) {
-			compl_evt.done_bytes = 0;
-			compl_evt.error = QDMA_EVT_CANCELED;
-			compl_evt.kiocb = wqe->wr.kiocb;
-			compl_evt.req_priv = wqe->priv_data;
-			wqe->wr.complete(&compl_evt);
-		}
-		wqe = wq_next_pending(queue);
-	}
-
 	descq_proc_req(queue);
 	spin_unlock_bh(&queue->wq_lock);
 
@@ -574,9 +561,9 @@ int qdma_cancel_req(struct qdma_wq *queue, struct kiocb *kiocb)
 
 	wqe = kiocb->private;
 
+	cb = qdma_req_cb_get(&wqe->wr.req);
+	descq_cancel_req(descq, &wqe->wr.req);
 	if (wqe->state == QDMA_WQE_STATE_PENDING) {
-		cb = qdma_req_cb_get(&wqe->wr.req);
-		descq_cancel_req(descq, &wqe->wr.req);
 		wqe->state = QDMA_WQE_STATE_CANCELED_HW;
 	} else {
 		wqe->state = QDMA_WQE_STATE_CANCELED;
