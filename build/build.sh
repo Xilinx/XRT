@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# can we give an option to build awsmgmt?
+
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
