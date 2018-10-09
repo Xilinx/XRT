@@ -35,6 +35,7 @@
 
 #include <memory>
 #include <cstring>
+#include <cerrno>
 #include <algorithm>
 #include <thread>
 #include <list>
@@ -107,7 +108,8 @@ launch(command_type cmd)
   // Submit the command
   auto device = cmd->get_device();
   auto exec_bo = cmd->get_exec_bo();
-  device->exec_buf(exec_bo);
+  if (device->exec_buf(exec_bo))
+    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
 
   // thread safe access, since guaranteed to be inserted in init
   auto& submitted_cmds = s_device_cmds[device];
