@@ -566,13 +566,12 @@ freeStreamBuf(hal::StreamBufHandle buf)
 
 ssize_t 
 device::
-writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
 {
   //TODO:
   (void)offset;
-  (void)flags;
   xclQueueRequest req;
-  xclWRBuffer buffer;
+  xclReqBuffer buffer;
 
   buffer.va = (uint64_t)ptr;
   buffer.len = size;
@@ -583,18 +582,21 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
 //  req,op_code = XCL_QUEUE_WRITE;
 //  req.bufs.buf = const_cast<char*>(ptr);
 //  req.bufs.len = size;
-//  req.flag = XCL_QUEUE_DEFAULT;
+  req.flag = request->flags;
+
+  req.timeout = request->timeout;
+  req.priv_data = request->priv_data;
+
   return m_ops->mWriteQueue(m_handle,stream,&req);
 }
 
 ssize_t 
 device::
-readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) 
+readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
 { 
   (void)offset;
-  (void)flags;
   xclQueueRequest req;
-  xclWRBuffer buffer;
+  xclReqBuffer buffer;
 
   buffer.va = (uint64_t)ptr;
   buffer.len = size;
@@ -603,10 +605,18 @@ readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal:
   req.bufs = &buffer;
   req.buf_num = 1;
 //  req,op_code = XCL_QUEUE_READ;
-//  req.bufs.buf = ptr;
-//  req.bufs.len = size;
-//  req.flag = XCL_QUEUE_DEFAULT;
+  req.flag = request->flags;
+
+  req.timeout = request->timeout;
+  req.priv_data = request->priv_data;
   return m_ops->mReadQueue(m_handle,stream,&req);
+}
+
+int
+device::
+pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout) {
+  xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
+  return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout); 
 }
 
 #ifdef PMD_OCL

@@ -21,7 +21,7 @@
 /* -Attributes -- */
 /* -xclbinid-- */
 static ssize_t xclbinid_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%llx\n", xdev->unique_id_last_bitstream);
@@ -31,7 +31,7 @@ static DEVICE_ATTR_RO(xclbinid);
 
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf, "%pUb\n", &xdev->xclbin_id);
@@ -49,21 +49,30 @@ static ssize_t userbar_show(struct device *dev,
 
 static DEVICE_ATTR_RO(userbar);
 
+static ssize_t user_pf_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	// The existence of entry indicates user function.
+	return sprintf(buf, "%s", "");
+}
+static DEVICE_ATTR_RO(user_pf);
+
 /* -live client contects-- */
 static ssize_t kdsstat_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
-		       get_live_client_size(xdev),
-		       atomic_read(&xdev->outstanding_execs),
-		       atomic64_read(&xdev->total_execs));
+	return sprintf(buf,
+		"context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
+		get_live_client_size(xdev),
+		atomic_read(&xdev->outstanding_execs),
+		atomic64_read(&xdev->total_execs));
 }
 static DEVICE_ATTR_RO(kdsstat);
 
 /* -live memory usage-- */
 static ssize_t memstat_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return xocl_mm_sysfs_stat(xdev, buf, false);
@@ -71,10 +80,10 @@ static ssize_t memstat_show(struct device *dev,
 static DEVICE_ATTR_RO(memstat);
 
 static ssize_t memstat_raw_show(struct device *dev,
-    struct device_attribute *attr, char *buf)
+	struct device_attribute *attr, char *buf)
 {
-    struct xocl_dev *xdev = dev_get_drvdata(dev);
-    return xocl_mm_sysfs_stat(xdev, buf, true);
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	return xocl_mm_sysfs_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
@@ -88,18 +97,20 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->debug_layout.size)
+	size = sizeof_sect(xdev->debug_layout, m_debug_ip_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->debug_layout.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->debug_layout.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->debug_layout.layout) + offset, nread);
+	memcpy(buffer, ((char *)xdev->debug_layout) + offset, nread);
 
 	return nread;
 }
@@ -120,16 +131,18 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 {
 	const struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= sizeof_ip_layout(xdev->layout))
+	size = sizeof_sect(xdev->layout, m_ip_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < sizeof_ip_layout(xdev->layout) - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = sizeof_ip_layout(xdev->layout) - offset;
+		nread = size - offset;
 
 	memcpy(buffer, ((char *)xdev->layout) + offset, nread);
 
@@ -146,25 +159,26 @@ static struct bin_attribute ip_layout_attr = {
 	.size = 0
 };
 
-
 //-Connectivity--
 static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->connectivity.size)
+	size = sizeof_sect(xdev->connectivity, m_connection);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->connectivity.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->connectivity.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->connectivity.connections) + offset, nread);
+	memcpy(buffer, ((char *)xdev->connectivity) + offset, nread);
 
 	return nread;
 
@@ -186,18 +200,20 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 {
 	struct xocl_dev *xdev;
 	u32 nread = 0;
+	size_t size = 0;
 
 	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	if (offset >= xdev->topology.size)
+	size = sizeof_sect(xdev->topology, m_mem_data);
+	if (offset >= size)
 		return 0;
 
-	if (count < xdev->topology.size - offset)
+	if (count < size - offset)
 		nread = count;
 	else
-		nread = xdev->topology.size - offset;
+		nread = size - offset;
 
-	memcpy(buffer, ((char *)xdev->topology.topology) + offset, nread);
+	memcpy(buffer, ((char *)xdev->topology) + offset, nread);
 
 	return nread;
 }
@@ -220,6 +236,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+	&dev_attr_user_pf.attr,
 	NULL,
 };
 

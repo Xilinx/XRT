@@ -26,6 +26,7 @@
 #include "xclbin.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
+#include "mgmt-ioctl.h"
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
@@ -76,6 +77,16 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_COPY2IO(ioaddr, buf, len)	\
 	memcpy_toio(ioaddr, buf, len)
 
+/* xclbin helpers */
+#define sizeof_sect(sect, data) \
+({ \
+	size_t ret; \
+	size_t data_size; \
+	data_size = (sect) ? sect->m_count * sizeof(typeof(sect->data)) : 0; \
+	ret = (sect) ? offsetof(typeof(*sect), data) + data_size : 0; \
+	(ret); \
+})
+
 #define	XOCL_PL_TO_PCI_DEV(pldev)		\
 	to_pci_dev(pldev->dev.parent)
 
@@ -101,6 +112,9 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define RHEL_P2P_SUPPORT  0
 #endif
 
+#define INVALID_SUBDEVICE 		~0U
+#define NUMS_OF_DYNA_IP_ADDR   4
+
 extern struct class *xrt_class;
 
 struct xocl_dev;
@@ -110,25 +124,6 @@ struct client_ctx;
 struct xocl_subdev {
 	struct platform_device 		*pldev;
 	void				*ops;
-};
-
-struct xocl_mem_topology {
-        //TODO : check the first 4 entries - remove unneccessary ones.
-        u32                  bank_count;
-        struct mem_data     *m_data;
-        u32                  m_data_length; /* length of the mem_data section */
-        u64                  size;
-        struct mem_topology *topology;
-};
-
-struct xocl_connectivity {
-        u64                     size;
-        struct connectivity     *connections;
-};
-
-struct xocl_debug_layout {
-        u64                     size;
-        struct debug_ip_layout  *layout;
 };
 
 typedef	void *	xdev_handle_t;
@@ -185,6 +180,7 @@ struct xocl_dev_core {
 	u32			bar_idx;
         void *__iomem		bar_addr;
 	resource_size_t		bar_size;
+	resource_size_t		feature_rom_offset;
 
 	u32			intr_bar_idx;
         void *__iomem		intr_bar_addr;
@@ -193,6 +189,9 @@ struct xocl_dev_core {
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
+
+	u32			dyna_subdevs_id[XOCL_SUBDEV_NUM];
+	u32			dyna_subdevs_num;
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -333,9 +332,9 @@ struct xocl_mb_scheduler_funcs {
 	 MB_SCHEDULER_OPS(xdev)->validate(MB_SCHEDULER_DEV(xdev), client, bo) : \
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
-	(xdev->topology.m_data[ddr].m_used == 1)
+	(xdev->topology->m_mem_data[ddr].m_used == 1)
 #define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? xdev->topology.bank_count :	\
+	((xocl_is_unified(xdev) ? xdev->topology->m_count :	\
 	xocl_get_ddr_channel_count(xdev)))
 
 /* sysmon callbacks */
@@ -513,7 +512,7 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
-	char* (*ocl_get_clock_freq_topology)(struct platform_device *pdev);
+	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling* freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -534,8 +533,8 @@ struct xocl_icap_funcs {
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev))
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num)
-#define	xocl_icap_ocl_get_clock_freq_topology(xdev)		\
-	ICAP_OPS(xdev)->ocl_get_clock_freq_topology(ICAP_DEV(xdev))
+#define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs)
 #define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
 	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num)
 #define	xocl_icap_lock_bitstream(xdev, uuid, pid)			\
@@ -556,7 +555,11 @@ int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
         struct xocl_subdev_info *sdev_info, u32 subdev_num);
+void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
+
+uint32_t xocl_subdev_get_subid(uint32_t ip_type);
+int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, uint32_t sub_id);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
@@ -628,10 +631,5 @@ void xocl_fini_xmc(void);
 
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);
-/* xclbin helpers */
 
-static inline size_t sizeof_ip_layout(const struct ip_layout *layout)
-{
-	return layout ? offsetof(struct ip_layout, m_ip_data) + layout->m_count * sizeof(struct ip_data) : 0;
-}
 #endif

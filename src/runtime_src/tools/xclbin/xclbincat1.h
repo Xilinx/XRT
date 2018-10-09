@@ -61,6 +61,9 @@ class OptionParser {
       ST_MCS_PRIMARY,
       ST_MCS_SECONDARY,
       ST_BMC,
+      ST_BUILD_METADATA,
+      ST_KEYVALUE_METADATA,
+      ST_USER_METADATA,
       ST_UNKNOWN                        
     } SegmentType;
 

@@ -42,6 +42,7 @@ public:
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
   using cmd_type = std::shared_ptr<xrt::command>;
+  using connidx_type = xclbin::connidx_type;
 
   /**
    * Construct an xocl::device.
@@ -467,24 +468,27 @@ public:
   void
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
-  //streaming APIs. TODO : document them.
   int
-  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream);
+  get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& m_conn);
 
   int
-  close_stream(xrt::device::stream_handle stream);
+  close_stream(xrt::device::stream_handle stream, int connidx);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_flags flags);
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
 
   xrt::device::stream_buf
   alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
 
   int
   free_stream_buf(xrt::device::stream_buf_handle handle);
+
+  int 
+  poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
+
   /**
    * Read a device register at specified offset
    *
@@ -652,6 +656,8 @@ public:
   {
     return m_xdevice->get_cdma_count();
   }
+
+  void clear_connection(connidx_type conn);
 
 protected:
   /**

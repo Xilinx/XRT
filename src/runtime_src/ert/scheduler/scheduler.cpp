@@ -466,6 +466,10 @@ setup()
     write_reg(slot.slot_addr,0x0);
   }
 
+  //Clear CSR
+  for (size_type i=0; i<4; ++i)
+ 	 write_reg(STATUS_REGISTER_ADDR[i],0);
+
   cu_status.reset(num_cus);
 
   // Initialize cu_slot_usage
@@ -824,10 +828,27 @@ configure_mb(size_type slot_idx)
 static bool
 stop_mb(size_type slot_idx)
 {
-  // Any special work required to stop MB goes here
-  // Do we need to stop peripherals (cu_dma, cu_isr), if so, how?
+  auto& slot = command_slots[slot_idx];
+  ERT_DEBUGF("stop_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
-  notify_host(slot_idx);
+  // disable CUDMA module
+  cu_dma_enabled = 0;
+  write_reg(ERT_CU_DMA_ENABLE_ADDR,cu_dma_enabled);
+  // disable CUISR module
+  cu_interrupt_enabled = 0;
+  write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0);
+
+  //Wait for both to go back to IDLE. If system is in bad state we expect host to reset ERT properly
+  value_type cu_dma_state = read_reg(ERT_CUDMA_STATE);
+  value_type cu_isr_state = read_reg(ERT_CUISR_STATE);
+  while(cu_dma_state != ERT_HLS_MODULE_IDLE && cu_isr_state != ERT_HLS_MODULE_IDLE) {
+    cu_dma_state = read_reg(ERT_CUDMA_STATE);
+    cu_isr_state = read_reg(ERT_CUISR_STATE);
+  }
+
+  // Update registers so mgmt driver knows ERT has exited
+  slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+  write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
   exit(0);
   return true;
 }

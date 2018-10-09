@@ -74,7 +74,7 @@ static int qdma_thread_wrk_proc(struct list_head *work_item)
 		pr_debug("descq %s, wrk 0x%p.\n", descq->conf.name, cb);
 		rv = qdma_descq_proc_sgt_request(descq, cb);
 		if (rv < 0) { /* failed, return */
-			qdma_sgt_req_done(descq, cb, rv);
+			qdma_sgt_req_done(descq);
 		}
 		if (!descq->avail)
 			break;

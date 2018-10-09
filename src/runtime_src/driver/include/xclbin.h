@@ -154,7 +154,10 @@ extern "C" {
         DESIGN_CHECK_POINT,
         CLOCK_FREQ_TOPOLOGY,
         MCS,
-        BMC
+        BMC,
+        BUILD_METADATA,
+        KEYVALUE_METADATA,
+        USER_METADATA
     };
 
     enum MEM_TYPE {
@@ -287,14 +290,17 @@ extern "C" {
         AXI_TRACE_FUNNEL,
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
-        ACCEL_MONITOR
+        ACCEL_MONITOR,
+        AXI_STREAM_MONITOR
     };
 
     struct debug_ip_data {
         uint8_t m_type; // type of enum DEBUG_IP_TYPE
         uint8_t m_index;
         uint8_t m_properties;
-        uint8_t m_reserved[5];
+        uint8_t m_major;
+        uint8_t m_minor;
+        uint8_t m_reserved[3];
         uint64_t m_base_address;
         uint8_t m_name[128];
     };
@@ -350,6 +356,25 @@ extern "C" {
         char m_version[64];
         char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
         char m_padding[7];                 /* Padding */
+    };
+
+    enum CHECKSUM_TYPE
+    {
+        CST_UNKNOWN = 0,
+        CST_SDBM = 1,
+        CST_LAST 
+    };
+
+    struct checksum
+    {
+       char m_magic[8];                   /* XCHKSUM */
+       uint8_t m_type;                    /* Checksum Type*/
+       uint8_t padding[7];
+
+       union {
+          uint64_t m_64bit;             
+          unsigned char m_maxKeySize[256];  /* Do not change */
+       };
     };
 
     /**** END : Xilinx internal section *****/

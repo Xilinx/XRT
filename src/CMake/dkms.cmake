@@ -33,6 +33,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/mgmtpf/mgmt-core.h
   driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules
   driver/xclng/drm/xocl/mgmtpf/Makefile
+  driver/xclng/drm/xocl/devices.h
   driver/xclng/drm/xocl/xocl_drv.h
   driver/xclng/drm/xocl/xocl_subdev.c
   driver/xclng/drm/xocl/xocl_ctx.c
@@ -104,7 +105,6 @@ SET (XRT_DKMS_SRCS
   driver/xclng/include/mgmt-reg.h
   driver/xclng/include/mgmt-ioctl.h
   driver/xclng/include/qdma_ioctl.h
-  driver/xclng/include/devices.h
   driver/include/ert.h
   driver/include/xclfeatures.h
   driver/include/xclbin.h

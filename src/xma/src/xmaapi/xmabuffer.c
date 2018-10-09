@@ -53,6 +53,7 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
     {
         frame->data[i].refcount++;
         frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
+        frame->data[i].is_clone = false;
         // TODO: Get plane size for each plane
         frame->data[i].buffer = malloc(frame_props->width *
                                        frame_props->height);
@@ -80,6 +81,7 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
         frame->data[i].refcount++;
         frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
         frame->data[i].buffer = frame_data->data[i];
+        frame->data[i].is_clone = true;
     }
 
     return frame;
@@ -100,6 +102,9 @@ xma_frame_free(XmaFrame *frame)
     if (frame->data[0].refcount > 0)
         return;
 
+    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++)
+        free(frame->data[i].buffer);
+
     free(frame);
 }
 
@@ -113,6 +118,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
+    buffer->data.is_clone = true;
     buffer->data.buffer = data;
     buffer->alloc_size = size;
 
@@ -128,6 +134,7 @@ xma_data_buffer_alloc(size_t size)
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
+    buffer->data.is_clone = false;
     buffer->data.buffer = malloc(size);
     buffer->alloc_size = size;
 
@@ -142,6 +149,10 @@ xma_data_buffer_free(XmaDataBuffer *data)
     data->data.refcount--;
     if (data->data.refcount > 0)
         return;
+
+    if (!data->data.is_clone)
+        free(data->data.buffer);
+
     free(data);
 }
 

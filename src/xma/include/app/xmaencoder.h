@@ -24,6 +24,7 @@
  */
 
 #include "app/xmabuffers.h"
+#include "app/xmaparam.h"
 #include "lib/xmalimits.h"
 
 #ifdef __cplusplus
@@ -284,7 +285,12 @@ typedef struct XmaEncoderProperties
     /** aq_mode  */
     int32_t         aq_mode;
     int32_t         minQP;
+    /** force property values to be accepted by encoder plugin */
     int32_t         force_param;
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaEncoderProperties;
 
 /* Forward declaration */
@@ -305,6 +311,8 @@ typedef struct XmaEncoderSession XmaEncoderSession;
  *
  *  @return          Not NULL on success
  *  @return          NULL on failure
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 XmaEncoderSession*
 xma_enc_session_create(XmaEncoderProperties *enc_props);
@@ -320,6 +328,8 @@ xma_enc_session_create(XmaEncoderProperties *enc_props);
  *
  *  @return XMA_SUCCESS on success
  *  @return XMA_ERROR on failure.
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 int32_t
 xma_enc_session_destroy(XmaEncoderSession *session);
@@ -333,7 +343,10 @@ xma_enc_session_destroy(XmaEncoderSession *session);
  *  blocking flag is set to false, this function will return XMA_SEND_MORE_DATA.
  *
  *  @param session  Pointer to session created by xm_enc_sesssion_create
- *  @param frame    Pointer to a frame to be encoded
+ *  @param frame    Pointer to a frame to be encoded.  If the encoder
+ *      has buffered input, the input will need to be flushed.  To do so,
+ *      an XmaFrame with a null pointer to the first data buffer will need
+ *      to be sent until XMA_EOS is received (XmaFrame.data[0].buffer = NULL).
  *
  *  @return XMA_SUCCESS on success; indicates that sufficient data has
  *          been received to begin producing output
@@ -361,6 +374,7 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
  *  @param data_size Pointer to hold the size of the data buffer returned
  *
  *  @return        XMA_SUCCESS on success.
+ *  @return        XMA_EOS when all data has been flushed from the encoder
  *  @return        XMA_ERROR on error.
 */
 int32_t

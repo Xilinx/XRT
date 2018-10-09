@@ -161,6 +161,12 @@ loadDevices()
       createHalDevices(devices,p.string());
   }
 
+  if (devices.empty()) { // if failed libxrt_core load, try libxrt_aws
+    bfs::path p(xrt / "lib/libxrt_aws.so");
+    if (isDLL(p))
+      createHalDevices(devices,p.string());
+  }
+
   if (!xrt.empty() && isEmulationMode()) {
     directoryOrError(xrt);
 
@@ -207,7 +213,7 @@ load_xdp()
     xdp_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("libxdp.so");
+      bfs::path libname ("liboclxdp.so");
       if (xrt.empty()) {
         throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
       }

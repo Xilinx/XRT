@@ -51,6 +51,9 @@ public:
   using stream_buf = hal::StreamBuf;
   using stream_buf_handle = hal::StreamBufHandle;
 
+  using stream_xfer_req = hal::StreamXferReq;
+  using stream_xfer_completions = hal::StreamXferCompletions;
+
   explicit
   device(std::unique_ptr<hal::device>&& hal)
     : m_hal(std::move(hal)), m_setup_done(false)
@@ -477,15 +480,21 @@ public:
   };
 
   ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->writeStream(stream, ptr, offset, size, flags);
+    return m_hal->writeStream(stream, ptr, offset, size, req);
   };
 
   ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags)
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->readStream(stream, ptr, offset, size, flags);
+    return m_hal->readStream(stream, ptr, offset, size, req);
+  };
+
+  int
+  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)    
+  {
+    return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
 
 //End Streaming APIs

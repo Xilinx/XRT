@@ -846,6 +846,7 @@ struct qdma_request {
 	unsigned long uld_data;
 	/** set fp_done for non-blocking mode */
 	int (*fp_done)(struct qdma_request *, unsigned int bytes_done, int err);
+	int (*fp_cancel)(struct qdma_request *);
 	/** timeout in mili-seconds, 0 - no timeout */
 	unsigned int timeout_ms;
 	/** total data size */
@@ -857,7 +858,7 @@ struct qdma_request {
 	/** if sgt is already dma mapped */
 	u8 dma_mapped:1;
 	/** user defined data present */
-	u8 h2c_eot:1;
+	u8 eot:1;
 	/** indicates end of transfer towards user kernel */
 	u8 udd_len;
 	/** # of scatter-gather entries < 64K */

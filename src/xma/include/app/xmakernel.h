@@ -282,9 +282,14 @@ typedef enum XmaKernelType
 */
 typedef struct XmaKernelProperties
 {
-    XmaKernelType   hwkernel_type; /**< requested kernel type */
-    char            hwvendor_string[MAX_VENDOR_NAME]; /**< requested vendor */
-    XmaParameter    *param; /**< kernel-specific custom initialization parameters */
+    /** requested kernel type */
+    XmaKernelType   hwkernel_type;
+    /** requested vendor */
+    char            hwvendor_string[MAX_VENDOR_NAME];
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaKernelProperties;
 /**
  * @}
@@ -306,6 +311,8 @@ typedef struct XmaKernelSession XmaKernelSession;
  *
  *  @return       Not NULL on success
  *  @return       NULL on failure
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props);
@@ -321,6 +328,8 @@ xma_kernel_session_create(XmaKernelProperties *props);
  *
  *  @return        XMA_SUCCESS on success
  *  @return        XMA_ERROR on failure.
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 int32_t
 xma_kernel_session_destroy(XmaKernelSession *session);

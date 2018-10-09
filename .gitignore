@@ -9,3 +9,4 @@ docs/.doctrees
 tags
 *.mod
 *.ko
+*.nfs*

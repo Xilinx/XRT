@@ -17,10 +17,10 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:impl>
   )
 
-add_library(xdp SHARED ${OPENCL_SRC}
+add_library(oclxdp SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdpobj>
   )
-add_dependencies(xdp xilinxopencl)
+add_dependencies(oclxdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -35,9 +35,9 @@ endif()
 
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
-add_subdirectory(xdp)
 
 add_compile_options("-Wall" "-Werror")
+add_subdirectory(xdp)
 add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
 add_subdirectory(xclbin)
@@ -49,11 +49,11 @@ add_subdirectory(tools/scripts)
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_VERSION_MAJOR})
+  SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(xdp
+target_link_libraries(oclxdp
   xilinxopencl
-  )
+ )
 
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
@@ -64,6 +64,6 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-install (TARGETS xilinxopencl xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(driver)

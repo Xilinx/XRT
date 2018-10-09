@@ -19,9 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
+//#include <xclbin.h>
 #include "app/xmaerror.h"
 #include "lib/xmaxclbin.h"
 
@@ -29,7 +27,6 @@
 
 /* Private function */
 static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout);
-static int get_xclbin_ipfreqs(char *buffer, uint16_t *freq_list);
 
 char *xma_xclbin_file_open(const char *xclbin_name)
 {
@@ -52,25 +49,15 @@ char *xma_xclbin_file_open(const char *xclbin_name)
 
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
 {
-    int rc;
-
-    rc = get_xclbin_iplayout(buffer, info->ip_layout);
-    if (rc != 0)
-        return rc;
-
-    rc = get_xclbin_ipfreqs(buffer, info->freq_list);
-    if (rc != 0)
-        return rc;
-
-    return XMA_SUCCESS;
+    return get_xclbin_iplayout(buffer, info->ip_layout);
 }
 
 static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
 {
-    int rc = 0;
-    xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(buffer)};
+    //int rc = XMA_SUCCESS;
+    axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(obj.xclbin,
+    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin,
                                                                 IP_LAYOUT);
     if (ip_hdr)
     {
@@ -87,55 +74,11 @@ static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
         }
     }
     else
-        rc = XMA_ERROR;
-
-    return rc;
-}
-
-static int get_xclbin_ipfreqs(char *buffer,  uint16_t *freq_list)
-{
-    int rc = 0;
-    xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(buffer)};
-
-    const axlf_section_header *em_hdr = xclbin::get_axlf_section(obj.xclbin,
-                                                                EMBEDDED_METADATA);
-    if (em_hdr)
     {
-        char *data = &buffer[em_hdr->m_sectionOffset];
-        xmlDocPtr doc = xmlReadMemory(data, em_hdr->m_sectionSize,
-                                      "noname.xml", NULL, 0);
-        if (doc == NULL)
-        {
-            xma_logmsg("XMA xclbin: Could not parse embedded metadata\n");
-            rc = XMA_ERROR;
-        }
-        else
-        {
-            xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
-            const xmlChar* xpathExpr = (const xmlChar*)"//clock";
-            xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression(xpathExpr,
-                                                                xpathCtx);
-            if (xpathObj == NULL)
-            {
-                xma_logmsg("XMA xclbin: Could not evaluate XPath\n");
-                rc = XMA_ERROR;
-            }
-            else
-            {
-                for (int32_t i = 0; i < xpathObj->nodesetval->nodeNr; i++)
-                {
-                    xmlNode *node = xpathObj->nodesetval->nodeTab[i];
-                    xmlChar *freq = xmlGetProp(node,
-                                              (const xmlChar*)"frequency");
-                    xma_logmsg("XMA xclbin: string freq[%d]=%s\n", i, freq);
-                    freq_list[i] = (int)(atof((const char*)freq));
-                    xma_logmsg("XMA xclbin: number freq[%d]=%d\n", i, freq_list[i]);
-                }
-            }
-        }
+        printf("Could not find IP_LAYOUT in xclbin ip_hdr=%p\n", ip_hdr);
+        //rc = XMA_ERROR;
+        return XMA_ERROR;
     }
-    else
-        rc = XMA_ERROR;
 
-    return rc;
+    return XMA_SUCCESS;
 }

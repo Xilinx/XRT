@@ -35,6 +35,12 @@
 #define	MINOR_PRI_HIGH_BIT	0x10000
 #define MINOR_NAME_MASK		0xffff
 
+enum xvc_algo_type {
+	XVC_ALGO_NULL,
+	XVC_ALGO_CFG,
+	XVC_ALGO_BAR
+};
+
 struct xil_xvc_ioc {
 	unsigned opcode;
 	unsigned length;
@@ -43,7 +49,16 @@ struct xil_xvc_ioc {
 	unsigned char *tdo_buf;
 };
 
-#define XDMA_IOCXVC	_IOWR(XIL_XVC_MAGIC, 1, struct xil_xvc_ioc)
+struct xil_xvc_properties {
+	unsigned int xvc_algo_type;
+    unsigned int config_vsec_id;
+    unsigned int config_vsec_rev;
+    unsigned int bar_index;
+    unsigned int bar_offset;
+};
+
+#define XDMA_IOCXVC	     _IOWR(XIL_XVC_MAGIC, 1, struct xil_xvc_ioc)
+#define XDMA_RDXVC_PROPS _IOR(XIL_XVC_MAGIC, 2, struct xil_xvc_properties)
 
 #define COMPLETION_LOOP_MAX	100
 
@@ -63,6 +78,8 @@ struct xocl_xvc {
 };
 
 static dev_t xvc_dev;
+
+static struct xil_xvc_properties xvc_pci_props;
 
 #ifdef __REG_DEBUG__
 /* SECTION: Function definitions */
@@ -93,14 +110,18 @@ static int xvc_shift_bits(void *base, u32 tms_bits, u32 tdi_bits,
 			u32 *tdo_bits)
 {
 	u32 control;
+	u32 write_reg_data;
 	int count;
 
 	/* set tms bit */
 	write_register(tms_bits, base, XVC_BAR_TMS_REG);
 	/* set tdi bits and shift data out */
 	write_register(tdi_bits, base, XVC_BAR_TDI_REG);
+
+	control = read_register(base, XVC_BAR_CTRL_REG);
 	/* enable shift operation */
-	write_register(0x1, base, XVC_BAR_CTRL_REG);
+	write_reg_data = control | 0x01;
+	write_register(write_reg_data, base, XVC_BAR_CTRL_REG);
 
 	/* poll for completion */
 	count = COMPLETION_LOOP_MAX;
@@ -136,6 +157,8 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	unsigned char *tdi_buf = NULL;
 	unsigned char *tdo_buf = NULL;
 	void __iomem *iobase = xvc->base;
+	u32 control_reg_data;
+	u32 write_reg_data;
 	int rv;
 
 	rv = copy_from_user((void *)&xvc_obj, arg,
@@ -179,6 +202,14 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 		goto cleanup;
 	}
 
+	// If performing loopback test, set loopback bit (0x02) in control reg
+	if (opcode == 0x02)
+	{
+		control_reg_data = read_register(iobase, XVC_BAR_CTRL_REG);
+		write_reg_data = control_reg_data | 0x02;
+		write_register(write_reg_data, iobase, XVC_BAR_CTRL_REG);
+	}
+
 	/* set length register to 32 initially if more than one
  	 * word-transaction is to be done */
 	if (total_bits >= 32)
@@ -209,12 +240,12 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 		memcpy(tdo_buf + bytes, &tdo_store, shift_bytes);
 	}
 
-	/* if testing bar access swap tdi and tdo bufferes to "loopback" */
-	if (opcode == 0x2) {
-		char *tmp = tdo_buf;
-
-		tdo_buf = tdi_buf;
-		tdi_buf = tmp;
+	// If performing loopback test, reset loopback bit in control reg
+	if (opcode == 0x02)
+	{
+		control_reg_data = read_register(iobase, XVC_BAR_CTRL_REG);
+		write_reg_data = control_reg_data & ~(0x02);
+		write_register(write_reg_data, iobase, XVC_BAR_CTRL_REG);
 	}
 
 	rv = copy_to_user((void *)xvc_obj.tdo_buf, tdo_buf, total_bytes);
@@ -233,10 +264,44 @@ cleanup:
 	return rv;
 }
 
+static long xvc_read_properties(struct xocl_xvc *xvc, const void __user *arg)
+{
+	int status = 0;
+	struct xil_xvc_properties xvc_props_obj;
+
+	xvc_props_obj.xvc_algo_type   = (unsigned int) xvc_pci_props.xvc_algo_type;
+	xvc_props_obj.config_vsec_id  = xvc_pci_props.config_vsec_id;
+	xvc_props_obj.config_vsec_rev = xvc_pci_props.config_vsec_rev;
+	xvc_props_obj.bar_index 	  = xvc_pci_props.bar_index;
+	xvc_props_obj.bar_offset	  = xvc_pci_props.bar_offset;
+
+	if (copy_to_user((void *)arg, &xvc_props_obj, sizeof(xvc_props_obj))) {
+		status = -ENOMEM;
+	}
+
+	mmiowb();
+	return status;
+}
+
 static long xvc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_xvc *xvc = filp->private_data;
-	return xvc_ioctl_helper(xvc, (void __user *)arg);
+	long status = 0;
+
+	switch (cmd)
+	{
+		case XDMA_IOCXVC:
+			status = xvc_ioctl_helper(xvc, (void __user *)arg);
+			break;
+		case XDMA_RDXVC_PROPS:
+			status = xvc_read_properties(xvc, (void __user *)arg);
+			break;
+		default:
+			status = -ENOIOCTLCMD;
+			break;
+	}
+
+	return status;
 }
 
 static int char_open(struct inode *inode, struct file *file)
@@ -315,6 +380,14 @@ static int xvc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xvc);
 	xocl_info(&pdev->dev, "XVC device instance %d initialized\n",
 		xvc->instance);
+
+	// Update PCIe BAR properties in a global structure
+	xvc_pci_props.xvc_algo_type   = XVC_ALGO_BAR;
+	xvc_pci_props.config_vsec_id  = 0;
+	xvc_pci_props.config_vsec_rev = 0;
+	xvc_pci_props.bar_index       = core->bar_idx;
+	xvc_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
+									pci_resource_start(core->pdev, core->bar_idx);
 
 failed:
 	return err;

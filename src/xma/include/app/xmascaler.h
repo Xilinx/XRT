@@ -155,19 +155,35 @@ extern "C" {
  *  // For this example it is assumed that session is a pointer to
  *  // a previously created scaler session and an XmaFrame has been
  *  // created using the @ref xma_frame_from_buffers_clone() function.
- *  int32_t rc;
- *  rc = xma_scaler_session_send_frame(session, frame);
- *  if (rc != 0)
+ *
+ *  // In presence of a scaler pipeline, XMA_SEND_MORE_DATA return code  
+ *  // is sent by xma_scaler_session_send_frame() until the pipeline is filled.  
+ *  // Subsequently  before closing scaler, NULL frames are sent to 
+ *  // xma_scaler_session_send_frame()  until all the frames are flushed from 
+ *  // pipeline with XMA_FLUSH_AGAIN.  
+ *  // frame->data[0].buffer = NULL;
+ *  // frame->data[1].buffer = NULL;
+ *  // frame->data[2].buffer = NULL; 
+ *  // And a final XMA_EOS return code ends the scaler processing. 
+ *
+ *  int32_t send_rc;
+ *  int32_t recv_rc;
+ *  send_rc = xma_scaler_session_send_frame(session, frame);
+ *  if (send_rc == XMA_EOS)
  *  {
- *      // Log error indicating frame could not be accepted
- *      return rc;
+ *      // destroy session and cleanup
+ *      return 0;
  *  }
+ *  
  *
  *  // Get the scaled frame list if it is available. It is assumed that
  *  // the caller will provide a list of pointers to XmaFrame structures
  *  // that are large enough to hold the scaled output for each selected
  *  // resolution.
- *
+ *  // For XMA_SEND_MORE_DATA return code from xma_scaler_session_send_frame()
+ *  // xma_scaler_session_recv_frame_list() is skipped as the output will not be available yet.
+ *  // It will get the scaler outputs with a XMA_SUCCESS or a XMA_FLUSH_AGAIN return code.  
+ *  
  *  XmaFrame *frame_list[2];
  *
  *  XmaFrameProperties fprops;
@@ -180,12 +196,15 @@ extern "C" {
  *  fprops.width = 640;
  *  fprops.height = 480;
  *  frame_list[1] = xma_frame_alloc(&fprops);
- *  rc = xma_scaler_session_recv_frame_list(session, frame_list);
- *  if (rc != 0)
+ *  if ((send_rc==XMA_SUCCESS)||(send_rc==XMA_FLUSH_AGAIN))
  *  {
- *      // No data to return at this time
- *      // Tell framework there is no available data
- *      return rc;
+ *       recv_rc = xma_scaler_session_recv_frame_list(session, frame_list);
+ *       if (recv_rc != XMA_SUCCESS)
+ *       {
+ *          // No data to return at this time
+ *          // Tell framework there is no available data
+ *          return (-1);
+ *       }
  *  }
  *  // Provide scaled frames to framework
  *  ...
@@ -298,14 +317,26 @@ typedef struct XmaScalerSession XmaScalerSession;
 */
 typedef struct XmaScalerProperties
 {
-    XmaScalerType             hwscaler_type; /**< specific filter function requested */
-    XmaSession                *destination; /**< downstream kernel receiving data from this filter */
-    uint32_t                  max_dest_cnt; /**< maximum number of scaled outputs */
-    char                      hwvendor_string[MAX_VENDOR_NAME]; /**< specific vendor filter originated from */
-    int32_t                   num_outputs; /**< number of actual scaled outputs */
-    XmaScalerFilterProperties filter_coefficients; /**< application-specified filter coefficients */
-    XmaScalerInOutProperties  input; /**< input properties */
-    XmaScalerInOutProperties  output[MAX_SCALER_OUTPUTS]; /**< output properties array */
+    /** specific filter function requested */
+    XmaScalerType             hwscaler_type;
+    /** downstream kernel receiving data from this filter */
+    XmaSession                *destination;
+    /** maximum number of scaled outputs */
+    uint32_t                  max_dest_cnt;
+    /** specific vendor filter originated from */
+    char                      hwvendor_string[MAX_VENDOR_NAME];
+    /** number of actual scaled outputs */
+    int32_t                   num_outputs;
+    /** application-specified filter coefficients */
+    XmaScalerFilterProperties filter_coefficients;
+    /** input properties */
+    XmaScalerInOutProperties  input;
+    /** output properties array */
+    XmaScalerInOutProperties  output[MAX_SCALER_OUTPUTS];
+    /** array of kernel-specific custom initialization parameters */
+    XmaParameter    *params;
+    /** count of custom parameters for port */
+    uint32_t        param_cnt;
 } XmaScalerProperties;
 
 /**
@@ -344,6 +375,8 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props);
  *
  *  @return      Not NULL on success
  *  @return      NULL on failure
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *props);
@@ -359,6 +392,8 @@ xma_scaler_session_create(XmaScalerProperties *props);
  *
  *  @return        XMA_SUCCESS on success
  *  @return        XMA_ERROR on failure.
+ *
+ *  @note Cannot be presumed to be thread safe.
 */
 int32_t
 xma_scaler_session_destroy(XmaScalerSession *session);
@@ -370,10 +405,22 @@ xma_scaler_session_destroy(XmaScalerSession *session);
  *  buffer is not available and this interface will block.
  *
  *  @param session  Pointer to session created by xma_scaler_sesssion_create
- *  @param frame    Pointer to a frame to be scaled
+ *  @param frame    Pointer to a frame to be scaled.  If the scaler is
+ *      buffering input, then an XmaFrame with a NULL data buffer
+ *      pointer to the first data buffer must be sent to flush the filter and
+ *      to indicate that no more data will be sent:
+ *      XmaFrame.data[0].buffer = NULL
+ *      The application must then check for XMA_FLUSH_AGAIN for each such call
+ *      when flushing the last few frames.  When XMA_EOS is returned, no new
+ *      data may be collected from the scaler.
  *
- *  @return        XMA_SUCCESS on success.
- *  @return        XMA_ERROR on error.
+ *  @return        XMA_SUCCESS on success and the scaler is ready to
+ *                  produce output
+ *  @return        XMA_SEND_MORE_DATA if the scaler is buffering input frames
+ *  @return        XMA_FLUSH_AGAIN when flushing scaler with a null frame
+ *  @return        XMA_EOS when the scaler has been flushed of all residual
+ *                  frames
+ *  @return        XMA_ERROR on error
 */
 int32_t
 xma_scaler_session_send_frame(XmaScalerSession *session,
@@ -390,8 +437,8 @@ xma_scaler_session_send_frame(XmaScalerSession *session,
  *  @param session    Pointer to session created by xma_scaler_sesssion_create
  *  @param frame_list Pointer to a list of XmaFrame structures
  *
- *  @return        XMA_SUCCESS on success.
- *  @return        XMA_ERROR on error.
+ *  @return        XMA_SUCCESS on success
+ *  @return        XMA_ERROR on error
 */
 int32_t
 xma_scaler_session_recv_frame_list(XmaScalerSession *session,

@@ -1,0 +1,317 @@
+{
+    "schema_version": {
+        "major": "1",
+        "minor": "0",
+        "patch": "0"
+    },
+    "build_metadata": {
+        "dsa": {
+            "vendor": "xilinx",
+            "board_id": "vcu1525",
+            "version_major": "5",
+            "version_minor": "2",
+            "description": "",
+            "board": {
+                "name": "xilinx.com:vcu1525:1.1",
+                "vendor": "xilinx.com",
+                "part": "xcvu9p-fsgd2104-2L-e",
+                "board_part": "xilinx.com:vcu1525:part0:1.1"
+            },
+            "feature_roms": {
+                "feature_rom": {
+                    "version_major": "10",
+                    "version_minor": "0",
+                    "vivado_build_id": "2251194",
+                    "ip_build_id": "2250834",
+                    "time_epoch": "1528338249",
+                    "fpga_part_name": "xcvu9p-fsgd2104-2L-e",
+                    "vbnv_name": "xilinx_vcu1525_dynamic_5_2",
+                    "ddr_channel_count": "4",
+                    "ddr_channel_size": "16",
+                    "dr_base_address": "0",
+                    "feature_bit_map": {
+                        "value": "0x20d",
+                        "unified_platform": "enabled",
+                        "aurora_link": "disabled",
+                        "board_mgmt": "enabled",
+                        "board_scheduler": "enabled",
+                        "prom_type": "0x0",
+                        "debug_type": "0x2",
+                        "peer_to_peer": "disabled",
+                        "uuid": "disabled",
+                        "hbm": "disabled"
+                    },
+                    "uuid": "7702e878-5660-42dd-be74-1605d6967909"
+                }
+            },
+            "xclbin": {
+                "generated_by": {
+                    "name": "xilinx_test_product",
+                    "version": "2100.1",
+                    "cl": "0",
+                    "timestamp": "Wed Oct  3 10:04:04 2018",
+                    "options": ""
+                }
+            },
+            "user_regions": {
+                "user_region": {
+                    "name": "OCL_REGION_0",
+                    "type": "clc_region",
+                    "instance_path": "pfm_top_i\/dynamic_region",
+                    "base_address": "",
+                    "kernels": {
+                        "kernel": {
+                            "name": "output_stage",
+                            "ports": {
+                                "port": {
+                                    "name": "M_AXI_GMEM",
+                                    "mode": "master",
+                                    "range": "0xFFFFFFFF",
+                                    "data_width": "64",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                },
+                                "port": {
+                                    "name": "S_AXI_CONTROL",
+                                    "mode": "slave",
+                                    "range": "0x1000",
+                                    "data_width": "32",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                }
+                            },
+                            "arguments": {
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x10",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x18",
+                                    "host_offset": "0x4",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x20",
+                                    "host_offset": "0x8",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "input",
+                                    "address_qualifier": "1",
+                                    "id": "0",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x28",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "long*"
+                                },
+                                "argument": {
+                                    "name": "sink",
+                                    "address_qualifier": "1",
+                                    "id": "1",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x34",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "long*"
+                                }
+                            },
+                            "instances": {
+                                "instance": {
+                                    "name": "output_stage_cu0"
+                                }
+                            }
+                        },
+                        "kernel": {
+                            "name": "input_stage",
+                            "ports": {
+                                "port": {
+                                    "name": "M_AXI_GMEM",
+                                    "mode": "master",
+                                    "range": "0xFFFFFFFF",
+                                    "data_width": "32",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                },
+                                "port": {
+                                    "name": "S_AXI_CONTROL",
+                                    "mode": "slave",
+                                    "range": "0x1000",
+                                    "data_width": "32",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                }
+                            },
+                            "arguments": {
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x10",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x18",
+                                    "host_offset": "0x4",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x20",
+                                    "host_offset": "0x8",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "src",
+                                    "address_qualifier": "1",
+                                    "id": "0",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x28",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "int*"
+                                },
+                                "argument": {
+                                    "name": "output",
+                                    "address_qualifier": "1",
+                                    "id": "1",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x34",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "int*"
+                                }
+                            },
+                            "instances": {
+                                "instance": {
+                                    "name": "input_stage_cu0"
+                                }
+                            }
+                        },
+                        "kernel": {
+                            "name": "adder_stage",
+                            "ports": {
+                                "port": {
+                                    "name": "M_AXI_GMEM",
+                                    "mode": "master",
+                                    "range": "0xFFFFFFFF",
+                                    "data_width": "32",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                },
+                                "port": {
+                                    "name": "S_AXI_CONTROL",
+                                    "mode": "slave",
+                                    "range": "0x1000",
+                                    "data_width": "32",
+                                    "port_type": "addressable",
+                                    "base": "0x0"
+                                }
+                            },
+                            "arguments": {
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x10",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x18",
+                                    "host_offset": "0x4",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "local_size",
+                                    "address_qualifier": "0",
+                                    "id": "",
+                                    "port": "S_AXI_CONTROL",
+                                    "size": "0x4",
+                                    "offset": "0x20",
+                                    "host_offset": "0x8",
+                                    "host_size": "0x4",
+                                    "type": "uint"
+                                },
+                                "argument": {
+                                    "name": "input",
+                                    "address_qualifier": "1",
+                                    "id": "0",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x28",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "int*"
+                                },
+                                "argument": {
+                                    "name": "output",
+                                    "address_qualifier": "1",
+                                    "id": "1",
+                                    "port": "M_AXI_GMEM",
+                                    "size": "0x8",
+                                    "offset": "0x34",
+                                    "host_offset": "0x0",
+                                    "host_size": "0x8",
+                                    "type": "int*"
+                                }
+                            },
+                            "instances": {
+                                "instance": {
+                                    "name": "adder_stage_cu0"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2018 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  * Author(s): Max Zhen
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -14,15 +14,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <iostream>
-#include <iomanip>
 #include <string>
-#include <list>
-#include <fstream>
 #include <cassert>
-#include <map>
 #include <vector>
-#include <chrono>
 #include <thread>
 
 #include "xmc.h"
@@ -37,10 +31,9 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index, char *inMap)
     mMgmtMap = inMap;
     mPktBufOffset = 0;
     mPkt = {};
-    xcldev::pci_device_scanner scanner;
-    auto& dev = scanner.device_list.at(device_index);
+    auto dev = pcidev::get_dev(device_index);
 
-    if (!dev.is_mfg) {
+    if (!dev->is_mfg) {
         if(Flasher::pcieBarRead(0, (unsigned long long)mMgmtMap +
             XMC_GPIO_RESET, &val, sizeof (val)) != 0 || val == 0) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";

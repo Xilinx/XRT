@@ -47,10 +47,10 @@ module_param(health_check, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(health_check,
 	"Enable health thread that checks the status of AXI Firewall and SYSMON. (0 = disable, 1 = enable)");
 
-int skip_load_dsabin = 0;
-module_param(skip_load_dsabin, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(skip_load_dsabin,
-	"Enable skip_load_dsabin to force driver to load without vailid dsabin. Thus xbsak flash is able to upgrade firmware. (0 = load dsabin, 1 = skip load dsabin)");
+int minimum_initialization = 0;
+module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(minimum_initialization,
+	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
 #define	LOW_TEMP		0
 #define	HI_TEMP			85000
@@ -267,7 +267,10 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 		false);
 }
 
-/* maps the PCIe BAR into user space for memory-like access using mmap() */
+/*
+ * Maps the PCIe BAR into user space for memory-like access using mmap().
+ * Callable even when lro->ready == false.
+ */
 static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int rc;
@@ -400,8 +403,7 @@ static int destroy_sg_char(struct xclmgmt_char *lro_char)
 	return 0;
 }
 
-struct pci_dev *find_user_node(const struct pci_dev *pdev,
-	const struct pci_device_id *id)
+struct pci_dev *find_user_node(const struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
 	unsigned int slot = PCI_SLOT(pdev->devfn);
@@ -409,8 +411,6 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev,
 	struct pci_dev *user_dev;
 
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(&pdev->dev);
-	mgmt_info(lro, "slot:%d, func:%d, vendor:0x%04x, device:0x%04x)",
-	       slot, func, id->vendor, id->device);
 
 	/*
 	 * if we are function one then the zero
@@ -650,6 +650,91 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
+/*
+ * Called after minimum initialization is done. Should not return failure.
+ * If something goes wrong, it should clean up and return back to minimum
+ * initialization stage.
+ */
+static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
+{
+	int ret;
+	struct xocl_board_private *dev_info = &lro->core.priv;
+	struct pci_dev *pdev = lro->pci_dev;
+
+	lro->user_pci_dev = find_user_node(pdev);
+	if (!lro->user_pci_dev) {
+		xocl_err(&pdev->dev,
+			"could not find user pf for instance %d\n",
+			lro->instance);
+	}
+
+	/* We can only support MSI-X. */
+	ret = xclmgmt_setup_msix(lro);
+	if (ret && (ret != -EOPNOTSUPP)) {
+		xocl_err(&pdev->dev, "set up MSI-X failed\n");
+		goto fail;
+	}
+	lro->core.pci_ops = &xclmgmt_pci_ops;
+	lro->core.pdev = pdev;
+
+	/*
+	 * Workaround needed on some platforms. Will clear out any stale
+	 * data after the platform has been reset
+	 */
+	ret = xocl_subdev_create_one(lro,
+		&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to register firewall\n");
+		goto fail_firewall;
+	}
+	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+		platform_axilite_flush(lro);
+
+	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
+		dev_info->subdev_num);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to register subdevs\n");
+		goto fail_all_subdev;
+	}
+	xocl_err(&pdev->dev, "created all sub devices");
+
+	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret)
+		goto fail_all_subdev;
+
+	ret = xocl_ctx_init(&pdev->dev, &lro->ctx_table,
+		MGMT_PROC_TABLE_HASH_SZ, proc_hash, proc_cmp);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to create ctx table\n");
+		goto fail_all_subdev;
+	}
+
+	xocl_af_start_health_check(lro, health_check_cb, lro,
+		health_interval * 1000);
+
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
+	lro->ready = true;
+	xocl_err(&pdev->dev, "device fully initialized\n");
+	return;
+
+fail_all_subdev:
+	xocl_subdev_destroy_all(lro);
+fail_firewall:
+	xclmgmt_teardown_msix(lro);
+fail:
+	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
+}
+
+/*
+ * Device initialization is done in two phases:
+ * 1. Minimum initialization - init to the point where open/close/mmap entry
+ * points are working, sysfs entries work without register access, ioctl entry
+ * point is completely disabled.
+ * 2. Full initialization - driver is ready for use.
+ * Once we pass minimum initialization point, probe function shall not fail.
+ */
 static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	int rc = 0;
@@ -670,13 +755,17 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro = kzalloc(sizeof(struct xclmgmt_dev), GFP_KERNEL);
 	if (!lro) {
 		xocl_err(&pdev->dev, "Could not kzalloc(xclmgmt_dev).\n");
+		rc = -ENOMEM;
 		goto err_alloc;
 	}
+
 	/* create a device to driver reference */
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
 	lro->core.pdev = pdev;
+	memset(lro->core.dyna_subdevs_id, 0xff, sizeof(u32) * XOCL_SUBDEV_NUM);
 	lro->pci_dev = pdev;
+	lro->ready = false;
 
 	rc = pci_request_regions(pdev, DRV_NAME);
 	/* could not request all regions? */
@@ -697,80 +786,26 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->user_char_dev = create_char(lro);
 	if (!lro->user_char_dev) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
+		rc = -EINVAL;
 		goto err_cdev;
 	}
-
-	lro->user_pci_dev = find_user_node(pdev, id);
-	if (!lro->user_pci_dev) {
-		xocl_err(&pdev->dev,
-			"Could not find user pf for instance %d\n",
-			lro->instance);
-	}
-
-        /* We can only support MSI-X. */
-
-        rc = xclmgmt_setup_msix(lro);
-        if (rc && (rc != -EOPNOTSUPP)) {
-		xocl_err(&pdev->dev, "set up MSI-X failed\n");
-		goto err_intr;
-	}
-
-	lro->core.pci_ops = &xclmgmt_pci_ops;
-	lro->core.pdev = pdev;
-
-	/*
-	 * Workaround needed on some platforms. Will clear out any stale
-	 * data after the platform has been reset
-	 */
-	/*if (XOCL_DSA_AXILITE_FLUSH_REQUIRED(lro))*/ {
-		rc = xocl_subdev_create_one(lro,
-			&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
-		if (rc) {
-			xocl_err(&pdev->dev, "failed to register firewall");
-			goto err_user;
-		}
-		platform_axilite_flush(lro);
-	}
-
-	rc = xocl_subdev_create_all(lro, dev_info->subdev_info,
-		dev_info->subdev_num);
-	if (rc) {
-		xocl_err(&pdev->dev, "failed to register subdevs");
-		goto err_load_dsabin;
-	}
-
-	xocl_err(&pdev->dev, "created all sub devices");
-	if (!skip_load_dsabin) {
-		rc = xocl_icap_download_boot_firmware(lro);
-		if (rc) {
-			goto err_load_dsabin;
-		}
-		xocl_mb_reset(lro);
-	}
-
-	rc = xocl_ctx_init(&pdev->dev, &lro->ctx_table, MGMT_PROC_TABLE_HASH_SZ,
-		proc_hash, proc_cmp);
-	if (rc) {
-		xocl_err(&pdev->dev, "failed to create ctx table rc = %d", rc);
-		goto err_load_dsabin;
-	}
-
-	mgmt_init_sysfs(&pdev->dev);
 	mutex_init(&lro->busy_mutex);
 
-	xocl_af_start_health_check(lro, health_check_cb, lro,
-		health_interval * 1000);
-	/* Launch the mailbox server. */
-        (void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	mgmt_init_sysfs(&pdev->dev);
+
+	/* Probe will not fail from now on. */
+	xocl_err(&pdev->dev, "minimum initialization done\n");
+
+	/* No further initialization for MFG board. */
+	if (minimum_initialization ||
+		(dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+		return 0;
+	}
+
+	xclmgmt_extended_probe(lro);
 
 	return 0;
 
-err_load_dsabin:
-	xocl_subdev_destroy_all(lro);
-	xclmgmt_teardown_msix(lro);
-err_intr:
-err_user:
-	destroy_sg_char(lro->user_char_dev);
 err_cdev:
 	unmap_bars(lro);
 err_map:
@@ -797,6 +832,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	mgmt_fini_sysfs(&pdev->dev);
+
 	xocl_subdev_destroy_all(lro);
 
 	/* free contexts */
@@ -815,7 +852,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	pci_release_regions(pdev);
 
 	kfree(lro);
-	mgmt_fini_sysfs(&pdev->dev);
 	dev_set_drvdata(&pdev->dev, NULL);
 }
 

@@ -439,6 +439,8 @@ static void chan_msg_done(struct mailbox_channel *ch, int err)
 	msg_done(ch->mbc_cur_msg, err);
 	ch->mbc_cur_msg = NULL;
 	ch->mbc_bytes_done = 0;
+
+	chan_config_timer(ch);
 }
 
 void timeout_msg(struct mailbox_channel *ch)
@@ -479,8 +481,6 @@ void timeout_msg(struct mailbox_channel *ch)
 	}
 
 	mutex_unlock(&ch->mbc_mutex);
-	
-	chan_config_timer(ch);
 
 	if (!list_empty(&l))
 		MBX_ERR(mbx, "found waiting msg time'd out");

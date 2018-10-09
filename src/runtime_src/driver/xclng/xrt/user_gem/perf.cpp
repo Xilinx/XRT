@@ -145,6 +145,7 @@ namespace xocl {
   uint64_t XOCLShim::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
     if (type == XCL_PERF_MON_MEMORY)         return mPerfMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_ACCEL)     return mAccelMonBaseAddress[slotNum];
+    if (type == XCL_PERF_MON_STR)       return mStreamMonBaseAddress[slotNum];
     return 0;
   }
 
@@ -183,6 +184,8 @@ namespace xocl {
       }
       return count;
     }
+    if (type == XCL_PERF_MON_STR)
+      return mStreamProfilingNumberSlots;
     return 0;
   }
 
@@ -194,6 +197,9 @@ namespace xocl {
     }
     if (type == XCL_PERF_MON_ACCEL) {
       str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+    }
+    if (type == XCL_PERF_MON_STR) {
+      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
     }
     strncpy(slotName, str.c_str(), length);
   }
@@ -546,6 +552,43 @@ namespace xocl {
         }
       }
     }
+    /*
+     * Read SDx Axi Stream Monitor Data
+     */
+    if (mLogStream.is_open()) {
+        mLogStream << "Reading SSPMs.." << std::endl;
+    }
+    numSlots = getPerfMonNumberSlots(XCL_PERF_MON_STR);
+    for (uint32_t s=0; s < numSlots; s++) {
+      baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_STR,s);
+      // Sample Register
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_SAMPLE_OFFSET, 
+                      &sampleInterval, 4);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_NUM_TRANX_OFFSET, 
+                      &counterResults.StrNumTranx[s], 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_DATA_BYTES_OFFSET, 
+                      &counterResults.StrDataBytes[s], 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_BUSY_CYCLES_OFFSET, 
+                      &counterResults.StrBusyCycles[s], 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_STALL_CYCLES_OFFSET, 
+                      &counterResults.StrStallCycles[s], 8);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
+                      &counterResults.StrStarveCycles[s], 8);
+      if (mLogStream.is_open()) {
+        mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
+        mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
+        mLogStream << "Reading SSPM ...DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
+        mLogStream << "Reading SSPM ...BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
+        mLogStream << "Reading SSPM ...StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
+        mLogStream << "Reading SSPM ...StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+      }
+    }
     return size;
   }
 
@@ -642,8 +685,9 @@ namespace xocl {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << std::endl;
     }
+    uint64_t fifoBaseAddress = getPerfMonFifoBaseAddress(type, 0);
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoBaseAddress)
    	  return 0;
 
     xclAddressSpace addressSpace = (type == XCL_PERF_MON_ACCEL) ?
@@ -652,7 +696,7 @@ namespace xocl {
     uint32_t fifoCount = 0;
     uint32_t numSamples = 0;
     uint32_t numBytes = 0;
-    xclRead(addressSpace, getPerfMonFifoBaseAddress(type, 0) + AXI_FIFO_RLR, &fifoCount, 4);
+    xclRead(addressSpace, fifoBaseAddress + AXI_FIFO_RLR, &fifoCount, 4);
     // Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
     numBytes = fifoCount & 0x7FFFFF;
     numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);

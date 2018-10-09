@@ -179,6 +179,7 @@ template class app_debug_view<clmem_debug_view>;
 template class app_debug_view<event_debug_view_base>;
 template class app_debug_view<std::vector<kernel_debug_view*>>;
 template class app_debug_view<spm_debug_view>;
+template class app_debug_view<sspm_debug_view>;
 template class app_debug_view<lapc_debug_view>;
 template class app_debug_view<std::vector<cl_command_queue>>;
 template class app_debug_view<std::vector<cl_mem>>;
@@ -301,7 +302,7 @@ std::string event_debug_view_migrate::getstring(int aVerbose, int aQuotes)
   }
   else {
     sstr << "Migrate " << m_num_objects << " cl_mem objects ";
-    for(auto i = 0; i<m_num_objects; ++i)
+    for(unsigned int i = 0; i<m_num_objects; ++i)
       sstr << std::hex << m_mem_objects[i] << " ";
     sstr << " with flags " << m_flags;
   }
@@ -916,7 +917,7 @@ getArgValueString(const xocl::event* aEvent)
     auto address_space = arg->get_address_space();
     if (address_space == SPIR_ADDRSPACE_PRIVATE)
     {
-      auto arginforange = arg->get_arginfo_range();
+      //auto arginforange = arg->get_arginfo_range();
       //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
       sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
     } else if (address_space==SPIR_ADDRSPACE_PIPES){
@@ -1126,12 +1127,13 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
+  //  unsigned int numSlots = 
+  getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
@@ -1166,7 +1168,7 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
               << "  " << std::setw(16)  << "Last Rd Addr"
               << "  " << std::setw(16)  << "Last Rd Data"
               << std::endl;
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       sstr << std::left
               << std::setw(col1) << cuNameportNames[i].first
               << " " << std::setw(col2) << cuNameportNames[i].second
@@ -1244,6 +1246,157 @@ clGetDebugCounters() {
   return adv;
 }
 
+// Streaming counter view
+
+struct sspm_debug_view {
+  unsigned long long int StrNumTranx    [XSSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrDataBytes   [XSSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrBusyCycles  [XSSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrStallCycles [XSSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS];
+
+  unsigned int NumSlots ;
+  std::string  DevUserName ;
+
+  sspm_debug_view() 
+  {
+    std::fill(StrNumTranx,     StrNumTranx     + XSSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrDataBytes,    StrDataBytes    + XSSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrBusyCycles,   StrBusyCycles   + XSSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrStallCycles,  StrStallCycles  + XSSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrStarveCycles, StrStarveCycles + XSSPM_MAX_NUMBER_SLOTS, 0);
+
+    NumSlots = 0;
+  }
+  ~sspm_debug_view() { }
+  std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
+  
+  std::string getJSONString(bool aVerbose) ;
+  std::string getXGDBString(bool aVerbose) ;
+} ;
+
+std::string
+sspm_debug_view::getstring(int aVerbose, int aJSONFormat) {
+  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
+  else return getXGDBString(aVerbose != 0 ? true : false) ;
+}
+
+std::string
+sspm_debug_view::getJSONString(bool aVerbose) {
+  std::stringstream sstr ;
+
+  sstr << "[" ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    if (i > 0) sstr << "," ;
+    sstr << "{" ;
+    sstr << "\"" << "StrNumTransactions"  << "\"" << ":" 
+	 << "\"" << StrNumTranx[i] << "\"" << "," ;
+    sstr << "\"" << "StrDataBytes"  << "\"" << ":" 
+	 << "\"" << StrDataBytes[i] << "\"" << "," ;
+    sstr << "\"" << "StrBusyCycles"  << "\"" << ":" 
+	 << "\"" << StrBusyCycles[i] << "\"" << "," ;
+    sstr << "\"" << "StrStallCycles"  << "\"" << ":" 
+	 << "\"" << StrStallCycles[i] << "\"" << "," ;
+    sstr << "\"" << "StrStarveCycles"  << "\"" << ":" 
+	 << "\"" << StrStarveCycles[i] << "\"" ;
+    sstr << "}" ;
+  }
+  sstr << "]" ;
+
+  return sstr.str();
+}
+
+std::string
+sspm_debug_view::getXGDBString(bool aVerbose) {
+  std::stringstream sstr;
+
+  sstr << "SDx Streaming Performance Monitor Counters\n" ;
+  sstr << std::left
+       <<         std::setw(32) << "Number of Transactions"
+       << "  " << std::setw(16) << "Data Bytes" 
+       << "  " << std::setw(16) << "Busy Cycles" 
+       << "  " << std::setw(16) << "Stall Cycles"
+       << "  " << std::setw(16) << "Starve Cycles"
+       << std::endl ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    sstr << std::left
+	 <<         std::setw(32) << StrNumTranx[i] 
+	 << "  " << std::setw(16) << StrDataBytes[i]
+	 << "  " << std::setw(16) << StrBusyCycles[i]
+	 << "  " << std::setw(16) << StrStallCycles[i]
+	 << "  " << std::setw(16) << StrStarveCycles[i]
+	 << std::endl ;
+  }
+
+  return sstr.str() ;
+}
+
+app_debug_view<sspm_debug_view>*
+clGetDebugStreamCounters()
+{
+  // Check for error conditions where we cannot read the streaming counters
+  if (isEmulationMode()) {
+    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    return adv;
+  }
+  if (!XCL::active()) {
+    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    return adv;
+  }
+  auto rts = XCL::RTSingleton::Instance();
+  if (!rts) {
+    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    return adv;
+  }
+
+  cl_int ret = CL_SUCCESS;
+
+  xclStreamingDebugCountersResults streamingDebugCounters;  
+  memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
+
+  auto platform = rts->getcl_platform_id();
+  for (auto device : platform->get_device_range())
+  {
+    if (device->is_active())
+    {
+      // At this point, we are dealing with only one device
+      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+    }
+  }
+
+  if (ret) 
+  {
+    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error reading sspm counters");
+    return adv;
+  }
+
+  auto sspm_view = new sspm_debug_view () ;
+  
+  std::copy(streamingDebugCounters.StrNumTranx,
+	    streamingDebugCounters.StrNumTranx+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrNumTranx);
+  std::copy(streamingDebugCounters.StrDataBytes,
+	    streamingDebugCounters.StrDataBytes+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrDataBytes);
+  std::copy(streamingDebugCounters.StrBusyCycles,
+	    streamingDebugCounters.StrBusyCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrBusyCycles);
+  std::copy(streamingDebugCounters.StrStallCycles,
+	    streamingDebugCounters.StrStallCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrStallCycles);
+  std::copy(streamingDebugCounters.StrStarveCycles,
+	    streamingDebugCounters.StrStarveCycles+XSSPM_MAX_NUMBER_SLOTS,
+	    sspm_view->StrStarveCycles);
+  
+  sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
+  sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
+
+  auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
+  return adv ;
+}
+
 struct lapc_debug_view {
   unsigned int   OverallStatus[XLAPC_MAX_NUMBER_SLOTS];
   unsigned int   CumulativeStatus[XLAPC_MAX_NUMBER_SLOTS][4];
@@ -1283,7 +1436,8 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
+  // unsigned int numSlots = 
+  getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
 
   bool violations_found = false;
@@ -1291,7 +1445,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
@@ -1328,7 +1482,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
     sstr << "Light-weight AXI protocol checker status\n";
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
                           SnapshotStatus[i], CumulativeStatus[i])) {
         sstr << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
@@ -1371,7 +1525,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
                 << "  " << std::setw(16) << "Cumulative[2]"
                 << "  " << std::setw(16) << "Cumulative[3]"
                 << std::endl;
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
         sstr << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second

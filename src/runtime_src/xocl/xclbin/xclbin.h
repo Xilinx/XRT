@@ -54,11 +54,15 @@ class xclbin
   struct impl;
   std::shared_ptr<impl> m_impl;
 
+  impl*
+  impl_or_error() const;
+
 public:
   using addr_type = uint64_t;
   //Max 64 mem banks for now.
   using memidx_bitmask_type = std::bitset<64>;
   using memidx_type = int32_t;
+  using connidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
@@ -365,17 +369,22 @@ public:
   memidx_to_banktag(memidx_type memidx) const;
 
   /**
-   * Get the memory index for a given kernel name for specific arg. 
+   * Get the memory index for a given kernel name for specific arg.
    *
-   * @param kernel_name 
+   * @param kernel_name
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
+   * @param conn 
+   *   Index into the connectivity section allocated.
    * @return
    *   Memory idx
    */
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn);
+
+  void
+  clear_connection(connidx_type index);
 
   /**
    * Get the memory index with the specified tag.

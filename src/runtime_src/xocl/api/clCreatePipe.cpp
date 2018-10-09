@@ -35,7 +35,7 @@
 namespace xocl {
 
 static cl_uint
-getDevicePipeMaxPacketSize(cl_device_id device) 
+getDevicePipeMaxPacketSize(cl_device_id device)
 {
   cl_uint size = 0;
   api::clGetDeviceInfo(device,CL_DEVICE_PIPE_MAX_PACKET_SIZE,sizeof(cl_uint),&size,nullptr);
@@ -47,7 +47,7 @@ validOrError(cl_context                context,
              cl_mem_flags              flags,
              cl_uint                   pipe_packet_size,
              cl_uint                   pipe_max_packets,
-             const cl_pipe_attributes *attributes,
+             const cl_pipe_properties *properties,
              cl_int *                 errcode_ret)
 {
   if( !xocl::config::api_checks())
@@ -61,7 +61,7 @@ validOrError(cl_context                context,
   detail::memory::validOrError(flags);
 
   // CL_INVALID_VALUE if properties is not NULL.
-  if (attributes)
+  if (properties)
     throw error(CL_INVALID_VALUE,"properties must be nullptr");
 
   // CL_INVALID_PIPE_SIZE if pipe_packet_size is 0 or the
@@ -93,10 +93,10 @@ clCreatePipe(cl_context                context,
              cl_mem_flags              flags,
              cl_uint                   pipe_packet_size,
              cl_uint                   pipe_max_packets,
-             const cl_pipe_attributes *attributes,
+             const cl_pipe_properties *properties,
              cl_int *                  errcode_ret)
 {
-  validOrError(context,flags,pipe_packet_size,pipe_max_packets,attributes,errcode_ret);
+  validOrError(context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
 
   auto upipe = xrt::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
 
@@ -120,13 +120,13 @@ clCreatePipe(cl_context                context,
              cl_mem_flags              flags,
              cl_uint                   pipe_packet_size,
              cl_uint                   pipe_max_packets,
-             const cl_pipe_attributes *attributes,
+             const cl_pipe_properties *properties,
              cl_int *                  errcode_ret)
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clCreatePipe
-      (context,flags,pipe_packet_size,pipe_max_packets,attributes,errcode_ret);
+      (context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());
@@ -138,5 +138,3 @@ clCreatePipe(cl_context                context,
   }
   return nullptr;
 }
-
-

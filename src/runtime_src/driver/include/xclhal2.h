@@ -98,11 +98,11 @@ struct xclDeviceInfo2 {
   unsigned short mPCIeLinkWidth;
   unsigned short mPCIeLinkSpeed;
   unsigned short mDMAThreads;
-  short mOnChipTemp;
-  short mFanTemp;
-  unsigned short  mVInt;
-  unsigned short  mVAux;
-  unsigned short  mVBram;
+  unsigned short mOnChipTemp;
+  unsigned short mFanTemp;
+  unsigned short mVInt;
+  unsigned short mVAux;
+  unsigned short mVBram;
   float mCurrent;
   unsigned short mNumClocks;
   unsigned short mFanSpeed;
@@ -114,8 +114,8 @@ struct xclDeviceInfo2 {
   unsigned long long mPexCurr;
   unsigned long long mAuxCurr;
   unsigned short mFanRpm;
-  short mDimmTemp[4];
-  short mSE98Temp[4];
+  unsigned short mDimmTemp[4];
+  unsigned short mSE98Temp[4];
   unsigned short m3v3Pex;
   unsigned short m3v3Aux;
   unsigned short mDDRVppBottom;
@@ -1056,7 +1056,7 @@ XCL_DRIVER_DLLESPEC int xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
 /**
  * struct xclWRBuffer
  */
-struct xclWRBuffer {
+struct xclReqBuffer {
     union {
 	char*    buf;    // ptr or,
 	uint64_t va;	 // offset
@@ -1077,10 +1077,12 @@ enum xclQueueRequestKind {
 /**
  * enum xclQueueRequestFlag - flags associated with the request.
  */
+/* this has to be the same with Xfer flags defined in opencl CL_STREAM* */
 enum xclQueueRequestFlag {
-    XCL_QUEUE_DEFAULT,
-    XCL_QUEUE_BLOCKING,
-    XCL_QUEUE_PARTIAL
+    XCL_QUEUE_REQ_EOT			= 1 << 0,
+    XCL_QUEUE_REQ_CDH			= 1 << 1,
+    XCL_QUEUE_REQ_NONBLOCKING		= 1 << 2,
+    XCL_QUEUE_REQ_SILENT		= 1 << 3,
 };
 
 /**
@@ -1088,11 +1090,25 @@ enum xclQueueRequestFlag {
  */
 struct xclQueueRequest {
     xclQueueRequestKind op_code;
-    xclWRBuffer*        bufs;
+    xclReqBuffer*       bufs;
     uint32_t	        buf_num;
     char*               cdh;
     uint32_t	        cdh_len;
-    xclQueueRequestFlag flag;
+    uint32_t		flag;
+    void*		priv_data;
+    uint32_t            timeout;
+};
+
+/**
+ * struct xclReqCompletion - read/write completion
+ * keep this in sync with cl_streams_poll_req_completions
+ * in driver/include/stream.h
+ */
+struct xclReqCompletion {
+    char			resv[64]; /* reserved for meta data */
+    void			*priv_data;
+    size_t			nbytes;
+    int				err_code;
 };
 
 /**
@@ -1113,11 +1129,11 @@ struct xclQueueRequest {
  *     blocking:
  *         return only when the entire buf has been written, or error.
  *     non-blocking:
- *         return 0 immediatly. wr_complete is called when DMA is completed.
- *     complete callback:
- *         used only with non-blocking.
- *         (there should be a way to poll wr complete to avoid too many notifications)
- * This feature will be enabled in a future release.
+ *         return 0 immediatly.
+ *     EOT:
+ *         end of transmit signal will be added at last
+ *     silent: (only used with non-blocking);
+ *         No event generated after write completes
  */
 XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
 
@@ -1131,25 +1147,29 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  * Return: number of bytes been read or error code.
  *     stream Queue:
  *         read until all the requested bytes is read or error happens.
- *     packet Queue:
- *         read until packet boundary arrives.
- *         any incoming packet beyond requested buffer size will be dropped and rd_complete will be
- *         called with error code. (will HW be able to do this??)
- * This function supports blocking, non-blocking and polling
  *     blocking:
  *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
  *     non-blocking:
- *         return 0 immediatly. rd_complete is called when DMA is completed.
- *     polling: do not need buffer
- *         return number of bytes or packets which is ready. it could call blocking read to get the data
- *         if there is any.
- *     complete:
- *         used only with non-blocking.
- *         good place to do polling which will decrease the completion notifciaton.
- * This feature will be enabled in a future release.
+ *         return 0 immediatly.
+ *     TODO: EOT
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
+
+/**
+ * xclPollCompletion - for non-blocking read/write, check if there is any request been completed.
+ * @min_compl		unblock only when receiving min_compl completions
+ * @max_compl		Max number of completion with one poll
+ * @req:		Completed requests
+ * @timeout:		timeout
+ *
+ * return number of requests been completed.
+ */ 
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout); 
+
+/* Hack for xbflash only */
+XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
 
 /** @} */
 

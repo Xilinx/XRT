@@ -29,20 +29,18 @@
 #include "driver/xclng/include/qdma_ioctl.h"
 #include <libdrm/drm.h>
 #include <mutex>
-#include <cstdint>
 #include <fstream>
 #include <list>
 #include <map>
-#include <utility>
 #include <cassert>
 #include <vector>
+#include <linux/aio_abi.h>
 
 namespace xocl {
 
 // This list will get populated in xclProbe
 // 0 -> /dev/dri/renderD129
 // 1 -> /dev/dri/renderD130
-static std::mutex deviceListMutex;
 static const std::map<std::string, std::string> deviceOld2NewNameMap = {
     std::pair<std::string, std::string>("xilinx:adm-pcie-7v3:1ddr:3.0", "xilinx_adm-pcie-7v3_1ddr_3_0"),
     std::pair<std::string, std::string>("xilinx:adm-pcie-8k5:2ddr:4.0", "xilinx_adm-pcie-8k5_2ddr_4_0"),
@@ -227,6 +225,7 @@ public:
                                     uint8_t *properties, size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
+    size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
@@ -254,6 +253,11 @@ public:
     int xclFreeQDMABuf(uint64_t buf_hdl);
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+    int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
+
+    // Temporary hack for xbflash use only
+    char *xclMapMgmt(void) { return mMgtMap; }
+    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -273,6 +277,7 @@ private:
     uint32_t mMemoryProfilingNumberSlots;
     uint32_t mAccelProfilingNumberSlots;
     uint32_t mStallProfilingNumberSlots;
+    uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
 
     bool zeroOutDDR();
@@ -281,17 +286,6 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
-
-    std::ifstream xclSysfsOpen(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::string xclSysfsGetString(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    unsigned long long xclSysfsGetInt(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::vector<unsigned long long> xclSysfsGetInts(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
-    std::vector<std::string> xclSysfsGetStrings(bool mgmt,
-        const std::string& subDevName, const std::string& entry);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
@@ -368,10 +362,17 @@ private:
     uint64_t mTraceFunnelAddress = 0;
     uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS] = {};
     uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS] = {};
     std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS] = {};
     std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
+    std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
+
+    // QDMA AIO
+    aio_context_t mAioContext;
+    bool mAioEnabled;
 }; /* XOCLShim */
 
 } /* xocl */

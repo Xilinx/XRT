@@ -38,6 +38,9 @@
 #define	XOCL_QDMA_IOC_MAGIC		'Q'
 #define	XOCL_QDMA_QUEUE_IOC_MAGIC	'q'
 
+#define XOCL_INVALID_ROUTE_ID		-1;
+#define	XOCL_INVALID_FLOW_ID		-1;
+
 enum XOCL_QDMA_IOC_TYPES {
 	XOCL_QDMA_CREATE_QUEUE,
 	XOCL_QDMA_ALLOC_BUFFER,
@@ -52,6 +55,13 @@ enum XOCL_QDMA_QUEUE_IOC_TYPES {
 enum XOCL_QDMA_QUEUE_STATE {
 	XOCL_QDMA_QSTATE_STOPPED,
 	XOCL_QDMA_QSTATE_STARTED,
+};
+
+/* has to keep in sync with xrt and opencl flags */
+enum XOCL_QDMA_REQ_FLAG {
+	XOCL_QDMA_REQ_FLAG_EOT		= (1 << 0),
+	XOCL_QDMA_REQ_FLAG_CDH		= (1 << 1),
+	XOCL_QDMA_REQ_FLAG_SILENT	= (1 << 3),
 };
 
 /**
@@ -80,6 +90,14 @@ struct xocl_qdma_ioc_create_queue {
 struct xocl_qdma_ioc_alloc_buf {
 	size_t		size;
 	int		buf_fd;
+};
+
+/**
+ * struct xocl_qdma_req_header - per request header for out bind data
+ *
+ */
+struct xocl_qdma_req_header {
+	uint64_t	flags;		/* EOT, etc */
 };
 
 /**

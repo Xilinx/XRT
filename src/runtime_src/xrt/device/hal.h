@@ -24,6 +24,8 @@
 
 #include "driver/include/xclperf.h"
 #include "driver/include/xcl_app_debug.h"
+#include "driver/include/stream.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -69,6 +71,8 @@ typedef uint32_t StreamAttributes;
 typedef uint32_t StreamXferFlags;
 typedef uint64_t StreamFlags;
 
+using StreamXferReq = stream_xfer_req;
+using StreamXferCompletions = streams_poll_req_completions;
 /**
  * Helper class to encapsulate return values from HAL operations.
  *
@@ -279,10 +283,13 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf) = 0;
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req ) = 0;
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferFlags flags) = 0;
+  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req) = 0;
+
+  virtual int
+  pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
 public:
   /**

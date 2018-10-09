@@ -796,7 +796,7 @@ configure(struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	bool ert = xocl_mb_sched_on(xdev);
+	bool ert = xocl_mb_sched_on(xdev) && !XOCL_DSA_MB_SCHE_OFF(xdev);
 	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
@@ -853,6 +853,8 @@ configure(struct xocl_cmd *xcmd)
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
 		cfg->cdma = cdma ? 1 : 0;
+		/* reserve slot 0 for control commands */
+		exec->slot_status[0] = 1;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -1568,8 +1570,9 @@ static int
 get_free_cu(struct xocl_cmd *xcmd)
 {
 	int mask_idx=0;
+	int num_masks = cu_masks(xcmd);
 	SCHED_DEBUG("-> get_free_cu\n");
-	for (mask_idx=0; mask_idx<xcmd->exec->num_cu_masks; ++mask_idx) {
+	for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
 		u32 cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
 		u32 busy_mask = xcmd->exec->cu_status[mask_idx];
 		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
@@ -1850,10 +1853,47 @@ reset(struct platform_device *pdev)
 	return 0;
 }
 
+/**
+ * validate() - Check if requested cmd is valid in the current context
+ */
 static int
-validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd)
+validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *bo)
 {
-	// TODO: Add code to check if requested cmd is valid in the current context
+	struct ert_packet *ecmd = (struct ert_packet*)bo->vmapping;
+	struct ert_start_kernel_cmd *scmd = (struct ert_start_kernel_cmd*)bo->vmapping;
+	u32 ctx_cus[4] = {0};
+	u32 cumasks = 0;
+	int i = 0;
+
+	SCHED_DEBUGF("-> validate opcode(%d)\n",ecmd->opcode);
+
+	/* cus for start kernel commands only */
+	if (ecmd->opcode!=ERT_START_CU) {
+		SCHED_DEBUG("<- validate(0), not a CU cmd\n");
+		return 0; /* ok */
+	}
+
+	/* no specific CUs selected, maybe ctx is not used by client */
+	if (bitmap_empty(client->cu_bitmap,MAX_CUS)) {
+		SCHED_DEBUG("<- validate(0), no CUs in ctx\n");
+		return 0; /* ok */
+	}
+
+
+	/* Check CUs in cmd BO against CUs in context */
+	cumasks = 1 + scmd->extra_cu_masks;
+	bitmap_to_u32array(ctx_cus,cumasks,client->cu_bitmap,MAX_CUS);
+	for (i=0; i<cumasks; ++i) {
+		uint32_t cmd_cus = ecmd->data[i];
+                /* cmd_cus must be subset of ctx_cus */
+		if (cmd_cus & ~ctx_cus[i]) {
+			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+				     i,cmd_cus,ctx_cus[i]);
+			return 1; /* error */
+		}
+	}
+
+	SCHED_DEBUG("<- validate(0) cmd and ctx CUs match\n");
 	return 0;
 }
 
