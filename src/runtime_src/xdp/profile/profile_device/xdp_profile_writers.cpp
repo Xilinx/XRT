@@ -169,7 +169,7 @@ namespace XDP {
 
     // Table: Data Transfer: Kernel & Global
     std::vector<std::string> KernelDataTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Kernel Arguments", "DDR Bank",
+        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
 		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
 		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };

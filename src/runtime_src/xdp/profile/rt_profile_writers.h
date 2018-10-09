@@ -52,7 +52,7 @@ namespace XCL {
 	    // consistency across all formats of reports
 	    virtual void writeSummary(RTProfile* profile);
 
-	    const char * getToolVersion() { return "2018.2"; }
+	    const char * getToolVersion() { return "2018.3"; }
 
     public:
 	    // Functions for Summary
