@@ -43,7 +43,7 @@ isApplicationProfilingOn()
 uint32_t
 get_num_cu_masks(uint32_t header)
 {
-  return (1 + (header >> 10) & 0x3);
+  return ((1 + (header >> 10)) & 0x3);
 }
 
 // Index of bit set to one on a 32 bit mask
@@ -62,7 +62,7 @@ get_cu_index(const xrt::command* cmd)
   auto& packet = cmd->get_packet();
   auto masks = get_num_cu_masks(packet[0]);
 
-  for (int i=0; i < masks; ++i) {
+  for (unsigned int i=0; i < masks; ++i) {
     if (auto cumask = packet[i+1])
       return get_cu_index_mask(cumask) + 32*i;
   }
@@ -75,7 +75,7 @@ get_cu_index(const xrt::command* cmd)
 
 void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
 {
-  auto packet = cmd->get_packet();
+  //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();
   auto event = ctx->get_event();
 
@@ -112,7 +112,7 @@ void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
 
 void get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx)
 {
-  auto packet = cmd->get_packet();
+  //auto packet = cmd->get_packet();
   auto kernel = ctx->get_kernel();
   auto event = ctx->get_event();
 
@@ -419,7 +419,7 @@ isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
-  return (XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && type == XCL_PERF_MON_MEMORY
+  return ((XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && type == XCL_PERF_MON_MEMORY)
   || (XCL::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
 }
 

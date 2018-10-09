@@ -283,7 +283,7 @@ namespace XCL {
     int& ProfileFlags;
     int FileFlags; //Which files we want to write out.
     int OclSlotIndex;
-    int HostSlotIndex;
+    unsigned int HostSlotIndex;
     int MigrateMemCalls;
     e_device_trace DeviceTraceOption;
     e_stall_trace StallTraceOption;

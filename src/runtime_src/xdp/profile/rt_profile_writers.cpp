@@ -267,8 +267,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
@@ -324,8 +324,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalKernelTimeMsec == 0) ? 0.0 :
@@ -464,8 +464,8 @@ namespace XCL {
   {
     //"name" is of the form "deviceName|kernelName|globalSize|localSize|cuName"
     size_t first_index = name.find_first_of("|");
-    size_t second_index = name.find('|', first_index+1);
-    size_t third_index = name.find('|', second_index+1);
+    //size_t second_index = name.find('|', first_index+1);
+    //size_t third_index = name.find('|', second_index+1);
     size_t fourth_index = name.find_last_of("|");
 
     std::string deviceName = name.substr(0, first_index);
@@ -618,7 +618,7 @@ namespace XCL {
     uint32_t numSlots = XPAR_AXI_PERF_MON_0_NUMBER_SLOTS;
     //uint32_t numSlots = results.mNumSlots;
 
-    for (int slot=0; slot < numSlots; slot++) {
+    for (unsigned int slot=0; slot < numSlots; slot++) {
       // Write
   #if 0
       double writeThputMBps = 0.0;
@@ -1233,7 +1233,7 @@ namespace XCL {
       size_t ddrSize = device_id->get_ddr_size();
       size_t bankSize = ddrSize / ddrBanks;
       ofs << "DDR Banks,begin\n";
-      for (int b=0; b < ddrBanks; ++b)
+      for (unsigned int b=0; b < ddrBanks; ++b)
         ofs << "Bank," << std::dec << b << ","
 		    << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
       ofs << "DDR Banks,end\n";
@@ -1559,8 +1559,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :

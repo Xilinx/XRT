@@ -189,6 +189,14 @@ track(const memory* mem)
 #endif
 }
 
+void
+device::
+clear_connection(connidx_type conn) 
+{
+  assert(conn!=-1);
+  m_xclbin.clear_connection(conn);
+}
+
 xrt::device::BufferObjectHandle
 device::
 alloc(memory* mem, unsigned int memidx)
@@ -246,15 +254,16 @@ alloc(memory* mem)
 
 int
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)
 {
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
 
   if(ext && ext->param) {
+    int32_t conn = 0;
     auto kernel = xocl::xocl(ext->kernel);
     auto& kernel_name = kernel->get_name_from_constructor();
-    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
     auto mems = m_xclbin.get_mem_topology();
 
     if (!mems)
@@ -294,8 +303,10 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
 int
 device::
-close_stream(xrt::device::stream_handle stream)
+close_stream(xrt::device::stream_handle stream, int connidx)
 {
+  assert(connidx!=-1);
+  clear_connection(connidx);
   return m_xdevice->closeStream(stream);
 }
 
@@ -532,9 +543,12 @@ allocate_buffer_object(memory* mem)
     int32_t memidx = 0;
     if (auto kernel = mem->get_ext_kernel()) {
       //param<==>kernel; flag<==>arg_index
+      int32_t conn = 0;
       flag = flag & 0xffffff;
       auto& kernel_name = kernel->get_name_from_constructor();
-      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag);
+      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag,conn);
+      assert(conn!=-1);
+      mem->set_connidx(conn);
     }
     else if (flag & XCL_MEM_TOPOLOGY) {
       memidx = flag & 0xffffff;
@@ -885,16 +899,16 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   auto xdevice = get_xrt_device();
 
   if (!get_num_cdmas() || is_emulation_mode()) {
-    auto cb = [this](memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size,const cmd_type& cmd) {
-      cmd->start();
-      char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
-      char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
-      std::memcpy(hbuf_dst,hbuf_src,size);
-      unmap_buffer(src_buffer,hbuf_src);
-      unmap_buffer(dst_buffer,hbuf_dst);
-      cmd->done();
+    auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
+      c->start();
+      char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
+      char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
+      std::memcpy(hbuf_dst,hbuf_src,sz);
+      unmap_buffer(sbuf,hbuf_src);
+      unmap_buffer(dbuf,hbuf_dst);
+      c->done();
     };
-    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer, src_offset, dst_offset, size,cmd);
+    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
 

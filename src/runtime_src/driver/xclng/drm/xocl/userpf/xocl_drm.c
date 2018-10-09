@@ -485,7 +485,8 @@ int xocl_check_topology(struct xocl_dev *xdev)
 		return 0;
 
 	for (i = 0; i < topology->m_count; i++) {
-		if (topology->m_mem_data[i].m_used) {
+		if (topology->m_mem_data[i].m_used &&
+			topology->m_mem_data[i].m_type != MEM_STREAMING) {
 			if (xdev->mm_usage_stat[i].bo_count != 0) {
                                 err = -EPERM;
                                 userpf_err(xdev, "The ddr %d has "
@@ -517,7 +518,8 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 
 	ddr = topology->m_count;
 	for (i = 0; i < ddr; i++) {
-		if (topology->m_mem_data[i].m_used) {
+		if (topology->m_mem_data[i].m_used &&
+			topology->m_mem_data[i].m_type != MEM_STREAMING) {
 			userpf_info(xdev, "Taking down DDR : %d", i);
 			drm_mm_takedown(&xdev->mm[i]);
 		}

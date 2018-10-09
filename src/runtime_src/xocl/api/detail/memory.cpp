@@ -40,7 +40,7 @@ get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
     : 0;
 }
 
-inline const cl_kernel
+inline cl_kernel
 get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
 {
   return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))

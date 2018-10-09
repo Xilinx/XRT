@@ -33,6 +33,7 @@
 #include <cstdlib>
 #include <sstream>
 
+
 namespace {
 
 using data_range = ::xclbin::data_range;
@@ -987,7 +988,7 @@ public:
   }
 
   xocl::xclbin::memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, xocl::xclbin::connidx_type& conn)
   {
     if (!is_valid())
       return -1;
@@ -1008,7 +1009,6 @@ public:
       // This connection already has a device storage allocated, so skip to
       // the next connection in the connection range which matches the
       // criteria - multiple cu case.
-      // TODO: Check if this is ever hit.
       if (std::find(m_used_connections.begin(), m_used_connections.end(), i)
 	     != m_used_connections.end())
 	  continue;
@@ -1017,10 +1017,17 @@ public:
       size_t memidx = m_con->m_connection[i].mem_data_index;
       assert(m_mem->m_mem_data[memidx].m_used);
       m_used_connections.push_back(i);
+      conn = i;
       return memidx;
     }
     throw std::runtime_error("did not find mem index for (kernel_name,arg):" + kernel_name + "," + std::to_string(arg));
     return -1;
+  }
+
+  void
+  clear_connection(xocl::xclbin::connidx_type conn)
+  {
+    m_used_connections.erase(std::remove(m_used_connections.begin(), m_used_connections.end(), conn), m_used_connections.end());
   }
 
   const clock_freq_topology*
@@ -1255,8 +1262,12 @@ struct xclbin::impl
   { return m_sections.banktag_to_memidx(banktag); }
 
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
-  { return m_sections.get_memidx_from_arg(kernel_name, arg); }
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, int32_t& conn)
+  { return m_sections.get_memidx_from_arg(kernel_name, arg, conn); }
+
+  void
+  clear_connection(connidx_type conn)
+  { return m_sections.clear_connection(conn); }
 
   unsigned int
   conformance_rename_kernel(const std::string& hash)
@@ -1492,9 +1503,16 @@ banktag_to_memidx(const std::string& tag) const
 
 xclbin::memidx_type
 xclbin::
-get_memidx_from_arg(const std::string& kernel_name, int32_t arg)
+get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn)
 {
-  return impl_or_error()->get_memidx_from_arg(kernel_name, arg);
+  return impl_or_error()->get_memidx_from_arg(kernel_name, arg, conn);
+}
+
+void
+xclbin::
+clear_connection(connidx_type conn)
+{
+  return impl_or_error()->clear_connection(conn);
 }
 
 unsigned int
