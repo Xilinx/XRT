@@ -164,6 +164,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
+int xocl_reset_scheduler(struct pci_dev *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
