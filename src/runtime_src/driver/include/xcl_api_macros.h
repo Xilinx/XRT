@@ -336,19 +336,29 @@ mtx.unlock();
     }\
     c_msg.set_slotname(slotname); \
     c_msg.set_accel(accel); \
+    c_msg.set_iptype(type); \
 
 #define xclPerfMonReadCounters_SET_PROTO_RESPONSE() \
-    wr_byte_count    = r_msg.wr_byte_count(); \
-    wr_trans_count   = r_msg.wr_trans_count(); \
-    total_wr_latency = r_msg.total_wr_latency(); \
-    rd_byte_count    = r_msg.rd_byte_count(); \
-    rd_trans_count   = r_msg.rd_trans_count(); \
-    total_rd_latency = r_msg.total_rd_latency();
+    wr_byte_count       = r_msg.wr_byte_count(); \
+    wr_trans_count      = r_msg.wr_trans_count(); \
+    total_wr_latency    = r_msg.total_wr_latency(); \
+    rd_byte_count       = r_msg.rd_byte_count(); \
+    rd_trans_count      = r_msg.rd_trans_count(); \
+    total_rd_latency    = r_msg.total_rd_latency(); \
+    str_num_tranx       = r_msg.str_num_tranx(); \
+    str_data_bytes      = r_msg.str_data_bytes(); \
+    str_busy_cycles     = r_msg.str_busy_cycles(); \
+    str_stall_cycles    = r_msg.str_stall_cycles(); \
+    str_starve_cycles   = r_msg.str_starve_cycles(); \
 
 
 #define xclPerfMonReadCounters_RETURN()
 
-#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname,accel) \
+#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency,\
+                                        rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,\
+                                        str_num_tranx, str_data_bytes, str_busy_cycles, \
+                                        str_stall_cycles, str_starve_cycles, \
+                                        slotname,accel,type) \
     RPC_PROLOGUE(func_name); \
     xclPerfMonReadCounters_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\

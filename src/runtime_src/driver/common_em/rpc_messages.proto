@@ -179,6 +179,7 @@ message xclReadAddrKernelCtrl_response {
 message xclPerfMonReadCounters_call {
      required string slotname = 1;
      optional bool accel = 2;
+     optional uint32 iptype = 3;
 }
 
 message xclPerfMonReadCounters_response {
@@ -188,6 +189,11 @@ message xclPerfMonReadCounters_response {
      optional uint32 rd_byte_count = 4;
      optional uint32 rd_trans_count = 5;
      optional uint32 total_rd_latency = 6;
+     optional uint64 str_num_tranx = 7;
+     optional uint64 str_data_bytes = 8;
+     optional uint64 str_busy_cycles = 9;
+     optional uint64 str_stall_cycles = 10;
+     optional uint64 str_starve_cycles = 11;
 }
 
 //------------------Trace--------------
