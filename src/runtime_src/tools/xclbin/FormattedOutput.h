@@ -34,7 +34,7 @@ class Section;
 
 namespace FormattedOutput {
   void printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections);
-  void getKernelDDRMemory(const std::string _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree &_pMemTopology);
+  void getKernelDDRMemory(const std::string _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree &_ptKernelInstance, boost::property_tree::ptree &_ptMemoryConnections);
 
   std::string getTimeStampAsString(const axlf &_xclBinHeader);
   std::string getFeatureRomTimeStampAsString(const axlf &_xclBinHeader);

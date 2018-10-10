@@ -16,6 +16,7 @@
 
 #include "FormattedOutput.h"
 #include "Section.h"
+#include  <set>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -138,7 +139,8 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
 void 
 FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName, 
                                     const std::vector<Section*> _sections,
-                                    boost::property_tree::ptree &_pMemTopology)
+                                    boost::property_tree::ptree &_ptKernelInstance,
+                                    boost::property_tree::ptree &_ptMemoryConnections)
 {
   if (_sKernelInstanceName.empty()) {
     return;
@@ -183,28 +185,32 @@ FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName,
   std::vector<boost::property_tree::ptree> ipLayout = as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
   // 3) Establish the connections
+  std::set<int> addedIndex;
   for (auto connection : connectivity) {
     unsigned int ipLayoutIndex = connection.get<uint32_t>("m_ip_layout_index");
     unsigned int memDataIndex = connection.get<uint32_t>("mem_data_index");
 
-    if (_sKernelInstanceName == ipLayout[ipLayoutIndex].get<std::string>("m_name")) {
-      _pMemTopology.add_child("mem_data", memTopology[memDataIndex]);
+    if ((_sKernelInstanceName == ipLayout[ipLayoutIndex].get<std::string>("m_name")) &&
+        (addedIndex.find(memDataIndex) == addedIndex.end())) {
+      _ptMemoryConnections.add_child("mem_data", memTopology[memDataIndex]);
+      addedIndex.insert(memDataIndex);
+    }
+  }
+
+  // 4) Get the kernel information
+  for (auto ipdata : ipLayout) {
+    if (_sKernelInstanceName == ipdata.get<std::string>("m_name")) {
+      _ptKernelInstance.add_child("ip_data", ipdata);
+      break;
     }
   }
 }
 
 
 void
-FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections) {
-
-  boost::property_tree::ptree pt;
-
-  std::string ipInstantName = "rtl_krnl_vadd_const:rtl_krnl_vadd_const_1";
-  getKernelDDRMemory(ipInstantName, _sections, pt);
-  XUtil::TRACE_PrintTree("Memory Section", pt);
-
-
-
+FormattedOutput::printHeader(std::ostream &_ostream, 
+                             const axlf &_xclBinHeader, 
+                             const std::vector<Section*> _sections) {
 
   XUtil::TRACE("Printing Binary Header");
 
@@ -281,9 +287,19 @@ FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, 
           boost::property_tree::ptree instances = kernel.second.get_child("instances");
           for (const auto & instance : instances) {
             std::string sInstanceName = instance.second.get<std::string>("name");
-            _ostream << "Name:Instance - " << sKernelName << ":" << sInstanceName << "\n";
-            _ostream << "  Base Addresses:    <Coming soon!>\n";
-            _ostream << "  Memory Connection: <Coming soon!>\n";
+            std::string sKernelInstanceName = sKernelName + ":" + sInstanceName;
+            _ostream << "Name:Instance - " << sKernelInstanceName << "\n";
+
+            boost::property_tree::ptree memoryConnections;
+            boost::property_tree::ptree kernelInstance;
+            getKernelDDRMemory(sKernelInstanceName, _sections, kernelInstance, memoryConnections);
+            _ostream << "  Base Addresses:    " << kernelInstance.get<std::string>("ip_data.m_base_address") << std::endl;
+            for (const auto& kv : memoryConnections) {
+              boost::property_tree::ptree ptMemData = kv.second;
+              std::string sType = ptMemData.get<std::string>("m_type");
+              std::string sTag = ptMemData.get<std::string>("m_tag");
+              _ostream << "  Memory Connection: " << sType << ":" << sTag << std::endl;
+            }
           }
           _ostream << "\n";
         }
