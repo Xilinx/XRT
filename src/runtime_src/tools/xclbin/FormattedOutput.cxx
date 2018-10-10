@@ -133,8 +133,88 @@ FormattedOutput::getDebugBinAsString(const axlf &_xclBinHeader) {
   return XUtil::format("%s", _xclBinHeader.m_header.m_debug_bin);
 }
 
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second);
+    return r;
+}
+
+
+void 
+FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName, 
+                                    const std::vector<Section*> _sections,
+                                    boost::property_tree::ptree &_pMemTopology)
+{
+  if (_sKernelInstanceName.empty()) {
+    return;
+  }
+
+  // 1) Look for our sections section
+  Section *pMemTopology = nullptr;
+  Section *pConnectivity = nullptr;
+  Section *pIPLayout = nullptr;
+
+  for (auto pSection : _sections) {
+    if (MEM_TOPOLOGY == pSection->getSectionKind() ) {
+      pMemTopology=pSection; 
+    } else if (CONNECTIVITY == pSection->getSectionKind() ) {
+      pConnectivity=pSection; 
+    } else if (IP_LAYOUT == pSection->getSectionKind() ) {
+      pIPLayout=pSection; 
+    }
+  }
+  
+  if ((pMemTopology == nullptr) ||
+      (pConnectivity == nullptr) ||
+      (pIPLayout == nullptr)) {
+    // Nothing to work on
+    return; 
+  }
+
+  // 2) Get the property trees and convert section into vector arrays
+  boost::property_tree::ptree ptSections;
+  pMemTopology->getPayload(ptSections);
+  pConnectivity->getPayload(ptSections);
+  pIPLayout->getPayload(ptSections);
+  XUtil::TRACE_PrintTree("Top", ptSections);
+
+  boost::property_tree::ptree& ptMemTopology = ptSections.get_child("mem_topology");
+  std::vector<boost::property_tree::ptree> memTopology = as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
+
+  boost::property_tree::ptree& ptConnectivity = ptSections.get_child("connectivity");
+  std::vector<boost::property_tree::ptree> connectivity = as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
+
+  boost::property_tree::ptree& ptIPLayout = ptSections.get_child("ip_layout");
+  std::vector<boost::property_tree::ptree> ipLayout = as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+
+  // 3) Establish the connections
+  for (auto connection : connectivity) {
+    unsigned int ipLayoutIndex = connection.get<uint32_t>("m_ip_layout_index");
+    unsigned int memDataIndex = connection.get<uint32_t>("mem_data_index");
+
+    if (_sKernelInstanceName == ipLayout[ipLayoutIndex].get<std::string>("m_name")) {
+      _pMemTopology.add_child("mem_data", memTopology[memDataIndex]);
+    }
+  }
+}
+
+
 void
 FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections) {
+
+  boost::property_tree::ptree pt;
+
+  std::string ipInstantName = "rtl_krnl_vadd_const:rtl_krnl_vadd_const_1";
+  getKernelDDRMemory(ipInstantName, _sections, pt);
+  XUtil::TRACE_PrintTree("Memory Section", pt);
+
+
+
+
   XUtil::TRACE("Printing Binary Header");
 
   _ostream << "OpenCL Binary Header\n";
