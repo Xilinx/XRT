@@ -36,6 +36,9 @@
 #ifndef xclfeatures_h_
 #define xclfeatures_h_
 
+#define FEATURE_ROM_MAJOR_VERSION 10
+#define FEATURE_ROM_MINOR_VERSION 1
+
 //Layout: At address 0xB0000, we will have the FeatureRomHeader that comprises:
 //
 //1. First have FeatureRomHeader: 152 bytes of information followed by
