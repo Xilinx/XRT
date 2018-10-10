@@ -206,10 +206,18 @@ static int loadXclbin(xclDeviceHandle& handle, const std::string &bit)
         throw std::runtime_error("Invalid bitstream");
     }
 
-    if (xclLoadXclBin(handle, (const axlf *)header)) {
-        throw std::runtime_error("Cannot load xclbin");
+    const axlf *qheader = (const axlf *)header;
+    if (xclLoadXclBin(handle, qheader)) {
+        delete [] header;
+        throw std::runtime_error("Cannot load xclbin " + bit);
     }
 
+    if (xclOpenContext(handle, qheader->m_header.uuid, 0, true)) {
+        delete [] header;
+        throw std::runtime_error("Cannot open context " + bit);
+    }
+
+    delete [] header;
     return 0;
 }
 
@@ -299,11 +307,12 @@ int main(int argc, char** argv)
             return 1;
         }
 
+#if 1
         if (xclLockDevice(handle)) {
             throw std::runtime_error("Cannot lock device");
             return -1;
         }
-
+#endif
 
         if (loadXclbin(handle, bitstreamFile1)) {
             throw std::runtime_error("Cannot lock device");

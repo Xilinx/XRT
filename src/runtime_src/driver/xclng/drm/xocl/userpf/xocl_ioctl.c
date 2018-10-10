@@ -467,6 +467,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
+	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->ctx_list_lock so no new contexts can be opened and no live contexts
@@ -483,13 +484,16 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 			err = -EBUSY;
 			goto done;
 		}
+#if 0
 		// Check if there are other open contexts on this device
 		if (!list_is_singular(&xdev->ctx_list)) {
 			err = -EPERM;
 			goto done;
 		}
+#endif
 	}
 
+	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	//Ignore timestamp matching for AWS platform
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
@@ -598,10 +602,10 @@ done:
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API
 	 */
-	if (err != 0) {
+//	if (err != 0) {
 		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 			pid_nr(task_tgid(current)));
-	}
+//	}
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
