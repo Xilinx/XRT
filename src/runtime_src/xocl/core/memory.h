@@ -106,6 +106,12 @@ public:
     return get_sub_buffer_parent() != nullptr;
   }
 
+  bool
+  is_p2p_memory() const
+  {
+    return (m_ext_flags >> 30) & 0x1 ? true : false;
+  }
+
   // Derived classes accessors
   // May be structured differently when _xcl_mem is eliminated
   virtual size_t
