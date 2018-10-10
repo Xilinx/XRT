@@ -128,12 +128,7 @@ struct FeatureRomHeader {
   unsigned char uuid[16];             // UUID of the DSA.
   uint8_t HBMCount;                   // Number of HBMs
   uint8_t HBMSize;                    // Size of (each) HBM in GB
-  uint16_t CDMAStructOffset;          // offset to the first CDMA struct (laid out one after another) 
-};
-
-struct CDMA {
-  uint8_t   CDMACount;                // Number of CDMA
-  uint64_t  CDMABaseAddress;          // Base address of each CDMA)
+  uint32_t CDMABaseAddress[4];        // CDMA base addresses
 };
 
 #endif // xclfeatures_h_
