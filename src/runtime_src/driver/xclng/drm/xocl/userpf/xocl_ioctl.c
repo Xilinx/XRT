@@ -505,7 +505,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (err)
 		goto done;
 
-	if(bin_obj.m_uniqueId == xdev->unique_id_last_bitstream) {
+	if (uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
 		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
 		goto done;
 	}
@@ -594,6 +594,10 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 done:
 	if (size < 0)
 		err = size;
+	/*
+	 * Always give up ownership for multi process use case; the real locking
+	 * is done by context creation API
+	 */
 	if (err != 0) {
 		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 			pid_nr(task_tgid(current)));
