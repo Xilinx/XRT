@@ -147,7 +147,24 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(pstat, total_complete_bytes);
 	__SHOW_MEMBER(pstat, total_complete_num);
 
-	
+	__SHOW_MEMBER(pstat, descq_rngsz);
+	__SHOW_MEMBER(pstat, descq_pidx);
+	__SHOW_MEMBER(pstat, descq_cidx);
+	__SHOW_MEMBER(pstat, descq_avail);
+	__SHOW_MEMBER(pstat, desc_wb_cidx);
+	__SHOW_MEMBER(pstat, desc_wb_pidx);
+
+	__SHOW_MEMBER(pstat, descq_rngsz_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb);
+	__SHOW_MEMBER(pstat, descq_pidx_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb_pend);
+	__SHOW_MEMBER(pstat, c2h_wrb_cidx);
+	__SHOW_MEMBER(pstat, c2h_wrb_pidx);
+
+	__SHOW_MEMBER(pstat, flq_cidx);
+	__SHOW_MEMBER(pstat, flq_pidx);
+	__SHOW_MEMBER(pstat, flq_pidx_pend);
+
 	return off;
 }
 static DEVICE_ATTR_RO(stat);
