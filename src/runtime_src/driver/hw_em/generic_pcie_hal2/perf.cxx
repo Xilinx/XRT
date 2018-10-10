@@ -156,12 +156,15 @@ namespace xclhwemhal2 {
     //counterResults.NumSlots = 2;
 
     // TODO: support other profiling
-    if (type != XCL_PERF_MON_MEMORY && type != XCL_PERF_MON_ACCEL) {
+    if (type != XCL_PERF_MON_MEMORY && type != XCL_PERF_MON_ACCEL && type != XCL_PERF_MON_STR) {
       PRINTENDFUNC;
       return 0;
     }
     bool accel = (type==XCL_PERF_MON_ACCEL) ? true : false;
     int iptype = (type==XCL_PERF_MON_ACCEL) ? 0 : 1;
+    if (type == XCL_PERF_MON_STR) {
+      iptype = 2;
+    }
 
     //TODO::Need to call for each slot individually
     //Right now we have only one slot
