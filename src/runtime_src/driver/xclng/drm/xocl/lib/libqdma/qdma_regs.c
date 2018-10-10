@@ -765,8 +765,10 @@ int hw_indirect_ctext_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	int i;
 	int rv = 0;
 
+#if 0
 	pr_debug("qid_hw 0x%x, op 0x%x, sel 0x%x, data 0x%p,%u, verify %d.\n",
 		qid_hw, op, sel, data, cnt, verify);
+#endif
 
 	spin_lock(&xdev->hw_prg_lock);
 	if ((op == QDMA_CTXT_CMD_WR) || (op == QDMA_CTXT_CMD_RD)) {
@@ -801,8 +803,10 @@ int hw_indirect_ctext_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 	v = (qid_hw << IND_CTXT_CMD_QID_SHIFT) | (op << IND_CTXT_CMD_OP_SHIFT) |
 		(sel << IND_CTXT_CMD_SEL_SHIFT);
 
+#if 0
 	pr_debug("ctxt_cmd reg 0x%x, qid 0x%x, op 0x%x, sel 0x%x -> 0x%08x.\n",
 		 QDMA_REG_IND_CTXT_CMD, qid_hw, op, sel, v);
+#endif
 
 	__write_reg(xdev, QDMA_REG_IND_CTXT_CMD, v);
 
