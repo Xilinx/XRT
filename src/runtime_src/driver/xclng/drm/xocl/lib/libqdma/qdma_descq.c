@@ -567,7 +567,6 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 	cidx_hw = wb->cidx;
 
 	if (cidx_hw == cidx) { /* no new writeback? */
-		qdma_notify_cancel(descq);
 		return 0;
 	}
 
@@ -596,10 +595,12 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 
 	req_update_pend(descq, cr);
 
+#if 0
 	if (descq->conf.c2h)
 		descq_c2h_pidx_update(descq, descq->pidx);
 	else
 		descq_h2c_pidx_update(descq, descq->pidx);
+#endif
 
 	qdma_sgt_req_done(descq);
 
@@ -957,8 +958,8 @@ void qdma_descq_service_wb(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
 	lock_descq(descq);
+	qdma_notify_cancel(descq);
 	if (descq->q_state != Q_STATE_ONLINE) {
-		qdma_notify_cancel(descq);
 		complete(&descq->cancel_comp);
 	} else if (descq->conf.st && descq->conf.c2h)
 		descq_process_completion_st_c2h(descq, budget, c2h_upd_cmpl);
@@ -983,13 +984,25 @@ void qdma_notify_cancel(struct qdma_descq *descq)
 	struct qdma_sgt_req_cb *cb, *tmp;
 	struct qdma_request *req = NULL;
 	unsigned long       flags;
+	struct timeval                  ts;
+
+       	do_gettimeofday(&ts);
 
 	spin_lock_irqsave(&descq->cancel_lock, flags);
         /* calling routine should hold the lock */
         list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
+		req = (struct qdma_request *)cb;
+
+		/*
+		 * cancel c2h immediately because we have copy queue for c2h
+		 * TODO: Zero copy case in the future. 
+		 */
+	        if (cb->done != 1 && (!descq->conf.st || !descq->conf.c2h) &&
+			ts.tv_sec - cb->cancel_ts.tv_sec < QDMA_CANCEL_TIMEOUT)
+			continue;
+
 		list_del(&cb->list_cancel);
 		spin_unlock_irqrestore(&descq->cancel_lock, flags);
-		req = (struct qdma_request *)cb;
 		if (req->fp_cancel) {
 			req->fp_cancel(req);
 		} else {

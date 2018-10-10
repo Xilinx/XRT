@@ -247,7 +247,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	else
 		descq_h2c_pidx_update(descq, descq->pidx);
 
-	return 0;
+	return (descq->avail == 0) ? -ENOENT : 0;
 }
 
 static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
@@ -356,7 +356,7 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		wqe->state = QDMA_WQE_STATE_PENDING;
 	}
 
-	return 0;
+	return (descq->avail == 0) ? -ENOENT : 0;
 }
 
 static int descq_st_c2h_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
@@ -441,6 +441,11 @@ static void descq_proc_req(struct qdma_wq *queue)
 	descq = qdma_device_get_descq_by_id(xdev, queue->qhdl, NULL, 0, 0);
 
 	wqe = wq_next_unproc(queue);
+	pr_debug("QUEUE%d%s wqe %p,%lld bytes,unproc %d,free %d,pending %d\n",
+		queue->qconf->qidx, queue->qconf->c2h ? "R" : "W", wqe,
+		wqe?wqe->unproc_bytes:0, queue->wq_unproc, queue->wq_free,
+		queue->wq_pending);
+
 	while (wqe) {
 		if (wqe->state == QDMA_WQE_STATE_CANCELED ||
 			wqe->state == QDMA_WQE_STATE_CANCELED_HW)
@@ -458,11 +463,11 @@ static void descq_proc_req(struct qdma_wq *queue)
 			ret = descq_mm_fill(descq, wqe);
 			unlock_descq(descq);
 		}
-		if (ret)
-			break;
-
 		if (descq->wbthp)
 			qdma_kthread_wakeup(descq->wbthp);
+
+		if (ret)
+			break;
 next:
 		wqe = wq_next_unproc(queue);
 	}
@@ -484,8 +489,6 @@ static int qdma_wqe_cancel(struct qdma_request *req)
 		compl_evt.kiocb = wqe->wr.kiocb;
 		compl_evt.req_priv = wqe->priv_data;
 		wqe->wr.complete(&compl_evt);
-	} else {
-		wake_up(&wqe->req_comp);
 	}
 
 	return 0;
@@ -529,28 +532,15 @@ static int qdma_wqe_complete(struct qdma_request *req, unsigned int bytes_done,
 		}
 		wqe = wq_next_pending(queue);
 	} else if (wqe->state == QDMA_WQE_STATE_CANCELED_HW) {
-		wqe->unproc_bytes = 0;
-		if (wqe->wr.kiocb) {
-			compl_evt.done_bytes = 0;
-			compl_evt.error = QDMA_EVT_CANCELED;
-			compl_evt.kiocb = wqe->wr.kiocb;
-			compl_evt.req_priv = wqe->priv_data;
-			wqe->wr.complete(&compl_evt);
+		if (queue->qconf->st && queue->qconf->c2h)
+			wqe = wq_next_pending(queue);
+		else if (wqe->unproc_bytes + wqe->done_bytes ==
+			wqe->wr.len) {
+			pr_debug("Cancel notified\n");
+			if (!wqe->wr.kiocb)
+				wake_up(&wqe->req_comp);
+			wqe = wq_next_pending(queue);
 		}
-		wqe = wq_next_pending(queue);
-	}
-
-	/* walk through all canceled reqs */
-	while (wqe && wqe->state == QDMA_WQE_STATE_CANCELED) {
-		wqe->unproc_bytes = 0;
-		if (wqe->wr.kiocb) {
-			compl_evt.done_bytes = 0;
-			compl_evt.error = QDMA_EVT_CANCELED;
-			compl_evt.kiocb = wqe->wr.kiocb;
-			compl_evt.req_priv = wqe->priv_data;
-			wqe->wr.complete(&compl_evt);
-		}
-		wqe = wq_next_pending(queue);
 	}
 
 	descq_proc_req(queue);
@@ -571,9 +561,9 @@ int qdma_cancel_req(struct qdma_wq *queue, struct kiocb *kiocb)
 
 	wqe = kiocb->private;
 
+	cb = qdma_req_cb_get(&wqe->wr.req);
+	descq_cancel_req(descq, &wqe->wr.req);
 	if (wqe->state == QDMA_WQE_STATE_PENDING) {
-		cb = qdma_req_cb_get(&wqe->wr.req);
-		descq_cancel_req(descq, &wqe->wr.req);
 		wqe->state = QDMA_WQE_STATE_CANCELED_HW;
 	} else {
 		wqe->state = QDMA_WQE_STATE_CANCELED;
@@ -612,10 +602,6 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr)
 
 	spin_lock_bh(&queue->wq_lock);
 	wqe = wq_next_free(queue);
-	pr_debug("QUEUE%d%s wqe %p,%ld bytes,unproc %d,free %d,pending %d\n",
-		queue->qconf->qidx, wr->write ? "W" : "R", wqe,
-		wr->len, queue->wq_unproc, queue->wq_free, queue->wq_pending);
-
 	if (!wqe) {
 		ret = -EAGAIN;
 		goto again;
@@ -657,6 +643,17 @@ again:
 			if (ret < 0) {
 				if (wqe->state == QDMA_WQE_STATE_PENDING) {
 					wqe->state = QDMA_WQE_STATE_CANCELED_HW;
+					spin_unlock_bh(&queue->wq_lock);
+					if (!queue->qconf->st ||
+						!queue->qconf->c2h)
+						wait_event_timeout(
+							wqe->req_comp,
+							(wqe->state ==
+							QDMA_WQE_STATE_DONE),
+							msecs_to_jiffies(
+							QDMA_CANCEL_TIMEOUT *
+							1000));
+					spin_lock_bh(&queue->wq_lock);
 				} else {
 					wqe->state = QDMA_WQE_STATE_CANCELED;
 				}
@@ -674,6 +671,13 @@ again:
 
 void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat)
 {
+	struct xlnx_dma_dev     *xdev;
+	struct qdma_descq       *descq;
+
+        xdev = (struct xlnx_dma_dev *)queue->dev_hdl;
+        descq = qdma_device_get_descq_by_id(xdev, queue->qhdl, NULL, 0, 0);
+
+
 	stat->total_req_bytes = queue->req_nbytes;
 	stat->total_req_num = queue->req_num;
 	stat->total_complete_bytes = queue->compl_nbytes;
@@ -686,4 +690,42 @@ void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat)
 		(queue->wq_len - 1);
 	stat->unproc_slots = (queue->wq_free - queue->wq_unproc) &
 		(queue->wq_len - 1);
+
+	stat->descq_rngsz = descq->conf.rngsz;
+	stat->descq_pidx = descq->pidx;
+	stat->descq_cidx = descq->cidx;
+	stat->descq_avail = descq->avail;
+	if (descq->desc_wb) {
+		stat->desc_wb_cidx = ((struct qdma_desc_wb *)descq->desc_wb)->cidx;
+		stat->desc_wb_pidx = ((struct qdma_desc_wb *)descq->desc_wb)->pidx;
+	}
+
+	stat->descq_rngsz_wrb = descq->conf.rngsz_wrb;
+	stat->descq_cidx_wrb = descq->cidx_wrb;
+	stat->descq_pidx_wrb = descq->pidx_wrb;
+	stat->descq_cidx_wrb_pend = descq->cidx_wrb_pend;
+	if (descq->desc_wrb_wb) {
+		stat->c2h_wrb_cidx = ((struct qdma_c2h_wrb_wb *)descq->desc_wrb_wb)->cidx;
+		stat->c2h_wrb_pidx = ((struct qdma_c2h_wrb_wb *)descq->desc_wrb_wb)->pidx;
+	}
+
+	stat->flq_cidx = descq->flq.cidx;
+	stat->flq_pidx = descq->flq.pidx;
+	stat->flq_pidx_pend = descq->flq.pidx_pend;
 }
+
+int qdma_wq_update_pidx(struct qdma_wq *queue, u32 pidx)
+{
+	struct xlnx_dma_dev	*xdev;
+	struct qdma_descq	*descq;
+
+	xdev = (struct xlnx_dma_dev *)queue->dev_hdl;
+	descq = qdma_device_get_descq_by_id(xdev, queue->qhdl, NULL, 0, 0);
+	if (descq->conf.c2h)
+		descq_c2h_pidx_update(descq, pidx);
+	else
+		descq_h2c_pidx_update(descq, pidx);
+
+	return 0;
+}
+

@@ -110,6 +110,8 @@ enum qdma_req_submit_state {
 	QDMA_REQ_SUBMIT_COMPLETE
 };
 
+#define	QDMA_CANCEL_TIMEOUT		5	/* seconds */
+
 /**
  * @struct - qdma_descq
  * @brief	qdma software descriptor book keeping fields
@@ -457,6 +459,7 @@ struct qdma_sgt_req_cb {
 	/** qdma read/write request list */
 	struct list_head list;
 	struct list_head list_cancel;
+	struct timeval cancel_ts;
 	bool canceled;
 	/** request wait queue */
 	qdma_wait_queue wq;
@@ -603,6 +606,7 @@ static inline void descq_cancel_req(struct qdma_descq *descq,
 		pr_debug("add cancel req %p\n", cb);
 		list_add_tail(&cb->list_cancel, &descq->cancel_list);
 		cb->canceled = true;
+		do_gettimeofday(&cb->cancel_ts);
 	}
 	spin_unlock(&descq->cancel_lock);
 }
