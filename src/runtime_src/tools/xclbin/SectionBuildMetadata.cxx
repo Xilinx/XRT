@@ -17,8 +17,16 @@
 #include "SectionBuildMetadata.h"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include "XclBinUtilities.h"
+
+//#include "version.h" // Globally included from main
+// This should be an alternative, but then these variables are "undefined"
+//extern const char xrt_build_version[];
+//extern const char xrt_build_version_hash[];
+//extern const char xrt_build_version_date_rfc[];
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
@@ -63,6 +71,11 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
                                       std::ostringstream& _buf) const
 {
    XUtil::TRACE("BUILD_METADATA");
-   boost::property_tree::write_json(_buf, _ptSection, false );
+   boost::property_tree::ptree ptWritable = _ptSection;
+   ptWritable.put("build_metadata.xclbin.packaged_by.name", "xclbinutil");
+   ptWritable.put("build_metadata.xclbin.packaged_by.version", "2.1.0");//xrt_build_version);
+   ptWritable.put("build_metadata.xclbin.packaged_by.hash", "6f3b6b0dc6cf73effa3a13d29706077363f81714");//xrt_build_version_hash);
+   ptWritable.put("build_metadata.xclbin.packaged_by.time_stamp", "Tue, 09 Oct 2018 16:25:00 -0600");//xrt_build_version_date_rfc);
+   boost::property_tree::write_json(_buf, ptWritable, false );
 }
 
