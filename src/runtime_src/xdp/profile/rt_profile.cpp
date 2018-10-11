@@ -1202,6 +1202,14 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
+        std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
+        std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
+        std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+
+        std::string memoryName;
+        std::string argNames;
+        getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
         uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
         uint64_t strDataBytes =   counterResults.StrDataBytes[s];
@@ -1209,13 +1217,18 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
         uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
         // Skip ports without activity
         if (strBusyCycles <= 0 || strNumTranx == 0)
-                continue;
+          continue;
+
+        double totalCUTimeMsec = PerfCounters.getComputeUnitTotalTime(deviceName, cuName);
+        double transferRateMBps = (totalCUTimeMsec == 0) ? 0.0 :
+            (strDataBytes / (1000.0 * totalCUTimeMsec));
 
         double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
         double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
         double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
         double linkUtil =  100.0 - linkStarve - linkStall;
-        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, linkUtil, linkStarve, linkStall);
+        writer->writeKernelStreamSummary(deviceName, cuPortName, argNames, strNumTranx, transferRateMBps,
+                                         avgSize, linkUtil, linkStarve, linkStall);
       }
     }
   }
