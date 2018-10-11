@@ -468,7 +468,6 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) cons
     // Do nothing;
     break;
   case FT_UNDEFINED:
-    // Do nothing;
     break;
   }
 }

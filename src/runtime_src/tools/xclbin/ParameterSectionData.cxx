@@ -26,6 +26,7 @@ ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
   , m_file("")
   , m_section("")
   , m_eKind(BITSTREAM)
+  , m_originalString(_formattedString)
 {
   transformFormattedString(_formattedString);
 }
@@ -121,4 +122,10 @@ const std::string &
 ParameterSectionData::getFormatTypeAsStr()
 {
   return m_formatTypeStr;
+}
+
+const std::string &
+ParameterSectionData::getOriginalFormattedString()
+{
+  return m_originalString;
 }

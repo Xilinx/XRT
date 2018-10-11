@@ -808,6 +808,17 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
+  if (_PSD.getFormatType() == Section::FT_UNKNOWN) {
+    std::string errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
+    throw std::runtime_error(errMsg);
+  }
+
+
+  if (_PSD.getFormatType() == Section::FT_UNDEFINED ) {
+    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>";
+    throw std::runtime_error(errMsg);
+  }
+
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image
   std::fstream oDumpFile;
