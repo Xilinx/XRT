@@ -279,7 +279,12 @@ int main_(int argc, char** argv) {
 
   for (auto section : sectionsToDump) {
     ParameterSectionData psd(section);
-    xclBin.dumpSection(psd);
+    if (psd.getSectionName().empty() &&
+        psd.getFormatType() == Section::FT_JSON) {
+      xclBin.dumpSections(psd);
+    } else {
+      xclBin.dumpSection(psd);
+    }
   }
 
   if (!sOutputFile.empty()) {

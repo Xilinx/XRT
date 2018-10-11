@@ -732,7 +732,7 @@ void
 XclBin::addSections(ParameterSectionData &_PSD)
 {
   if (!_PSD.getSectionName().empty()) {
-    std::string errMsg = "Error: Section given for a wildcard JSON section add call.";
+    std::string errMsg = "Error: Section given for a wildcard JSON section add is not empty.";
     throw std::runtime_error(errMsg);
   }
 
@@ -822,6 +822,54 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
   std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+}
+
+void 
+XclBin::dumpSections(ParameterSectionData &_PSD) 
+{
+  if (!_PSD.getSectionName().empty()) {
+    std::string errMsg = "Error: Section given for a wildcard JSON section to dump is not empty.";
+    throw std::runtime_error(errMsg);
+  }
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = XUtil::format("Error: Expecting JSON format type, got '%s'.", _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sDumpFileName = _PSD.getFile();
+  // Write the xclbin file image
+  std::fstream oDumpFile;
+  oDumpFile.open(sDumpFileName, std::ifstream::out | std::ifstream::binary);
+  if (!oDumpFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  switch (_PSD.getFormatType()) {
+    case Section::FT_JSON:
+      {
+        boost::property_tree::ptree pt;
+        for (auto pSection : m_sections) {
+          std::string sectionName = pSection->getSectionKindAsString();
+          std::cout << "Examining: '" + sectionName << std::endl;
+          pSection->getPayload(pt);
+        }
+
+        boost::property_tree::write_json(oDumpFile, pt, true /*Pretty print*/);
+        break;
+      }
+    case Section::FT_HTML:
+    case Section::FT_RAW:
+    case Section::FT_TXT:
+    case Section::FT_UNDEFINED:
+    case Section::FT_UNKNOWN:
+    default:
+      break;
+  }
+
+  std::cout << std::endl << XUtil::format("Successfully written all of sections which support the format '%s' to the file: '%s'", 
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 

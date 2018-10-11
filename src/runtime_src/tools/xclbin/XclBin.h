@@ -50,6 +50,7 @@ class XclBin {
   void addSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
+  void dumpSections(ParameterSectionData &_PSD);
   void setKeyValue(const std::string & _keyValue);
 
  public:

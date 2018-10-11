@@ -53,7 +53,10 @@ SectionBuildMetadata::marshalToJSON(char* _pDataSection,
     // TODO: Catch the exception (if any) from this call and produce a nice message
     XUtil::TRACE_BUF("BUILD_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
     try {
-      boost::property_tree::read_json(ss, _ptree);
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+      boost::property_tree::ptree &buildMetaData = pt.get_child("build_metadata");
+      _ptree.add_child("build_metadata", buildMetaData);
     } catch (const std::exception & e) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
