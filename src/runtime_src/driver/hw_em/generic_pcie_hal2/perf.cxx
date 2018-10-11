@@ -161,9 +161,15 @@ namespace xclhwemhal2 {
       return 0;
     }
     bool accel = (type==XCL_PERF_MON_ACCEL) ? true : false;
-    int iptype = (type==XCL_PERF_MON_ACCEL) ? 0 : 1;
-    if (type == XCL_PERF_MON_STR) {
+    int iptype = 0;
+    if (type == XCL_PERF_MON_ACCEL) {
+      iptype = 1;
+    }
+    if (type == XCL_PERF_MON_MEMORY) {
       iptype = 2;
+    }
+    if (type == XCL_PERF_MON_STR) {
+      iptype = 3;
     }
 
     //TODO::Need to call for each slot individually
@@ -190,7 +196,7 @@ namespace xclhwemhal2 {
       //counterResults.NumSlots = numSlots;
       for(; counter < numSlots; counter++)
       {
-        if (counter == XPAR_SPM0_HOST_SLOT && !accel) // Ignore host slot
+        if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 1 && iptype != 3) // Ignore host slot
           continue;
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
@@ -210,7 +216,7 @@ namespace xclhwemhal2 {
           counterResults.ReadTranx[counter] = rd_trans_count;
           counterResults.ReadLatency[counter] = total_rd_latency;
         }
-        else if (iptype == 0) {
+        else if (iptype == 2) {
           counterResults.CuExecCount[counter] = rd_byte_count;
           counterResults.CuExecCycles[counter] = total_wr_latency;
           counterResults.CuMinExecCycles[counter] = rd_trans_count;
@@ -218,7 +224,7 @@ namespace xclhwemhal2 {
           //counterResults.CuStallIntCycles[counter] = total_int_stalls;
           //counterResults.CuStallStrCycles[counter] = total_str_stalls;
           //counterResults.CuStallExtCycles[counter] = total_ext_stalls;
-        } else if (iptype == 2) {
+        } else if (iptype == 3) {
           std::cout << "found sspm" << std::endl;
           counterResults.StrNumTranx[counter] = str_num_tranx;
           counterResults.StrDataBytes[counter] = str_data_bytes;
