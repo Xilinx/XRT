@@ -690,19 +690,24 @@ static void xma_shm_close(XmaResConfig *xma_shm, bool rm_shm)
 
 static int xma_verify_process_res(pid_t pid)
 {
-    int error;
+    struct stat stat_buf;
+    int ret;
+    char procfs_pid[20] = {0};
+
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
-               "%s() verify pid client %lu\n", __func__, pid);
-    error = kill(pid,0);
-    if (error) {
+               "%s() verify pid client %d\n", __func__, pid);
+
+    snprintf(procfs_pid, sizeof(procfs_pid), "/proc/%d", pid);
+    ret = stat(procfs_pid, &stat_buf);
+    if (ret && errno == ENOENT) {
         xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
-                   "%s() client %lu is not alive\n", __func__, pid);
-        return error;
+                   "%s() client %d is not alive\n", __func__, pid);
+        return XMA_ERROR;
     }
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
-               "%s() client %lu is alive\n", __func__, pid);
+               "%s() client %d is alive\n", __func__, pid);
     return XMA_SUCCESS;
 }
 
