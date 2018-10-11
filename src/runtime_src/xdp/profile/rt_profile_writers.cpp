@@ -342,8 +342,17 @@ namespace XCL {
           aveBWUtil, transferRateMBps, maxTransferRateMBps);
     }
 
+    // Get memory name from CU port name string (if found)
+    std::string cuPortName2 = cuPortName;
+    std::string memoryName2 = memoryName;
+    size_t index = cuPortName.find_last_of("|");
+    if (index != std::string::npos) {
+      cuPortName2 = cuPortName.substr(0, index);
+      memoryName2 = cuPortName.substr(index+1);
+    }
+
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName, cuPortName, argNames, memoryName,
+    writeTableCells(getSummaryStream(), deviceName, cuPortName2, argNames, memoryName2,
     	transferType, totalTranx, transferRateMBps, aveBWUtil,
         aveBytes/1000.0, 1.0e6*aveTimeMsec);
 
