@@ -41,7 +41,7 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
   if (!m_bVerbose)
     return;
 
-  std::cout << "Trace: " << _msg;
+  std::cout << "Trace: " << _msg.c_str();
 
   if (_endl)
     std::cout << std::endl << std::flush;

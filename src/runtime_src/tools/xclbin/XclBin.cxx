@@ -281,9 +281,7 @@ XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
                                     const boost::property_tree::ptree& _mirroredData) const {
   _ostream << MIRROR_DATA_START;
   boost::property_tree::write_json(_ostream, _mirroredData, false /*Pretty print*/);
-  _ostream << '\0';
   _ostream << MIRROR_DATA_END;
-
 
   XUtil::TRACE_PrintTree("Mirrored Data", _mirroredData);
 }
@@ -367,7 +365,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
     XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
   }
 
-  std::cout << XUtil::format("Successfully wrote (%ld bytes) to output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()) << std::endl;
+  std::cout << XUtil::format("Successfully wrote (%ld bytes) to the output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()).c_str() << std::endl;
 }
 
 
@@ -465,7 +463,12 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   ss.write((char*) memBuffer.get(), bufferSize);
 
   // TODO: Catch the exception (if any) from this call and produce a nice message
-  boost::property_tree::read_json(ss, _mirrorData);
+  try {
+    boost::property_tree::read_json(ss, _mirrorData);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing mirror metadata in the xclbin archive on line %d: %s", e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
 
   XUtil::TRACE_PrintTree("Mirror", _mirrorData);
 }
@@ -753,7 +756,12 @@ XclBin::addSections(ParameterSectionData &_PSD)
   //  Add a new element to the collection and parse the jason file
   XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
   boost::property_tree::ptree pt;
-  boost::property_tree::read_json( fs, pt );
+  try {
+    boost::property_tree::read_json(fs, pt);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", sJSONFileName.c_str(), e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
   
   XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
   XUtil::TRACE("Property Tree: Root");
@@ -880,7 +888,7 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
       break;
   }
 
-  std::cout << std::endl << XUtil::format("Successfully written all of sections which support the format '%s' to the file: '%s'", 
+  std::cout << std::endl << XUtil::format("Successfully wrote all of sections which support the format '%s' to the file: '%s'", 
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 

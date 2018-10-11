@@ -298,7 +298,7 @@ int main_(int argc, char** argv) {
   if (bInfo && !sInputFile.empty()) {
     xclBin.printHeader(std::cout);
   }
-
+  
   return RC_SUCCESS;
 }
 
