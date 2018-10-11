@@ -964,7 +964,7 @@ XclBin::setKeyValue(const std::string & _keyValue)
 
     // Update existing key
     bool bKeyFound = false;
-    for (auto keyvalue : keyValues) {
+    for (auto &keyvalue : keyValues) {
       if (keyvalue.get<std::string>("key") == sKey) {
          keyvalue.put("value", sValue);
          bKeyFound = true;
