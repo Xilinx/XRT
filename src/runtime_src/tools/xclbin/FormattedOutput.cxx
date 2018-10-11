@@ -16,6 +16,7 @@
 
 #include "FormattedOutput.h"
 #include "Section.h"
+#include  <set>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -124,8 +125,93 @@ FormattedOutput::getDebugBinAsString(const axlf &_xclBinHeader) {
   return XUtil::format("%s", _xclBinHeader.m_header.m_debug_bin);
 }
 
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second);
+    return r;
+}
+
+
+void 
+FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName, 
+                                    const std::vector<Section*> _sections,
+                                    boost::property_tree::ptree &_ptKernelInstance,
+                                    boost::property_tree::ptree &_ptMemoryConnections)
+{
+  if (_sKernelInstanceName.empty()) {
+    return;
+  }
+
+  // 1) Look for our sections section
+  Section *pMemTopology = nullptr;
+  Section *pConnectivity = nullptr;
+  Section *pIPLayout = nullptr;
+
+  for (auto pSection : _sections) {
+    if (MEM_TOPOLOGY == pSection->getSectionKind() ) {
+      pMemTopology=pSection; 
+    } else if (CONNECTIVITY == pSection->getSectionKind() ) {
+      pConnectivity=pSection; 
+    } else if (IP_LAYOUT == pSection->getSectionKind() ) {
+      pIPLayout=pSection; 
+    }
+  }
+  
+  if ((pMemTopology == nullptr) ||
+      (pConnectivity == nullptr) ||
+      (pIPLayout == nullptr)) {
+    // Nothing to work on
+    return; 
+  }
+
+  // 2) Get the property trees and convert section into vector arrays
+  boost::property_tree::ptree ptSections;
+  pMemTopology->getPayload(ptSections);
+  pConnectivity->getPayload(ptSections);
+  pIPLayout->getPayload(ptSections);
+  XUtil::TRACE_PrintTree("Top", ptSections);
+
+  boost::property_tree::ptree& ptMemTopology = ptSections.get_child("mem_topology");
+  std::vector<boost::property_tree::ptree> memTopology = as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
+
+  boost::property_tree::ptree& ptConnectivity = ptSections.get_child("connectivity");
+  std::vector<boost::property_tree::ptree> connectivity = as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
+
+  boost::property_tree::ptree& ptIPLayout = ptSections.get_child("ip_layout");
+  std::vector<boost::property_tree::ptree> ipLayout = as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+
+  // 3) Establish the connections
+  std::set<int> addedIndex;
+  for (auto connection : connectivity) {
+    unsigned int ipLayoutIndex = connection.get<uint32_t>("m_ip_layout_index");
+    unsigned int memDataIndex = connection.get<uint32_t>("mem_data_index");
+
+    if ((_sKernelInstanceName == ipLayout[ipLayoutIndex].get<std::string>("m_name")) &&
+        (addedIndex.find(memDataIndex) == addedIndex.end())) {
+      _ptMemoryConnections.add_child("mem_data", memTopology[memDataIndex]);
+      addedIndex.insert(memDataIndex);
+    }
+  }
+
+  // 4) Get the kernel information
+  for (auto ipdata : ipLayout) {
+    if (_sKernelInstanceName == ipdata.get<std::string>("m_name")) {
+      _ptKernelInstance.add_child("ip_data", ipdata);
+      break;
+    }
+  }
+}
+
+
 void
-FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections) {
+FormattedOutput::printHeader(std::ostream &_ostream, 
+                             const axlf &_xclBinHeader, 
+                             const std::vector<Section*> _sections) {
+
   XUtil::TRACE("Printing Binary Header");
 
   // Section Splitting
@@ -167,26 +253,54 @@ FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, 
 
     _ostream << "\nXOCC Link Command Line\n----------------------\n";
     {
-      std::string sCommand = pt.get<std::string>("build_metadata.xclbin.generated_by.options", "UnknownCommand");
-      _ostream << sCommand << "\n";
+      std::string sCommandLine = pt.get<std::string>("build_metadata.xclbin.generated_by.options", "UnknownCommand");
+     
+      _ostream << sCommandLine << std::endl;
+      const std::string delimiters = " -";      // Our delimiter
+
+      // Working variables
+      std::string::size_type pos = 0;
+      std::string::size_type lastPos = 0;
+      std::vector<std::string> commandAndOptions;
+
+      // Parse the string until the entire string has been parsed or 3 tokens have been found
+      while(true)  
+      {
+         pos = sCommandLine.find(delimiters, lastPos);
+         std::string token;
+
+         if (pos == std::string::npos) {
+            pos = sCommandLine.length();
+            commandAndOptions.push_back(sCommandLine.substr(lastPos, pos-lastPos));
+            break;
+         }
+
+         commandAndOptions.push_back(sCommandLine.substr(lastPos, pos-lastPos));
+         lastPos = ++pos ;
+      }
+
+      _ostream << "xocc command: " << commandAndOptions[0] << std::endl;
+      for (unsigned int index = 1; index < commandAndOptions.size(); ++index) {
+        _ostream << "          " << commandAndOptions[index] << std::endl;
+      }
     }
 
-    _ostream << "\nPlatform/DSA Build Information\n------------------------------\n";
+    _ostream << "\nPlatform / Shell Build Information\n------------------------------\n";
     { 
       std::string sProductName = pt.get<std::string>("build_metadata.dsa.generated_by.name", "UnknownName");
       std::string sVersion = pt.get<std::string>("build_metadata.dsa.generated_by.version", "UnknownVersion");
       std::string sCl = pt.get<std::string>("build_metadata.dsa.generated_by.cl", "0");
       std::string sTimeStamp = pt.get<std::string>("build_metadata.dsa.generated_by.time_stamp", "UnknownTime");
-      _ostream << "DSA generated by " << sProductName << " " 
+      _ostream << "Shell generated by " << sProductName << " " 
         << sVersion << " (Built: " << sTimeStamp << " - CL " << sCl << ")\n";
 
       std::string sVendor = pt.get<std::string>("build_metadata.dsa.vendor", "UnknownVendor");
-      _ostream << "DSA Vendor:    " << sVendor << "\n";
+      _ostream << "Shell Vendor:    " << sVendor << "\n";
       std::string sBoardId = pt.get<std::string>("build_metadata.dsa.board_id", "UnknownBoardId");
-      _ostream << "DSA Board ID:  " << sBoardId << "\n";
+      _ostream << "Shell Board ID:  " << sBoardId << "\n";
       std::string sMajor = pt.get<std::string>("build_metadata.dsa.version_major", "UnknownMajorVersion");
       std::string sMinor = pt.get<std::string>("build_metadata.dsa.version_minor", "UnknownMinorVersion");
-      _ostream << "DSA Version:   " << sMajor << "." << sMinor << "\n";
+      _ostream << "Shell Version:   " << sMajor << "." << sMinor << "\n";
     }
 
     _ostream << "\nKernels\n-------\n";
@@ -201,9 +315,19 @@ FormattedOutput::printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, 
           boost::property_tree::ptree instances = kernel.second.get_child("instances");
           for (const auto & instance : instances) {
             std::string sInstanceName = instance.second.get<std::string>("name");
-            _ostream << "Name:Instance - " << sKernelName << ":" << sInstanceName << "\n";
-            _ostream << "  Base Addresses:    <Coming soon!>\n";
-            _ostream << "  Memory Connection: <Coming soon!>\n";
+            std::string sKernelInstanceName = sKernelName + ":" + sInstanceName;
+            _ostream << "Name:Instance - " << sKernelInstanceName << "\n";
+
+            boost::property_tree::ptree memoryConnections;
+            boost::property_tree::ptree kernelInstance;
+            getKernelDDRMemory(sKernelInstanceName, _sections, kernelInstance, memoryConnections);
+            _ostream << "  Base Addresses:    " << kernelInstance.get<std::string>("ip_data.m_base_address") << std::endl;
+            for (const auto& kv : memoryConnections) {
+              boost::property_tree::ptree ptMemData = kv.second;
+              std::string sType = ptMemData.get<std::string>("m_type");
+              std::string sTag = ptMemData.get<std::string>("m_tag");
+              _ostream << "  Memory Connection: " << sType << ":" << sTag << std::endl;
+            }
           }
           _ostream << "\n";
         }

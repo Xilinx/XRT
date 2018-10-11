@@ -246,6 +246,11 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
 
   // -- Read contents into memory buffer --
   m_bufferSize = buffer.tellp();
+
+  if (m_bufferSize == 0) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' content is empty.  No data in the given JSON file.", getSectionKindAsString().c_str());
+    throw std::runtime_error(errMsg);
+  }
   m_pBuffer = new char[m_bufferSize];
   memcpy(m_pBuffer, buffer.str().c_str(), m_bufferSize);
 }
@@ -463,7 +468,6 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) cons
     // Do nothing;
     break;
   case FT_UNDEFINED:
-    // Do nothing;
     break;
   }
 }
