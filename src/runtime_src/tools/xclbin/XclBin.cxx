@@ -873,6 +873,16 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
 }
 
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second);
+    return r;
+}
+
 
 void 
 XclBin::setKeyValue(const std::string & _keyValue)
@@ -939,9 +949,54 @@ XclBin::setKeyValue(const std::string & _keyValue)
   } 
 
   if (sDomain == "USER") {
+    Section *pSection = findSection(KEYVALUE_METADATA);
+    if (pSection == nullptr) {
+      pSection = Section::createSectionObjectOfKind(KEYVALUE_METADATA);
+      addSection(pSection);
+    }
 
-    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
-    throw std::runtime_error(errMsg);
+    boost::property_tree::ptree ptKeyValueMetadata;
+    pSection->getPayload(ptKeyValueMetadata);
+
+    XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
+    boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
+    std::vector<boost::property_tree::ptree> keyValues = as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+
+    // Update existing key
+    bool bKeyFound = false;
+    for (auto keyvalue : keyValues) {
+      if (keyvalue.get<std::string>("key") == sKey) {
+         keyvalue.put("value", sValue);
+         bKeyFound = true;
+         std::cout << "Updating key '" + sKey + "' to '" + sValue + "'" << std::endl;
+         break;
+      }
+    }
+
+    // Need to create a new key
+    if (bKeyFound == false) {
+      boost::property_tree::ptree keyValue;
+      keyValue.put("key", sKey);
+      keyValue.put("value", sValue);
+      keyValues.push_back(keyValue);
+      std::cout << "Creating new key '" + sKey + "' with the value '" + sValue + "'" << std::endl;
+    }
+
+    // Now create a new tree to add back into the section
+    boost::property_tree::ptree ptKeyValuesNew;
+    for (auto keyvalue : keyValues) {
+      ptKeyValuesNew.add_child("kv_data", keyvalue);
+    }
+
+    boost::property_tree::ptree ptKeyValueMetadataNew;
+    ptKeyValueMetadataNew.add_child("key_values", ptKeyValuesNew);
+
+    boost::property_tree::ptree pt;
+    pt.add_child("keyvalue_metadata", ptKeyValueMetadataNew);
+
+    XUtil::TRACE_PrintTree("Final KeyValue",pt);
+    pSection->readJSONSectionImage(pt);
+    return;
   }
 
   std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
