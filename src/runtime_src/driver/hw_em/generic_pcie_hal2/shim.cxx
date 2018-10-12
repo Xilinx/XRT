@@ -314,6 +314,8 @@ namespace xclhwemhal2 {
     {
       for (int32_t i=0; i<m_mem->m_count; ++i)
       {
+        if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+          continue;
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
         mMembanks.emplace_back (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i});
       }
