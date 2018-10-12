@@ -1,17 +1,23 @@
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
 
-set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+SET(FLAVOR_NAME "")
+if( $ENV{AWS_PEGASUS_TARGET} )
+  SET(FLAVOR_NAME "-aws")
+endif()
+
+set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt${FLAVOR_NAME}-${XRT_VERSION_STRING}")
 
 message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
 
-SET (DKMS_FILE_NAME "dkms.conf")
-SET (DKMS_POSTINST "postinst")
-SET (DKMS_PRERM "prerm")
+
+SET (DKMS_FILE_NAME "dkms${FLAVOR_NAME}.conf")
+SET (DKMS_POSTINST "postinst${FLAVOR_NAME}")
+SET (DKMS_PRERM "prerm${FLAVOR_NAME}")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
-  ${DKMS_FILE_NAME}
+  "dkms.conf"#${DKMS_FILE_NAME}
   )
 
 configure_file (
@@ -25,14 +31,6 @@ configure_file (
   )
 
 SET (XRT_DKMS_SRCS
-  driver/xclng/drm/xocl/mgmtpf/mgmt-core.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-cw.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-utils.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-ioctl.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-sysfs.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-core.h
-  driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules
-  driver/xclng/drm/xocl/mgmtpf/Makefile
   driver/xclng/drm/xocl/xocl_drv.h
   driver/xclng/drm/xocl/xocl_subdev.c
   driver/xclng/drm/xocl/xocl_ctx.c
@@ -110,6 +108,37 @@ SET (XRT_DKMS_SRCS
   driver/include/xclbin.h
   driver/include/xclerr.h
   )
+
+if( $ENV{AWS_PEGASUS_TARGET} )
+  # awsmgmt
+  list(APPEND XRT_DKMS_SRCS 
+    driver/aws/kernel/include/mgmt-ioctl.h
+    driver/aws/kernel/include/xocl_ioctl.h
+    driver/aws/kernel/mgmt/mgmt-bit.c
+    driver/aws/kernel/mgmt/mgmt-bit.h
+    driver/aws/kernel/mgmt/mgmt-core.c
+    driver/aws/kernel/mgmt/mgmt-core.h
+    driver/aws/kernel/mgmt/mgmt-cw.c
+    driver/aws/kernel/mgmt/mgmt-cw.h
+    driver/aws/kernel/mgmt/mgmt-firewall.c
+    driver/aws/kernel/mgmt/mgmt-sysfs.c
+    driver/aws/kernel/mgmt/mgmt-thread.c
+    driver/aws/kernel/mgmt/10-awsmgmt.rules
+    driver/aws/kernel/mgmt/Makefile
+  )
+else()
+  # xclmgmt
+  list(APPEND XRT_DKMS_SRCS
+    driver/xclng/drm/xocl/mgmtpf/mgmt-core.c
+    driver/xclng/drm/xocl/mgmtpf/mgmt-cw.c
+    driver/xclng/drm/xocl/mgmtpf/mgmt-utils.c
+    driver/xclng/drm/xocl/mgmtpf/mgmt-ioctl.c
+    driver/xclng/drm/xocl/mgmtpf/mgmt-sysfs.c
+    driver/xclng/drm/xocl/mgmtpf/mgmt-core.h
+    driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules
+    driver/xclng/drm/xocl/mgmtpf/Makefile
+  )
+endif()
 
 SET (XRT_DKMS_ABS_SRCS)
 
