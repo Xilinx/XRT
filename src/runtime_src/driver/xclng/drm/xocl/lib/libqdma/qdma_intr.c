@@ -649,6 +649,15 @@ void intr_work(struct work_struct *work)
 	qdma_descq_service_wb(descq, 0, 1);
 }
 
+void delayed_intr_work(struct work_struct *work)
+{
+	struct qdma_descq *descq;
+
+	descq = container_of(to_delayed_work(work),
+		struct qdma_descq, dwork);
+	qdma_descq_service_wb(descq, 0, 1);
+}
+
 /*
  * qdma_queue_service - service the queue
  * in the case of irq handler is registered by the user, the user should

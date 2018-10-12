@@ -431,6 +431,8 @@ struct qdma_mm_desc {
 #define S_DESC_F_SOP		29
 #define S_DESC_F_EOP		30
 
+#define S_DESC_F_MASK		((1 << S_DESC_F_DV) - 1)
+
 
 #define S_H2C_DESC_F_SOP		1
 #define S_H2C_DESC_F_EOP		2
