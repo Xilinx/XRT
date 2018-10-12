@@ -11,9 +11,9 @@ set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt${FLAVOR_NAME}-${XRT_VERSION_STRING}")
 message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
 
 
-SET (DKMS_FILE_NAME "dkms${FLAVOR_NAME}.conf")
-SET (DKMS_POSTINST "postinst${FLAVOR_NAME}")
-SET (DKMS_PRERM "prerm${FLAVOR_NAME}")
+SET (DKMS_FILE_NAME "dkms.conf")
+SET (DKMS_POSTINST "postinst")
+SET (DKMS_PRERM "prerm")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"

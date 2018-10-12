@@ -11,11 +11,9 @@ SET(CPACK_PACKAGE_VERSION_MINOR "${XRT_VERSION_MINOR}")
 SET(CPACK_PACKAGE_VERSION_PATCH "${XRT_VERSION_PATCH}")
 
 SET(CPACK_PACKAGE_NAME "xrt")
-SET(FLAVOR_NAME "")
 
 if( $ENV{AWS_PEGASUS_TARGET} )
   SET(CPACK_PACKAGE_NAME "xrt-aws")
-  SET(FLAVOR_NAME "-aws")
 endif ()
 
 execute_process(
@@ -34,8 +32,8 @@ if (${LINUX_FLAVOR} STREQUAL Ubuntu)
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
-  SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/postinst${FLAVOR_NAME}")
-  SET(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm${FLAVOR_NAME}")
+  SET(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/postinst")
+  SET(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig")
   set(CPACK_RPM_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4 ")
 else ()

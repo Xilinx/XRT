@@ -1,18 +1,26 @@
 #!/bin/sh
 
+mgmt_drv="xclmgmt"
+flavor_name=""
+if [ $AWS_PEGASUS_TARGET == "1" ]; then
+    echo "AWS_PEGASUS_TARGET = 1"
+    mgmt_drv="awsmgmt"
+    flavor_name="-aws"
+fi
+
 echo "Unloading old XRT Linux kernel modules"
 modprobe -r xocl
-modprobe -r xclmgmt
+modprobe -r $mgmt_drv
 
 echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+dkms remove -m xrt$flavor_name -v @XRT_VERSION_STRING@ --all
 find /lib/modules -type f -name xocl.ko -delete
-find /lib/modules -type f -name xclmgmt.ko -delete
+find /lib/modules -type f -name $mgmt_drv.ko -delete
 find /lib/modules -type f -name xocl.ko.kz -delete
-find /lib/modules -type f -name xclmgmt.ko.kz -delete
+find /lib/modules -type f -name $mgmt_drv.ko.kz -delete
 depmod -A
 
 rm -f /etc/udev/rules.d/10-xocl.rules
-rm -f /etc/udev/rules.d/10-xclmgmt.rules
+rm -f /etc/udev/rules.d/10-$mgmt_drv.rules
 
 exit 0
