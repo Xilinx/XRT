@@ -281,9 +281,7 @@ XclBin::writeXclBinBinaryMirrorData(std::fstream& _ostream,
                                     const boost::property_tree::ptree& _mirroredData) const {
   _ostream << MIRROR_DATA_START;
   boost::property_tree::write_json(_ostream, _mirroredData, false /*Pretty print*/);
-  _ostream << '\0';
   _ostream << MIRROR_DATA_END;
-
 
   XUtil::TRACE_PrintTree("Mirrored Data", _mirroredData);
 }
@@ -367,7 +365,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
     XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
   }
 
-  std::cout << XUtil::format("Successfully wrote (%ld bytes) to output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()) << std::endl;
+  std::cout << XUtil::format("Successfully wrote (%ld bytes) to the output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()).c_str() << std::endl;
 }
 
 
@@ -465,7 +463,12 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   ss.write((char*) memBuffer.get(), bufferSize);
 
   // TODO: Catch the exception (if any) from this call and produce a nice message
-  boost::property_tree::read_json(ss, _mirrorData);
+  try {
+    boost::property_tree::read_json(ss, _mirrorData);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing mirror metadata in the xclbin archive on line %d: %s", e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
 
   XUtil::TRACE_PrintTree("Mirror", _mirrorData);
 }
@@ -732,7 +735,7 @@ void
 XclBin::addSections(ParameterSectionData &_PSD)
 {
   if (!_PSD.getSectionName().empty()) {
-    std::string errMsg = "Error: Section given for a wildcard JSON section add call.";
+    std::string errMsg = "Error: Section given for a wildcard JSON section add is not empty.";
     throw std::runtime_error(errMsg);
   }
 
@@ -753,7 +756,12 @@ XclBin::addSections(ParameterSectionData &_PSD)
   //  Add a new element to the collection and parse the jason file
   XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
   boost::property_tree::ptree pt;
-  boost::property_tree::read_json( fs, pt );
+  try {
+    boost::property_tree::read_json(fs, pt);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", sJSONFileName.c_str(), e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
   
   XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
   XUtil::TRACE("Property Tree: Root");
@@ -808,6 +816,17 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
+  if (_PSD.getFormatType() == Section::FT_UNKNOWN) {
+    std::string errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
+    throw std::runtime_error(errMsg);
+  }
+
+
+  if (_PSD.getFormatType() == Section::FT_UNDEFINED ) {
+    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>";
+    throw std::runtime_error(errMsg);
+  }
+
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image
   std::fstream oDumpFile;
@@ -823,6 +842,64 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+}
+
+void 
+XclBin::dumpSections(ParameterSectionData &_PSD) 
+{
+  if (!_PSD.getSectionName().empty()) {
+    std::string errMsg = "Error: Section given for a wildcard JSON section to dump is not empty.";
+    throw std::runtime_error(errMsg);
+  }
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = XUtil::format("Error: Expecting JSON format type, got '%s'.", _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sDumpFileName = _PSD.getFile();
+  // Write the xclbin file image
+  std::fstream oDumpFile;
+  oDumpFile.open(sDumpFileName, std::ifstream::out | std::ifstream::binary);
+  if (!oDumpFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  switch (_PSD.getFormatType()) {
+    case Section::FT_JSON:
+      {
+        boost::property_tree::ptree pt;
+        for (auto pSection : m_sections) {
+          std::string sectionName = pSection->getSectionKindAsString();
+          std::cout << "Examining: '" + sectionName << std::endl;
+          pSection->getPayload(pt);
+        }
+
+        boost::property_tree::write_json(oDumpFile, pt, true /*Pretty print*/);
+        break;
+      }
+    case Section::FT_HTML:
+    case Section::FT_RAW:
+    case Section::FT_TXT:
+    case Section::FT_UNDEFINED:
+    case Section::FT_UNKNOWN:
+    default:
+      break;
+  }
+
+  std::cout << std::endl << XUtil::format("Successfully wrote all of sections which support the format '%s' to the file: '%s'", 
+                                          _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
+}
+
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second);
+    return r;
 }
 
 
@@ -891,9 +968,54 @@ XclBin::setKeyValue(const std::string & _keyValue)
   } 
 
   if (sDomain == "USER") {
+    Section *pSection = findSection(KEYVALUE_METADATA);
+    if (pSection == nullptr) {
+      pSection = Section::createSectionObjectOfKind(KEYVALUE_METADATA);
+      addSection(pSection);
+    }
 
-    std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
-    throw std::runtime_error(errMsg);
+    boost::property_tree::ptree ptKeyValueMetadata;
+    pSection->getPayload(ptKeyValueMetadata);
+
+    XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
+    boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
+    std::vector<boost::property_tree::ptree> keyValues = as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+
+    // Update existing key
+    bool bKeyFound = false;
+    for (auto &keyvalue : keyValues) {
+      if (keyvalue.get<std::string>("key") == sKey) {
+         keyvalue.put("value", sValue);
+         bKeyFound = true;
+         std::cout << "Updating key '" + sKey + "' to '" + sValue + "'" << std::endl;
+         break;
+      }
+    }
+
+    // Need to create a new key
+    if (bKeyFound == false) {
+      boost::property_tree::ptree keyValue;
+      keyValue.put("key", sKey);
+      keyValue.put("value", sValue);
+      keyValues.push_back(keyValue);
+      std::cout << "Creating new key '" + sKey + "' with the value '" + sValue + "'" << std::endl;
+    }
+
+    // Now create a new tree to add back into the section
+    boost::property_tree::ptree ptKeyValuesNew;
+    for (auto keyvalue : keyValues) {
+      ptKeyValuesNew.add_child("kv_data", keyvalue);
+    }
+
+    boost::property_tree::ptree ptKeyValueMetadataNew;
+    ptKeyValueMetadataNew.add_child("key_values", ptKeyValuesNew);
+
+    boost::property_tree::ptree pt;
+    pt.add_child("keyvalue_metadata", ptKeyValueMetadataNew);
+
+    XUtil::TRACE_PrintTree("Final KeyValue",pt);
+    pSection->readJSONSectionImage(pt);
+    return;
   }
 
   std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
@@ -905,3 +1027,6 @@ XclBin::printHeader(std::ostream &_ostream) const
 {
   FormattedOutput::printHeader(_ostream, m_xclBinHeader, m_sections);
 }
+
+
+

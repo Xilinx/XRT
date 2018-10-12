@@ -21,11 +21,7 @@
 
 #include "XclBinUtilities.h"
 
-//#include "version.h" // Globally included from main
-// This should be an alternative, but then these variables are "undefined"
-//extern const char xrt_build_version[];
-//extern const char xrt_build_version_hash[];
-//extern const char xrt_build_version_date_rfc[];
+#include "version.h" // Globally included from main
 
 namespace XUtil = XclBinUtilities;
 
@@ -57,7 +53,10 @@ SectionBuildMetadata::marshalToJSON(char* _pDataSection,
     // TODO: Catch the exception (if any) from this call and produce a nice message
     XUtil::TRACE_BUF("BUILD_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
     try {
-      boost::property_tree::read_json(ss, _ptree);
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+      boost::property_tree::ptree &buildMetaData = pt.get_child("build_metadata");
+      _ptree.add_child("build_metadata", buildMetaData);
     } catch (const std::exception & e) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
@@ -73,9 +72,9 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
    XUtil::TRACE("BUILD_METADATA");
    boost::property_tree::ptree ptWritable = _ptSection;
    ptWritable.put("build_metadata.xclbin.packaged_by.name", "xclbinutil");
-   ptWritable.put("build_metadata.xclbin.packaged_by.version", "2.1.0");//xrt_build_version);
-   ptWritable.put("build_metadata.xclbin.packaged_by.hash", "6f3b6b0dc6cf73effa3a13d29706077363f81714");//xrt_build_version_hash);
-   ptWritable.put("build_metadata.xclbin.packaged_by.time_stamp", "Tue, 09 Oct 2018 16:25:00 -0600");//xrt_build_version_date_rfc);
+   ptWritable.put("build_metadata.xclbin.packaged_by.version", xrt_build_version); 
+   ptWritable.put("build_metadata.xclbin.packaged_by.hash", xrt_build_version_hash);
+   ptWritable.put("build_metadata.xclbin.packaged_by.time_stamp", xrt_build_version_date_rfc);
    boost::property_tree::write_json(_buf, ptWritable, false );
 }
 

@@ -38,6 +38,10 @@ class SectionKeyValueMetadata : public Section {
   SectionKeyValueMetadata();
   virtual ~SectionKeyValueMetadata();
 
+ protected:
+  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
+  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+
  private:
   // Purposefully private and undefined ctors...
   SectionKeyValueMetadata(const SectionKeyValueMetadata& obj);
@@ -47,7 +51,7 @@ class SectionKeyValueMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", "", boost::factory<SectionKeyValueMetadata*>()); }
+    _init() { registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", "keyvalue_metadata", boost::factory<SectionKeyValueMetadata*>()); }
   } _initializer;
 };
 
