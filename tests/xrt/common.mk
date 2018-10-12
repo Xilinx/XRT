@@ -5,12 +5,14 @@ XILINX_SDACCEL := $(XILINX_SDX)
 endif
 
 ifndef XILINX_SDACCEL
-$(error Environment variable XILINX_SDACCEL should point to SDAccel install area)
+ ifneq ($(MAKECMDGOALS),exe)
+  $(error Environment variable XILINX_SDACCEL should point to SDAccel install area)
+ endif
 else
 $(info XILINX_SDACCEL = $(XILINX_SDACCEL))
 endif
 
-CROSS_COMPILE := 
+CROSS_COMPILE :=
 
 CXX := $(CROSS_COMPILE)g++
 CXX_EXT := cpp
@@ -34,7 +36,7 @@ CXXFLAGS += -DHAL2
 ARFLAGS := rcv
 CLFLAGS := --platform $(DSA)
 
-HAL_INC := -I$(XILINX_SDACCEL)/runtime/driver/include
+HAL_INC := -I$(XILINX_XRT)/include
 COMMON_INC := -I$(LEVEL)/$(COMMON_DIR)
 
 CXXFLAGS += $(HAL_INC) $(COMMON_INC)
