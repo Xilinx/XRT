@@ -478,6 +478,13 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 		val = reg_rd(icap->icap_clock_bases[i] +
 			OCL_CLKWIZ_CONFIG_OFFSET(2));
 		ICAP_INFO(icap, "clockwiz CONFIG(2) 0x%x", val);
+
+		curr_freq = icap_get_ocl_frequency(icap, i);
+		if(curr_freq != icap->icap_ocl_frequency[i]){
+			ICAP_ERR(icap, "Unable to set freq %d, current freq is %d", icap->icap_ocl_frequency[i], curr_freq);
+			err = -EINVAL;
+			break;
+		}
 	}
 
 	return err;
