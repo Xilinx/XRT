@@ -3503,6 +3503,7 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	v =  read_register(reg);
 	v = (v & 0xFF) | (((u32)32) << 8);
 	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
+	return 0;
 }
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
@@ -4427,5 +4428,3 @@ int xdma_cyclic_transfer_teardown(struct xdma_engine *engine)
 
 	return 0;
 }
-
-
