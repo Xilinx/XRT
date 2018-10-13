@@ -26,6 +26,7 @@ ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
   , m_file("")
   , m_section("")
   , m_eKind(BITSTREAM)
+  , m_originalString(_formattedString)
 {
   transformFormattedString(_formattedString);
 }
@@ -41,7 +42,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 // String being parsed:  <section>:<formatType>:<filename>
 // Example String:       BUILD_METADATA:JSON:MY_FILE.JSON
 {
-  const std::string& delimiters = ":";      // Our delimiter
+  const std::string delimiters = ":";      // Our delimiter
 
   // Working variables
   std::string::size_type pos = 0;
@@ -65,7 +66,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 
   if (tokens.size() != 3) {
-    std::string errMsg = XUtil::format("Error: Expected format <section>:<file>:<format> when using adding a section.  Received: %s.", _formattedString.c_str());
+    std::string errMsg = XUtil::format("Error: Expected format <section>:<format>:<file> when using adding a section.  Received: %s.", _formattedString.c_str());
     throw std::runtime_error(errMsg);
   }
 
@@ -83,7 +84,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 
   if ( tokens[0].empty() && (m_formatType != Section::FT_JSON)) {
-    std::string errMsg = "Error: Empty sections are only permitted with JSON format files.";
+    std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
   m_section = tokens[0];
@@ -121,4 +122,10 @@ const std::string &
 ParameterSectionData::getFormatTypeAsStr()
 {
   return m_formatTypeStr;
+}
+
+const std::string &
+ParameterSectionData::getOriginalFormattedString()
+{
+  return m_originalString;
 }

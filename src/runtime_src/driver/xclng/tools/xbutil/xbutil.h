@@ -276,6 +276,9 @@ public:
     {
         std::stringstream ss, subss;
         subss << std::left;
+        std::string errmsg;
+        std::string dna_info;
+
         ss << std::left << "\n";
         unsigned i;
 
@@ -446,7 +449,8 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo.mMgtVtt/1000).substr(0,4) + "V" << "\n\n";
 
 
-        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
+        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(32) << "DNA" <<"\n";
+
         if(m_devinfo.mVccIntVol == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntVol == XCL_INVALID_SENSOR_VAL)
@@ -456,13 +460,22 @@ public:
 
 
         if(m_devinfo.mVccIntCurr == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntCurr == XCL_INVALID_SENSOR_VAL)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else{
-            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A") << "\n";
+            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A");
         }
 
+        auto dev = pcidev::get_dev(m_idx);
+
+        dev->mgmt->sysfs_get("dna", "dna", errmsg, dna_info);
+
+        if(dna_info.empty())
+            ss << std::setw(32) << "Not support" << "\n";
+        else{
+            ss << std::setw(32) << dna_info << "\n";
+        }
 
         m_devinfo_stringize_power(m_devinfo, lines);
 
@@ -572,6 +585,9 @@ public:
         }
 
         for(unsigned i = 0; i < numDDR; i++) {
+            if (map->m_mem_data[i].m_type == MEM_STREAMING)
+                continue;
+
             ss << " [" << i << "] " <<
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
                 << map->m_mem_data[i].m_tag;
@@ -611,6 +627,98 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
+        lines.push_back(ss.str());
+    }
+
+    void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
+        std::vector<std::string> &lines) const
+    {
+        std::stringstream ss;
+        std::string errmsg;
+        std::vector<char> buf;
+	std::vector<std::string> attrs;
+
+        ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
+        ss << std::setfill(' ') << "\n";
+
+        ss << std::left << std::setw(48) << "Stream Topology" << "\n";
+
+        pcidev::get_dev(m_idx)->user->sysfs_get(
+            "", "mem_topology", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        const mem_topology *map = (mem_topology *)buf.data();
+        unsigned num = 0;
+
+        if(!buf.empty())
+            num = map->m_count;
+
+        if(num == 0) {
+            ss << "-- none found --. See 'xbutil program'.\n";
+        } else if(num < 0) {
+            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
+                << "Has the bitstream been loaded? See 'xbutil program'.";
+            lines.push_back(ss.str());
+            return;
+        } else {
+            ss << std::setw(16) << "Tag"  << std::setw(10) << "Route"
+                << std::setw(10) << "Flow" << std::setw(10) << "Status"
+                << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
+                << "\n";
+        }
+
+        for(unsigned i = 0; i < num; i++) {
+            std::string lname;
+            std::map<std::string, std::string> stat_map;
+
+            if (map->m_mem_data[i].m_type != MEM_STREAMING)
+                continue;
+
+            ss << " [" << i << "] " <<
+                std::setw(16 - (std::to_string(i).length()) - 4) << std::left
+                << map->m_mem_data[i].m_tag;
+
+            ss << std::setw(10) << map->m_mem_data[i].route_id;
+            ss << std::setw(10) << map->m_mem_data[i].flow_id;
+
+            lname = std::string((char *)map->m_mem_data[i].m_tag);
+
+            if (lname.back() == 'w')
+                lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
+            else
+                lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
+
+            pcidev::get_dev(m_idx)->user->sysfs_get(
+                "str_dma", lname, errmsg, attrs);
+            if (!errmsg.empty()) {
+                ss << std::setw(10) << "Inactive";
+                ss << std::setw(16) << "N/A" << std::setw(16) << "N/A";
+            } else {
+                ss << std::setw(10) << "Active";
+                for (unsigned k = 0; k < attrs.size(); k++) {
+                    char key[50];
+                    int64_t value;
+
+                    std::sscanf(attrs[k].c_str(), "%[^:]:%ld", key, &value);
+                    stat_map[std::string(key)] = std::to_string(value);
+                }
+
+                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] + 
+                    "/" + stat_map[std::string("total_req_num")];
+
+                ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
+                    "/" + stat_map[std::string("total_complete_num")];
+            }
+
+            ss << "\n";
+        }
+
+
         lines.push_back(ss.str());
     }
 
@@ -682,6 +790,20 @@ public:
                          << std::dec << parseCUStatus( statusBuf ) << "\n";
                     cuCnt++;
                 }
+
+                if( computeUnits.at( i ).m_type == IP_DNASC ) {
+
+                    std::string errmsg;
+                    int dnaStatus;
+                    auto dev = pcidev::get_dev(m_idx);
+
+                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
+                    ostr << "\nIP[" << cuCnt << "]: "
+                         << computeUnits.at( i ).m_name
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
+                    cuCnt++;
+                }
             }
             if(computeUnits.size() == 0) {
                 ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
@@ -693,6 +815,8 @@ public:
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
         m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
+
+	m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
 
         for(auto line:usage_lines){
             ostr << line << "\n";

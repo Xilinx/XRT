@@ -219,7 +219,6 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
     memset(&mAioContext, 0, sizeof(mAioContext));
     if (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) != 0) {
         mAioEnabled = false;
-        std::cout << "Failed create AIO context" << std::endl;
     } else {
         mAioEnabled = true;
     }
@@ -1345,17 +1344,25 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     int num_evt, i;
 
+    *actual = 0;
+    if (!mAioEnabled) {
+        num_evt = -EINVAL;
+        std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+        goto done;
+    }
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
     }
+    *actual = num_evt;
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
         comps[i].nbytes = ((struct io_event *)comps)[i].res;
         comps[i].err_code = ((struct io_event *)comps)[i].res2;
     }
+    num_evt = 0;
 
 done:
     return num_evt;
@@ -1382,6 +1389,11 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
             struct iocb cb;
             struct iocb *cbs[1];
+
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
 
             if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
                 std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
@@ -1446,6 +1458,11 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb cb;
             struct iocb *cbs[1];
 
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
+
             memset(&cb, 0, sizeof(cb));
             cb.aio_fildes = (int)q_hdl;
             cb.aio_lio_opcode = IOCB_CMD_PREADV;
@@ -1464,7 +1481,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
         } else {
             rc = readv((int)q_hdl, iov, 2);
             if (rc < 0) {
-                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                std::cerr << "ERROR: read stream failed: " << rc << std::endl;
                 break;
             }
         }

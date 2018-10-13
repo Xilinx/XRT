@@ -43,6 +43,7 @@ target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINUTIL_FILES
+  "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
   "XclBinUtilMain.cxx"
   "XclBin.cxx"

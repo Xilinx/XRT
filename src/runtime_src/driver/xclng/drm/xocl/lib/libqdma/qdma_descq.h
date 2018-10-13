@@ -110,6 +110,8 @@ enum qdma_req_submit_state {
 	QDMA_REQ_SUBMIT_COMPLETE
 };
 
+#define	QDMA_CANCEL_TIMEOUT		5	/* seconds */
+
 /**
  * @struct - qdma_descq
  * @brief	qdma software descriptor book keeping fields
@@ -119,6 +121,7 @@ struct qdma_descq {
 	struct qdma_queue_conf conf;
 	/** lock to protect access to software descriptor */
 	spinlock_t lock;
+	spinlock_t cancel_lock;
 	/** pointer to dma device */
 	struct xlnx_dma_dev *xdev;
 	/** number of channels */
@@ -456,6 +459,7 @@ struct qdma_sgt_req_cb {
 	/** qdma read/write request list */
 	struct list_head list;
 	struct list_head list_cancel;
+	struct timeval cancel_ts;
 	bool canceled;
 	/** request wait queue */
 	qdma_wait_queue wq;
@@ -473,8 +477,11 @@ struct qdma_sgt_req_cb {
 	int status;
 	/** indicates whether request processing is done or not*/
 	u8 done;
+	int err_code;
 	/** indicates whether to unmap the kernel pages*/
 	u8 unmap_needed:1;
+	/** indicates whether tlast is received on c2h side */
+	bool c2h_eot;
 	/* flag to indicate partial req submit */
 	enum qdma_req_submit_state req_state;
 };
@@ -505,8 +512,7 @@ ssize_t qdma_descq_proc_sgt_request(struct qdma_descq *descq,
  *
  * @return	none
  *****************************************************************************/
-void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
-			int error);
+void qdma_sgt_req_done(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
@@ -595,10 +601,14 @@ static inline void descq_cancel_req(struct qdma_descq *descq,
 {
 	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 
+	spin_lock(&descq->cancel_lock);
 	if (!cb->canceled) {
+		pr_debug("add cancel req %p\n", cb);
 		list_add_tail(&cb->list_cancel, &descq->cancel_list);
 		cb->canceled = true;
+		do_gettimeofday(&cb->cancel_ts);
 	}
+	spin_unlock(&descq->cancel_lock);
 }
 
 /*****************************************************************************/

@@ -45,6 +45,7 @@ class ParameterSectionData {
   const std::string &getFormatTypeAsStr();
   const std::string &getSectionName();
   enum axlf_section_kind &getSectionKind();
+  const std::string &getOriginalFormattedString();
 
  protected:
    enum Section::FormatType m_formatType;
@@ -52,6 +53,7 @@ class ParameterSectionData {
    std::string m_file;
    std::string m_section;
    enum axlf_section_kind m_eKind;
+   std::string m_originalString;
 
  protected:
    void transformFormattedString(const std::string _formattedString);

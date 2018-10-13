@@ -41,10 +41,10 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
   if (!m_bVerbose)
     return;
 
-  std::cout << "Trace: " << _msg;
+  std::cout << "Trace: " << _msg.c_str();
 
   if (_endl)
-    std::cout << std::endl;
+    std::cout << std::endl << std::flush;
 }
 
 
@@ -371,7 +371,7 @@ XclBinUtilities::addCheckSumImage(const std::string _sFileName,
 
 
 void
-XclBinUtilities::binaryBufferToHexString(unsigned char* _binBuf,
+XclBinUtilities::binaryBufferToHexString(const unsigned char* _binBuf,
                                          unsigned int _size,
                                          std::string& _outputString) {
   // Initialize output data

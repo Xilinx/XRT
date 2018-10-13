@@ -22,6 +22,7 @@
 // #includes here - please keep these to a bare minimum!
 #include "Section.h"
 #include <boost/functional/factory.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
@@ -51,7 +52,7 @@ class SectionBuildMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); }
+    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", boost::factory<SectionBuildMetadata*>()); }
   } _initializer;
 };
 

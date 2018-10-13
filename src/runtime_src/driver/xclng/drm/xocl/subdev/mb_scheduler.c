@@ -1853,10 +1853,47 @@ reset(struct platform_device *pdev)
 	return 0;
 }
 
+/**
+ * validate() - Check if requested cmd is valid in the current context
+ */
 static int
-validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd)
+validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *bo)
 {
-	// TODO: Add code to check if requested cmd is valid in the current context
+	struct ert_packet *ecmd = (struct ert_packet*)bo->vmapping;
+	struct ert_start_kernel_cmd *scmd = (struct ert_start_kernel_cmd*)bo->vmapping;
+	u32 ctx_cus[4] = {0};
+	u32 cumasks = 0;
+	int i = 0;
+
+	SCHED_DEBUGF("-> validate opcode(%d)\n",ecmd->opcode);
+
+	/* cus for start kernel commands only */
+	if (ecmd->opcode!=ERT_START_CU) {
+		SCHED_DEBUG("<- validate(0), not a CU cmd\n");
+		return 0; /* ok */
+	}
+
+	/* no specific CUs selected, maybe ctx is not used by client */
+	if (bitmap_empty(client->cu_bitmap,MAX_CUS)) {
+		SCHED_DEBUG("<- validate(0), no CUs in ctx\n");
+		return 0; /* ok */
+	}
+
+
+	/* Check CUs in cmd BO against CUs in context */
+	cumasks = 1 + scmd->extra_cu_masks;
+	bitmap_to_u32array(ctx_cus,cumasks,client->cu_bitmap,MAX_CUS);
+	for (i=0; i<cumasks; ++i) {
+		uint32_t cmd_cus = ecmd->data[i];
+                /* cmd_cus must be subset of ctx_cus */
+		if (cmd_cus & ~ctx_cus[i]) {
+			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+				     i,cmd_cus,ctx_cus[i]);
+			return 1; /* error */
+		}
+	}
+
+	SCHED_DEBUG("<- validate(0) cmd and ctx CUs match\n");
 	return 0;
 }
 

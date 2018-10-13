@@ -37,11 +37,8 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
-struct mm_channel {
-	struct qdma_wq		queue;
-	uint64_t		total_trans_bytes;
-};
 struct xocl_mm_device {
+	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
 	u32			channel;
 	/* Semaphore, one for each direction */
@@ -56,6 +53,165 @@ struct xocl_mm_device {
 
 	struct mutex		stat_lock;
 };
+
+struct mm_channel {
+	struct device		dev;
+	struct xocl_mm_device	*mm_dev;
+	struct qdma_wq		queue;
+	uint64_t		total_trans_bytes;
+};
+
+/* sysfs */
+#define	__SHOW_MEMBER(P, M)		off += snprintf(buf + off, 64,		\
+	"%s:%lld\n", #M, (int64_t)P->M)
+
+static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct mm_channel *channel = dev_get_drvdata(dev);
+	int off = 0;
+	struct qdma_queue_conf *qconf;
+
+	qconf = channel->queue.qconf;
+	__SHOW_MEMBER(qconf, pipe);
+	__SHOW_MEMBER(qconf, irq_en);
+	__SHOW_MEMBER(qconf, desc_rng_sz_idx);
+	__SHOW_MEMBER(qconf, wbk_en);
+	__SHOW_MEMBER(qconf, wbk_acc_en);
+	__SHOW_MEMBER(qconf, wbk_pend_chk);
+	__SHOW_MEMBER(qconf, bypass);
+	__SHOW_MEMBER(qconf, pfetch_en);
+	__SHOW_MEMBER(qconf, st_pkt_mode);
+	__SHOW_MEMBER(qconf, c2h_use_fl);
+	__SHOW_MEMBER(qconf, c2h_buf_sz_idx);
+	__SHOW_MEMBER(qconf, cmpl_rng_sz_idx);
+	__SHOW_MEMBER(qconf, cmpl_desc_sz);
+	__SHOW_MEMBER(qconf, cmpl_stat_en);
+	__SHOW_MEMBER(qconf, cmpl_udd_en);
+	__SHOW_MEMBER(qconf, cmpl_timer_idx);
+	__SHOW_MEMBER(qconf, cmpl_cnt_th_idx);
+	__SHOW_MEMBER(qconf, cmpl_trig_mode);
+	__SHOW_MEMBER(qconf, cmpl_en_intr);
+	__SHOW_MEMBER(qconf, cdh_max);
+	__SHOW_MEMBER(qconf, pipe_gl_max);
+	__SHOW_MEMBER(qconf, pipe_flow_id);
+	__SHOW_MEMBER(qconf, pipe_slr_id);
+	__SHOW_MEMBER(qconf, pipe_tdest);
+	__SHOW_MEMBER(qconf, quld);
+	__SHOW_MEMBER(qconf, rngsz);
+	__SHOW_MEMBER(qconf, rngsz_wrb);
+	__SHOW_MEMBER(qconf, c2h_bufsz);
+
+	return off;
+}
+static DEVICE_ATTR_RO(qinfo);
+
+static ssize_t stat_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct mm_channel *channel = dev_get_drvdata(dev);
+	int off = 0;
+	struct qdma_wq_stat stat, *pstat;
+
+	qdma_wq_getstat(&channel->queue, &stat);
+	pstat = &stat;
+	__SHOW_MEMBER(pstat, total_slots);
+	__SHOW_MEMBER(pstat, free_slots);
+	__SHOW_MEMBER(pstat, pending_slots);
+	__SHOW_MEMBER(pstat, unproc_slots);
+
+	__SHOW_MEMBER(pstat, total_req_bytes);
+	__SHOW_MEMBER(pstat, total_req_num);
+	__SHOW_MEMBER(pstat, total_complete_bytes);
+	__SHOW_MEMBER(pstat, total_complete_num);
+
+	__SHOW_MEMBER(pstat, descq_rngsz);
+	__SHOW_MEMBER(pstat, descq_pidx);
+	__SHOW_MEMBER(pstat, descq_cidx);
+	__SHOW_MEMBER(pstat, descq_avail);
+	__SHOW_MEMBER(pstat, desc_wb_cidx);
+	__SHOW_MEMBER(pstat, desc_wb_pidx);
+
+	return off;
+}
+static DEVICE_ATTR_RO(stat);
+
+static ssize_t pidx_store(struct device *dev, struct device_attribute *da,
+        const char *buf, size_t count)
+{
+	struct mm_channel *channel = dev_get_drvdata(dev);
+	u32 val;
+
+
+        if (kstrtou32(buf, 10, &val) == -EINVAL) {
+                return -EINVAL;
+        }
+
+	qdma_wq_update_pidx(&channel->queue, val);
+
+        return count;
+}
+static DEVICE_ATTR_WO(pidx);
+
+static struct attribute *channel_attributes[] = {
+	&dev_attr_stat.attr,
+	&dev_attr_qinfo.attr,
+	&dev_attr_pidx.attr,
+	NULL,
+};
+
+static const struct attribute_group channel_attrgroup = {
+	.attrs = channel_attributes,
+};
+
+static void channel_sysfs_destroy(struct mm_channel *channel)
+{
+	if (get_device(&channel->dev)) {
+		sysfs_remove_group(&channel->dev.kobj, &channel_attrgroup);
+		put_device(&channel->dev);
+		device_unregister(&channel->dev);
+	}
+
+}
+
+static void device_release(struct device *dev)
+{
+	xocl_dbg(dev, "dummy device release callback");
+}
+
+static int channel_sysfs_create(struct mm_channel *channel)
+{
+	struct platform_device	*pdev = channel->mm_dev->pdev;
+	int			ret;
+
+	channel->dev.parent = &pdev->dev;
+	channel->dev.release = device_release;
+	dev_set_drvdata(&channel->dev, channel);
+	dev_set_name(&channel->dev, "%sq%d",
+		channel->queue.qconf->c2h ? "r" : "w",
+		channel->queue.qconf->qidx);
+	ret = device_register(&channel->dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "device create failed");
+		goto failed;
+	}
+
+	ret = sysfs_create_group(&channel->dev.kobj, &channel_attrgroup);
+	if (ret) {
+		xocl_err(&pdev->dev, "create sysfs group failed");
+		goto failed;
+	}
+
+	return 0;
+
+failed:
+	if (get_device(&channel->dev)) {
+		put_device(&channel->dev);
+		device_unregister(&channel->dev);
+	}
+	return ret;
+}
+/* end of sysfs */
 
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	struct sg_table *sgt, u32 write, u64 paddr, u32 channel, u64 len)
@@ -78,7 +234,6 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	wr.write = write;
 	wr.len = len;
 	wr.req.ep_addr = paddr;
-	wr.block = true;
 	wr.sgt = sgt;
 
 	chan = &mdev->chans[write][channel];
@@ -169,6 +324,8 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % mdev->channel;
 		chan = &mdev->chans[write][qidx];
 
+		channel_sysfs_destroy(chan);
+
 		ret = qdma_wq_destroy(&chan->queue);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
@@ -218,6 +375,7 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		write = i / mdev->channel;
 		qidx = i % mdev->channel;
 		chan = &mdev->chans[write][qidx];
+		chan->mm_dev = mdev;
 
 		memset(&qconf, 0, sizeof (qconf));
 		memset(&ebuf, 0, sizeof (ebuf));
@@ -236,6 +394,9 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		if (ret) {
 			goto failed_create_queue;
 		}
+		ret = channel_sysfs_create(chan);
+		if (ret)
+			goto failed_create_queue;
 	}
 
 	xocl_info(&pdev->dev, "Created %d MM channels (Queues)", mdev->channel);
@@ -292,6 +453,7 @@ static int mm_dma_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&mdev->stat_lock);
+	mdev->pdev = pdev;
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MM_DMA, &mm_ops);
 	platform_set_drvdata(pdev, mdev);
