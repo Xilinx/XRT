@@ -296,7 +296,7 @@ int main_(int argc, char** argv) {
   }
 
   if (bInfo && !sInputFile.empty()) {
-    xclBin.printHeader(std::cout);
+    xclBin.reportInfo(std::cout, bVerbose);
   }
   
   return RC_SUCCESS;

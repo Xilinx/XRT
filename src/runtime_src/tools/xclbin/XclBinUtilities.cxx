@@ -25,6 +25,9 @@
 #include <string.h>
 #include <inttypes.h>
 #include <vector>
+#include <boost/uuid/uuid.hpp>          // for uuid
+#include <boost/uuid/uuid_io.hpp>       // for to_string
+
 
 namespace XUtil = XclBinUtilities;
 
@@ -460,5 +463,18 @@ XclBinUtilities::printKinds() {
   for (auto & kind : kinds) {
     std::cout << "  " << kind << "\n";
   }
+}
+
+std::string 
+XclBinUtilities::getUUIDAsString( const unsigned char (&_uuid)[16] )
+{
+  static_assert (sizeof(boost::uuids::uuid) == 16, "Error: UUID size mismatch");
+
+  // Copy the values to the UUID structure
+  boost::uuids::uuid uuid;
+  memcpy((void *) &uuid, (void *) &_uuid, sizeof(boost::uuids::uuid));
+
+  // Now decode it to a string we can work with
+  return boost::uuids::to_string(uuid);
 }
 

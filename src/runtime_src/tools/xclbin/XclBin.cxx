@@ -1023,9 +1023,9 @@ XclBin::setKeyValue(const std::string & _keyValue)
 }
 
 void
-XclBin::printHeader(std::ostream &_ostream) const
+XclBin::reportInfo(std::ostream &_ostream, bool _bVerbose) const
 {
-  FormattedOutput::printHeader(_ostream, m_xclBinHeader, m_sections);
+  FormattedOutput::reportInfo(_ostream, m_xclBinHeader, m_sections, _bVerbose);
 }
 
 
