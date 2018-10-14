@@ -115,22 +115,22 @@ int main_(int argc, char** argv) {
   po::options_description desc("Options");
   desc.add_options()
       ("help,h", "Print help messages")
-      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name")
-      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name")
-      ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information")
-      ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image")
+      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name.")
+      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name.")
+      ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
+      ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image.")
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
-      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove")
-      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
-      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump")
-      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace")
-      ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER | SYS]:<key>:<value>")
+      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
+      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:[JSON|RAW]:<file>")
+      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:[JSON|RAW|HTML]:<file>")
+      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace. ")
+      ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
 
-      ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info")
-      ("list-names", boost::program_options::bool_switch(&bListNames), "List the available names")
-      ("list-sections", boost::program_options::bool_switch(&bListSections), "List the sections")
-      ("version", boost::program_options::bool_switch(&bVersion), "Version information regarding this executable")
-      ("force", boost::program_options::bool_switch(&bForce), "Forces an file overwrite")
+      ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info.")
+      ("list-names", boost::program_options::bool_switch(&bListNames), "List the available section names.")
+      ("list-sections", boost::program_options::bool_switch(&bListSections), "List the sections.")
+      ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
+      ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
 
 // --remove-section=section
@@ -296,7 +296,7 @@ int main_(int argc, char** argv) {
   }
 
   if (bInfo && !sInputFile.empty()) {
-    xclBin.printHeader(std::cout);
+    xclBin.reportInfo(std::cout, bVerbose);
   }
   
   return RC_SUCCESS;
