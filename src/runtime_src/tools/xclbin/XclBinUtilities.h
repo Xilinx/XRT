@@ -54,6 +54,8 @@ void binaryBufferToHexString(const unsigned char* _binBuf, unsigned int _size, s
 void hexStringToBinaryBuffer(const std::string& _inputString, unsigned char* _destBuf, unsigned int _bufferSize);
 uint64_t stringToUInt64(const std::string& _sInteger);
 void printKinds();
+std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
+
 
 };
 
