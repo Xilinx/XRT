@@ -20,6 +20,7 @@
 
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
+	XOCL_USER_QDMA_PCI_IDS,
 	{ 0, }
 };
 
