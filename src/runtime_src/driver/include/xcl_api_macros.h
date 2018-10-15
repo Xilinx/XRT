@@ -581,3 +581,24 @@ mtx.unlock();
   xclDestroyQueue_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
 
+//----------xclSetupInstance-------------------
+#define xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap) \
+    c_msg.set_route(route); \
+    for(auto& it: argFlowIdMap) \
+    { \
+      xclSetupInstance_call_argflowpair* afpair = c_msg.add_setup(); \
+      afpair->set_arg(it.first); \
+      afpair->set_flow(it.second);\
+    }
+
+
+#define xclSetupInstance_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define xclSetupInstance_RPC_CALL(func_name, route, argFlowIdMap) \
+  RPC_PROLOGUE(func_name); \
+  xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclSetupInstance_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
