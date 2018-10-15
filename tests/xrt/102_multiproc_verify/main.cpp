@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <thread>
+#include <cstdlib>
 #include <sys/mman.h>
 #include <time.h>
 #include <uuid/uuid.h>
@@ -159,9 +161,10 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
     const int size = 1024;
     std::vector<std::pair<unsigned, void*>> dataBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
     std::vector<std::pair<unsigned, void*>> cmdBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
+    int result = 0;
+    std::thread::id this_id = std::this_thread::get_id();
 
     try {
-        int result = 0;
         for (auto &bo : dataBO) {
             bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x0);
             bo.second = xclMapBO(handle, bo.first, true);
@@ -173,26 +176,32 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             throw std::runtime_error("data BO failure");
         }
 
-
-        for (auto &bo : cmdBO) {
-            bo.first = xclAllocBO(handle, 4096, xclBOKind(0), (1<<31));
-            bo.second = xclMapBO(handle, bo.first, true);
-            std::memset(bo.second, 0, 4096);
-            ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(bo.second);
+        auto dbo = dataBO.begin();
+        for (auto &cbo : cmdBO) {
+            cbo.first = xclAllocBO(handle, 4096, xclBOKind(0), (1<<31));
+            cbo.second = xclMapBO(handle, cbo.first, true);
+            std::memset(cbo.second, 0, 4096);
+            ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(cbo.second);
             auto rsz = (XHELLO_CONTROL_ADDR_BUF_R_DATA/4+2) + 1; // regmap array size
             std::memset(ecmd,0,(sizeof *ecmd) + rsz);
             ecmd->state = ERT_CMD_STATE_NEW;
             ecmd->opcode = ERT_START_CU;
             ecmd->count = 1 + rsz;
             ecmd->cu_mask = 0x1;
-            ecmd->data[XHELLO_CONTROL_ADDR_AP_CTRL] = 0x1; // ap_start
+            ecmd->data[XHELLO_CONTROL_ADDR_AP_CTRL/4] = 0x1; // ap_start
             xclBOProperties p;
-            const uint64_t paddr = xclGetBOProperties(handle, bo.first, &p) ? p.paddr : 0xfffffffffffffff;
-            ecmd->data[XHELLO_CONTROL_ADDR_BUF_R_DATA] = paddr;
+            const uint64_t paddr = xclGetBOProperties(handle, dbo->first, &p) ? 0xfffffffffffffff : p.paddr;
+            unsigned addr = (unsigned)(paddr & 0xFFFFFFFF);
+            ecmd->data[XHELLO_CONTROL_ADDR_BUF_R_DATA/4] = addr;
+            addr = (unsigned)((paddr & 0xFFFFFFFF00000000) >> 32);
+            ecmd->data[XHELLO_CONTROL_ADDR_BUF_R_DATA/4 + 1] = addr;
+            dbo++;
         }
 
-        for (auto &bo : cmdBO) {
-            result += xclExecBuf(handle, bo.first);
+        unsigned n = 0;
+        for (auto &cbo : cmdBO) {
+            result += xclExecBuf(handle, cbo.first);
+            std::cout << "Execute(" << this_id << ") " << n++ << std::endl;
         }
 
         if (result) {
@@ -212,15 +221,17 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             xclExecWait(handle, 1000);
         }
 
+        n = 0;
         for (auto &bo : dataBO) {
             result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0);
-            size_t cmdresult = std::memcmp(bo.second, gold, sizeof(gold));
+            result += std::memcmp(bo.second, gold, sizeof(gold));
+            std::cout << "Data(" << this_id << ") " << n++ << std::endl;
         }
     }
     catch (std::exception &ex) {
-        return 1;
+        return result;
     }
-    return 0;
+    return result;
 }
 
 static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, uuid_t xclbinId)
@@ -243,7 +254,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
         ecmd->state = ERT_CMD_STATE_NEW;
         ecmd->opcode = ERT_CONFIGURE;
 
-        ecmd->slot_size = 1024;
+        ecmd->slot_size = 0x1000;
         ecmd->num_cus = 1;
         ecmd->cu_shift = 16;
         ecmd->cu_base_addr = cu_base_addr;
@@ -269,8 +280,9 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     std::cout << "Wait until the command finish" << std::endl;
     //Wait on the command finish
     while (xclExecWait(handle,1000) == 0);
+    int result = runKernel(handle, cu_base_addr, verbose, n_elements);
     xclCloseContext(handle, xclbinId, 0);
-    return 0;
+    return result;
 }
 
 
@@ -289,7 +301,7 @@ int main(int argc, char** argv)
     int c;
     //findSharedLibrary(sharedLibrary);
 
-    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
+    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:n:vh", long_options, &option_index)) != -1)
     {
 	switch (c)
 	{
@@ -316,6 +328,9 @@ int main(int argc, char** argv)
             break;
         case 'c':
             cu_index = std::atoi(optarg);
+            break;
+        case 'n':
+            n_elements = std::atoi(optarg);
             break;
         case 'h':
             printHelp();
@@ -350,6 +365,7 @@ int main(int argc, char** argv)
         xclDeviceHandle handle;
         uuid_t xclbinId;
     	uint64_t cu_base_addr = 0;
+        setenv("XCL_MULTIPROCESS_MODE", "1", 1);
     	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index,
                    cu_base_addr, xclbinId)) {
             return 1;
