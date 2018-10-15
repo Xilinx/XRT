@@ -38,6 +38,9 @@ class SectionBitstream : public Section {
   SectionBitstream();
   virtual ~SectionBitstream();
 
+ public:
+  std::string getContentTypeAsString();
+
  private:
   // Purposefully private and undefined ctors...
   SectionBitstream(const SectionBitstream& obj);

@@ -226,10 +226,12 @@ enum ert_cmd_opcode {
  *
  * @ERT_DEFAULT:        default command type
  * @ERT_KDS_LOCAL:      command processed by KDS locally
+ * @ERT_CTRL:           control command uses reserved command queue slot
  */
 enum ert_cmd_type {
   ERT_DEFAULT = 0,
   ERT_KDS_LOCAL = 1,
+  ERT_CTRL = 2,
 };
 
 /**
