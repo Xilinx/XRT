@@ -36,6 +36,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+int runChildren(int argc, char *argv[], char *envp[]);
+
 const static struct option long_options[] = {
     {"hal_driver",      required_argument, 0, 's'},
     {"bitstream",       required_argument, 0, 'k'},
@@ -46,7 +48,6 @@ const static struct option long_options[] = {
     {"help",            no_argument,       0, 'h'},
     {0, 0, 0, 0}
 };
-
 
 static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog,
                    xclDeviceHandle& handle, int cu_index, uint64_t& cu_base_addr,
@@ -286,7 +287,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
 }
 
 
-int main(int argc, char** argv)
+int main(int argc, char** argv, char *envp[])
 {
     std::string sharedLibrary;
     std::string bitstreamFile;
@@ -298,10 +299,15 @@ int main(int argc, char** argv)
     bool verbose = false;
     bool ert = false;
     size_t n_elements = 16;
+    int child = 2;
     int c;
-    //findSharedLibrary(sharedLibrary);
 
-    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:n:vh", long_options, &option_index)) != -1)
+    setenv("XCL_MULTIPROCESS_MODE", "1", 1);
+    if (std::strlen(argv[0]))
+        return runChildren(argc, argv, envp);
+
+    //else children code here
+    while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:n:j:vh", long_options, &option_index)) != -1)
     {
 	switch (c)
 	{
@@ -331,6 +337,9 @@ int main(int argc, char** argv)
             break;
         case 'n':
             n_elements = std::atoi(optarg);
+            break;
+        case 'j':
+            child = std::atoi(optarg);
             break;
         case 'h':
             printHelp();
@@ -365,7 +374,6 @@ int main(int argc, char** argv)
         xclDeviceHandle handle;
         uuid_t xclbinId;
     	uint64_t cu_base_addr = 0;
-        setenv("XCL_MULTIPROCESS_MODE", "1", 1);
     	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index,
                    cu_base_addr, xclbinId)) {
             return 1;
