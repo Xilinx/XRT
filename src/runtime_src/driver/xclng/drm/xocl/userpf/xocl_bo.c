@@ -235,16 +235,21 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	return 0;
 }
 
-
 static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
 {
 	struct mem_topology *topology;
-
+	uint64_t check_len = 0;
+	int i;
 	topology = xdev->topology;
-	if (topology->m_mem_data[ddr].m_base_address > xdev->bypass_bar_len) {
+#if 1
+	for (i = 0; i < ddr; ++i)
+		check_len += (topology->m_mem_data[ddr].m_size);
+	/*m_data[ddr].m_size KB*/
+	if (check_len > (xdev->bypass_bar_len >> 10)) {
 		userpf_err(xdev, "Bank %d is not a p2p memory bank", ddr);
 		return -EINVAL;
 	}
+#endif
 	return 0;
 }
 
@@ -446,6 +451,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned ddr = args->flags;
 	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
 	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
+	uint64_t base_addr_offset;
+	base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 
 //	//Only one bit should be set in ddr. Other bits are now in "type"
 //	if (hweight_long(ddr) > 1)
@@ -471,7 +478,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	}
 
 	if(bar_mapped){
-		if(xobj->mm_node->start >= xdev->bypass_bar_len){
+		if((xobj->mm_node->start - base_addr_offset
+			   + xobj->mm_node->size) > xdev->bypass_bar_len){
 			DRM_DEBUG("No enough P2P mem region available\n");
 			ret = -ENOMEM;
 			goto out_free;
@@ -479,7 +487,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 		ddr = xocl_bo_ddr_idx(xobj->flags);
 		/* DRM allocate contiguous pages, shift the vmapping with bar address offset*/
-		xobj->bar_vmapping = xdev->bypass_bar_addr + xobj->mm_node->start;
+		xobj->bar_vmapping = xdev->bypass_bar_addr + xobj->mm_node->start - base_addr_offset;
 	}
 
 #ifdef XOCL_CMA_ALLOC
@@ -1181,16 +1189,18 @@ void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 
 static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 {
-	struct mem_topology *topology;
+	struct mem_data *mem_data;
 	int	i;
+	uint64_t addr;
+	bool start_check = false;
+	bool end_check = false;
 
-	topology = xdev->topology;
-	for (i = 0; i < topology->m_count; i++) {
-		if (topology->m_mem_data[i].m_used &&
-			paddr >= topology->m_mem_data[i].m_base_address &&
-			paddr + size <=
-			topology->m_mem_data[i].m_base_address +
-			topology->m_mem_data[i].m_size * 1024)
+	for (i = 0; i < xdev->topology->m_count; i++) {
+		mem_data = &xdev->topology->m_mem_data[i];
+		addr = mem_data->m_base_address;
+		start_check = (paddr >= addr);
+		end_check = (paddr + size <= addr + mem_data->m_size * 1024);
+		if (mem_data->m_used && start_check && end_check)
 			return true;
 	}
 
