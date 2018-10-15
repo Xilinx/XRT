@@ -628,6 +628,15 @@ enum {
 		.intr_bar = 1,						\
 	}
 
+#define	XOCL_BOARD_USER_XDMA_ERT_OFF					\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
+		.subdev_info	= USER_RES_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+	}
+
 #define XOCL_BOARD_USER_AWS                         \
    (struct xocl_board_private){                    \
        .flags      = 0,                    \
@@ -923,7 +932,7 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4351, USER_XDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4352, USER_DSA52) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7990, 0x4352, USER_DSA52) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_XDMA_ERT_OFF) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
