@@ -1005,24 +1005,21 @@ namespace xclcpuemhal2 {
 
 /*********************************** Utility ******************************************/
 
-static int check_bo_user_flags(CpuemShim* dev, unsigned flags)
+static bool check_bo_user_flags(CpuemShim* dev, unsigned flags)
 {
 	const unsigned ddr_count = dev->xocl_ddr_channel_count();
-	unsigned ddr;
 
 	if(ddr_count == 0)
-		return -EINVAL;
+		return false;
+
 	if (flags == 0xffffffff)
-		return 0;
+		return true;
 	
-  ddr = xclemulation::xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
-		return 0;
-	
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(flags);
   if (ddr > ddr_count)
-		return -EINVAL;
+		return false;
 	
-	return 0;
+	return true;
 }
 
 xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
@@ -1077,7 +1074,7 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
 
   /* Either none or only one DDR should be specified */
-  if (check_bo_user_flags(this, info->flags))
+  if (!check_bo_user_flags(this, info->flags))
     return -1;
 	
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
