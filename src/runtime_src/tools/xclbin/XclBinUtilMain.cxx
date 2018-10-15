@@ -88,16 +88,17 @@ int main_(int argc, char** argv) {
 
   bool bVerbose = false;
   bool bTrace = false;
-  bool bValidateImage = false;
   bool bMigrateForward = false;
   bool bListNames = false;
   bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
-  bool bValidateInsertion = true;
-  bool bSkipValidateInsertion = false;
   bool bVersion = false;
-  bool bForce = true;   // Assume true until xocc is updated to use the --force option
+  bool bForce = false;   
+
+  bool bRemoveSignature = false;
+  std::string sSignature;
+  bool bGetSignature = false;
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -117,14 +118,22 @@ int main_(int argc, char** argv) {
       ("help,h", "Print help messages")
       ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name.")
       ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name.")
+
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
-      ("validate", boost::program_options::bool_switch(&bValidateImage), "Validate xclbin image.")
+
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
+
       ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:[JSON|RAW]:<file>")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:[JSON|RAW|HTML]:<file>")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace. ")
+
       ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
+
+      ("add-signature", boost::program_options::value<std::string>(&sSignature), "Adds a user defined signature to the given xclbin image.")
+      ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
+      ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
+
 
       ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info.")
       ("list-names", boost::program_options::bool_switch(&bListNames), "List the available section names.")
@@ -153,7 +162,6 @@ int main_(int argc, char** argv) {
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
-    ("skip-validate-insertion", boost::program_options::bool_switch(&bSkipValidateInsertion), "Do not insert the checksum validation block.")
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -240,13 +248,23 @@ int main_(int argc, char** argv) {
   drcCheckFiles(inputFiles, outputFiles, bForce);
 
 
-  if (bValidateImage && !sInputFile.empty()) {
-    XUtil::validateImage(sInputFile);
+  if (!sSignature.empty() && 
+      !sInputFile.empty() &&
+      !sOutputFile.empty()) {
+    XUtil::addSignature(sInputFile, sOutputFile, sSignature, "");
     return RC_SUCCESS;
   }
 
-  if (bSkipValidateInsertion == true) {
-      bValidateInsertion = false;
+  if (bGetSignature && 
+      !sInputFile.empty()) {
+    XUtil::reportSignature(sInputFile);
+  }
+
+  if (bRemoveSignature &&
+      !sInputFile.empty() &&
+      !sOutputFile.empty()) {
+    XUtil::removeSignature(sInputFile, sOutputFile);
+    return RC_SUCCESS;
   }
 
   XclBin xclBin;
@@ -288,15 +306,15 @@ int main_(int argc, char** argv) {
   }
 
   if (!sOutputFile.empty()) {
-    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion, bValidateInsertion);
+    xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
   }
 
   if (bListSections) {
     xclBin.printSections(std::cout);
   }
 
-  if (bInfo && !sInputFile.empty()) {
-    xclBin.reportInfo(std::cout, bVerbose);
+  if (bInfo) {
+    xclBin.reportInfo(std::cout, sInputFile, bVerbose);
   }
   
   return RC_SUCCESS;
