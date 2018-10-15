@@ -402,6 +402,7 @@ struct xocl_firewall_funcs {
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	void (*reset)(struct platform_device *pdev);
+	int (*stop)(struct platform_device *pdev);
 	int (*load_mgmt_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
@@ -437,6 +438,10 @@ struct xocl_dna_funcs {
 #define	xocl_mb_reset(xdev)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->reset(XMC_DEV(xdev)) : \
 	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL))
+
+#define	xocl_mb_stop(xdev)			\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->stop(XMC_DEV(xdev)) : \
+	(MB_DEV(xdev) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV))
 
 #define xocl_mb_load_mgmt_image(xdev, buf, len)		\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_mgmt_image(XMC_DEV(xdev), buf, len) :\

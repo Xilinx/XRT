@@ -237,6 +237,9 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		xocl_reset(lro, true);
 	}
 
+	/* request XMC/ERT to stop */
+	xocl_mb_stop(lro);
+
 	if (!lro->reset_firewall) {
 		/*
 		 * if reset request comes from IOCTL, reset kernel and
@@ -294,6 +297,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
+	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
 
 #endif
