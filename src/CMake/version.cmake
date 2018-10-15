@@ -23,6 +23,14 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+# Get the latest abbreviated commit hash date of the working branch
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%cD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE XRT_HASH_DATE
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 # Get all of the modified files in the current git environment
 execute_process(
   COMMAND ${GIT_EXECUTABLE} status --porcelain
@@ -32,8 +40,17 @@ execute_process(
 )
 string(REPLACE "\n" "," XRT_MODIFIED_FILES "${XRT_MODIFIED_FILES}")
 
+# Get the build date RFC format
+execute_process(
+  COMMAND date -R
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE XRT_DATE_RFC
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 
 string(TIMESTAMP XRT_DATE "%Y-%m-%d %H:%M:%S")
+
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/CMake/config/version.h.in

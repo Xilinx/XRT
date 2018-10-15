@@ -468,7 +468,9 @@ namespace xclcpuemhal2 {
       //parse header
       char *sharedlib = nullptr;
       int sharedliblength = 0;
-
+      char* memTopology = nullptr;
+      ssize_t memTopologySize = 0;
+     
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8)) 
       {
@@ -483,6 +485,12 @@ namespace xclcpuemhal2 {
         if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
+        }
+        if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
+          memTopologySize = sec->m_sectionSize;
+          memTopology = new char[memTopologySize+1];
+          memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
+          memTopology[memTopologySize] = 0;
         }
       }
       else
@@ -525,6 +533,49 @@ namespace xclcpuemhal2 {
         fflush(fp);
         fclose(fp);
       }
+      //TODO populate flow/route id and instance arg map
+      //
+      if(memTopology)
+      {
+        const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
+        if(m_mem)
+        {
+          uint64_t argNum = 0;
+          uint64_t prev_route_id = ULLONG_MAX;
+          std::map<uint64_t, uint64_t> argFlowIdMap;
+          for (int32_t i=0; i<m_mem->m_count; ++i)
+          {
+            uint64_t flow_id =m_mem->m_mem_data[i].flow_id; 
+            uint64_t route_id =m_mem->m_mem_data[i].route_id; 
+            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            {
+              argFlowIdMap[argNum] = flow_id;
+            }
+            argNum++;
+            if(prev_route_id != ULLONG_MAX && route_id != prev_route_id)
+            {
+              //RPC CALL
+              bool success = false;
+              xclSetupInstance_RPC_CALL(xclSetupInstance, route_id, argFlowIdMap);
+
+              if(mLogStream.is_open())
+                mLogStream << __func__ << " setup instance: route " << route_id <<" success "<< success << std::endl;
+              
+              argFlowIdMap.clear();
+              argNum = 0;
+            }
+            prev_route_id = route_id;
+          }
+          bool success = false;
+          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_route_id, argFlowIdMap);
+
+          if(mLogStream.is_open())
+            mLogStream << __func__ << " setup instance: route " << prev_route_id <<" success "<< success << std::endl;
+        }
+        delete []memTopology;
+        memTopology = NULL;
+      }
+
       bool ack = true;
       bool verbose = false;
       if(mLogStream.is_open())
@@ -1357,14 +1408,21 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
  */
 int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
   if(q_handle <= 0)
   {
-    std::cout<<"unable to create write queue "<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream << " unable to create write queue "<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
   *q_hdl = q_handle;
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -1373,14 +1431,22 @@ int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
   if(q_handle <= 0)
   {
-    std::cout<<"unable to create read queue "<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream << " unable to create read queue "<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
   *q_hdl = q_handle;
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -1389,15 +1455,23 @@ int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
 {
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   uint64_t q_handle = q_hdl;
   bool success = false;
   xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
   if(!success)
   {
-    std::cout<<"unable to destroy the queue"<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream <<" unable to destroy the queue"<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
 
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -1406,12 +1480,18 @@ int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
  */
 ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   uint64_t fullSize = 0;
   for (unsigned i = 0; i < wr->buf_num; i++) 
   {
     xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
     fullSize += written_size;
   }
+  PRINTENDFUNC;
   return fullSize;
 }
 
@@ -1420,6 +1500,10 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
  */
 ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
 {
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   void *dest;
 
   uint64_t fullSize = 0;
@@ -1432,6 +1516,7 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
     }
     fullSize += read_size;
   }
+  PRINTENDFUNC;
   return fullSize;
 
 }
@@ -1440,7 +1525,22 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
  */
 void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 {
-  return 0;//TODO
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
+  void *pBuf=nullptr;
+  if (posix_memalign(&pBuf, sizeof(double)*16, size))
+  {
+    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
+    pBuf=nullptr;
+    return pBuf;
+  }
+  memset(pBuf, 0, size);
+  PRINTENDFUNC;
+  return pBuf;
+
 }
 
 /*
@@ -1448,12 +1548,15 @@ void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
  */
 int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
+  PRINTENDFUNC;
   return 0;//TODO
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }
-
-
-

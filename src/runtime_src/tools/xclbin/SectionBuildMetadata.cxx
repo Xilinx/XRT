@@ -17,8 +17,12 @@
 #include "SectionBuildMetadata.h"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include "XclBinUtilities.h"
+
+#include "version.h" // Globally included from main
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
@@ -49,7 +53,10 @@ SectionBuildMetadata::marshalToJSON(char* _pDataSection,
     // TODO: Catch the exception (if any) from this call and produce a nice message
     XUtil::TRACE_BUF("BUILD_METADATA", (const char *) memBuffer.get(), _sectionSize+1);
     try {
-      boost::property_tree::read_json(ss, _ptree);
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+      boost::property_tree::ptree &buildMetaData = pt.get_child("build_metadata");
+      _ptree.add_child("build_metadata", buildMetaData);
     } catch (const std::exception & e) {
       std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
       msg += e.what();
@@ -63,6 +70,11 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
                                       std::ostringstream& _buf) const
 {
    XUtil::TRACE("BUILD_METADATA");
-   boost::property_tree::write_json(_buf, _ptSection, false );
+   boost::property_tree::ptree ptWritable = _ptSection;
+   ptWritable.put("build_metadata.xclbin.packaged_by.name", "xclbinutil");
+   ptWritable.put("build_metadata.xclbin.packaged_by.version", xrt_build_version); 
+   ptWritable.put("build_metadata.xclbin.packaged_by.hash", xrt_build_version_hash);
+   ptWritable.put("build_metadata.xclbin.packaged_by.time_stamp", xrt_build_version_date_rfc);
+   boost::property_tree::write_json(_buf, ptWritable, false );
 }
 

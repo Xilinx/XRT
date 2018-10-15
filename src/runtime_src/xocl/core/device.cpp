@@ -191,7 +191,7 @@ track(const memory* mem)
 
 void
 device::
-clear_connection(connidx_type conn) 
+clear_connection(connidx_type conn)
 {
   assert(conn!=-1);
   m_xclbin.clear_connection(conn);
@@ -568,6 +568,7 @@ allocate_buffer_object(memory* mem)
       return boh;
     }
     catch (const std::bad_alloc&) {
+      throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"could not allocate with memidx: "+std::to_string(memidx));
     }
   }
 
@@ -822,7 +823,7 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
     if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
       xdevice->write(boh,ubuf+offset,size,offset,false);
-    if (buffer->is_resident(this))
+    if (buffer->is_resident(this) && !buffer->is_p2p_memory())
       xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
@@ -836,8 +837,10 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
     auto xdevice = get_xrt_device();
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
-    sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
+    if(!buffer->is_p2p_memory()){
+      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+      sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
+    }
     return;
   }
 
@@ -846,10 +849,11 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
-  // Sync from host to device to make make buffer resident of this device
-  sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
-  xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
-
+  if(!buffer->is_p2p_memory()){
+    // Sync from host to device to make make buffer resident of this device
+    sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
+    xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
+  }
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
