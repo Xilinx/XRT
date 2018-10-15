@@ -33,7 +33,7 @@ class Section;
 // ------------------- C L A S S :   S e c t i o n ---------------------------
 
 namespace FormattedOutput {
-  void reportInfo(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections, bool _bVerbose);
+  void reportInfo(std::ostream &_ostream, const std::string& _sInputFile, const axlf &_xclBinHeader, const std::vector<Section*> _sections, bool _bVerbose);
   void getKernelDDRMemory(const std::string _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree &_ptKernelInstance, boost::property_tree::ptree &_ptMemoryConnections);
 
   std::string getTimeStampAsString(const axlf &_xclBinHeader);
