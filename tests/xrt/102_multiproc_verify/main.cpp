@@ -173,9 +173,8 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0);
         }
 
-        if (result) {
+        if (result)
             throw std::runtime_error("data BO failure");
-        }
 
         auto dbo = dataBO.begin();
         for (auto &cbo : cmdBO) {
@@ -202,12 +201,11 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
         unsigned n = 0;
         for (auto &cbo : cmdBO) {
             result += xclExecBuf(handle, cbo.first);
-            std::cout << "Execute(" << this_id << ") " << n++ << std::endl;
+            std::cout << this_id << '.' << n++ << " submit execute(" << cbo.first << ")" << std::endl;
         }
 
-        if (result) {
+        if (result)
             throw std::runtime_error("cmd BO failure");
-        }
 
         for (std::vector<std::pair<unsigned, void*>>::iterator iter = cmdBO.begin(); iter < cmdBO.end(); iter++) {
             const ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(iter->second);
@@ -215,6 +213,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             case ERT_CMD_STATE_COMPLETED:
             case ERT_CMD_STATE_ERROR:
             case ERT_CMD_STATE_ABORT:
+                std::cout << this_id << " done execute(" << iter->first << ")" << std::endl;
                 munmap(iter->second, 4096);
                 xclFreeBO(handle, iter->first);
                 cmdBO.erase(iter);
@@ -226,7 +225,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
         for (auto &bo : dataBO) {
             result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0);
             result += std::memcmp(bo.second, gold, sizeof(gold));
-            std::cout << "Data(" << this_id << ") " << n++ << std::endl;
+            std::cout << this_id << '.' << n++ << " data " << std::endl;
         }
     }
     catch (std::exception &ex) {
@@ -237,16 +236,13 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
 
 static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, uuid_t xclbinId)
 {
-
-//    uuid_t xclbinId;
-//    uuid_parse("58c06b8c-c882-41ff-9ec5-116571d1d179", xclbinId);
-    xclOpenContext(handle, xclbinId, 0, true);
+    if (xclOpenContext(handle, xclbinId, 0, true))
+	throw std::runtime_error("Cannot create context");
 
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
-    std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
     //construct the exec buffer cmd to configure.
     {
         auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
@@ -273,15 +269,14 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
 
     std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
     //Send the command.
-    if(xclExecBuf(handle, execHandle)) {
-        std::cout << "Unable to issue xclExecBuf" << std::endl;
-        return 1;
-    }
+    if (xclExecBuf(handle, execHandle))
+        throw std::runtime_error("Cannot submit configure command");
 
-    std::cout << "Wait until the command finish" << std::endl;
+    std::cout << "Wait for configure command to finish" << std::endl;
     //Wait on the command finish
     while (xclExecWait(handle,1000) == 0);
     int result = runKernel(handle, cu_base_addr, verbose, n_elements);
+    // Release the context
     xclCloseContext(handle, xclbinId, 0);
     return result;
 }
