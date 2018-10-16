@@ -93,7 +93,6 @@ int main_(int argc, char** argv) {
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
-  bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
@@ -225,13 +224,13 @@ int main_(int argc, char** argv) {
   //       and not how the customer would use it.
   XUtil::setVerbose(bTrace);
 
-  if (!bQuiet) {
-    FormattedOutput::reportVersion(true);
-  }
-
   if (bVersion) {
     FormattedOutput::reportVersion();
     return RC_SUCCESS;
+  }
+
+  if (!bQuiet) {
+    FormattedOutput::reportVersion(true);
   }
 
   // Actions not requiring --input
@@ -280,22 +279,41 @@ int main_(int argc, char** argv) {
   drcCheckFiles(inputFiles, outputFiles, bForce);
 
 
-  if (!sSignature.empty() && 
-      !sInputFile.empty() &&
-      !sOutputFile.empty()) {
+  if (!sSignature.empty()) {
+    if (sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot add signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
+    if(sOutputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot add signature.  Missing output file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::addSignature(sInputFile, sOutputFile, sSignature, "");
+    QUIET("Exiting");
     return RC_SUCCESS;
   }
 
-  if (bGetSignature && 
-      !sInputFile.empty()) {
+  if (bGetSignature) {
+    if(sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot read signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::reportSignature(sInputFile);
+    QUIET("Exiting");
+    return RC_SUCCESS;
   }
 
-  if (bRemoveSignature &&
-      !sInputFile.empty() &&
-      !sOutputFile.empty()) {
+  if (bRemoveSignature) {
+    if(sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot remove signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
+    if(sOutputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot remove signature.  Missing output file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::removeSignature(sInputFile, sOutputFile);
+    QUIET("Exiting");
     return RC_SUCCESS;
   }
 
@@ -344,15 +362,11 @@ int main_(int argc, char** argv) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
   }
 
-  if (bListSections) {
-    xclBin.printSections(std::cout);
-  }
-
   if (bInfo) {
     xclBin.reportInfo(std::cout, sInputFile, bVerbose);
   }
   
-  QUIET("Application exiting");
+  QUIET("Exiting");
 
   return RC_SUCCESS;
 }

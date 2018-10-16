@@ -81,7 +81,8 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 bool 
 SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if ((_eFormatType == FT_JSON) ||
+      (_eFormatType == FT_RAW)){
     return true;
   }
   return false;
