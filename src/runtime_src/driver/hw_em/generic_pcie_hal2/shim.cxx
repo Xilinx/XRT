@@ -1616,24 +1616,22 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
 /*********************************** Utility ******************************************/
 
-static int check_bo_user_flags(HwEmShim* dev, unsigned flags)
+static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 {
 	const unsigned ddr_count = dev->xocl_ddr_channel_count();
 	unsigned ddr;
 
 	if(ddr_count == 0)
-		return -EINVAL;
+		return false;
+
 	if (flags == 0xffffffff)
-		return 0;
+		return true;
 
   ddr = xclemulation::xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
-		return 0;
-
   if (ddr > ddr_count)
-		return -EINVAL;
+		return false;
 
-	return 0;
+	return true;
 }
 
 xclemulation::drm_xocl_bo* HwEmShim::xclGetBoByHandle(unsigned int boHandle)
@@ -1692,7 +1690,7 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   /* Either none or only one DDR should be specified */
-  if (check_bo_user_flags(this, info->flags))
+  if (!check_bo_user_flags(this, info->flags))
   {
     return -1;
   }

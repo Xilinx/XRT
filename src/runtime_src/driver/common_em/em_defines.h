@@ -192,13 +192,13 @@ namespace xclemulation {
 
   static inline unsigned xocl_bo_ddr_idx(unsigned flags)
   {
-    if(flags == 0 || flags == 0x80000000)
+    unsigned flag = flags & 0xFFFFFFLL;
+    //unsigned type = flags & 0xFF000000LL ;
+
+    if(flag == 0 || flag == 0xFFFFFFLL)
       return 0;
-    const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
-    //if (!ddr)
-      //return 0xffffffff;
-    return ddr;
-    //return __builtin_ctz(ddr) ;
+    
+    return flag;
   }
 
   static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)
