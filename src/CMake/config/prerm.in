@@ -2,7 +2,7 @@
 
 mgmt_drv="xclmgmt"
 flavor_name=""
-if [ $AWS_PEGASUS_TARGET == "1" ]; then
+if [[ $AWS_PEGASUS_TARGET == "1" ]]; then
     echo "AWS_PEGASUS_TARGET = 1"
     mgmt_drv="awsmgmt"
     flavor_name="-aws"

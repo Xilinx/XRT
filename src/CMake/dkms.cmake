@@ -4,6 +4,7 @@
 SET(FLAVOR_NAME "")
 if( $ENV{AWS_PEGASUS_TARGET} )
   SET(FLAVOR_NAME "-aws")
+  message("-- dkms.cmake: Flavor name set: ${FLAVOR_NAME}.")
 endif()
 
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt${FLAVOR_NAME}-${XRT_VERSION_STRING}")
@@ -17,7 +18,7 @@ SET (DKMS_PRERM "prerm")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
-  "dkms.conf"#${DKMS_FILE_NAME}
+  ${DKMS_FILE_NAME}
   )
 
 configure_file (

@@ -1,6 +1,6 @@
 PACKAGE_NAME="xrt-xocl"
 PACKAGE_VERSION="@XRT_VERSION_STRING@"
-if [ $AWS_PEGASUS_TARGET == "1" ]; then
+if [[ $AWS_PEGASUS_TARGET == "1" ]]; then
   MAKE[0]="cd driver/xclng/drm/xocl/userpf; make; cd ../../../../..; cd driver/aws/kernel/mgmt; make; cd ../../../.."
   CLEAN="cd driver/xclng/drm/xocl/userpf; make clean; cd ../../../../..; cd driver/aws/kernel/mgmt; make clean; cd ../../../.."
 else
@@ -10,7 +10,7 @@ fi
 BUILT_MODULE_NAME[0]="xocl"
 BUILT_MODULE_LOCATION[0]="driver/xclng/drm/xocl/userpf"
 DEST_MODULE_LOCATION[0]="/kernel/extras"
-if [ $AWS_PEGASUS_TARGET == 1 ]; then
+if [[ $AWS_PEGASUS_TARGET == "1" ]]; then
   BUILT_MODULE_NAME[1]="awsmgmt"
   BUILT_MODULE_LOCATION[1]="driver/aws/kernel/mgmt"
   DEST_MODULE_LOCATION[1]="/kernel/extras"
