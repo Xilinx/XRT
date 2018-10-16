@@ -327,12 +327,16 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_RESET_BEGIN:
+	case MAILBOX_REQ_HOT_RESET_BEGIN:
 		xocl_reset_notify(xdev->core.pdev, true);
 		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
 		break;
-	case MAILBOX_REQ_RESET_END:
+	case MAILBOX_REQ_HOT_RESET_END:
 		xocl_reset_notify(xdev->core.pdev, false);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RESET_ERT:
+		ret = xocl_reset_scheduler(xdev->core.pdev);
 		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
 		break;
 	default:
