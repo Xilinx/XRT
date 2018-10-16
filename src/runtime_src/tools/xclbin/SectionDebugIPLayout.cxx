@@ -78,7 +78,7 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
   if (_sDebugIPType == "AXI_MONITOR_FIFO_FULL")
     return AXI_MONITOR_FIFO_FULL;
 
-  if (_sDebugIPType == "ACCEL_MONITOR")
+  if (_sDebugIPType == "ACCELSectionClockFrequencyTopology_MONITOR")
     return ACCEL_MONITOR;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
@@ -249,4 +249,26 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }
+}
+
+bool 
+SectionDebugIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionDebugIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
 }

@@ -78,3 +78,24 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
    boost::property_tree::write_json(_buf, ptWritable, false );
 }
 
+bool 
+SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionBuildMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML))
+    {
+      return true;
+    }
+
+    return false;
+}
+

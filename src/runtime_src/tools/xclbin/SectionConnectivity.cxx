@@ -151,3 +151,25 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
     // throw std::runtime_error(errMsg);
   }
 }
+
+bool 
+SectionConnectivity::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionConnectivity::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}
