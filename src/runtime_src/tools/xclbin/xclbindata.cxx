@@ -466,7 +466,9 @@ bool
 XclBinData::reportHeader() 
 {
   std::cout << "xclbin1 Size:           " << m_xclBinHead.m_header.m_length << "\n";
-  std::cout << "Version:                " << m_xclBinHead.m_header.m_version << "\n";
+  std::cout << "Version:                " << m_xclBinHead.m_header.m_versionMajor 
+                                            << "." << m_xclBinHead.m_header.m_versionMinor 
+                                            << "." << m_xclBinHead.m_header.m_versionPatch << "\n";
   std::cout << "Timestamp:              " << m_xclBinHead.m_header.m_timeStamp << "\n";
   std::cout << "Feature ROM Timestamp:  " << m_xclBinHead.m_header.m_featureRomTimeStamp << "\n";
   std::cout << "Mode:                   " << (int)m_xclBinHead.m_header.m_mode << "\n";
