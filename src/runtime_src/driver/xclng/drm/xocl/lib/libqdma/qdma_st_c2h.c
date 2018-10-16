@@ -309,7 +309,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	cb->sg_idx = j;
 	cb->sg_offset = tsgoff;
 	cb->left -= copied;
-	cb->offset = req->count - cb->left;
+	cb->offset += copied;
 
 	flq->pkt_dlen -= copied;
 

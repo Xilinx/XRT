@@ -130,6 +130,7 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev);
  * @return	none
  *****************************************************************************/
 void intr_work(struct work_struct *work);
+void delayed_intr_work(struct work_struct *work);
 
 /*****************************************************************************/
 /**

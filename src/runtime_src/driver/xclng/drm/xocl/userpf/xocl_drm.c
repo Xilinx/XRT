@@ -327,12 +327,16 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_RESET_BEGIN:
+	case MAILBOX_REQ_HOT_RESET_BEGIN:
 		xocl_reset_notify(xdev->core.pdev, true);
 		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
 		break;
-	case MAILBOX_REQ_RESET_END:
+	case MAILBOX_REQ_HOT_RESET_END:
 		xocl_reset_notify(xdev->core.pdev, false);
+		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RESET_ERT:
+		ret = xocl_reset_scheduler(xdev->core.pdev);
 		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
 		break;
 	default:
@@ -340,14 +344,83 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
-int xocl_drm_init(struct xocl_dev *xdev)
+static int xocl_init_non_unified(struct xocl_dev *xdev)
 {
-	struct drm_device	*ddev = NULL;
-	u64			segment = 0;
 	int			i, ret = 0;
 	u32			ddr_count = 0;
 	u64			ddr_size;
+	u64			segment = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
+	size_t size;
+	struct mem_data		*mem_data;
+
+	userpf_info(xdev, "Non-unified platform");
+	ddr_count = xocl_get_ddr_channel_count(xdev);
+	ddr_size = xocl_get_ddr_channel_size(xdev);
+
+	size = ddr_count * sizeof(void *);
+	mm_size = sizeof(struct drm_mm);
+	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
+	xdev->mm = vzalloc(size);
+	if (!xdev->mm) {
+		userpf_err(xdev, "alloc mm pointers failed");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	xdev->mm_usage_stat = vzalloc(size);
+	if (!xdev->mm_usage_stat) {
+		userpf_err(xdev, "alloc stat pointers failed");
+		ret = -ENOMEM;
+		goto failed;
+	}
+
+	for (i = 0; i < ddr_count; i++) {
+		mem_data = &xdev->topology->m_mem_data[i];
+		mem_data->m_used = 1;
+		xdev->mm[i] = vzalloc(mm_size);
+		if (!xdev->mm[i]) {
+			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
+					ddr_count, ddr_size);
+			ret = -ENOMEM;
+			goto failed_at_i;
+		}
+		xdev->mm_usage_stat[i] = vzalloc(mm_stat_size);
+		if (!xdev->mm_usage_stat[i]) {
+			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
+					ddr_count, ddr_size);
+			ret = -ENOMEM;
+			goto failed_at_i;
+		}
+		drm_mm_init(xdev->mm[i], segment, ddr_size);
+		segment += ddr_size;
+	}
+
+	return 0;
+
+failed_at_i:
+	for (; i >= 0; i--) {
+		mem_data = &xdev->topology->m_mem_data[i];
+		if (xdev->mm[i]) {
+			drm_mm_takedown(xdev->mm[i]);
+			vfree(xdev->mm[i]);
+		}
+		if (xdev->mm_usage_stat[i])
+			vfree(xdev->mm_usage_stat[i]);
+	}
+
+failed:
+	if (xdev->mm)
+		vfree(xdev->mm);
+	if (xdev->mm_usage_stat)
+		vfree(xdev->mm_usage_stat);
+
+	return ret;
+}
+
+int xocl_drm_init(struct xocl_dev *xdev)
+{
+	struct drm_device	*ddev = NULL;
+	int			ret = 0;
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
@@ -375,33 +448,10 @@ int xocl_drm_init(struct xocl_dev *xdev)
 #endif
 
 	if (!xocl_is_unified(xdev)) {
-		userpf_info(xdev, "Non-unified platform");
-		ddr_count = xocl_get_ddr_channel_count(xdev);
-		ddr_size = xocl_get_ddr_channel_size(xdev);
-
-		mm_size = ddr_count * sizeof(struct drm_mm);
-		mm_stat_size = ddr_count * sizeof(struct drm_xocl_mm_stat);
-		xdev->mm = vmalloc(mm_size);
-		memset(xdev->mm, 0, mm_size);
-		if (!xdev->mm) {
-			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
-				ddr_count, ddr_size);
-			ret = -ENOMEM;
+		ret = xocl_init_non_unified(xdev);
+		if (ret) {
+			userpf_err(xdev, "Non-unified platform init failed");
 			goto failed;
-		}
-		xdev->mm_usage_stat = vmalloc(mm_stat_size);
-		memset(xdev->mm_usage_stat, 0, mm_stat_size);
-		if (!xdev->mm_usage_stat) {
-			userpf_err(xdev, "alloc stat failed, ddr %d, sz %lld",
-				ddr_count, ddr_size);
-			ret = -ENOMEM;
-			goto failed;
-		}
-
-		for (i = 0; i < ddr_count; i++) {
-			xdev->topology->m_mem_data[i].m_used = 1;
-			drm_mm_init(&xdev->mm[i], segment, ddr_size);
-			segment += ddr_size;
 		}
 	}
 
@@ -416,18 +466,12 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	atomic_set(&xdev->needs_reset,0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+	hash_init(xdev->mm_range);
+#endif
 	return 0;
 
 failed:
-	if (xdev->mm) {
-	 	for (i = 0; i < ddr_count; i++) {
-			drm_mm_takedown(&xdev->mm[i]);
-		}
-		vfree(xdev->mm);
-	}
-	if (xdev->mm_usage_stat)
-		vfree(xdev->mm_usage_stat);
-
 	if (!ddev)
 		drm_dev_unref(ddev);
 
@@ -448,25 +492,25 @@ void xocl_drm_fini(struct xocl_dev *xdev)
 void xocl_mm_get_usage_stat(struct xocl_dev *xdev, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
-	if (xdev->mm_usage_stat) {
-		pstat->memory_usage = xdev->mm_usage_stat[ddr].memory_usage;
-		pstat->bo_count = xdev->mm_usage_stat[ddr].bo_count;
+	if (xdev->mm_usage_stat[ddr]) {
+		pstat->memory_usage = xdev->mm_usage_stat[ddr]->memory_usage;
+		pstat->bo_count = xdev->mm_usage_stat[ddr]->bo_count;
 	}
 }
 
 void xocl_mm_update_usage_stat(struct xocl_dev *xdev, u32 ddr,
 	u64 size, int count)
 {
-	BUG_ON(!xdev->mm_usage_stat);
+	BUG_ON(!xdev->mm_usage_stat[ddr]);
 
-	xdev->mm_usage_stat[ddr].memory_usage += (count > 0) ? size : -size;
-	xdev->mm_usage_stat[ddr].bo_count += count;
+	xdev->mm_usage_stat[ddr]->memory_usage += (count > 0) ? size : -size;
+	xdev->mm_usage_stat[ddr]->bo_count += count;
 }
 
 int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
                 struct drm_mm_node *node, u64 size)
 {
-	return drm_mm_insert_node_generic(&xdev->mm[ddr], node, size, PAGE_SIZE,
+	return drm_mm_insert_node_generic(xdev->mm[ddr], node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
 #else
@@ -477,32 +521,61 @@ int xocl_mm_insert_node(struct xocl_dev *xdev, u32 ddr,
 int xocl_check_topology(struct xocl_dev *xdev)
 {
 	struct mem_topology    *topology;
-        u16     i;
-        int     err = 0;
+	u16     i;
+	int     err = 0;
 
 	topology = xdev->topology;
 	if (topology == NULL)
 		return 0;
 
 	for (i = 0; i < topology->m_count; i++) {
-		if (topology->m_mem_data[i].m_used &&
-			topology->m_mem_data[i].m_type != MEM_STREAMING) {
-			if (xdev->mm_usage_stat[i].bo_count != 0) {
-                                err = -EPERM;
-                                userpf_err(xdev, "The ddr %d has "
-                                        "pre-existing buffer allocations, "
-                                        "please exit and re-run.", i);
-                        }
-                }
-        }
+		if (!topology->m_mem_data[i].m_used)
+			continue;
 
-        return err;
+		if (topology->m_mem_data[i].m_type == MEM_STREAMING)
+			continue;
+
+		if (xdev->mm_usage_stat[i]->bo_count != 0) {
+			err = -EPERM;
+			userpf_err(xdev, "The ddr %d has pre-existing buffer "
+					"allocations, please exit and re-run.",
+					i);
+		}
+	}
+
+	return err;
+}
+
+uint32_t xocl_get_shared_ddr(struct xocl_dev *xdev, struct mem_data *m_data)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+	struct xocl_mm_wrapper *wrapper;
+	uint64_t start_addr = m_data->m_base_address;
+	uint64_t sz = m_data->m_size*1024;
+
+	hash_for_each_possible(xdev->mm_range, wrapper, node, start_addr) {
+		if (!wrapper)
+			continue;
+
+		if (wrapper->start_addr == start_addr) {
+			if (wrapper->size == sz)
+				return wrapper->ddr;
+			else
+				return 0xffffffff;
+		}
+	}
+#endif
+	return 0xffffffff;
 }
 
 void xocl_cleanup_mem(struct xocl_dev *xdev)
 {
 	struct mem_topology *topology;
 	u16 i, ddr;
+	uint64_t addr;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+	struct xocl_mm_wrapper *wrapper;
+#endif
 
 	topology = xdev->topology;
 
@@ -518,17 +591,33 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 
 	ddr = topology->m_count;
 	for (i = 0; i < ddr; i++) {
-		if (topology->m_mem_data[i].m_used &&
-			topology->m_mem_data[i].m_type != MEM_STREAMING) {
-			userpf_info(xdev, "Taking down DDR : %d", i);
-			drm_mm_takedown(&xdev->mm[i]);
+		if (!topology->m_mem_data[i].m_used)
+			continue;
+
+		if (topology->m_mem_data[i].m_type == MEM_STREAMING)
+			continue;
+
+		userpf_info(xdev, "Taking down DDR : %d", i);
+		addr = topology->m_mem_data[i].m_base_address;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+		hash_for_each_possible(xdev->mm_range, wrapper, node, addr) {
+			if (wrapper->ddr == i) {
+				hash_del(&wrapper->node);
+				vfree(wrapper);
+				drm_mm_takedown(xdev->mm[i]);
+				vfree(xdev->mm[i]);
+				vfree(xdev->mm_usage_stat[i]);
+			}
 		}
+#endif
+		xdev->mm[i] = NULL;
+		xdev->mm_usage_stat[i] = NULL;
 	}
 
-	if (xdev->mm)
-		vfree(xdev->mm);
-	if (xdev->mm)
-		vfree(xdev->mm_usage_stat);
+	vfree(xdev->mm);
+	xdev->mm = NULL;
+	vfree(xdev->mm_usage_stat);
+	xdev->mm_usage_stat = NULL;
 	vfree(xdev->topology);
 	xdev->topology = NULL;
 }
@@ -541,7 +630,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = xdev->topology;
-	struct drm_xocl_mm_stat *stat = xdev->mm_usage_stat;
+	struct drm_xocl_mm_stat **stat = xdev->mm_usage_stat;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!topo || !stat)
@@ -549,9 +638,14 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	for (i = 0; i < topo->m_count; i++) {
 		if (raw) {
+			if (!stat[i]) {
+				userpf_info(xdev, "raw stat[%d] is NULL", i);
+				continue;
+			}
+
 			count = sprintf(buf, raw_fmt,
-				stat[i].memory_usage,
-				stat[i].bo_count);
+				stat[i]->memory_usage,
+				stat[i]->bo_count);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?
@@ -559,8 +653,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
-				stat[i].memory_usage / 1024,
-				stat[i].bo_count);
+				stat[i]->memory_usage / 1024,
+				stat[i]->bo_count);
 		}
 		buf += count;
 		size += count;

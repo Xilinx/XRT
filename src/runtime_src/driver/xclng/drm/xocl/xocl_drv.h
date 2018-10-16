@@ -94,6 +94,9 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_DSA_VERSION(xdev)			\
 	(XDEV(xdev)->priv.dsa_ver)
 
+#define XOCL_DSA_IS_MPSOC(xdev)                \
+	(XDEV(xdev)->priv.mpsoc)
+
 #define	XOCL_DEV_ID(pdev)			\
 	PCI_DEVID(pdev->bus->number, pdev->devfn)
 
@@ -453,8 +456,9 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_RESET_BEGIN,
-	MAILBOX_REQ_RESET_END,
+	MAILBOX_REQ_HOT_RESET_BEGIN,
+	MAILBOX_REQ_HOT_RESET_END,
+	MAILBOX_REQ_RESET_ERT,
 };
 
 struct mailbox_req_bitstream_lock {

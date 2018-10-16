@@ -227,10 +227,30 @@ reportBuildVersion( std::ostream & _ostream,
 
 void
 reportXclbinInfo( std::ostream & _ostream,
+                  const std::string& _sInputFile,
                   const axlf &_xclBinHeader,
                   boost::property_tree::ptree &_ptMetaData,
                   const std::vector<Section*> _sections)
 {
+  // Calculate if the signature is present or not because this is a slow
+  std::string sSignatureState = "Not Present";
+  {
+    if (!_sInputFile.empty()) {
+      std::fstream inputStream;
+      inputStream.open(_sInputFile, std::ifstream::in | std::ifstream::binary);
+      if (inputStream.is_open()) {
+        std::string sSignature;
+        std::string sSignedBy;
+        unsigned int totalSize;
+        if (XUtil::getSignature(inputStream, sSignature, sSignedBy, totalSize)) {
+          sSignatureState = "Present - " + sSignature;
+        }
+      }
+      inputStream.close();
+    }
+  }
+
+
   _ostream << "xclbin Information" << std::endl;
   _ostream << "------------------" << std::endl;
 
@@ -272,6 +292,11 @@ reportXclbinInfo( std::ostream & _ostream,
     _ostream << XUtil::format("   %-23s %s", "Kernels:", sKernels.c_str()).c_str() << std::endl;
   }
  
+  // Signature
+  {
+    _ostream << XUtil::format("   %-23s %s", "Signature:", sSignatureState.c_str()).c_str() << std::endl;
+  }
+
   // Content
   {
     std::string sContent;
@@ -845,9 +870,10 @@ reportAllJsonMetadata( std::ostream & _ostream,
 
 void
 FormattedOutput::reportInfo(std::ostream &_ostream, 
-                             const axlf &_xclBinHeader, 
-                             const std::vector<Section*> _sections,
-                             bool _bVerbose) {
+                            const std::string& _sInputFile,
+                            const axlf &_xclBinHeader, 
+                            const std::vector<Section*> _sections,
+                            bool _bVerbose) {
   // Get the Metadata
   boost::property_tree::ptree ptMetaData;
 
@@ -870,7 +896,7 @@ FormattedOutput::reportInfo(std::ostream &_ostream,
     _ostream << std::string(78,'=') << std::endl;
   }
 
-  reportXclbinInfo(_ostream, _xclBinHeader, ptMetaData, _sections);
+  reportXclbinInfo(_ostream, _sInputFile, _xclBinHeader, ptMetaData, _sections);
   _ostream << std::string(78,'=') << std::endl;
 
   reportHardwarePlatform(_ostream, _xclBinHeader, ptMetaData);

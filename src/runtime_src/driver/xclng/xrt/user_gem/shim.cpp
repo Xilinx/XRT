@@ -1339,9 +1339,7 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
     /* TODO: populate actual and timeout args correctly */
-    struct timespec time;
-    time.tv_nsec = timeout*1000000;
-
+    struct timespec time, *ptime = NULL;
     int num_evt, i;
 
     *actual = 0;
@@ -1350,7 +1348,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
         std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
         goto done;
     }
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
+    if (timeout > 0) {
+        memset(&time, 0, sizeof(time));
+        time.tv_sec = timeout / 1000;
+        time.tv_nsec = (timeout % 1000) * 1000000;
+        ptime = &time;
+    }
+
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;

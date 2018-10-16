@@ -64,6 +64,7 @@ struct xocl_board_private {
         bool			xpr;
         char			*flash_type; /* used by xbflash */
         char			*board_name; /* used by xbflash */
+	bool			mpsoc;
 };
 
 #ifdef __KERNEL__
@@ -628,6 +629,15 @@ enum {
 		.intr_bar = 1,						\
 	}
 
+#define	XOCL_BOARD_USER_XDMA_ERT_OFF					\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
+		.subdev_info	= USER_RES_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+	}
+
 #define XOCL_BOARD_USER_AWS                         \
    (struct xocl_board_private){                    \
        .flags      = 0,                    \
@@ -841,21 +851,33 @@ enum {
 		.intr_bar = 1,						\
 	}
 
-#define MGMT_RES_A883							\
+#define MGMT_RES_MPSOC							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 		})
 
-#define	XOCL_BOARD_MGMT_A883						\
+#define	XOCL_BOARD_MGMT_MPSOC						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
-		.subdev_info	= MGMT_RES_A883,			\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_A883),		\
+		.subdev_info	= MGMT_RES_MPSOC,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
+		.mpsoc = true,						\
+	}
+
+#define	XOCL_BOARD_USER_XDMA_MPSOC					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+		.user_bar = 0,						\
+		.intr_bar = 1,						\
+		.mpsoc = true,						\
 	}
 
 
@@ -874,7 +896,8 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4350, MGMT_DSA50) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4B87, 0x4351, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x684F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_A883) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_MPSOC) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA983, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x698F, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -908,7 +931,8 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA_MPSOC) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A50, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
@@ -923,7 +947,7 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4351, USER_XDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4352, USER_DSA52) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7990, 0x4352, USER_DSA52) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_XDMA_ERT_OFF) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\

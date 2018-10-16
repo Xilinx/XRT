@@ -300,8 +300,7 @@ XclBin::updateUUID() {
 
 void
 XclBin::writeXclBinBinary(const std::string &_binaryFileName, 
-                          bool _bSkipUUIDInsertion,
-                          bool _bInsertValidationChecksum) {
+                          bool _bSkipUUIDInsertion) {
   // Error checks
   if (_binaryFileName.empty()) {
     std::string errMsg = "ERROR: Missing file name to write to.";
@@ -347,11 +346,6 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
     // Update Header
     m_xclBinHeader.m_header.m_length = streamSize;
 
-    if (_bInsertValidationChecksum) {
-      // Include soon to be added checksum value
-      m_xclBinHeader.m_header.m_length += sizeof(struct checksum);
-    }
-
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);
     boost::property_tree::ptree dummyData;
@@ -360,10 +354,6 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
 
   // Close file
   ofXclBin.close();
-
-  if (_bInsertValidationChecksum) {
-    XUtil::addCheckSumImage(_binaryFileName, CST_SDBM);
-  }
 
   std::cout << XUtil::format("Successfully wrote (%ld bytes) to the output file: %s", m_xclBinHeader.m_header.m_length, _binaryFileName.c_str()).c_str() << std::endl;
 }
@@ -403,28 +393,6 @@ XclBin::getSchemaVersion(boost::property_tree::ptree& _pt, SchemaVersion& _schem
                              _schemaVersion.patch));
 }
 
-bool
-findStringInStream(std::fstream& _istream, const std::string& _searchString, unsigned int& _foundOffset) {
-  XUtil::TRACE(XUtil::format("Searching for: %s", _searchString.c_str()));
-  _foundOffset = 0;
-  unsigned int stringLength = _searchString.length();
-  unsigned int matchIndex = 0;
-
-  char aChar;
-  while (_istream.get(aChar)) {
-    ++_foundOffset;
-    if (aChar == _searchString[matchIndex++]) {
-      if (matchIndex == stringLength) {
-        _foundOffset -= stringLength;
-        return true;
-      }
-    } else {
-      matchIndex = 0;
-    }
-  }
-  return false;
-}
-
 void
 XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptree& _mirrorData) const {
   XUtil::TRACE("Searching for mirrored data...");
@@ -432,7 +400,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   // Find start of buffer
   _istream.seekg(0);
   unsigned int startOffset = 0;
-  if (findStringInStream(_istream, MIRROR_DATA_START, startOffset) == true) {
+  if (XUtil::findBytesInStream(_istream, MIRROR_DATA_START, startOffset) == true) {
     XUtil::TRACE(XUtil::format("Found MIRROR_DATA_START at offset: 0x%lx", startOffset));
     startOffset += MIRROR_DATA_START.length();
   }  else {
@@ -443,7 +411,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   // Find end of buffer (continue where we left off)
   _istream.seekg(startOffset);
   unsigned int bufferSize = 0;
-  if (findStringInStream(_istream, MIRROR_DATA_END, bufferSize) == true) {
+  if (XUtil::findBytesInStream(_istream, MIRROR_DATA_END, bufferSize) == true) {
     XUtil::TRACE(XUtil::format("Found MIRROR_DATA_END.  Buffersize: 0x%lx", bufferSize));
   }  else {
     std::string errMsg = "ERROR: Mirror backup data not well formed in given file.";
@@ -1023,9 +991,9 @@ XclBin::setKeyValue(const std::string & _keyValue)
 }
 
 void
-XclBin::reportInfo(std::ostream &_ostream, bool _bVerbose) const
+XclBin::reportInfo(std::ostream &_ostream, const std::string & _sInputFile, bool _bVerbose) const
 {
-  FormattedOutput::reportInfo(_ostream, m_xclBinHeader, m_sections, _bVerbose);
+  FormattedOutput::reportInfo(_ostream, _sInputFile, m_xclBinHeader, m_sections, _bVerbose);
 }
 
 
