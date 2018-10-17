@@ -201,25 +201,37 @@ const static struct xclmgmt_ocl_clockwiz {
 
 /* hack to user space to reset scheduler after AXI reset 
  * defined in xocl_drv.c */
-int xocl_reset_scheduler(struct pci_dev *pdev);
-static int reset_scheduler(struct icap *icap)
+static void reset_scheduler(struct icap *icap)
 {
-	int ret=1;
+	int err = -EINVAL;
+	size_t resplen = sizeof (err);
+	struct mailbox_req mbreq = { 0 };
+	int xocl_reset_scheduler(struct pci_dev *pdev);
 	int (*reset)(struct pci_dev *pdev);
+
+	ICAP_INFO(icap, "calling xocl_reset_scheduler");
+
+	mbreq.req = MAILBOX_REQ_RESET_ERT;
+	(void) xocl_peer_request(xocl_get_xdev(icap->icap_pdev),
+		&mbreq, &err, &resplen, NULL, NULL);
+	if (err == 0)
+		return;
+
 	reset = symbol_get(xocl_reset_scheduler);
 	if (reset) {
 		struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
 		unsigned int slot = PCI_SLOT(pdev->devfn);
-		struct pci_dev *user_dev = pci_get_slot(pdev->bus,PCI_DEVFN(slot,0));
+		struct pci_dev *user_dev =
+			pci_get_slot(pdev->bus, PCI_DEVFN(slot, 0));
 
-		if (!user_dev)
-			return 1;
+		if (user_dev)
+			err = reset(user_dev);
 
-		ICAP_INFO(icap, "calling xocl_reset_scheduler");
-		ret = reset(user_dev);
-		symbol_put(xocl_reset_notify);
+		symbol_put(xocl_reset_scheduler);
 	}
-	return ret;
+
+	if (err)
+		ICAP_ERR(icap, "calling xocl_reset_scheduler failed: %d", err);
 }
 
 static struct icap_bitstream_user *alloc_user(pid_t pid)

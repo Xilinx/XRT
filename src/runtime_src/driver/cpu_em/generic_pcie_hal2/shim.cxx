@@ -542,14 +542,18 @@ namespace xclcpuemhal2 {
         {
           uint64_t argNum = 0;
           uint64_t prev_route_id = ULLONG_MAX;
-          std::map<uint64_t, uint64_t> argFlowIdMap;
+          std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
           for (int32_t i=0; i<m_mem->m_count; ++i)
           {
             uint64_t flow_id =m_mem->m_mem_data[i].flow_id; 
             uint64_t route_id =m_mem->m_mem_data[i].route_id; 
             if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
             {
-              argFlowIdMap[argNum] = flow_id;
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
+              std::pair<uint64_t,std::string> mPair;
+              mPair.first  = flow_id;
+              mPair.second = m_tag;
+              argFlowIdMap[argNum] = mPair;
             }
             argNum++;
             if(prev_route_id != ULLONG_MAX && route_id != prev_route_id)
@@ -1005,24 +1009,21 @@ namespace xclcpuemhal2 {
 
 /*********************************** Utility ******************************************/
 
-static int check_bo_user_flags(CpuemShim* dev, unsigned flags)
+static bool check_bo_user_flags(CpuemShim* dev, unsigned flags)
 {
 	const unsigned ddr_count = dev->xocl_ddr_channel_count();
-	unsigned ddr;
 
 	if(ddr_count == 0)
-		return -EINVAL;
+		return false;
+
 	if (flags == 0xffffffff)
-		return 0;
+		return true;
 	
-  ddr = xclemulation::xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
-		return 0;
-	
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(flags);
   if (ddr > ddr_count)
-		return -EINVAL;
+		return false;
 	
-	return 0;
+	return true;
 }
 
 xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
@@ -1077,7 +1078,7 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
 
   /* Either none or only one DDR should be specified */
-  if (check_bo_user_flags(this, info->flags))
+  if (!check_bo_user_flags(this, info->flags))
     return -1;
 	
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
