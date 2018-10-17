@@ -137,7 +137,7 @@ namespace awsbwhal {
              std::string tmp_hex_string = fileReadBuf;
              xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
          } else { // xclbinid exists, but no data read or reported
-             std::cout << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
+             std::cout << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'awssak program'.\n";
          }
          delete [] fileReadBuf;
          ifs.close();
