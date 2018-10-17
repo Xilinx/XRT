@@ -521,20 +521,22 @@ public:
                 std::cout << "Reporting from mem_topology:" << std::endl;
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
+                    if(map->m_mem_data[i].m_type == MEM_STREAMING)
+                        continue;
                     if( map->m_mem_data[i].m_used ) {
                         std::cout << "Data Validity & DMA Test on DDR[" << i << "]\n";
                         addr = map->m_mem_data[i].m_base_address;
 
                         for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
-                            result = memwrite( addr, sz, pattern ); //memwriteQuiet( addr, sz, pattern );
+                            result = memwriteQuiet( addr, sz, pattern );
                             if( result < 0 )
                                 break;
-                            result = memreadCompare(addr, sz, pattern);
+                            result = memreadCompare(addr, sz, pattern, false);
                             if( result < 0 )
                                 break;
                         }
                         if( result >= 0 ) {
-                            DMARunner runner( m_handle, blockSize, 1 << i);
+                            DMARunner runner( m_handle, blockSize, i );
                             result = runner.run();
                         }
 
@@ -577,8 +579,8 @@ public:
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name  ).read(aFilename, aStartAddr, aSize);
     }
 
-    int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J') {
-        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).readCompare(aStartAddr, aSize, aPattern);
+    int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J', bool checks = true) {
+        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).readCompare(aStartAddr, aSize, aPattern, checks);
     }
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern) {
@@ -598,6 +600,10 @@ public:
             }
         }
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).write( aStartAddr, aSize, srcBuf );
+    }
+
+    int memwriteQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
+        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).writeQuiet(aStartAddr, aSize, aPattern);
     }
 
    //Debug related functionality.
