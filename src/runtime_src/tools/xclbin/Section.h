@@ -66,6 +66,10 @@ class Section {
   static enum FormatType getFormatType(const std::string _sFormatType);
 
  public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
+ public:
   enum axlf_section_kind getSectionKind() const;
   const std::string& getSectionKindAsString() const;
   std::string getName() const;

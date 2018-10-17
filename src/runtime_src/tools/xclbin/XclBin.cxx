@@ -717,6 +717,12 @@ XclBin::addSection(ParameterSectionData &_PSD)
   }
 
   Section * pSection = Section::createSectionObjectOfKind(eKind);
+  if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
+    std::string errMsg = XUtil::format("ERROR: The %s section does not support reading the %s file type.",
+                                        pSection->getSectionKindAsString().c_str(),
+                                        _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   boost::filesystem::path p(sSectionFileName);
@@ -823,11 +829,18 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-
   if (_PSD.getFormatType() == Section::FT_UNDEFINED ) {
-    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>";
+    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
     throw std::runtime_error(errMsg);
   }
+
+  if (pSection->doesSupportDumpFormatType(_PSD.getFormatType()) == false) {
+    std::string errMsg = XUtil::format("ERROR: The %s section does not support writing to a %s file type.",
+                                        pSection->getSectionKindAsString().c_str(),
+                                        _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
 
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image

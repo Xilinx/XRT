@@ -209,4 +209,25 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 }
 
 
+bool 
+SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}
 

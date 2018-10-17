@@ -217,13 +217,22 @@ FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName,
 }
 
 void
-reportBuildVersion( std::ostream & _ostream,
-                    bool _bVerbose)
+reportBuildVersion( std::ostream & _ostream)
 {
   _ostream << XUtil::format("%17s: %s", "XRT Build Version", xrt_build_version).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Build Date", xrt_build_version_date).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Hash ID", xrt_build_version_hash).c_str() << std::endl;
 }
+
+void
+FormattedOutput::reportVersion(bool bShort) {
+  if (bShort == true) {
+    reportBuildVersion( std::cout);
+  } else {
+    xrt::version::print(std::cout);
+  }
+}
+
 
 void
 reportXclbinInfo( std::ostream & _ostream,
@@ -888,7 +897,7 @@ FormattedOutput::reportInfo(std::ostream &_ostream,
 
   _ostream << std::endl << std::string(78,'=') << std::endl;
 
-  reportBuildVersion(_ostream, _bVerbose);
+  reportBuildVersion(_ostream);
   _ostream << std::string(78,'=') << std::endl;
 
   if (ptMetaData.empty()) {

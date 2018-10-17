@@ -251,3 +251,25 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     // throw std::runtime_error(errMsg);
   }
 }
+
+bool 
+SectionMemTopology::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionMemTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}
