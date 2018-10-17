@@ -229,8 +229,7 @@ int main(int argc, char *argv[])
 	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
     {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-    {"topology", no_argument, 0, xcldev::TOPOLOGY},
-    {"xclbin", no_argument, 0, xcldev::XCLBIN_ID},
+    {"stream", no_argument, 0, xcldev::STREAM},
 
     };
     int long_index;
@@ -465,21 +464,13 @@ int main(int argc, char *argv[])
             hot = true;
             break;
         }
-        case xcldev::TOPOLOGY:
+        case xcldev::STREAM:
         {
             if(cmd != xcldev::QUERY){
                 std::cout << "ERROR: '-t' only allowed with 'query' command\n";
                 return -1;
             }
-            subcmd = xcldev::TOPOLOGY;
-            break;
-        }
-        case xcldev::XCLBIN_ID:{
-            if(cmd != xcldev::QUERY){
-                std::cout << "ERROR: '-x' only allowed with 'query' command\n";
-                return -1;
-            }
-            subcmd = xcldev::XCLBIN_ID;
+            subcmd = xcldev::STREAM;
             break;
         }
         default:
@@ -593,11 +584,13 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
         try
         {
-            if(subcmd == xcldev::XCLBIN_ID){
-                    result = deviceVec[index] -> xclbinID_print(std::cout);
+            if(subcmd == xcldev::STREAM)
+            {
+                result = deviceVec[index] -> str_topology_print(std::cout);
             }
-            else if(subcmd == xcldev::TOPOLOGY){
-                result = deviceVec[index] -> mem_str_topology_print(std::cout);
+            else
+            {
+                result = deviceVec[index] -> dump(std::cout);
             }
         }
         catch (...)

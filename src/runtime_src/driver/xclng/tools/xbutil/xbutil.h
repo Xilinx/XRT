@@ -79,8 +79,7 @@ enum subcommand {
     STATUS_SPM,
     STATUS_LAPC,
     STATUS_SSPM,
-    XCLBIN_ID,
-    TOPOLOGY,
+    STREAM,
     STATUS_UNSUPPORTED
 };
 enum statusmask {
@@ -114,8 +113,7 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("topology", TOPOLOGY),
-    std::make_pair("xclbin", XCLBIN_ID)
+    std::make_pair("stream", STREAM)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -719,7 +717,7 @@ public:
      * TODO: Refactor to make function much shorter.
      */
     int dump(std::ostream& ostr) const {
-        std::vector<std::string> lines;
+        std::vector<std::string> lines, usage_lines;
 
         m_devinfo_stringize(m_devinfo, lines);
  
@@ -748,21 +746,25 @@ public:
             ostr << "\n";
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        ostr << std::setfill(' ');
+        ostr << std::setfill(' ')<< "\n";
 #endif // AXI Firewall
+        xclDeviceUsage devstat = { 0 };
+        (void) xclGetUsageInfo(m_handle, &devstat);
 
+        m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
+        for(auto line:usage_lines){
+            ostr << line << "\n";
+        }
+        str_topology_print(ostr);
+        xclbinID_print(ostr);
         return 0;
     }
 
 
-    //MEM topology
-    int mem_str_topology_print(std::ostream& ostr) const {
+    //STR topology
+    int str_topology_print(std::ostream& ostr) const {
         std::vector<std::string> usage_lines;
-        xclDeviceUsage devstat = { 0 };
-        (void) xclGetUsageInfo(m_handle, &devstat);
-        m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
-
-    m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
+        m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
 
         for(auto line:usage_lines){
             ostr << line << "\n";
@@ -808,6 +810,7 @@ public:
         }
         //ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ') << "\n";
+
         return 0;
     }
 
