@@ -43,7 +43,7 @@ FormattedOutput::getFeatureRomTimeStampAsString(const axlf &_xclBinHeader) {
 
 std::string
 FormattedOutput::getVersionAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%d", _xclBinHeader.m_header.m_version);
+  return XUtil::format("%d.%d.%d", _xclBinHeader.m_header.m_versionMajor, _xclBinHeader.m_header.m_versionMinor, _xclBinHeader.m_header.m_versionPatch);
 }
 
 // String Getters
@@ -220,7 +220,7 @@ void
 reportBuildVersion( std::ostream & _ostream,
                     bool _bVerbose)
 {
-  _ostream << XUtil::format("%17s: %d.%d.%d", "XRT Build Version", 2, 1, 0).c_str() << std::endl;
+  _ostream << XUtil::format("%17s: %s", "XRT Build Version", xrt_build_version).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Build Date", xrt_build_version_date).c_str() << std::endl;
   _ostream << XUtil::format("%17s: %s", "Hash ID", xrt_build_version_hash).c_str() << std::endl;
 }
@@ -268,7 +268,7 @@ reportXclbinInfo( std::ostream & _ostream,
   }
 
   // Version:
-  _ostream << XUtil::format("   %-23s %d.%d.%d", "Version:", 2, 1, 0).c_str() << std::endl;
+  _ostream << XUtil::format("   %-23s %d.%d.%d", "Version:", _xclBinHeader.m_header.m_versionMajor, _xclBinHeader.m_header.m_versionMinor, _xclBinHeader.m_header.m_versionPatch).c_str() << std::endl;
 
   // Kernels
   {
