@@ -1197,7 +1197,7 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
@@ -1212,7 +1212,7 @@ int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool s
 /*
  * xclCloseContext
  */
-int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};

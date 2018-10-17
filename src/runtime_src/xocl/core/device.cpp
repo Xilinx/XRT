@@ -435,6 +435,15 @@ device::
 
 void
 device::
+clear_cus()
+{
+  for (auto& cu : get_cus())
+    release_context(cu.get());
+  m_computeunits.clear();
+}
+
+void
+device::
 set_xrt_device(xrt::device* xd,bool final)
 {
   if (!final && m_xdevice)
@@ -1194,7 +1203,7 @@ load_program(program* program)
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
   // isn't possible, we *must* iterator symbols explicitly
-  m_computeunits.clear();
+  clear_cus();
   m_cu_memidx = -2;
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
@@ -1213,10 +1222,42 @@ device::
 unload_program(const program* program)
 {
   if (m_active == program) {
-    get_xrt_device()->resetKernel();
-    m_computeunits.clear();
+    clear_cus();
     m_active = nullptr;
   }
+}
+
+bool
+device::
+acquire_context(compute_unit* cu, bool shared) const
+{
+  if (cu->m_context_type != compute_unit::context_type::none)
+    return true;
+
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    cu->set_context_type(shared);
+    return true;
+  }
+  return false;
+}
+
+bool
+device::
+release_context(compute_unit* cu) const
+{
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    cu->reset_context_type();
+    return true;
+  }
+  return false;
 }
 
 xclbin
