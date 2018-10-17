@@ -429,6 +429,7 @@ static void msg_done(struct mailbox_msg *msg, int err)
 	} else {
 		complete(&msg->mbm_complete);
 	}
+	chan_config_timer(ch);
 }
 
 static void chan_msg_done(struct mailbox_channel *ch, int err)
@@ -439,8 +440,6 @@ static void chan_msg_done(struct mailbox_channel *ch, int err)
 	msg_done(ch->mbc_cur_msg, err);
 	ch->mbc_cur_msg = NULL;
 	ch->mbc_bytes_done = 0;
-
-	chan_config_timer(ch);
 }
 
 void timeout_msg(struct mailbox_channel *ch)
