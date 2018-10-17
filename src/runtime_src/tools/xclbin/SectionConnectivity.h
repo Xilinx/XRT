@@ -38,6 +38,11 @@ class SectionConnectivity : public Section {
   SectionConnectivity();
   virtual ~SectionConnectivity();
 
+public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
+
  private:
   // Purposefully private and undefined ctors...
   SectionConnectivity(const SectionConnectivity& obj);
