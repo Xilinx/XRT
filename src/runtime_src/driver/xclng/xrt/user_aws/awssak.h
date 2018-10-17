@@ -239,7 +239,7 @@ public:
         std::vector<ip_data> computeUnits;
         int retVal = getComputeUnits( computeUnits );
         if( retVal < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'awssak program'.\n";
             return retVal;
         }
         unsigned buf[ 16 ];
@@ -317,7 +317,7 @@ public:
         if( ifs.gcount() > 0 ) {
             ostr << "\nXclbin ID:  0x" << fileReadBuf;
         } else { // xclbinid exists, but no data read or reported
-            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'awssak program'.\n";
         }
         delete [] fileReadBuf;
         ifs.close();
@@ -337,7 +337,7 @@ public:
         ifs.seekg(0, ifs.beg);
         if( numBanks == 0 ) {
             ostr << "\nMem Topology:\n";
-            ostr << "     -- none found --. See 'xbsak program'.\n";
+            ostr << "     -- none found --. See 'awssak program'.\n";
         } else if( numBanks > 0 ) {
             int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
             buf_size *= 2; //TODO: just double this for padding safety for now.
@@ -379,14 +379,14 @@ public:
             }
             delete[] buffer;
         } else { // mem_topology exists, but no data read or reported
-            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'awssak program'." << std::endl;
         }
         ifs.close();
 
         ostr << "\nCompute Unit Status:\n";
         std::vector<ip_data> computeUnits;
         if( getComputeUnits( computeUnits ) < 0 ) {
-            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'awssak program'.\n";
         } else {
             for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
                 static int cuCnt = 0;
@@ -401,7 +401,7 @@ public:
                 }
             }
             if(computeUnits.size() == 0) {
-                ostr << "     -- none found --. See 'xbsak program'.\n";
+                ostr << "     -- none found --. See 'awssak program'.\n";
             }
         }
         return 0;
@@ -502,13 +502,13 @@ public:
         {   // unified+ mode
             struct stat sb;
             if(stat( path.c_str(), &sb ) < 0) {
-                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'awssak program'." << std::endl;
                 return -1;
             }
             ifs.read((char*)&numDDR, sizeof(numDDR));
             ifs.seekg(0, ifs.beg);
             if( numDDR == 0 ) {
-                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'awssak program'." << std::endl;
                 return -1;
             }else {
                 int buf_size = sizeof(mem_topology)*numDDR + offsetof(mem_topology, m_mem_data) ;
@@ -692,7 +692,7 @@ public:
 };
 
 void printHelp(const std::string& exe);
-int xclXbsak(int argc, char *argv[]);
+int xclAwssak(int argc, char *argv[]);
 
 } // end namespace xcldev
 

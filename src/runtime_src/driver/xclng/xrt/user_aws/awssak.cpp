@@ -18,7 +18,7 @@
 
 #include "awssak.h"
 
-int xcldev::xclXbsak(int argc, char *argv[])
+int xcldev::xclAwssak(int argc, char *argv[])
 {
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;

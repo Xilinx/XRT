@@ -1504,8 +1504,8 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
   //return drv->xclGetErrorStatus(info); Not supported for AWS
 }
 
-int xclXbsak(int argc, char *argv[])
+int xclAwssak(int argc, char *argv[])
 {
-    return xcldev::xclXbsak(argc, argv);
+    return xcldev::xclAwssak(argc, argv);
 }
 
