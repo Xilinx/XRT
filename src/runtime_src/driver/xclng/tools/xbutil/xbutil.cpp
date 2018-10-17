@@ -80,8 +80,8 @@ int str2index(const char *arg, unsigned& index)
     return 0;
 }
 
-void print_pci_info(void)
-{
+
+void print_pci_info(void){
     auto print = [](const std::unique_ptr<pcidev::pci_func>& dev) {
         std::cout << std::hex;
         std::cout << ":[" << std::setw(2) << std::setfill('0') << dev->bus
@@ -228,10 +228,13 @@ int main(int argc, char *argv[])
 	{"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
 	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED}
+    {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+    {"topology", no_argument, 0, xcldev::TOPOLOGY},
+    {"xclbin", no_argument, 0, xcldev::XCLBIN_ID},
+
     };
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s:"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -462,6 +465,23 @@ int main(int argc, char *argv[])
             hot = true;
             break;
         }
+        case xcldev::TOPOLOGY:
+        {
+            if(cmd != xcldev::QUERY){
+                std::cout << "ERROR: '-t' only allowed with 'query' command\n";
+                return -1;
+            }
+            subcmd = xcldev::TOPOLOGY;
+            break;
+        }
+        case xcldev::XCLBIN_ID:{
+            if(cmd != xcldev::QUERY){
+                std::cout << "ERROR: '-x' only allowed with 'query' command\n";
+                return -1;
+            }
+            subcmd = xcldev::XCLBIN_ID;
+            break;
+        }
         default:
             xcldev::printHelp(exe);
             return 1;
@@ -573,7 +593,12 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
         try
         {
-            result = deviceVec[index]->dump(std::cout);
+            if(subcmd == xcldev::XCLBIN_ID){
+                    result = deviceVec[index] -> xclbinID_print(std::cout);
+            }
+            else if(subcmd == xcldev::TOPOLOGY){
+                result = deviceVec[index] -> mem_str_topology_print(std::cout);
+            }
         }
         catch (...)
         {
