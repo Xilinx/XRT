@@ -59,7 +59,7 @@ class SectionDebugIPLayout : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", boost::factory<SectionDebugIPLayout*>()); }
+    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", false, boost::factory<SectionDebugIPLayout*>()); }
   } _initializer;
 };
 
