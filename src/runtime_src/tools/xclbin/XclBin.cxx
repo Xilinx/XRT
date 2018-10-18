@@ -501,7 +501,9 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   std::string sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
   XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
   std::string sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
-  XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+  XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
+  
+                        sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
   std::string sXclBinUUID = _ptHeader.get<std::string>("XclBinUUID");
   XUtil::hexStringToBinaryBuffer(sXclBinUUID, (unsigned char*)&_axlfHeader.m_header.uuid, sizeof(axlf_header::uuid));
 
@@ -696,14 +698,10 @@ XclBin::updateHeaderFromSection(Section *_pSection)
 void 
 XclBin::addSection(ParameterSectionData &_PSD)
 {
+  XUtil::TRACE("Add Section");
   enum axlf_section_kind eKind;
   if (Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind) == false) {
     std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
-  }
-
-  if (findSection(eKind) != nullptr) {
-    std::string errMsg = XUtil::format("Error: Section '%s' already exists.", _PSD.getSectionName().c_str());
     throw std::runtime_error(errMsg);
   }
 
@@ -716,7 +714,18 @@ XclBin::addSection(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-  Section * pSection = Section::createSectionObjectOfKind(eKind);
+  Section *pSection = findSection(eKind);
+  if (pSection != nullptr) {
+    std::string sSubSection = _PSD.getSubSectionName();
+
+    if (sSubSection.empty()) {
+      std::string errMsg = XUtil::format("Error: Section '%s' already exists.", _PSD.getSectionName().c_str());
+      throw std::runtime_error(errMsg);
+    }
+  } else {
+    pSection = Section::createSectionObjectOfKind(eKind);
+  }
+
   if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
     std::string errMsg = XUtil::format("ERROR: The %s section does not support reading the %s file type.",
                                         pSection->getSectionKindAsString().c_str(),
@@ -731,9 +740,14 @@ XclBin::addSection(ParameterSectionData &_PSD)
 
   addSection(pSection);
   updateHeaderFromSection(pSection);
-  XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+  std::string sSectionAddedName = pSection->getSectionKindAsString();
+  if (!_PSD.getSubSectionName().empty()) {
+    sSectionAddedName += "-" + _PSD.getSubSectionName();
+  }
+
+  XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", sSectionAddedName.c_str(), pSection->getSectionKind()));
   std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
-                                          pSection->getSectionKindAsString().c_str(), pSection->getSectionKind(),
+                                          sSectionAddedName.c_str(), pSection->getSectionKind(),
                                           pSection->getSize(),
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
 }
@@ -840,7 +854,6 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
                                         _PSD.getFormatTypeAsStr().c_str());
     throw std::runtime_error(errMsg);
   }
-
 
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image
@@ -978,6 +991,16 @@ XclBin::setKeyValue(const std::string & _keyValue)
       return; // Key processed 
     }
 
+    if (sKey == "FeatureRomTimestamp") {
+      m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
+      return; // Key processed 
+    }
+
+    if (sKey == "PlatformVBNV") {
+      XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sValue, sizeof(axlf_header::m_platformVBNV));
+      return; // Key processed 
+    }
+
     std::string errMsg = XUtil::format("Error: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
     throw std::runtime_error(errMsg);
   } 
@@ -1036,6 +1059,60 @@ XclBin::setKeyValue(const std::string & _keyValue)
   std::string errMsg = XUtil::format("Error: Unknown key domain for key-value pair '%s'.  Expected either 'USER' or 'SYS'.", sDomain.c_str());
   throw std::runtime_error(errMsg);
 }
+
+void 
+XclBin::removeKey(const std::string & _sKey)
+{
+
+  XUtil::TRACE(XUtil::format("Removing User Key: '%s'", _sKey.c_str()));
+
+  Section *pSection = findSection(KEYVALUE_METADATA);
+  if (pSection == nullptr) {
+    std::string errMsg = XUtil::format("Error: Key '%s' not found.", _sKey.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  boost::property_tree::ptree ptKeyValueMetadata;
+   pSection->getPayload(ptKeyValueMetadata);
+
+   XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
+   boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
+   std::vector<boost::property_tree::ptree> keyValues = as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+
+   // Update existing key
+   bool bKeyFound = false;
+   for (unsigned int index = 0; index < keyValues.size(); ++index) {
+      if (keyValues[index].get<std::string>("key") == _sKey) {
+         bKeyFound = true;
+         std::cout << "Removing key '" + _sKey + "'" << std::endl;
+         keyValues.erase(keyValues.begin() + index);
+         break;
+      }
+    }
+
+   if (bKeyFound == false) {
+     std::string errMsg = XUtil::format("Error: Key '%s' not found.", _sKey.c_str());
+     throw std::runtime_error(errMsg);
+   }
+
+   // Now create a new tree to add back into the section
+   boost::property_tree::ptree ptKeyValuesNew;
+   for (auto keyvalue : keyValues) {
+     ptKeyValuesNew.add_child("kv_data", keyvalue);
+   }
+
+   boost::property_tree::ptree ptKeyValueMetadataNew;
+   ptKeyValueMetadataNew.add_child("key_values", ptKeyValuesNew);
+
+   boost::property_tree::ptree pt;
+   pt.add_child("keyvalue_metadata", ptKeyValueMetadataNew);
+
+   XUtil::TRACE_PrintTree("Final KeyValue",pt);
+   pSection->readJSONSectionImage(pt);
+   return;
+}
+
+
 
 void
 XclBin::reportInfo(std::ostream &_ostream, const std::string & _sInputFile, bool _bVerbose) const
