@@ -413,7 +413,6 @@ static void req_update_pend(struct qdma_descq *descq, unsigned int credit)
 		} else {
 			pr_debug("%s, cb 0x%p not done, credit %u < %u.\n",
 				descq->conf.name, cb, credit, cb->desc_nr);
-			cb->desc_nr -= credit;
 			delta = credit;
 			credit = 0;
 		}
@@ -431,6 +430,7 @@ static void req_update_pend(struct qdma_descq *descq, unsigned int credit)
 				descq->conf.rngsz);
 		}
 		descq->avail += delta;
+		cb->desc_nr -= delta;
 
 		if (!credit)
 			break;
@@ -575,7 +575,7 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 
 	cidx_hw = wb->cidx;
 
-	if (cidx_hw == cidx) { /* no new writeback? */
+	if (cidx_hw == cidx && !descq->conf.irq_en) {
 		return 0;
 	}
 
@@ -812,7 +812,8 @@ void qdma_descq_config(struct qdma_descq *descq, struct qdma_queue_conf *qconf,
 
 		descq->conf.st = qconf->st;
 		descq->conf.c2h = qconf->c2h;
-		descq->conf.irq_en = (descq->xdev->num_vecs) ? 1 : 0;
+		descq->conf.irq_en = (descq->xdev->num_vecs) ?
+			descq->conf.irq_en : 0;
 
 	} else {
 		descq->conf.desc_rng_sz_idx = qconf->desc_rng_sz_idx;
@@ -1019,7 +1020,7 @@ int qdma_notify_cancel(struct qdma_descq *descq)
 			descq->q_state == Q_STATE_ONLINE &&
 			ts.tv_sec - cb->cancel_ts.tv_sec <
 			QDMA_CANCEL_TIMEOUT) {
-			if (!descq->xdev->conf.poll_mode)
+			if (descq->conf.irq_en)
 				resch = true;
 			ret = -EAGAIN;
 			continue;

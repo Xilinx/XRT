@@ -89,7 +89,7 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 
 	conf = &qd->dev_conf;
 	memset(conf, 0, sizeof(*conf));
-	conf->poll_mode = 1;
+	conf->poll_mode = 0;
 	conf->pdev = pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf =  PCI_FUNC(pdev->devfn);

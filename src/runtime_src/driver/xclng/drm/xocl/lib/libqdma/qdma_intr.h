@@ -176,6 +176,7 @@ int get_intr_ring_index(struct xlnx_dma_dev *xdev, u32 vector_index);
  * @return	none
  *****************************************************************************/
 void err_stat_handler(struct xlnx_dma_dev *xdev);
+int qdma_error_stat(struct xlnx_dma_dev *xdev, bool clear, char *outstr);
 #endif
 
 #endif /* LIBQDMA_QDMA_DEVICE_H_ */
