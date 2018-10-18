@@ -29,6 +29,7 @@ std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
 std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
+std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
 
 Section::Section()
     : m_eKind(BITSTREAM)
@@ -70,6 +71,7 @@ void
 Section::registerSectionCtor(enum axlf_section_kind _eKind,
                              const std::string& _sKindStr,
                              const std::string& _sHeaderJSONName,
+                             bool _bSupportsSubSections,
                              Section_factory _Section_factory) {
   // Some error checking
   if (_sKindStr.empty()) {
@@ -105,8 +107,7 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapIdToName[_eKind] = _sKindStr;
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
-  
-  //std::cout << "Kind(" << _eKind << "): " << _sKindStr << std::endl;
+  m_mapIdToSubSectionSupport[_eKind] = _bSupportsSubSections;
 }
 
 bool
@@ -119,6 +120,14 @@ Section::translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_s
   return true;
 }
 
+bool
+Section::supportsSubSections(enum axlf_section_kind &_eKind)
+{
+  if (m_mapIdToSubSectionSupport.find(_eKind) == m_mapIdToSubSectionSupport.end()) {
+    return false;   
+  }
+  return m_mapIdToSubSectionSupport[_eKind];
+}
 
 enum Section::FormatType 
 Section::getFormatType(const std::string _sFormatType)

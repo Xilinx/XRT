@@ -319,7 +319,6 @@ reportXclbinInfo( std::ostream & _ostream,
     _ostream << XUtil::format("   %-23s %s", "Content:", sContent.c_str()).c_str() << std::endl;
   }
    
-  // UUID
   {
     std::string sUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.uuid);
     _ostream << XUtil::format("   %-23s %s", "UUID:", sUUID.c_str()).c_str() << std::endl;
@@ -472,11 +471,27 @@ reportHardwarePlatform( std::ostream & _ostream,
     }
   }
 
+  // Platform VBNV
+  {
+    std::string sPlatformVBNV = (char *) _xclBinHeader.m_header.m_platformVBNV;
+    if (sPlatformVBNV.empty()) {
+      sPlatformVBNV = "<not defined>";
+    }
+    _ostream << XUtil::format("   %-23s %s", "Platform VBNV:", sPlatformVBNV.c_str()).c_str() << std::endl;
+  }
+
   // Static UUID
   {
     std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.rom_uuid);
     _ostream << XUtil::format("   %-23s %s", "Static UUID:", sStaticUUID.c_str()).c_str() << std::endl;
   }
+
+  // TimeStamp
+  {
+     _ostream << XUtil::format("   %-23s %ld", "Feature ROM TimeStamp:", _xclBinHeader.m_header.m_featureRomTimeStamp).c_str() << std::endl;
+  }
+ 
+
 }
 
 

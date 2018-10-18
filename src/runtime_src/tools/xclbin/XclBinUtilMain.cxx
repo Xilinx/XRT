@@ -111,6 +111,7 @@ int main_(int argc, char** argv) {
   std::vector<std::string> sectionsToDump;
 
   std::vector<std::string> keyValuePairs;
+  std::vector<std::string> keysToRemove;
 
 
   namespace po = boost::program_options;
@@ -118,8 +119,8 @@ int main_(int argc, char** argv) {
   po::options_description desc("Options");
   desc.add_options()
       ("help,h", "Print help messages")
-      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Read xclbin into memory.")
-      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin to a file.")
+      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
+      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin image to a file.")
 
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
       ("quiet,q", boost::program_options::bool_switch(&bQuiet),     "Minimize reporting information.")
@@ -132,11 +133,11 @@ int main_(int argc, char** argv) {
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace. ")
 
       ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
+      ("remove-key", boost::program_options::value<std::vector<std::string> >(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
 
       ("add-signature", boost::program_options::value<std::string>(&sSignature), "Adds a user defined signature to the given xclbin image.")
       ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
-
 
       ("info", boost::program_options::bool_switch(&bInfo), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.")
       ("list-names", boost::program_options::bool_switch(&bListNames), "List all possible section names (Stand Alone Option)")
@@ -160,19 +161,26 @@ int main_(int argc, char** argv) {
 //    Migrates the xclbin forward to the new binary structure using the backup mirror metadata.
 
   // hidden options
+  std::vector<std::string> badOptions;
   boost::program_options::options_description hidden("Hidden options");
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
+    ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
   boost::program_options::options_description all("Allowed options");
   all.add(desc).add(hidden);
 
+  po::positional_options_description p;
+  p.add("BAD-DATA", -1);
 
   po::variables_map vm;
   try {
-    po::store(po::parse_command_line(argc, argv, all), vm); // Can throw
+    po::store(po::command_line_parser(argc, argv).options(all).positional(p).run(), vm);
+
+
+ // po::store(po::parse_command_line(argc, argv, all), vm); // Can throw
 
     if ((vm.count("help")) ||
         (argc == 1)) {
@@ -182,7 +190,6 @@ int main_(int argc, char** argv) {
       std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
       std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
       std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
-      std::cout << "  5) Checking xclbin integrity     : xclbinutil --validate --input binary_containter_1.xclbin" <<std::endl;
 
       std::cout << std::endl 
                 << "Command Line Options" << std::endl
@@ -202,7 +209,7 @@ int main_(int argc, char** argv) {
       std::cout << std::endl;
       std::cout << "                Note: Only selected operations and sections supports these file types."  << std::endl;
       std::cout << std::endl;
-      std::cout << "    <file>    - The name of the input file to use." << std::endl;
+      std::cout << "    <file>    - The name of the input/output file to use." << std::endl;
       std::cout << std::endl;
       std::cout << "  Used By: --add_section and --dump_section" << std::endl;
       std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit"  << std::endl;
@@ -217,6 +224,12 @@ int main_(int argc, char** argv) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     std::cerr << desc << std::endl;
     return RC_ERROR_IN_COMMAND_LINE;
+  }
+
+  // Check for positional arguments
+  if (badOptions.size()) {
+    std::string errMsg = "ERROR: Positional arguments (e.g '" + badOptions[0] + "') are not supported.  Please use --input and/or --output if specifying a file.";
+    throw std::runtime_error(errMsg);
   }
 
   // Examine the options
@@ -317,16 +330,27 @@ int main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
+  if (sOutputFile.empty()) {
+    QUIET("------------------------------------------------------------------------------");
+    QUIET("Warning: The option '--output' has not been specified. All operations will    ");
+    QUIET("         be done in memory with the exception of the '--dump-section' command.");
+    QUIET("------------------------------------------------------------------------------");
+  }
+
   XclBin xclBin;
   if (!sInputFile.empty()) {
     QUIET("Reading xclbin file into memory.  File: " + sInputFile);
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
   } else {
-    QUIET("Creating default in memory xclbin image.");
+    QUIET("Creating a default 'in-memory' xclbin image.");
   }
 
   for (auto keyValue : keyValuePairs) {
     xclBin.setKeyValue(keyValue);
+  }
+
+  for (auto key : keysToRemove) {
+    xclBin.removeKey(key);
   }
 
   for (auto section : sectionsToRemove) {
