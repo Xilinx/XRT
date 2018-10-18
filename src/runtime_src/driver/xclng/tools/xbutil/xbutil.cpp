@@ -220,14 +220,14 @@ int main(int argc, char *argv[])
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
-	{"read", no_argument, 0, xcldev::MEM_READ},
-	{"write", no_argument, 0, xcldev::MEM_WRITE},
-	{"spm", no_argument, 0, xcldev::STATUS_SPM},
-	{"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-	{"sspm", no_argument, 0, xcldev::STATUS_SSPM},
-	{"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+    {"read", no_argument, 0, xcldev::MEM_READ},
+    {"write", no_argument, 0, xcldev::MEM_WRITE},
+    {"spm", no_argument, 0, xcldev::STATUS_SPM},
+    {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
+    {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+    {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+    {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+    {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
     {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
     {"stream", no_argument, 0, xcldev::STREAM},
 
@@ -467,7 +467,7 @@ int main(int argc, char *argv[])
         case xcldev::STREAM:
         {
             if(cmd != xcldev::QUERY){
-                std::cout << "ERROR: '-t' only allowed with 'query' command\n";
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
             subcmd = xcldev::STREAM;
@@ -586,7 +586,7 @@ int main(int argc, char *argv[])
         {
             if(subcmd == xcldev::STREAM)
             {
-                result = deviceVec[index] -> str_topology_print(std::cout);
+                result = deviceVec[index] -> printStreamInfo(std::cout);
             }
             else
             {

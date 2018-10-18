@@ -746,7 +746,7 @@ public:
             ostr << "\n";
         }
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        ostr << std::setfill(' ')<< "\n";
+        ostr << std::setfill(' ') << "\n";
 #endif // AXI Firewall
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
@@ -755,14 +755,14 @@ public:
         for(auto line:usage_lines){
             ostr << line << "\n";
         }
-        str_topology_print(ostr);
-        xclbinID_print(ostr);
+        printStreamInfo(ostr);
+        printXclbinID(ostr);
         return 0;
     }
 
 
-    //STR topology
-    int str_topology_print(std::ostream& ostr) const {
+    //stream topology
+    int printStreamInfo(std::ostream& ostr) const {
         std::vector<std::string> usage_lines;
         m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
 
@@ -772,7 +772,7 @@ public:
         return 0;
     }
 
-    int xclbinID_print(std::ostream& ostr) const{
+    int printXclbinID(std::ostream& ostr) const{
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
@@ -808,7 +808,6 @@ public:
                 ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
             }
         }
-        //ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ') << "\n";
 
         return 0;
