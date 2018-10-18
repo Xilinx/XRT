@@ -58,3 +58,6 @@ configure_file(
 )
 
 install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_INSTALL_DIR}/include)
+# Copied over from dkms.cmake. TODO: cleanup
+set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include)

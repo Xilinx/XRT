@@ -20,6 +20,7 @@
 #include "XclBinUtilities.h"
 #include "XclBin.h"
 #include "ParameterSectionData.h"
+#include "FormattedOutput.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -31,9 +32,6 @@
 #include <string>
 #include <set>
 
-// Generated include files
-#include <version.h>
- 
 namespace XUtil = XclBinUtilities;
 
 namespace {
@@ -82,15 +80,19 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
    }
 }
 
+static bool bQuiet = false;
+void QUIET(const std::string _msg){
+  if (bQuiet == false) {
+    std::cout << _msg.c_str() << std::endl;
+  }
+}
 
 // Program entry point
 int main_(int argc, char** argv) {
-
   bool bVerbose = false;
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
-  bool bListSections = false;
   bool bInfo = false;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
@@ -116,16 +118,17 @@ int main_(int argc, char** argv) {
   po::options_description desc("Options");
   desc.add_options()
       ("help,h", "Print help messages")
-      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name.")
-      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name.")
+      ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Read xclbin into memory.")
+      ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin to a file.")
 
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
+      ("quiet,q", boost::program_options::bool_switch(&bQuiet),     "Minimize reporting information.")
 
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
 
       ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
-      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:[JSON|RAW]:<file>")
-      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:[JSON|RAW|HTML]:<file>")
+      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
+      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
       ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace. ")
 
       ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
@@ -135,9 +138,8 @@ int main_(int argc, char** argv) {
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
 
 
-      ("info", boost::program_options::bool_switch(&bInfo), "Print Section Info.")
-      ("list-names", boost::program_options::bool_switch(&bListNames), "List the available section names.")
-      ("list-sections", boost::program_options::bool_switch(&bListSections), "List the sections.")
+      ("info", boost::program_options::bool_switch(&bInfo), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.")
+      ("list-names", boost::program_options::bool_switch(&bListNames), "List all possible section names (Stand Alone Option)")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
@@ -186,6 +188,27 @@ int main_(int argc, char** argv) {
                 << "Command Line Options" << std::endl
                 << desc
                 << std::endl;
+
+      std::cout << "Addition Syntax Information" << std::endl;
+      std::cout << "---------------------------" << std::endl;
+      std::cout << "Syntax: <section>:<format>:<file>" << std::endl;
+      std::cout << "    <section> - The section to add or dump (e.g., BUILD_METDATA, BITSTREAM, etc.)"  << std::endl;
+      std::cout << "                Note: If a JSON format is being used, this value can be empty.  If so, then" << std::endl;
+      std::cout << "                      the JSON metadata will determine the section it is associated with." << std::endl;
+      std::cout << "                      In addition, only sections that are found in the JSON file will be reported." << std::endl;
+      std::cout << std::endl;
+      std::cout << "    <format>  - The format to be used.  Currently, there are three formats available: " << std::endl;
+      std::cout << "                RAW: Binary Image; JSON: JSON file format; and HTML: Browser visible." << std::endl;
+      std::cout << std::endl;
+      std::cout << "                Note: Only selected operations and sections supports these file types."  << std::endl;
+      std::cout << std::endl;
+      std::cout << "    <file>    - The name of the input file to use." << std::endl;
+      std::cout << std::endl;
+      std::cout << "  Used By: --add_section and --dump_section" << std::endl;
+      std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit"  << std::endl;
+      std::cout << std::endl;
+
+
       return RC_SUCCESS;
     }
 
@@ -202,13 +225,21 @@ int main_(int argc, char** argv) {
   XUtil::setVerbose(bTrace);
 
   if (bVersion) {
-    xrt::version::print(std::cout);
+    FormattedOutput::reportVersion();
     return RC_SUCCESS;
+  }
+
+  if (!bQuiet) {
+    FormattedOutput::reportVersion(true);
   }
 
   // Actions not requiring --input
 
   if (bListNames) {
+    if (argc != 2) {
+      std::string errMsg = "ERROR: The '--list-names' argument is a stand alone option.  No other options can be specified with it.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::printKinds();
     return RC_SUCCESS;
   }
@@ -248,28 +279,50 @@ int main_(int argc, char** argv) {
   drcCheckFiles(inputFiles, outputFiles, bForce);
 
 
-  if (!sSignature.empty() && 
-      !sInputFile.empty() &&
-      !sOutputFile.empty()) {
+  if (!sSignature.empty()) {
+    if (sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot add signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
+    if(sOutputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot add signature.  Missing output file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::addSignature(sInputFile, sOutputFile, sSignature, "");
+    QUIET("Exiting");
     return RC_SUCCESS;
   }
 
-  if (bGetSignature && 
-      !sInputFile.empty()) {
+  if (bGetSignature) {
+    if(sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot read signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::reportSignature(sInputFile);
+    QUIET("Exiting");
+    return RC_SUCCESS;
   }
 
-  if (bRemoveSignature &&
-      !sInputFile.empty() &&
-      !sOutputFile.empty()) {
+  if (bRemoveSignature) {
+    if(sInputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot remove signature.  Missing input file.";
+      throw std::runtime_error(errMsg);
+    }
+    if(sOutputFile.empty()) {
+      std::string errMsg = "ERROR: Cannot remove signature.  Missing output file.";
+      throw std::runtime_error(errMsg);
+    }
     XUtil::removeSignature(sInputFile, sOutputFile);
+    QUIET("Exiting");
     return RC_SUCCESS;
   }
 
   XclBin xclBin;
   if (!sInputFile.empty()) {
+    QUIET("Reading xclbin file into memory.  File: " + sInputFile);
     xclBin.readXclBinBinary(sInputFile, bMigrateForward);
+  } else {
+    QUIET("Creating default in memory xclbin image.");
   }
 
   for (auto keyValue : keyValuePairs) {
@@ -309,14 +362,12 @@ int main_(int argc, char** argv) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
   }
 
-  if (bListSections) {
-    xclBin.printSections(std::cout);
-  }
-
   if (bInfo) {
     xclBin.reportInfo(std::cout, sInputFile, bVerbose);
   }
   
+  QUIET("Exiting");
+
   return RC_SUCCESS;
 }
 

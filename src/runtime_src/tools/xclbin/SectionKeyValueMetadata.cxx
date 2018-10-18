@@ -93,5 +93,23 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
    boost::property_tree::write_json(_buf, ptKeyValueMetadataBuffer, false );
 }
 
+bool 
+SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
 
+bool 
+SectionKeyValueMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML))
+    {
+      return true;
+    }
 
+    return false;
+}

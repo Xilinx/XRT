@@ -31,10 +31,34 @@
 namespace XUtil = XclBinUtilities;
 
 #include "FormattedOutput.h"
-
+// Generated include files
+#include <version.h>
 static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
 static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 
+
+static
+bool getVersionMajorMinorPath(const char * _pVersion, uint8_t & _major, uint8_t & _minor, uint16_t & _patch)
+{
+  std::string sVersion(_pVersion);
+  std::vector<std::string> tokens;
+  boost::split(tokens, sVersion, boost::is_any_of("."));
+  if ( tokens.size() == 1 ) {
+    _major = 0;
+    _minor = 0;
+    _patch = (uint16_t) std::stoi(tokens[0]);
+    return true;
+  } 
+
+  if ( tokens.size() == 3 ) {
+    _major = (uint8_t) std::stoi(tokens[0]);
+    _minor = (uint8_t) std::stoi(tokens[1]);
+    _patch = (uint16_t) std::stoi(tokens[2]);
+    return true;
+  } 
+
+  return false;
+}
 
 XclBin::XclBin()
     : m_xclBinHeader({ 0 })
@@ -61,7 +85,12 @@ XclBin::initializeHeader(axlf &_xclBinHeader)
   memset( _xclBinHeader.m_keyBlock, 0xFF, sizeof(_xclBinHeader.m_keyBlock) );
   _xclBinHeader.m_uniqueId = time( nullptr );
   _xclBinHeader.m_header.m_timeStamp = time( nullptr );
-  _xclBinHeader.m_header.m_version = 2017;
+
+  // Now populate the version information
+  getVersionMajorMinorPath(xrt_build_version, 
+                           _xclBinHeader.m_header.m_versionMajor, 
+                           _xclBinHeader.m_header.m_versionMinor, 
+                           _xclBinHeader.m_header.m_versionPatch);
 }
 
 void
@@ -461,7 +490,12 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
   _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
-  _axlfHeader.m_header.m_version = _ptHeader.get<int>("Version");
+  std::string sVersion = _ptHeader.get<std::string>("Version");
+  getVersionMajorMinorPath(sVersion.c_str(), 
+                           _axlfHeader.m_header.m_versionMajor, 
+                           _axlfHeader.m_header.m_versionMinor, 
+                           _axlfHeader.m_header.m_versionPatch);
+
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint32_t>("Mode");
 
   std::string sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
@@ -683,6 +717,12 @@ XclBin::addSection(ParameterSectionData &_PSD)
   }
 
   Section * pSection = Section::createSectionObjectOfKind(eKind);
+  if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
+    std::string errMsg = XUtil::format("ERROR: The %s section does not support reading the %s file type.",
+                                        pSection->getSectionKindAsString().c_str(),
+                                        _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   boost::filesystem::path p(sSectionFileName);
@@ -789,11 +829,18 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
     throw std::runtime_error(errMsg);
   }
 
-
   if (_PSD.getFormatType() == Section::FT_UNDEFINED ) {
-    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>";
+    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
     throw std::runtime_error(errMsg);
   }
+
+  if (pSection->doesSupportDumpFormatType(_PSD.getFormatType()) == false) {
+    std::string errMsg = XUtil::format("ERROR: The %s section does not support writing to a %s file type.",
+                                        pSection->getSectionKindAsString().c_str(),
+                                        _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
 
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image
