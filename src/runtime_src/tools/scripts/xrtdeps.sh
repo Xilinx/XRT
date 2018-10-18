@@ -9,12 +9,14 @@ usage()
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
     echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
+    echo "[-force]                   Override interactive installation and confirms installs with yes"
 
     exit 1
 }
 
 validate=0
 docker=0
+force=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -27,6 +29,10 @@ while [ $# -gt 0 ]; do
             ;;
         -docker)
             docker=1
+            shift
+            ;;
+        -force)
+            force="-y"
             shift
             ;;
         *)
@@ -179,29 +185,29 @@ install()
     # Enable EPEL on CentOS/RHEL
     if [ $FLAVOR == "centos" ]; then
         echo "Enabling EPEL repository..."
-        sudo yum install epel-release
+        sudo yum install $force epel-release
     elif [ $FLAVOR == "rhel" ]; then
         echo "Enabling EPEL repository..."
         rpm -q --quiet epel-release
         if [ $? != 0 ]; then
-	    sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	    sudo yum check-update
+	    sudo yum install $force https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	    sudo yum $forcecheck -update
         fi
     fi
 
     # Enable GCC 6 compiler set on RHEL/CentOS 7.X
     if [ $FLAVOR == "rhel" ]; then
         echo "Enabling RHEL SCL repository..."
-        sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
+        sudo yum-config-manager $force --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
-        sudo yum install centos-release-scl
+        sudo yum install $force centos-release-scl
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
         echo "Installing RHEL/CentOS packages..."
         sudo yum install -y "${RH_LIST[@]}"
-        sudo yum install devtoolset-6
+        sudo yum install $force devtoolset-6
     fi
 }
 
