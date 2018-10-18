@@ -342,8 +342,9 @@ message xclSetupInstance_call {
   message argflowpair {
        optional uint64 arg = 2;
        optional uint64 flow = 3;
+       optional string tag = 4;
   }
-  repeated argflowpair setup = 4;
+  repeated argflowpair setup = 5;
 }
 
 message xclSetupInstance_response {

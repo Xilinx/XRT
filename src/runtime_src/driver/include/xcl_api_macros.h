@@ -588,7 +588,8 @@ mtx.unlock();
     { \
       xclSetupInstance_call_argflowpair* afpair = c_msg.add_setup(); \
       afpair->set_arg(it.first); \
-      afpair->set_flow(it.second);\
+      afpair->set_flow((it.second).first);\
+      afpair->set_tag((it.second).second);\
     }
 
 

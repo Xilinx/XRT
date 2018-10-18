@@ -732,7 +732,6 @@ XclBin::addSection(ParameterSectionData &_PSD)
                                         _PSD.getFormatTypeAsStr().c_str());
     throw std::runtime_error(errMsg);
   }
-
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   boost::filesystem::path p(sSectionFileName);
@@ -855,7 +854,6 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
                                         _PSD.getFormatTypeAsStr().c_str());
     throw std::runtime_error(errMsg);
   }
-
 
   std::string sDumpFileName = _PSD.getFile();
   // Write the xclbin file image
