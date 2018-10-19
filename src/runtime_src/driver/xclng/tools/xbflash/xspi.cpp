@@ -523,6 +523,23 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
         const unsigned dataLen = std::stoi(line.substr(1, 2), 0 , 16);
         const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
         const unsigned recordType = std::stoi(line.substr(7, 2), 0 , 16);
+        const unsigned offset = std::stoi(line.substr(9,2), 0, 16);
+        // Test if MCS file is for the Golden Image: offset == 0x00, address == 0x0000.
+        if( offset == 0x00 && address == 0x0000 && !accessGranted ) {
+            std::cout << "Golden Image address record found: (offset) 0x" 
+                      << std::setfill('0') << std::setw(2) << std::hex << offset
+                      << ", (address) 0x" << std::setw(4) << address << std::endl;
+            std::cout << "CAUTION: You are programming the GOLDEN IMAGE. You may damage your device if your MCS file is incorrect." << std::endl;
+            std::string input;
+            std::cout << "Are you sure you wish to proceed? [y/n]" << std::endl;
+            std::cin >> input;
+            if( input.compare( "y" ) != 0 && input.compare( "yes" ) != 0 ) {
+                std::cout << "Aborting." << std::endl;
+                return -EACCES;
+            } else {
+                accessGranted = true;
+            }
+        }
         switch (recordType) {
         case 0x00:
         {
