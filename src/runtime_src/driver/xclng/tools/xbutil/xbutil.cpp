@@ -190,10 +190,6 @@ int main(int argc, char *argv[])
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
-    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
-        optind++;
-        return xcldev::xclTop(argc, argv);
-    }
     if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
         optind++;
         return xcldev::xclValidate(argc, argv);
@@ -466,7 +462,7 @@ int main(int argc, char *argv[])
         }
         case xcldev::STREAM:
         {
-            if(cmd != xcldev::QUERY){
+            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
@@ -497,6 +493,7 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
+    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -598,6 +595,18 @@ int main(int argc, char *argv[])
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
+
+    case xcldev::TOP:
+        if(subcmd == xcldev::STREAM)
+        {
+            result = deviceVec[index] -> printStreamInfo(std::cout);
+        }
+        else
+        {
+            result = xcldev::xclTop(argc, argv);
+        }
+        break;
+
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
         result = deviceVec[index]->reset(regionIndex);
@@ -742,6 +751,9 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     dev->m_devinfo_stringize_power(devinfo, lines);
     
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
+
+    //shows stream
+    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
 
     for(auto line:lines){
             printw("%s\n", line.c_str());

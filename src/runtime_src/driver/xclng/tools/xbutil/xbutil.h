@@ -71,7 +71,8 @@ enum command {
     MEM,
     DD,
     STATUS,
-    CMD_MAX
+    CMD_MAX,
+    TOP
 };
 enum subcommand {
     MEM_READ = 0,
@@ -105,6 +106,7 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
+    std::make_pair("top", TOP),
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -658,7 +660,7 @@ public:
             ss << std::setw(16) << "Tag"  << std::setw(10) << "Route"
                 << std::setw(10) << "Flow" << std::setw(10) << "Status"
                 << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
-                << "\n";
+                << std::setw(16) << "Pending bytes" << "\n";
         }
 
         for(unsigned i = 0; i < num; i++) {
@@ -703,6 +705,8 @@ public:
                 ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
                     "/" + stat_map[std::string("total_complete_num")];
             }
+
+            //<-----------------------add another counter here----------------------------->
 
             ss << "\n";
         }
