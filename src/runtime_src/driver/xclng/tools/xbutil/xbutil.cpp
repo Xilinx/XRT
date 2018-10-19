@@ -730,8 +730,6 @@ int xcldev::xclTop(int argc, char *argv[])
 
     ctrl.interval = interval;
 
-    xcldev::pci_device_scanner scanner;
-    scanner.scan(false);
     ctrl.dev = xcldev::xclGetDevice(index);
     if (!ctrl.dev) {
         return -ENOENT;
