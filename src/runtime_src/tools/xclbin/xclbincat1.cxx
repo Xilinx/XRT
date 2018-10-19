@@ -451,6 +451,7 @@ namespace xclbincat1 {
       case BUILD_METADATA: return "BUILD_METADATA";
       case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
       case USER_METADATA: return "USER_METADATA";
+      case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
         break;
     }
 

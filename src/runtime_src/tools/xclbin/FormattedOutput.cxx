@@ -31,6 +31,22 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+
+    boost::property_tree::ptree::const_assoc_iterator it = pt.find(key);
+
+    if( it != pt.not_found()) {
+      for (auto& item : pt.get_child(key)) {
+        r.push_back(item.second);
+      }
+    }
+    return r;
+}
+
 std::string
 FormattedOutput::getTimeStampAsString(const axlf &_xclBinHeader) {
   return XUtil::format("%ld", _xclBinHeader.m_header.m_timeStamp);
@@ -133,16 +149,6 @@ FormattedOutput::getXclBinUuidAsString(const axlf &_xclBinHeader) {
 std::string
 FormattedOutput::getDebugBinAsString(const axlf &_xclBinHeader) {
   return XUtil::format("%s", _xclBinHeader.m_header.m_debug_bin);
-}
-
-template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
-                         boost::property_tree::ptree::key_type const& key)
-{
-    std::vector<T> r;
-    for (auto& item : pt.get_child(key))
-        r.push_back(item.second);
-    return r;
 }
 
 
@@ -283,17 +289,19 @@ reportXclbinInfo( std::ostream & _ostream,
   {
     std::string sKernels;
     if (!_ptMetaData.empty()) {
-      boost::property_tree::ptree ptKernels = _ptMetaData.get_child("xclbin.user_regions.user_region.kernels");
-      for (auto kv : ptKernels) {
-         boost::property_tree::ptree &ptKernel = kv.second;
-         std::string sKernel = ptKernel.get<std::string>("name", "");
-         if (sKernel.empty()) {
-           continue;
-         }
-         if (!sKernels.empty()) {
-           sKernels += ", ";
-         }
-         sKernels += sKernel;
+      std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(_ptMetaData,"xclbin.user_regions");
+      for (auto & userRegion : userRegions) {
+        std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
+        for (auto & kernel : kernels) {
+           std::string sKernel = kernel.get<std::string>("name", "");
+           if (sKernel.empty()) {
+             continue;
+           }
+           if (!sKernels.empty()) {
+             sKernels += ", ";
+           }
+           sKernels += sKernel;
+        }
       }
     } else {
       sKernels = "<unknown>";
@@ -633,136 +641,136 @@ reportKernels( std::ostream & _ostream,
     }
   }
 
-  boost::property_tree::ptree ptKernels = _ptMetaData.get_child("xclbin.user_regions.user_region.kernels");
+  std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(_ptMetaData,"xclbin.user_regions");
+  for (auto & userRegion : userRegions) {
+    std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
+    for (auto & ptKernel : kernels) {
+      XUtil::TRACE_PrintTree("Kernel", ptKernel);
 
-  XUtil::TRACE_PrintTree("Kernels", ptKernels);
+      std::string sKernel = ptKernel.get<std::string>("name");
+      _ostream << XUtil::format("%s %s", "Kernel:", sKernel.c_str()).c_str() << std::endl;
 
-  for (auto & kv : ptKernels) {
-    boost::property_tree::ptree ptKernel = kv.second;
+      std::vector<boost::property_tree::ptree> ports = as_vector<boost::property_tree::ptree>(ptKernel,"ports");
+      std::vector<boost::property_tree::ptree> arguments = as_vector<boost::property_tree::ptree>(ptKernel,"arguments");
+      std::vector<boost::property_tree::ptree> instances = as_vector<boost::property_tree::ptree>(ptKernel,"instances");
 
-    std::string sKernel = ptKernel.get<std::string>("name");
-    _ostream << XUtil::format("%s %s", "Kernel:", sKernel.c_str()).c_str() << std::endl;
+      _ostream << std::endl;
 
-    std::vector<boost::property_tree::ptree> ports = as_vector<boost::property_tree::ptree>(ptKernel,"ports");
-    std::vector<boost::property_tree::ptree> arguments = as_vector<boost::property_tree::ptree>(ptKernel,"arguments");
-    std::vector<boost::property_tree::ptree> instances = as_vector<boost::property_tree::ptree>(ptKernel,"instances");
-
-    _ostream << std::endl;
-
-    // Definition
-    {
-      _ostream << "Definition" << std::endl;
-      _ostream << "----------" << std::endl;
-
-      _ostream << "   Signature: " << sKernel << " (";
-      for (auto & ptArgument : arguments) {
-        std::string sType = ptArgument.get<std::string>("type");
-        std::string sName = ptArgument.get<std::string>("name");
-
-        _ostream << sType << " " << sName;
-        if (&ptArgument != &arguments.back())
-          _ostream << ", ";
-      }
-      _ostream << ")" << std::endl;
-    }
-
-    _ostream << std::endl;
-
-    // Ports
-    {
-      _ostream << "Ports" << std::endl;
-      _ostream << "-----" << std::endl;
-
-      for (auto & ptPort : ports) {
-        std::string sPort = ptPort.get<std::string>("name");
-        std::string sMode = ptPort.get<std::string>("mode");
-        std::string sRangeBytes = ptPort.get<std::string>("range");
-        std::string sDataWidthBits = ptPort.get<std::string>("data_width");
-        std::string sPortType = ptPort.get<std::string>("port_type");
-
-        _ostream << XUtil::format("   %-14s %s", "Port:", sPort.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-14s %s", "Mode:", sMode.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-14s %s", "Range (bytes):", sRangeBytes.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-14s %s bits", "Data Width:", sDataWidthBits.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-14s %s", "Port Type:", sPortType.c_str()).c_str() << std::endl;
-
-        if (&ptPort != &ports.back()) {
-          _ostream << std::endl;
-        }
-      }
-    }
-
-    _ostream << std::endl;
-
-    // Instance
-    for (auto & ptInstance : instances) {
-      _ostream << "--------------------------" << std::endl;
-      std::string sInstance = ptInstance.get<std::string>("name");
-      _ostream << XUtil::format("%-16s %s", "Instance:", sInstance.c_str()).c_str() << std::endl;
-
-      std::string sKernelInstance = sKernel + ":" + sInstance;
-
-      // Base Address
+      // Definition
       {
-        std::string sBaseAddress = "--";
-        for (auto & ptIPData : ipLayout ) {
-          if (ptIPData.get<std::string>("m_name") == sKernelInstance) {
-            sBaseAddress = ptIPData.get<std::string>("m_base_address");
-            break;
-          }
+        _ostream << "Definition" << std::endl;
+        _ostream << "----------" << std::endl;
+
+        _ostream << "   Signature: " << sKernel << " (";
+        for (auto & ptArgument : arguments) {
+          std::string sType = ptArgument.get<std::string>("type");
+          std::string sName = ptArgument.get<std::string>("name");
+
+          _ostream << sType << " " << sName;
+          if (&ptArgument != &arguments.back())
+            _ostream << ", ";
         }
-        _ostream << XUtil::format("   %-13s %s", "Base Address:", sBaseAddress.c_str()).c_str() << std::endl;
+        _ostream << ")" << std::endl;
       }
 
       _ostream << std::endl;
 
-      // List the arguments
-      for (unsigned int argumentIndex = 0; argumentIndex < arguments.size(); ++argumentIndex) {
-        boost::property_tree::ptree &ptArgument = arguments[argumentIndex];
-        std::string sArgument = ptArgument.get<std::string>("name");
-        std::string sOffset = ptArgument.get<std::string>("offset");
-        std::string sPort = ptArgument.get<std::string>("port");
+      // Ports
+      {
+        _ostream << "Ports" << std::endl;
+        _ostream << "-----" << std::endl;
 
-        _ostream << XUtil::format("   %-18s %s", "Argument:", sArgument.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-18s %s", "Register Offset:", sOffset.c_str()).c_str() << std::endl;
-        _ostream << XUtil::format("   %-18s %s", "Port:", sPort.c_str()).c_str() << std::endl;
+        for (auto & ptPort : ports) {
+          std::string sPort = ptPort.get<std::string>("name");
+          std::string sMode = ptPort.get<std::string>("mode");
+          std::string sRangeBytes = ptPort.get<std::string>("range");
+          std::string sDataWidthBits = ptPort.get<std::string>("data_width");
+          std::string sPortType = ptPort.get<std::string>("port_type");
 
-        // Find the memory connections
-        bool bFoundMemConnection = false;
-        for (auto &ptConnection : connectivity) {
-          unsigned int ipIndex = ptConnection.get<unsigned int>("m_ip_layout_index");
+          _ostream << XUtil::format("   %-14s %s", "Port:", sPort.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-14s %s", "Mode:", sMode.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-14s %s", "Range (bytes):", sRangeBytes.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-14s %s bits", "Data Width:", sDataWidthBits.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-14s %s", "Port Type:", sPortType.c_str()).c_str() << std::endl;
 
-          if (ipIndex >= ipLayout.size()) {
-            std::string errMsg = XUtil::format("ERROR: connectivity section 'm_ip_layout_index' (%d) exceeds the number of 'ip_layout' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", ipIndex, ipLayout.size());
-            throw std::runtime_error(errMsg);
+          if (&ptPort != &ports.back()) {
+            _ostream << std::endl;
           }
-
-          if (ipLayout[ipIndex].get<std::string>("m_name") == sKernelInstance) {
-            if (ptConnection.get<unsigned int>("arg_index") == argumentIndex) {
-              bFoundMemConnection = true;
-
-              unsigned int memIndex = ptConnection.get<unsigned int>("mem_data_index");
-              if (memIndex >= memTopology.size()) {
-                std::string errMsg = XUtil::format("ERROR: connectivity section 'mem_data_index' (%d) exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", memIndex, memTopology.size());
-                throw std::runtime_error(errMsg);
-              }
-
-              std::string sMemName = memTopology[memIndex].get<std::string>("m_tag");
-              std::string sMemType = memTopology[memIndex].get<std::string>("m_type");
-
-              _ostream << XUtil::format("   %-18s %s (%s)", "Memory:", sMemName.c_str(), sMemType.c_str()).c_str() << std::endl;
-            }
-          }
-        }
-        if (!bFoundMemConnection) {
-          _ostream << XUtil::format("   %-18s <not applicable>", "Memory:").c_str() << std::endl;
-        }
-        if (argumentIndex != (arguments.size()-1)) {
-          _ostream << std::endl;
         }
       }
-      if (&ptInstance != &instances.back()) {
+
+      _ostream << std::endl;
+
+      // Instance
+      for (auto & ptInstance : instances) {
+        _ostream << "--------------------------" << std::endl;
+        std::string sInstance = ptInstance.get<std::string>("name");
+        _ostream << XUtil::format("%-16s %s", "Instance:", sInstance.c_str()).c_str() << std::endl;
+
+        std::string sKernelInstance = sKernel + ":" + sInstance;
+
+        // Base Address
+        {
+          std::string sBaseAddress = "--";
+          for (auto & ptIPData : ipLayout ) {
+            if (ptIPData.get<std::string>("m_name") == sKernelInstance) {
+              sBaseAddress = ptIPData.get<std::string>("m_base_address");
+              break;
+            }
+          }
+          _ostream << XUtil::format("   %-13s %s", "Base Address:", sBaseAddress.c_str()).c_str() << std::endl;
+        }
+
         _ostream << std::endl;
+
+        // List the arguments
+        for (unsigned int argumentIndex = 0; argumentIndex < arguments.size(); ++argumentIndex) {
+          boost::property_tree::ptree &ptArgument = arguments[argumentIndex];
+          std::string sArgument = ptArgument.get<std::string>("name");
+          std::string sOffset = ptArgument.get<std::string>("offset");
+          std::string sPort = ptArgument.get<std::string>("port");
+
+          _ostream << XUtil::format("   %-18s %s", "Argument:", sArgument.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-18s %s", "Register Offset:", sOffset.c_str()).c_str() << std::endl;
+          _ostream << XUtil::format("   %-18s %s", "Port:", sPort.c_str()).c_str() << std::endl;
+
+          // Find the memory connections
+          bool bFoundMemConnection = false;
+          for (auto &ptConnection : connectivity) {
+            unsigned int ipIndex = ptConnection.get<unsigned int>("m_ip_layout_index");
+
+            if (ipIndex >= ipLayout.size()) {
+              std::string errMsg = XUtil::format("ERROR: connectivity section 'm_ip_layout_index' (%d) exceeds the number of 'ip_layout' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", ipIndex, ipLayout.size());
+              throw std::runtime_error(errMsg);
+            }
+
+            if (ipLayout[ipIndex].get<std::string>("m_name") == sKernelInstance) {
+              if (ptConnection.get<unsigned int>("arg_index") == argumentIndex) {
+                bFoundMemConnection = true;
+
+                unsigned int memIndex = ptConnection.get<unsigned int>("mem_data_index");
+                if (memIndex >= memTopology.size()) {
+                  std::string errMsg = XUtil::format("ERROR: connectivity section 'mem_data_index' (%d) exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", memIndex, memTopology.size());
+                  throw std::runtime_error(errMsg);
+                }
+
+                std::string sMemName = memTopology[memIndex].get<std::string>("m_tag");
+                std::string sMemType = memTopology[memIndex].get<std::string>("m_type");
+
+                _ostream << XUtil::format("   %-18s %s (%s)", "Memory:", sMemName.c_str(), sMemType.c_str()).c_str() << std::endl;
+              }
+            }
+          }
+          if (!bFoundMemConnection) {
+            _ostream << XUtil::format("   %-18s <not applicable>", "Memory:").c_str() << std::endl;
+          }
+          if (argumentIndex != (arguments.size()-1)) {
+            _ostream << std::endl;
+          }
+        }
+        if (&ptInstance != &instances.back()) {
+          _ostream << std::endl;
+        }
       }
     }
   }
@@ -781,20 +789,26 @@ reportXOCC( std::ostream & _ostream,
   _ostream << "------------" << std::endl;
 
   // Command
-  std::string sCommand = _ptMetaData.get<std::string>("xclbin.generated_by.name");
-   _ostream << XUtil::format("   %-14s %s", "Command:",sCommand.c_str()).c_str() << std::endl;
+  std::string sCommand = _ptMetaData.get<std::string>("xclbin.generated_by.name","");
+
+  if (sCommand.empty()) {
+    _ostream << "   < Data not available >" << std::endl;
+    return;
+  }
+
+  _ostream << XUtil::format("   %-14s %s", "Command:", sCommand.c_str()).c_str() << std::endl;
 
 
   // Version
   {
-    std::string sVersion = _ptMetaData.get<std::string>("xclbin.generated_by.version");
-    std::string sCL = _ptMetaData.get<std::string>("xclbin.generated_by.cl");
-    std::string sTimeStamp = _ptMetaData.get<std::string>("xclbin.generated_by.time_stamp");
+    std::string sVersion = _ptMetaData.get<std::string>("xclbin.generated_by.version","--");
+    std::string sCL = _ptMetaData.get<std::string>("xclbin.generated_by.cl","--");
+    std::string sTimeStamp = _ptMetaData.get<std::string>("xclbin.generated_by.time_stamp","--");
 
     _ostream << XUtil::format("   %-14s %s - %s (SW BUILD: %s)", "Version:", sVersion.c_str(), sTimeStamp.c_str(), sCL.c_str()).c_str() << std::endl;
   }
 
-  std::string sCommandLine = _ptMetaData.get<std::string>("xclbin.generated_by.options");
+  std::string sCommandLine = _ptMetaData.get<std::string>("xclbin.generated_by.options","");
 
   // Command Line
   {

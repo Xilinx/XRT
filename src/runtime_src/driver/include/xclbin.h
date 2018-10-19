@@ -157,7 +157,8 @@ extern "C" {
         BMC,
         BUILD_METADATA,
         KEYVALUE_METADATA,
-        USER_METADATA
+        USER_METADATA,
+        DNA_CERTIFICATE
     };
 
     enum MEM_TYPE {
