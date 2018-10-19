@@ -1042,7 +1042,7 @@ XclBin::setKeyValue(const std::string & _keyValue)
     // Now create a new tree to add back into the section
     boost::property_tree::ptree ptKeyValuesNew;
     for (auto keyvalue : keyValues) {
-      ptKeyValuesNew.add_child("kv_data", keyvalue);
+      ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
     }
 
     boost::property_tree::ptree ptKeyValueMetadataNew;
@@ -1098,7 +1098,7 @@ XclBin::removeKey(const std::string & _sKey)
    // Now create a new tree to add back into the section
    boost::property_tree::ptree ptKeyValuesNew;
    for (auto keyvalue : keyValues) {
-     ptKeyValuesNew.add_child("kv_data", keyvalue);
+     ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
    }
 
    boost::property_tree::ptree ptKeyValueMetadataNew;
