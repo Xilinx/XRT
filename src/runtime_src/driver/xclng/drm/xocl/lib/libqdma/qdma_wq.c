@@ -325,7 +325,6 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	sg = wqe->unproc_sg;
 	desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	desc->flags = S_H2C_DESC_F_SOP;
-	cb->desc_nr = 0;
 	for(i = 0; i < wqe->unproc_sg_num; i++, sg = next) {
 		off = 0;
 		len = sg->length;
