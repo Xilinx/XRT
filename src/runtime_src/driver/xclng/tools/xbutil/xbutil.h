@@ -71,8 +71,7 @@ enum command {
     MEM,
     DD,
     STATUS,
-    CMD_MAX,
-    TOP
+    CMD_MAX
 };
 enum subcommand {
     MEM_READ = 0,
@@ -105,8 +104,7 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("scan", SCAN),
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
-    std::make_pair("status", STATUS),
-    std::make_pair("top", TOP),
+    std::make_pair("status", STATUS)
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -658,9 +656,9 @@ public:
             return;
         } else {
             ss << std::setw(16) << "Tag"  << std::setw(10) << "Route"
-                << std::setw(10) << "Flow" << std::setw(10) << "Status"
-                << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
-                << std::setw(16) << "Pending bytes" << "\n";
+               << std::setw(10) << "Flow" << std::setw(10) << "Status"
+               << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
+               << "\n";
         }
 
         for(unsigned i = 0; i < num; i++) {
@@ -705,9 +703,6 @@ public:
                 ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
                     "/" + stat_map[std::string("total_complete_num")];
             }
-
-            //<-----------------------add another counter here----------------------------->
-
             ss << "\n";
         }
 
@@ -756,7 +751,7 @@ public:
         (void) xclGetUsageInfo(m_handle, &devstat);
 
         m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
-        for(auto line:usage_lines){
+        for(auto line:usage_lines) {
             ostr << line << "\n";
         }
         printStreamInfo(ostr);
@@ -765,7 +760,9 @@ public:
     }
 
 
-    //stream topology
+    /*
+     * print stream topology
+     */
     int printStreamInfo(std::ostream& ostr) const {
         std::vector<std::string> usage_lines;
         m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
@@ -776,12 +773,14 @@ public:
         return 0;
     }
 
-    int printXclbinID(std::ostream& ostr) const{
+    /*
+     * print Xclbin ID
+     */
+    int printXclbinID(std::ostream& ostr) const {
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
 
         if(errmsg.empty()) {
             ostr << std::setw(16) << "\nXclbin ID:" << "\n";

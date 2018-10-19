@@ -81,7 +81,8 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(void){
+void print_pci_info(void)
+{
     auto print = [](const std::unique_ptr<pcidev::pci_func>& dev) {
         std::cout << std::hex;
         std::cout << ":[" << std::setw(2) << std::setfill('0') << dev->bus
@@ -137,9 +138,9 @@ void print_pci_info(void){
 
     if (not_ready != 0) {
         std::cout << "WARNING: " << not_ready
-            << " card(s) marked by '*' are not ready, "
-            << "run xbutil flash scan -v to further check the details."
-            << std::endl;
+                  << " card(s) marked by '*' are not ready, "
+                  << "run xbutil flash scan -v to further check the details."
+                  << std::endl;
     }
 }
 
@@ -195,6 +196,11 @@ int main(int argc, char *argv[])
         return xcldev::xclValidate(argc, argv);
     }
 
+    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
+        optind++;
+        return xcldev::xclTop(argc, argv);
+    }
+
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
     if (v == xcldev::commandTable.end()) {
@@ -216,18 +222,18 @@ int main(int argc, char *argv[])
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
-    {"read", no_argument, 0, xcldev::MEM_READ},
-    {"write", no_argument, 0, xcldev::MEM_WRITE},
-    {"spm", no_argument, 0, xcldev::STATUS_SPM},
-    {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-    {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
-    {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-    {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-    {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-    {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-    {"stream", no_argument, 0, xcldev::STREAM},
-
+        {"read", no_argument, 0, xcldev::MEM_READ},
+        {"write", no_argument, 0, xcldev::MEM_WRITE},
+        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
+        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"stream", no_argument, 0, xcldev::STREAM}
     };
+
     int long_index;
     const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
@@ -275,20 +281,29 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
             break;
         }
-	case xcldev::STATUS_SSPM : {
-	  if (cmd != xcldev::STATUS) {
-	    std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
-	    return -1 ;
-	  }
-	  ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
-	  break ;
-	}
+        case xcldev::STATUS_SSPM : {
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
+                return -1 ;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            break ;
+        }
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
             return 0;
         }
-            //short options are dealt here
+        case xcldev::STREAM:
+        {
+            if(cmd != xcldev::QUERY) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::STREAM;
+            break;
+        }
+        //short options are dealt here
         case 'a':{
             if (cmd != xcldev::MEM) {
                 std::cout << "ERROR: '-a' not applicable for this command\n";
@@ -460,15 +475,6 @@ int main(int argc, char *argv[])
             hot = true;
             break;
         }
-        case xcldev::STREAM:
-        {
-            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
-                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
-                return -1;
-            }
-            subcmd = xcldev::STREAM;
-            break;
-        }
         default:
             xcldev::printHelp(exe);
             return 1;
@@ -493,7 +499,6 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
-    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -581,32 +586,16 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
         try
         {
-            if(subcmd == xcldev::STREAM)
-            {
-                result = deviceVec[index] -> printStreamInfo(std::cout);
-            }
-            else
-            {
-                result = deviceVec[index] -> dump(std::cout);
+            if(subcmd == xcldev::STREAM) {
+                result = deviceVec[index]->printStreamInfo(std::cout);
+            } else {
+                result = deviceVec[index]->dump(std::cout);
             }
         }
-        catch (...)
-        {
+        catch (...) {
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
-
-    case xcldev::TOP:
-        if(subcmd == xcldev::STREAM)
-        {
-            result = deviceVec[index] -> printStreamInfo(std::cout);
-        }
-        else
-        {
-            result = xcldev::xclTop(argc, argv);
-        }
-        break;
-
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
         result = deviceVec[index]->reset(regionIndex);
@@ -752,10 +741,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
-    //shows stream
-    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
-
-    for(auto line:lines){
+    for(auto line:lines) {
             printw("%s\n", line.c_str());
     } 
 }
