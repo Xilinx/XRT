@@ -78,7 +78,7 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
   if (_sDebugIPType == "AXI_MONITOR_FIFO_FULL")
     return AXI_MONITOR_FIFO_FULL;
 
-  if (_sDebugIPType == "ACCELSectionClockFrequencyTopology_MONITOR")
+  if (_sDebugIPType == "ACCEL_MONITOR")
     return ACCEL_MONITOR;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
