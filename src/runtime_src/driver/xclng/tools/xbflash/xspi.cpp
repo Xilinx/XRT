@@ -269,6 +269,7 @@ static void clearBuffers() {
 XSPI_Flasher::XSPI_Flasher( unsigned int device_index, char *inMap )
 {
     mMgmtMap = inMap; // brought in from Flasher object
+    accessGranted = false;
 }
 
 /**

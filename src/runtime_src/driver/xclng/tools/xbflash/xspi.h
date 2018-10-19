@@ -47,6 +47,7 @@ public:
 
 private:
     char *mMgmtMap;
+    bool accessGranted;
 
     int xclTestXSpi(int device_index);
     unsigned readReg(unsigned offset);
