@@ -1151,7 +1151,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
  *     non-blocking:
  *         return 0 immediatly.
- *     TODO: EOT
+ *     TODO:
+ *         EOT
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
