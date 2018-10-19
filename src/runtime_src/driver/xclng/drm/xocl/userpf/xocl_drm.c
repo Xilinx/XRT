@@ -481,9 +481,8 @@ failed:
 void xocl_drm_fini(struct xocl_dev *xdev)
 {
 	xocl_cleanup_mem(xdev);
-
+	xocl_cleanup_connectivity(xdev);
 	drm_put_dev(xdev->ddev);
-
 	mutex_destroy(&xdev->ctx_list_lock);
 	mutex_destroy(&xdev->stat_lock);
 	mutex_destroy(&xdev->mm_lock);
@@ -578,14 +577,6 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 #endif
 
 	topology = xdev->topology;
-
-	vfree(xdev->layout);
-	xdev->layout = NULL;
-	vfree(xdev->debug_layout);
-	xdev->debug_layout = NULL;
-	vfree(xdev->connectivity);
-	xdev->connectivity = NULL;
-
 	if (topology == NULL)
 		return;
 
@@ -620,6 +611,16 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 	xdev->mm_usage_stat = NULL;
 	vfree(xdev->topology);
 	xdev->topology = NULL;
+}
+
+void xocl_cleanup_connectivity(struct xocl_dev *xdev)
+{
+	vfree(xdev->layout);
+	xdev->layout = NULL;
+	vfree(xdev->debug_layout);
+	xdev->debug_layout = NULL;
+	vfree(xdev->connectivity);
+	xdev->connectivity = NULL;
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)

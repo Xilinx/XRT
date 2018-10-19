@@ -508,6 +508,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size_of_header;
 	size_t num_of_sections;
 	size_t size;
+	int preserve_mem = 0;
+	struct mem_topology *new_topology;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -570,12 +572,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	//Switching the xclbin, make sure none of the buffers are used.
-	err = xocl_check_topology(xdev);
-	if(err)
-		goto done;
-
-	xocl_cleanup_mem(xdev);
 
 	//Copy from user space and proceed.
 	size_of_header = sizeof(struct axlf_section_header);
@@ -600,6 +596,42 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		err = -EFAULT;
 		goto done;
 	}
+
+	/* Populating MEM_TOPOLOGY sections. */
+	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
+	if (xocl_is_aws(xdev) && (xdev->topology != NULL)) {
+		if ( (size == sizeof_sect(xdev->topology, m_mem_data)) &&
+		    !memcmp(new_topology, xdev->topology, size) ) {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
+			preserve_mem = 1;
+		} else {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
+		}
+	}
+
+	/* Switching the xclbin, make sure none of the buffers are used. */
+	if (!preserve_mem) {
+		err = xocl_check_topology(xdev);
+		if(err)
+			goto done;
+		xocl_cleanup_mem(xdev);
+	}
+	xocl_cleanup_connectivity(xdev);
+
+	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
+	if (!preserve_mem)
+		xdev->topology = new_topology;
+	else
+		vfree(new_topology);
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -632,19 +664,11 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	/* Populating MEM_TOPOLOGY sections */
-	size = xocl_read_sect(MEM_TOPOLOGY, &xdev->topology, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
+	if (!preserve_mem) {
+		err = xocl_init_mm(xdev);
+		if (err)
 			goto done;
-	} else if (sizeof_sect(xdev->topology, m_mem_data) != size) {
-		err = -EINVAL;
-		goto done;
 	}
-
-	err = xocl_init_mm(xdev);
-	if (err)
-		goto done;
 
 	//Populate with "this" bitstream, so avoid redownload the next time
 	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
