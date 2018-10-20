@@ -84,15 +84,20 @@ Unit Testing XRT
 We use GTest to do unit testing. The GTest package is installed by
 running ``XRT/src/runtime_src/tools/scripts/xrtdeps.sh``.
 
-The GTest package on CentOS/RHEL 7.5 provides the GTest libraries here:
- * /usr/lib64/libgtest.so 
- * /usr/lib64/libgtest_main.so
+The GTest package on CentOS/RHEL 7.5 provides the GTest libraries
+here:
 
-However, the GTest package on Ubuntu 16.04 provides source only!
+  * ``/usr/lib64/libgtest.so``
+  * ``/usr/lib64/libgtest_main.so``
 
-To use GTest on Ubuntu 16.04 use:
+In recent versions of Ubuntu, the GTest ``libgtest-dev`` package
+provides the compiled libraries in
 
-::
+  * ``/usr/lib/x86_64-linux-gnu/libgtest.a``
+  * ``/usr/lib/x86_64-linux-gnu/libgtest_main.a``
+
+However, the GTest package on Ubuntu up to 18.04 provides source only!
+So, to use GTest on older Ubuntu versions, use::
 
    cd /usr/src/gtest
    sudo cmake CMakeLists.txt
@@ -104,10 +109,9 @@ To use GTest on Ubuntu 16.04 use:
    ls *gtest*
 
 This will add GTest static library symbolic links here:
- * /usr/lib/libgtest.a
- * /usr/lib/libgtest_main.a
 
-CMake will handle linking, finding etc. for you.
+  * ``/usr/lib/libgtest.a``
+  * ``/usr/lib/libgtest_main.a``
 
 To add GTest support to a CMakeLists.txt use the following, and this is using 
 an example executable called 'xclbintest':
