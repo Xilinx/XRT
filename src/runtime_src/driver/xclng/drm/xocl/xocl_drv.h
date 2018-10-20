@@ -411,6 +411,7 @@ struct xocl_mb_funcs {
 struct xocl_dna_funcs {
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
+	void (*write_cert)(struct platform_device *pdev, const char *buf, u32 len);
 };
 
 #define	XMC_DEV(xdev)		\
@@ -428,6 +429,8 @@ struct xocl_dna_funcs {
 	(DNA_DEV(xdev) ? DNA_OPS(xdev)->status(DNA_DEV(xdev)) : 0)
 #define	xocl_dna_capability(xdev)			\
 	(DNA_DEV(xdev) ? DNA_OPS(xdev)->capability(DNA_DEV(xdev)) : 2)
+#define xocl_dna_write_cert(xdev, data, len)  \
+	(DNA_DEV(xdev) ? DNA_OPS(xdev)->write_cert(DNA_DEV(xdev), data, len) : 0)
 
 #define	MB_DEV(xdev)		\
 	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev

@@ -285,7 +285,7 @@ void
 XclBinUtilities::printKinds() {
   std::vector< std::string > kinds;
   Section::getKinds(kinds);
-  std::cout << "All available section names:\n";
+  std::cout << "All supported section names supported by this tool:\n";
   for (auto & kind : kinds) {
     std::cout << "  " << kind << "\n";
   }

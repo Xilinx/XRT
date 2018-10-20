@@ -52,6 +52,7 @@ class XclBin {
   void dumpSection(ParameterSectionData &_PSD);
   void dumpSections(ParameterSectionData &_PSD);
   void setKeyValue(const std::string & _keyValue);
+  void removeKey(const std::string & _keyValue);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind);

@@ -18,7 +18,7 @@
 
 #include "awssak.h"
 
-int xcldev::xclXbsak(int argc, char *argv[])
+int xcldev::xclAwssak(int argc, char *argv[])
 {
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
@@ -452,16 +452,16 @@ int xcldev::xclXbsak(int argc, char *argv[])
     }
 
     if(result == 0) {
-        std::cout << "INFO: xbsak " << v->first << " successful." << std::endl;
+        std::cout << "INFO: awssak " << v->first << " successful." << std::endl;
     } else {
-        std::cout << "ERROR: xbsak " << v->first  << " failed." << std::endl;
+        std::cout << "ERROR: awssak " << v->first  << " failed." << std::endl;
     }
 
     return result;
 }
 
 void xcldev::printHelp(const std::string& exe) {
-    std::cout << "Running xbsak for 4.0+ DSA's \n\n";
+    std::cout << "Running awssak for 4.0+ DSA's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
     std::cout << "  boot    [-d device]\n";

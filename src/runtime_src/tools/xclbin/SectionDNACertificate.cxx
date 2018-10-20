@@ -1,7 +1,5 @@
 /**
- * Copyright (C) 2017-2018 Xilinx, Inc
- * Author: Sonal Santan, Ryan Radjabi
- * Simple command line utility to inetract with SDX PCIe devices
+ * Copyright (C) 2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,9 +14,21 @@
  * under the License.
  */
 
-#include "awssak.h"
+#include "SectionDNACertificate.h"
 
-int main(int argc, char *argv[])
-{
-    return xcldev::xclAwssak(argc, argv);
+#include "XclBinUtilities.h"
+namespace XUtil = XclBinUtilities;
+
+// Static Variables / Classes
+SectionDNACertificate::_init SectionDNACertificate::_initializer;
+
+SectionDNACertificate::SectionDNACertificate() {
+  // Empty
 }
+
+SectionDNACertificate::~SectionDNACertificate() {
+  // Empty
+}
+
+
+

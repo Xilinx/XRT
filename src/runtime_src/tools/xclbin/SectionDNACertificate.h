@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef __SectionBitstream_h_
-#define __SectionBitstream_h_
+#ifndef __SectionDNACertificate_h_
+#define __SectionDNACertificate_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 
@@ -33,24 +33,21 @@
  *    archive.  
 */
 
-class SectionBitstream : public Section {
+class SectionDNACertificate : public Section {
  public:
-  SectionBitstream();
-  virtual ~SectionBitstream();
-
- public:
-  std::string getContentTypeAsString();
+  SectionDNACertificate();
+  virtual ~SectionDNACertificate();
 
  private:
   // Purposefully private and undefined ctors...
-  SectionBitstream(const SectionBitstream& obj);
-  SectionBitstream& operator=(const SectionBitstream& obj);
+  SectionDNACertificate(const SectionDNACertificate& obj);
+  SectionDNACertificate& operator=(const SectionDNACertificate& obj);
 
  private:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BITSTREAM, "BITSTREAM", "", false, boost::factory<SectionBitstream*>()); }
+    _init() { registerSectionCtor(DNA_CERTIFICATE, "DNA_CERTIFICATE", "", false, boost::factory<SectionDNACertificate*>()); }
   } _initializer;
 };
 

@@ -1538,6 +1538,9 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];
 	uint32_t sub_id;
 	uint32_t id, idx;
+	char cert_name[32];
+	const struct firmware *cert;
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1769,6 +1772,25 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	if(dna_check){
 		ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
+		/* should be removed after integrated certificate with xclbin*/
+		if(xocl_dna_capability(xdev) & 0x1){
+			snprintf(cert_name, sizeof(cert_name), "xilinx/dnas_cert.bin");
+			ICAP_INFO(icap, "certificate name is %s", cert_name);
+			err = request_firmware(&cert, cert_name, &pcidev->dev);
+			if (err) {
+				ICAP_ERR(icap, "unable to find certificate %s", cert_name);
+				err = -EACCES;
+				goto dna_check_failed;
+			}
+			if(cert->size % 64 || cert->size < 576) {
+				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %lu", cert->size);
+				err = -EACCES;
+				release_firmware(cert);
+				goto dna_check_failed;
+			}
+			xocl_dna_write_cert(xdev, cert->data, cert->size);
+			release_firmware(cert);
+		}
 		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
 		if (err){
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");

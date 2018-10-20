@@ -47,7 +47,7 @@ class SectionDebugData : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DEBUG_DATA, "DEBUG_DATA", "", boost::factory<SectionDebugData*>()); }
+    _init() { registerSectionCtor(DEBUG_DATA, "DEBUG_DATA", "", false, boost::factory<SectionDebugData*>()); }
   } _initializer;
 };
 
