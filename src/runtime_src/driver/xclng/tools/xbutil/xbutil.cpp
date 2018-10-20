@@ -191,12 +191,12 @@ int main(int argc, char *argv[])
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
-    if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
+    if( std::strcmp( argv[1], "validate") == 0 ) {
         optind++;
         return xcldev::xclValidate(argc, argv);
     }
 
-    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
+    if( std::strcmp( argv[1], "top") == 0) {
         optind++;
         return xcldev::xclTop(argc, argv);
     }
