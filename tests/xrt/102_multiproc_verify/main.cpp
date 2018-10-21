@@ -239,8 +239,9 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
 
 //    uuid_t xclbinId;
 //    uuid_parse("58c06b8c-c882-41ff-9ec5-116571d1d179", xclbinId);
-    xclOpenContext(handle, xclbinId, 0, true);
-
+    int result = xclOpenContext(handle, xclbinId, 0, true);
+    if (result)
+        std::cout << "Unable to open context" << std::endl;
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
@@ -280,7 +281,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     std::cout << "Wait until the command finish" << std::endl;
     //Wait on the command finish
     while (xclExecWait(handle,1000) == 0);
-    int result = runKernel(handle, cu_base_addr, verbose, n_elements);
+    result = runKernel(handle, cu_base_addr, verbose, n_elements);
     xclCloseContext(handle, xclbinId, 0);
     return result;
 }
