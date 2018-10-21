@@ -314,6 +314,8 @@ namespace xclhwemhal2 {
     {
       for (int32_t i=0; i<m_mem->m_count; ++i)
       {
+        if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+          continue;
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
         mMembanks.emplace_back (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i});
       }
@@ -1614,24 +1616,22 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
 /*********************************** Utility ******************************************/
 
-static int check_bo_user_flags(HwEmShim* dev, unsigned flags)
+static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 {
 	const unsigned ddr_count = dev->xocl_ddr_channel_count();
 	unsigned ddr;
 
 	if(ddr_count == 0)
-		return -EINVAL;
+		return false;
+
 	if (flags == 0xffffffff)
-		return 0;
+		return true;
 
   ddr = xclemulation::xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffffff)
-		return 0;
-
   if (ddr > ddr_count)
-		return -EINVAL;
+		return false;
 
-	return 0;
+	return true;
 }
 
 xclemulation::drm_xocl_bo* HwEmShim::xclGetBoByHandle(unsigned int boHandle)
@@ -1690,7 +1690,7 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   /* Either none or only one DDR should be specified */
-  if (check_bo_user_flags(this, info->flags))
+  if (!check_bo_user_flags(this, info->flags))
   {
     return -1;
   }

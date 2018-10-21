@@ -35,6 +35,10 @@
 #define	STREAM_SLRID_MASK	0xff
 #define	STREAM_TDEST_MASK	0xffff
 
+#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		5
+#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
+
 #define	QUEUE_POST_TIMEOUT	10000
 
 static dev_t	str_dev;
@@ -65,6 +69,9 @@ struct str_device {
 	struct platform_device  *pdev;
 	struct cdev		cdev;
 	struct device		*sys_device;
+	u32			h2c_ringsz_idx;
+	u32			c2h_ringsz_idx;
+	u32			wrb_ringsz_idx;
 
 	struct mutex		str_dev_lock;
 
@@ -147,7 +154,24 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(pstat, total_complete_bytes);
 	__SHOW_MEMBER(pstat, total_complete_num);
 
-	
+	__SHOW_MEMBER(pstat, descq_rngsz);
+	__SHOW_MEMBER(pstat, descq_pidx);
+	__SHOW_MEMBER(pstat, descq_cidx);
+	__SHOW_MEMBER(pstat, descq_avail);
+	__SHOW_MEMBER(pstat, desc_wb_cidx);
+	__SHOW_MEMBER(pstat, desc_wb_pidx);
+
+	__SHOW_MEMBER(pstat, descq_rngsz_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb);
+	__SHOW_MEMBER(pstat, descq_pidx_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb_pend);
+	__SHOW_MEMBER(pstat, c2h_wrb_cidx);
+	__SHOW_MEMBER(pstat, c2h_wrb_pidx);
+
+	__SHOW_MEMBER(pstat, flq_cidx);
+	__SHOW_MEMBER(pstat, flq_pidx);
+	__SHOW_MEMBER(pstat, flq_pidx_pend);
+
 	return off;
 }
 static DEVICE_ATTR_RO(stat);
@@ -674,12 +698,15 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	if (!req.write) {
 		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
 		qconf.c2h = 1;
+		qconf.desc_rng_sz_idx = sdev->c2h_ringsz_idx;
+		qconf.cmpl_rng_sz_idx = sdev->wrb_ringsz_idx;
 	} else {
 		qconf.bypass = 1;
 		qconf.pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
 			STREAM_SLRID_MASK;
 		qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
 		qconf.pipe_gl_max = 1;
+		qconf.desc_rng_sz_idx = sdev->h2c_ringsz_idx;
 	}
 	queue->flowid = req.flowid;
 	queue->routeid = req.rid;
@@ -956,8 +983,12 @@ static int str_dma_probe(struct platform_device *pdev)
 		goto failed_create_cdev;
 	}
 
+	sdev->h2c_ringsz_idx = STREAM_DEFAULT_H2C_RINGSZ_IDX;
+	sdev->c2h_ringsz_idx = STREAM_DEFAULT_C2H_RINGSZ_IDX;
+	sdev->wrb_ringsz_idx = STREAM_DEFAULT_WRB_RINGSZ_IDX;
+
 	mutex_init(&sdev->str_dev_lock);
-	
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_STR_DMA, &str_ops);
 	platform_set_drvdata(pdev, sdev);
 

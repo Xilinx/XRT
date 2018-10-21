@@ -816,6 +816,9 @@ configure(struct xocl_cmd *xcmd)
 
 	cfg = (struct ert_configure_cmd *)(xcmd->packet);
 
+	/* Mark command as control command to force slot 0 execution */
+	cfg->type = ERT_CTRL;
+
 	if (cfg->count != 5 + cfg->num_cus) {
 		DRM_INFO("invalid configure command, count=%d expected 5+num_cus(%d)\n",cfg->count,cfg->num_cus);
 		return 1;
@@ -924,6 +927,21 @@ acquire_slot_idx(struct exec_core *exec)
 }
 
 /**
+ * acquire_slot() - Acquire a slot index for a command
+ *
+ * This function makes a special case for control commands which
+ * must always dispatch to slot 0, otherwise normal acquisition
+ */
+static int
+acquire_slot(struct xocl_cmd* xcmd)
+{
+	if (type(xcmd)==ERT_CTRL)
+		return 0;
+
+	return acquire_slot_idx(xcmd->exec);
+}
+
+/**
  * release_slot_idx() - Release a slot index
  *
  * Update slot status mask for slot index.  Notify scheduler in case
@@ -940,6 +958,19 @@ release_slot_idx(struct exec_core *exec, unsigned int slot_idx)
 	SCHED_DEBUGF("<-> release_slot_idx slot_status[%d]=0x%x, pos=%d\n"
 		     ,mask_idx,exec->slot_status[mask_idx],pos);
 	exec->slot_status[mask_idx] ^= (1<<pos);
+}
+
+/**
+ * release_slot() - Release a slot index for a command
+ *
+ * Special case for control commands that execute in slot 0.  This
+ * slot cannot be marked free ever.
+ */
+static void
+release_slot(struct xocl_cmd* xcmd)
+{
+	if (type(xcmd)!=ERT_CTRL)
+		release_slot_idx(xcmd->exec,xcmd->slot_idx);
 }
 
 /**
@@ -1102,7 +1133,7 @@ mark_cmd_complete(struct xocl_cmd *xcmd)
 	set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
 	if (exec->polling_mode)
 		--xcmd->xs->poll;
-	release_slot_idx(exec,xcmd->slot_idx);
+	release_slot(xcmd);
 	notify_host(xcmd);
 
 	// Deactivate command and trigger chain of waiting commands
@@ -1521,7 +1552,7 @@ mb_submit(struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> mb_submit(%lu)\n",xcmd->id);
 
-	xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+	xcmd->slot_idx = acquire_slot(xcmd);
 	if (xcmd->slot_idx<0) {
 		SCHED_DEBUG("<- mb_submit returns false\n");
 		return false;
@@ -1640,7 +1671,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 
 	/* execution done by submit_cmds, ensure the cmd retired properly */
 	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL) {
-		xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+		xcmd->slot_idx = acquire_slot(xcmd);
 		SCHED_DEBUGF("<- penguin_submit slot(%d)\n",xcmd->slot_idx);
 		return true;
 	}
@@ -1653,7 +1684,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 	if (xcmd->cu_idx<0)
 		return false;
 
-	xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+	xcmd->slot_idx = acquire_slot(xcmd);
 	if (xcmd->slot_idx<0)
 		return false;
 

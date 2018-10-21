@@ -40,17 +40,19 @@ class XclBin {
   virtual ~XclBin();
 
  public:
-  void printHeader(std::ostream &_ostream) const;
+  void reportInfo(std::ostream &_ostream, const std::string & _sInputFile, bool _bVerbose) const;
   void printSections(std::ostream &_ostream) const;
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
-  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion, bool _bInsertValidationChecksum);
+  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion);
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
   void addSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
+  void dumpSections(ParameterSectionData &_PSD);
   void setKeyValue(const std::string & _keyValue);
+  void removeKey(const std::string & _keyValue);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind);

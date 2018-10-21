@@ -55,7 +55,7 @@ namespace XDP {
       // consistency across all formats of reports
       virtual void writeSummary(XDPProfile* profile);
 
-      static const char * getToolVersion() { return "2018.2"; }
+      static const char * getToolVersion() { return "2018.3"; }
 
     public:
       // Functions for Summary

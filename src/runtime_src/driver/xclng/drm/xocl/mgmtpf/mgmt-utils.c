@@ -126,7 +126,7 @@ void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
 	void (*reset)(struct pci_dev *pdev, bool prepare);
 
 	mbreq.req = prepare ?
-		MAILBOX_REQ_RESET_BEGIN : MAILBOX_REQ_RESET_END;
+		MAILBOX_REQ_HOT_RESET_BEGIN : MAILBOX_REQ_HOT_RESET_END;
 	(void) xocl_peer_request(lro, &mbreq, &err, &resplen, NULL, NULL);
 	if (err != 0) {
 		/* Fallback to our hacky way if mailbox is not available. */

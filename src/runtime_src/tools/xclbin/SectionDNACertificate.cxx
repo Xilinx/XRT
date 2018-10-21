@@ -14,25 +14,21 @@
  * under the License.
  */
 
-#include "XclBinUtilMain.h"
+#include "SectionDNACertificate.h"
 
-#include <string>
-#include <iostream>
-#include <exception>
+#include "XclBinUtilities.h"
+namespace XUtil = XclBinUtilities;
 
-int main( int argc, char** argv )
-{
-  try {
-    return main_( argc, argv );
-  } catch ( std::exception &e ) {
-    std::string msg = e.what();
-    if ( msg.empty() )
-      std::cerr << "ERROR: Caught an internal exception no message information is available.\n";
-    else {
-      std::cerr << e.what() << std::endl;
-    }
-  } catch ( ... ) {
-    std::cerr << "ERROR: Caught an internal exception no exception information is available.\n";
-  }
-  return -1;
+// Static Variables / Classes
+SectionDNACertificate::_init SectionDNACertificate::_initializer;
+
+SectionDNACertificate::SectionDNACertificate() {
+  // Empty
 }
+
+SectionDNACertificate::~SectionDNACertificate() {
+  // Empty
+}
+
+
+

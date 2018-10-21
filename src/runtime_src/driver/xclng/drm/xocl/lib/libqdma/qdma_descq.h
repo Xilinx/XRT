@@ -110,6 +110,8 @@ enum qdma_req_submit_state {
 	QDMA_REQ_SUBMIT_COMPLETE
 };
 
+#define	QDMA_CANCEL_TIMEOUT		5	/* seconds */
+
 /**
  * @struct - qdma_descq
  * @brief	qdma software descriptor book keeping fields
@@ -134,6 +136,7 @@ struct qdma_descq {
 	unsigned int qidx_hw;
 	/** queue handler */
 	struct work_struct work;
+	struct delayed_work dwork;
 	/** interrupt list */
 	struct list_head intr_list;
 	/** interrupt id associated for this queue */
@@ -457,7 +460,9 @@ struct qdma_sgt_req_cb {
 	/** qdma read/write request list */
 	struct list_head list;
 	struct list_head list_cancel;
+	struct timeval cancel_ts;
 	bool canceled;
+	bool pending;
 	/** request wait queue */
 	qdma_wait_queue wq;
 	/** number of descriptors to proccess*/
@@ -592,7 +597,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update, bool refill);
 
 void qdma_descq_cancel_all(struct qdma_descq *descq);
-void qdma_notify_cancel(struct qdma_descq *descq);
+int qdma_notify_cancel(struct qdma_descq *descq);
 static inline void descq_cancel_req(struct qdma_descq *descq,
 	struct qdma_request *req)
 {
@@ -603,6 +608,7 @@ static inline void descq_cancel_req(struct qdma_descq *descq,
 		pr_debug("add cancel req %p\n", cb);
 		list_add_tail(&cb->list_cancel, &descq->cancel_list);
 		cb->canceled = true;
+		do_gettimeofday(&cb->cancel_ts);
 	}
 	spin_unlock(&descq->cancel_lock);
 }

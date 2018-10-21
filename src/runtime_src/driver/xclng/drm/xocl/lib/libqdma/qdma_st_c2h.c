@@ -309,7 +309,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	cb->sg_idx = j;
 	cb->sg_offset = tsgoff;
 	cb->left -= copied;
-	cb->offset = req->count - cb->left;
+	cb->offset += copied;
 
 	flq->pkt_dlen -= copied;
 
@@ -476,7 +476,6 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 	/* once an error happens, stop processing of the Q */
 	if (descq->err) {
-		qdma_notify_cancel(descq);
 		return 0;
 	}
 
@@ -487,7 +486,6 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 	pend_wrb_num = ring_idx_delta(pidx_wrb, cidx_wrb, rngsz_wrb);
 	if (!pend_wrb_num) {
-		qdma_notify_cancel(descq);
 		return 0;
 	}
 

@@ -321,7 +321,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->dsa_version = 51;
 	else if (strstr(rom->header.VBNVName,"5_2")
 		 || strstr(rom->header.VBNVName,"u200_xdma_201820_2")
-		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1"))
+		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1")
+		 || strstr(rom->header.VBNVName,"201830"))
 		rom->dsa_version = 52;
 	else if (strstr(rom->header.VBNVName,"5_3"))
 		rom->dsa_version = 53;

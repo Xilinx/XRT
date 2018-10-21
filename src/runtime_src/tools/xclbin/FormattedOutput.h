@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 #include <xclbin.h>
+#include <boost/property_tree/ptree.hpp>
+
 
 // #includes here - please keep these to a bare minimum!
 
@@ -31,7 +33,9 @@ class Section;
 // ------------------- C L A S S :   S e c t i o n ---------------------------
 
 namespace FormattedOutput {
-  void printHeader(std::ostream &_ostream, const axlf &_xclBinHeader, const std::vector<Section*> _sections);
+  void reportInfo(std::ostream &_ostream, const std::string& _sInputFile, const axlf &_xclBinHeader, const std::vector<Section*> _sections, bool _bVerbose);
+  void getKernelDDRMemory(const std::string _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree &_ptKernelInstance, boost::property_tree::ptree &_ptMemoryConnections);
+  void reportVersion(bool _bShort = false);
 
   std::string getTimeStampAsString(const axlf &_xclBinHeader);
   std::string getFeatureRomTimeStampAsString(const axlf &_xclBinHeader);

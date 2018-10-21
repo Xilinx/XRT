@@ -16,7 +16,7 @@
 
 #include "XclBinUtilities.h"
 
-#include "Section.h"
+#include "Section.h"                           // TODO: REMOVE SECTION INCLUDE
 
 #include <iostream>
 #include <fstream>
@@ -25,6 +25,9 @@
 #include <string.h>
 #include <inttypes.h>
 #include <vector>
+#include <boost/uuid/uuid.hpp>          // for uuid
+#include <boost/uuid/uuid_io.hpp>       // for to_string
+
 
 namespace XUtil = XclBinUtilities;
 
@@ -41,7 +44,7 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
   if (!m_bVerbose)
     return;
 
-  std::cout << "Trace: " << _msg;
+  std::cout << "Trace: " << _msg.c_str();
 
   if (_endl)
     std::cout << std::endl << std::flush;
@@ -180,7 +183,7 @@ XclBinUtilities::safeStringCopy(char* _destBuffer,
   // Determine how many bytes to copy
   unsigned int bytesToCopy = _bufferSize - 1;
 
-  if (_source.length() < bytesToCopy) {
+  if (_source.size() < bytesToCopy) {
     bytesToCopy = _source.length();
   }
 
@@ -193,180 +196,6 @@ XclBinUtilities::bytesToAlign(unsigned int _offset) {
   unsigned int bytesToAlign = (_offset & 0x7) ? 0x8 - (_offset & 0x7) : 0;
 
   return bytesToAlign;
-}
-
-static
-uint64_t calculate_CheckSumSDBM(std::fstream& _istream,
-                                unsigned int _bufferSize)
-// SDBM Hash Function
-// This is the algorithm of choice which is used in the open source SDBM project
-// ----------------------------------------------------------------------------
-{
-  uint64_t hash = 1;
-
-  for (unsigned int index = 0; (index < _bufferSize) && _istream.good(); ++index) {
-    unsigned char byte;
-    _istream.read((char*)&byte, 1);
-
-    hash = (byte)+(hash << 6) + (hash << 16) - hash;
-  }
-
-  return hash;
-}
-
-static
-bool readCheckSumHeader(std::fstream& _istream, struct checksum& _checksum) {
-  // Check to see if the stream is large enough to have a checksum header
-  _istream.seekg(0, _istream.end);
-  unsigned int streamSize = _istream.tellg();
-
-  if (streamSize < sizeof(checksum)) {
-    return false;
-  }
-
-  // Read checksum header
-  _istream.seekg(-sizeof(checksum), _istream.end);
-  _istream.read((char*)&_checksum, sizeof(checksum));
-
-  // Check to see if header is good
-  const static std::string magic = "XCHKSUM";
-  if (magic.compare(_checksum.m_magic) != 0) {
-    return false;
-  }
-
-  return true;
-}
-
-
-void
-XclBinUtilities::createCheckSumImage(std::fstream& _istream,
-                                     struct checksum& _checksum) {
-  // Record size of file
-  _istream.seekg(0, _istream.end);
-  unsigned int bytesToExamine = _istream.tellg();
-
-  // See if there already is a checksum file, if so, don't examine it
-  struct checksum fileChecksumHeader;
-  if (readCheckSumHeader(_istream, fileChecksumHeader)) {
-    bytesToExamine -= sizeof(struct checksum);
-  }
-
-  // Prepare to create new checksum value
-  _istream.seekg(0, _istream.beg);
-  const static std::string magic = "XCHKSUM";
-  XUtil::safeStringCopy((char*)&_checksum.m_magic, magic, sizeof(_checksum.m_magic));
-
-  switch (_checksum.m_type) {
-    case CST_SDBM:
-      _checksum.m_64bit = calculate_CheckSumSDBM(_istream, bytesToExamine);
-      XUtil::TRACE(XUtil::format("Calculated SDBM Hash Value: 0x%lx", _checksum.m_64bit));
-      break;
-
-    case CST_UNKNOWN:
-    case CST_LAST:
-    default:
-      XUtil::TRACE("Unknown checksum. No action taken");
-      break;
-  }
-  _istream.close();
-}
-
-bool
-XclBinUtilities::validateImage(const std::string _sFileName) {
-  // Error checks
-  if (_sFileName.empty()) {
-    std::string errMsg = "ERROR: Missing file name to read from.";
-    throw std::runtime_error(errMsg);
-  }
-
-  // Open the file for consumption
-  XUtil::TRACE("Reading xclbin binary file to determine checksum value: " + _sFileName);
-  std::fstream fileStream;
-  fileStream.open(_sFileName, std::ifstream::in | std::ifstream::binary);
-  if (!fileStream.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + _sFileName;
-    throw std::runtime_error(errMsg);
-  }
-
-  // Make sure we are at the beginning of the stream
-  fileStream.seekg(0, fileStream.beg);
-
-  // Does the file have a checksum header
-  struct checksum fileChecksum = { 0 };
-  if (readCheckSumHeader(fileStream, fileChecksum) == false) {
-    std::cout << "Info: File does not contain a checksum header." << std::endl;
-    return false;
-  }
-
-  // Calculate the checksum
-  struct checksum calcChecksum = { 0 };
-  calcChecksum.m_type = fileChecksum.m_type;
-  createCheckSumImage(fileStream, calcChecksum);
-
-  // Now look to see if they are the same
-  switch ((enum CHECKSUM_TYPE)fileChecksum.m_type) {
-    case CST_SDBM:
-      std::cout << "Info: Checksum hash algorithm: SDBM" << std::endl;
-      if (fileChecksum.m_64bit == calcChecksum.m_64bit) {
-        std::cout << XUtil::format("Info: [VALID] The file checksum and calculated checksums match: 0x%lx", fileChecksum.m_64bit) << std::endl;
-      } else {
-        std::cout << XUtil::format("Info: [INVALID] The file checksum (0x%lx) does not match the calculated checksum (0x%lx)", fileChecksum.m_64bit, calcChecksum.m_64bit) << std::endl;
-      }
-      break;
-    case CST_UNKNOWN:
-    case CST_LAST:
-    default:
-      std::cout << "Info: Unknown checksum algorithm" << std::endl;
-      return false;
-      break;
-  }
-  return true;
-}
-
-void
-XclBinUtilities::addCheckSumImage(const std::string _sFileName,
-                                  enum CHECKSUM_TYPE _eChecksumType) {
-  // Error checks
-  if (_sFileName.empty()) {
-    std::string errMsg = "ERROR: Missing file name to modify from";
-    throw std::runtime_error(errMsg);
-  }
-
-  // Open the file for consumption
-  XUtil::TRACE("Examining xclbin binary file to determine checksum value: " + _sFileName);
-  std::fstream fileStream;
-  fileStream.open(_sFileName, std::ifstream::in | std::ifstream::binary);
-  if (!fileStream.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + _sFileName;
-    throw std::runtime_error(errMsg);
-  }
-
-  // Make sure we are at the beginning of the stream
-  fileStream.seekg(0, fileStream.beg);
-
-  // Does the file have a checksum header
-  struct checksum fileChecksum = { 0 };
-  if (readCheckSumHeader(fileStream, fileChecksum) == true) {
-    std::string errMsg = "Error: The given file already has a checksum header.  No action taken.";
-    throw std::runtime_error(errMsg);
-  }
-
-  // Calculate the checksum
-  struct checksum calcChecksum = { 0 };
-  calcChecksum.m_type = (uint8_t)_eChecksumType;
-  createCheckSumImage(fileStream, calcChecksum);
-  fileStream.close();
-
-  fileStream.open(_sFileName, std::ifstream::out | std::ifstream::binary | std::ifstream::app);
-  if (!fileStream.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for writing: " + _sFileName;
-    throw std::runtime_error(errMsg);
-  }
-
-  fileStream.seekg(0, fileStream.end);
-  fileStream.write((const char*)&calcChecksum, sizeof(checksum));
-  fileStream.close();
-  XUtil::TRACE("Checksum header added");
 }
 
 
@@ -456,9 +285,256 @@ void
 XclBinUtilities::printKinds() {
   std::vector< std::string > kinds;
   Section::getKinds(kinds);
-  std::cout << "All available section names:\n";
+  std::cout << "All supported section names supported by this tool:\n";
   for (auto & kind : kinds) {
     std::cout << "  " << kind << "\n";
   }
 }
+
+std::string 
+XclBinUtilities::getUUIDAsString( const unsigned char (&_uuid)[16] )
+{
+  static_assert (sizeof(boost::uuids::uuid) == 16, "Error: UUID size mismatch");
+
+  // Copy the values to the UUID structure
+  boost::uuids::uuid uuid;
+  memcpy((void *) &uuid, (void *) &_uuid, sizeof(boost::uuids::uuid));
+
+  // Now decode it to a string we can work with
+  return boost::uuids::to_string(uuid);
+}
+
+
+bool
+XclBinUtilities::findBytesInStream(std::fstream& _istream, const std::string& _searchString, unsigned int& _foundOffset) {
+  XUtil::TRACE(XUtil::format("Searching for: %s", _searchString.c_str()));
+  _foundOffset = 0;
+
+  unsigned int savedLocation = _istream.tellg();
+
+  unsigned int stringLength = _searchString.length();
+  unsigned int matchIndex = 0;
+
+  char aChar;
+  while (_istream.get(aChar)) {
+    ++_foundOffset;
+    if (aChar == _searchString[matchIndex++]) {
+      if (matchIndex == stringLength) {
+        _foundOffset -= stringLength;
+        return true;
+      }
+    } else {
+      matchIndex = 0;
+    }
+  }
+  _istream.clear();
+  _istream.seekg(savedLocation);
+
+  return false;
+}
+
+static
+const std::string &getSignatureMagicValue()
+{
+  // Magic Value: 5349474E-9DFF41C0-8CCB82A7-131CC9F3
+  static std::string sMagicString {(char) 0x53, (char) 0x49, (char) 0x47, (char) 0x4E, 
+                                   (char) 0x9D, (char) 0xFF, (char) 0x41, (char) 0xC0, 
+                                   (char) 0x8C, (char) 0xCB, (char) 0x82, (char) 0xA7, 
+                                   (char) 0x13, (char) 0x1C, (char) 0xC9, (char) 0xF3};
+
+  return sMagicString;
+}
+
+bool 
+XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature, 
+                              std::string& _sSignedBy, unsigned int & _totalSize)
+{
+  _istream.seekg(0);
+  // Find the signature
+  unsigned int signatureOffset;
+  if (!XclBinUtilities::findBytesInStream(_istream, getSignatureMagicValue(), signatureOffset)) {
+    return false;
+  }
+
+  // We have a signature read it in
+  XUtil::SignatureHeader signature = {0};
+
+  _istream.seekg(signatureOffset);
+  _istream.read((char*)&signature, sizeof(XUtil::SignatureHeader));
+
+  // Get signedBy
+  if (signature.signedBySize != 0)
+  {
+    _istream.seekg(signatureOffset + signature.signedByOffset);
+    std::unique_ptr<char> data( new char[ signature.signedBySize ] );
+    _istream.read( data.get(), signature.signedBySize );
+    _sSignedBy = std::string(data.get(), signature.signedBySize);
+  }
+
+  // Get the signature
+  if (signature.signatureSize != 0)
+  {
+    _istream.seekg(signatureOffset + signature.signatureOffset);
+    std::unique_ptr<char> data( new char[ signature.signatureSize ] );
+    _istream.read( data.get(), signature.signatureSize );
+    _sSignature = std::string(data.get(), signature.signatureSize);
+  }
+
+  _totalSize = signature.totalSignatureSize;
+  return true;
+}
+
+
+
+void 
+XclBinUtilities::reportSignature(const std::string& _sInputFile)
+{
+  // Open the file for consumption
+  XUtil::TRACE("Examining xclbin binary file for a signature: " + _sInputFile);
+  std::fstream inputStream;
+  inputStream.open(_sInputFile, std::ifstream::in | std::ifstream::binary);
+  if (!inputStream.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sSignature;
+  std::string sSignedBy;
+  unsigned int totalSize;
+  if (!XUtil::getSignature(inputStream, sSignature, sSignedBy, totalSize)) {
+    std::string errMsg = "ERROR: No signature found in file: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  std::cout << sSignature << " " << totalSize << std::endl;
+}
+
+
+void 
+XclBinUtilities::removeSignature(const std::string& _sInputFile, const std::string& _sOutputFile)
+{
+  // Open the file for consumption
+  XUtil::TRACE("Examining xclbin binary file for a signature: " + _sInputFile);
+  std::fstream inputStream;
+  inputStream.open(_sInputFile, std::ifstream::in | std::ifstream::binary);
+  if (!inputStream.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Find the signature
+  unsigned int signatureOffset;
+  if (!XclBinUtilities::findBytesInStream(inputStream, getSignatureMagicValue(), signatureOffset)) {
+    std::string errMsg = "ERROR: No signature found in file: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Open output file
+  std::fstream outputStream;
+  outputStream.open(_sOutputFile, std::ifstream::out | std::ifstream::binary);
+  if (!outputStream.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + _sOutputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Copy the file contents (minus the signature)
+  {
+    // copy file  
+    unsigned int count = 0;
+    inputStream.seekg(0);
+    char aChar;
+    while (inputStream.get(aChar) ) {
+      outputStream << aChar;
+      if (++count == signatureOffset) {
+        break;
+      }
+    }
+  }
+
+  std::cout << "Signature successfully removed." << std::endl;
+  outputStream.close();
+}
+
+void
+createSignatureBufferImage(std::ostringstream& _buf, const std::string & _sSignature, const std::string & _sSignedBy)
+{
+  XUtil::SignatureHeader signature = {0};
+  std::string magicValue = getSignatureMagicValue();
+
+  // Initialize the structure
+  unsigned int runningOffset = sizeof(XUtil::SignatureHeader);
+  memcpy(&signature.magicValue, magicValue.c_str(), sizeof(XUtil::SignatureHeader::magicValue));
+
+  signature.signatureOffset = runningOffset;
+  signature.signatureSize = _sSignature.size();
+  runningOffset += signature.signatureSize;
+
+  signature.signedByOffset = runningOffset;
+  signature.signedBySize = _sSignedBy.size();
+  runningOffset += signature.signedBySize;
+
+  signature.totalSignatureSize = runningOffset;
+
+  // Write out the data
+  _buf.write(reinterpret_cast<const char*>(&signature), sizeof(XUtil::SignatureHeader));
+  _buf.write(_sSignature.c_str(), _sSignature.size());
+  _buf.write(_sSignedBy.c_str(), _sSignedBy.size());
+}
+
+
+void
+XclBinUtilities::addSignature(const std::string& _sInputFile, const std::string& _sOutputFile,
+                              const std::string& _sSignature, const std::string& _sSignedBy)
+{
+  // Error checks
+  if (_sInputFile.empty()) {
+    std::string errMsg = "ERROR: Missing file name to modify from.";
+    throw std::runtime_error(errMsg);
+  }
+
+  // Open the file for consumption
+  XUtil::TRACE("Examining xclbin binary file to determine if there is already a signature added: " + _sInputFile);
+  std::fstream inputStream;
+  inputStream.open(_sInputFile, std::ifstream::in | std::ifstream::binary);
+  if (!inputStream.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // See if there already is a signature, if so do nothing
+  unsigned int signatureOffset;
+  if (XclBinUtilities::findBytesInStream(inputStream, getSignatureMagicValue(), signatureOffset)) {
+    std::string errMsg = "ERROR: The given file already has a signature added. File: " + _sInputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Open output file
+  std::fstream outputStream;
+  outputStream.open(_sOutputFile, std::ifstream::out | std::ifstream::binary);
+  if (!outputStream.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + _sOutputFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  // Copy the file contents
+  {
+    // copy file  
+    inputStream.seekg(0);
+    char aChar;
+    while (inputStream.get(aChar)) {
+      outputStream << aChar;
+    }
+  }
+
+  // Tack on the signature
+  std::ostringstream buffer;
+  createSignatureBufferImage(buffer, _sSignature, _sSignedBy);
+  outputStream.write(buffer.str().c_str(), buffer.str().size());
+
+  outputStream.close();
+}
+
+
+
+
 

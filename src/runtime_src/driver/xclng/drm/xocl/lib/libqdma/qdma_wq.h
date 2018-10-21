@@ -75,6 +75,25 @@ struct qdma_wq_stat {
         u64			total_complete_bytes;
         u32			total_req_num;
         u32			total_complete_num;
+
+	u32			descq_rngsz;
+	u32			descq_pidx;
+	u32			descq_cidx;
+	u32			descq_avail;
+	u32			desc_wb_cidx;
+        u32			desc_wb_pidx;
+
+        u32			descq_rngsz_wrb;
+        u32			descq_cidx_wrb;
+        u32			descq_pidx_wrb;
+        u32			descq_cidx_wrb_pend;
+        u32			c2h_wrb_cidx;
+        u32			c2h_wrb_pidx;
+
+        u32			flq_cidx;
+        u32			flq_pidx;
+        u32			flq_pidx_pend;
+
 };
 
 struct qdma_wq {
@@ -190,5 +209,6 @@ int qdma_wq_destroy(struct qdma_wq *queue);
 ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
 int qdma_cancel_req(struct qdma_wq *queue, struct kiocb *kiocb);
 void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat);
+int qdma_wq_update_pidx(struct qdma_wq *queue, u32 pidx);
 
 #endif /* _QDMA_WR_H */
