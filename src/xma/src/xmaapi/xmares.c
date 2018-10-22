@@ -1011,7 +1011,7 @@ static int32_t xma_client_thread_kernel_alloc(XmaResources shm_cfg,
             xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                        "%s() Kernel supports channels\n", __func__);
             if (kernel_data_size > 0)
-                session->kernel_data = malloc(kernel_data_size);
+                session->kernel_data = calloc(kernel_data_size, sizeof(uint8_t));
             ret = alloc_chan(session, sessions, j);
             if (ret) {
                 xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
