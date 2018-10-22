@@ -490,9 +490,7 @@ static int health_check_cb(void *data)
         } else {
                 ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
 		/* stop user pf */
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, true);
-		}
+		xocl_reset(lro, true);
                 if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
 			mgmt_info(lro, "Issuing pcie hot reset.");
                         xclmgmt_reset_pci(lro);
@@ -503,9 +501,7 @@ static int health_check_cb(void *data)
 	        msleep(500);
 	        freeAXIGate(lro);
 	        msleep(500);
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, false);
-		}
+		xocl_reset(lro, false);
         }
         mutex_unlock(&lro->busy_mutex);
 
@@ -660,13 +656,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
-
-	lro->user_pci_dev = find_user_node(pdev);
-	if (!lro->user_pci_dev) {
-		xocl_err(&pdev->dev,
-			"could not find user pf for instance %d\n",
-			lro->instance);
-	}
 
 	/* We can only support MSI-X. */
 	ret = xclmgmt_setup_msix(lro);
