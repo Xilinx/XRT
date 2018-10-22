@@ -9,14 +9,14 @@ usage()
     echo "[-help]                    List this help"
     echo "[-validate]                Validate that required packages are installed"
     echo "[-docker]                  Indicate that script is run within a docker container, disables select packages"
-    echo "[-force]                   Override interactive installation and confirms installs with yes"
+    echo "[-assumeyes]               Answer yes for all install prompts"
 
     exit 1
 }
 
 validate=0
 docker=0
-force=""
+assumeyes=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -31,8 +31,8 @@ while [ $# -gt 0 ]; do
             docker=1
             shift
             ;;
-        -force)
-            force="-y"
+        -assumeyes)
+            assumeyes="-y"
             shift
             ;;
         *)
@@ -185,29 +185,29 @@ install()
     # Enable EPEL on CentOS/RHEL
     if [ $FLAVOR == "centos" ]; then
         echo "Enabling EPEL repository..."
-        sudo yum install $force epel-release
+        sudo yum install $assumeyes epel-release
     elif [ $FLAVOR == "rhel" ]; then
         echo "Enabling EPEL repository..."
         rpm -q --quiet epel-release
         if [ $? != 0 ]; then
-	    sudo yum install $force https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	    sudo yum $forcecheck -update
+	    sudo yum install $assumeyes https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	    sudo yum $assumeyes check-update
         fi
     fi
 
     # Enable GCC 6 compiler set on RHEL/CentOS 7.X
     if [ $FLAVOR == "rhel" ]; then
         echo "Enabling RHEL SCL repository..."
-        sudo yum-config-manager $force --enable rhel-server-rhscl-7-rpms
+        sudo yum-config-manager $assumeyes --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
-        sudo yum install $force centos-release-scl
+        sudo yum install $assumeyes centos-release-scl
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
         echo "Installing RHEL/CentOS packages..."
         sudo yum install -y "${RH_LIST[@]}"
-        sudo yum install $force devtoolset-6
+        sudo yum install $assumeyes devtoolset-6
     fi
 }
 
