@@ -1773,6 +1773,12 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		/* should be removed after integrated certificate with xclbin*/
 		if(xocl_dna_capability(xdev) & 0x1){
 			certificate = get_axlf_section(icap, copy_buffer, DNA_CERTIFICATE);
+			if(certificate == NULL) {
+				ICAP_ERR(icap, "Can't get certificate section");
+				err = -EACCES;
+				goto dna_check_failed;
+			}
+			
 			if(certificate->m_sectionSize % 64 || certificate->m_sectionSize < 576) {
 				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %llu", certificate->m_sectionSize);
 				err = -EACCES;
