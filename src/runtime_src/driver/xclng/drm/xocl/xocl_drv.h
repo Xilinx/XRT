@@ -411,7 +411,7 @@ struct xocl_mb_funcs {
 struct xocl_dna_funcs {
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
-	void (*write_cert)(struct platform_device *pdev, const char *buf, u32 len);
+	void (*write_cert)(struct platform_device *pdev, const char __user *buf, u32 len);
 };
 
 #define	XMC_DEV(xdev)		\
