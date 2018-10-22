@@ -7,7 +7,7 @@ downtime provided you use a few scripts we have created:
 - ``build.sh`` build script that builds XRT for both Debug and Release profiles.
 - ``run.sh`` loader script that sets up environment assuming XRT was
   built with ``build.sh``.
-- ``board.sh`` harvests sprite UNIT_HW test cases and runs board tests.
+- ``board.sh`` harvests sprite ``UNIT_HW`` test cases and runs board tests.
 
 Building XRT
 ~~~~~~~~~~~~
@@ -74,8 +74,9 @@ nightly sprite area.  Without the ``-sync`` option, the board script will
 run all tests that were previously synced into the current directory.
 
 While tests run a file named ``results.all`` will list the test with
-PASS/FAIL keyword.  This file is appended (not removed between runs).
-A complete run should take 5-10 mins for approximately 70 tests.
+``PASS``\ /\ ``FAIL`` keyword.  This file is appended (not removed
+between runs).  A complete run should take 5-10 mins for approximately
+70 tests.
 
 
 Unit Testing XRT
@@ -113,10 +114,10 @@ This will add GTest static library symbolic links here:
   * ``/usr/lib/libgtest.a``
   * ``/usr/lib/libgtest_main.a``
 
-To add GTest support to a CMakeLists.txt use the following, and this is using 
-an example executable called 'xclbintest':
+CMake will handle linking, finding etc. for you.
 
-::
+To add GTest support to a ``CMakeLists.txt`` use the following, and this is using 
+an example executable called ``xclbintest``::
 
    find_package(GTest)
    if (GTEST_FOUND)
@@ -129,4 +130,3 @@ an example executable called 'xclbintest':
    else()
      message (STATUS "GTest was not found, skipping generation of test executables")
    endif()
-

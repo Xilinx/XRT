@@ -17,7 +17,7 @@ Tools of the Trade
 ``xbutil``
    Query status of Xilinx PCIe device
 ``xclbinsplit``
-   Unpack an xclbin
+   Unpack an ``xclbin``
 XRT API Trace
    Run failing application with HAL logging enabled in ``sdaccel.ini`` ::
 
@@ -30,7 +30,7 @@ Validating a Working Setup
 When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.
 
 Board Enumeration
-  Check if BIOS and Linux can see the board. So for Xilinx boards use lspci utility ::
+  Check if BIOS and Linux can see the board. So for Xilinx boards use ``lspci`` utility ::
 
     lspci -v -d 10ee:
 
@@ -55,9 +55,21 @@ Common Reasons For Failures
 Incorrect Memory Topology Usage
 ...............................
 
-5.0+ DSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
+5.0+ DSAs are considered dynamic platforms which use sparse
+connectivity between acceleration kernels and memory controllers
+(MIGs). This means that a kernel port can only read/write from/to a
+specific MIG. This connectivity is frozen at ``xclbin`` generation
+time in specified in ``mem_topology`` section of ``xclbin``. The host
+application needs to ensure that it uses the correct memory banks for
+buffer allocation using ``cl_mem_ext_ptr_t`` for OpenCL
+applications. For XRT native applications the bank is specified in
+flags to ``xclAllocBO()`` and ``xclAllocUserPtr()``.
 
-If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable HAL logging in sdaccel.ini and then carefully go through all buffer allocation requests.
+If an application is producing incorrect results it is important to
+review the host code to ensure that host application and ``xclbin``
+agree on memory topology. One way to validate this at runtime is to
+enable HAL logging in ``sdaccel.ini`` and then carefully go through
+all buffer allocation requests.
 
 Memory Read Before Write
 ........................
@@ -72,14 +84,21 @@ Users should review the host code carefully. One common example is compression w
 Incorrect Frequency Scaling
 ...........................
 
-Incorrect frequency scaling usually indicates a tooling or infrastructure bug. Target frequencies for the dynamic (patial reconfig) region are frozen at compile time and specified in clock_freq_topology section of xclbin. If clocks in the dynamic region are running at incorrect -- higher than specified -- frequency, kernels will demonstrate weird behavior.
+Incorrect frequency scaling usually indicates a tooling or
+infrastructure bug. Target frequencies for the dynamic (partial
+reconfiguration) region are frozen at compile time and specified in
+``clock_freq_topology`` section of ``xclbin``. If clocks in the dynamic region
+are running at incorrect -- higher than specified -- frequency,
+kernels will demonstrate weird behavior.
 
 1. Often a CU will produce completely incorrect result with no identifiable pattern
 2. A CU might hang
 3. When run several times, a CU may produce correct results a few times and incorrect results rest of the time
 4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct -- typically 64 bytes or one AXI burst -- segment followed by incorrect segments are generated.
 
-Users should check the frequency of the board with ``xbutil query`` and compare it against the metadata in xclbin. ``xclbincat`` may be used to extract metadata from xclbin.
+Users should check the frequency of the board with ``xbutil query``
+and compare it against the metadata in ``xclbin``. ``xclbincat`` may
+be used to extract metadata from ``xclbin``.
 
 CU Deadlock
 ...........
@@ -94,15 +113,21 @@ TODO
 AXI Bus Deadlock
 ................
 
-AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
+AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
 
 
 Platform Bugs
 .............
 
 Bitsream Download Failures
-  Bitstream download failures are usually caused because of incompatible xclbins. dmesg log would provide more insight into why the download failed. At OpenCL level they usually manifest as Invalid Binary (error -44).
-  Rarely MIG calibration might fail after bitstream download. This will also show up as bitstream download failure. Usually XRT driver messages in dmesg would reveal if MIG calibration failed.
+  Bitstream download failures are usually
+  caused because of incompatible ``xclbin``\ s. ``dmesg`` log would
+  provide more insight into why the download failed. At OpenCL level
+  they usually manifest as Invalid Binary (error -44).
+
+  Rarely MIG calibration might fail after bitstream download. This
+  will also show up as bitstream download failure. Usually XRT driver
+  messages in ``dmesg`` would reveal if MIG calibration failed.
 
 Incorrect Timing Constraints
   If the platform or dynamic region has invalid timing constraints -- which is really a platform or SDx tool bug -- CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
@@ -110,7 +135,10 @@ Incorrect Timing Constraints
 Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~
 
-When board is in crashed state PCIe read operations start returning 0XFF. In this state xbutil query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset ::
+When board is in crashed state PCIe read operations start returning
+``0XFF``. In this state ``xbutil`` query would show bizarre
+metrics. For example ``Temp`` would be very high. Boards in crashed state
+may be recovered with PCIe hot reset ::
 
   xbutil reset -h
 
@@ -119,7 +147,14 @@ If this does not recover the board perform a warm reboot. After reset/reboot ple
 XRT Scheduling Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
-XRT has three kernel execution schedulers today: ERT, KDS and legacy. By default XRT uses ERT which runs on Microblaze. ERT is accessed through KDS which runs inside xocl Linux kernel driver. If ERT is not available KDS uses its own built-in scheduler. From 2018.2 release onwards KDS (tgether with ERT if available in the DSA) is enabled by default. Users can optionally switch to legacy scheduler which runs in userspace. Switching scheduler will help isolate any scheduler related XRT bugs ::
+XRT has three kernel execution schedulers today: ERT, KDS and
+legacy. By default XRT uses ERT which runs on Microblaze. ERT is
+accessed through KDS which runs inside ``xocl`` Linux kernel
+driver. If ERT is not available KDS uses its own built-in
+scheduler. From 2018.2 release onward KDS (together with ERT if
+available in the DSA) is enabled by default. Users can optionally
+switch to legacy scheduler which runs in userspace. Switching
+scheduler will help isolate any scheduler related XRT bugs ::
 
   [Runtime]
   ert=false

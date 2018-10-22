@@ -27,31 +27,36 @@ Build the runtime
 Build RPM package on RHEL/CentOS or DEB package on Ubuntu
 .........................................................
 
-::
+The package is actually automatically built for the ``Release``
+version but not for the ``Debug`` version::
 
    cd build/Release
+   make package
+   cd ../Debug
    make package
 
 Install the XRT RPM package
 ...........................
 
-::
+Install with (the actual package name might differ) ::
 
    yum reinstall ./XRT-2.1.0-Linux.rpm
 
 Install the XRT DEB package
 ...........................
 
-::
+Install with (the actual package name might differ) ::
 
-   apt install --reinstall ./XRT-2.1.0-Linux.deb
+   sudo apt install --reinstall ./xrt_201830.2.1.0_18.10.deb
 
 XRT Documentation
 ~~~~~~~~~~~~~~~~~
 
-XRT Documentation can be built automatically using Sphinx doc builder together with Linux kernel based kernel-doc utility.
+XRT Documentation can be built automatically using Sphinx doc builder
+together with Linux kernel based ``kernel-doc`` utility.
 
-::
+To compile and install the documentation into the ``doc`` directory at
+the top of the repository::
 
    cd src/runtime_src/doc
    cmake .
