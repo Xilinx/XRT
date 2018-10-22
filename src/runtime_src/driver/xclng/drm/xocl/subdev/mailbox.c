@@ -335,25 +335,30 @@ static inline bool valid_pkt(struct mailbox_pkt *pkt)
 irqreturn_t mailbox_isr(int irq, void *arg)
 {
 	struct mailbox *mbx = (struct mailbox *)arg;
-	u32 ip = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_ip);
 	u32 is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
 
-	MBX_DBG(mbx, "ip=0x%x", ip);
+	while (is) {
+		MBX_DBG(mbx, "intr status: 0x%x", is);
 
-	if ((ip & FLAG_STI) != 0) {
-		/* A packet has been sent successfully. */
-		complete(&mbx->mbx_tx.mbc_worker);
-	}
-	if ((ip & FLAG_RTI) != 0) {
-		/* A packet is waiting to be received from mailbox. */
-		complete(&mbx->mbx_rx.mbc_worker);
-	}
-	/* Anything else is not expected. */
-	if ((ip & (FLAG_STI | FLAG_RTI)) == 0)
-		MBX_ERR(mbx, "spurious mailbox irq %d, ip=0x%x", irq, ip);
+		if ((is & FLAG_STI) != 0) {
+			/* A packet has been sent successfully. */
+			complete(&mbx->mbx_tx.mbc_worker);
+		}
+		if ((is & FLAG_RTI) != 0) {
+			/* A packet is waiting to be received from mailbox. */
+			complete(&mbx->mbx_rx.mbc_worker);
+		}
+		/* Anything else is not expected. */
+		if ((is & (FLAG_STI | FLAG_RTI)) == 0) {
+			MBX_ERR(mbx, "spurious mailbox irq %d, is=0x%x",
+				irq, is);
+		}
 
-	/* Clear intr state for receiving next one. */
-	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, is);
+		/* Clear intr state for receiving next one. */
+		mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, is);
+
+		is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
+	}
 
 	return IRQ_HANDLED;
 }
