@@ -19,7 +19,7 @@ Build the runtime
 
 ::
 
-   cd XRT/build
+   cd build
    ./build.sh
 
 ``build.sh`` script builds for both Debug and Release profiles.  On RHEL/CentOS, if ``build.sh`` was accidentally run prior to enabling the devtoolset, then it is necessary to clean stale files makefiles by running ``build.sh clean`` prior to the next build.
@@ -29,7 +29,7 @@ Build RPM package on RHEL/CentOS or DEB package on Ubuntu
 
 ::
 
-   cd XRT/build/Release
+   cd build/Release
    make package
 
 Install the XRT RPM package
@@ -53,6 +53,8 @@ XRT Documentation can be built automatically using Sphinx doc builder together w
 
 ::
 
-   cd XRT/src/runtime_src/doc/
-   make
-   firefox html/index.html
+   cd src/runtime_src/doc
+   cmake .
+   make xrt_doc
+   # To look at the generated local documentation with a web browser:
+   xdg-open html/index.html
