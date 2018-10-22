@@ -694,6 +694,7 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
+	qconf.irq_en = 1;
 
 	if (!req.write) {
 		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;

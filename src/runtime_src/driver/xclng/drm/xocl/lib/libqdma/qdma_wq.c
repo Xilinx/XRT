@@ -217,8 +217,11 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	ssize_t			len, total = 0;
 	int			i;
 
-	if (!descq->avail)
+	if (!descq->avail) {
+		if (descq->conf.irq_en)
+			goto update_pidx;
 		return -ENOENT;
+	}
 
 	desc = (struct qdma_mm_desc *)descq->desc + descq->pidx;
 	cb = qdma_req_cb_get(&wqe->wr.req);
@@ -289,6 +292,7 @@ static int descq_mm_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	wqe->unproc_sg = next;
 	wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
 
+update_pidx:
 	if (descq->conf.c2h)
 		descq_c2h_pidx_update(descq, descq->pidx);
 	else
@@ -308,14 +312,19 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	ssize_t			len, total = 0;
 	int			i;
 
-	if (!descq->avail || descq->q_state != Q_STATE_ONLINE)
+	if (descq->q_state != Q_STATE_ONLINE)
+		return -EINVAL;
+
+	if (!descq->avail) {
+		if (descq->conf.irq_en)
+			goto update_pidx;
 		return -ENOENT;
+	}
 
 	cb = qdma_req_cb_get(&wqe->wr.req);
 	sg = wqe->unproc_sg;
 	desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 	desc->flags = S_H2C_DESC_F_SOP;
-	cb->desc_nr = 0;
 	for(i = 0; i < wqe->unproc_sg_num; i++, sg = next) {
 		off = 0;
 		len = sg->length;
@@ -373,8 +382,7 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		desc = (struct qdma_h2c_desc *)descq->desc + descq->pidx;
 		desc->flags = 0;
 		if (!(descq->pidx & PIDX_UPDATE_MASK))
-			descq_h2c_pidx_update(descq, (descq->pidx) &
-				(descq->conf.rngsz - 1));
+			descq_h2c_pidx_update(descq, descq->pidx);
 	}
 	/* BUG_ON(i == wqe->unproc_sg_num && wqe->unproc_bytes != 0); */
 
@@ -388,9 +396,6 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		wqe->wr.req.eot)
 		desc->cdh_flags |= (1 << S_H2C_DESC_F_EOT);
 
-	descq_h2c_pidx_update(descq, (descq->pidx) &
-		(descq->conf.rngsz - 1));
-
 	wqe->unproc_sg = next;
 	wqe->unproc_sg_num =  wqe->unproc_sg_num - i;
 	wqe->wr.req.count = wqe->wr.len - wqe->unproc_bytes -
@@ -400,6 +405,9 @@ static int descq_st_h2c_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 		cb->pending = true;
 	}
 	wqe->state = QDMA_WQE_STATE_PENDING;
+
+update_pidx:
+	descq_h2c_pidx_update(descq, descq->pidx);
 
 	return (descq->avail == 0) ? -ENOENT : 0;
 }
@@ -496,6 +504,15 @@ static int descq_st_c2h_fill(struct qdma_descq *descq, struct qdma_wqe *wqe)
 	return (queue->sgc_avail == 0) ? -ENOENT : 0;
 }
 
+static inline bool wqe_done(struct qdma_wqe *wqe)
+{
+	struct qdma_sgt_req_cb  *cb;
+
+	cb = qdma_req_cb_get(&wqe->wr.req);
+
+	return (cb->done || cb->canceled) ? true : false;
+}
+
 static void descq_proc_req(struct qdma_wq *queue)
 {
 	struct qdma_wqe		*wqe;
@@ -511,6 +528,15 @@ static void descq_proc_req(struct qdma_wq *queue)
 		queue->qconf->qidx, queue->qconf->c2h ? "R" : "W", wqe,
 		wqe?wqe->unproc_bytes:0, queue->wq_unproc, queue->wq_free,
 		queue->wq_pending);
+
+	if (!wqe && descq->conf.irq_en &&
+		((queue->wq_pending != queue->wq_unproc) ||
+		!wqe_done(_wqe(queue, queue->wq_pending)))) {
+		if (descq->conf.c2h)
+			descq_c2h_pidx_update(descq, descq->pidx);
+		else
+			descq_h2c_pidx_update(descq, descq->pidx);
+	}
 
 	while (wqe) {
 		if (wqe->state == QDMA_WQE_STATE_CANCELED ||
