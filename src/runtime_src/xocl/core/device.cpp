@@ -1059,7 +1059,7 @@ device::
 read_register(memory* mem, size_t offset,void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"read_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->read_register(offset,ptr,size);
 }
 
@@ -1068,7 +1068,7 @@ device::
 write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"write_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->write_register(offset,ptr,size);
 #if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
