@@ -202,8 +202,9 @@ static ssize_t error_show(struct device *dev, struct device_attribute *da,
 	int off;
 
 	xdev = xocl_get_xdev(pdev);
-	qdma_error_stat((unsigned long)xdev->dma_handle, false,
+	qdma_error_stat((unsigned long)xdev->dma_handle, true,
 		buf, &off);
+	qdma_arm_err_intr((unsigned long)xdev->dma_handle);
 
 	return off;
 }

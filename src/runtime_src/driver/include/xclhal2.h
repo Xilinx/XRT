@@ -968,6 +968,11 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  * struct xclQueueContext - structure to describe a Queue
  */
 
+enum {
+	/* keep in sync with cl_stream_type */
+	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
+};
+
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
     uint32_t	state;	   /* initialized, running */
