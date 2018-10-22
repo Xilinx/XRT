@@ -486,7 +486,7 @@ public:
   int
   free_stream_buf(xrt::device::stream_buf_handle handle);
 
-  int 
+  int
   poll_streams(xrt::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
 
   /**
@@ -651,6 +651,28 @@ public:
     return m_computeunits.size();
   }
 
+  /**
+   * Acquire a context for a given compute unit on this device
+   *
+   * Throws exception if context cannot be acquired on device
+   *
+   * @return
+   *   @true on success, @false if no program loaded.
+   */
+  bool
+  acquire_context(compute_unit* cu, bool shared=true) const;
+
+  /**
+   * Release a context for a given compute unit on this device
+   *
+   * Throws exception if context cannot be release properly.
+   *
+   * @return
+   *   @true on success, @false if no program loaded.
+   */
+  bool
+  release_context(compute_unit* cu) const;
+
   size_t
   get_num_cdmas() const
   {
@@ -659,7 +681,8 @@ public:
 
   void clear_connection(connidx_type conn);
 
-protected:
+private:
+
   /**
    * Add a cu this device can use
    *
@@ -671,7 +694,9 @@ protected:
     m_computeunits.emplace_back(std::move(cu));
   }
 
-private:
+  void
+  clear_cus();
+
   /**
    * Set xrt device when the final device is determined
    *

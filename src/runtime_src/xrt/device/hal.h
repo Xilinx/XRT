@@ -21,6 +21,7 @@
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
+#include "xrt/util/uuid.h"
 
 #include "driver/include/xclperf.h"
 #include "driver/include/xcl_app_debug.h"
@@ -159,6 +160,12 @@ public:
 
   virtual void
   close() = 0;
+
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx) {}
 
   // Hack to copy hw_em device info to sw_em device info
   // Should not be necessary when we move to sw_emu
@@ -449,22 +456,6 @@ public:
   writeKernelCtrl(uint64_t offset,const void* hbuf,size_t size)
   {
     return operations_result<ssize_t>();
-  }
-
-  /**
-   * Reset device program
-   *
-   * @param kind
-   *   Type of set
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-  virtual operations_result<int>
-  resetKernel()
-  {
-    return operations_result<int>();
   }
 
   /**

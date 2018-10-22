@@ -20,6 +20,7 @@
 
 #include <cstring> // for std::memcpy
 #include <iostream>
+#include <cerrno>
 #include <sys/mman.h> // for POSIX munmap
 
 namespace xrt { namespace hal2 {
@@ -116,6 +117,38 @@ getExecBufferObject(const ExecBufferObjectHandle& boh) const
   if (bo->owner != m_handle)
     throw std::runtime_error("bad exec buffer object");
   return bo;
+}
+
+void
+device::
+acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
+{
+#if 0
+  if (m_handle && m_ops->mOpenContext) {
+    if (m_ops->mOpenContext(m_handle,uuid.get(),cuidx,shared))
+      throw std::runtime_error(std::string("failed to acquire CU(")
+                               + std::to_string(cuidx)
+                               + ") context '"
+                               + std::strerror(errno)
+                               + "'");
+  }
+#endif
+}
+
+void
+device::
+release_cu_context(const uuid& uuid,size_t cuidx)
+{
+#if 0
+  if (m_handle && m_ops->mCloseContext) {
+    if (m_ops->mCloseContext(m_handle,uuid.get(),cuidx))
+      throw std::runtime_error(std::string("failed to release CU(")
+                               + std::to_string(cuidx)
+                               + ") context '"
+                               + std::strerror(errno)
+                               + "'");
+  }
+#endif
 }
 
 ExecBufferObjectHandle
@@ -353,7 +386,8 @@ device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction 
 }
 
 event
-device::copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
+device::
+copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
 {
   BufferObject* dst_bo = getBufferObject(dst_boh);
   BufferObject* src_bo = getBufferObject(src_boh);
@@ -519,7 +553,7 @@ svm_bo_lookup(void* ptr)
 }
 
 //Stream
-int 
+int
 device::
 createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
@@ -531,7 +565,7 @@ createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t r
   return m_ops->mCreateWriteQueue(m_handle,&ctx,stream);
 }
 
-int 
+int
 device::
 createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
@@ -543,9 +577,9 @@ createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t ro
   return m_ops->mCreateReadQueue(m_handle,&ctx,stream);
 }
 
-int 
+int
 device::
-closeStream(hal::StreamHandle stream) 
+closeStream(hal::StreamHandle stream)
 {
   return m_ops->mDestroyQueue(m_handle,stream);
 }
@@ -557,16 +591,16 @@ allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
   return m_ops->mAllocQDMABuf(m_handle,size,buf);
 }
 
-int 
+int
 device::
 freeStreamBuf(hal::StreamBufHandle buf)
 {
   return m_ops->mFreeQDMABuf(m_handle,buf);
 }
 
-ssize_t 
+ssize_t
 device::
-writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
+writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* request)
 {
   //TODO:
   (void)offset;
@@ -590,10 +624,10 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
   return m_ops->mWriteQueue(m_handle,stream,&req);
 }
 
-ssize_t 
+ssize_t
 device::
-readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
-{ 
+readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* request)
+{
   (void)offset;
   xclQueueRequest req;
   xclReqBuffer buffer;
@@ -616,7 +650,7 @@ int
 device::
 pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout) {
   xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
-  return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout); 
+  return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
 #ifdef PMD_OCL
