@@ -238,8 +238,8 @@ public:
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
-    int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-    int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
+    int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }

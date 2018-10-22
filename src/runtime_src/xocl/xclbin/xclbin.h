@@ -21,6 +21,7 @@
 
 #include "xocl/core/refcount.h"
 #include "xclbin/binary.h"
+#include "xrt/util/uuid.h"
 
 #include <map>
 #include <string>
@@ -175,6 +176,13 @@ public:
    */
   std::string
   dsa_name() const;
+
+  /**
+   * Get uuid of xclbin
+   */
+  using uuid_type = xrt::uuid;
+  uuid_type
+  uuid() const;
 
   /**
    * Check if unified platform
@@ -375,7 +383,7 @@ public:
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
-   * @param conn 
+   * @param conn
    *   Index into the connectivity section allocated.
    * @return
    *   Memory idx
