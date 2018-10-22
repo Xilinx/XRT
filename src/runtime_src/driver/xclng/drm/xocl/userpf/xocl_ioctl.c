@@ -73,12 +73,14 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 		return -EINVAL;
 	}
 
+#if 0
+	//xocl_exec_validate() should do the validation instead
 	/* If ctx xclbin uuid mismatch or no xclbin uuid then EPERM */
 	if (uuid_is_null(&client->xclbin_id) || !uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
 		userpf_err(xdev, "Invalid xclbin for current process");
 		return -EPERM;
 	}
-
+#endif
 	/* Look up the gem object corresponding to the BO handle.
 	 * This adds a reference to the gem object.  The refernece is
 	 * passed to kds or released here if errors occur.
@@ -173,10 +175,12 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 			goto out;
 
 		xdev->ip_reference[args->cu_index]--;
-		if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-                        // We jsut gave up the last context, give up the xclbin lock
+		if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
+                        // We just gave up the last context, give up the xclbin lock
+			uuid_copy(&client->xclbin_id, &uuid_null);
 			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
 							 pid_nr(task_tgid(current)));
+		}
 		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
 			  args->cu_index);
 		goto out;
@@ -194,31 +198,33 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-		// Process has no other context on any CU ye, hence we need to lock the xclbin
-		// Process uses just one lock for all its contexts
+		// Process has no other context on any CU yet, hence we need to lock the xclbin
+		// A process uses just one lock for all its contexts
 		acquire_lock = true;
 
 	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
-		userpf_err(xdev, "Context has already been allocated before by this process");
+		userpf_info(xdev, "Context has already been allocated before by this process");
 		// Context was previously allocated for the same CU, cannot allocate again
-		ret = -EPERM;
+		ret = 0;
 		goto out;
 	}
 
-	if (acquire_lock) // This is the first context on any CU for this process, lock the xclbin
+	if (acquire_lock) {
+                // This is the first context on any CU for this process, lock the xclbin
 		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
 					       pid_nr(task_tgid(current)));
-
-	if (ret) {
-                // Locking of xclbin failed, give up our context
-		clear_bit(args->cu_index, client->cu_bitmap);
-		goto out;
+		if (ret) {
+			// Locking of xclbin failed, give up our context
+			clear_bit(args->cu_index, client->cu_bitmap);
+			goto out;
+		}
 	}
 
 	xdev->ip_reference[args->cu_index]++;
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
 out:
-	uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
+	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+		uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;
 }
@@ -706,7 +712,8 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 
 	mutex_lock(&xdev->ctx_list_lock);
 	err = xocl_read_axlf_helper(xdev, axlf_obj_ptr);
-	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
+	//uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
+	uuid_copy(&client->xclbin_id, &uuid_null);
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
 }
