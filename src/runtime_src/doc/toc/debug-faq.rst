@@ -74,7 +74,7 @@ all buffer allocation requests.
 Memory Read Before Write
 ........................
 
-Read-Before-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if -- since the last bitstream download which results in MIG initialization -- no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
+Read-Before-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
 1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbutil query`` will show that the CU is stuck in *BUSY* state and not making progress.
 2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbutil query`` will show if an AXI Firewall has indeed tripped including its timestamp.
@@ -88,13 +88,13 @@ Incorrect frequency scaling usually indicates a tooling or
 infrastructure bug. Target frequencies for the dynamic (partial
 reconfiguration) region are frozen at compile time and specified in
 ``clock_freq_topology`` section of ``xclbin``. If clocks in the dynamic region
-are running at incorrect -- higher than specified -- frequency,
+are running at incorrect — higher than specified — frequency,
 kernels will demonstrate weird behavior.
 
 1. Often a CU will produce completely incorrect result with no identifiable pattern
 2. A CU might hang
 3. When run several times, a CU may produce correct results a few times and incorrect results rest of the time
-4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct -- typically 64 bytes or one AXI burst -- segment followed by incorrect segments are generated.
+4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.
 
 Users should check the frequency of the board with ``xbutil query``
 and compare it against the metadata in ``xclbin``. ``xclbincat`` may
@@ -130,7 +130,7 @@ Bitsream Download Failures
   messages in ``dmesg`` would reveal if MIG calibration failed.
 
 Incorrect Timing Constraints
-  If the platform or dynamic region has invalid timing constraints -- which is really a platform or SDx tool bug -- CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
+  If the platform or dynamic region has invalid timing constraints — which is really a platform or SDx tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
 
 Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~
