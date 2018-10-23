@@ -933,6 +933,9 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, 
 XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
                                                  uint32_t slotnum, char* slotName, uint32_t length);
 
+XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type,
+                                                 uint32_t slotnum);
+
 XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type);

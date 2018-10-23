@@ -211,6 +211,7 @@ public:
     double xclGetWriteMaxBandwidthMBps();
     void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
     uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+    uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
     void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                             char* slotName, uint32_t length);
     size_t xclPerfMonClockTraining(xclPerfMonType type);

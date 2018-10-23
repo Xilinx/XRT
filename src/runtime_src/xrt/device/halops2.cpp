@@ -54,6 +54,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mSetProfilingSlots(0)
   ,mGetProfilingSlots(0)
   ,mGetProfilingSlotName(0)
+  ,mGetProfilingSlotProperties(0)
   ,mClockTraining(0)
   ,mStartCounters(0)
   ,mStopCounters(0)
@@ -159,6 +160,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
 
   mGetProfilingSlotName = (getSlotNameFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");
   if (!mGetProfilingSlotName)
+    return;
+
+  mGetProfilingSlotProperties = (getSlotPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
+  if (!mGetProfilingSlotProperties)
     return;
 
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");

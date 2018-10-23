@@ -520,6 +520,14 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    if (!m_ops->mGetProfilingSlotProperties)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
+  }
+
   virtual hal::operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
   {

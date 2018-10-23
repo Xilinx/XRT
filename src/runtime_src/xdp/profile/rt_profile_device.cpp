@@ -109,6 +109,11 @@ namespace XCL {
       std::swap(mWriteBytes[i], empty16);
       std::swap(mReadBytes[i], empty16);
     }
+    for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
+      mStreamTxStarts[i] = std::queue<uint64_t>();
+      mStreamStallStarts[i] = std::queue<uint64_t>();
+      mStreamStarveStarts[i] = std::queue<uint64_t>();
+    }
   }
 
   // Log device trace results: store in queues and report events as they are completed
@@ -126,7 +131,10 @@ namespace XCL {
     //uint64_t deviceStartTimestamp = 0;
     uint64_t hostTimestampNsec = 0;
     uint64_t startTime = 0;
-    double y1, y2, x1, x2;
+    double y1=0;
+    double y2=0;
+    double x1=0;
+    double x2=0;
     DeviceTrace kernelTrace;
     
     XDP_LOG("[rt_device_profile] Logging %u device trace samples (total = %ld)...\n",
@@ -201,6 +209,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           if (trace.TraceID >= 2 && trace.TraceID <= 61)
             slotID = trace.TraceID/2;
           else
+            if (!(trace.TraceID >= 576 && trace.TraceID < 576 + XSSPM_MAX_NUMBER_SLOTS))
             // Unsupported
             continue;
       }
@@ -319,8 +328,64 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         else continue;
       } // If Hw Emu
       else {
+        // SSPM trace
+        auto rts = XCL::RTSingleton::Instance();
+        DeviceTrace streamTrace;
+        streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
+        if (trace.TraceID >= 576 && trace.TraceID < 576 + XSSPM_MAX_NUMBER_SLOTS) {
+          s = trace.TraceID - 576;
+          bool isSingle =    trace.EventFlags & 0x10;
+          bool txEvent =     trace.EventFlags & 0x8;
+          bool stallEvent =  trace.EventFlags & 0x4;
+          bool starveEvent = trace.EventFlags & 0x2;
+          bool isStart =     trace.EventFlags & 0x1;
+          unsigned ipInfo = rts->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+          bool isRead = (ipInfo & 0x2) ? true : false;
+          if (isStart) {
+            if (txEvent)
+              mStreamTxStarts[s].push(timestamp);
+            else if (starveEvent)
+              mStreamStarveStarts[s].push(timestamp);
+            else if (stallEvent)
+              mStreamStallStarts[s].push(timestamp);
+          } else {
+              if (txEvent) {
+                if (isSingle || mStreamTxStarts[s].empty()) {
+                  startTime = timestamp;
+                } else {
+                  startTime = mStreamTxStarts[s].front();
+                  mStreamTxStarts[s].pop();
+                }
+                streamTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
+              } else if (starveEvent) {
+                if (mStreamStarveStarts[s].empty()) {
+                  startTime = timestamp;
+                } else {
+                  startTime = mStreamStarveStarts[s].front();
+                  mStreamStarveStarts[s].pop();
+                }
+                streamTrace.Type = "Stream_Starve";
+              } else if (stallEvent) {
+                if (mStreamStallStarts[s].empty()) {
+                  startTime = timestamp;
+                } else {
+                  startTime = mStreamStallStarts[s].front();
+                  mStreamStallStarts[s].pop();
+                }
+                streamTrace.Type = "Stream_Stall";
+              }
+              streamTrace.SlotNum = s;
+              streamTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
+              streamTrace.StartTime = startTime;
+              streamTrace.EndTime = timestamp;
+              streamTrace.BurstLength = timestamp - startTime + 1;
+              streamTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+              streamTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
+              resultVector.push_back(streamTrace);
+          } // !isStart
+        }
         // SAM Trace
-        if (trace.TraceID >= 64) {
+        else if (trace.TraceID >= 64) {
           uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
           uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
           uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;

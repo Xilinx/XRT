@@ -776,6 +776,12 @@ public:
     return m_hal->getProfilingSlotName(type, slotnum, slotName, length);
   }
 
+  hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    return m_hal->getProfilingSlotProperties(type, slotnum);
+  }
+
   hal::operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
   {
