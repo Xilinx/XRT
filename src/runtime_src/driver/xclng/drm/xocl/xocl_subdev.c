@@ -340,7 +340,10 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 		bin_obj->m_header.m_versionMinor == 0)) {
 		xocl_err(&XDEV(xdev_hdl)->pdev->dev,
 			"Mismatch xrt version, xrt %s, xclbin "
-			"%d.%d.%d", xrt_build_version, major, minor, patch);
+			"%d.%d.%d", xrt_build_version,
+			bin_obj->m_header.m_versionMajor,
+			bin_obj->m_header.m_versionMinor,
+			bin_obj->m_header.m_versionPatch);
 		return -EINVAL;
 	}
 
