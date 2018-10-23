@@ -216,25 +216,29 @@ public:
 
         ss << std::left;
         ss << std::setw(16) << "DSA name" <<"\n";
-        ss << std::setw(16) << m_devinfo.mName << "\n\n";
+        ss << std::setw(16) << gSensorTree.get<std::string>( "board.dsa_name", "N/A" ) << "\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
 
-        ss << std::setw(16) << std::hex << m_devinfo.mVendorId << std::dec;
-        ss << std::setw(16) << std::hex << m_devinfo.mDeviceId << std::dec;
+        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.vendor", -1 ) << std::dec;
+        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.device", -1 ) << std::dec;
 
         ssdevice << std::setw(4) << std::setfill('0') << std::hex << m_devinfo.mSubsystemId;
         ss << std::setw(16) << ssdevice.str();
-        ss << std::setw(16) << std::hex << m_devinfo.mSubsystemVendorId << std::dec;
+        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.subdevice", -1 ) << std::dec;
+        
+        // ptree needs help here
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
 
+        // ptree needs help PB instead of GB
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
         ss << std::setw(16) << "OCL Frequency";
 
-        subss << std::left << std::setw(16) << unitConvert(m_devinfo.mDDRSize);
-        subss << std::setw(16) << m_devinfo.mDDRBankCount << std::setw(16) << " ";
+        subss << std::left << std::setw(16) << unitConvert( gSensorTree.get<int>( "board.ddr_size", -1 ) );
+        subss << std::setw(16) << gSensorTree.get<int>( "board.ddr_count", -1 ) << std::setw(16) << " ";
 
+        // ptree needs help here
         for(unsigned i= 0; i < m_devinfo.mNumClocks; ++i) {
             ss << "Clock" << std::setw(11) << i ;
             subss << m_devinfo.mOCLFrequency[i] << std::setw(13) << " MHz";
@@ -244,9 +248,9 @@ public:
         ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
-        ss << "GEN " << m_devinfo.mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo.mPCIeLinkWidth;
-        ss << std::setw(32) << m_devinfo.mDMAThreads;
-        ss << std::setw(16) << std::boolalpha << m_devinfo.mMigCalib << std::noboolalpha << "\n";
+        ss << "GEN " << gSensorTree.get<int>( "board.pcie_speed", -1 ) << "x" << std::setw(10) << gSensorTree.get<int>( "board.pcie_width", -1 );
+        ss << std::setw(32) << gSensorTree.get<int>( "board.dma_threads", -1 );
+        ss << std::setw(16) << std::boolalpha << gSensorTree.get<bool>( "board.mig_calibrated", "false" ) << std::noboolalpha << "\n";
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
    }
@@ -725,12 +729,26 @@ public:
         lines.push_back(ss.str());
     }
     
-//    int readSensors( void )
-//    {
-//        // board
-//        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
-//        return 0;
-//    }
+    int readSensors( void ) const
+    {
+        // board
+        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
+        gSensorTree.put( "board.vendor", m_devinfo.mVendorId );
+        gSensorTree.put( "board.device", m_devinfo.mDeviceId );
+        gSensorTree.put( "board.subdevice", m_devinfo.mSubsystemId );
+        gSensorTree.put( "board.subvendor", m_devinfo.mSubsystemVendorId );
+        gSensorTree.put( "board.xmcversion", m_devinfo.mXMCVersion );
+        gSensorTree.put( "board.ddr_size", m_devinfo.mDDRSize );
+        gSensorTree.put( "board.ddr_count", m_devinfo.mDDRBankCount );
+        gSensorTree.put( "board.clock0", m_devinfo.mOCLFrequency[0] );
+        gSensorTree.put( "board.clock1", m_devinfo.mOCLFrequency[1] );
+        gSensorTree.put( "board.pcie_speed", m_devinfo.mPCIeLinkSpeed );
+        gSensorTree.put( "board.pcie_width", m_devinfo.mPCIeLinkWidth );
+        gSensorTree.put( "board.dma_threads", m_devinfo.mDMAThreads );
+        gSensorTree.put( "board.mig_calibrated", m_devinfo.mMigCalib );
+        
+        return 0;
+    }
 
     /*
      * dump
@@ -744,8 +762,7 @@ public:
         
         // start sensor tree
         createEmptyTree( gSensorTree );
-//        readSensors();
-        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
+        readSensors();
         writeTree( gSensorTree );
         // end sensor tree
         
