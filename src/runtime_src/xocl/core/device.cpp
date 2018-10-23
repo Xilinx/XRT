@@ -260,7 +260,6 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
   uint64_t flow = (uint64_t)-1;
 
   if(ext && ext->param) {
-    int32_t conn = 0;
     auto kernel = xocl::xocl(ext->kernel);
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
