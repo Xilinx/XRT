@@ -204,23 +204,19 @@ const static struct xclmgmt_ocl_clockwiz {
 static void reset_scheduler(struct icap *icap)
 {
 	int err = -EINVAL;
-#if 0
 	size_t resplen = sizeof (err);
 	struct mailbox_req mbreq = { 0 };
-#endif
 	int xocl_reset_scheduler(struct pci_dev *pdev);
 	int (*reset)(struct pci_dev *pdev);
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	ICAP_INFO(icap, "calling xocl_reset_scheduler");
 
-#if 0
 	mbreq.req = MAILBOX_REQ_RESET_ERT;
 	(void) xocl_peer_request(xocl_get_xdev(icap->icap_pdev),
 		&mbreq, &err, &resplen, NULL, NULL);
 	if (err == 0)
 		return;
-#endif
 
 	reset = symbol_get(xocl_reset_scheduler);
 	if (reset) {
