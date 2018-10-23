@@ -104,6 +104,7 @@ enum {
 #define	MGMT_SUFFIX		".m"
 #define	USER_SUFFIX		".u"
 
+#define	XOCL_FEATURE_ROM_USER	"rom" USER_SUFFIX
 #define XOCL_FEATURE_ROM	"rom" SUBDEV_SUFFIX
 #define XOCL_MM_XDMA		"mm_dma.v5" SUBDEV_SUFFIX
 #define XOCL_MM_QDMA		"mm_dma.v6" SUBDEV_SUFFIX

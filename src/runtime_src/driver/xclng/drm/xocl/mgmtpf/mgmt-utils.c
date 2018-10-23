@@ -119,7 +119,7 @@ void freeAXIGate(struct xclmgmt_dev *lro)
  */
 void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
 {
-	struct pci_dev *pdev = lro->user_pci_dev;
+	struct pci_dev *userpf;
 	struct mailbox_req mbreq = { 0 };
 	int err = -EINVAL;
 	size_t resplen = sizeof (err);
@@ -128,18 +128,25 @@ void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
 	mbreq.req = prepare ?
 		MAILBOX_REQ_HOT_RESET_BEGIN : MAILBOX_REQ_HOT_RESET_END;
 	(void) xocl_peer_request(lro, &mbreq, &err, &resplen, NULL, NULL);
-	if (err != 0) {
-		/* Fallback to our hacky way if mailbox is not available. */
-		mgmt_err(lro, "cannot reset peer via mailbox, err=%d", err);
-		reset = symbol_get(xocl_reset_notify);
-		if (reset) {
-			mgmt_err(lro, "calling xocl_reset_notify() directly");
-			device_lock(&pdev->dev);
-			reset(pdev, prepare);
-			device_unlock(&pdev->dev);
-			symbol_put(xocl_reset_notify);
-		}
+	if (!err)
+		return;
+
+	/* Fallback to our hacky way if mailbox is not available. */
+	mgmt_err(lro, "cannot reset peer via mailbox, err=%d", err);
+	userpf = xocl_hold_userdev(lro);
+	if (!userpf) {
+		mgmt_err(lro, "failed holding userpf");
+		return;
 	}
+	reset = symbol_get(xocl_reset_notify);
+	if (reset) {
+		mgmt_err(lro, "calling xocl_reset_notify() directly");
+		reset(userpf, prepare);
+		symbol_put(xocl_reset_notify);
+	} else
+		mgmt_err(lro, "did not find xocl_reset_notify");
+
+	xocl_release_userdev(userpf);
 }
 
 /**
@@ -228,14 +235,12 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	if (lro->user_pci_dev) {
-		/*
- 		 * Make the xdma offline before issuing hot reset.
-		 * assume all axi access from userpf is stopped
-		 * busy lock is taken to make sure no axi access at this time
-		 */
-		xocl_reset(lro, true);
-	}
+	/*
+ 	 * Make the xdma offline before issuing hot reset.
+	 * assume all axi access from userpf is stopped
+	 * busy lock is taken to make sure no axi access at this time
+	 */
+	xocl_reset(lro, true);
 
 	if (!lro->reset_firewall) {
 		/*
@@ -285,10 +290,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	freeAXIGate(lro);
 	msleep(500);
 
-	if (lro->user_pci_dev) {
-		// Bring the xdma online
-		xocl_reset(lro, false);
-	}
+	// Bring the xdma online
+	xocl_reset(lro, false);
 
 	/* Workaround for some DSAs. Flush axilite busses */
 	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
@@ -299,6 +302,54 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 #endif
 done:
 	return err;
+}
+
+static int xocl_match_slot_and_save(struct device *dev, void *data)
+{
+	struct pci_dev *pdev;
+	unsigned long slot;
+
+	pdev = to_pci_dev(dev);
+	slot = PCI_SLOT(pdev->devfn);
+
+	if (slot == (unsigned long)data) {
+		pci_cfg_access_lock(pdev);
+		pci_save_state(pdev);
+	}
+
+	return 0;
+}
+
+static void xocl_pci_save_config_all(struct pci_dev *pdev)
+{
+	unsigned long slot = PCI_SLOT(pdev->devfn);
+
+	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
+		xocl_match_slot_and_save);
+}
+
+static int xocl_match_slot_and_restore(struct device *dev, void *data)
+{
+	struct pci_dev *pdev;
+	unsigned long slot;
+
+	pdev = to_pci_dev(dev);
+	slot = PCI_SLOT(pdev->devfn);
+
+	if (slot == (unsigned long)data) {
+		pci_restore_state(pdev);
+		pci_cfg_access_unlock(pdev);
+	}
+
+	return 0;
+}
+
+static void xocl_pci_restore_config_all(struct pci_dev *pdev)
+{
+	unsigned long slot = PCI_SLOT(pdev->devfn);
+
+	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
+		xocl_match_slot_and_restore);
 }
 /*
  * Inspired by GenWQE driver, card_base.c
@@ -311,9 +362,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	struct pci_dev *pci_dev = lro->pci_dev;
 
 	/* Make the user pf offline before issuing reset. */
-	if (lro->user_pci_dev) {
-		xocl_reset(lro, true);
-	}
+	xocl_reset(lro, true);
 
 	//freeze and free AXI gate to reset the OCL region before and after the pcie reset.
 	freezeAXIGate(lro);
@@ -328,12 +377,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	printk(KERN_INFO "%s: pci_fundamental_reset \n", DRV_NAME);
 
 	// Save pci config space for botht the pf's
-	pci_cfg_access_lock(pci_dev);
-	pci_save_state(pci_dev);
-	if (lro->user_pci_dev) {
-		pci_cfg_access_lock(lro->user_pci_dev);
-		pci_save_state(lro->user_pci_dev);
-	}
+	xocl_pci_save_config_all(pci_dev);
 
 	rc = pcie_mask_surprise_down(pci_dev, &orig_mask);
 	if (rc)
@@ -373,13 +417,8 @@ done:
 	printk(KERN_INFO "%s: pci_fundamental_reset done routine\n", DRV_NAME);
 
 	// restore pci config space for botht the pf's
-	pci_restore_state(pci_dev);
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
-	pci_cfg_access_unlock(pci_dev);
-	if (lro->user_pci_dev) {
-		pci_restore_state(lro->user_pci_dev);
-		pci_cfg_access_unlock(lro->user_pci_dev);
-	}
+	xocl_pci_restore_config_all(pci_dev);
 
 	//Also freeze and free AXI gate to reset the OCL region.
 	freezeAXIGate(lro);
@@ -388,9 +427,7 @@ done:
 	msleep(500);
 
 	// Bring the user pf online
-	if (lro->user_pci_dev) {
-		xocl_reset(lro, false);
-	}
+	xocl_reset(lro, false);
 
 	// TODO: Figure out a way to reinit DMA engine which is other PF
 	//if (!rc)
@@ -430,14 +467,9 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	mgmt_info(lro, "Reset PCI");
 	
-        pci_cfg_access_lock(pdev);
-	pci_save_state(pdev);
-
 	/* what if user PF in VM ? */
-	if (lro->user_pci_dev) {
-		pci_cfg_access_lock(lro->user_pci_dev);
-		pci_save_state(lro->user_pci_dev);
-	}
+	xocl_pci_save_config_all(pdev);
+
 	/* Reset secondary bus. */
 	bus = pdev->bus;
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
@@ -457,11 +489,5 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	mgmt_info(lro, "Resetting for %d ms", i); 
 
-	if (lro->user_pci_dev) {
-		pci_restore_state(lro->user_pci_dev);
-		pci_cfg_access_unlock(lro->user_pci_dev);
-	}
-
-	pci_restore_state(pdev);
-	pci_cfg_access_unlock(pdev);
+	xocl_pci_restore_config_all(pdev);
 }

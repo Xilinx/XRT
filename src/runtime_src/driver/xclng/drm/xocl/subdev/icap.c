@@ -204,32 +204,42 @@ const static struct xclmgmt_ocl_clockwiz {
 static void reset_scheduler(struct icap *icap)
 {
 	int err = -EINVAL;
+#if 0
 	size_t resplen = sizeof (err);
 	struct mailbox_req mbreq = { 0 };
+#endif
 	int xocl_reset_scheduler(struct pci_dev *pdev);
 	int (*reset)(struct pci_dev *pdev);
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	ICAP_INFO(icap, "calling xocl_reset_scheduler");
 
+#if 0
 	mbreq.req = MAILBOX_REQ_RESET_ERT;
 	(void) xocl_peer_request(xocl_get_xdev(icap->icap_pdev),
 		&mbreq, &err, &resplen, NULL, NULL);
 	if (err == 0)
 		return;
+#endif
 
 	reset = symbol_get(xocl_reset_scheduler);
 	if (reset) {
-		struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
-		unsigned int slot = PCI_SLOT(pdev->devfn);
-		struct pci_dev *user_dev =
-			pci_get_slot(pdev->bus, PCI_DEVFN(slot, 0));
+		struct pci_dev *user_dev;
 
-		if (user_dev)
-			err = reset(user_dev);
+		user_dev = xocl_hold_userdev(xdev);
 
+		if (!user_dev) {
+			err = -EFAULT;
+			goto failed;
+		}
+	
+		err = reset(user_dev);
+
+		xocl_release_userdev(user_dev);
 		symbol_put(xocl_reset_scheduler);
 	}
 
+failed:
 	if (err)
 		ICAP_ERR(icap, "calling xocl_reset_scheduler failed: %d", err);
 }
@@ -1571,6 +1581,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
 		err = -EFAULT;
 		goto done;
+	}
+
+	if (xocl_xrt_version_check(xdev, &bin_obj)) {
+		ICAP_ERR(icap, "XRT version does not match");
+		return -EINVAL;
 	}
 
 	/* Match the xclbin with the hardware. */
