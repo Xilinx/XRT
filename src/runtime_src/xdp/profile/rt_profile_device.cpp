@@ -202,14 +202,14 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         if (trace.Overflow == 1)
           trace.Timestamp += LOOP_ADD_TIME_SPM;
         timestamp = trace.Timestamp;
-        if (trace.TraceID >= 64 && trace.TraceID <= 544)
-          slotID = ((trace.TraceID - 64) / 16);
+        if (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM)
+          slotID = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
         else
           // SPM Trace IDs (Slots 0-30)
-          if (trace.TraceID >= 2 && trace.TraceID <= 61)
+          if (trace.TraceID >= MIN_TRACE_ID_SPM + 2 && trace.TraceID <= MAX_TRACE_ID_SPM)
             slotID = trace.TraceID/2;
           else
-            if (!(trace.TraceID >= 576 && trace.TraceID < 576 + XSSPM_MAX_NUMBER_SLOTS))
+            if (!(trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM))
             // Unsupported
             continue;
       }
@@ -332,8 +332,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         auto rts = XCL::RTSingleton::Instance();
         DeviceTrace streamTrace;
         streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
-        if (trace.TraceID >= 576 && trace.TraceID < 576 + XSSPM_MAX_NUMBER_SLOTS) {
-          s = trace.TraceID - 576;
+        if (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM) {
+          s = trace.TraceID - MIN_TRACE_ID_SSPM;
           bool isSingle =    trace.EventFlags & 0x10;
           bool txEvent =     trace.EventFlags & 0x8;
           bool stallEvent =  trace.EventFlags & 0x4;
@@ -385,7 +385,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           } // !isStart
         }
         // SAM Trace
-        else if (trace.TraceID >= 64) {
+        else if (trace.TraceID >= MIN_TRACE_ID_SAM) {
           uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
           uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
           uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;
