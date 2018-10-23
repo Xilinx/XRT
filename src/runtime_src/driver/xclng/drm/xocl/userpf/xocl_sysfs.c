@@ -63,7 +63,8 @@ static ssize_t kdsstat_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf,
-		"context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
+		"uuid: %pUL\ncontext: %x\noutstanding exec: %x\ntotal exec: %ld\n",
+		&xdev->xclbin_id,
 		get_live_client_size(xdev),
 		atomic_read(&xdev->outstanding_execs),
 		atomic64_read(&xdev->total_execs));
