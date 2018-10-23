@@ -1585,6 +1585,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
+	if (xocl_xrt_version_check(xdev, &bin_obj)) {
+		ICAP_ERR(icap, "XRT version does not match");
+		return -EINVAL;
+	}
+
 	/* Match the xclbin with the hardware. */
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {

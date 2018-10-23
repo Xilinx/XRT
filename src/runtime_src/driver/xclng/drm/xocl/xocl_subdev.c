@@ -16,6 +16,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include "xocl_drv.h"
+#include "version.h"
 
 static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
@@ -321,4 +322,27 @@ void xocl_release_userdev(struct pci_dev *userdev)
 {
 	device_unlock(&userdev->dev);
 	put_device(&userdev->dev);
+}
+
+int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
+	struct axlf *bin_obj)
+{
+	u32 major, minor, patch;
+	/* check runtime version:
+	 *    1. if it is 0.0.xxxx, this implies old xclbin,
+	 *       we pass the check anyway.
+	 *    2. compare major and minor, returns error if it does not match.
+	 */
+	sscanf(xrt_build_version, "%d.%d.%d", &major, &minor, &patch);
+	if ((major != bin_obj->m_header.m_versionMajor ||
+		minor != bin_obj->m_header.m_versionMinor) &&
+		!(bin_obj->m_header.m_versionMajor == 0 &&
+		bin_obj->m_header.m_versionMinor == 0)) {
+		xocl_err(&XDEV(xdev_hdl)->pdev->dev,
+			"Mismatch xrt version, xrt %s, xclbin "
+			"%d.%d.%d", xrt_build_version, major, minor, patch);
+		return -EINVAL;
+	}
+
+	return 0;
 }
