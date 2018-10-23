@@ -126,6 +126,11 @@
 
 #include "../xocl_drv.h"
 
+int mailbox_no_intr = 1;
+module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(mailbox_no_intr,
+	"Disable mailbox interrupt and do timer-driven msg passing");
+
 #define	PACKET_SIZE	16 /* Number of DWORD. */
 
 #define	FLAG_STI	(1 << 0)
@@ -1380,9 +1385,6 @@ static void mailbox_disable_intr_mode(struct mailbox *mbx)
 	struct platform_device *pdev = mbx->mbx_pdev;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 
-	if (mbx->mbx_irq == -1)
-		return;
-
 	/*
 	 * No need to turn on polling mode for TX, which has
 	 * a channel stall checking timer always on when there is
@@ -1397,6 +1399,9 @@ static void mailbox_disable_intr_mode(struct mailbox *mbx)
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_rit, 0x0);
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_sit, 0x0);
 
+	if (mbx->mbx_irq == -1)
+		return;
+
 	(void) xocl_user_interrupt_config(xdev, mbx->mbx_irq, false);
 	(void) xocl_user_interrupt_reg(xdev, mbx->mbx_irq, NULL, mbx);
 
@@ -1407,6 +1412,9 @@ int mailbox_reset(struct platform_device *pdev, bool end_of_reset)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	int ret = 0;
+
+	if (mailbox_no_intr)
+		return 0;
 
 	if (end_of_reset) {
 		MBX_INFO(mbx, "enable intr mode");
@@ -1490,8 +1498,14 @@ static int mailbox_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if ((ret = mailbox_enable_intr_mode(mbx)) != 0)
-		goto failed;
+	if (mailbox_no_intr) {
+		MBX_INFO(mbx, "Enabled timer-driven mode");
+		mailbox_disable_intr_mode(mbx);
+	} else {
+		ret = mailbox_enable_intr_mode(mbx);
+		if (ret != 0)
+			goto failed;
+	}
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
 
