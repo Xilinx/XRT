@@ -38,14 +38,16 @@ version but not for the ``Debug`` version::
 Install the XRT RPM package
 ...........................
 
-Install with (the actual package name might differ) ::
+Install from inside either the ``Release`` or ``Debug`` directory
+according to purpose with (the actual package name might differ) ::
 
-   yum reinstall ./XRT-2.1.0-Linux.rpm
+   sudo yum reinstall ./XRT-2.1.0-Linux.rpm
 
 Install the XRT DEB package
 ...........................
 
-Install with (the actual package name might differ) ::
+Install from inside either the ``Release`` or ``Debug`` directory
+according to purpose with (the actual package name might differ) ::
 
    sudo apt install --reinstall ./xrt_201830.2.1.0_18.10.deb
 
@@ -59,6 +61,7 @@ To compile and install the documentation into the ``doc`` directory at
 the top of the repository::
 
    cd src/runtime_src/doc
+   # For now the CMake can work only locally
    cmake .
    make xrt_doc
    # To look at the generated local documentation with a web browser:
