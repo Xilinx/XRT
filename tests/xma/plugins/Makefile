@@ -1,5 +1,6 @@
-CC    = gcc
-CFLAGS       = -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
+#CC    = gcc
+CC    = g++
+CFLAGS       = -std=c++11 -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
 #CFLAGS       = -fPIC -g -I. -I../../../src/xma/include
 LDFLAGS      = -shared
 

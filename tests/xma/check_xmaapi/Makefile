@@ -1,5 +1,6 @@
-CC    = gcc
-CFLAGS       = -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
+#CC    = gcc
+CC    = g++
+CFLAGS       = -std=c++11 -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
 #LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core -lcheck_pic -lrt -lm -lsubunit -lpthread
 #LDFLAGS      = -L../../../build/Debug/opt/xilinx/xrt/lib -lxmaapi -lxrt_core
 LDFLAGS      = -L/opt/xilinx/xrt/lib -L${XMA_LIBS} -lxmaapi -lxrt_core

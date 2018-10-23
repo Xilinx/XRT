@@ -35,6 +35,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetBOProperties(0)
   ,mExecBuf(0)
   ,mExecWait(0)
+  ,mOpenContext(0)
+  ,mCloseContext(0)
   ,mFreeBO(0)
   ,mWriteBO(0)
   ,mReadBO(0)
@@ -97,6 +99,9 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mGetBOProperties = (getBOPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetBOProperties");
   mExecBuf = (execBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecBuf");
   mExecWait = (execWaitFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecWait");
+
+  mOpenContext = (openContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclOpenContext");
+  mCloseContext = (closeContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclCloseContext");
 
   mFreeBO   = (freeBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeBO");
   if(!mFreeBO)
@@ -214,5 +219,3 @@ operations::
 }
 
 }} // hal2,xrt
-
-

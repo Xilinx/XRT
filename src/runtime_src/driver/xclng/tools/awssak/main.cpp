@@ -20,5 +20,5 @@
 
 int main(int argc, char *argv[])
 {
-    return xcldev::xclXbsak(argc, argv);
+    return xcldev::xclAwssak(argc, argv);
 }

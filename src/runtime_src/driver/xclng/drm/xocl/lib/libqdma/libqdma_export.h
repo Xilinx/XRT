@@ -1029,5 +1029,7 @@ int qdma_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 
 int qdma_descq_get_wrb_udd(unsigned long dev_hndl, unsigned long qhndl,
 		char *buf, int buflen);
+int qdma_error_stat(unsigned long dev_hndl, bool clear, char *outstr,
+		int *len);
 
 #endif

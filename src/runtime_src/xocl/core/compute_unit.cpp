@@ -38,9 +38,9 @@ get_base_addr(const xocl::xclbin::symbol* symbol, const std::string& kinst)
   std::transform(controlport.begin(), controlport.end(), controlport.begin(), ::tolower);
   if (port != controlport)
     throw std::runtime_error
-      ("internal error: kernel instance '" 
-       + kinst + "' in kernel '" 
-       + symbol->name + "' doesn't match control port '" 
+      ("internal error: kernel instance '"
+       + kinst + "' in kernel '"
+       + symbol->name + "' doesn't match control port '"
        + symbol->controlport + "' != '" + port + "'");
   return (*itr).base;
 }
@@ -68,7 +68,7 @@ compute_unit(const xclbin::symbol* s, const std::string& n, device* d)
 }
 
 compute_unit::
-~compute_unit() 
+~compute_unit()
 {
   XOCL_DEBUG(std::cout,"xocl::compute_unit::~compute_unit(",m_uid,")\n");
 }
@@ -116,4 +116,3 @@ get_memidx_union() const
 }
 
 } // xocl
-

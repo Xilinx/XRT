@@ -938,6 +938,7 @@ public:
 
 class xclbin_data_sections
 {
+  const ::axlf* m_top                  = nullptr;
   const ::connectivity* m_con          = nullptr;
   const ::mem_topology* m_mem          = nullptr;
   const ::ip_layout* m_ip              = nullptr;
@@ -957,7 +958,8 @@ class xclbin_data_sections
 public:
   explicit
   xclbin_data_sections(const xocl::xclbin::binary_type& binary)
-    : m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
+    : m_top(reinterpret_cast<const ::axlf*>(binary.binary_data().first))
+    , m_con(reinterpret_cast<const ::connectivity*>(binary.connectivity_data().first))
     , m_mem(reinterpret_cast<const ::mem_topology*>(binary.mem_topology_data().first))
     , m_ip(reinterpret_cast<const ::ip_layout*>(binary.ip_layout_data().first))
     , m_clk(reinterpret_cast<const ::clock_freq_topology*>(binary.clk_freq_data().first))
@@ -1144,6 +1146,12 @@ public:
         return mb.index;
     return -1;
   }
+
+  xocl::xclbin::uuid_type
+  uuid() const
+  {
+    return m_top->m_header.uuid;
+  }
 };
 
 } // namespace
@@ -1228,6 +1236,10 @@ struct xclbin::impl
   std::vector<uint32_t>
   cu_base_address_map() const
   { return m_xml.cu_base_address_map(); }
+
+  uuid_type
+  uuid() const
+  { return m_sections.uuid(); }
 
   const clock_freq_topology*
   get_clk_freq_topology() const
@@ -1333,6 +1345,13 @@ xclbin::
 binary() const
 {
   return impl_or_error()->m_binary;
+}
+
+xclbin::uuid_type
+xclbin::
+uuid() const
+{
+  return impl_or_error()->uuid();
 }
 
 std::string

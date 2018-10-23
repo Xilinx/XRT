@@ -98,7 +98,7 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   boost::property_tree::ptree dna_list;
   struct dnaEntry *dnaEntries = reinterpret_cast<struct dnaEntry *>((void *)_pDataSection);
 
-  for (unsigned int index; index < dnaEntryCount; ++index) {
+  for (unsigned int index = 0; index < dnaEntryCount; ++index) {
     std::string dnaString;
     XUtil::binaryBufferToHexString((unsigned char *) &dnaEntries[index], dnaEntrySizeBytes, dnaString);
 
