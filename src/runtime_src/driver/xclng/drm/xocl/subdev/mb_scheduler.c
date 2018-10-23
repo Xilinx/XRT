@@ -48,7 +48,7 @@
 		DRM_INFO("packet(0x%p) data[%d] = 0x%x\n",data,i,data[i]); \
 })
 
-#define SCHED_VERBOSE
+//#define SCHED_VERBOSE
 
 #ifdef SCHED_VERBOSE
 # define SCHED_DEBUG(msg) DRM_INFO(msg)

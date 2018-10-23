@@ -199,6 +199,8 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	/* This happens when application exists without formally releasing the contexts on CUs.
 	   Give up our contexts on CUs and our lock on xclbin */
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
+		userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
+			    bit);
 		xdev->ip_reference[bit]--;
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
@@ -466,7 +468,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	atomic_set(&xdev->needs_reset,0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	hash_init(xdev->mm_range);
 #endif
 	return 0;

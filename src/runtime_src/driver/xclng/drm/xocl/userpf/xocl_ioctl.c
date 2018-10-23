@@ -218,13 +218,17 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 			clear_bit(args->cu_index, client->cu_bitmap);
 			goto out;
 		}
+		else {
+			uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+		}
 	}
 
+	// Everything is good so far, hence increment the CU reference count
 	xdev->ip_reference[args->cu_index]++;
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
 out:
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-		uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
+		uuid_copy(&client->xclbin_id, &uuid_null);
 	mutex_unlock(&xdev->ctx_list_lock);
 	return ret;
 }
