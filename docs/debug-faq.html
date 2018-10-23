@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>XRT/Board Debug FAQ &mdash; Xilinx Runtime 2018.2 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="prev" title="Building and Installing Software Stack" href="build.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2018.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">XRT/Board Debug FAQ</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#tools-of-the-trade">Tools of the Trade</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#common-reasons-for-failures">Common Reasons For Failures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#incorrect-memory-topology-usage">Incorrect Memory Topology Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#incorrect-frequency-scaling">Incorrect Frequency Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cu-deadlock">CU Deadlock</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multiple-cu-ddr-access-deadlock">Multiple CU DDR Access Deadlock</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#axi-bus-deadlock">AXI Bus Deadlock</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#platform-bugs">Platform Bugs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#board-in-crashed-state">Board in Crashed State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xrt-scheduling-options">XRT Scheduling Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#writing-good-bug-reports">Writing Good Bug Reports</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">Xilinx Runtime</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>XRT/Board Debug FAQ</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/debug-faq.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="xrt-board-debug-faq">
+<h1>XRT/Board Debug FAQ<a class="headerlink" href="#xrt-board-debug-faq" title="Permalink to this headline">¶</a></h1>
+<p>Debugging failures on board runs can be a daunting task which often requires <em>tribal knowledge</em> to be effective. This document attempts to document the tricks of the trade to help reduce debug cycles for all users. This is a living document and will be continuously updated.</p>
+<div class="section" id="tools-of-the-trade">
+<h2>Tools of the Trade<a class="headerlink" href="#tools-of-the-trade" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">dmesg</span></code></dt>
+<dd>Capture Linux kernel and XRT drivers log</dd>
+<dt><code class="docutils literal"><span class="pre">strace</span></code></dt>
+<dd>Capture trace of system calls made by an XRT application</dd>
+<dt><code class="docutils literal"><span class="pre">gdb</span></code></dt>
+<dd>Capture stack trace of an XRT application</dd>
+<dt><code class="docutils literal"><span class="pre">lspci</span></code></dt>
+<dd>Enumerate Xilinx PCIe devices</dd>
+<dt><code class="docutils literal"><span class="pre">xbutil</span></code></dt>
+<dd>Query status of Xilinx PCIe device</dd>
+<dt><code class="docutils literal"><span class="pre">xclbinsplit</span></code></dt>
+<dd>Unpack an xclbin</dd>
+<dt>XRT API Trace</dt>
+<dd><p class="first">Run failing application with HAL logging enabled in <code class="docutils literal"><span class="pre">sdaccel.ini</span></code></p>
+<div class="last highlight-none"><div class="highlight"><pre>[Runtime]
+hal_log=myfail.log
+</pre></div>
+</div>
+</dd>
+</dl>
+</div>
+<div class="section" id="validating-a-working-setup">
+<h2>Validating a Working Setup<a class="headerlink" href="#validating-a-working-setup" title="Permalink to this headline">¶</a></h2>
+<p>When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.</p>
+<dl class="docutils">
+<dt>Board Enumeration</dt>
+<dd><p class="first">Check if BIOS and Linux can see the board. So for Xilinx boards use lspci utility</p>
+<div class="highlight-none"><div class="highlight"><pre>lspci -v -d 10ee:
+</pre></div>
+</div>
+<p>Check if XRT can see the board and reports sane values</p>
+<div class="last highlight-none"><div class="highlight"><pre>xbutil scan
+xbutil query
+</pre></div>
+</div>
+</dd>
+<dt>DSA Sanity Test</dt>
+<dd><p class="first">Check if verify kernel works</p>
+<div class="highlight-none"><div class="highlight"><pre>cd test
+./verify.exe verify.xclbin
+</pre></div>
+</div>
+<p>Check DDR and PCIe bandwidth</p>
+<div class="last highlight-none"><div class="highlight"><pre>xbutil dmatest
+</pre></div>
+</div>
+</dd>
+</dl>
+</div>
+<div class="section" id="common-reasons-for-failures">
+<h2>Common Reasons For Failures<a class="headerlink" href="#common-reasons-for-failures" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="incorrect-memory-topology-usage">
+<h3>Incorrect Memory Topology Usage<a class="headerlink" href="#incorrect-memory-topology-usage" title="Permalink to this headline">¶</a></h3>
+<p>5.0+ DSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().</p>
+<p>If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable HAL logging in sdaccel.ini and then carefully go through all buffer allocation requests.</p>
+</div>
+<div class="section" id="memory-read-before-write">
+<h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
+<p>Read-Before-Write in 5.0+ DSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if &#8211; since the last bitstream download which results in MIG initialization &#8211; no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
+<ol class="arabic simple">
+<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
+<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
+</ol>
+<p>Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.</p>
+</div>
+<div class="section" id="incorrect-frequency-scaling">
+<h3>Incorrect Frequency Scaling<a class="headerlink" href="#incorrect-frequency-scaling" title="Permalink to this headline">¶</a></h3>
+<p>Incorrect frequency scaling usually indicates a tooling or infrastructure bug. Target frequencies for the dynamic (patial reconfig) region are frozen at compile time and specified in clock_freq_topology section of xclbin. If clocks in the dynamic region are running at incorrect &#8211; higher than specified &#8211; frequency, kernels will demonstrate weird behavior.</p>
+<ol class="arabic simple">
+<li>Often a CU will produce completely incorrect result with no identifiable pattern</li>
+<li>A CU might hang</li>
+<li>When run several times, a CU may produce correct results a few times and incorrect results rest of the time</li>
+<li>A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct &#8211; typically 64 bytes or one AXI burst &#8211; segment followed by incorrect segments are generated.</li>
+</ol>
+<p>Users should check the frequency of the board with <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> and compare it against the metadata in xclbin. <code class="docutils literal"><span class="pre">xclbincat</span></code> may be used to extract metadata from xclbin.</p>
+</div>
+<div class="section" id="cu-deadlock">
+<h3>CU Deadlock<a class="headerlink" href="#cu-deadlock" title="Permalink to this headline">¶</a></h3>
+<p>HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> where the CU will appear stuck in <em>START</em> or <em>&#8212;</em> state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.</p>
+</div>
+<div class="section" id="multiple-cu-ddr-access-deadlock">
+<h3>Multiple CU DDR Access Deadlock<a class="headerlink" href="#multiple-cu-ddr-access-deadlock" title="Permalink to this headline">¶</a></h3>
+<p>TODO</p>
+</div>
+<div class="section" id="axi-bus-deadlock">
+<h3>AXI Bus Deadlock<a class="headerlink" href="#axi-bus-deadlock" title="Permalink to this headline">¶</a></h3>
+<p>AXI Bus deadlocks can be caused by <a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a>, <a class="reference internal" href="#cu-deadlock">CU Deadlock</a> or <a class="reference internal" href="#multiple-cu-ddr-access-deadlock">Multiple CU DDR Access Deadlock</a> described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code> to check if CU is stuck in <em>START</em> or <em>&#8211;</em> state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by runing <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">status</span></code> which should list and performance counter values. Optionally run <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">dmatest</span></code> which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.</p>
+</div>
+<div class="section" id="platform-bugs">
+<h3>Platform Bugs<a class="headerlink" href="#platform-bugs" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt>Bitsream Download Failures</dt>
+<dd>Bitstream download failures are usually caused because of incompatible xclbins. dmesg log would provide more insight into why the download failed. At OpenCL level they usually manifest as Invalid Binary (error -44).
+Rarely MIG calibration might fail after bitstream download. This will also show up as bitstream download failure. Usually XRT driver messages in dmesg would reveal if MIG calibration failed.</dd>
+<dt>Incorrect Timing Constraints</dt>
+<dd>If the platform or dynamic region has invalid timing constraints &#8211; which is really a platform or SDx tool bug &#8211; CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="board-in-crashed-state">
+<h2>Board in Crashed State<a class="headerlink" href="#board-in-crashed-state" title="Permalink to this headline">¶</a></h2>
+<p>When board is in crashed state PCIe read operations start returning 0XFF. In this state xbutil query would show bizzare metrics. For example Temp would be very high. Boards in crashed state may be recovered with PCIe hot reset</p>
+<div class="highlight-none"><div class="highlight"><pre>xbutil reset -h
+</pre></div>
+</div>
+<p>If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in <a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></p>
+</div>
+<div class="section" id="xrt-scheduling-options">
+<h2>XRT Scheduling Options<a class="headerlink" href="#xrt-scheduling-options" title="Permalink to this headline">¶</a></h2>
+<p>XRT has three kernel execution schedulers today: ERT, KDS and legacy. By default XRT uses ERT which runs on Microblaze. ERT is accessed through KDS which runs inside xocl Linux kernel driver. If ERT is not available KDS uses its own built-in scheduler. From 2018.2 release onwards KDS (tgether with ERT if available in the DSA) is enabled by default. Users can optionally switch to legacy scheduler which runs in userspace. Switching scheduler will help isolate any scheduler related XRT bugs</p>
+<div class="highlight-none"><div class="highlight"><pre>[Runtime]
+ert=false
+kds=false
+</pre></div>
+</div>
+</div>
+<div class="section" id="writing-good-bug-reports">
+<h2>Writing Good Bug Reports<a class="headerlink" href="#writing-good-bug-reports" title="Permalink to this headline">¶</a></h2>
+<p>When creating bug reports please include the following:</p>
+<ol class="arabic simple">
+<li>Output of <code class="docutils literal"><span class="pre">dmesg</span></code></li>
+<li>Output of <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">query</span></code></li>
+<li>Output of <code class="docutils literal"><span class="pre">xbutil</span> <span class="pre">scan</span></code></li>
+<li>Application binaries: xclbin, host executable and code, any data files used by the application</li>
+<li>XRT version</li>
+<li>DSA name and version</li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="build.html" class="btn btn-neutral" title="Building and Installing Software Stack" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'2018.2',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
