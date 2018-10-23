@@ -30,6 +30,7 @@
 #include "../user_common/memaccess.h"
 #include "../user_common/dd.h"
 #include "../user_common/utils.h"
+#include "../user_common/sensor.h"
 #include "scan.h"
 #include "driver/include/xclbin.h"
 
@@ -55,6 +56,7 @@ typedef std::chrono::high_resolution_clock Clock;
  */
 
 namespace xcldev {
+
 enum command {
     FLASH,
     PROGRAM,
@@ -722,6 +724,13 @@ public:
 
         lines.push_back(ss.str());
     }
+    
+//    int readSensors( void )
+//    {
+//        // board
+//        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
+//        return 0;
+//    }
 
     /*
      * dump
@@ -731,11 +740,22 @@ public:
     int dump(std::ostream& ostr) const {
         std::vector<std::string> lines, usage_lines;
 
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        
+        // start sensor tree
+        createEmptyTree( gSensorTree );
+//        readSensors();
+        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
+        writeTree( gSensorTree );
+        // end sensor tree
+        
         m_devinfo_stringize(m_devinfo, lines);
  
         for(auto line : lines) {
             ostr << line;
         }
+        
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 
 #ifdef AXI_FIREWALL
         unsigned i = m_errinfo.mFirewallLevel;
@@ -760,6 +780,9 @@ public:
         ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ostr << std::setfill(' ') << "\n";
 #endif // AXI Firewall
+        
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
 
@@ -767,7 +790,13 @@ public:
         for(auto line:usage_lines) {
             ostr << line << "\n";
         }
+        
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        
         printStreamInfo(ostr);
+        
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        
         printXclbinID(ostr);
         return 0;
     }
