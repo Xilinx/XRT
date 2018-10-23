@@ -341,6 +341,22 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "debug";
     ext = ".bin";
   }
+  else if ( header.m_sectionKind == DNA_CERTIFICATE ) {
+    type = "dna_certificate";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == BUILD_METADATA ) {
+    type = "build_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == KEYVALUE_METADATA ) {
+    type = "keyvalue_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == USER_METADATA ) {
+    type = "user_metadata";
+    ext = ".bin";
+  }
   else if ( header.m_sectionKind == MEM_TOPOLOGY ) {
     type = "mem_topology";
     ext = ".bin";
@@ -373,8 +389,13 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   else if ( header.m_sectionKind == BMC ) {
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
+  } else {
+    static unsigned int uniqueCount = 1;
+    type = "unknown(" + std::to_string(uniqueCount) + ")";
+    ext = ".bin";
   }
-  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
+
+  
 
 
   std::string id = "";

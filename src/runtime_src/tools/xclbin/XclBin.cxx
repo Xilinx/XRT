@@ -293,7 +293,10 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", XUtil::format("0x%lx", sectionHeader[index].m_sectionSize).c_str());
 
       boost::property_tree::ptree pt_Payload;
-      m_sections[index]->getPayload(pt_Payload);
+      if (m_sections[index]->doesSupportAddFormatType(Section::FT_JSON) && 
+          m_sections[index]->doesSupportDumpFormatType(Section::FT_JSON)) {
+        m_sections[index]->getPayload(pt_Payload);
+      }
 
       if (pt_Payload.size() != 0) {
         pt_sectionHeader.add_child("payload", pt_Payload);
