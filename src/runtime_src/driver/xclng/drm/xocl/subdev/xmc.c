@@ -889,27 +889,20 @@ create_attr_failed:
 	return err;
 }
 
-static int stop_xmc(struct platform_device *pdev)
-{
+static int stop_xmc_nolock(struct platform_device *pdev) {
 	struct xocl_xmc *xmc;
+	int retry = 0;
+	u32 reg_val = 0;
+	void *xdev_hdl;
 
-	xocl_info(&pdev->dev, "Stop Microblaze...");
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return -ENODEV;
-
-	int retry = 0;
-	u32 reg_val = 0;
-	int ret = 0;
-	void *xdev_hdl;
-
-	if (!xmc->enabled) {
-		return 0;
-	}
+	else if (!xmc->enabled)
+		return -ENODEV;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
-	mutex_lock(&xmc->xmc_lock);
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
@@ -948,9 +941,8 @@ static int stop_xmc(struct platform_device *pdev)
 			xocl_err(&xmc->pdev->dev,
 				"XMC Error Reg 0x%x",
 				READ_REG32(xmc, XMC_ERROR_REG));
-			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
-			goto out;
+			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) && 
 			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
 			while (retry++ < MAX_RETRY && 
@@ -962,9 +954,8 @@ static int stop_xmc(struct platform_device *pdev)
 				xocl_err(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
-				ret = -ETIMEDOUT;
 				xmc->state = XMC_STATE_ERROR;
-				goto out;
+				return -ETIMEDOUT;
 			}
 		}
 
@@ -984,10 +975,28 @@ static int stop_xmc(struct platform_device *pdev)
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 	if (reg_val != GPIO_RESET) {//Shouldnt make it here but if we do then exit
 		xmc->state = XMC_STATE_ERROR;
-        ret = -EIO;
-		goto out;
+        	return -EIO;
 	}
-out:
+
+	return 0;
+}
+static int stop_xmc(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+	int ret = 0;
+	void *xdev_hdl;
+
+	xocl_info(&pdev->dev, "Stop Microblaze...");
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
+
+	xdev_hdl = xocl_get_xdev(xmc->pdev);
+
+	mutex_lock(&xmc->xmc_lock);
+	ret = stop_xmc_nolock(pdev);
 	mutex_unlock(&xmc->xmc_lock);
 
 	return ret;
@@ -1001,17 +1010,18 @@ static int load_xmc(struct xocl_xmc *xmc)
 	void *xdev_hdl;
 
 	if (!xmc->enabled) {
-		return 0;
+		return -ENODEV;
 	}
     
-    /* Stop XMC first */
-    ret = stop_xmc(xmc->pdev);
-    if(ret != 0)
-        return ret;
-
-	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	mutex_lock(&xmc->xmc_lock);
+
+    	/* Stop XMC first */
+	ret = stop_xmc_nolock(xmc->pdev);
+    	if(ret != 0)
+		goto out;
+
+	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	/* Load XMC and ERT Image */
 	if (xocl_mb_mgmt_on(xdev_hdl)) {
