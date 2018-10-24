@@ -341,8 +341,10 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	if (major_only)
 		return 0;
 
-	if (minor != bin_obj->m_header.m_versionMinor &&
-		bin_obj->m_header.m_versionMinor != 0)
+	if ((major != bin_obj->m_header.m_versionMajor ||
+		minor != bin_obj->m_header.m_versionMinor) &&
+		!(bin_obj->m_header.m_versionMajor == 0 &&
+		bin_obj->m_header.m_versionMinor == 0))
 		goto err;
 
 	return 0;
