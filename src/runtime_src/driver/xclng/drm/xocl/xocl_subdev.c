@@ -16,6 +16,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include "xocl_drv.h"
+#include "version.h"
 
 static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
@@ -264,4 +265,87 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 			break;
 		}
 	}
+}
+
+static int match_user_rom_dev(struct device *dev, void *data)
+{
+	struct platform_device *pldev = to_platform_device(dev);
+	struct xocl_dev_core *core;
+	struct pci_dev *pdev;
+	unsigned long slot;
+
+	if (strncmp(dev_name(dev), XOCL_FEATURE_ROM_USER,
+		strlen(XOCL_FEATURE_ROM_USER)) == 0) {
+		core = (struct xocl_dev_core *)xocl_get_xdev(pldev); 
+		pdev = core->pdev;
+		slot = PCI_SLOT(pdev->devfn);
+
+		if (slot == (unsigned long)data)
+			return true;
+	}
+
+	return false;
+}
+
+struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl)
+{
+	struct device *user_rom_dev;
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+        struct pci_dev *pdev = core->pdev;
+	struct pci_dev *userdev;
+	unsigned long slot = PCI_SLOT(pdev->devfn);
+	struct xocl_dev_core *user_core;
+
+	user_rom_dev = bus_find_device(&platform_bus_type, NULL, (void *)slot,
+		match_user_rom_dev);
+
+	if (!user_rom_dev)
+		return NULL;
+
+	user_core = (struct xocl_dev_core *)xocl_get_xdev(
+		to_platform_device(user_rom_dev));
+	userdev = user_core->pdev;
+
+	if (!get_device(&userdev->dev))
+		return NULL;
+
+	device_lock(&userdev->dev);
+	if (!userdev->dev.driver) {
+		device_unlock(&pdev->dev);
+		return NULL;
+	}
+
+	return user_core->pdev;
+}
+
+void xocl_release_userdev(struct pci_dev *userdev)
+{
+	device_unlock(&userdev->dev);
+	put_device(&userdev->dev);
+}
+
+int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
+	struct axlf *bin_obj)
+{
+	u32 major, minor, patch;
+	/* check runtime version:
+	 *    1. if it is 0.0.xxxx, this implies old xclbin,
+	 *       we pass the check anyway.
+	 *    2. compare major and minor, returns error if it does not match.
+	 */
+	sscanf(xrt_build_version, "%d.%d.%d", &major, &minor, &patch);
+	if ((major != bin_obj->m_header.m_versionMajor ||
+		minor != bin_obj->m_header.m_versionMinor) &&
+		!(bin_obj->m_header.m_versionMajor == 0 &&
+		bin_obj->m_header.m_versionMinor == 0)) {
+		xocl_err(&XDEV(xdev_hdl)->pdev->dev,
+			"Mismatch xrt version, xrt %s, xclbin "
+			"%d.%d.%d", xrt_build_version,
+			bin_obj->m_header.m_versionMajor,
+			bin_obj->m_header.m_versionMinor,
+			bin_obj->m_header.m_versionPatch);
+		return -EINVAL;
+	}
+
+	return 0;
 }

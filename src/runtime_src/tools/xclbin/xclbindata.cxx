@@ -393,6 +393,7 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     static unsigned int uniqueCount = 1;
     type = "unknown(" + std::to_string(uniqueCount) + ")";
     ext = ".bin";
+    ++uniqueCount;
   }
 
   

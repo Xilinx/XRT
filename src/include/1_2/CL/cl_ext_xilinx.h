@@ -202,6 +202,7 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 typedef uint64_t cl_stream_flags;
 #define CL_STREAM_READ_ONLY			    (1 << 0)
 #define CL_STREAM_WRITE_ONLY                        (1 << 1)
+#define CL_STREAM_POLLING                           (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used

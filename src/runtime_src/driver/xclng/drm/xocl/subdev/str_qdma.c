@@ -154,6 +154,9 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(pstat, total_complete_bytes);
 	__SHOW_MEMBER(pstat, total_complete_num);
 
+	__SHOW_MEMBER(pstat, hw_submit_bytes);
+	__SHOW_MEMBER(pstat, hw_complete_bytes);
+
 	__SHOW_MEMBER(pstat, descq_rngsz);
 	__SHOW_MEMBER(pstat, descq_pidx);
 	__SHOW_MEMBER(pstat, descq_cidx);
@@ -694,7 +697,7 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
-	qconf.irq_en = 1;
+	qconf.irq_en = (req.flags & XOCL_QDMA_QUEUE_FLAG_POLLING) ? 0 : 1;
 
 	if (!req.write) {
 		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
