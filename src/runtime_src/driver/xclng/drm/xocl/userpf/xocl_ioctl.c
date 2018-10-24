@@ -73,14 +73,6 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 		return -EINVAL;
 	}
 
-#if 0
-	//xocl_exec_validate() should do the validation instead
-	/* If ctx xclbin uuid mismatch or no xclbin uuid then EPERM */
-	if (uuid_is_null(&client->xclbin_id) || !uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
-		userpf_err(xdev, "Invalid xclbin for current process");
-		return -EPERM;
-	}
-#endif
 	/* Look up the gem object corresponding to the BO handle.
 	 * This adds a reference to the gem object.  The refernece is
 	 * passed to kds or released here if errors occur.
@@ -559,13 +551,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 			err = -EBUSY;
 			goto done;
 		}
-#if 0
-		// Check if there are other open contexts on this device
-		if (!list_is_singular(&xdev->ctx_list)) {
-			err = -EPERM;
-			goto done;
-		}
-#endif
 	}
 
 	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
@@ -699,10 +684,8 @@ done:
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API
 	 */
-//	if (err != 0) {
-		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
-			pid_nr(task_tgid(current)));
-//	}
+	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
+					  pid_nr(task_tgid(current)));
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;

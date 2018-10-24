@@ -23,8 +23,6 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 
-//#define SCHED_VERBOSE
-
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
