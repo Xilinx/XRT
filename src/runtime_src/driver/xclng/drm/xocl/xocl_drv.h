@@ -411,7 +411,7 @@ struct xocl_mb_funcs {
 struct xocl_dna_funcs {
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
-	void (*write_cert)(struct platform_device *pdev, const char *buf, u32 len);
+	void (*write_cert)(struct platform_device *pdev, const char __user *buf, u32 len);
 };
 
 #define	XMC_DEV(xdev)		\
@@ -571,6 +571,10 @@ int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resourc
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
+struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
+void xocl_release_userdev(struct pci_dev *userdev);
+int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
+        struct axlf *bin_obj);
 
 /* context helpers */
 int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,

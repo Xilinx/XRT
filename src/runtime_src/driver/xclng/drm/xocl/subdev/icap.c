@@ -204,32 +204,42 @@ const static struct xclmgmt_ocl_clockwiz {
 static void reset_scheduler(struct icap *icap)
 {
 	int err = -EINVAL;
+#if 0
 	size_t resplen = sizeof (err);
 	struct mailbox_req mbreq = { 0 };
+#endif
 	int xocl_reset_scheduler(struct pci_dev *pdev);
 	int (*reset)(struct pci_dev *pdev);
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	ICAP_INFO(icap, "calling xocl_reset_scheduler");
 
+#if 0
 	mbreq.req = MAILBOX_REQ_RESET_ERT;
 	(void) xocl_peer_request(xocl_get_xdev(icap->icap_pdev),
 		&mbreq, &err, &resplen, NULL, NULL);
 	if (err == 0)
 		return;
+#endif
 
 	reset = symbol_get(xocl_reset_scheduler);
 	if (reset) {
-		struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
-		unsigned int slot = PCI_SLOT(pdev->devfn);
-		struct pci_dev *user_dev =
-			pci_get_slot(pdev->bus, PCI_DEVFN(slot, 0));
+		struct pci_dev *user_dev;
 
-		if (user_dev)
-			err = reset(user_dev);
+		user_dev = xocl_hold_userdev(xdev);
 
+		if (!user_dev) {
+			err = -EFAULT;
+			goto failed;
+		}
+	
+		err = reset(user_dev);
+
+		xocl_release_userdev(user_dev);
 		symbol_put(xocl_reset_scheduler);
 	}
 
+failed:
 	if (err)
 		ICAP_ERR(icap, "calling xocl_reset_scheduler failed: %d", err);
 }
@@ -1522,6 +1532,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const struct axlf_section_header* primaryHeader = NULL;
 	const struct axlf_section_header* secondaryHeader = NULL;
 	const struct axlf_section_header* ipLayout = NULL;
+	const struct axlf_section_header* certificate = NULL;
 	uint64_t copy_buffer_size = 0;
 	struct axlf* copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -1538,9 +1549,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];
 	uint32_t sub_id;
 	uint32_t id, idx;
-	char cert_name[32];
-	const struct firmware *cert;
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1573,6 +1581,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
 		err = -EFAULT;
 		goto done;
+	}
+
+	if (xocl_xrt_version_check(xdev, &bin_obj)) {
+		ICAP_ERR(icap, "XRT version does not match");
+		return -EINVAL;
 	}
 
 	/* Match the xclbin with the hardware. */
@@ -1774,22 +1787,22 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
 		/* should be removed after integrated certificate with xclbin*/
 		if(xocl_dna_capability(xdev) & 0x1){
-			snprintf(cert_name, sizeof(cert_name), "xilinx/dnas_cert.bin");
-			ICAP_INFO(icap, "certificate name is %s", cert_name);
-			err = request_firmware(&cert, cert_name, &pcidev->dev);
-			if (err) {
-				ICAP_ERR(icap, "unable to find certificate %s", cert_name);
+			certificate = get_axlf_section(icap, copy_buffer, DNA_CERTIFICATE);
+			if(certificate == NULL) {
+				ICAP_ERR(icap, "Can't get certificate section");
 				err = -EACCES;
 				goto dna_check_failed;
 			}
-			if(cert->size % 64 || cert->size < 576) {
-				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %lu", cert->size);
+			
+			if(certificate->m_sectionSize % 64 || certificate->m_sectionSize < 576) {
+				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %llu", certificate->m_sectionSize);
 				err = -EACCES;
-				release_firmware(cert);
 				goto dna_check_failed;
 			}
-			xocl_dna_write_cert(xdev, cert->data, cert->size);
-			release_firmware(cert);
+			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", certificate->m_sectionSize);
+			buffer = (char __user *)u_xclbin;
+			buffer += certificate->m_sectionOffset;
+			xocl_dna_write_cert(xdev, buffer, certificate->m_sectionSize);
 		}
 		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
 		if (err){

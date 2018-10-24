@@ -206,6 +206,12 @@ public:
     }
   }
 
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx);
+
   virtual task::queue*
   getQueue(hal::queue_type qt)
   {
@@ -344,7 +350,7 @@ public:
   virtual ssize_t
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
 
-  virtual int 
+  virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:

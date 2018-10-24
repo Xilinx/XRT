@@ -1371,6 +1371,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     simulator_started = false;
     tracecount_calls = 0;
+    mReqCounter = 0;
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
@@ -2081,14 +2082,21 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
  */
 int HwEmShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
+  
+  if (mLogStream.is_open()) 
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
   if(q_handle <= 0)
   {
-    std::cout<<"unable to create write queue "<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream << " unable to create write queue "<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
   *q_hdl = q_handle;
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -2097,14 +2105,21 @@ int HwEmShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int HwEmShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
   if(q_handle <= 0)
   {
-    std::cout<<"unable to create read queue "<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream << " unable to create read queue "<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
   *q_hdl = q_handle;
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -2113,15 +2128,22 @@ int HwEmShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
  */
 int HwEmShim::xclDestroyQueue(uint64_t q_hdl)
 {
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   uint64_t q_handle = q_hdl;
   bool success = false;
   xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
   if(!success)
   {
-    std::cout<<"unable to destroy the queue"<<std::endl;
+    if (mLogStream.is_open()) 
+      mLogStream <<" unable to destroy the queue"<<std::endl;
+    PRINTENDFUNC;
     return -1;
   }
 
+  PRINTENDFUNC;
   return 0;
 }
 
@@ -2130,12 +2152,29 @@ int HwEmShim::xclDestroyQueue(uint64_t q_hdl)
  */
 ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
+  
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
+
+  bool eot = false;
+  if(wr->flag & XCL_QUEUE_REQ_EOT)
+    eot = true;
+  
+  bool nonBlocking = false;
+  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  {
+    nonBlocking = true;
+  }
   uint64_t fullSize = 0;
   for (unsigned i = 0; i < wr->buf_num; i++) 
   {
     xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
     fullSize += written_size;
   }
+  PRINTENDFUNC;
+  mReqCounter++;
   return fullSize;
 }
 
@@ -2144,10 +2183,26 @@ ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
  */
 ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
 {
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
+  
+  bool eot = false;
+  if(rd->flag & XCL_QUEUE_REQ_EOT)
+    eot = true;
+
+  bool nonBlocking = false;
+  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  {
+    nonBlocking = true;
+  }
+
   void *dest;
 
   uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++) {
+  for (unsigned i = 0; i < rd->buf_num; i++) 
+  {
     dest = (void *)rd->bufs[i].va;
     uint64_t read_size = 0;
     while(read_size == 0)
@@ -2156,6 +2211,8 @@ ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
     }
     fullSize += read_size;
   }
+  mReqCounter++;
+  PRINTENDFUNC;
   return fullSize;
 
 }
@@ -2164,6 +2221,10 @@ ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
  */
 void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 {
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
   void *pBuf=nullptr;
   if (posix_memalign(&pBuf, sizeof(double)*16, size))
   {
@@ -2180,6 +2241,12 @@ void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
  */
 int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
+  
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+  }
+  PRINTENDFUNC;
   return 0;//TODO
 }
 

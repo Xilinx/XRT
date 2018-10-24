@@ -345,7 +345,7 @@ namespace XCL {
     // Get memory name from CU port name string (if found)
     std::string cuPortName2 = cuPortName;
     std::string memoryName2 = memoryName;
-    size_t index = cuPortName.find_last_of("|");
+    size_t index = cuPortName.find_last_of(":");
     if (index != std::string::npos) {
       cuPortName2 = cuPortName.substr(0, index);
       memoryName2 = cuPortName.substr(index+1);

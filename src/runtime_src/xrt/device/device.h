@@ -162,6 +162,14 @@ public:
     m_hal->close();
   }
 
+  void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
+  { m_hal->acquire_cu_context(uuid,cuidx,shared); }
+
+  void
+  release_cu_context(const uuid& uuid,size_t cuidx)
+  { m_hal->release_cu_context(uuid,cuidx); }
+
   ExecBufferObjectHandle
   allocExecBuffer(size_t sz)
   {
@@ -492,7 +500,7 @@ public:
   };
 
   int
-  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)    
+  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
   {
     return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
@@ -649,22 +657,6 @@ public:
   writeKernelCtrl(uint64_t offset,const void* hbuf,size_t size)
   {
     return m_hal->writeKernelCtrl(offset,hbuf,size);
-  }
-
-  /**
-   * Reset device program
-   *
-   * @param kind
-   *   Type of set
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-  hal::operations_result<int>
-  resetKernel()
-  {
-    return m_hal->resetKernel();
   }
 
   /**

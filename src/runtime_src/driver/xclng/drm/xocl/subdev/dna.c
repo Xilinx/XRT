@@ -162,11 +162,11 @@ static uint32_t dna_capability(struct platform_device *pdev)
 	return capability;
 }
 
-static void dna_write_cert(struct platform_device *pdev, const char* data, uint32_t len)
+static void dna_write_cert(struct platform_device *pdev, const char __user *data, uint32_t len)
 {
 	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
 	int i,j,k;
-	uint32_t *cert = (uint32_t*)data;
+	uint32_t *cert = NULL;
 	u32 status = 0, words;
 	uint8_t retries = 100;
 	bool sha256done = false;
@@ -175,6 +175,17 @@ static void dna_write_cert(struct platform_device *pdev, const char* data, uint3
 	sign_start = message_words;
 	if (!xlnx_dna)
 		return;
+
+	cert = kmalloc(len, GFP_KERNEL);
+	if (!cert) {
+		xocl_err(&pdev->dev, "Failed to alloc buffer size 0x%x, out of memory", len);
+		return;
+	}
+	if (copy_from_user(cert, data, len)) {
+		xocl_err(&pdev->dev, "Failed to copy xclbin, out of memory");
+		goto copy_user_fail;
+	}
+
 
 	iowrite32(0x1, xlnx_dna->base+XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET);
 	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
@@ -226,7 +237,9 @@ static void dna_write_cert(struct platform_device *pdev, const char* data, uint3
 	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
 	words  = ioread32(xlnx_dna->base+XLNX_DNA_FSM_CERTIFICATE_WORD_WRITE_COUNT_REGISTER_OFFSET);
 	xocl_info(&pdev->dev, "Signature: status %08x certificate words %d", status, words);
-	
+
+copy_user_fail:
+	kfree(cert);
 	return;
 }
 
