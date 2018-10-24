@@ -169,7 +169,6 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		xdev->ip_reference[args->cu_index]--;
 		if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
                         // We just gave up the last context, give up the xclbin lock
-			uuid_copy(&client->xclbin_id, &uuid_null);
 			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
 							 pid_nr(task_tgid(current)));
 		}
