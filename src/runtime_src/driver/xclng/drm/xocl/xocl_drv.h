@@ -579,7 +579,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
 void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-        struct axlf *bin_obj);
+        struct axlf *bin_obj, bool major_only);
 
 /* context helpers */
 int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,
