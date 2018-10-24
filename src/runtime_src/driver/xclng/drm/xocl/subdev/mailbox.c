@@ -126,7 +126,7 @@
 
 #include "../xocl_drv.h"
 
-int mailbox_no_intr = 1;
+int mailbox_no_intr = 0;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
@@ -268,10 +268,10 @@ struct mailbox {
 	struct mailbox_channel	mbx_tx;
 
 	/* For listening to peer's request. */
-	struct mailbox_req	mbx_peer_req;
-	struct mailbox_msg	mbx_req_msg;
 	mailbox_msg_cb_t	mbx_listen_cb;
 	void			*mbx_listen_cb_arg;
+	struct workqueue_struct	*mbx_listen_wq;
+	struct work_struct	mbx_listen_worker;
 
 	bool			mbx_sysfs_ready;
 
@@ -434,8 +434,7 @@ static void msg_done(struct mailbox_msg *msg, int err)
 	if (msg->mbm_cb) {
 		msg->mbm_cb(msg->mbm_cb_arg, msg->mbm_data, msg->mbm_len,
 			msg->mbm_req_id, msg->mbm_error);
-		if (msg != &msg->mbm_ch->mbc_parent->mbx_req_msg)
-			free_msg(msg);
+		free_msg(msg);
 	} else {
 		complete(&msg->mbm_complete);
 	}
@@ -1187,7 +1186,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	/* Only interested in response w/ same ID. */
 	respmsg->mbm_req_id = reqmsg->mbm_req_id;
 
-	/* Always enqueue RX msg before RX one to avoid race. */
+	/* Always enqueue RX msg before TX one to avoid race. */
 	rv = chan_msg_enqueue(&mbx->mbx_rx, respmsg);
 	if (rv)
 		goto fail;
@@ -1203,10 +1202,12 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	if (cb)
 		return 0;
 
-	wait_for_completion(&respmsg->mbm_complete);
-	rv = respmsg->mbm_error;
-	if (rv == 0)
-		*resplen = respmsg->mbm_len;
+	rv = wait_for_completion_interruptible(&respmsg->mbm_complete);
+	if (rv == 0) {
+		rv = respmsg->mbm_error;
+		if (rv == 0)
+			*resplen = respmsg->mbm_len;
+	}
 	free_msg(respmsg);
 	return rv;
 
@@ -1257,74 +1258,75 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len)
 	return rv;
 }
 
-static void mailbox_recv_request(struct mailbox *mbx);
-
-static void request_cb(void *arg, void *buf, size_t len, u64 id, int err)
+static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 {
-	struct mailbox *mbx = (struct mailbox *)arg;
-	struct mailbox_req *req = (struct mailbox_req *)buf;
+	struct mailbox_req *req = (struct mailbox_req *)msg->mbm_data;
 	int rc;
 	const char *recvstr = "received request from peer";
 	const char *sendstr = "sending test msg to peer";
 
-	if (err) {
-		if (err == -ESHUTDOWN) {
-			MBX_INFO(mbx, "stop listening to peer, "
-				"channel is closing...");
-		} else {
-			MBX_ERR(mbx, "%s: bad request, err=%d", recvstr, err);
-		}
-	} else if (req->req == MAILBOX_REQ_TEST_READ) {
+	if (req->req == MAILBOX_REQ_TEST_READ) {
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
 		if (mbx->mbx_tst_tx_msg_len) {
 			MBX_INFO(mbx, "%s", sendstr);
-			rc = mailbox_post(mbx->mbx_pdev, id,
+			rc = mailbox_post(mbx->mbx_pdev, msg->mbm_req_id,
 				mbx->mbx_tst_tx_msg, mbx->mbx_tst_tx_msg_len);
-			if (rc)
+			if (rc) {
 				MBX_ERR(mbx, "%s failed: %d", sendstr, rc);
-			else
+			} else {
 				mbx->mbx_tst_tx_msg_len = 0;
+			}
 		}
 	} else if (req->req == MAILBOX_REQ_TEST_READY) {
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
+	} else if (mbx->mbx_listen_cb) {
+		/* Call client's registered callback to process request. */
+		MBX_INFO(mbx, "%s: %d, passed on", recvstr, req->req);
+		mbx->mbx_listen_cb(mbx->mbx_listen_cb_arg, msg->mbm_data,
+			msg->mbm_len, msg->mbm_req_id, msg->mbm_error);
 	} else {
-		if (mbx->mbx_listen_cb) {
-			MBX_INFO(mbx, "%s: %d, passed on", recvstr, req->req);
-			mbx->mbx_listen_cb(mbx->mbx_listen_cb_arg, buf, len,
-				id, err);
-		} else {
-			MBX_INFO(mbx, "%s: %d, dropped", recvstr, req->req);
-		}
+		MBX_INFO(mbx, "%s: %d, dropped", recvstr, req->req);
 	}
-
-	/* Re-register the handler for receiving the next request. */
-	mailbox_recv_request(mbx);
 }
 
 /*
  * Wait for request from peer.
  */
-static void mailbox_recv_request(struct mailbox *mbx)
+static void mailbox_recv_request(struct work_struct *work)
 {
-	int rv;
-	struct mailbox_msg *msg = &mbx->mbx_req_msg;
+	int rv = 0;
+	struct mailbox_msg *msg = alloc_msg(NULL, sizeof (struct mailbox_req));
+	struct mailbox *mbx =
+		container_of(work, struct mailbox, mbx_listen_worker);
 
-	MBX_DBG(mbx, "waiting for request from peer...");
+	if (msg == NULL)
+		return;
 
-	INIT_LIST_HEAD(&msg->mbm_list);
-	msg->mbm_data = (void *)&mbx->mbx_peer_req;
-	msg->mbm_len = sizeof (struct mailbox_req);
-	init_completion(&msg->mbm_complete);
-	msg->mbm_cb = request_cb;
-	msg->mbm_cb_arg = (void *)mbx;
-	/* Only interested in request msg. */
-	msg->mbm_req_id = 0;
+	MBX_INFO(mbx, "waiting for request from peer...");
 
-	rv = chan_msg_enqueue(&mbx->mbx_rx, msg);
+	for (;;) {
+		/* Only interested in request msg. */
+		msg->mbm_req_id = 0;
+		rv = chan_msg_enqueue(&mbx->mbx_rx, msg);
+		if (rv != 0)
+			break;
+
+		rv = wait_for_completion_interruptible(&msg->mbm_complete);
+		if (rv != 0)
+			break;
+		rv = msg->mbm_error;
+		if (rv != 0)
+			break;
+
+		process_request(mbx, msg);
+	}
+
 	if (rv == -ESHUTDOWN)
 		MBX_INFO(mbx, "channel is closed, no listen to peer");
 	else if (rv != 0)
-		MBX_ERR(mbx, "cannot listen to peer, err=%d", rv);
+		MBX_ERR(mbx, "failed to receive request from peer, err=%d", rv);
+
+	free_msg(msg);
 }
 
 int mailbox_listen(struct platform_device *pdev,
@@ -1448,6 +1450,11 @@ static int mailbox_remove(struct platform_device *pdev)
 	chan_fini(&mbx->mbx_rx);
 	chan_fini(&mbx->mbx_tx);
 
+	if(mbx->mbx_listen_wq != NULL) {
+		cancel_work_sync(&mbx->mbx_listen_worker);
+		destroy_workqueue(mbx->mbx_listen_wq);
+	}
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
 
 	if (mbx->mbx_regs)
@@ -1491,7 +1498,15 @@ static int mailbox_probe(struct platform_device *pdev)
 		MBX_ERR(mbx, "failed to init tx channel");
 		goto failed;
 	}
-	mailbox_recv_request(mbx);
+	/* Dedicated thread for listening to peer request. */
+	mbx->mbx_listen_wq =
+		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
+	if (!mbx->mbx_listen_wq) {
+		MBX_ERR(mbx, "failed to create request-listen work queue");
+		goto failed;
+	}
+	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
+	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
 
 	if ((ret = mailbox_init_sysfs(mbx)) != 0) {
 		MBX_ERR(mbx, "failed to init sysfs");
