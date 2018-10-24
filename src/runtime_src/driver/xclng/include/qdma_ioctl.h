@@ -64,6 +64,10 @@ enum XOCL_QDMA_REQ_FLAG {
 	XOCL_QDMA_REQ_FLAG_SILENT	= (1 << 3),
 };
 
+enum XOCL_QDMA_QUEUE_FLAG {
+	XOCL_QDMA_QUEUE_FLAG_POLLING	= (1 << 2),
+};
+
 /**
  * struct xocl_qdma_ioc_create_queue - Create streaming queue
  * used with XOCL_QDMA_IOC_CREATE_QUEUE ioctl

@@ -968,6 +968,11 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  * struct xclQueueContext - structure to describe a Queue
  */
 
+enum {
+	/* keep in sync with cl_stream_type */
+	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
+};
+
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
     uint32_t	state;	   /* initialized, running */
@@ -1151,7 +1156,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
  *     non-blocking:
  *         return 0 immediatly.
- *     TODO: EOT
+ *     TODO:
+ *         EOT
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);

@@ -534,6 +534,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
+	if (xocl_xrt_version_check(xdev, &bin_obj))
+		return -EINVAL;
+
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
 		// Legacy xclbin, convert legacy id to new id
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
