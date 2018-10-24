@@ -325,7 +325,7 @@ void xocl_release_userdev(struct pci_dev *userdev)
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-	struct axlf *bin_obj)
+	struct axlf *bin_obj, bool major_only)
 {
 	u32 major, minor, patch;
 	/* check runtime version:
@@ -334,18 +334,28 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	 *    2. compare major and minor, returns error if it does not match.
 	 */
 	sscanf(xrt_build_version, "%d.%d.%d", &major, &minor, &patch);
+	if (major != bin_obj->m_header.m_versionMajor &&
+		bin_obj->m_header.m_versionMajor != 0)
+		goto err;
+
+	if (major_only)
+		return 0;
+
 	if ((major != bin_obj->m_header.m_versionMajor ||
 		minor != bin_obj->m_header.m_versionMinor) &&
 		!(bin_obj->m_header.m_versionMajor == 0 &&
-		bin_obj->m_header.m_versionMinor == 0)) {
-		xocl_err(&XDEV(xdev_hdl)->pdev->dev,
-			"Mismatch xrt version, xrt %s, xclbin "
-			"%d.%d.%d", xrt_build_version,
-			bin_obj->m_header.m_versionMajor,
-			bin_obj->m_header.m_versionMinor,
-			bin_obj->m_header.m_versionPatch);
-		return -EINVAL;
-	}
+		bin_obj->m_header.m_versionMinor == 0))
+		goto err;
 
 	return 0;
+
+err:
+	xocl_err(&XDEV(xdev_hdl)->pdev->dev,
+		"Mismatch xrt version, xrt %s, xclbin "
+		"%d.%d.%d", xrt_build_version,
+		bin_obj->m_header.m_versionMajor,
+		bin_obj->m_header.m_versionMinor,
+		bin_obj->m_header.m_versionPatch);
+
+	return -EINVAL;
 }

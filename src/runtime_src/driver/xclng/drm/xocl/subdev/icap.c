@@ -1103,7 +1103,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int funcid = PCI_FUNC(pcidev->devfn);
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
-	const struct axlf *bin_obj_axlf;
+	struct axlf *bin_obj_axlf;
 	const struct firmware *fw;
 	char fw_name[128];
 	XHwIcap_Bit_Header bit_header = { 0 };
@@ -1156,7 +1156,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if(!err && xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (const struct axlf*)fw->data;
+		bin_obj_axlf = (struct axlf*)fw->data;
 		mbHeader = get_axlf_section(icap, bin_obj_axlf, SCHED_FIRMWARE);
 		if(mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
@@ -1171,7 +1171,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if(!err && xocl_mb_mgmt_on(xdev)) {
 		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (const struct axlf*)fw->data;
+		bin_obj_axlf = (struct axlf*)fw->data;
 		mbHeader = get_axlf_section(icap, bin_obj_axlf, FIRMWARE);
 		if(mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
@@ -1211,7 +1211,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 
 	ICAP_INFO(icap, "boot_firmware in axlf format");
-	bin_obj_axlf = (const struct axlf*)fw->data;
+	bin_obj_axlf = (struct axlf*)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
 	/* Match the xclbin with the hardware. */
 	if(!xocl_verify_timestamp(xdev,
@@ -1220,6 +1220,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	ICAP_INFO(icap, "VBNV and timestamps matched");
+
+	if (xocl_xrt_version_check(xdev, bin_obj_axlf, 1)) {
+		ICAP_ERR(icap, "Major version does not match xrt");
+		return -EINVAL;
+	}
+	ICAP_INFO(icap, "runtime version matched");
 
 	primaryHeader = get_axlf_section(icap, bin_obj_axlf, BITSTREAM);
 	secondaryHeader = get_axlf_section(icap, bin_obj_axlf,
@@ -1587,7 +1593,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	if (xocl_xrt_version_check(xdev, &bin_obj)) {
+	if (xocl_xrt_version_check(xdev, &bin_obj, 0)) {
 		ICAP_ERR(icap, "XRT version does not match");
 		return -EINVAL;
 	}
