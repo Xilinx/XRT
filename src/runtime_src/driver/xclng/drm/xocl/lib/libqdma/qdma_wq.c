@@ -528,6 +528,8 @@ static void descq_proc_req(struct qdma_wq *queue)
 	struct qdma_wqe		*wqe;
 	struct xlnx_dma_dev	*xdev;
 	struct qdma_descq	*descq;
+	struct qdma_flq		*flq;
+	u32			pidx;
 	int			ret;
 
 	xdev = (struct xlnx_dma_dev *)queue->dev_hdl;
@@ -542,9 +544,15 @@ static void descq_proc_req(struct qdma_wq *queue)
 	if (!wqe && descq->conf.irq_en &&
 		((queue->wq_pending != queue->wq_unproc) ||
 		!wqe_done(_wqe(queue, queue->wq_pending)))) {
-		if (descq->conf.c2h)
-			descq_c2h_pidx_update(descq, descq->pidx);
-		else
+		if (descq->conf.c2h) {
+			if (descq->conf.st) {
+				flq = &descq->flq;
+				pidx = ring_idx_decr(flq->pidx_pend, 1,
+					flq->size);
+				descq_c2h_pidx_update(descq, pidx);
+			} else
+				descq_c2h_pidx_update(descq, descq->pidx);
+		} else
 			descq_h2c_pidx_update(descq, descq->pidx);
 	}
 

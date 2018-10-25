@@ -72,6 +72,15 @@ struct xocl_board_private {
          .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
          .subdevice = subsysid, .driver_data =          \
          (kernel_ulong_t) &XOCL_BOARD_##priv
+
+struct xocl_dsa_vbnv_map {
+	uint16_t		vendor;
+	uint16_t		device;
+	uint16_t		subdevice;
+	char			*vbnv;
+	struct xocl_board_private	*priv_data;
+};
+
 #else
 struct xocl_board_info {
 	uint16_t		vendor;
@@ -962,5 +971,8 @@ enum {
 #define	XOCL_USER_QDMA_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) }
 
+#define XOCL_DSA_VBNV_MAP						\
+	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201830_1",	\
+		&XOCL_BOARD_USER_DSA52 }
 
 #endif
