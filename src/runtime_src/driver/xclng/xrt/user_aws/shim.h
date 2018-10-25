@@ -218,15 +218,19 @@ public:
         double xclGetReadMaxBandwidthMBps();
         double xclGetWriteMaxBandwidthMBps();
         void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
+        uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+        void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+                                char* slotName, uint32_t length);
         size_t xclPerfMonClockTraining(xclPerfMonType type);
         // Counters
         size_t xclPerfMonStartCounters(xclPerfMonType type);
         size_t xclPerfMonStopCounters(xclPerfMonType type);
         size_t xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults);
+
         //debug related
         uint32_t getCheckerNumberSlots(int type);
-        uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames, 
-                                    uint8_t *properties, size_t size);
+        uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
+                                     uint8_t *properties, size_t size);
         size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
         size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
         void readDebugIpLayout();
@@ -316,7 +320,7 @@ public:
         bool select4ByteAddressMode();
         bool deSelect4ByteAddressMode();
 
-
+    public:
         // Performance monitoring helper functions
         bool isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion);
         unsigned getBankCount();
@@ -324,7 +328,7 @@ public:
         uint64_t getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum);
         uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);
         uint64_t getPerfMonFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum);
-        uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+        uint64_t getTraceFunnelAddress(xclPerfMonType type);
         uint32_t getPerfMonNumberSamples(xclPerfMonType type);
         uint32_t getPerfMonByteScaleFactor(xclPerfMonType type);
         uint8_t  getPerfMonShowIDS(xclPerfMonType type);
@@ -336,6 +340,7 @@ public:
         uint32_t bin2dec(const char * str, int start, int number);
         std::string dec2bin(uint32_t n);
         std::string dec2bin(uint32_t n, unsigned bits);
+
         static std::string getDSAName(unsigned short deviceId, unsigned short subsystemId);
 
     private:
@@ -364,6 +369,7 @@ public:
         bool mIsDeviceProfiling = false;
         uint64_t mPerfMonFifoCtrlBaseAddress;
         uint64_t mPerfMonFifoReadBaseAddress;
+        uint64_t mTraceFunnelAddress;
         uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
         uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
         std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
