@@ -776,7 +776,10 @@ namespace XCL {
           traceName = "Kernel_Read";
         }
       }
-      else {
+      else if (tr.Kind == DeviceTrace::DEVICE_STREAM) {
+        traceName = tr.Name;
+        showPortName = true;
+      } else {
         showKernelCUNames = false;
         if (tr.Type == "Write")
           traceName = "Host_Write";
@@ -793,7 +796,12 @@ namespace XCL {
           rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
         }
         else {
-          rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          if (tr.Kind == DeviceTrace::DEVICE_STREAM){
+            rts->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+          }
+          else {
+            rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
           std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
