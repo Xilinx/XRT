@@ -135,12 +135,14 @@ add_subdirectory(xma)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
-include (CMake/cpack.cmake)
+#include (CMake/cpack.cmake)
+include (CMake/cpack-aws.cmake)
 
 include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
 include (CMake/dkms.cmake)
+#include (CMake/dkms-aws.cmake)
 
 include (CMake/icd.cmake)
 
