@@ -288,19 +288,27 @@ public:
         std::string dna_info;
 
         ss << std::left << "\n";
-        unsigned i;
+        
+        ss << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << "\n";
+        unsigned short val = gSensorTree.get<unsigned short>( "power.pcb_top_front", XCL_INVALID_SENSOR_VAL );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";
+        
+        val = gSensorTree.get<unsigned short>( "power.pcb_top_rear", XCL_INVALID_SENSOR_VAL );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";        
+        
+        val = gSensorTree.get<unsigned short>( "power.pcb_btm_front", XCL_INVALID_SENSOR_VAL );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";
 
-        const char *se98[4] = {"PCB TOP FRONT", "PCB TOP REAR", "PCB BTM FRONT"};
-
-        for(i= 0; i < 3; ++i){
-            ss << std::setw(16) << se98[i];
-            if((unsigned short)m_devinfo.mSE98Temp[i] == (XCL_NO_SENSOR_DEV & (0xffff)))
-                subss << std::setw(16) << "Not support";
-            else if (m_devinfo.mSE98Temp[i] == XCL_INVALID_SENSOR_VAL)
-                subss << std::setw(16) << "Not support";
-            else
-                subss << std::setw(16) << std::to_string(m_devinfo.mSE98Temp[i]).substr(0,3)+" C";
-        }
+        
         ss << "\n" << subss.str() << "\n\n";
 
         ss << std::setw(16) << "FPGA Temp" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "Fan Speed" << "\n";
@@ -746,6 +754,11 @@ public:
         gSensorTree.put( "board.pcie_width", m_devinfo.mPCIeLinkWidth );
         gSensorTree.put( "board.dma_threads", m_devinfo.mDMAThreads );
         gSensorTree.put( "board.mig_calibrated", m_devinfo.mMigCalib );
+        
+        // power
+        gSensorTree.put( "power.pcb_top_front", m_devinfo.mSE98Temp[ 0 ] ); 
+        gSensorTree.put( "power.pcb_top_rear",  m_devinfo.mSE98Temp[ 1 ] );
+        gSensorTree.put( "power.pcb_btm_front", m_devinfo.mSE98Temp[ 2 ] );
         
         return 0;
     }
