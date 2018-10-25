@@ -48,11 +48,31 @@ static int user_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 
 static int user_dev_online(xdev_handle_t xdev_hdl)
 {
-	return 0;
+	struct xocl_qdma_dev    *qd;
+	struct pci_dev *pdev;
+	int ret;
+
+	pdev = XDEV(xdev_hdl)->pdev;
+        qd = pci_get_drvdata(pdev);
+
+	ret = qdma_device_open(XOCL_QDMA_PCI, &qd->dev_conf,
+		(unsigned long *)(&qd->ocl_dev.dma_handle));
+	if (ret < 0) {
+		xocl_err(&pdev->dev, "QDMA Device Open failed");
+	}
+
+	return ret;
 } 
 
 static int user_dev_offline(xdev_handle_t xdev_hdl)
 {
+	struct xocl_qdma_dev    *qd;
+	struct pci_dev *pdev;
+
+	pdev = XDEV(xdev_hdl)->pdev;
+        qd = pci_get_drvdata(pdev);
+
+	qdma_device_close(pdev, (unsigned long)qd->ocl_dev.dma_handle);
 	return 0;
 } 
 

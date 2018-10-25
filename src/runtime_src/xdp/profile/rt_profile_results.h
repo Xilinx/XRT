@@ -277,7 +277,8 @@ namespace XCL {
 
     enum e_device_kind {
       DEVICE_KERNEL = 0x1,
-      DEVICE_BUFFER = 0x2
+      DEVICE_BUFFER = 0x2,
+      DEVICE_STREAM = 0x3
     };
 
     std::string Name;
