@@ -1703,12 +1703,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
   {
     argNames = "All";
     memoryName = "N/A";
-
-    std::string portName2 = portName;
-    size_t index = portName.find_last_of(":");
-    if (index != std::string::npos) {
-      portName2 = portName.substr(0, index);
-    }
+    std::string portName2 = portName.substr(0, portName.find_last_of(":"));
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 
