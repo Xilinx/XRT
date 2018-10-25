@@ -698,6 +698,12 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 			}
 		}
 	}
+	else{
+		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region." 
+			" Validation of accelerator frequencies cannot be determine");
+		err = -EDOM;
+		goto done;		
+	}
 
 	err = set_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
 done:
