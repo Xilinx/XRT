@@ -413,7 +413,7 @@ public:
         else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m1v8Top/1000).substr(0,4) + "V";
 
-  
+
 
         if(m_devinfo.m0v85 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -436,10 +436,10 @@ public:
 
 
         if(m_devinfo.m12vSW == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support"; 
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.m12vSW == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
-        else 
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m12vSW/1000).substr(0,4) + "V";
 
 
@@ -482,7 +482,7 @@ public:
         m_devinfo_stringize_power(m_devinfo, lines);
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        lines.push_back(ss.str());         
+        lines.push_back(ss.str());
     }
 
     void m_devinfo_stringize(const xclDeviceInfo2& m_devinfo,
@@ -710,7 +710,7 @@ public:
                     stat_map[std::string(key)] = std::to_string(value);
                 }
 
-                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] + 
+                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] +
                     "/" + stat_map[std::string("total_req_num")];
 
                 ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
@@ -732,7 +732,7 @@ public:
         std::vector<std::string> lines, usage_lines;
 
         m_devinfo_stringize(m_devinfo, lines);
- 
+
         for(auto line : lines) {
             ostr << line;
         }
@@ -793,7 +793,7 @@ public:
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
 
         if(errmsg.empty()) {
             ostr << std::setw(16) << "\nXclbin ID:" << "\n";
@@ -829,8 +829,8 @@ public:
                     dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
                     ostr << "\nIP[" << cuCnt << "]: "
                          << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
-                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n";
                     cuCnt++;
                 }
             }

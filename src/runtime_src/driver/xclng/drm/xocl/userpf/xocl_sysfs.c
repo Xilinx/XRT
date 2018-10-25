@@ -20,6 +20,7 @@
 //
 /* -Attributes -- */
 /* -xclbinid-- */
+#if 0
 static ssize_t xclbinid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -28,7 +29,7 @@ static ssize_t xclbinid_show(struct device *dev,
 }
 
 static DEVICE_ATTR_RO(xclbinid);
-
+#endif
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -63,7 +64,7 @@ static ssize_t kdsstat_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	return sprintf(buf,
-		"uuid: %pUL\ncontext: %x\noutstanding exec: %x\ntotal exec: %ld\n",
+		"xclbin: \t\t%pUl\ncontexts: \t\t%d\noutstanding execs: \t%d\ntotal execs: \t\t%ld\n",
 		&xdev->xclbin_id,
 		get_live_client_size(xdev),
 		atomic_read(&xdev->outstanding_execs),
@@ -231,7 +232,9 @@ static struct bin_attribute mem_topology_attr = {
 };
 
 static struct attribute *xocl_attrs[] = {
+#if 0
 	&dev_attr_xclbinid.attr,
+#endif
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
