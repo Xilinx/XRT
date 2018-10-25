@@ -17,7 +17,7 @@ echo "XMA_LIBS is $XMA_LIBS"
 export LD_LIBRARY_PATH=/opt/xilinx/xrt/lib:$XMA_LIBS:$LD_LIBRARY_PATH
 echo "LD_LIBRARY_PATH is $LD_LIBRARY_PATH"
 
-
+source /opt/xilinx/xrt/setup.sh
 
 make
 
