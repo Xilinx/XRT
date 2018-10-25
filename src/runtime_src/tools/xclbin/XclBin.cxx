@@ -703,16 +703,30 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     }
 
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
-    
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
+
     // Feature ROM UUID
     std::string sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
     sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
     XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
-    std::string sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
+    std::string sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+
+    // Examine OLD names -- // This code can be removed AFTER xocc has been updated to use the new format
+    {
+      // Feature ROM Time Stamp
+      if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
+        m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
+      }
+    
+      // Feature ROM VBNV
+      if (sPlatformVBNV.empty()) {
+        sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
+        XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+      }
+    }
 
     XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
   }
