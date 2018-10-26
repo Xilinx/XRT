@@ -615,7 +615,7 @@ enum {
 
 #define	XOCL_BOARD_USER_XDMA_DSA50					\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
 		.subdev_info	= USER_RES_XDMA_DSA50,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA_DSA50),		\
 		.user_bar = 0,						\
