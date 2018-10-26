@@ -835,7 +835,12 @@ public:
         
         // memory
         getMemTopology();
-
+        xclDeviceUsage devstat = { 0 };
+        (void) xclGetUsageInfo(m_handle, &devstat);
+        for (unsigned i = 0; i < 2; i++) {
+            gSensorTree.put( "board.memory.dma_transfer.chan" + std::to_string(i) + ".h2c", unitConvert(devstat.h2c[i]) );
+            gSensorTree.put( "board.memory.dma_transfer.chan" + std::to_string(i) + ".c2h", unitConvert(devstat.c2h[i]) );
+        }
         // stream
 
         // xclbin
