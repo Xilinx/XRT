@@ -62,13 +62,25 @@ static DEVICE_ATTR_RO(user_pf);
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
+	int i;
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf,
-		"xclbin: \t\t%pUl\ncontexts: \t\t%d\noutstanding execs: \t%d\ntotal execs: \t\t%ld\n",
-		&xdev->xclbin_id,
-		get_live_client_size(xdev),
-		atomic_read(&xdev->outstanding_execs),
-		atomic64_read(&xdev->total_execs));
+	int size = sprintf(buf,
+			   "xclbin:\t\t\t%pUl\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
+			   &xdev->xclbin_id,
+			   atomic_read(&xdev->outstanding_execs),
+			   atomic64_read(&xdev->total_execs),
+			   get_live_client_size(xdev));
+	buf += size;
+	if (xdev->layout == NULL)
+		return size;
+	for (i = 0; i < xdev->layout->m_count; i++) {
+		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
+			continue;
+		size += sprintf(buf, "\t%s:\t%d\n", xdev->layout->m_ip_data[i].m_name,
+				xdev->ip_reference[i]);
+		buf += size;
+	}
+	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
 
