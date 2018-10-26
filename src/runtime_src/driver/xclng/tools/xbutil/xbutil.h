@@ -739,27 +739,93 @@ public:
     
     int readSensors( void ) const
     {
-        // board
-        gSensorTree.put( "board.dsa_name", m_devinfo.mName );
-        gSensorTree.put( "board.vendor", m_devinfo.mVendorId );
-        gSensorTree.put( "board.device", m_devinfo.mDeviceId );
-        gSensorTree.put( "board.subdevice", m_devinfo.mSubsystemId );
-        gSensorTree.put( "board.subvendor", m_devinfo.mSubsystemVendorId );
-        gSensorTree.put( "board.xmcversion", m_devinfo.mXMCVersion );
-        gSensorTree.put( "board.ddr_size", m_devinfo.mDDRSize );
-        gSensorTree.put( "board.ddr_count", m_devinfo.mDDRBankCount );
-        gSensorTree.put( "board.clock0", m_devinfo.mOCLFrequency[0] );
-        gSensorTree.put( "board.clock1", m_devinfo.mOCLFrequency[1] );
-        gSensorTree.put( "board.pcie_speed", m_devinfo.mPCIeLinkSpeed );
-        gSensorTree.put( "board.pcie_width", m_devinfo.mPCIeLinkWidth );
-        gSensorTree.put( "board.dma_threads", m_devinfo.mDMAThreads );
-        gSensorTree.put( "board.mig_calibrated", m_devinfo.mMigCalib );
+        // info
+        gSensorTree.put( "board.info.dsa_name", m_devinfo.mName );
+        gSensorTree.put( "board.info.vendor", m_devinfo.mVendorId );
+        gSensorTree.put( "board.info.device", m_devinfo.mDeviceId );
+        gSensorTree.put( "board.info.subdevice", m_devinfo.mSubsystemId );
+        gSensorTree.put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
+        gSensorTree.put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        gSensorTree.put( "board.info.ddr_size", m_devinfo.mDDRSize );
+        gSensorTree.put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
+        gSensorTree.put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
+        gSensorTree.put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
+        gSensorTree.put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
+        gSensorTree.put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
+        gSensorTree.put( "board.info.dma_threads", m_devinfo.mDMAThreads );
+        gSensorTree.put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
+        //gSensorTree.put( "board.info.dna", 
         
-        // power
-        gSensorTree.put( "power.pcb_top_front", m_devinfo.mSE98Temp[ 0 ] ); 
-        gSensorTree.put( "power.pcb_top_rear",  m_devinfo.mSE98Temp[ 1 ] );
-        gSensorTree.put( "power.pcb_btm_front", m_devinfo.mSE98Temp[ 2 ] );
+        // physical
+        gSensorTree.put( "board.physical.pcb_top_front", m_devinfo.mSE98Temp[ 0 ] ); 
+        gSensorTree.put( "board.physical.pcb_top_rear",  m_devinfo.mSE98Temp[ 1 ] );
+        gSensorTree.put( "board.physical.pcb_btm_front", m_devinfo.mSE98Temp[ 2 ] );
+        gSensorTree.put( "board.physical.thermal.fpga_temp",                    44 );
+        gSensorTree.put( "board.physical.thermal.tcrit_temp",                   42 ); 
+        gSensorTree.put( "board.physical.thermal.fan_speed_temp",               1083 ); 
+        gSensorTree.put( "board.physical.electrical.12v_pex.voltage",           12.0f ); 
+        gSensorTree.put( "board.physical.electrical.12v_pex.current",           1916 ); 
+        gSensorTree.put( "board.physical.electrical.12v_aux.voltage",           0.46f ); 
+        gSensorTree.put( "board.physical.electrical.12v_aux.current",           21 ); 
+        gSensorTree.put( "board.physical.electrical.3v3_pex.voltage",           3.32f ); 
+        gSensorTree.put( "board.physical.electrical.3v3_aux.voltage",           3.47f );
+        gSensorTree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    2.49f ); 
+        gSensorTree.put( "board.physical.electrical.ddr_vpp_top.voltage",       2.49f );
+        gSensorTree.put( "board.physical.electrical.sys_5v5.voltage",           5.5f );
+        gSensorTree.put( "board.physical.electrical.1v2_top.voltage",           1.2f );
+        gSensorTree.put( "board.physical.electrical.1v8_top.voltage",           1.82f ); 
+        gSensorTree.put( "board.physical.electrical.0v85.voltage",              0.85f ); 
+        gSensorTree.put( "board.physical.electrical.mgt_0v9.voltage",           0.9f );
+//        gSensorTree.put( "board.physical.electrical.12v_sw.voltage", 
+//        gSensorTree.put( "board.physical.electrical.mgt_vtt.voltage", 
+//        gSensorTree.put( "board.physical.electrical.vccint.voltage", 
+//        gSensorTree.put( "board.physical.electrical.vccint.current", 
         
+        // firewall
+        gSensorTree.put( "board.firewall.last_error.level_0", 0 );
+        
+        // memory
+        //int i = 0;
+        //gSensorTree.add( "board.memory.index", i );
+        std::string entry = "bank0";
+        gSensorTree.put( "board.memory." + entry + ".type",       "MEM_DDR4" );
+        gSensorTree.put( "board.memory." + entry + ".temp",       37.0f );
+        gSensorTree.put( "board.memory." + entry + ".size",       16 );
+        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
+        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
+        entry = "bank1";
+        gSensorTree.put( "board.memory." + entry + ".type",       "UNUSED" );
+        gSensorTree.put( "board.memory." + entry + ".temp",       32.0f );
+        gSensorTree.put( "board.memory." + entry + ".size",       16 );
+        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
+        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
+        entry = "plram0";
+        gSensorTree.put( "board.memory." + entry + ".type",       "UNUSED" );
+        gSensorTree.put( "board.memory." + entry + ".temp",       39.0f );
+        gSensorTree.put( "board.memory." + entry + ".size",       16 );
+        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
+        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
+
+
+        // stream
+
+        // xclbin
+        gSensorTree.put( "board.xclbin.id", "5b99588b" );
+
+        // compute unit
+        int i = 0;
+        entry = std::to_string( i );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".name",        "hello" );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".unique_name", "hello_1" );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".address",     18000 );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".status",      "IDLE" );
+        i++;
+        entry = std::to_string( i );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".name",        "hello" );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".unique_name", "hello_2" );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".address",     (2*18000) );
+        gSensorTree.put( "board.compute_unit.cu" + entry + ".status",      "IDLE" );
+
         return 0;
     }
 
