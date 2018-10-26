@@ -186,6 +186,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 			sizeof(rom.VBNVName))) {
 			sdev_info = dsa_vbnv_map[i].priv_data->subdev_info;
 			subdev_num = dsa_vbnv_map[i].priv_data->subdev_num;
+			xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
 			break;
 		}
 	}
@@ -265,6 +266,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct pci_dev *pdev = core->pdev;
 	unsigned int i;
 
+	memset(&core->priv, 0, sizeof(core->priv));
 	/*
  	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
