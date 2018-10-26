@@ -861,6 +861,57 @@ public:
 
         return 0;
     }
+    
+    int dump2(std::ostream& ostr) const
+    {
+        createEmptyTree( gSensorTree );
+        readSensors();
+        writeTree( gSensorTree );
+        
+        ostr << std::left;
+        ostr << "#################################\n";
+        ostr << "DSA name\n" << gSensorTree.get( "board.info.dsa_name", "N/A" ) << std::endl;
+        ostr << "Temperature (C):\n";
+        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_front", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_rear", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.btm_front", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed (RPM)" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.fpga_temp", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.thermal.tcrit_temp", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.thermal.fan_speed_rpm", "N/A" ) << std::endl;
+        ostr << "Electrical (mV), (mA):\n";
+        ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_pex.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_aux.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_pex.current", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_aux.current", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.3v3_pex.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.3v3_aux.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.ddr_vpp_bottom.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.ddr_vpp_top.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.sys_v5v.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.1v2_top.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.1v8_top.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.0v85.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.mgt_0v9.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_sw.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.mgt_vtt.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.voltage", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.current", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
+        ostr << "#################################\n";
+        
+        ostr << "";
+        ostr << "#################################\n";
+        ostr << "#################################\n";
+        ostr << "#################################\n";
+        return 0;
+    }
 
     /*
      * dump
@@ -872,11 +923,6 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         
-        // start sensor tree
-        createEmptyTree( gSensorTree );
-        readSensors();
-        writeTree( gSensorTree );
-        // end sensor tree
         
         m_devinfo_stringize(m_devinfo, lines);
  
