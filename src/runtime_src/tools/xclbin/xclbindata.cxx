@@ -341,6 +341,22 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "debug";
     ext = ".bin";
   }
+  else if ( header.m_sectionKind == DNA_CERTIFICATE ) {
+    type = "dna_certificate";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == BUILD_METADATA ) {
+    type = "build_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == KEYVALUE_METADATA ) {
+    type = "keyvalue_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == USER_METADATA ) {
+    type = "user_metadata";
+    ext = ".bin";
+  }
   else if ( header.m_sectionKind == MEM_TOPOLOGY ) {
     type = "mem_topology";
     ext = ".bin";
@@ -373,8 +389,14 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   else if ( header.m_sectionKind == BMC ) {
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
+  } else {
+    static unsigned int uniqueCount = 1;
+    type = "unknown(" + std::to_string(uniqueCount) + ")";
+    ext = ".bin";
+    ++uniqueCount;
   }
-  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
+
+  
 
 
   std::string id = "";
@@ -466,7 +488,9 @@ bool
 XclBinData::reportHeader() 
 {
   std::cout << "xclbin1 Size:           " << m_xclBinHead.m_header.m_length << "\n";
-  std::cout << "Version:                " << m_xclBinHead.m_header.m_version << "\n";
+  std::cout << "Version:                " << m_xclBinHead.m_header.m_versionMajor 
+                                            << "." << m_xclBinHead.m_header.m_versionMinor 
+                                            << "." << m_xclBinHead.m_header.m_versionPatch << "\n";
   std::cout << "Timestamp:              " << m_xclBinHead.m_header.m_timeStamp << "\n";
   std::cout << "Feature ROM Timestamp:  " << m_xclBinHead.m_header.m_featureRomTimeStamp << "\n";
   std::cout << "Mode:                   " << (int)m_xclBinHead.m_header.m_mode << "\n";

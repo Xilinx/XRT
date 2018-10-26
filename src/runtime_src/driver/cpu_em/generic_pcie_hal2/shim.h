@@ -142,6 +142,8 @@ namespace xclcpuemhal2 {
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
+
 
     private:
       std::mutex mMemManagerMutex;
@@ -213,6 +215,8 @@ namespace xclcpuemhal2 {
       static unsigned int mBufferCount;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       // HAL2 RELATED member variables end 
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
 
   };
   

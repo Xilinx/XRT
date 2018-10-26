@@ -189,6 +189,12 @@ namespace xocl {
     return 0;
   }
 
+    uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+    if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+      return  static_cast <uint32_t> (mStreammonProperties[slotnum]);
+    return 0;
+  }
+
   void XOCLShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
 		                            char* slotName, uint32_t length) {
     std::string str = "";
@@ -859,6 +865,7 @@ namespace xocl {
       results.Overflow = (temp >> 62) & 0x1;
       results.Error = (temp >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
+      results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
 
       if (mLogStream.is_open()) {
@@ -871,6 +878,7 @@ namespace xocl {
         mLogStream << "Start, Stop : " << static_cast<int>(results.Reserved) << "   ";
         mLogStream << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
         mLogStream << "Error : " << static_cast<int>(results.Error) << "   ";
+        mLogStream << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
         mLogStream << std::endl;
       }
     }
@@ -959,6 +967,14 @@ void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uin
   if (!drv)
     return;
   return drv->xclSetProfilingNumberSlots(type, numSlots);
+}
+
+uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
+{
+   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return 0;
+  return drv->getPerfMonProperties(type, slotnum);
 }
 
 uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)

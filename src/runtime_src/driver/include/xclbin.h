@@ -157,7 +157,8 @@ extern "C" {
         BMC,
         BUILD_METADATA,
         KEYVALUE_METADATA,
-        USER_METADATA
+        USER_METADATA,
+        DNA_CERTIFICATE
     };
 
     enum MEM_TYPE {
@@ -189,7 +190,9 @@ extern "C" {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
         uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
-        uint32_t m_version;                 /* Tool version used to create xclbin */
+        uint16_t m_versionPatch;            /* Patch Version */
+        uint8_t m_versionMajor;             /* Major Version - Version: 2.1.0*/
+        uint8_t m_versionMinor;             /* Minor Version */
         uint32_t m_mode;                    /* XCLBIN_MODE */
 	union {
 	    struct {
@@ -363,18 +366,6 @@ extern "C" {
         CST_UNKNOWN = 0,
         CST_SDBM = 1,
         CST_LAST 
-    };
-
-    struct checksum
-    {
-       char m_magic[8];                   /* XCHKSUM */
-       uint8_t m_type;                    /* Checksum Type*/
-       uint8_t padding[7];
-
-       union {
-          uint64_t m_64bit;             
-          unsigned char m_maxKeySize[256];  /* Do not change */
-       };
     };
 
     /**** END : Xilinx internal section *****/

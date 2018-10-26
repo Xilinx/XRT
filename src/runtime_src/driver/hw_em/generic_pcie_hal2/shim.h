@@ -275,6 +275,8 @@ using addr_type = uint64_t;
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

@@ -35,6 +35,10 @@
 #define	STREAM_SLRID_MASK	0xff
 #define	STREAM_TDEST_MASK	0xffff
 
+#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		5
+#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
+
 #define	QUEUE_POST_TIMEOUT	10000
 
 static dev_t	str_dev;
@@ -52,6 +56,8 @@ struct stream_queue {
 	struct device		dev;
 	struct qdma_wq		queue;
 	u32			state;
+	int			flowid;
+	int			routeid;
 	struct file		*file;
 	int			qfd;
 	int			refcnt;
@@ -63,6 +69,9 @@ struct str_device {
 	struct platform_device  *pdev;
 	struct cdev		cdev;
 	struct device		*sys_device;
+	u32			h2c_ringsz_idx;
+	u32			c2h_ringsz_idx;
+	u32			wrb_ringsz_idx;
 
 	struct mutex		str_dev_lock;
 
@@ -145,7 +154,27 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(pstat, total_complete_bytes);
 	__SHOW_MEMBER(pstat, total_complete_num);
 
-	
+	__SHOW_MEMBER(pstat, hw_submit_bytes);
+	__SHOW_MEMBER(pstat, hw_complete_bytes);
+
+	__SHOW_MEMBER(pstat, descq_rngsz);
+	__SHOW_MEMBER(pstat, descq_pidx);
+	__SHOW_MEMBER(pstat, descq_cidx);
+	__SHOW_MEMBER(pstat, descq_avail);
+	__SHOW_MEMBER(pstat, desc_wb_cidx);
+	__SHOW_MEMBER(pstat, desc_wb_pidx);
+
+	__SHOW_MEMBER(pstat, descq_rngsz_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb);
+	__SHOW_MEMBER(pstat, descq_pidx_wrb);
+	__SHOW_MEMBER(pstat, descq_cidx_wrb_pend);
+	__SHOW_MEMBER(pstat, c2h_wrb_cidx);
+	__SHOW_MEMBER(pstat, c2h_wrb_pidx);
+
+	__SHOW_MEMBER(pstat, flq_cidx);
+	__SHOW_MEMBER(pstat, flq_pidx);
+	__SHOW_MEMBER(pstat, flq_pidx_pend);
+
 	return off;
 }
 static DEVICE_ATTR_RO(stat);
@@ -162,7 +191,16 @@ static const struct attribute_group stream_attrgroup = {
 
 static void stream_sysfs_destroy(struct stream_queue *queue)
 {
+	struct platform_device	*pdev = queue->sdev->pdev;
+	char			name[32];
+
+	if (queue->queue.qconf->c2h)
+		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
+	else
+		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
+
 	if (get_device(&queue->dev)) {
+		sysfs_remove_link(&pdev->dev.kobj, (const char *)name);
 		sysfs_remove_group(&queue->dev.kobj, &stream_attrgroup);
 		put_device(&queue->dev);
 		device_unregister(&queue->dev);
@@ -178,6 +216,7 @@ static void stream_device_release(struct device *dev)
 static int stream_sysfs_create(struct stream_queue *queue)
 {
 	struct platform_device	*pdev = queue->sdev->pdev;
+	char			name[32];
 	int			ret;
 
 #if 0
@@ -201,6 +240,17 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
 		goto failed;
+	}
+
+	if (queue->queue.qconf->c2h)
+		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
+	else
+		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
+
+	ret = sysfs_create_link(&pdev->dev.kobj, &queue->dev.kobj, (const char *)name);
+	if (ret) {
+		xocl_err(&pdev->dev, "create sysfs link failed");
+		sysfs_remove_group(&queue->dev.kobj, &stream_attrgroup);
 	}
 
 	return 0;
@@ -242,7 +292,7 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
 	struct xocl_dev		*xdev;
 
 	cb_arg = (struct stream_async_arg *)compl_event->req_priv;
-	kiocb = cb_arg->kiocb;
+	kiocb = compl_event->kiocb;
 
 	if (cb_arg->is_unmgd) {
 		xdev = xocl_get_xdev(cb_arg->queue->sdev->pdev);
@@ -300,8 +350,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 		cb_arg.queue = queue;
 		wr.priv_data = &cb_arg;
 		wr.complete = queue_wqe_complete;
-	} else {
-		wr.block = true;
+		wr.kiocb = kiocb;
 	}
 
 
@@ -311,7 +360,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	}
 
 failed:
-	if (wr.block) {
+	if (!wr.kiocb) {
 		drm_gem_object_unreference_unlocked(gem_obj);
 	}
 
@@ -405,8 +454,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		cb_arg.nsg = nents;
 		wr.priv_data = &cb_arg;
 		wr.complete = queue_wqe_complete;
-	} else {
-		wr.block = true;
+		wr.kiocb = kiocb;
 	}
 
 	ret = qdma_wq_post(&queue->queue, &wr);
@@ -414,7 +462,7 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
-	if (wr.block) {
+	if (!wr.kiocb) {
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
 	}
@@ -429,7 +477,7 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 
 	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
 
-	return qdma_cancel_req(&queue->queue);
+	return qdma_cancel_req(&queue->queue, kiocb);
 }
 
 static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
@@ -649,17 +697,23 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
+	qconf.irq_en = (req.flags & XOCL_QDMA_QUEUE_FLAG_POLLING) ? 0 : 1;
 
 	if (!req.write) {
 		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
 		qconf.c2h = 1;
+		qconf.desc_rng_sz_idx = sdev->c2h_ringsz_idx;
+		qconf.cmpl_rng_sz_idx = sdev->wrb_ringsz_idx;
 	} else {
 		qconf.bypass = 1;
 		qconf.pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
 			STREAM_SLRID_MASK;
 		qconf.pipe_tdest = req.rid & STREAM_TDEST_MASK;
 		qconf.pipe_gl_max = 1;
+		qconf.desc_rng_sz_idx = sdev->h2c_ringsz_idx;
 	}
+	queue->flowid = req.flowid;
+	queue->routeid = req.rid;
 	xocl_info(&sdev->pdev->dev, "Creating queue with tdest %d, flow %d, "
 		"slr %d", qconf.pipe_tdest, qconf.pipe_flow_id,
 		qconf.pipe_slr_id);
@@ -933,8 +987,12 @@ static int str_dma_probe(struct platform_device *pdev)
 		goto failed_create_cdev;
 	}
 
+	sdev->h2c_ringsz_idx = STREAM_DEFAULT_H2C_RINGSZ_IDX;
+	sdev->c2h_ringsz_idx = STREAM_DEFAULT_C2H_RINGSZ_IDX;
+	sdev->wrb_ringsz_idx = STREAM_DEFAULT_WRB_RINGSZ_IDX;
+
 	mutex_init(&sdev->str_dev_lock);
-	
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_STR_DMA, &str_ops);
 	platform_set_drvdata(pdev, sdev);
 

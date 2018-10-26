@@ -189,6 +189,14 @@ track(const memory* mem)
 #endif
 }
 
+void
+device::
+clear_connection(connidx_type conn)
+{
+  assert(conn!=-1);
+  m_xclbin.clear_connection(conn);
+}
+
 xrt::device::BufferObjectHandle
 device::
 alloc(memory* mem, unsigned int memidx)
@@ -246,7 +254,7 @@ alloc(memory* mem)
 
 int
 device::
-get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream)
+get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)
 {
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
@@ -254,7 +262,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
   if(ext && ext->param) {
     auto kernel = xocl::xocl(ext->kernel);
     auto& kernel_name = kernel->get_name_from_constructor();
-    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags);
+    auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
     auto mems = m_xclbin.get_mem_topology();
 
     if (!mems)
@@ -294,8 +302,10 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
 int
 device::
-close_stream(xrt::device::stream_handle stream)
+close_stream(xrt::device::stream_handle stream, int connidx)
 {
+  assert(connidx!=-1);
+  clear_connection(connidx);
   return m_xdevice->closeStream(stream);
 }
 
@@ -424,6 +434,15 @@ device::
 
 void
 device::
+clear_cus()
+{
+  for (auto& cu : get_cus())
+    release_context(cu.get());
+  m_computeunits.clear();
+}
+
+void
+device::
 set_xrt_device(xrt::device* xd,bool final)
 {
   if (!final && m_xdevice)
@@ -532,9 +551,12 @@ allocate_buffer_object(memory* mem)
     int32_t memidx = 0;
     if (auto kernel = mem->get_ext_kernel()) {
       //param<==>kernel; flag<==>arg_index
+      int32_t conn = 0;
       flag = flag & 0xffffff;
       auto& kernel_name = kernel->get_name_from_constructor();
-      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag);
+      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag,conn);
+      assert(conn!=-1);
+      mem->set_connidx(conn);
     }
     else if (flag & XCL_MEM_TOPOLOGY) {
       memidx = flag & 0xffffff;
@@ -554,6 +576,7 @@ allocate_buffer_object(memory* mem)
       return boh;
     }
     catch (const std::bad_alloc&) {
+      throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"could not allocate with memidx: "+std::to_string(memidx));
     }
   }
 
@@ -808,7 +831,7 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
     if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
       xdevice->write(boh,ubuf+offset,size,offset,false);
-    if (buffer->is_resident(this))
+    if (buffer->is_resident(this) && !buffer->is_p2p_memory())
       xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
@@ -822,8 +845,10 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
     auto xdevice = get_xrt_device();
-    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
-    sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
+    if(!buffer->is_p2p_memory()){
+      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+      sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
+    }
     return;
   }
 
@@ -832,10 +857,11 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
-  // Sync from host to device to make make buffer resident of this device
-  sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
-  xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
-
+  if(!buffer->is_p2p_memory()){
+    // Sync from host to device to make make buffer resident of this device
+    sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
+    xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
+  }
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
@@ -885,16 +911,16 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   auto xdevice = get_xrt_device();
 
   if (!get_num_cdmas() || is_emulation_mode()) {
-    auto cb = [this](memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t dst_offset, size_t size,const cmd_type& cmd) {
-      cmd->start();
-      char* hbuf_src = static_cast<char*>(map_buffer(src_buffer,CL_MAP_READ,src_offset,size,nullptr));
-      char* hbuf_dst = static_cast<char*>(map_buffer(dst_buffer,CL_MAP_WRITE_INVALIDATE_REGION,dst_offset,size,nullptr));
-      std::memcpy(hbuf_dst,hbuf_src,size);
-      unmap_buffer(src_buffer,hbuf_src);
-      unmap_buffer(dst_buffer,hbuf_dst);
-      cmd->done();
+    auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
+      c->start();
+      char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
+      char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
+      std::memcpy(hbuf_dst,hbuf_src,sz);
+      unmap_buffer(sbuf,hbuf_src);
+      unmap_buffer(dbuf,hbuf_dst);
+      c->done();
     };
-    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer, src_offset, dst_offset, size,cmd);
+    xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
 
@@ -1041,7 +1067,7 @@ device::
 read_register(memory* mem, size_t offset,void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"read_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->read_register(offset,ptr,size);
 }
 
@@ -1050,7 +1076,7 @@ device::
 write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"write_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->write_register(offset,ptr,size);
 #if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
@@ -1176,7 +1202,7 @@ load_program(program* program)
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
   // isn't possible, we *must* iterator symbols explicitly
-  m_computeunits.clear();
+  clear_cus();
   m_cu_memidx = -2;
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
@@ -1195,10 +1221,42 @@ device::
 unload_program(const program* program)
 {
   if (m_active == program) {
-    get_xrt_device()->resetKernel();
-    m_computeunits.clear();
+    clear_cus();
     m_active = nullptr;
   }
+}
+
+bool
+device::
+acquire_context(compute_unit* cu, bool shared) const
+{
+  if (cu->m_context_type != compute_unit::context_type::none)
+    return true;
+
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    cu->set_context_type(shared);
+    return true;
+  }
+  return false;
+}
+
+bool
+device::
+release_context(compute_unit* cu) const
+{
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    cu->reset_context_type();
+    return true;
+  }
+  return false;
 }
 
 xclbin

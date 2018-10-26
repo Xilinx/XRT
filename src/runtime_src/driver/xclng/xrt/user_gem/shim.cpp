@@ -219,7 +219,6 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
     memset(&mAioContext, 0, sizeof(mAioContext));
     if (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) != 0) {
         mAioEnabled = false;
-        std::cout << "Failed create AIO context" << std::endl;
     } else {
         mAioEnabled = true;
     }
@@ -750,8 +749,8 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on card.\n"
-                    << "Please run xbutil flash -a all to flash card."
+                output << "Xclbin does not match DSA on card or xrt version.\n"
+                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
                     mLogStream << output.str();
@@ -1198,7 +1197,7 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
@@ -1213,7 +1212,7 @@ int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool s
 /*
  * xclCloseContext
  */
-int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -1245,6 +1244,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     q_info.write = 1;
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1267,6 +1267,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1340,22 +1341,35 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
     /* TODO: populate actual and timeout args correctly */
-    struct timespec time;
-    time.tv_nsec = timeout*1000000;
-
+    struct timespec time, *ptime = NULL;
     int num_evt, i;
 
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
+    *actual = 0;
+    if (!mAioEnabled) {
+        num_evt = -EINVAL;
+        std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+        goto done;
+    }
+    if (timeout > 0) {
+        memset(&time, 0, sizeof(time));
+        time.tv_sec = timeout / 1000;
+        time.tv_nsec = (timeout % 1000) * 1000000;
+        ptime = &time;
+    }
+
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
     }
+    *actual = num_evt;
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
         comps[i].nbytes = ((struct io_event *)comps)[i].res;
         comps[i].err_code = ((struct io_event *)comps)[i].res2;
     }
+    num_evt = 0;
 
 done:
     return num_evt;
@@ -1382,6 +1396,11 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
             struct iocb cb;
             struct iocb *cbs[1];
+
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
 
             if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
                 std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
@@ -1446,6 +1465,11 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb cb;
             struct iocb *cbs[1];
 
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
+
             memset(&cb, 0, sizeof(cb));
             cb.aio_fildes = (int)q_hdl;
             cb.aio_lio_opcode = IOCB_CMD_PREADV;
@@ -1464,7 +1488,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
         } else {
             rc = readv((int)q_hdl, iov, 2);
             if (rc < 0) {
-                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                std::cerr << "ERROR: read stream failed: " << rc << std::endl;
                 break;
             }
         }

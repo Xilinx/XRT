@@ -846,6 +846,7 @@ struct qdma_request {
 	unsigned long uld_data;
 	/** set fp_done for non-blocking mode */
 	int (*fp_done)(struct qdma_request *, unsigned int bytes_done, int err);
+	int (*fp_cancel)(struct qdma_request *);
 	/** timeout in mili-seconds, 0 - no timeout */
 	unsigned int timeout_ms;
 	/** total data size */
@@ -1028,5 +1029,7 @@ int qdma_intr_ring_dump(unsigned long dev_hndl, unsigned int vector_idx,
 
 int qdma_descq_get_wrb_udd(unsigned long dev_hndl, unsigned long qhndl,
 		char *buf, int buflen);
+int qdma_error_stat(unsigned long dev_hndl, bool clear, char *outstr,
+		int *len);
 
 #endif

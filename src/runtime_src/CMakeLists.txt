@@ -35,9 +35,9 @@ endif()
 
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
-add_subdirectory(xdp)
 
 add_compile_options("-Wall" "-Werror")
+add_subdirectory(xdp)
 add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
 add_subdirectory(xclbin)
@@ -61,6 +61,7 @@ target_link_libraries(xilinxopencl
   dl
   pthread
   crypt
+  uuid
   rt
   )
 

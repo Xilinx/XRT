@@ -74,7 +74,7 @@ static int qdma_thread_wrk_proc(struct list_head *work_item)
 		pr_debug("descq %s, wrk 0x%p.\n", descq->conf.name, cb);
 		rv = qdma_descq_proc_sgt_request(descq, cb);
 		if (rv < 0) { /* failed, return */
-			qdma_sgt_req_done(descq, cb, rv);
+			qdma_sgt_req_done(descq);
 		}
 		if (!descq->avail)
 			break;
@@ -176,7 +176,7 @@ void qdma_thread_add_work(struct qdma_descq *descq)
 	rq_thread->work_cnt++;
 	unlock_thread(rq_thread);
 
-	if (descq->xdev->conf.poll_mode) {	/* Polled mode only */
+	if (!descq->conf.irq_en) {	/* Polled mode only */
 		cmpl_thread = wb_threads + (thread_cnt - idx - 1);
 		lock_thread(cmpl_thread);
 		list_add_tail(&descq->wbthp_list, &cmpl_thread->work_list);

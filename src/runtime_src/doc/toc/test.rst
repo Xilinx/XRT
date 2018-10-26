@@ -7,7 +7,7 @@ downtime provided you use a few scripts we have created:
 - ``build.sh`` build script that builds XRT for both Debug and Release profiles.
 - ``run.sh`` loader script that sets up environment assuming XRT was
   built with ``build.sh``.
-- ``board.sh`` harvests sprite UNIT_HW test cases and runs board tests.
+- ``board.sh`` harvests sprite ``UNIT_HW`` test cases and runs board tests.
 
 Building XRT
 ~~~~~~~~~~~~
@@ -74,8 +74,9 @@ nightly sprite area.  Without the ``-sync`` option, the board script will
 run all tests that were previously synced into the current directory.
 
 While tests run a file named ``results.all`` will list the test with
-PASS/FAIL keyword.  This file is appended (not removed between runs).
-A complete run should take 5-10 mins for approximately 70 tests.
+``PASS``\ /\ ``FAIL`` keyword.  This file is appended (not removed
+between runs).  A complete run should take 5-10 mins for approximately
+70 tests.
 
 
 Unit Testing XRT
@@ -84,15 +85,20 @@ Unit Testing XRT
 We use GTest to do unit testing. The GTest package is installed by
 running ``XRT/src/runtime_src/tools/scripts/xrtdeps.sh``.
 
-The GTest package on CentOS/RHEL 7.5 provides the GTest libraries here:
- * /usr/lib64/libgtest.so 
- * /usr/lib64/libgtest_main.so
+The GTest package on CentOS/RHEL 7.5 provides the GTest libraries
+here:
 
-However, the GTest package on Ubuntu 16.04 provides source only!
+  * ``/usr/lib64/libgtest.so``
+  * ``/usr/lib64/libgtest_main.so``
 
-To use GTest on Ubuntu 16.04 use:
+In recent versions of Ubuntu, the GTest ``libgtest-dev`` package
+provides the compiled libraries in
 
-::
+  * ``/usr/lib/x86_64-linux-gnu/libgtest.a``
+  * ``/usr/lib/x86_64-linux-gnu/libgtest_main.a``
+
+However, the GTest package on Ubuntu up to 18.04 provides source only!
+So, to use GTest on older Ubuntu versions, use::
 
    cd /usr/src/gtest
    sudo cmake CMakeLists.txt
@@ -104,15 +110,14 @@ To use GTest on Ubuntu 16.04 use:
    ls *gtest*
 
 This will add GTest static library symbolic links here:
- * /usr/lib/libgtest.a
- * /usr/lib/libgtest_main.a
+
+  * ``/usr/lib/libgtest.a``
+  * ``/usr/lib/libgtest_main.a``
 
 CMake will handle linking, finding etc. for you.
 
-To add GTest support to a CMakeLists.txt use the following, and this is using 
-an example executable called 'xclbintest':
-
-::
+To add GTest support to a ``CMakeLists.txt`` use the following, and this is using 
+an example executable called ``xclbintest``::
 
    find_package(GTest)
    if (GTEST_FOUND)
@@ -125,4 +130,3 @@ an example executable called 'xclbintest':
    else()
      message (STATUS "GTest was not found, skipping generation of test executables")
    endif()
-

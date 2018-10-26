@@ -36,7 +36,7 @@ XmaDecoderPlugin decoder_plugin = {
     .plugin_data_size = 0,
     .init = xma_decoder_init,
     .send_data = xma_decoder_send,
-    .recv_frame = xma_decoder_recv,
     .get_properties = xma_decoder_getp,
+    .recv_frame = xma_decoder_recv,
     .close = xma_decoder_close,
 };

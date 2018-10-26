@@ -829,6 +829,7 @@ static bool
 stop_mb(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
+  ERT_DEBUGF("stop_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
   // disable CUDMA module
   cu_dma_enabled = 0;
@@ -847,6 +848,7 @@ stop_mb(size_type slot_idx)
 
   // Update registers so mgmt driver knows ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+  write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
   exit(0);
   return true;
 }

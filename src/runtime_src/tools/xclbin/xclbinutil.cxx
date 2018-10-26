@@ -29,9 +29,7 @@ int main( int argc, char** argv )
     if ( msg.empty() )
       std::cerr << "ERROR: Caught an internal exception no message information is available.\n";
     else {
-        std::cerr << "Unhandled Exception caught in main(): " << std::endl
-            << e.what() << std::endl
-            << "exiting" << std::endl;
+      std::cerr << e.what() << std::endl;
     }
   } catch ( ... ) {
     std::cerr << "ERROR: Caught an internal exception no exception information is available.\n";

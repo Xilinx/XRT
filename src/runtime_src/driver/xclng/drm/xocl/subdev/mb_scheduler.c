@@ -23,8 +23,6 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 
-//#define SCHED_VERBOSE
-
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
@@ -816,6 +814,9 @@ configure(struct xocl_cmd *xcmd)
 
 	cfg = (struct ert_configure_cmd *)(xcmd->packet);
 
+	/* Mark command as control command to force slot 0 execution */
+	cfg->type = ERT_CTRL;
+
 	if (cfg->count != 5 + cfg->num_cus) {
 		DRM_INFO("invalid configure command, count=%d expected 5+num_cus(%d)\n",cfg->count,cfg->num_cus);
 		return 1;
@@ -924,6 +925,21 @@ acquire_slot_idx(struct exec_core *exec)
 }
 
 /**
+ * acquire_slot() - Acquire a slot index for a command
+ *
+ * This function makes a special case for control commands which
+ * must always dispatch to slot 0, otherwise normal acquisition
+ */
+static int
+acquire_slot(struct xocl_cmd* xcmd)
+{
+	if (type(xcmd)==ERT_CTRL)
+		return 0;
+
+	return acquire_slot_idx(xcmd->exec);
+}
+
+/**
  * release_slot_idx() - Release a slot index
  *
  * Update slot status mask for slot index.  Notify scheduler in case
@@ -940,6 +956,19 @@ release_slot_idx(struct exec_core *exec, unsigned int slot_idx)
 	SCHED_DEBUGF("<-> release_slot_idx slot_status[%d]=0x%x, pos=%d\n"
 		     ,mask_idx,exec->slot_status[mask_idx],pos);
 	exec->slot_status[mask_idx] ^= (1<<pos);
+}
+
+/**
+ * release_slot() - Release a slot index for a command
+ *
+ * Special case for control commands that execute in slot 0.  This
+ * slot cannot be marked free ever.
+ */
+static void
+release_slot(struct xocl_cmd* xcmd)
+{
+	if (type(xcmd)!=ERT_CTRL)
+		release_slot_idx(xcmd->exec,xcmd->slot_idx);
 }
 
 /**
@@ -1102,7 +1131,7 @@ mark_cmd_complete(struct xocl_cmd *xcmd)
 	set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
 	if (exec->polling_mode)
 		--xcmd->xs->poll;
-	release_slot_idx(exec,xcmd->slot_idx);
+	release_slot(xcmd);
 	notify_host(xcmd);
 
 	// Deactivate command and trigger chain of waiting commands
@@ -1521,7 +1550,7 @@ mb_submit(struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> mb_submit(%lu)\n",xcmd->id);
 
-	xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+	xcmd->slot_idx = acquire_slot(xcmd);
 	if (xcmd->slot_idx<0) {
 		SCHED_DEBUG("<- mb_submit returns false\n");
 		return false;
@@ -1640,7 +1669,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 
 	/* execution done by submit_cmds, ensure the cmd retired properly */
 	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL) {
-		xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+		xcmd->slot_idx = acquire_slot(xcmd);
 		SCHED_DEBUGF("<- penguin_submit slot(%d)\n",xcmd->slot_idx);
 		return true;
 	}
@@ -1653,7 +1682,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 	if (xcmd->cu_idx<0)
 		return false;
 
-	xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+	xcmd->slot_idx = acquire_slot(xcmd);
 	if (xcmd->slot_idx<0)
 		return false;
 
@@ -1853,10 +1882,51 @@ reset(struct platform_device *pdev)
 	return 0;
 }
 
+/**
+ * validate() - Check if requested cmd is valid in the current context
+ */
 static int
-validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd)
+validate(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *bo)
 {
-	// TODO: Add code to check if requested cmd is valid in the current context
+	struct ert_packet *ecmd = (struct ert_packet*)bo->vmapping;
+	struct ert_start_kernel_cmd *scmd = (struct ert_start_kernel_cmd*)bo->vmapping;
+	u32 ctx_cus[4] = {0};
+	u32 cumasks = 0;
+	int i = 0;
+
+	SCHED_DEBUGF("-> validate opcode(%d)\n",ecmd->opcode);
+
+	/* cus for start kernel commands only */
+	if (ecmd->opcode!=ERT_START_CU) {
+		SCHED_DEBUG("<- validate(0), not a CU cmd\n");
+		return 0; /* ok */
+	}
+
+	/* no specific CUs selected, maybe ctx is not used by client */
+	if (bitmap_empty(client->cu_bitmap,MAX_CUS)) {
+		SCHED_DEBUG("<- validate(0), no CUs in ctx\n");
+		return 0; /* ok */
+	}
+
+
+	/* Check CUs in cmd BO against CUs in context */
+	cumasks = 1 + scmd->extra_cu_masks;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,16,0)
+	bitmap_to_arr32(ctx_cus,client->cu_bitmap,cumasks*32);
+#else
+	bitmap_to_u32array(ctx_cus,cumasks,client->cu_bitmap,MAX_CUS);
+#endif
+	for (i=0; i<cumasks; ++i) {
+		uint32_t cmd_cus = ecmd->data[i];
+                /* cmd_cus must be subset of ctx_cus */
+		if (cmd_cus & ~ctx_cus[i]) {
+			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+				     i,cmd_cus,ctx_cus[i]);
+			return 1; /* error */
+		}
+	}
+
+	SCHED_DEBUG("<- validate(0) cmd and ctx CUs match\n");
 	return 0;
 }
 

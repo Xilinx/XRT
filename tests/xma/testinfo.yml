@@ -4,13 +4,22 @@ owner: sarabjee
 platforms: [lnx64]
 products: [sdx]
 tasks:
-  software: {command: xma_tests.sh, cpu_cores: 2, level: 7, memory: 16}
+  board:
+    command: xma_tests.sh
+    cpu_cores: 1
+    disable_local_workarea: 1
+    job_type: sdaccel_hw
+    level: 3
+    memory: 5
+    select_resource: dsa_cfg='xilinx:vcu1525:dynamic:6_0'
 user:
   board_check: 0
   board_recover: 0
   design: xma_tests
+  dsa: xilinx_vcu1525_dynamic_6_0
   name: xma_tests
-  sdx_type: [sdx_full]
+  sdx_type: [sdx_fast]
+  test_mode: hw
   test_name: xma_tests
 
 

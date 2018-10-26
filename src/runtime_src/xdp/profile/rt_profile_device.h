@@ -166,6 +166,9 @@ namespace XCL {
       std::queue<uint32_t> mReadLengths[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint16_t> mWriteBytes[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint16_t> mReadBytes[XSPM_MAX_NUMBER_SLOTS];
+      std::queue<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
+      std::queue<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
+      std::queue<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
   };
 };
