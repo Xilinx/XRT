@@ -854,6 +854,11 @@ public:
             return -ENOENT;
         }
 
+        if(region) {
+            std::cout << "ERROR: Not support other than -r 0 " << std::endl;
+            return -EINVAL;
+        }
+
         char temp[8];
         stream.read(temp, 8);
 
