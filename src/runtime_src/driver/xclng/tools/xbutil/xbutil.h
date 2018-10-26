@@ -209,6 +209,32 @@ public:
         return 0;
     }
 
+    int parseComputeUnits(std::vector<ip_data> &computeUnits) const
+    {
+        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
+            static int cuCnt = 0;
+            
+            unsigned statusBuf;
+            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".count",
+                             cuCnt );
+            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".count",
+                             computeUnits.at( i ).m_type );
+            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".name",
+                             computeUnits.at( i ).m_name );
+            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".base_address",
+                             computeUnits.at( i ).m_base_address );
+            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".status",
+                             parseCUStatus( statusBuf ) );
+//            if( computeUnits.at( i ).m_type == IP_DNASC ) {
+//                dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
+//                gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".dna_status",
+//                                 parseDNAStatus( dnaStatus ) );
+//            }
+        }
+        return 0;
+    }
+
     void m_devinfo_stringize_statics(const xclDeviceInfo2& m_devinfo,
         std::vector<std::string> &lines) const
     {
@@ -560,6 +586,27 @@ public:
 
         lines.push_back(ss.str());
     }
+    
+    void getMemTopology( void ) const
+    {
+        std::string errmsg;
+        std::vector<char> buf;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        const mem_topology *map = (mem_topology *)buf.data();
+        if(buf.empty())
+            return;
+        
+        for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
+            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".type",
+                             map->m_mem_data[i].m_type );
+            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".tag",
+                             map->m_mem_data[i].m_tag );
+            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".used",
+                             map->m_mem_data[i].m_used );
+            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".size",
+                             unitConvert(map->m_mem_data[i].m_size << 10) );
+        }
+    }
 
     void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat,
         const xclDeviceInfo2& m_devinfo, std::vector<std::string> &lines) const
@@ -757,74 +804,55 @@ public:
         //gSensorTree.put( "board.info.dna", 
         
         // physical
-        gSensorTree.put( "board.physical.pcb_top_front", m_devinfo.mSE98Temp[ 0 ] ); 
-        gSensorTree.put( "board.physical.pcb_top_rear",  m_devinfo.mSE98Temp[ 1 ] );
-        gSensorTree.put( "board.physical.pcb_btm_front", m_devinfo.mSE98Temp[ 2 ] );
-        gSensorTree.put( "board.physical.thermal.fpga_temp",                    44 );
-        gSensorTree.put( "board.physical.thermal.tcrit_temp",                   42 ); 
-        gSensorTree.put( "board.physical.thermal.fan_speed_temp",               1083 ); 
-        gSensorTree.put( "board.physical.electrical.12v_pex.voltage",           12.0f ); 
-        gSensorTree.put( "board.physical.electrical.12v_pex.current",           1916 ); 
-        gSensorTree.put( "board.physical.electrical.12v_aux.voltage",           0.46f ); 
-        gSensorTree.put( "board.physical.electrical.12v_aux.current",           21 ); 
-        gSensorTree.put( "board.physical.electrical.3v3_pex.voltage",           3.32f ); 
-        gSensorTree.put( "board.physical.electrical.3v3_aux.voltage",           3.47f );
-        gSensorTree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    2.49f ); 
-        gSensorTree.put( "board.physical.electrical.ddr_vpp_top.voltage",       2.49f );
-        gSensorTree.put( "board.physical.electrical.sys_5v5.voltage",           5.5f );
-        gSensorTree.put( "board.physical.electrical.1v2_top.voltage",           1.2f );
-        gSensorTree.put( "board.physical.electrical.1v8_top.voltage",           1.82f ); 
-        gSensorTree.put( "board.physical.electrical.0v85.voltage",              0.85f ); 
-        gSensorTree.put( "board.physical.electrical.mgt_0v9.voltage",           0.9f );
-//        gSensorTree.put( "board.physical.electrical.12v_sw.voltage", 
-//        gSensorTree.put( "board.physical.electrical.mgt_vtt.voltage", 
-//        gSensorTree.put( "board.physical.electrical.vccint.voltage", 
-//        gSensorTree.put( "board.physical.electrical.vccint.current", 
+        gSensorTree.put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] ); 
+        gSensorTree.put( "board.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
+        gSensorTree.put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
+        gSensorTree.put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
+        gSensorTree.put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp ); 
+        gSensorTree.put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        gSensorTree.put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
+        gSensorTree.put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
+        gSensorTree.put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
+        gSensorTree.put( "board.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
+        gSensorTree.put( "board.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
+        gSensorTree.put( "board.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
+        gSensorTree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
+        gSensorTree.put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
+        gSensorTree.put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
+        gSensorTree.put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        gSensorTree.put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
+        gSensorTree.put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
+        gSensorTree.put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
+        gSensorTree.put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
+        gSensorTree.put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
+        gSensorTree.put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        gSensorTree.put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
         
         // firewall
-        gSensorTree.put( "board.firewall.last_error.level_0", 0 );
+        unsigned i = m_errinfo.mFirewallLevel;
+        gSensorTree.put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
+        gSensorTree.put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
         
         // memory
-        //int i = 0;
-        //gSensorTree.add( "board.memory.index", i );
-        std::string entry = "bank0";
-        gSensorTree.put( "board.memory." + entry + ".type",       "MEM_DDR4" );
-        gSensorTree.put( "board.memory." + entry + ".temp",       37.0f );
-        gSensorTree.put( "board.memory." + entry + ".size",       16 );
-        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
-        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
-        entry = "bank1";
-        gSensorTree.put( "board.memory." + entry + ".type",       "UNUSED" );
-        gSensorTree.put( "board.memory." + entry + ".temp",       32.0f );
-        gSensorTree.put( "board.memory." + entry + ".size",       16 );
-        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
-        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
-        entry = "plram0";
-        gSensorTree.put( "board.memory." + entry + ".type",       "UNUSED" );
-        gSensorTree.put( "board.memory." + entry + ".temp",       39.0f );
-        gSensorTree.put( "board.memory." + entry + ".size",       16 );
-        gSensorTree.put( "board.memory." + entry + ".mem_usage",  0 );
-        gSensorTree.put( "board.memory." + entry + ".bo_nums",    0 );
-
+        getMemTopology();
 
         // stream
 
         // xclbin
-        gSensorTree.put( "board.xclbin.id", "5b99588b" );
+        std::string errmsg;
+        std::string xclbinid;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        gSensorTree.put( "board.xclbin.id", xclbinid );
+        if(!errmsg.empty())
+            xclbinid = "invalid";
+        gSensorTree.put( "board.xclbin.id", xclbinid );
 
         // compute unit
-        int i = 0;
-        entry = std::to_string( i );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".name",        "hello" );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".unique_name", "hello_1" );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".address",     18000 );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".status",      "IDLE" );
-        i++;
-        entry = std::to_string( i );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".name",        "hello" );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".unique_name", "hello_2" );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".address",     (2*18000) );
-        gSensorTree.put( "board.compute_unit.cu" + entry + ".status",      "IDLE" );
+        std::vector<ip_data> computeUnits;
+        if( getComputeUnits( computeUnits ) < 0 ) {
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+        }
+        parseComputeUnits( computeUnits );
 
         return 0;
     }
@@ -929,40 +957,11 @@ public:
         }
 
         ostr << "\nCompute Unit Status:\n";
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 ) {
-            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-        } else {
-            for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-                static int cuCnt = 0;
-                if( computeUnits.at( i ).m_type == IP_KERNEL ) {
-                    unsigned statusBuf;
-                    xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-                    ostr << "CU[" << cuCnt << "]: "
-                         << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
-                         << std::dec << parseCUStatus( statusBuf ) << "\n";
-                    cuCnt++;
-                }
-
-                if( computeUnits.at( i ).m_type == IP_DNASC ) {
-
-                    std::string errmsg;
-                    int dnaStatus;
-                    auto dev = pcidev::get_dev(m_idx);
-
-                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
-                    ostr << "\nIP[" << cuCnt << "]: "
-                         << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
-                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
-                    cuCnt++;
-                }
-            }
-            if(computeUnits.size() == 0) {
-                ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
-            }
-        }
+//        std::vector<ip_data> computeUnits;
+//        if( getComputeUnits( computeUnits ) < 0 ) {
+//            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+//        }
+        
         ostr << std::setfill(' ') << "\n";
 
         return 0;
