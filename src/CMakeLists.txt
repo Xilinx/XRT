@@ -135,7 +135,7 @@ add_subdirectory(xma)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
-#include (CMake/cpack.cmake)
+include (CMake/cpack.cmake)
 include (CMake/cpack-aws.cmake)
 
 include (CMake/lint.cmake)
