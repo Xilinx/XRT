@@ -11,6 +11,7 @@ SET(CPACK_PACKAGE_VERSION_MINOR "${XRT_VERSION_MINOR}")
 SET(CPACK_PACKAGE_VERSION_PATCH "${XRT_VERSION_PATCH}")
 SET(CPACK_PACKAGE_NAME "xrt-aws")
 SET(CPACK_PACKAGE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../build/Release/xrt-aws-prep") # where _CPack_Packages will be created
+SET(CPACK_RPM_AWS_HAL_LIB_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-aws_hal_lib")
 
 execute_process(
     COMMAND lsb_release -r -s
@@ -46,3 +47,6 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "AWS Plugin to Xilinx RunTime stack for us
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
 
 INCLUDE(CPack)
+
+cpack_add_component(AWS_HAL_LIB
+                    DISPLAY_NAME aws_hal_lib)

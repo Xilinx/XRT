@@ -11,6 +11,7 @@ SET(CPACK_PACKAGE_VERSION_MINOR "${XRT_VERSION_MINOR}")
 SET(CPACK_PACKAGE_VERSION_PATCH "${XRT_VERSION_PATCH}")
 SET(CPACK_PACKAGE_NAME "xrt")
 SET(CPACK_PACKAGE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../build/Release/xrt-prep") # where _CPack_Packages will be created
+SET(CPACK_RPM_CORE_HAL_LIB_PACKAGE_NAME "${CPACK_PACKAGE_NAME}-core_hal_lib")
 
 execute_process(
     COMMAND lsb_release -r -s
@@ -46,3 +47,7 @@ SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx 
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
 
 INCLUDE(CPack)
+
+cpack_add_component(CORE_HAL_LIB
+                    DISPLAY_NAME core_hal_lib)
+
