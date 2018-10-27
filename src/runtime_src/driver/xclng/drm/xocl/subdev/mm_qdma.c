@@ -136,27 +136,9 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(stat);
 
-static ssize_t pidx_store(struct device *dev, struct device_attribute *da,
-        const char *buf, size_t count)
-{
-	struct mm_channel *channel = dev_get_drvdata(dev);
-	u32 val;
-
-
-        if (kstrtou32(buf, 10, &val) == -EINVAL) {
-                return -EINVAL;
-        }
-
-	qdma_wq_update_pidx(&channel->queue, val);
-
-        return count;
-}
-static DEVICE_ATTR_WO(pidx);
-
 static struct attribute *channel_attributes[] = {
 	&dev_attr_stat.attr,
 	&dev_attr_qinfo.attr,
-	&dev_attr_pidx.attr,
 	NULL,
 };
 
@@ -211,6 +193,32 @@ failed:
 	}
 	return ret;
 }
+
+static ssize_t error_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_dev *xdev;
+	int off;
+
+	xdev = xocl_get_xdev(pdev);
+	qdma_error_stat((unsigned long)xdev->dma_handle, true,
+		buf, &off);
+	qdma_arm_err_intr((unsigned long)xdev->dma_handle);
+
+	return off;
+}
+static DEVICE_ATTR_RO(error);
+
+static struct attribute *mmdev_attributes[] = {
+	&dev_attr_error.attr,
+	NULL,
+};
+
+static const struct attribute_group mmdev_attrgroup = {
+	.attrs = mmdev_attributes,
+};
+
 /* end of sysfs */
 
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,
@@ -389,6 +397,7 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		qconf.st = 0; /* memory mapped */
 		qconf.c2h = write ? 0 : 1;
 		qconf.qidx = qidx;
+		qconf.irq_en = 1;
 		ret = qdma_wq_create((unsigned long)xdev->dma_handle, &qconf,
 			&chan->queue, 0);
 		if (ret) {
@@ -452,6 +461,12 @@ static int mm_dma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	ret = sysfs_create_group(&pdev->dev.kobj, &mmdev_attrgroup);
+	if (ret) {
+		xocl_err(&pdev->dev, "create sysfs group failed");
+		goto failed;
+	}
+
 	mutex_init(&mdev->stat_lock);
 	mdev->pdev = pdev;
 
@@ -473,6 +488,8 @@ failed:
 static int mm_dma_remove(struct platform_device *pdev)
 {
 	struct xocl_mm_device *mdev = platform_get_drvdata(pdev);
+
+	sysfs_remove_group(&pdev->dev.kobj, &mmdev_attrgroup);
 
 	if (!mdev) {
 		xocl_err(&pdev->dev, "driver data is NULL");

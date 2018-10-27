@@ -35,6 +35,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetBOProperties(0)
   ,mExecBuf(0)
   ,mExecWait(0)
+  ,mOpenContext(0)
+  ,mCloseContext(0)
   ,mFreeBO(0)
   ,mWriteBO(0)
   ,mReadBO(0)
@@ -54,6 +56,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mSetProfilingSlots(0)
   ,mGetProfilingSlots(0)
   ,mGetProfilingSlotName(0)
+  ,mGetProfilingSlotProperties(0)
   ,mClockTraining(0)
   ,mStartCounters(0)
   ,mStopCounters(0)
@@ -98,6 +101,9 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mExecBuf = (execBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecBuf");
   mExecWait = (execWaitFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecWait");
 
+  mOpenContext = (openContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclOpenContext");
+  mCloseContext = (closeContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclCloseContext");
+
   mFreeBO   = (freeBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeBO");
   if(!mFreeBO)
     return;
@@ -133,77 +139,26 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mReadQueue = (readQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
   mPollQueues = (pollQueuesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
 
+  // Profiling Functions
   mGetDeviceTime = (getDeviceTimeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
-  if (!mGetDeviceTime)
-    return;
-
   mGetDeviceClock = (getDeviceClockFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceClockFreqMHz");
-  if (!mGetDeviceClock)
-    return;
-
   mGetDeviceMaxRead = (getDeviceMaxReadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetReadMaxBandwidthMBps");
-  if (!mGetDeviceMaxRead)
-    return;
-
   mGetDeviceMaxWrite = (getDeviceMaxWriteFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetWriteMaxBandwidthMBps");
-  if (!mGetDeviceMaxWrite)
-    return;
-
   mSetProfilingSlots = (setSlotFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclSetProfilingNumberSlots");
-  if (!mSetProfilingSlots)
-    return;
-
   mGetProfilingSlots = (getSlotFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingNumberSlots");
-  if (!mGetProfilingSlots)
-    return;
-
   mGetProfilingSlotName = (getSlotNameFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");
-  if (!mGetProfilingSlotName)
-    return;
-
+  mGetProfilingSlotProperties = (getSlotPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
-  if (!mWriteHostEvent)
-    return;
-
   mClockTraining = (clockTrainingFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonClockTraining");
-  if (!mClockTraining)
-    return;
-
   mStartCounters = (startCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartCounters");
-  if (!mStartCounters)
-    return;
-
   mStopCounters = (stopCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopCounters");
-  if (!mStopCounters)
-    return;
-
   mReadCounters = (readCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadCounters");
-  if (!mReadCounters)
-    return;
-
   mStartTrace = (startTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartTrace");
-  if (!mStartTrace)
-    return;
-
   mStopTrace = (stopTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopTrace");
-  if (!mStopTrace)
-    return;
-
   mCountTrace = (countTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonGetTraceCount");
-  if (!mCountTrace)
-    return;
-
   mReadTrace = (readTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
-  if (!mReadTrace)
-    return;
-
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
-  if(!mWriteHostEvent)
-    return;
-
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
-  if (!mDebugReadIPStatus)
-    return;
 
 }
 
@@ -214,5 +169,3 @@ operations::
 }
 
 }} // hal2,xrt
-
-

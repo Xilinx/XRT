@@ -341,6 +341,22 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "debug";
     ext = ".bin";
   }
+  else if ( header.m_sectionKind == DNA_CERTIFICATE ) {
+    type = "dna_certificate";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == BUILD_METADATA ) {
+    type = "build_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == KEYVALUE_METADATA ) {
+    type = "keyvalue_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == USER_METADATA ) {
+    type = "user_metadata";
+    ext = ".bin";
+  }
   else if ( header.m_sectionKind == MEM_TOPOLOGY ) {
     type = "mem_topology";
     ext = ".bin";
@@ -373,8 +389,14 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   else if ( header.m_sectionKind == BMC ) {
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
+  } else {
+    static unsigned int uniqueCount = 1;
+    type = "unknown(" + std::to_string(uniqueCount) + ")";
+    ext = ".bin";
+    ++uniqueCount;
   }
-  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
+
+  
 
 
   std::string id = "";
@@ -859,6 +881,7 @@ XclBinData::getIPType( std::string &_sIPType ) const
   if ( _sIPType == "IP_MB" ) return IP_MB;
   if ( _sIPType == "IP_KERNEL" ) return IP_KERNEL;
   if ( _sIPType == "IP_DNASC" ) return IP_DNASC;
+  if ( _sIPType == "IP_DDR4_CONTROLLER" ) return IP_DDR4_CONTROLLER;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -1447,6 +1470,7 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
     case IP_MB: return "IP_MB";
     case IP_KERNEL: return "IP_KERNEL";
     case IP_DNASC: return "IP_DNASC";
+    case IP_DDR4_CONTROLLER: return "IP_DDR4_CONTROLLER";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);

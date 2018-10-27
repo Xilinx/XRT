@@ -1064,7 +1064,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		return (struct drm_gem_object *)importing_xobj;
 	}
 
-	importing_xobj->flags |= XOCL_BO_IMPORT;
+	importing_xobj->type |= XOCL_BO_IMPORT;
 	importing_xobj->sgt = sgt;
 	importing_xobj->pages = drm_malloc_ab(attach->dmabuf->size >> PAGE_SHIFT, sizeof(*importing_xobj->pages));
 	if (!importing_xobj->pages) {

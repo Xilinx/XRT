@@ -106,7 +106,6 @@ struct xclmgmt_dev {
 
 	/* the kernel pci device data structure provided by probe() */
 	struct pci_dev *pci_dev;
-	struct pci_dev *user_pci_dev;
 	int instance;
 	struct xclmgmt_char *user_char_dev;
 	int axi_gate_frozen;

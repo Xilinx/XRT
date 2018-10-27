@@ -260,7 +260,6 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
   uint64_t flow = (uint64_t)-1;
 
   if(ext && ext->param) {
-    int32_t conn = 0;
     auto kernel = xocl::xocl(ext->kernel);
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
@@ -431,6 +430,15 @@ device::
 ~device()
 {
   XOCL_DEBUG(std::cout,"xocl::device::~device(",m_uid,")\n");
+}
+
+void
+device::
+clear_cus()
+{
+  for (auto& cu : get_cus())
+    release_context(cu.get());
+  m_computeunits.clear();
 }
 
 void
@@ -1059,7 +1067,7 @@ device::
 read_register(memory* mem, size_t offset,void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"read_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->read_register(offset,ptr,size);
 }
 
@@ -1068,7 +1076,7 @@ device::
 write_register(memory* mem, size_t offset,const void* ptr, size_t size)
 {
   if (!(mem->get_flags() & CL_MEM_REGISTER_MAP))
-    throw xocl::error(CL_INVALID_OPERATION,"read_register requures mem object with CL_MEM_REGISTER_MAP");
+    throw xocl::error(CL_INVALID_OPERATION,"write_register requires mem object with CL_MEM_REGISTER_MAP");
   get_xrt_device()->write_register(offset,ptr,size);
 #if 0
   auto cmd = std::make_shared<xrt::command>(get_xrt_device(),ERT_WRITE);
@@ -1194,7 +1202,7 @@ load_program(program* program)
   // Note, that conformance mode renames the kernels in the xclbin
   // so iterating kernel names and looking up symbols from kernels
   // isn't possible, we *must* iterator symbols explicitly
-  m_computeunits.clear();
+  clear_cus();
   m_cu_memidx = -2;
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
@@ -1213,10 +1221,42 @@ device::
 unload_program(const program* program)
 {
   if (m_active == program) {
-    get_xrt_device()->resetKernel();
-    m_computeunits.clear();
+    clear_cus();
     m_active = nullptr;
   }
+}
+
+bool
+device::
+acquire_context(compute_unit* cu, bool shared) const
+{
+  if (cu->m_context_type != compute_unit::context_type::none)
+    return true;
+
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    cu->set_context_type(shared);
+    return true;
+  }
+  return false;
+}
+
+bool
+device::
+release_context(compute_unit* cu) const
+{
+  if (auto program = m_active) {
+    auto xclbin = program->get_xclbin(this);
+    auto xdevice = get_xrt_device();
+    xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    cu->reset_context_type();
+    return true;
+  }
+  return false;
 }
 
 xclbin

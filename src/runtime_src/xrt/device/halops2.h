@@ -95,6 +95,7 @@ private:
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
                                        char* slotName, uint32_t length);
+  typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
   typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
@@ -111,7 +112,11 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-//Streaming 
+  typedef int (* openContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex,
+                                      bool shared);
+  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex);
+
+  //Streaming
   typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*createReadQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*destroyQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl);
@@ -159,6 +164,9 @@ public:
   execBOFuncType mExecBuf;
   execWaitFuncType mExecWait;
 
+  openContextFuncType mOpenContext;
+  closeContextFuncType mCloseContext;
+
   freeBOFuncType mFreeBO;
   writeBOFuncType mWriteBO;
   readBOFuncType mReadBO;
@@ -179,6 +187,7 @@ public:
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;
+  getSlotPropertiesFuncType mGetProfilingSlotProperties;
   clockTrainingFuncType mClockTraining;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
@@ -230,7 +239,7 @@ public:
       : p.size;
   }
 
-  uint64_t 
+  uint64_t
   mGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle) const
   {
     xclBOProperties p;
@@ -244,5 +253,3 @@ public:
 }} // hal2,xrt
 
 #endif
-
-

@@ -36,6 +36,16 @@ namespace XUtil = XclBinUtilities;
 static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
 static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
 
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+    std::vector<T> r;
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second);
+    return r;
+}
+
 
 static
 bool getVersionMajorMinorPath(const char * _pVersion, uint8_t & _major, uint8_t & _minor, uint16_t & _patch)
@@ -293,7 +303,10 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", XUtil::format("0x%lx", sectionHeader[index].m_sectionSize).c_str());
 
       boost::property_tree::ptree pt_Payload;
-      m_sections[index]->getPayload(pt_Payload);
+      if (m_sections[index]->doesSupportAddFormatType(Section::FT_JSON) && 
+          m_sections[index]->doesSupportDumpFormatType(Section::FT_JSON)) {
+        m_sections[index]->getPayload(pt_Payload);
+      }
 
       if (pt_Payload.size() != 0) {
         pt_sectionHeader.add_child("payload", pt_Payload);
@@ -679,17 +692,41 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     boost::property_tree::ptree pt;
     _pSection->getPayload(pt);
 
+    boost::property_tree::ptree ptDsa;
+    ptDsa = pt.get_child("build_metadata.dsa");
+
+    std::vector<boost::property_tree::ptree> feature_roms = as_vector<boost::property_tree::ptree>(ptDsa, "feature_roms");
+
+    boost::property_tree::ptree featureRom;
+    if (!feature_roms.empty()) {
+      featureRom = feature_roms[0];
+    }
+
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.time_epoch", "0"));
-    
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
+
     // Feature ROM UUID
-    std::string sFeatureRomUUID = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.uuid", "00000000000000000000000000000000");
+    std::string sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
     sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
     XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
-    std::string sPlatformVBNV = pt.get<std::string>("build_metadata.dsa.feature_roms.feature_rom.vbnv_name", "");
+    std::string sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+
+    // Examine OLD names -- // This code can be removed AFTER xocc has been updated to use the new format
+    {
+      // Feature ROM Time Stamp
+      if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
+        m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
+      }
+    
+      // Feature ROM VBNV
+      if (sPlatformVBNV.empty()) {
+        sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
+        XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+      }
+    }
 
     XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
   }
@@ -918,16 +955,6 @@ XclBin::dumpSections(ParameterSectionData &_PSD)
 
   std::cout << std::endl << XUtil::format("Successfully wrote all of sections which support the format '%s' to the file: '%s'", 
                                           _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()).c_str() << std::endl;
-}
-
-template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
-                         boost::property_tree::ptree::key_type const& key)
-{
-    std::vector<T> r;
-    for (auto& item : pt.get_child(key))
-        r.push_back(item.second);
-    return r;
 }
 
 

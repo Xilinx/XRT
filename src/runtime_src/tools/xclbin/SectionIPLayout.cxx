@@ -42,6 +42,8 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_KERNEL";
     case IP_DNASC:
       return "IP_DNASC";
+    case IP_DDR4_CONTROLLER:
+      return "IP_DDR4_CONTROLLER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);

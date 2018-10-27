@@ -76,6 +76,9 @@ struct qdma_wq_stat {
         u32			total_req_num;
         u32			total_complete_num;
 
+	u64			hw_submit_bytes;
+	u64			hw_complete_bytes;
+
 	u32			descq_rngsz;
 	u32			descq_pidx;
 	u32			descq_cidx;
@@ -122,6 +125,9 @@ struct qdma_wq {
         u64			compl_nbytes;
         u32			req_num;
         u32			compl_num;
+
+	u64			proc_nbytes;
+	u64			wb_nbytes;
 };
 
 enum {
@@ -210,5 +216,6 @@ ssize_t qdma_wq_post(struct qdma_wq *queue, struct qdma_wr *wr);
 int qdma_cancel_req(struct qdma_wq *queue, struct kiocb *kiocb);
 void qdma_wq_getstat(struct qdma_wq *queue, struct qdma_wq_stat *stat);
 int qdma_wq_update_pidx(struct qdma_wq *queue, u32 pidx);
+void qdma_arm_err_intr(unsigned long dev_hdl);
 
 #endif /* _QDMA_WR_H */
