@@ -47,7 +47,7 @@ class SectionManagementFW : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(FIRMWARE, "FIRMWARE", "", boost::factory<SectionManagementFW*>()); }
+    _init() { registerSectionCtor(FIRMWARE, "FIRMWARE", "", false, boost::factory<SectionManagementFW*>()); }
   } _initializer;
 };
 

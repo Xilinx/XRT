@@ -126,12 +126,14 @@ struct qdma_err_stat_info err_stat_info[HW_ERRS] = {
 			{ QDMA_H2C_ERR_MASK_VALUE, h2c_err_info } }
 };
 
-void err_stat_handler(struct xlnx_dma_dev *xdev)
+int qdma_error_stat(unsigned long dev_hndl, bool clear, char *outstr, int *len)
 {
 	u32 i;
 	u32 j;
 	u32 err_stat;
 	u32 glb_err_stat = 0;
+	int off = 0;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 
 	for (i = 0; i < HW_ERRS; i++) {
 		err_stat = __read_reg(xdev, err_stat_info[i].stat_reg_addr);
@@ -146,26 +148,57 @@ void err_stat_handler(struct xlnx_dma_dev *xdev)
 			pr_info("%s[0x%x] : 0x%x", err_stat_info[i].err_name,
 					err_stat_info[i].stat_reg_addr,
 					err_stat);
+			if (outstr)
+				off += snprintf(outstr + off, 50,
+					"%s[0x%x] : 0x%x :",
+					err_stat_info[i].err_name,
+					err_stat_info[i].stat_reg_addr,
+					err_stat);
+
 			for (j = 0; intr_mask; j++) {
 				if (((intr_mask & 0x01)) &&
-					(err_stat & chk_mask))
+					(err_stat & chk_mask)) {
 					pr_err("\t%s detected",
 					err_stat_info[i].err_info.stat[bit]);
+					if (outstr)
+						off += snprintf(outstr + off,
+							50, " %s",
+							err_stat_info[i].
+							err_info.stat[bit]);
+				}
 
 				if (intr_mask & 0x01)
 					bit++;
 				intr_mask >>= 1;
 				chk_mask <<= 1;
 			}
-			__write_reg(xdev, err_stat_info[i].stat_reg_addr,
-				err_stat);
+			if (outstr)
+				off += snprintf(outstr + off, 50, "\n");
+			if (clear)
+				__write_reg(xdev, err_stat_info[i].stat_reg_addr,
+					err_stat);
 		}
 	}
-	if (glb_err_stat) {
+	if (glb_err_stat && clear) {
 		__write_reg(xdev, err_stat_info[0].stat_reg_addr,
 			    glb_err_stat);
-		qdma_err_intr_setup(xdev, 1);
 	}
+
+	if (len)
+		*len = off;
+
+	return glb_err_stat;
+}
+
+void err_stat_handler(struct xlnx_dma_dev *xdev)
+{
+	int ret;
+
+	ret = qdma_error_stat((unsigned long)xdev, false, NULL, NULL);
+	if (ret)
+		pr_err("Device error detected 0x%x\n", ret);
+
+	// qdma_err_intr_setup(xdev, 1);
 }
 
 static irqreturn_t user_intr_handler(int irq_index, int irq, void *dev_id)

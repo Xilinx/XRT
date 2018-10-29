@@ -157,7 +157,8 @@ extern "C" {
         BMC,
         BUILD_METADATA,
         KEYVALUE_METADATA,
-        USER_METADATA
+        USER_METADATA,
+        DNA_CERTIFICATE
     };
 
     enum MEM_TYPE {
@@ -175,7 +176,8 @@ extern "C" {
     enum IP_TYPE {
         IP_MB = 0,
         IP_KERNEL, //kernel instance
-        IP_DNASC
+        IP_DNASC,
+        IP_DDR4_CONTROLLER
     };
 
     struct axlf_section_header {

@@ -52,6 +52,7 @@ file(GLOB XCLBINUTIL_FILES
   "Section.cxx"
   "SectionBitstream.cxx"
   "SectionClearBitstream.cxx"
+  "SectionDNACertificate.cxx"
   "SectionEmbeddedMetadata.cxx"
   "SectionManagementFW.cxx"
   "SectionDebugData.cxx"

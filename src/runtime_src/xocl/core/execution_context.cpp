@@ -252,6 +252,11 @@ add_compute_units(device* device)
     // away once we ensure that only one kernel per symbol is created in
     // which case the kernel object address can be used from comparison.
     if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
+
+      // Check context creation
+      if (!device->acquire_context(cu))
+        continue;
+
       XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
       m_cus.push_back(cu);
     }

@@ -200,6 +200,7 @@ using addr_type = uint64_t;
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
 
 
     private:
@@ -275,6 +276,8 @@ using addr_type = uint64_t;
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

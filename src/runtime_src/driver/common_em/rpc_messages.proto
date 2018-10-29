@@ -309,6 +309,9 @@ message xclWriteQueue_call {
   optional uint64 q_handle = 1;
   optional bytes src = 2;
   optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
 }
 
 message xclWriteQueue_response {
@@ -320,11 +323,27 @@ message xclReadQueue_call {
   optional uint64 q_handle = 1;
   optional bytes dest = 2;
   optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
 }
 
 message xclReadQueue_response {
   optional bytes dest = 1;
   optional uint64 size = 2;
+}
+
+// xclPollCompletion
+message xclPollCompletion_call {
+  optional uint64 req = 1;
+}
+
+message xclPollCompletion_response {
+  message request {
+    optional bytes dest = 1;
+    optional uint64 size = 2;
+  }
+  repeated request fullrequest = 3 ;
 }
 
 // xclDestroyQueue

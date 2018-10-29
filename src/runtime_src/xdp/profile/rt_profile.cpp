@@ -1009,6 +1009,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
      */
     uint32_t kernelClockMhz = getKernelClockFreqMHz(deviceName);
     double deviceCyclesMsec = kernelClockMhz * 1000.0 ;
+    numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
     std::string cuName = "";
     std::string kernelName ="";
     bool deviceDataExists = (DeviceBinaryCuSlotsMap.find(key) == DeviceBinaryCuSlotsMap.end()) ? false : true;

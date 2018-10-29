@@ -206,6 +206,12 @@ public:
     }
   }
 
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx);
+
   virtual task::queue*
   getQueue(hal::queue_type qt)
   {
@@ -344,7 +350,7 @@ public:
   virtual ssize_t
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
 
-  virtual int 
+  virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:
@@ -518,6 +524,14 @@ public:
       return hal::operations_result<void>();
     m_ops->mGetProfilingSlotName(m_handle,type,slotnum,slotName,length);
     return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    if (!m_ops->mGetProfilingSlotProperties)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
   }
 
   virtual hal::operations_result<void>

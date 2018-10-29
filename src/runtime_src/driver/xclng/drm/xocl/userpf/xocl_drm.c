@@ -199,11 +199,13 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	/* This happens when application exists without formally releasing the contexts on CUs.
 	   Give up our contexts on CUs and our lock on xclbin */
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
+		userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
+			    bit);
 		xdev->ip_reference[bit]--;
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (!uuid_is_null(&xdev->xclbin_id)) {
+	if (!uuid_is_null(&client->xclbin_id)) {
 		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
 			pid_nr(task_tgid(current)));
 	}
@@ -466,7 +468,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	atomic_set(&xdev->needs_reset,0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	hash_init(xdev->mm_range);
 #endif
 	return 0;
@@ -481,9 +483,8 @@ failed:
 void xocl_drm_fini(struct xocl_dev *xdev)
 {
 	xocl_cleanup_mem(xdev);
-
+	xocl_cleanup_connectivity(xdev);
 	drm_put_dev(xdev->ddev);
-
 	mutex_destroy(&xdev->ctx_list_lock);
 	mutex_destroy(&xdev->stat_lock);
 	mutex_destroy(&xdev->mm_lock);
@@ -578,14 +579,6 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 #endif
 
 	topology = xdev->topology;
-
-	vfree(xdev->layout);
-	xdev->layout = NULL;
-	vfree(xdev->debug_layout);
-	xdev->debug_layout = NULL;
-	vfree(xdev->connectivity);
-	xdev->connectivity = NULL;
-
 	if (topology == NULL)
 		return;
 
@@ -620,6 +613,16 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 	xdev->mm_usage_stat = NULL;
 	vfree(xdev->topology);
 	xdev->topology = NULL;
+}
+
+void xocl_cleanup_connectivity(struct xocl_dev *xdev)
+{
+	vfree(xdev->layout);
+	xdev->layout = NULL;
+	vfree(xdev->debug_layout);
+	xdev->debug_layout = NULL;
+	vfree(xdev->connectivity);
+	xdev->connectivity = NULL;
 }
 
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)

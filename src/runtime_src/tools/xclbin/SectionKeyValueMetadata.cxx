@@ -83,7 +83,7 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
         boost::property_tree::ptree ptKeyValueBuffer;
         ptKeyValueBuffer.put("key", ptKeyValue.get<std::string>("key"));
         ptKeyValueBuffer.put("value", ptKeyValue.get<std::string>("value"));
-        ptKeyValuesBuffer.add_child("kv_data", ptKeyValueBuffer);
+        ptKeyValuesBuffer.push_back(std::make_pair("", ptKeyValueBuffer));
      }
    }
 

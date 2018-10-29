@@ -64,6 +64,7 @@ class Section {
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
+  static bool supportsSubSections(enum axlf_section_kind &_eKind);
 
  public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
@@ -102,7 +103,7 @@ class Section {
 
  protected:
   typedef std::function<Section*()> Section_factory;
-  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, Section_factory _Section_factory);
+  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, Section_factory _Section_factory);
 
  protected:
   enum axlf_section_kind m_eKind;
@@ -117,6 +118,7 @@ class Section {
   static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
   static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
+  static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
 
  private:
   // Purposefully private and undefined ctors...
