@@ -115,7 +115,7 @@ struct icap {
 	struct mutex		icap_lock;
 	struct icap_reg		*icap_regs;
 	struct icap_generic_state *icap_state;
-
+	unsigned int            idcode;
 	bool			icap_axi_gate_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
 
@@ -232,7 +232,7 @@ static void reset_scheduler(struct icap *icap)
 			err = -EFAULT;
 			goto failed;
 		}
-	
+
 		err = reset(user_dev);
 
 		xocl_release_userdev(user_dev);
@@ -699,10 +699,10 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 		}
 	}
 	else{
-		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region." 
+		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region."
 			" Validation of accelerator frequencies cannot be determine");
 		err = -EDOM;
-		goto done;		
+		goto done;
 	}
 
 	err = set_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
@@ -1814,7 +1814,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				err = -EACCES;
 				goto dna_check_failed;
 			}
-			
+
 			if(certificate->m_sectionSize % 64 || certificate->m_sectionSize < 576) {
 				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %llu", certificate->m_sectionSize);
 				err = -EACCES;
@@ -2071,9 +2071,19 @@ static ssize_t clock_freqs_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(clock_freqs);
 
+static ssize_t idcode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "0x%x\n", icap->idcode);
+}
+
+static DEVICE_ATTR_RO(idcode);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freq_topology.attr,
 	&dev_attr_clock_freqs.attr,
+	&dev_attr_idcode.attr,
 	NULL,
 };
 
@@ -2106,6 +2116,38 @@ static int icap_remove(struct platform_device *pdev)
 
 	kfree(icap);
 	return 0;
+}
+
+/*
+ * Run the following sequence of canned commands to obtain IDCODE of the FPGA
+ */
+static void icap_probe_chip(struct icap *icap)
+{
+	u32 w;
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	reg_wr(&icap->icap_regs->ir_gier, 0x0);
+	w = reg_rd(&icap->icap_regs->ir_wfv);
+	reg_wr(&icap->icap_regs->ir_wf, 0xffffffff);
+	reg_wr(&icap->icap_regs->ir_wf, 0xaa995566);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x28018001);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	reg_wr(&icap->icap_regs->ir_cr, 0x1);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	reg_wr(&icap->icap_regs->ir_sz, 0x1);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	reg_wr(&icap->icap_regs->ir_cr, 0x2);
+	w = reg_rd(&icap->icap_regs->ir_rfo);
+	icap->idcode = reg_rd(&icap->icap_regs->ir_rf);
+	w = reg_rd(&icap->icap_regs->ir_cr);
 }
 
 static int icap_probe(struct platform_device *pdev)
@@ -2178,7 +2220,8 @@ static int icap_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	ICAP_INFO(icap, "successfully initialized");
+	icap_probe_chip(icap);
+	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x", icap->idcode);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);
 	return 0;
 
