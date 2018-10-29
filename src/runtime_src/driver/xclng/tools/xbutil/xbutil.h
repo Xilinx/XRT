@@ -838,8 +838,11 @@ public:
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
         for (unsigned i = 0; i < 2; i++) {
-            gSensorTree.put( "board.memory.dma_transfer.chan" + std::to_string(i) + ".h2c", unitConvert(devstat.h2c[i]) );
-            gSensorTree.put( "board.memory.dma_transfer.chan" + std::to_string(i) + ".c2h", unitConvert(devstat.c2h[i]) );
+            boost::property_tree::ptree pt_dma;
+            pt_dma.put( "index", i );
+            pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
+            pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
+            gSensorTree.add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
         }
         // stream
 
@@ -952,8 +955,28 @@ public:
                     else if( subv.first == "size" )
                         mem_size = val;
                 }
-                ostr << "[" << mem_index << "] "
-                     << mem_tag << " " << mem_type << " " << mem_size << " " << mem_used << std::endl;
+                ostr << std::setw(10) << "[" << mem_index << "] "
+                     << std::setw(16) << mem_tag 
+                     << std::setw(16) << " " << mem_type << " " 
+                     << std::setw(16) << mem_size << " " 
+                     << std::setw(16) << mem_used << std::endl;
+            }
+        }
+        ostr << "Total DMA Transfer Metrics:" << std::endl;
+        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
+            std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
+            if( v.first == "chan" ) {
+                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                    chan_val = subv.second.get_value<std::string>();
+                    if( subv.first == "index" )
+                        chan_index = chan_val;
+                    else if( subv.first == "h2c" )
+                        chan_h2c = chan_val;
+                    else if( subv.first == "c2h" )
+                        chan_c2h = chan_val;
+                }
+                ostr << "  Chan[" << chan_index << "].h2c:  " << chan_h2c << std::endl;
+                ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
             }
         }
         ostr << "#################################\n";
