@@ -51,6 +51,7 @@
 #ifdef SCHED_VERBOSE
 # define SCHED_DEBUG(msg) DRM_INFO(msg)
 # define SCHED_DEBUGF(format,...) DRM_INFO(format, ##__VA_ARGS__)
+# define SCHED_PRINTF(format,...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet,size) sched_debug_packet(packet,size)
 #else
 # define SCHED_DEBUG(msg)
@@ -2074,14 +2075,15 @@ static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
+	struct xocl_dev *xdev = exec_get_xdev(exec);
 	struct client_ctx client;
 	struct ert_packet packet;
 	unsigned int count;
 	ssize_t sz = 0;
 
 	if (!exec->configured) {
-		SCHED_DEBUGF("kds_custat_show scheduler is not configured\n");
-		return sprintf(buf,"No active CUs, scheduler is not configured\n");
+		userpf_info(xdev,"custat scheduler is not configured\n");
+		return 0;
 	}
 
 	packet.opcode=ERT_CU_STAT;
@@ -2091,13 +2093,15 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	/* wait for command completion */
 	while ((packet.state != ERT_CMD_STATE_COMPLETED) && count < 20)  {
-		SCHED_DEBUGF("kds_custat_show packet.state = %d\n",packet.state);
 		msleep(100); // 100ms
 		++count;
 	}
 
+	if (count==20 && (packet.state != ERT_CMD_STATE_COMPLETED))
+		userpf_info(xdev,"custat timeout\n");
+
 	for (count=0; count<exec->num_cus; ++count)
-		sz += sprintf(buf,"CU%d : %d\n",count,exec->cu_usage[count]);
+		sz += sprintf(buf+sz,"CU%d : %d\n",count,exec->cu_usage[count]);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);
