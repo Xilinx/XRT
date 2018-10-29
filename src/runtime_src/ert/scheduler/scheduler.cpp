@@ -294,6 +294,9 @@ static slot_info command_slots[max_slots];
 // Fixed sized map from cu_idx -> slot_idx
 static size_type cu_slot_usage[max_cus];
 
+// Fixed sized map from cu_idx -> number of times executed
+static size_type cu_usage[max_cus];
+
 // Bitmask indicating status of CUs. (0) idle, (1) running.
 // Only 'num_cus' lower bits are used
 static bitset_type cu_status;
@@ -473,8 +476,10 @@ setup()
   cu_status.reset(num_cus);
 
   // Initialize cu_slot_usage
-  for (size_type i=0; i<num_cus; ++i)
+  for (size_type i=0; i<num_cus; ++i) {
     cu_slot_usage[i] = no_index;
+    cu_usage[i] = 0;
+  }
 
   // Set slot size (4K)
   write_reg(ERT_CQ_SLOT_SIZE_ADDR,slot_size/4);
@@ -572,6 +577,7 @@ set_cu_info(size_type cu_idx, size_type slot_idx)
   ERT_DEBUGF("cu_slot_usage[%d]=%d\n",cu_idx,slot_idx);
   ERT_ASSERT(cu_slot_usage[cu_idx]==no_index,"cu already used");
   cu_slot_usage[cu_idx] = slot_idx;
+  ++cu_usage[cu_idx];
 }
 
 /**
@@ -854,6 +860,23 @@ stop_mb(size_type slot_idx)
 }
 
 static bool
+cu_stat(size_type slot_idx)
+{
+  auto& slot = command_slots[slot_idx];
+  ERT_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
+
+  for (size_type i=0; i<num_cus; ++i) {
+    ERT_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
+    write_reg(slot.slot_addr + 0x4 + (i<<4),cu_usage[i]);
+  }
+
+  // notify host
+  notify_host(slot_idx);
+  slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+  return true;
+}
+
+static bool
 abort_mb(size_type slot_idx)
 {
   ERT_DEBUGF("abort cmd found in slot(%d)\n",slot_idx);
@@ -891,6 +914,8 @@ process_special_command(value_type opcode, size_type slot_idx)
 {
   if (opcode==ERT_CONFIGURE) // CONFIGURE_MB
     return configure_mb(slot_idx);
+  if (opcode==ERT_CU_STAT)
+    return cu_stat(slot_idx);
   if (opcode==ERT_STOP)
     return stop_mb(slot_idx);
   if (opcode==ERT_ABORT)

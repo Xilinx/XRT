@@ -436,8 +436,10 @@ void
 device::
 clear_cus()
 {
-  for (auto& cu : get_cus())
-    release_context(cu.get());
+  // Release CU context only on parent device
+  if (!is_sub_device())
+    for (auto& cu : get_cus())
+      release_context(cu.get());
   m_computeunits.clear();
 }
 
