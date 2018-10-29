@@ -213,6 +213,9 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
+	xocl_info(&pdev->dev, "DSA timestamp: 0x%llx",
+		rom->header.TimeSinceEpoch);
+	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 	return (rom->header.TimeSinceEpoch == timestamp);
 }
 
@@ -247,6 +250,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 	struct resource *res;
 	u32	val;
 	u16	vendor, did;
+	char	*tmp;
 	int	ret;
 
 	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
@@ -345,7 +349,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_info(&pdev->dev, "ROM magic : %s", rom->header.EntryPointString);
+	tmp = rom->header.EntryPointString;
+	xocl_info(&pdev->dev, "ROM magic : %c%c%c%c",
+		tmp[0], tmp[1], tmp[2], tmp[3]);
 	xocl_info(&pdev->dev, "VBNV: %s", rom->header.VBNVName);
 	xocl_info(&pdev->dev, "DDR channel count : %d",
 		rom->header.DDRChannelCount);
