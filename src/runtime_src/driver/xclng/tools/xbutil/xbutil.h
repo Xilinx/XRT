@@ -23,6 +23,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <string>
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xcl_axi_checker_codes.h"
@@ -597,14 +598,13 @@ public:
             return;
         
         for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
-            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".type",
-                             map->m_mem_data[i].m_type );
-            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".tag",
-                             map->m_mem_data[i].m_tag );
-            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".used",
-                             map->m_mem_data[i].m_used );
-            gSensorTree.put( "board.memory.mem" + std::to_string( i ) + ".size",
-                             unitConvert(map->m_mem_data[i].m_size << 10) );
+            boost::property_tree::ptree ptMem;
+            ptMem.put( "index", i );
+            ptMem.put( "type",  map->m_mem_data[i].m_type );
+            ptMem.put( "tag",   map->m_mem_data[i].m_tag );
+            ptMem.put( "used",  map->m_mem_data[i].m_used );
+            ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
+            gSensorTree.add_child( "board.memory.mem", ptMem );
         }
     }
 
@@ -871,6 +871,23 @@ public:
         ostr << std::left;
         ostr << "#################################\n";
         ostr << "DSA name\n" << gSensorTree.get( "board.info.dsa_name", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.info.vendor", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.device", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.subdevice", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.subvendor", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
+        ostr << std::setw(16) << gSensorTree.get( "board.info.ddr_size", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.ddr_count", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.ocl_freq", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.clock0", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "PCIe" 
+             << std::setw(16) << "DMA bi-directional threads" 
+             << std::setw(16) << "MIG Calibrated" << std::endl;
+        ostr << "GEN " << gSensorTree.get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << gSensorTree.get( "board.info.pcie_width", "N/A" )
+             << std::setw(32) << gSensorTree.get( "board.info.dma_threads", "N/A" )
+             << std::setw(16) << gSensorTree.get( "board.info.mig_calibrated", "N/A" ) << std::endl;
+        ostr << "#################################\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
         ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_front", "N/A" )
@@ -905,10 +922,42 @@ public:
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.current", "N/A" )
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
         ostr << "#################################\n";
+        ostr << " Level " << std::setw(2) << gSensorTree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
+             << gSensorTree.get( "board.error.firewall.status", "N/A" ) << std::endl;
+        ostr << "#################################\n";
+        ostr << std::left << std::setw(48) << "Mem Topology"
+             << std::setw(32) << "Device Memory Usage" << std::endl;
+        ostr << std::setw(16) << "Tag"  << std::setw(12) << "Type"
+             << std::setw(12) << "Temp" << std::setw(8) << "Size";
+        ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
         
-        ostr << "";
+        int mem_index = -1;
+        int mem_used = -1;
+        std::string mem_tag = "N/A";
+        std::string mem_size = "N/A";
+        std::string mem_type = "N/A";
+        std::string val;
+        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
+            if( v.first == "mem" ) {
+                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                    val = subv.second.get_value<std::string>();
+                    if( subv.first == "index" ) 
+                        mem_index = subv.second.get_value<int>();
+                    else if( subv.first == "type" )
+                        mem_type = val;
+                    else if( subv.first == "tag" )
+                        mem_tag = val;
+                    else if( subv.first == "used" )
+                        mem_used = subv.second.get_value<int>();
+                    else if( subv.first == "size" )
+                        mem_size = val;
+                }
+                ostr << "[" << mem_index << "] "
+                     << mem_tag << " " << mem_type << " " << mem_size << " " << mem_used << std::endl;
+            }
+        }
         ostr << "#################################\n";
-        ostr << "#################################\n";
+        
         ostr << "#################################\n";
         return 0;
     }

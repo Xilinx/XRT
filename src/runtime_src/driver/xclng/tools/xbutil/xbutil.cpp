@@ -589,7 +589,8 @@ int main(int argc, char *argv[])
             if(subcmd == xcldev::STREAM) {
                 result = deviceVec[index]->printStreamInfo(std::cout);
             } else {
-                result = deviceVec[index]->dump(std::cout);
+//                result = deviceVec[index]->dump(std::cout);
+                result = deviceVec[index]->dump2(std::cout);
             }
         }
         catch (...) {
