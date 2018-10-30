@@ -255,7 +255,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 
 	if(ocl_dev->bypass_bar_idx>=0){
 		/* only bypass_bar_len >= SECTION (256MB) */
-		if (ocl_dev->bypass_bar_len >= (1<<PA_SECTION_SHIFT)){
+		if (ocl_dev->bypass_bar_len > (1<<PA_SECTION_SHIFT)){
 			xocl_info(&pdev->dev, "Found bypass BAR");
 			ret = xocl_p2p_mem_reserve(pdev, ocl_dev);
 			if (ret) {
