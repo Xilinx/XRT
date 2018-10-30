@@ -19,17 +19,7 @@
 //Attributes followed by bin_attributes.
 //
 /* -Attributes -- */
-/* -xclbinid-- */
-#if 0
-static ssize_t xclbinid_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%llx\n", xdev->unique_id_last_bitstream);
-}
 
-static DEVICE_ATTR_RO(xclbinid);
-#endif
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -73,6 +63,8 @@ static ssize_t kdsstat_show(struct device *dev,
 	buf += size;
 	if (xdev->layout == NULL)
 		return size;
+#if 0
+	// Enable in 2019.1
 	for (i = 0; i < xdev->layout->m_count; i++) {
 		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
 			continue;
@@ -80,6 +72,7 @@ static ssize_t kdsstat_show(struct device *dev,
 				xdev->ip_reference[i]);
 		buf += size;
 	}
+#endif
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -244,9 +237,6 @@ static struct bin_attribute mem_topology_attr = {
 };
 
 static struct attribute *xocl_attrs[] = {
-#if 0
-	&dev_attr_xclbinid.attr,
-#endif
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
