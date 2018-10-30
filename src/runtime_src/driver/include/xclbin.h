@@ -176,7 +176,8 @@ extern "C" {
     enum IP_TYPE {
         IP_MB = 0,
         IP_KERNEL, //kernel instance
-        IP_DNASC
+        IP_DNASC,
+        IP_DDR4_CONTROLLER
     };
 
     struct axlf_section_header {

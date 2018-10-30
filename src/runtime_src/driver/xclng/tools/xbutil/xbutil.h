@@ -211,10 +211,13 @@ public:
         std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss, ssdevice;
+        std::string idcode, fpga, errmsg;
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
 
         ss << std::left;
-        ss << std::setw(16) << "DSA name" <<"\n";
-        ss << std::setw(16) << m_devinfo.mName << "\n\n";
+        ss << std::setw(8) << m_devinfo.mName;
+        ss << " [" << fpga << '(' << idcode << ")]\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
@@ -228,7 +231,7 @@ public:
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
 
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
-        ss << std::setw(16) << "OCL Frequency";
+        ss << std::setw(16) << "Kernel Freq";
 
         subss << std::left << std::setw(16) << unitConvert(m_devinfo.mDDRSize);
         subss << std::setw(16) << m_devinfo.mDDRBankCount << std::setw(16) << " ";
@@ -239,7 +242,7 @@ public:
         }
         ss << "\n" << subss.str() << "\n\n";
 
-        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
+        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA chan(bidir)";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
         ss << "GEN " << m_devinfo.mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo.mPCIeLinkWidth;
@@ -852,6 +855,11 @@ public:
         if(!stream.is_open()) {
             std::cout << "ERROR: Cannot open " << xclbin << ". Check that it exists and is readable." << std::endl;
             return -ENOENT;
+        }
+
+        if(region) {
+            std::cout << "ERROR: Not support other than -r 0 " << std::endl;
+            return -EINVAL;
         }
 
         char temp[8];

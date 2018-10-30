@@ -23,6 +23,8 @@
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
 
+//#define SCHED_VERBOSE
+
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
 #endif
@@ -49,6 +51,7 @@
 #ifdef SCHED_VERBOSE
 # define SCHED_DEBUG(msg) DRM_INFO(msg)
 # define SCHED_DEBUGF(format,...) DRM_INFO(format, ##__VA_ARGS__)
+# define SCHED_PRINTF(format,...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet,size) sched_debug_packet(packet,size)
 #else
 # define SCHED_DEBUG(msg)
@@ -113,6 +116,7 @@ struct exec_core {
         unsigned int               configured;
 
 	u32                        cu_addr_map[MAX_CUS];
+	u32                        cu_usage[MAX_CUS];
 
         /* Bitmap tracks busy(1)/free(0) slots in cmd_slots*/
         u32                        slot_status[MAX_U32_SLOT_MASKS];
@@ -337,21 +341,21 @@ cmd_get_xdev(struct xocl_cmd *xcmd)
 }
 
 /**
- * set_cmd_int_state() - Set internal command state used by scheduler only
+ * cmd_set_int_state() - Set internal command state used by scheduler only
  *
  * @xcmd: command to change internal state on
  * @state: new command state per ert.h
  */
 static inline void
-set_cmd_int_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
+cmd_set_int_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 {
-        SCHED_DEBUGF("-> set_cmd_int_state(%lu,%d)\n",xcmd->id,state);
+        SCHED_DEBUGF("-> cmd_set_int_state(%lu,%d)\n",xcmd->id,state);
         xcmd->state = state;
-        SCHED_DEBUG("<- set_cmd_int_state\n");
+        SCHED_DEBUG("<- cmd_set_int_state\n");
 }
 
 /**
- * set_cmd_state() - Set both internal and external state of a command
+ * cmd_set_state() - Set both internal and external state of a command
  *
  * The state is reflected externally through the command packet
  * as well as being captured in internal state variable
@@ -360,20 +364,41 @@ set_cmd_int_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
  * @state: new state
  */
 static inline void
-set_cmd_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
+cmd_set_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 {
-        SCHED_DEBUGF("->set_cmd_state(%lu,%d)\n",xcmd->id,state);
+        SCHED_DEBUGF("->cmd_set_state(%lu,%d)\n",xcmd->id,state);
         xcmd->state = state;
         xcmd->packet->state = state;
-        SCHED_DEBUG("<-set_cmd_state\n");
+        SCHED_DEBUG("<-cmd_set_state\n");
 }
 
 static inline enum ert_cmd_state
-update_cmd_state(struct xocl_cmd *xcmd)
+cmd_update_state(struct xocl_cmd *xcmd)
 {
 	if (xcmd->state!=ERT_CMD_STATE_RUNNING && atomic_read(&xcmd->client->abort))
-		set_cmd_state(xcmd,ERT_CMD_STATE_ABORT);
+		cmd_set_state(xcmd,ERT_CMD_STATE_ABORT);
 	return xcmd->state;
+}
+
+static inline void
+cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
+{
+	if (xcmd->bo)
+		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+}
+
+static inline void
+cmd_mark_active(struct xocl_cmd *xcmd)
+{
+	if (xcmd->bo)
+		xcmd->bo->metadata.active=xcmd;
+}
+
+static inline void
+cmd_mark_deactive(struct xocl_cmd *xcmd)
+{
+	if (xcmd->bo)
+		xcmd->bo->metadata.active=NULL;
 }
 
 /**
@@ -408,7 +433,7 @@ static atomic_t num_pending = ATOMIC_INIT(0);
  * Return: Free command object
  */
 static struct xocl_cmd*
-get_free_xocl_cmd(void)
+get_free_xocl_cmd(struct exec_core *exec, struct client_ctx* client)
 {
 	struct xocl_cmd* cmd;
 	static unsigned long count=0;
@@ -423,48 +448,35 @@ get_free_xocl_cmd(void)
 	if (!cmd)
 		return ERR_PTR(-ENOMEM);
 	cmd->id = count++;
+	cmd->exec = exec;
+	cmd->cu_idx = -1;
+	cmd->slot_idx = -1;
+	cmd->xs = exec->scheduler;
+	cmd->client = client;
+	cmd->bo=NULL;
+	cmd->packet=NULL;
+	atomic_inc(&client->outstanding_execs);
 	SCHED_DEBUGF("<- get_free_xocl_cmd %lu %p\n",cmd->id,cmd);
 	return cmd;
 }
 
 /**
- * add_cmd() - Add a new command to pending list
+ * add_xcmd() - Add initialized xcmd object to pending command list
  *
- * @exec: Targeted device
- * @bo: Buffer objects from user space from which new command is created
- * @numdeps: Number of dependencies for this command
- * @deps: List of @numdeps dependencies
+ * @xcmd: Command to add
  *
  * Scheduler copies pending commands to its internal command queue.
  *
- * Return: 0 on success, -errno on failure
+ * Return: 0 on success
  */
 static int
-add_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* bo, int numdeps, struct drm_xocl_bo **deps)
+add_xcmd(struct xocl_cmd *xcmd)
 {
-	struct platform_device *pdev=exec->pdev;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	struct xocl_cmd *xcmd = get_free_xocl_cmd();
-	SCHED_DEBUGF("-> add_cmd(%lu)\n",xcmd->id);
-	xcmd->bo=bo;
-	xcmd->exec=exec;
-	xcmd->cu_idx=-1;
-	xcmd->slot_idx=-1;
-	xcmd->packet = (struct ert_packet*)bo->vmapping;
-	xcmd->xs = exec->scheduler;
+	struct xocl_dev *xdev = xocl_get_xdev(xcmd->exec->pdev);
 
-	xcmd->client=client;
-	atomic_inc(&client->outstanding_execs);
+	SCHED_DEBUGF("-> add_xcmd(%lu)\n",xcmd->id);
 
-	/* dependencies are copied here, the anticipated wait_count is number
-	 * of specified dependencies.  The wait_count is adjusted when the
-	 * command is queued in the scheduler based on whether or not a
-	 * dependency is active (managed by scheduler) */
-	memcpy(xcmd->deps,deps,numdeps*sizeof(struct drm_xocl_bo*));
-	xcmd->wait_count = numdeps;
-	xcmd->chain_count = 0;
-
-	set_cmd_state(xcmd,ERT_CMD_STATE_NEW);
+	cmd_set_state(xcmd,ERT_CMD_STATE_NEW);
 	mutex_lock(&pending_cmds_mutex);
 	list_add_tail(&xcmd->list,&pending_cmds);
 	mutex_unlock(&pending_cmds_mutex);
@@ -475,8 +487,65 @@ add_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* b
 	atomic64_inc(&xdev->total_execs);
 	wake_up_interruptible(&xcmd->xs->wait_queue);
 
-	SCHED_DEBUGF("<- add_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
 	return 0;
+}
+
+
+/**
+ * add_cmd() - Add a new buffer object command to pending list
+ *
+ * @exec: Targeted device
+ * @client: Client context
+ * @bo: Buffer objects from user space from which new command is created
+ * @numdeps: Number of dependencies for this command
+ * @deps: List of @numdeps dependencies
+ *
+ * Scheduler copies pending commands to its internal command queue.
+ *
+ * Return: 0 on success, 1 on failure
+ */
+static int
+add_bo_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* bo, int numdeps, struct drm_xocl_bo **deps)
+{
+	int retval = 0;
+	struct xocl_cmd *xcmd = get_free_xocl_cmd(exec,client);
+
+	SCHED_DEBUGF("-> add_bo_cmd(%lu)\n",xcmd->id);
+	if (!xcmd)
+		return 1;
+
+	xcmd->bo=bo;
+	xcmd->packet = (struct ert_packet*)bo->vmapping;
+
+	/* dependencies are copied here, the anticipated wait_count is number
+	 * of specified dependencies.  The wait_count is adjusted when the
+	 * command is queued in the scheduler based on whether or not a
+	 * dependency is active (managed by scheduler) */
+	memcpy(xcmd->deps,deps,numdeps*sizeof(struct drm_xocl_bo*));
+	xcmd->wait_count = numdeps;
+	xcmd->chain_count = 0;
+
+	retval = add_xcmd(xcmd);
+
+	SCHED_DEBUGF("<- add_bo_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return retval;
+}
+
+static int
+add_ctrl_cmd(struct exec_core *exec, struct client_ctx* client, struct ert_packet* packet)
+{
+	int retval = 0;
+	struct xocl_cmd *xcmd = get_free_xocl_cmd(exec,client);
+
+	SCHED_DEBUGF("-> add_ctrl_cmd(%lu)\n",xcmd->id);
+	if (!xcmd)
+		return 1;
+
+	xcmd->packet = packet;
+	retval = add_xcmd(xcmd);
+	SCHED_DEBUGF("<- add_ctrl_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return retval;
 }
 
 /**
@@ -524,7 +593,7 @@ cleanup_exec(struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = cmd_get_xdev(xcmd);
 
-	drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+	cmd_release_gem_object_reference(xcmd);
 	recycle_cmd(xcmd);
 	atomic_dec(&xdev->outstanding_execs);
 	atomic_dec(&xcmd->client->outstanding_execs);
@@ -574,8 +643,10 @@ reset_exec(struct exec_core* exec)
 	exec->configured = false;
 	exec->ops = &penguin_ops;
 
-	for (i=0; i<MAX_CUS; ++i)
+	for (i=0; i<MAX_CUS; ++i) {
 		exec->cu_addr_map[i] = 0;
+		exec->cu_usage[i] = 0;
+	}
 
 	for (i=0; i<MAX_U32_SLOT_MASKS; ++i)
 		exec->slot_status[i] = 0;
@@ -794,14 +865,11 @@ configure(struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	bool ert = xocl_mb_sched_on(xdev) && !XOCL_DSA_MB_SCHE_OFF(xdev);
+	bool ert = xocl_mb_sched_on(xdev);
 	bool cdma = xocl_cdma_on(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
 	int i;
-
-	DRM_INFO("ert per feature rom = %d\n",ert);
-	DRM_INFO("dsa per feature rom = %d\n",dsa);
 
 	if (sched_error_on(exec,opcode(xcmd)!=ERT_CONFIGURE,"expected configure command"))
 		return 1;
@@ -811,6 +879,9 @@ configure(struct xocl_cmd *xcmd)
 		DRM_INFO("command scheduler is already configured for this device\n");
 		return 1;
 	}
+
+	DRM_INFO("ert per feature rom = %d\n",ert);
+	DRM_INFO("dsa per feature rom = %d\n",dsa);
 
 	cfg = (struct ert_configure_cmd *)(xcmd->packet);
 
@@ -879,6 +950,25 @@ configure(struct xocl_cmd *xcmd)
 }
 
 /**
+ * post_exec_custat() - Gather execution stats for all CUs
+ *
+ * If ert is enabled then first copy data from HW command queue.
+ */
+static int
+post_exec_custat(struct xocl_cmd *xcmd)
+{
+	struct exec_core *exec=xcmd->exec;
+	SCHED_DEBUGF("-> post_exec_custat(%lu)\n",xcmd->id);
+	/* read back from ert if enabled */
+	if (is_ert(exec)) {
+		u32 slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(exec);
+		memcpy_fromio(exec->cu_usage,exec->base + slot_addr + 4,exec->num_cus*sizeof(u32));
+	}
+	SCHED_DEBUGF("<- post_exec_custat(%lu)\n",xcmd->id);
+	return 0;
+}
+
+/**
  * exec_write() - Execute a write command
  */
 static int
@@ -895,6 +985,19 @@ exec_write(struct xocl_cmd *xcmd)
 	}
 	SCHED_DEBUG("<- exec_write\n");
 	return 0;
+}
+
+/**
+ * post_exec_cmd() - Hook for post processing a command
+ *
+ * Used by ctrl commands where ERT writes data to command queue
+ * which needs to be passed to user command.
+ */
+static void
+post_exec_cmd(struct xocl_cmd *xcmd)
+{
+	if (opcode(xcmd)==ERT_CU_STAT)
+		post_exec_custat(xcmd);
 }
 
 /**
@@ -1127,15 +1230,20 @@ mark_cmd_complete(struct xocl_cmd *xcmd)
 	struct exec_core *exec=xcmd->exec;
 
 	SCHED_DEBUGF("-> mark_cmd_complete xcmd(%lu) slot(%d)\n",xcmd->id,xcmd->slot_idx);
+
+	/* ctrl cmds write data to HW cmd queue that must be copied back */
+	if (type(xcmd)==ERT_CTRL)
+		post_exec_cmd(xcmd);
+
 	exec->submitted_cmds[xcmd->slot_idx] = NULL;
-	set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
+	cmd_set_state(xcmd,ERT_CMD_STATE_COMPLETED);
 	if (exec->polling_mode)
 		--xcmd->xs->poll;
 	release_slot(xcmd);
 	notify_host(xcmd);
 
 	// Deactivate command and trigger chain of waiting commands
-	xcmd->bo->metadata.active=NULL;
+	cmd_mark_deactive(xcmd);
 	trigger_chain(xcmd);
 
 	SCHED_DEBUGF("<- mark_cmd_complete\n");
@@ -1182,17 +1290,17 @@ queued_to_running(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("-> queued_to_running(%lu) opcode(%d)\n",xcmd->id,opcode(xcmd));
 
 	if (opcode(xcmd)==ERT_CONFIGURE && configure(xcmd)) {
-		set_cmd_state(xcmd,ERT_CMD_STATE_ERROR);
+		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
 		return false;
 	}
 
 	if (opcode(xcmd)==ERT_WRITE && exec_write(xcmd)) {
-		set_cmd_state(xcmd,ERT_CMD_STATE_ERROR);
+		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
 		return false;
 	}
 
 	if (xcmd->exec->ops->submit(xcmd)) {
-		set_cmd_int_state(xcmd,ERT_CMD_STATE_RUNNING);
+		cmd_set_int_state(xcmd,ERT_CMD_STATE_RUNNING);
 		if (xcmd->exec->polling_mode)
 			++xcmd->xs->poll;
 		xcmd->exec->submitted_cmds[xcmd->slot_idx] = xcmd;
@@ -1292,12 +1400,12 @@ scheduler_queue_cmds(struct xocl_sched *xs)
 
 		/* chain active dependencies if any to this command object */
 		if (xcmd->wait_count && chain_dependencies(xcmd))
-			set_cmd_state(xcmd,ERT_CMD_STATE_ERROR);
+			cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
 		else
-			set_cmd_int_state(xcmd,ERT_CMD_STATE_QUEUED);
+			cmd_set_int_state(xcmd,ERT_CMD_STATE_QUEUED);
 
 		/* this command is now active and can chain other commands */
-		xcmd->bo->metadata.active=xcmd;
+		cmd_mark_active(xcmd);
 		atomic_dec(&num_pending);
 	}
 	mutex_unlock(&pending_cmds_mutex);
@@ -1315,7 +1423,7 @@ scheduler_iterate_cmds(struct xocl_sched *xs)
 	SCHED_DEBUG("-> scheduler_iterate_cmds\n");
 	list_for_each_safe(pos, next, &xs->command_queue) {
 		struct xocl_cmd *xcmd = list_entry(pos, struct xocl_cmd, list);
-		update_cmd_state(xcmd);
+		cmd_update_state(xcmd);
 
 		SCHED_DEBUGF("+ processing cmd(%lu)\n",xcmd->id);
 
@@ -1525,13 +1633,14 @@ mb_query(struct xocl_cmd *xcmd)
 static void
 penguin_query(struct xocl_cmd *xcmd)
 {
-	u32 opc = opcode(xcmd);
+	u32 cmd_opcode = opcode(xcmd);
+	u32 cmd_type = type(xcmd);
 
-	SCHED_DEBUGF("-> penguin_queury() slot_idx=%d\n",xcmd->slot_idx);
+	SCHED_DEBUGF("-> penguin_queury(%lu) opcode(%d) type(%d) slot_idx=%d\n",xcmd->id,cmd_opcode,cmd_type,xcmd->slot_idx);
 
-	if (type(xcmd)==ERT_KDS_LOCAL
-	    ||opc==ERT_CONFIGURE
-	    ||(opc==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
+	if (cmd_type==ERT_KDS_LOCAL || cmd_type==ERT_CTRL
+	    ||cmd_opcode==ERT_CONFIGURE
+	    ||(cmd_opcode==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
 		mark_cmd_complete(xcmd);
 
 	SCHED_DEBUG("<- penguin_queury\n");
@@ -1668,7 +1777,7 @@ penguin_submit(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("-> penguin_submit(%lu) opcode(%d) type(%d)\n",xcmd->id,opcode(xcmd),type(xcmd));
 
 	/* execution done by submit_cmds, ensure the cmd retired properly */
-	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL) {
+	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL || type(xcmd)==ERT_CTRL) {
 		xcmd->slot_idx = acquire_slot(xcmd);
 		SCHED_DEBUGF("<- penguin_submit slot(%d)\n",xcmd->slot_idx);
 		return true;
@@ -1681,6 +1790,9 @@ penguin_submit(struct xocl_cmd *xcmd)
 	xcmd->cu_idx = get_free_cu(xcmd);
 	if (xcmd->cu_idx<0)
 		return false;
+
+	/* track cu executions */
+	++xcmd->exec->cu_usage[xcmd->cu_idx];
 
 	xcmd->slot_idx = acquire_slot(xcmd);
 	if (xcmd->slot_idx<0)
@@ -1747,7 +1859,7 @@ add_exec_buffer(struct platform_device *pdev, struct client_ctx *client, void *b
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	/* Add the command to pending list */
-	return add_cmd(exec, client, buf, numdeps, deps);
+	return add_bo_cmd(exec, client, buf, numdeps, deps);
 }
 
 static int create_client(struct platform_device *pdev, void **priv)
@@ -1959,9 +2071,45 @@ kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_numcdmas);
 
+static ssize_t
+kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	struct xocl_dev *xdev = exec_get_xdev(exec);
+	struct client_ctx client;
+	struct ert_packet packet;
+	unsigned int count;
+	ssize_t sz = 0;
+
+	if (!exec->configured) {
+		userpf_info(xdev,"custat scheduler is not configured\n");
+		return 0;
+	}
+
+	packet.opcode=ERT_CU_STAT;
+	packet.type=ERT_CTRL;
+	packet.count=1;  // data[1]
+	add_ctrl_cmd(exec,&client,&packet);
+
+	/* wait for command completion */
+	while ((packet.state != ERT_CMD_STATE_COMPLETED) && count < 20)  {
+		msleep(100); // 100ms
+		++count;
+	}
+
+	if (count==20 && (packet.state != ERT_CMD_STATE_COMPLETED))
+		userpf_info(xdev,"custat timeout\n");
+
+	for (count=0; count<exec->num_cus; ++count)
+		sz += sprintf(buf+sz,"CU%d : %d\n",count,exec->cu_usage[count]);
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_custat);
+
 static struct attribute *kds_sysfs_attrs[] = {
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_numcdmas.attr,
+	&dev_attr_kds_custat.attr,
 	NULL
 };
 

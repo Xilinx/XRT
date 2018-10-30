@@ -143,7 +143,7 @@ static bool mb_sched_on(struct platform_device *pdev)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return rom->mb_sche_enabled;
+	return rom->mb_sche_enabled && !XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(pdev));
 }
 
 static bool cdma_on(struct platform_device *pdev)
@@ -327,18 +327,16 @@ static int feature_rom_probe(struct platform_device *pdev)
 	else if (strstr(rom->header.VBNVName,"5_3"))
 		rom->dsa_version = 53;
 
-	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM) {
+	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM)
 		rom->unified = true;
-	}
-	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD) {
+
+	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD)
 		rom->mb_mgmt_enabled = true;
-	}
-	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
-	    && rom->dsa_version>=51
-	    && !strstr(rom->header.VBNVName,"kcu1500")) {
+
+	if(rom->header.FeatureBitMap & MB_SCHEDULER)
 		rom->mb_sche_enabled = true;
-	}
-	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
+
+	if(rom->header.FeatureBitMap & CDMA)
 	    rom->cdma_enabled = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
