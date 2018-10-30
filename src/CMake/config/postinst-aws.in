@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
+if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
     echo "Unloading old XRT Linux kernel modules"
     modprobe -r awsmgmt
 
@@ -11,7 +11,7 @@ if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     depmod -A
 fi
 
-if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
+if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
     echo "Registering new XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
     dkms add -m xrt-aws -v "@XRT_VERSION_STRING@"
 fi
