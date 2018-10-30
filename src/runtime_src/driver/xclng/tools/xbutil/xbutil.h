@@ -796,7 +796,7 @@ public:
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
 
         if(errmsg.empty()) {
             ostr << std::setw(16) << "\nXclbin ID:" << "\n";
