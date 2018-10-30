@@ -38,7 +38,7 @@
 #define ERT_UNUSED __attribute__((unused))
 
 //#define ERT_VERBOSE
-//#define INIT_VERBOSE
+//#define CTRL_VERBOSE
 //#define DEBUG_SLOT_STATE
 
 // Assert macro implementation
@@ -65,12 +65,12 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 //# define ERT_ASSERT(expr,msg) ((expr) ? ((void)0) : ert_assert(__FILE__,__LINE__,__FUNCTION__,#expr,msg))
 #endif
 
-#ifdef INIT_VERBOSE
-# define INIT_DEBUG(msg) print(msg)
-# define INIT_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
+#ifdef CTRL_VERBOSE
+# define CTRL_DEBUG(msg) print(msg)
+# define CTRL_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
 #else
-# define INIT_DEBUG(msg)
-# define INIT_DEBUGF(format,...)
+# define CTRL_DEBUG(msg)
+# define CTRL_DEBUGF(format,...)
 #endif
 
 namespace ert {
@@ -436,25 +436,25 @@ struct disable_interrupt_guard
 static void
 setup()
 {
-  INIT_DEBUG("-> setup\n");
+  CTRL_DEBUG("-> setup\n");
 
   num_slots = ERT_CQ_SIZE / slot_size;
   num_slot_masks = ((num_slots-1)>>5) + 1;
   num_cu_masks = ((num_cus-1)>>5) + 1;
 
-  INIT_DEBUGF("slot_size=0x%x\n",slot_size);
-  INIT_DEBUGF("num_slots=%d\n",num_slots);
-  INIT_DEBUGF("num_slot_masks=%d\n",num_slot_masks);
-  INIT_DEBUGF("num_cus=%d\n",num_cus);
-  INIT_DEBUGF("num_cu_masks=%d\n",num_cu_masks);
-  INIT_DEBUGF("cu_offset=%d\n",cu_offset);
-  INIT_DEBUGF("cu_base_address=0x%x\n",cu_base_address);
-  INIT_DEBUGF("cu_dma_enabled=%d\n",cu_dma_enabled);
-  INIT_DEBUGF("cu_dma_52=%d\n",cu_dma_52);
-  INIT_DEBUGF("cdma_enabled=%d\n",cdma_enabled);
-  INIT_DEBUGF("cu_isr_enabled=%d\n",cu_interrupt_enabled);
-  INIT_DEBUGF("cq_int_enabled=%d\n",cq_status_enabled);
-  INIT_DEBUGF("mb_host_int_enabled=%d\n",mb_host_interrupt_enabled);
+  CTRL_DEBUGF("slot_size=0x%x\n",slot_size);
+  CTRL_DEBUGF("num_slots=%d\n",num_slots);
+  CTRL_DEBUGF("num_slot_masks=%d\n",num_slot_masks);
+  CTRL_DEBUGF("num_cus=%d\n",num_cus);
+  CTRL_DEBUGF("num_cu_masks=%d\n",num_cu_masks);
+  CTRL_DEBUGF("cu_offset=%d\n",cu_offset);
+  CTRL_DEBUGF("cu_base_address=0x%x\n",cu_base_address);
+  CTRL_DEBUGF("cu_dma_enabled=%d\n",cu_dma_enabled);
+  CTRL_DEBUGF("cu_dma_52=%d\n",cu_dma_52);
+  CTRL_DEBUGF("cdma_enabled=%d\n",cdma_enabled);
+  CTRL_DEBUGF("cu_isr_enabled=%d\n",cu_interrupt_enabled);
+  CTRL_DEBUGF("cq_int_enabled=%d\n",cq_status_enabled);
+  CTRL_DEBUGF("mb_host_int_enabled=%d\n",mb_host_interrupt_enabled);
 
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
@@ -537,7 +537,7 @@ setup()
     write_reg(ERT_INTC_IER_ADDR,read_reg(ERT_INTC_IER_ADDR) & ~0x6);  // disable interrupts on bit 1 & 2 (0x2|0x4)
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0); // disable CU ISR handler
   }
-  INIT_DEBUGF("cu interrupt mask : %s\n",cu_interrupt_mask.string());
+  CTRL_DEBUGF("cu interrupt mask : %s\n",cu_interrupt_mask.string());
 
   // Enable interrupts from host to MB when new commands are ready
   // When enabled, MB will read CQ_STATUS_REGISTER(s) to determine new
@@ -565,7 +565,7 @@ setup()
   // Enable/disable mb->host interrupts
   write_reg(ERT_HOST_INTERRUPT_ENABLE_ADDR,mb_host_interrupt_enabled);
 
-  INIT_DEBUG("<- setup\n");
+  CTRL_DEBUG("<- setup\n");
 }
 
 /**
@@ -792,10 +792,10 @@ check_cu(size_type cu_idx, bool wait=false)
 static bool
 configure_mb(size_type slot_idx)
 {
-  INIT_DEBUG("-->configure_mb\n");
+  CTRL_DEBUG("-->configure_mb\n");
   auto& slot = command_slots[slot_idx];
 
-  INIT_DEBUGF("configure cmd found in slot(%d)\n",slot_idx);
+  CTRL_DEBUGF("configure cmd found in slot(%d)\n",slot_idx);
   slot_size=read_reg(slot.slot_addr + 0x4);
   num_cus=read_reg(slot.slot_addr + 0x8);
   cu_offset=read_reg(slot.slot_addr + 0xC);
@@ -803,7 +803,7 @@ configure_mb(size_type slot_idx)
 
   // Features
   auto features = read_reg(slot.slot_addr + 0x14);
-  INIT_DEBUGF("features=0x%04x\n",features);
+  CTRL_DEBUGF("features=0x%04x\n",features);
   ERT_ASSERT(features & 0x1,"ert is not enabled!!");
   mb_host_interrupt_enabled = (features & 0x2)==0;
   cu_dma_enabled = (features & 0x4)!=0;
@@ -815,7 +815,7 @@ configure_mb(size_type slot_idx)
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     cu_addr_map[i] = read_reg(slot.slot_addr + 0x18 + (i<<2));
-    INIT_DEBUGF("cu(%d) at 0x%x\n",i,cu_addr_map[i]);
+    CTRL_DEBUGF("cu(%d) at 0x%x\n",i,cu_addr_map[i]);
   }
 
   // (Re)initilize MB
@@ -827,7 +827,7 @@ configure_mb(size_type slot_idx)
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
 
-  INIT_DEBUG("<--configure_mb\n");
+  CTRL_DEBUG("<--configure_mb\n");
   return true;
 }
 
@@ -835,7 +835,7 @@ static bool
 stop_mb(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
-  ERT_DEBUGF("stop_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
+  CTRL_DEBUGF("stop_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
   // disable CUDMA module
   cu_dma_enabled = 0;
@@ -855,6 +855,7 @@ stop_mb(size_type slot_idx)
   // Update registers so mgmt driver knows ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
+  CTRL_DEBUGF("scheduler stopped slot(%d) header=0x%x\n",slot_idx,slot.header_value);
   exit(0);
   return true;
 }
@@ -863,23 +864,25 @@ static bool
 cu_stat(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
-  ERT_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
+  CTRL_DEBUGF("slot(%d) [new -> queued -> running]\n",slot_idx);
+  CTRL_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
   for (size_type i=0; i<num_cus; ++i) {
-    ERT_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
-    write_reg(slot.slot_addr + 0x4 + (i<<4),cu_usage[i]);
+    CTRL_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
+    write_reg(slot.slot_addr + 0x4 + (i<<2),cu_usage[i]);
   }
 
   // notify host
   notify_host(slot_idx);
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+  CTRL_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
   return true;
 }
 
 static bool
 abort_mb(size_type slot_idx)
 {
-  ERT_DEBUGF("abort cmd found in slot(%d)\n",slot_idx);
+  CTRL_DEBUGF("abort cmd found in slot(%d)\n",slot_idx);
 
   disable_interrupt_guard guard;
   auto& slot = command_slots[slot_idx];
