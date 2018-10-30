@@ -33,8 +33,8 @@ target_link_libraries(xrt_core
 
 install(TARGETS xrt_core
         LIBRARY
-        DESTINATION ${XRT_INSTALL_DIR}/lib
-        COMPONENT CORE_HAL_LIB)
+        DESTINATION ${XRT_INSTALL_DIR}/lib)
+        #COMPONENT CORE_HAL_LIB)
 
 # Vendor - AWS
 # Skip for arm
@@ -75,8 +75,8 @@ endif()
 install(TARGETS xrt_aws
         LIBRARY
         DESTINATION ${XRT_INSTALL_DIR}/lib
-        COMPONENT AWS_HAL_LIB)
+        COMPONENT aws)
 
-set(CPACK_COMPONENTS_ALL CORE_HAL_LIB AWS_HAL_LIB)
+#set(CPACK_COMPONENTS_ALL CORE_HAL_LIB AWS_HAL_LIB)
 
 endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
