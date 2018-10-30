@@ -132,18 +132,16 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
-
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 include (CMake/cpack.cmake)
-include (CMake/cpack-aws.cmake)
 
 include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
 include (CMake/dkms.cmake)
-#include (CMake/dkms-aws.cmake)
+include (CMake/dkms-aws.cmake)
 
 include (CMake/icd.cmake)
 

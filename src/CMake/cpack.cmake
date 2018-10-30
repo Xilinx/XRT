@@ -34,6 +34,8 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig")
   set(CPACK_RPM_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4 ")
+  SET(CPACK_RPM_aws_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/postinst-aws")
+  SET(CPACK_RPM_aws_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm-aws")
 else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
@@ -46,6 +48,7 @@ SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
 SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx FPGA platforms")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
+
 
 INCLUDE(CPack)
 
