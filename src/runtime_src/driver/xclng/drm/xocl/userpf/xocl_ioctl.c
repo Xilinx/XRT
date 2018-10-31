@@ -398,6 +398,8 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	struct xocl_mm_wrapper *wrapper;
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
+	uint64_t reserved_start;
+	uint64_t reserved_end;
 	int err = 0;
 	int i = 0;
 
@@ -445,9 +447,16 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 		ddr_bank_size = mem_data->m_size * 1024;
 		DRM_INFO("XOCL: Allocating DDR bank%d", i);
-		DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
+		DRM_INFO("  base_addr:0x%llx, total size:0x%lx\n",
 				mem_data->m_base_address,
 				ddr_bank_size);
+
+		if (XOCL_DSA_IS_MPSOC(xdev)) {
+			reserved_end = mem_data->m_base_address + ddr_bank_size;
+			reserved_start = reserved_end - reserved1 - reserved2;
+			DRM_INFO("  reserved region:0x%llx - 0x%llx\n",
+				 reserved_start, reserved_end - 1);
+		}
 
 		shared = xocl_get_shared_ddr(xdev, mem_data);
 		if (shared != 0xffffffff) {
@@ -672,7 +681,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	//Populate with "this" bitstream, so avoid redownload the next time
-	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 

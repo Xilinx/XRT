@@ -25,7 +25,6 @@
 #include "detail/context.h"
 #include "detail/memory.h"
 
-#include "xrt/util/memory.h"
 #include "api.h"
 #include "impl/cpu_pipes.h"
 
@@ -98,7 +97,7 @@ clCreatePipe(cl_context                context,
 {
   validOrError(context,flags,pipe_packet_size,pipe_max_packets,properties,errcode_ret);
 
-  auto upipe = xrt::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
+  auto upipe = std::make_unique<xocl::pipe>(xocl::xocl(context),flags,pipe_packet_size,pipe_max_packets);
 
   // TODO: here we allocate a pipe even if it isn't a memory mapped pipe,
   // it would be nice to not allocate the pipe if it's a hardware pipe.

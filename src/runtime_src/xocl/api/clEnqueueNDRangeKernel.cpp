@@ -33,7 +33,6 @@
 #include "enqueue.h"
 #include "api.h"
 
-#include "xrt/util/memory.h"
 
 #include "printf/rt_printf.h"
 
@@ -473,7 +472,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // execution context
   auto device = ueEvent->get_command_queue()->get_device();
     ueEvent->set_execution_context
-      (xrt::make_unique<execution_context>
+      (std::make_unique<execution_context>
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
     xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
@@ -581,7 +580,7 @@ cl_event enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_event event = nullptr;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     auto bufSize = xocl::xocl(mem)->get_size();
     args->kernel = xocl::xocl(kernel);
     args->mem = xocl::xocl(mem);
@@ -611,7 +610,7 @@ cl_int enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_int err = CL_SUCCESS;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     if ( !args ) {
       throw xocl::error(CL_OUT_OF_RESOURCES,"enqueueReadPrintfBuffer");
     }
