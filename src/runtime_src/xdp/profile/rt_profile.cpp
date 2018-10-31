@@ -470,16 +470,19 @@ namespace XCL {
       cuName2 = kernelName + "|" + localSize + "|" + cu_name;
       if (objStage == START) {
         XOCL_DEBUGF("logKernelExecution: CU START @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
-        if (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::CPU) {
+        if (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::CPU ||
+            (isAwsDevice(deviceName) && XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM)) {
           PerfCounters.logComputeUnitExecutionStart(cuName, deviceTimeStamp);
           PerfCounters.logComputeUnitDeviceStart(newDeviceName, timeStamp);
         }
       }
       else if (objStage == END) {
         XOCL_DEBUGF("logKernelExecution: CU END @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
-        // This is updated through HAL
-        if (XCL::RTSingleton::Instance()->getFlowMode() != XCL::RTSingleton::CPU)
-          deviceTimeStamp = 0;
+        // This is updated through HAL if set to 0
+        if (XCL::RTSingleton::Instance()->getFlowMode() != XCL::RTSingleton::CPU &&
+            !(isAwsDevice(deviceName) && XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM)) {
+              deviceTimeStamp = 0;
+        }
         PerfCounters.logComputeUnitExecutionEnd(cuName, deviceTimeStamp);
       }
 
@@ -968,7 +971,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
    	  }
       /*
        * Log SAM Counters
-       */     
+       */
       numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
       for (int s=0; s < numSlots; ++s) {
         uint32_t prevCuExecCount      = FinalCounterResultsMap[key].CuExecCount[s];
@@ -1006,6 +1009,13 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     bool deviceDataExists = (DeviceBinaryCuSlotsMap.find(key) == DeviceBinaryCuSlotsMap.end()) ? false : true;
     xclCounterResults rolloverResults = RolloverCounterResultsMap.at(key);
     xclCounterResults rolloverCounts = RolloverCountsMap.at(key);
+    // Do not log Anything for AWS HW Emu as XRT callbacks will log this data
+    // Disable host slot index
+    // Skip Next Loop
+    if (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM && isAwsDevice(deviceName)) {
+      setHostSlotIndex(4);
+      numSlots = 0;
+    }
     for (int s=0; s < numSlots; ++s) {
       XCL::RTSingleton::Instance()->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
       XCL::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
@@ -1224,7 +1234,12 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
         uint32_t ddrBank;
         std::string argNames;
-        getArgumentsBank(deviceName, cuName, portName, argNames, ddrBank);
+        if (XCL::RTSingleton::Instance()->getFlowMode() == XCL::RTSingleton::HW_EM && isAwsDevice(deviceName)) {
+          ddrBank = s;
+          argNames = "All";
+        } else {
+          getArgumentsBank(deviceName, cuName, portName, argNames, ddrBank);
+        }
 
         double totalCUTimeMsec = PerfCounters.getComputeUnitTotalTime(deviceName, cuName);
 

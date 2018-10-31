@@ -476,3 +476,55 @@ mtx.unlock();
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
+
+//----------xclPerfMonReadCounters AWS------------
+
+#define xclPerfMonReadCounters_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_slotname(slotname); \
+
+#define xclPerfMonReadCounters_RPC_CALL_AWS(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadCounters_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclPerfMonReadCounters_RETURN();
+
+//----------xclPerfMonGetTraceCount AWS------------
+#define xclPerfMonGetTraceCount_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+  c_msg.set_ack(ack); \
+  c_msg.set_slotname(slotname); \
+
+#define xclPerfMonGetTraceCount_RPC_CALL_AWS(func_name,ack,no_of_samples,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonGetTraceCount_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonGetTraceCount_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
+
+//----------xclPerfMonReadTrace_AWS------------
+#define xclPerfMonReadTrace_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_ack(ack); \
+    c_msg.set_slotname(slotname); \
+
+#define xclPerfMonReadTrace_RPC_CALL_AWS(func_name,ack,samplessize,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadTrace_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
