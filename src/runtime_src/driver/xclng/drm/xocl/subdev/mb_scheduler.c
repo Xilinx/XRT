@@ -614,6 +614,8 @@ reset_exec(struct exec_core* exec)
 	int i;
 	struct list_head *pos, *next;
 
+	userpf_info(exec_get_xdev(exec),"reset_exec(%p)\n",exec);
+
 	/* clear stale command objects if any */
 	list_for_each_safe(pos, next, &pending_cmds) {
 		struct xocl_cmd *xcmd = list_entry(pos,struct xocl_cmd,list);
@@ -1862,10 +1864,10 @@ add_exec_buffer(struct platform_device *pdev, struct client_ctx *client, void *b
 	return add_bo_cmd(exec, client, buf, numdeps, deps);
 }
 
-static int create_client(struct platform_device *pdev, void **priv)
+static int
+create_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx	*client;
-	struct exec_core	*exec;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
 
 	DRM_INFO("scheduler client created pid(%d)\n",pid_nr(task_tgid(current)));
@@ -1875,10 +1877,7 @@ static int create_client(struct platform_device *pdev, void **priv)
 		return -ENOMEM;
 
 	client->pid = task_tgid(current);
-	exec = platform_get_drvdata(pdev);
-
 	mutex_init(&client->lock);
-
 	atomic_set(&client->trigger, 0);
 	atomic_set(&client->abort, 0);
 	atomic_set(&client->outstanding_execs, 0);
@@ -1889,7 +1888,7 @@ static int create_client(struct platform_device *pdev, void **priv)
 	/* kds must be configured on first xdev context even if that context
 	 * does not trigger an xclbin download */
 	if (list_is_singular(&xdev->ctx_list))
-		reset_exec(exec);
+		reset_exec(platform_get_drvdata(pdev));
 
 	mutex_unlock(&xdev->ctx_list_lock);
 
@@ -2081,6 +2080,11 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	unsigned int count;
 	ssize_t sz = 0;
 
+	/* minimum required initialization of client */
+	atomic_set(&client.trigger, 0);
+	atomic_set(&client.abort, 0);
+	atomic_set(&client.outstanding_execs, 0);
+
 	if (!exec->configured) {
 		userpf_info(xdev,"custat scheduler is not configured\n");
 		return 0;
@@ -2102,6 +2106,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	for (count=0; count<exec->num_cus; ++count)
 		sz += sprintf(buf+sz,"CU%d : %d\n",count,exec->cu_usage[count]);
+	buf[sz++]=0;
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);

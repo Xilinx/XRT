@@ -632,6 +632,17 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
+
+#if 0 // Enable when all platforms with ERT are packaged with new firmware
+        buf.clear();
+        pcidev::get_dev(m_idx)->user->sysfs_get(
+            "mb_scheduler", "kds_custat", errmsg, buf);
+
+        if (buf.size()) {
+          ss << "\nCompute Unit Usage:" << "\n";
+          ss << buf.data() << "\n";
+        }
+#endif
         lines.push_back(ss.str());
     }
 
