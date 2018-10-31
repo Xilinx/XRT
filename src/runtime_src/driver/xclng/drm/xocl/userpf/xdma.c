@@ -253,7 +253,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 		goto failed_drm_init;
 	}
 
-	if(ocl_dev->bypass_bar_idx>=0){
+	if(ocl_dev->bypass_bar_idx >= 0) {
 		/* only bypass_bar_len >= SECTION (256MB) */
 		if (ocl_dev->bypass_bar_len > (1<<PA_SECTION_SHIFT)){
 			xocl_info(&pdev->dev, "Found bypass BAR");
@@ -262,8 +262,8 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 				xocl_err(&pdev->dev, "failed to reserve p2p memory region");
 				goto failed_drm_init;
 			}
-	  }
-  }
+		}
+	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {

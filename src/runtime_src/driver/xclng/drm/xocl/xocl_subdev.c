@@ -15,8 +15,13 @@
 
 #include <linux/pci.h>
 #include <linux/platform_device.h>
+#include "xclfeatures.h"
 #include "xocl_drv.h"
 #include "version.h"
+
+static struct xocl_dsa_vbnv_map dsa_vbnv_map[] = {
+	XOCL_DSA_VBNV_MAP
+};
 
 static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
@@ -158,8 +163,33 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct FeatureRomHeader rom;
 	u32	id;
 	int	i, ret = 0;
+
+	/* lookup update table */
+	ret = xocl_subdev_create_one(xdev_hdl,
+		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
+	if (ret)
+		goto failed;
+
+	for (i = 0; i < ARRAY_SIZE(dsa_vbnv_map); i++) {
+		xocl_get_raw_header(core, &rom);
+		if ((core->pdev->vendor == dsa_vbnv_map[i].vendor ||
+			dsa_vbnv_map[i].vendor == (u16)PCI_ANY_ID) &&
+			(core->pdev->device == dsa_vbnv_map[i].device ||
+			dsa_vbnv_map[i].device == (u16)PCI_ANY_ID) &&
+			(core->pdev->subsystem_device ==
+			dsa_vbnv_map[i].subdevice ||
+			dsa_vbnv_map[i].subdevice == (u16)PCI_ANY_ID) &&
+			!strncmp(rom.VBNVName, dsa_vbnv_map[i].vbnv,
+			sizeof(rom.VBNVName))) {
+			sdev_info = dsa_vbnv_map[i].priv_data->subdev_info;
+			subdev_num = dsa_vbnv_map[i].priv_data->subdev_num;
+			xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
+			break;
+		}
+	}
 
 	core->subdev_num = subdev_num;
 
@@ -236,6 +266,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct pci_dev *pdev = core->pdev;
 	unsigned int i;
 
+	memset(&core->priv, 0, sizeof(core->priv));
 	/*
  	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
