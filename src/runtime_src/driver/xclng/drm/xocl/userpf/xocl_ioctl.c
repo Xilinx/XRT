@@ -681,7 +681,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	//Populate with "this" bitstream, so avoid redownload the next time
-	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
