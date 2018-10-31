@@ -16,10 +16,12 @@ export XMA_LIBS=${XMA_LIBS:=/opt/xilinx/xrt/lib}
 echo "XMA_INCLUDE is $XMA_INCLUDE"
 echo "XMA_LIBS is $XMA_LIBS"
 
-export LD_LIBRARY_PATH=/opt/xilinx/xrt/lib:$XMA_LIBS:$LD_LIBRARY_PATH
+#export LD_LIBRARY_PATH=/opt/xilinx/xrt/lib:$XMA_LIBS:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/opt/xilinx/xrt/lib
 echo "LD_LIBRARY_PATH is $LD_LIBRARY_PATH"
 
 source /opt/xilinx/xrt/setup.sh
+echo "LD_LIBRARY_PATH is $LD_LIBRARY_PATH"
 
 make
 
