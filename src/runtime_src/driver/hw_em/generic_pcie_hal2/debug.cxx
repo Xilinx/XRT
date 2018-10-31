@@ -72,9 +72,20 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
-    mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
+    if (isAWSLegacy()) {
+      // Per Bank Monitoring
+      mMemoryProfilingNumberSlots = 4;
+      mPerfMonSlotName[0] = "All";
+      mPerfMonSlotName[1] = "All";
+      mPerfMonSlotName[2] = "All";
+      mPerfMonSlotName[3] = "All";
+    }
+    else {
+      // Per Port Monitoring
+      mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
       mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
-    
+    }
+
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
     

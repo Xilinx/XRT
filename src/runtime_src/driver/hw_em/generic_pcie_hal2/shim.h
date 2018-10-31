@@ -184,6 +184,8 @@ using addr_type = uint64_t;
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
 
+      bool isAWSLegacy () { return std::string(mDeviceInfo.mName).find("xilinx_aws-vu9p-f1-04261818_dynamic_5_0") != std::string::npos; }
+
     private:
       //hw_em_profile* _profile_inst;
       bool simulator_started;
