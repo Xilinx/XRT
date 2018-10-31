@@ -22,7 +22,6 @@
 #include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
 #include <iostream>
@@ -1208,7 +1207,7 @@ load_program(program* program)
   m_cu_memidx = -2;
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,this));
+      add_cu(std::make_unique<compute_unit>(symbol,inst.name,this));
     }
   }
 
