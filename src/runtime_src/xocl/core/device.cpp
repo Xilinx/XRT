@@ -1249,6 +1249,9 @@ bool
 device::
 release_context(compute_unit* cu) const
 {
+  if (cu->get_context_type() == compute_unit::context_type::none)
+    return true;
+
   if (auto program = m_active) {
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
@@ -1257,6 +1260,7 @@ release_context(compute_unit* cu) const
     cu->reset_context_type();
     return true;
   }
+
   return false;
 }
 
