@@ -930,11 +930,11 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 		}
 
 		retry=0;
-		while (retry++ < MAX_RETRY && 
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED)) 
+		while (retry++ < MAX_RETRY &&
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
-		//Wait for XMC to stop and then check that ERT has also finished 
+		//Wait for XMC to stop and then check that ERT has also finished
 		if (retry >= MAX_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"Failed to stop XMC");
@@ -943,10 +943,10 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 				READ_REG32(xmc, XMC_ERROR_REG));
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
-		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) && 
+		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
 			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
-			while (retry++ < MAX_RETRY && 
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) 
+			while (retry++ < MAX_RETRY &&
+				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_RETRY) {
 				xocl_err(&xmc->pdev->dev,
@@ -1012,7 +1012,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (!xmc->enabled) {
 		return -ENODEV;
 	}
-    
+
 
 	mutex_lock(&xmc->xmc_lock);
 
@@ -1030,8 +1030,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 	}
 
-	if (!XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(xmc->pdev)) &&
-		xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl)) {
 		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
 			xmc->sche_binary_length);
 		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
@@ -1052,8 +1051,8 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if(!(reg_val & STATUS_MASK_INIT_DONE)) {
 		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
 		retry=0;
-		while (retry++ < MAX_RETRY && 
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE)) 
+		while (retry++ < MAX_RETRY &&
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE))
 			msleep(RETRY_INTERVAL);
 		if (retry >= MAX_RETRY) {
 			xocl_err(&xmc->pdev->dev,

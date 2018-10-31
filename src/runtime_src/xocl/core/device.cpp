@@ -22,7 +22,6 @@
 #include "xocl/api/plugin/xdp/profile.h"
 #include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
-#include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
 #include <iostream>
@@ -436,8 +435,10 @@ void
 device::
 clear_cus()
 {
-  for (auto& cu : get_cus())
-    release_context(cu.get());
+  // Release CU context only on parent device
+  if (!is_sub_device())
+    for (auto& cu : get_cus())
+      release_context(cu.get());
   m_computeunits.clear();
 }
 
@@ -1206,7 +1207,7 @@ load_program(program* program)
   m_cu_memidx = -2;
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(xrt::make_unique<compute_unit>(symbol,inst.name,this));
+      add_cu(std::make_unique<compute_unit>(symbol,inst.name,this));
     }
   }
 
@@ -1248,6 +1249,9 @@ bool
 device::
 release_context(compute_unit* cu) const
 {
+  if (cu->get_context_type() == compute_unit::context_type::none)
+    return true;
+
   if (auto program = m_active) {
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
@@ -1256,6 +1260,7 @@ release_context(compute_unit* cu) const
     cu->reset_context_type();
     return true;
   }
+
   return false;
 }
 

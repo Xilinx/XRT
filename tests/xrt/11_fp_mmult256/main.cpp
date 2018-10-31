@@ -83,12 +83,12 @@ static void printHelp()
 
 
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, bool bRandom)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, bool bRandom, int first_mem)
 {
     try {
         // Allocate the device memory
-        unsigned boHandle1 = xclAllocBO(handle, 2*DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, 0x0); // input a and b
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, 0x0);   // output 
+        unsigned boHandle1 = xclAllocBO(handle, 2*DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, first_mem); // input a and b
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, first_mem);   // output 
 
         // Create the mapping to the host memory
         float *bo1 = (float*)xclMapBO(handle, boHandle1, true);
@@ -346,16 +346,17 @@ int main(int argc, char** argv)
     try {
 	    xclDeviceHandle handle;
     	uint64_t cu_base_addr = 0;
-
+    	int first_mem = -1;
     	
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
+    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
 	        return 1;
 	    }
 	    
-
+	    if (first_mem < 0)
+	        return 1;
        
         
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, bRandom)) {
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, bRandom, first_mem)) {
             return 1;
         }
         
