@@ -384,16 +384,19 @@ function_call_logger(const char* function, long long address)
     }
   }
 
+  m_funcid = m_funcid_global++;
   if (cb_log_function_start)
-    cb_log_function_start(m_name, m_address);
+    cb_log_function_start(m_name, m_address, m_funcid);
 }
 
 function_call_logger::
 ~function_call_logger()
 {
   if (cb_log_function_end)
-    cb_log_function_end(m_name, m_address);
+    cb_log_function_end(m_name, m_address, m_funcid);
 }
+
+std::atomic <unsigned int>  function_call_logger::m_funcid_global(0);
 
 void add_to_active_devices(const std::string& device_name)
 {
