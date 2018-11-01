@@ -3,6 +3,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+SET(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "core")
+
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/driver/include
   )
