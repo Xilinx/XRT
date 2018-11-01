@@ -136,6 +136,7 @@ add_subdirectory(xma)
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 set(CPACK_RPM_COMPONENT_INSTALL ON)
+set(CPACK_DEB_COMPONENT_INSTALL ON)
 include (CMake/cpack.cmake)
 
 include (CMake/lint.cmake)
