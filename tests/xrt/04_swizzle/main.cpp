@@ -153,10 +153,14 @@ int main(int argc, char** argv)
     {
 	xclDeviceHandle handle;
 	uint64_t cu_base_addr = 0;
-	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr))
+	int first_mem = -1;
+	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem))
 	    return 1;
 
-	unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(int), XCL_BO_DEVICE_RAM, 0x0);
+	if (first_mem < 0)
+	    return 1;
+
+	unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(int), XCL_BO_DEVICE_RAM, first_mem);
 	int* bo = (int*)xclMapBO(handle, boHandle, true);
 	memset(bo, 0, DATA_SIZE*sizeof(int));
 

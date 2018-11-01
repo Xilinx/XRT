@@ -749,8 +749,8 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on card.\n"
-                    << "Please run xbutil flash -a all to flash card."
+                output << "Xclbin does not match DSA on card or xrt version.\n"
+                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
                     mLogStream << output.str();
@@ -1197,7 +1197,7 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
@@ -1212,7 +1212,7 @@ int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool s
 /*
  * xclCloseContext
  */
-int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -1244,6 +1244,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     q_info.write = 1;
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1266,6 +1267,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1339,9 +1341,7 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
     /* TODO: populate actual and timeout args correctly */
-    struct timespec time;
-    time.tv_nsec = timeout*1000000;
-
+    struct timespec time, *ptime = NULL;
     int num_evt, i;
 
     *actual = 0;
@@ -1350,7 +1350,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
         std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
         goto done;
     }
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
+    if (timeout > 0) {
+        memset(&time, 0, sizeof(time));
+        time.tv_sec = timeout / 1000;
+        time.tv_nsec = (timeout % 1000) * 1000000;
+        ptime = &time;
+    }
+
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;

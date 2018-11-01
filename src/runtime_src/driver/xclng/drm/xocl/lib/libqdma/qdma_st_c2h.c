@@ -309,7 +309,7 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 	cb->sg_idx = j;
 	cb->sg_offset = tsgoff;
 	cb->left -= copied;
-	cb->offset = req->count - cb->left;
+	cb->offset += copied;
 
 	flq->pkt_dlen -= copied;
 
@@ -570,6 +570,13 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 	}
 
 	qdma_sgt_req_done(descq);
+
+	if (descq->conf.irq_en) {
+		dma_rmb();
+
+		if (pidx_wrb != wb->pidx)
+			schedule_work(&descq->work);
+	}
 
 	return 0;
 }

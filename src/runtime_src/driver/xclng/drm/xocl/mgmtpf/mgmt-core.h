@@ -106,12 +106,10 @@ struct xclmgmt_dev {
 
 	/* the kernel pci device data structure provided by probe() */
 	struct pci_dev *pci_dev;
-	struct pci_dev *user_pci_dev;
 	int instance;
 	struct xclmgmt_char *user_char_dev;
 	int axi_gate_frozen;
 	unsigned short ocl_frequency[4];
-	u64 unique_id_last_bitstream;
 
 	struct xocl_context_hash ctx_table;
 
@@ -181,5 +179,3 @@ int mgmt_start_mb(struct xclmgmt_dev *lro);
 int mgmt_stop_mb(struct xclmgmt_dev *lro);
 
 #endif
-
-

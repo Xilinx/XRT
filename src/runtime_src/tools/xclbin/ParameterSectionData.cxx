@@ -25,7 +25,9 @@ ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
   , m_formatTypeStr("")
   , m_file("")
   , m_section("")
+  , m_subSection("")
   , m_eKind(BITSTREAM)
+  , m_originalString(_formattedString)
 {
   transformFormattedString(_formattedString);
 }
@@ -75,18 +77,34 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 
   // -- Section --
   if ( !tokens[0].empty() ) {
+    // TODO: Better subsection integration
+    std::string sSectionName = tokens[0];
+    std::string sSubSectionName;
+    std::string::size_type sectionPos = tokens[0].find_first_of("-", 0);
+    if (sectionPos != std::string::npos) {
+      sSectionName = tokens[0].substr(0, sectionPos);
+      sSubSectionName = tokens[0].substr(sectionPos+1, tokens[0].length()-sectionPos-1);
+    }
+
     enum axlf_section_kind eKind;
-    if (Section::translateSectionKindStrToKind(tokens[0], eKind) == false) {
-      std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", tokens[0].c_str());
+    if (Section::translateSectionKindStrToKind(sSectionName, eKind) == false) {
+      std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", sSectionName.c_str());
       throw std::runtime_error(errMsg);
     }
+
+    if (!sSubSectionName.empty() && (Section::supportsSubSections(eKind) == false) ) {
+      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support subsections (e.g., '%s').", sSectionName.c_str(), sSubSectionName.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    m_section = sSectionName;
+    m_subSection = sSubSectionName;
   }
 
   if ( tokens[0].empty() && (m_formatType != Section::FT_JSON)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
-  m_section = tokens[0];
 
   // -- File --
   m_file = tokens[2];
@@ -110,6 +128,12 @@ ParameterSectionData::getSectionName()
   return m_section;
 }
 
+const std::string &
+ParameterSectionData::getSubSectionName()
+{
+  return m_subSection;
+}
+
 enum axlf_section_kind &
 ParameterSectionData::getSectionKind()
 {
@@ -121,4 +145,10 @@ const std::string &
 ParameterSectionData::getFormatTypeAsStr()
 {
   return m_formatTypeStr;
+}
+
+const std::string &
+ParameterSectionData::getOriginalFormattedString()
+{
+  return m_originalString;
 }

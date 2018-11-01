@@ -15,7 +15,13 @@
 
 #include <linux/pci.h>
 #include <linux/platform_device.h>
+#include "xclfeatures.h"
 #include "xocl_drv.h"
+#include "version.h"
+
+static struct xocl_dsa_vbnv_map dsa_vbnv_map[] = {
+	XOCL_DSA_VBNV_MAP
+};
 
 static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
@@ -157,8 +163,33 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct FeatureRomHeader rom;
 	u32	id;
 	int	i, ret = 0;
+
+	/* lookup update table */
+	ret = xocl_subdev_create_one(xdev_hdl,
+		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
+	if (ret)
+		goto failed;
+
+	for (i = 0; i < ARRAY_SIZE(dsa_vbnv_map); i++) {
+		xocl_get_raw_header(core, &rom);
+		if ((core->pdev->vendor == dsa_vbnv_map[i].vendor ||
+			dsa_vbnv_map[i].vendor == (u16)PCI_ANY_ID) &&
+			(core->pdev->device == dsa_vbnv_map[i].device ||
+			dsa_vbnv_map[i].device == (u16)PCI_ANY_ID) &&
+			(core->pdev->subsystem_device ==
+			dsa_vbnv_map[i].subdevice ||
+			dsa_vbnv_map[i].subdevice == (u16)PCI_ANY_ID) &&
+			!strncmp(rom.VBNVName, dsa_vbnv_map[i].vbnv,
+			sizeof(rom.VBNVName))) {
+			sdev_info = dsa_vbnv_map[i].priv_data->subdev_info;
+			subdev_num = dsa_vbnv_map[i].priv_data->subdev_num;
+			xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
+			break;
+		}
+	}
 
 	core->subdev_num = subdev_num;
 
@@ -235,6 +266,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct pci_dev *pdev = core->pdev;
 	unsigned int i;
 
+	memset(&core->priv, 0, sizeof(core->priv));
 	/*
  	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
@@ -252,6 +284,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.flags = in->flags;
 	core->priv.flash_type = in->flash_type;
 	core->priv.board_name = in->board_name;
+	core->priv.mpsoc = in->mpsoc;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
@@ -264,4 +297,97 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 			break;
 		}
 	}
+}
+
+static int match_user_rom_dev(struct device *dev, void *data)
+{
+	struct platform_device *pldev = to_platform_device(dev);
+	struct xocl_dev_core *core;
+	struct pci_dev *pdev;
+	unsigned long slot;
+
+	if (strncmp(dev_name(dev), XOCL_FEATURE_ROM_USER,
+		strlen(XOCL_FEATURE_ROM_USER)) == 0) {
+		core = (struct xocl_dev_core *)xocl_get_xdev(pldev); 
+		pdev = core->pdev;
+		slot = PCI_SLOT(pdev->devfn);
+
+		if (slot == (unsigned long)data)
+			return true;
+	}
+
+	return false;
+}
+
+struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl)
+{
+	struct device *user_rom_dev;
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+        struct pci_dev *pdev = core->pdev;
+	struct pci_dev *userdev;
+	unsigned long slot = PCI_SLOT(pdev->devfn);
+	struct xocl_dev_core *user_core;
+
+	user_rom_dev = bus_find_device(&platform_bus_type, NULL, (void *)slot,
+		match_user_rom_dev);
+
+	if (!user_rom_dev)
+		return NULL;
+
+	user_core = (struct xocl_dev_core *)xocl_get_xdev(
+		to_platform_device(user_rom_dev));
+	userdev = user_core->pdev;
+
+	if (!get_device(&userdev->dev))
+		return NULL;
+
+	device_lock(&userdev->dev);
+	if (!userdev->dev.driver) {
+		device_unlock(&pdev->dev);
+		return NULL;
+	}
+
+	return user_core->pdev;
+}
+
+void xocl_release_userdev(struct pci_dev *userdev)
+{
+	device_unlock(&userdev->dev);
+	put_device(&userdev->dev);
+}
+
+int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
+	struct axlf *bin_obj, bool major_only)
+{
+	u32 major, minor, patch;
+	/* check runtime version:
+	 *    1. if it is 0.0.xxxx, this implies old xclbin,
+	 *       we pass the check anyway.
+	 *    2. compare major and minor, returns error if it does not match.
+	 */
+	sscanf(xrt_build_version, "%d.%d.%d", &major, &minor, &patch);
+	if (major != bin_obj->m_header.m_versionMajor &&
+		bin_obj->m_header.m_versionMajor != 0)
+		goto err;
+
+	if (major_only)
+		return 0;
+
+	if ((major != bin_obj->m_header.m_versionMajor ||
+		minor != bin_obj->m_header.m_versionMinor) &&
+		!(bin_obj->m_header.m_versionMajor == 0 &&
+		bin_obj->m_header.m_versionMinor == 0))
+		goto err;
+
+	return 0;
+
+err:
+	xocl_err(&XDEV(xdev_hdl)->pdev->dev,
+		"Mismatch xrt version, xrt %s, xclbin "
+		"%d.%d.%d", xrt_build_version,
+		bin_obj->m_header.m_versionMajor,
+		bin_obj->m_header.m_versionMinor,
+		bin_obj->m_header.m_versionPatch);
+
+	return -EINVAL;
 }

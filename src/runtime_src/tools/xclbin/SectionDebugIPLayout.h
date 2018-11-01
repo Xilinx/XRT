@@ -39,6 +39,10 @@ class SectionDebugIPLayout : public Section {
   SectionDebugIPLayout(const SectionDebugIPLayout& obj);
   SectionDebugIPLayout& operator=(const SectionDebugIPLayout& obj);
 
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
@@ -55,7 +59,7 @@ class SectionDebugIPLayout : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", boost::factory<SectionDebugIPLayout*>()); }
+    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", false, boost::factory<SectionDebugIPLayout*>()); }
   } _initializer;
 };
 

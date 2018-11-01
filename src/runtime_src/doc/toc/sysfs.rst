@@ -1,32 +1,46 @@
 Linux Sys FileSystem Nodes
 --------------------------
 
-*xocl* and *xclmgmt* drivers expose several sysfs nodes under the pci device root node.
+``xocl`` and ``xclmgmt`` drivers expose several ``sysfs`` nodes under
+the ``pci`` device root node.
 
 xocl
 ~~~~
 
-xocl driver exposes various sections of xclbin image including the xclbin Id on sysfs. This makes it very convenient for tools (such as *xbutil*) to discover characteristics of image currently loaded on the FPGA. The data layout of xclbin sections are defined in file *xclbin.h* which can be found under ``runtime/driver/include directory``.
+The ``xocl`` driver exposes various sections of the ``xclbin`` image
+including the ``xclbin`` ``Id`` on ``sysfs``. This makes it very
+convenient for tools (such as ``xbutil``) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of ``xclbin``
+sections are defined in file ``xclbin.h`` which can be found under
+``runtime/driver/include`` directory.
 
-1. ip_layout
-   Exposes IP LAYOUT section of xclbin
-2. connectivity
-   Exposes CONNECTIVITY section of xclbin
-3. mem_topology
-   Exposes MEM TOPOLOGY section of xclbin
-4. xclbinid
-   Exposes xclbin unique identifier
+``ip_layout``
+  Exposes IP LAYOUT section of ``xclbin``
+``connectivity``
+  Exposes CONNECTIVITY section of ``xclbin``
+``mem_topology``
+  Exposes MEM TOPOLOGY section of ``xclbin``
+``xclbinid``
+  Exposes ``xclbin`` unique identifier
 
 xclmgmt
 ~~~~~~~
 
-xclmgmt driver exposes the instance number (suffix used in /dev/xclmgmt%d) on sysfs. This makes it convenient to uniquely map a PCIe slot on sysfs to /dev/xclmgmt%d device node created by the driver.
+``xclmgmt`` driver exposes the instance number (suffix used in
+``/dev/xclmgmt%d``) on ``sysfs``. This makes it convenient to uniquely map a
+PCIe slot on ``sysfs`` to ``/dev/xclmgmt%d`` device node created by the
+driver.
 
-Device sensors are exposed as standard ``hwmon`` file hierarchy. Two hwmon nodes are created: *sysmon* and *microblaze*. sysmon exposes device temperature and voltages. microblaze exposes device currents on various rails by using an embedded board management firmware. Values with _input suffix represent live values. Thie values are compatible with Linux standard *lm-sensors* tool.
+Device sensors are exposed as standard ``hwmon`` file hierarchy. Two
+``hwmon`` nodes are created: ``sysmon`` and ``microblaze``. ``sysmon``
+exposes device temperature and voltages. ``microblaze`` exposes device
+currents on various rails by using an embedded board management
+firmware. Values with ``_input`` suffix represent live values. The
+values are compatible with the Linux standard ``lm-sensors`` tool.
 
-For example if the bus number of mgmt physical function is ``0000:01:00.1`` then hwmon would show up under ``/sys/bus/pci/devices/0000:01:00.1``. See sample session log below:
-
-::
+For example if the bus address of a physical function is
+``0000:01:00.1`` then ``hwmon`` would show up under
+``/sys/bus/pci/devices/0000:01:00.1``. See sample session log below::
 
    dx4300:~>tree -L 1 /sys/bus/pci/devices/0000:01:00.1/hwmon
    /sys/bus/pci/devices/0000:01:00.1/hwmon

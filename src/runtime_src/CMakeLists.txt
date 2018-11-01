@@ -61,6 +61,7 @@ target_link_libraries(xilinxopencl
   dl
   pthread
   crypt
+  uuid
   rt
   )
 

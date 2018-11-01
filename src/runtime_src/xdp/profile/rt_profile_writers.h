@@ -52,7 +52,7 @@ namespace XCL {
 	    // consistency across all formats of reports
 	    virtual void writeSummary(RTProfile* profile);
 
-	    const char * getToolVersion() { return "2018.2"; }
+	    const char * getToolVersion() { return "2018.3"; }
 
     public:
 	    // Functions for Summary
@@ -82,8 +82,9 @@ namespace XCL {
 		  double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
 	  void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
 	      double cuStallExt, double cuStallStr, double cuStallInt);
-	  void writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
-	  		double avgSize, double avgUtil, double linkStarve, double linkStall);
+	  void writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
+          uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
+          double linkStarve, double linkStall);
       // Write Top Kernel Read and Write transfer stats
       virtual void writeTopKernelTransferSummary(
           const std::string& deviceName, const std::string& cuName,

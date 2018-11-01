@@ -38,6 +38,11 @@ class SectionConnectivity : public Section {
   SectionConnectivity();
   virtual ~SectionConnectivity();
 
+public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
+
  private:
   // Purposefully private and undefined ctors...
   SectionConnectivity(const SectionConnectivity& obj);
@@ -53,7 +58,7 @@ class SectionConnectivity : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CONNECTIVITY, "CONNECTIVITY", "connectivity", boost::factory<SectionConnectivity*>()); }
+    _init() { registerSectionCtor(CONNECTIVITY, "CONNECTIVITY", "connectivity", false, boost::factory<SectionConnectivity*>()); }
   } _initializer;
 };
 

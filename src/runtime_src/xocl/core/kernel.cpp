@@ -18,7 +18,6 @@
 #include "program.h"
 #include "context.h"
 
-#include "xrt/util/memory.h"
 #include <sstream>
 #include <iostream>
 #include <memory>
@@ -33,25 +32,25 @@ create(arginfo_type arg, kernel* kernel)
 {
   switch (arg->address_qualifier) {
   case 0:
-    return xrt::make_unique<kernel::scalar_argument>(arg,kernel);
+    return std::make_unique<kernel::scalar_argument>(arg,kernel);
     break;
   case 1:
-    return xrt::make_unique<kernel::global_argument>(arg,kernel);
+    return std::make_unique<kernel::global_argument>(arg,kernel);
     break;
   case 2:
-    return xrt::make_unique<kernel::constant_argument>(arg,kernel);
+    return std::make_unique<kernel::constant_argument>(arg,kernel);
     break;
   case 3:
-    return xrt::make_unique<kernel::local_argument>(arg,kernel);
+    return std::make_unique<kernel::local_argument>(arg,kernel);
     break;
   case 4:
     // hack for progvar (064_pipe_num_packets_hw_xilinx_adm-pcie-ku3_2ddr_3_3)
     // do not understand this code at all, but reuse global_argument all that
     // matters is that cu_ffa gets proper xclbin arg properties (size,offset,etc)
     if (arg->atype==xclbin::symbol::arg::argtype::progvar)
-      return xrt::make_unique<kernel::global_argument>(arg,kernel);
+      return std::make_unique<kernel::global_argument>(arg,kernel);
     //Indexed 4 implies stream. Above kludge contd.. : TODO
-    return xrt::make_unique<kernel::stream_argument>(arg,kernel);
+    return std::make_unique<kernel::stream_argument>(arg,kernel);
     break;
   default:
     throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: "
@@ -84,7 +83,7 @@ std::unique_ptr<kernel::argument>
 kernel::scalar_argument::
 clone()
 {
-  return xrt::make_unique<scalar_argument>(*this);
+  return std::make_unique<scalar_argument>(*this);
 }
 
 size_t
@@ -136,7 +135,7 @@ std::unique_ptr<kernel::argument>
 kernel::global_argument::
 clone()
 {
-  return xrt::make_unique<global_argument>(*this);
+  return std::make_unique<global_argument>(*this);
 }
 
 void
@@ -172,7 +171,7 @@ std::unique_ptr<kernel::argument>
 kernel::local_argument::
 clone()
 {
-  return xrt::make_unique<local_argument>(*this);
+  return std::make_unique<local_argument>(*this);
 }
 
 void
@@ -193,7 +192,7 @@ std::unique_ptr<kernel::argument>
 kernel::constant_argument::
 clone()
 {
-  return xrt::make_unique<constant_argument>(*this);
+  return std::make_unique<constant_argument>(*this);
 }
 
 void
@@ -213,7 +212,7 @@ std::unique_ptr<kernel::argument>
 kernel::image_argument::
 clone()
 {
-  return xrt::make_unique<image_argument>(*this);
+  return std::make_unique<image_argument>(*this);
 }
 
 void
@@ -227,7 +226,7 @@ std::unique_ptr<kernel::argument>
 kernel::sampler_argument::
 clone()
 {
-  return xrt::make_unique<sampler_argument>(*this);
+  return std::make_unique<sampler_argument>(*this);
 }
 
 void
@@ -241,7 +240,7 @@ std::unique_ptr<kernel::argument>
 kernel::stream_argument::
 clone()
 {
-  return xrt::make_unique<stream_argument>(*this);
+  return std::make_unique<stream_argument>(*this);
 }
 
 void
