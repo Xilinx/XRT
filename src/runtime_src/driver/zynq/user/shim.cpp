@@ -110,7 +110,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if(mKernelFD) {
-    mKernelControlPtr = (uint32_t*)mmap(0, 0x100000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, 0);
+    mKernelControlPtr = (uint32_t*)mmap(0, 0x800000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, 0);
     if (mKernelControlPtr == MAP_FAILED) {
         printf("Map failed \n");
         close(mKernelFD);
