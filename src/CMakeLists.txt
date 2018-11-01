@@ -132,6 +132,7 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
+
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 set(CPACK_RPM_COMPONENT_INSTALL ON)
