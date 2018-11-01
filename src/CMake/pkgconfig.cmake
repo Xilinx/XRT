@@ -42,4 +42,3 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libxmaapi.pc DESTINATION ${XRT_PKG_CON
 configure_file(${CMAKE_SOURCE_DIR}/CMake/config/libxmaplugin.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc @ONLY)
 #install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc DESTINATION ${XRT_PKG_CONFIG_DIR})
-
