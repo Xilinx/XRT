@@ -133,20 +133,11 @@ void pcidev::pci_func::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::vector<char>& buf)
 {
-    char tmp[4096];
     std::fstream fs = sysfs_open(subdev, entry, err_msg, false, true);
     if (!err_msg.empty())
         return;
 
-    // Don't know the size of sysfs entries upfront. Keep reading till EOF.
-    while (!fs.eof()) {
-        size_t cursize = buf.size();
-        fs.seekg(cursize, std::ios::beg);
-        fs.read(tmp, sizeof (tmp));
-        size_t newsize = cursize + fs.gcount();
-        buf.resize(newsize);
-        memcpy(buf.data() + cursize, tmp, newsize - cursize);
-    }
+    buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),std::istreambuf_iterator<char>());
 }
 
 void pcidev::pci_func::sysfs_get(

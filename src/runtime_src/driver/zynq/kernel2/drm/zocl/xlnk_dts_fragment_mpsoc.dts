@@ -9,7 +9,7 @@
 	zyxclmm_drm {
 		compatible = "xlnx,zocl";
 		status = "okay";
-		reg = <0x0 0xA0000000 0x0 0x100000>;
+		reg = <0x0 0xA0000000 0x0 0x800000>;
 	};
 };
 

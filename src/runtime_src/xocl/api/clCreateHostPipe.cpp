@@ -20,7 +20,6 @@
 #include "xocl/core/pipe.h"
 #include "xocl/core/device.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 
 #include "xocl/api/detail/device.h"
 
@@ -66,7 +65,7 @@ clCreateHostPipe(cl_device_id device,
   if (!attributes)
     throw error(CL_INVALID_VALUE);
 
-  auto pipe = xrt::make_unique<pmd::pipe>(nullptr,xocl::xocl(device),flags,max_packets,*attributes);
+  auto pipe = std::make_unique<pmd::pipe>(nullptr,xocl::xocl(device),flags,max_packets,*attributes);
   return pipe.release();
 }
 

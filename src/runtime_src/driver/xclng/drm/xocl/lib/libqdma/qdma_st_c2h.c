@@ -571,6 +571,13 @@ int descq_process_completion_st_c2h(struct qdma_descq *descq, int budget,
 
 	qdma_sgt_req_done(descq);
 
+	if (descq->conf.irq_en) {
+		dma_rmb();
+
+		if (pidx_wrb != wb->pidx)
+			schedule_work(&descq->work);
+	}
+
 	return 0;
 }
 
