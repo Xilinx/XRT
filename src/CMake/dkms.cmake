@@ -11,17 +11,17 @@ SET (DKMS_PRERM "prerm")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/xrt-xocl/${DKMS_FILE_NAME}.in"
-  "staging-xrt/${DKMS_FILE_NAME}"
+  "pkgprep/${DKMS_FILE_NAME}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
-  "staging-xrt/${DKMS_POSTINST}"
+  "pkgprep/${DKMS_POSTINST}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
-  "staging-xrt/${DKMS_PRERM}"
+  "pkgprep/${DKMS_PRERM}"
   )
 
 SET (XRT_DKMS_SRCS
@@ -119,7 +119,7 @@ foreach (DKMS_FILE ${XRT_DKMS_SRCS})
   list (APPEND XRT_DKMS_ABS_SRCS ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
-install (FILES "${CMAKE_CURRENT_BINARY_DIR}/staging-xrt/${DKMS_FILE_NAME}" DESTINATION ${XRT_DKMS_INSTALL_DIR})
+install (FILES "${CMAKE_CURRENT_BINARY_DIR}/pkgprep/${DKMS_FILE_NAME}" DESTINATION ${XRT_DKMS_INSTALL_DIR})
 
 find_program(CHECKPATCH checkpatch.pl PATHS /lib/modules/${LINUX_KERNEL_VERSION}/build/scripts/ NO_DEFAULT_PATH)
 
