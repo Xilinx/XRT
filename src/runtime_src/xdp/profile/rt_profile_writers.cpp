@@ -200,7 +200,7 @@ namespace XCL {
         "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
 		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
-      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getSummaryStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getSummaryStream());
     }
