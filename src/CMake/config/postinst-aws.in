@@ -21,7 +21,7 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     dkms build -m xrt-aws -v "@XRT_VERSION_STRING@"
     echo "Installing XRT Linux kernel modules sources with dkms"
     dkms install -m xrt-aws -v "@XRT_VERSION_STRING@" --force
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/aws/kernel/mgmt/10-awsmgmt.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/kernel/mgmt/10-awsmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
     udevadm control --reload-rules

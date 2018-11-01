@@ -11,17 +11,17 @@ SET (DKMS_PRERM "prerm-aws")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/xrt-awsmgmt/${DKMS_FILE_NAME}.in"
-  ${DKMS_FILE_NAME}
+  "staging-xrt-aws/${DKMS_FILE_NAME}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
-  ${DKMS_POSTINST}
+  "staging-xrt-aws/${DKMS_POSTINST}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
-  ${DKMS_PRERM}
+  "staging-xrt-aws/${DKMS_PRERM}"
   )
 
 SET (XRT_DKMS_SRCS_aws
@@ -55,7 +55,7 @@ foreach (DKMS_FILE ${XRT_DKMS_SRCS_aws})
   list (APPEND XRT_DKMS_ABS_SRCS_aws ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} COMPONENT aws)
+install (FILES "${CMAKE_CURRENT_BINARY_DIR}/staging-xrt-aws/${DKMS_FILE_NAME}" DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} COMPONENT aws)
 
 #find_program(CHECKPATCH checkpatch.pl PATHS /lib/modules/${LINUX_KERNEL_VERSION}/build/scripts/ NO_DEFAULT_PATH)
 
