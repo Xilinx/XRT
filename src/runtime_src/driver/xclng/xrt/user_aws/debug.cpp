@@ -75,10 +75,6 @@ namespace awsbwhal {
     getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
 
-    uint64_t traceFunnelAddr = 0x0;
-    getIPCountAddrNames(AXI_TRACE_FUNNEL, &traceFunnelAddr, nullptr, nullptr, 1);
-    mTraceFunnelAddress = traceFunnelAddr;
-
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
     for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
