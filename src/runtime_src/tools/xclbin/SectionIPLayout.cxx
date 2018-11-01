@@ -42,6 +42,8 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_KERNEL";
     case IP_DNASC:
       return "IP_DNASC";
+    case IP_DDR4_CONTROLLER:
+      return "IP_DDR4_CONTROLLER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);
@@ -52,6 +54,7 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   if (_sIPType == "IP_MB") return IP_MB;
   if (_sIPType == "IP_KERNEL") return IP_KERNEL;
   if (_sIPType == "IP_DNASC") return IP_DNASC;
+  if (_sIPType == "IP_DDR4_CONTROLLER") return IP_DDR4_CONTROLLER;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -221,13 +224,70 @@ SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
-    {
-      return true;
-    }
+  if ((_eFormatType == FT_JSON) ||
+      (_eFormatType == FT_HTML) ||
+      (_eFormatType == FT_RAW))
+  {
+    return true;
+  }
 
-    return false;
+  return false;
+}
+
+template <typename T>
+std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
+                         boost::property_tree::ptree::key_type const& key)
+{
+  std::vector<T> r;
+  for (auto& item : pt.get_child(key))
+      r.push_back(item.second);
+  return r;
+}
+
+
+void 
+SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData,
+                                         boost::property_tree::ptree& _ptToAppendTo)
+{
+  XUtil::TRACE_PrintTree("To Append To", _ptToAppendTo);
+  XUtil::TRACE_PrintTree("Append data", _ptAppendData);
+
+
+  std::vector<boost::property_tree::ptree> ip_datas = as_vector<boost::property_tree::ptree>(_ptAppendData, "m_ip_data");
+  unsigned int appendCount = _ptAppendData.get<unsigned int>("m_count");
+
+  if (appendCount != ip_datas.size()) {
+    std::string errMsg = XUtil::format("ERROR: IP layout section to append's count (%d) doesn't match the number of ip_data entries (%d).", appendCount, ip_datas.size());
+    throw std::runtime_error(errMsg);
+  }
+
+  if (appendCount == 0) {
+    std::string errMsg = "WARNING: IP layout section doesn't contain any data to append.";
+    std::cout << errMsg << std::endl;
+    return;
+  }
+
+  // Now copy the data
+  boost::property_tree::ptree& ptIPLayoutAppendTo = _ptToAppendTo.get_child("ip_layout");
+  boost::property_tree::ptree& ptDest_m_ip_data = ptIPLayoutAppendTo.get_child("m_ip_data");
+
+  for (auto ip_data : ip_datas) {
+    boost::property_tree::ptree new_ip_data;
+    new_ip_data.put("m_type", ip_data.get<std::string>("m_type"));
+    new_ip_data.put("properties", ip_data.get<std::string>("properties"));
+    new_ip_data.put("m_base_address", ip_data.get<std::string>("m_base_address"));
+    new_ip_data.put("m_name", ip_data.get<std::string>("m_name"));
+
+    ptDest_m_ip_data.add_child("ip_data", new_ip_data);
+  }
+
+  // Update count
+  {
+    unsigned int count = ptIPLayoutAppendTo.get<unsigned int>("m_count");
+    count += appendCount;
+    ptIPLayoutAppendTo.put("m_count", count);
+  }
+
+  XUtil::TRACE_PrintTree("To Append To Done", _ptToAppendTo);
 }
 

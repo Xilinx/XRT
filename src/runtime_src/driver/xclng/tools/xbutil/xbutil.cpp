@@ -664,7 +664,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
-    std::cout << "  status  [--debug_ip_name]\n";   
+    std::cout << "  status  [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
@@ -712,15 +712,14 @@ std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
             std::cout << "ERROR: Card index " << index << " out of range";
             std::cout << std::endl;
         } else {
-            return std::unique_ptr<xcldev::device>
-                (new xcldev::device(index, nullptr));
+            return std::make_unique<xcldev::device>(index,nullptr);
         }
     }
     catch (const std::exception& ex) {
         std::cout << "ERROR: " << ex.what() << std::endl;
     }
 
-    return std::unique_ptr<xcldev::device>(nullptr);
+    return nullptr;
 }
 
 struct topThreadCtrl {
@@ -738,12 +737,12 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     dev->m_mem_usage_bar(devstat, lines);
 
     dev->m_devinfo_stringize_power(devinfo, lines);
-    
+
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
     for(auto line:lines) {
             printw("%s\n", line.c_str());
-    } 
+    }
 }
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)

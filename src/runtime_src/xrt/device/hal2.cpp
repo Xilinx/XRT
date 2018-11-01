@@ -15,7 +15,6 @@
  */
 
 #include "hal2.h"
-#include "xrt/util/memory.h"
 #include "xrt/util/thread.h"
 
 #include <cstring> // for std::memcpy
@@ -163,7 +162,7 @@ allocExecBuffer(size_t sz)
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<ExecBufferObject>();
+  auto ubo = std::make_unique<ExecBufferObject>();
   //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
   ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
   if (ubo->handle == 0xffffffff)
@@ -191,7 +190,7 @@ alloc(size_t sz)
 
   xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
   uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
@@ -218,7 +217,7 @@ alloc(size_t sz,void* userptr)
   };
 
   uint64_t flags = 0xFFFFFF; //TODO:check default
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
@@ -249,7 +248,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
 
   if (domain==Domain::XRT_DEVICE_PREALLOCATED_BRAM) {
     ubo->deviceAddr = memory_index;
@@ -298,7 +297,7 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
 
   BufferObject* bo = getBufferObject(boh);
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = bo->handle;
   ubo->deviceAddr = bo->deviceAddr+offset;
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
@@ -462,7 +461,7 @@ import(const BufferObjectHandle& boh)
 
   BufferObject* bo = getBufferObject(boh);
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->hostAddr = bo->hostAddr;
   ubo->size = bo->size;
   ubo->owner = m_handle;
@@ -503,7 +502,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
 
   if (!m_ops->mImportBO)
     throw std::runtime_error("ImportBO function not found in FPGA driver. Please install latest driver");
@@ -667,7 +666,7 @@ createDevices(hal::device_list& devices,
 {
   auto halops = std::make_shared<operations>(dll,driverHandle,deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
-    devices.emplace_back(xrt::make_unique<xrt::hal2::device>(halops,idx));
+    devices.emplace_back(std::make_unique<xrt::hal2::device>(halops,idx));
 }
 #endif
 

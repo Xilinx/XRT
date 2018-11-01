@@ -211,10 +211,13 @@ public:
         std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss, ssdevice;
+        std::string idcode, fpga, errmsg;
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
 
         ss << std::left;
-        ss << std::setw(16) << "DSA name" <<"\n";
-        ss << std::setw(16) << m_devinfo.mName << "\n\n";
+        ss << std::setw(8) << m_devinfo.mName;
+        ss << " [" << fpga << '(' << idcode << ")]\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
@@ -228,7 +231,7 @@ public:
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
 
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
-        ss << std::setw(16) << "OCL Frequency";
+        ss << std::setw(16) << "Kernel Freq";
 
         subss << std::left << std::setw(16) << unitConvert(m_devinfo.mDDRSize);
         subss << std::setw(16) << m_devinfo.mDDRBankCount << std::setw(16) << " ";
@@ -239,7 +242,7 @@ public:
         }
         ss << "\n" << subss.str() << "\n\n";
 
-        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
+        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA chan(bidir)";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
         ss << "GEN " << m_devinfo.mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo.mPCIeLinkWidth;
@@ -413,7 +416,7 @@ public:
         else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m1v8Top/1000).substr(0,4) + "V";
 
-  
+
 
         if(m_devinfo.m0v85 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -436,10 +439,10 @@ public:
 
 
         if(m_devinfo.m12vSW == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support"; 
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.m12vSW == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
-        else 
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m12vSW/1000).substr(0,4) + "V";
 
 
@@ -482,7 +485,7 @@ public:
         m_devinfo_stringize_power(m_devinfo, lines);
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        lines.push_back(ss.str());         
+        lines.push_back(ss.str());
     }
 
     void m_devinfo_stringize(const xclDeviceInfo2& m_devinfo,
@@ -629,6 +632,17 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
+
+#if 0 // Enable when all platforms with ERT are packaged with new firmware
+        buf.clear();
+        pcidev::get_dev(m_idx)->user->sysfs_get(
+            "mb_scheduler", "kds_custat", errmsg, buf);
+
+        if (buf.size()) {
+          ss << "\nCompute Unit Usage:" << "\n";
+          ss << buf.data() << "\n";
+        }
+#endif
         lines.push_back(ss.str());
     }
 
@@ -710,7 +724,7 @@ public:
                     stat_map[std::string(key)] = std::to_string(value);
                 }
 
-                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] + 
+                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] +
                     "/" + stat_map[std::string("total_req_num")];
 
                 ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
@@ -732,7 +746,7 @@ public:
         std::vector<std::string> lines, usage_lines;
 
         m_devinfo_stringize(m_devinfo, lines);
- 
+
         for(auto line : lines) {
             ostr << line;
         }
@@ -793,7 +807,7 @@ public:
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
 
         if(errmsg.empty()) {
             ostr << std::setw(16) << "\nXclbin ID:" << "\n";
@@ -829,8 +843,8 @@ public:
                     dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
                     ostr << "\nIP[" << cuCnt << "]: "
                          << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " " 
-                         << std::dec << parseDNAStatus(dnaStatus) << "\n"; 
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n";
                     cuCnt++;
                 }
             }
@@ -852,6 +866,11 @@ public:
         if(!stream.is_open()) {
             std::cout << "ERROR: Cannot open " << xclbin << ". Check that it exists and is readable." << std::endl;
             return -ENOENT;
+        }
+
+        if(region) {
+            std::cout << "ERROR: Not support other than -r 0 " << std::endl;
+            return -EINVAL;
         }
 
         char temp[8];

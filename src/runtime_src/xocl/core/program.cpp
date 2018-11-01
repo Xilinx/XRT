@@ -22,7 +22,6 @@
 #include "error.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
-#include "xrt/util/memory.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>
@@ -216,7 +215,7 @@ create_kernel(const std::string& kernel_name)
   // If kernel_name is empty, then assert conformance mode and create
   // a 'fake' kernel
   if (kernel_name.empty() && std::getenv("XCL_CONFORMANCE")) {
-    auto k = xrt::make_unique<kernel>(this);
+    auto k = std::make_unique<kernel>(this);
     return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
   }
 
@@ -225,7 +224,7 @@ create_kernel(const std::string& kernel_name)
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
   auto& xclbin = m_binaries.begin()->second;
   auto& symbol = xclbin.lookup_kernel(kernel_name);
-  auto k = xrt::make_unique<kernel>(this,kernel_name,symbol);
+  auto k = std::make_unique<kernel>(this,kernel_name,symbol);
   return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
 }
 

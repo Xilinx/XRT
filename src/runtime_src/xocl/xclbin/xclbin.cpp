@@ -21,7 +21,6 @@
 #include "xocl/core/error.h"
 
 #include "xclbin/binary.h"
-#include "xrt/util/memory.h"
 
 
 #include <boost/property_tree/ptree.hpp>
@@ -744,7 +743,7 @@ public:
         continue;
       if (++count>1)
         throw xocl::error(CL_INVALID_BINARY,"Only one platform supported");
-      m_platforms.emplace_back(xrt::make_unique<platform_wrapper>(xml_platform.second));
+      m_platforms.emplace_back(std::make_unique<platform_wrapper>(xml_platform.second));
     }
     auto platform = m_platforms.back().get();
 
@@ -755,7 +754,7 @@ public:
         continue;
       if (++count>1)
         throw xocl::error(CL_INVALID_BINARY,"Only one device supported");
-      m_devices.emplace_back(xrt::make_unique<device_wrapper>(platform,xml_device.second));
+      m_devices.emplace_back(std::make_unique<device_wrapper>(platform,xml_device.second));
     }
     auto device = m_devices.back().get();
 
@@ -769,7 +768,7 @@ public:
         continue;
       if (++count>1)
         throw xocl::error(CL_INVALID_BINARY,"Only one core supported");
-      m_cores.emplace_back(xrt::make_unique<core_wrapper>(platform,device,xml_core.second));
+      m_cores.emplace_back(std::make_unique<core_wrapper>(platform,device,xml_core.second));
     }
     auto core = m_cores.back().get();
 
@@ -778,7 +777,7 @@ public:
       if (xml_kernel.first != "kernel")
         continue;
       XOCL_DEBUG(std::cout,"xclbin found kernel '" + xml_kernel.second.get<std::string>("<xmlattr>.name") + "'\n");
-      m_kernels.emplace_back(xrt::make_unique<kernel_wrapper>(platform,device,core,xml_kernel.second));
+      m_kernels.emplace_back(std::make_unique<kernel_wrapper>(platform,device,core,xml_kernel.second));
     }
   }
 
@@ -1297,7 +1296,7 @@ xclbin()
 
 xclbin::
 xclbin(std::vector<char>&& xb)
-  : m_impl(xrt::make_unique<xclbin::impl>(std::move(xb)))
+  : m_impl(std::make_unique<xclbin::impl>(std::move(xb)))
 {
 }
 

@@ -34,6 +34,7 @@ SectionDNACertificate::~SectionDNACertificate() {
 #define signatureSizeBytes 512
 
 #define dnaEntrySizeBytes 12
+
 struct dnaEntry {
   char bytes[dnaEntrySizeBytes];
 };
@@ -66,16 +67,17 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   XUtil::binaryBufferToHexString((unsigned char *) &_pDataSection[_sectionSize - signatureSizeBytes], signatureSizeBytes, sDNSSignature);
 
   // Get the number of sections
-  char *pWorking = (char *) &_pDataSection[_sectionSize - signatureSizeBytes - sizeof (uint64_t)];
-  XUtil::TRACE_BUF("DNA Entries", pWorking, sizeof(uint64_t));
+  unsigned char *pWorking = (unsigned char *) &_pDataSection[_sectionSize - signatureSizeBytes - sizeof (uint64_t)];
+  XUtil::TRACE_BUF("DNA Entries", (char *) pWorking, sizeof(uint64_t));
   uint64_t dnaEntriesBitSize = 0;;
   for (unsigned int index = 0; index < sizeof(uint64_t); ++index) {
-      dnaEntriesBitSize = dnaEntriesBitSize << 8;
+    dnaEntriesBitSize = dnaEntriesBitSize << 8;
     dnaEntriesBitSize += (uint64_t) pWorking[index];
   }
 
+  // Instead of dividing by 8 we multiple the other side by 8
   if ((dnaEntriesBitSize % (8 * dnaEntrySizeBytes)) != 0) {
-    std::string errMsg = XUtil::format("ERROR: The DNA_CERTIFICATE reserved DNA entries bit size (0x%x) does not align with the byte boundary (0x%lx)", dnaEntriesBitSize, (8 * dnaEntrySizeBytes)).c_str();
+    std::string errMsg = XUtil::format("ERROR: The DNA_CERTIFICATE reserved DNA entries bit size (0x%lx) does not align with the byte boundary (0x%lx)", dnaEntriesBitSize, dnaEntrySizeBytes).c_str();
     throw std::runtime_error(errMsg);
   }
 
@@ -123,7 +125,8 @@ bool
 SectionDNACertificate::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
     if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML))
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
     {
       return true;
     }

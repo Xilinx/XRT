@@ -703,16 +703,30 @@ XclBin::updateHeaderFromSection(Section *_pSection)
     }
 
     // Feature ROM Time Stamp
-    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
-    
+    m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
+
     // Feature ROM UUID
     std::string sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
     sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
     XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
-    std::string sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
+    std::string sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+
+    // Examine OLD names -- // This code can be removed AFTER xocc has been updated to use the new format
+    {
+      // Feature ROM Time Stamp
+      if (m_xclBinHeader.m_header.m_featureRomTimeStamp == 0) {
+        m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("time_epoch", "0"));
+      }
+    
+      // Feature ROM VBNV
+      if (sPlatformVBNV.empty()) {
+        sPlatformVBNV = featureRom.get<std::string>("vbnv_name", "");
+        XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
+      }
+    }
 
     XUtil::TRACE_PrintTree("Build MetaData To Be examined", pt);
   }
@@ -760,6 +774,16 @@ XclBin::addSection(ParameterSectionData &_PSD)
   boost::filesystem::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
+
+  if (pSection->getSize() == 0) {
+    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
+    delete pSection;
+    pSection = nullptr;
+    return;
+  }
 
   addSection(pSection);
   updateHeaderFromSection(pSection);
@@ -835,10 +859,93 @@ XclBin::addSections(ParameterSectionData &_PSD)
 
     pSection = Section::createSectionObjectOfKind(eKind);
     pSection->readJSONSectionImage(pt);
+    if (pSection->getSize() == 0) {
+      std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
+                                            pSection->getSectionKindAsString().c_str(), 
+                                            pSection->getSectionKind(),
+                                            _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+      delete pSection;
+      pSection = nullptr;
+      continue;
+    }
     addSection(pSection);
     updateHeaderFromSection(pSection);
     XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
     std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'", 
+                                          pSection->getSectionKindAsString().c_str(), 
+                                          pSection->getSectionKind(),
+                                          _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
+  }
+}
+
+void 
+XclBin::appendSections(ParameterSectionData &_PSD)
+{
+  if (!_PSD.getSectionName().empty()) {
+    std::string errMsg = "Error: Section given for a wildcard JSON section add is not empty.";
+    throw std::runtime_error(errMsg);
+  }
+
+  if (_PSD.getFormatType() != Section::FT_JSON) {
+    std::string errMsg = XUtil::format("Error: Expecting JSON format type, got '%s'.", _PSD.getFormatTypeAsStr().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  std::string sJSONFileName = _PSD.getFile();
+
+  std::fstream fs;
+  fs.open(sJSONFileName, std::ifstream::in | std::ifstream::binary);
+  if (!fs.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + sJSONFileName;
+    throw std::runtime_error(errMsg);
+  }
+
+  //  Add a new element to the collection and parse the jason file
+  XUtil::TRACE("Reading JSON File: '" + sJSONFileName + '"');
+  boost::property_tree::ptree pt;
+  try {
+    boost::property_tree::read_json(fs, pt);
+  } catch (boost::property_tree::json_parser_error &e) {
+    std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", sJSONFileName.c_str(), e.line(), e.message().c_str());
+    throw std::runtime_error(errMsg);
+  }
+  
+  XUtil::TRACE("Examining the property tree from the JSON's file: '" + sJSONFileName + "'");
+  XUtil::TRACE("Property Tree: Root");
+  XUtil::TRACE_PrintTree("Root", pt);
+
+  for (boost::property_tree::ptree::iterator ptSection = pt.begin(); ptSection != pt.end(); ++ptSection) {
+    const std::string & sectionName = ptSection->first;
+    if (sectionName == "schema_version") {
+      XUtil::TRACE("Skipping: '" + sectionName + "'");
+      continue;
+    }
+
+    XUtil::TRACE("Processing: '" + sectionName + "'");
+
+    enum axlf_section_kind eKind;
+    if (Section::getKindOfJSON(sectionName, eKind) == false) {
+      std::string errMsg = XUtil::format("ERROR: Unknown JSON section '%s' in file: %s", sectionName.c_str(), sJSONFileName.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    Section *pSection = findSection(eKind);
+    if (pSection == nullptr) {
+      std::string errMsg = XUtil::format("Error: Section '%s' doesn't exists.  Must have an existing section in order to append.", pSection->getSectionKindAsString().c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    boost::property_tree::ptree ptPayload;
+    pSection->getPayload(ptPayload);
+
+    pSection->appendToSectionMetadata(ptSection->second, ptPayload);
+
+    pSection->purgeBuffers();
+    pSection->readJSONSectionImage(ptPayload);
+
+
+    XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully appended to.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+    std::cout << std::endl << XUtil::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
                                           _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
