@@ -214,6 +214,7 @@ message xclPerfMonReadTrace_call {
      optional bool ack = 1;
      optional string slotname = 2;
      optional bool accel = 3;
+     optional uint32 iptype = 4;
 }
 
 message xclPerfMonReadTrace_response {
