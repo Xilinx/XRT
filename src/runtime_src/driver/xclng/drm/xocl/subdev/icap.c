@@ -418,7 +418,7 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	 * reset and wait until done
 	 */
 
-	if(!icap->icap_bitstream_id){
+	if(uuid_is_null(&icap->icap_bitstream_uuid)){
 		ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
 			"frequencies counter cannot be determine");
 		return freq;
