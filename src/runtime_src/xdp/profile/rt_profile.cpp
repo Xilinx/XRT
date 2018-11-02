@@ -1645,7 +1645,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
             //XOCL_DEBUGF("setArgumentsBank: name = %s, aq = %d, atype = %d\n",
             //    arg.name.c_str(), arg.address_qualifier, arg.atype);
 
-            if ((currPort == portName) && (arg.address_qualifier == 1)
+            // Address_Qualifier = 1 : AXI MM Port
+            // Address_Qualifier = 4 : AXI Stream Port
+            if ((currPort == portName) && (arg.address_qualifier == 1 || arg.address_qualifier == 4)
                 && (arg.atype == xocl::xclbin::symbol::arg::argtype::indexed)) {
               std::get<2>(row) += (firstArg) ? arg.name : ("|" + arg.name);
 
