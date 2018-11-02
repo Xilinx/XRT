@@ -80,7 +80,9 @@ enum subcommand {
     STATUS_LAPC,
     STATUS_SSPM,
     STREAM,
-    STATUS_UNSUPPORTED
+    STATUS_UNSUPPORTED,
+    MEM_QUERY_ECC,
+    MEM_RESET_ECC
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
@@ -113,7 +115,9 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("query-ecc", MEM_QUERY_ECC),
+    std::make_pair("reset-ecc", MEM_RESET_ECC)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -1207,6 +1211,9 @@ public:
     }
 
     int validate(bool quick);
+
+    int printEccInfo(std::ostream& ostr) const;
+    int resetEccInfo();
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
