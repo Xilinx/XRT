@@ -422,6 +422,12 @@ enum subdev_id {
 			.end	= 0x051fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
 	})
 
 #define	XOCL_DEVINFO_ICAP_MGMT				\

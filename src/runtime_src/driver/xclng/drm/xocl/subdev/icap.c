@@ -47,11 +47,12 @@ static xuid_t uuid_null = NULL_UUID_LE;
 
 #define	ICAP_PRIVILEGED(icap)	((icap)->icap_regs != NULL)
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
-#define	ICAP_MAX_REG_GROUPS		5
+#define	ICAP_MAX_REG_GROUPS		ARRAY_SIZE(XOCL_RES_ICAP_MGMT)
 
 #define	ICAP_MAX_NUM_CLOCKS		2
 #define OCL_CLKWIZ_STATUS_OFFSET	0x4
 #define OCL_CLKWIZ_CONFIG_OFFSET(n)	(0x200 + 4 * (n))
+#define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
 #define	ICAP_XCLBIN_V2			"xclbin2"
 
 /*
@@ -132,6 +133,7 @@ struct icap {
 
 	char                    *icap_clock_freq_topology;
 	unsigned long		icap_clock_freq_topology_length;
+	char                    *icap_clock_freq_counter;
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -405,6 +407,36 @@ static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 	return freq;
 }
 
+static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap, int idx)
+{
+	u32 freq, status;
+	char *base = icap->icap_clock_freq_counter;
+	int times;
+	times = 10;
+	freq = 0;
+	/*
+	 * reset and wait until done
+	 */
+
+	if(uuid_is_null(&icap->icap_bitstream_uuid)){
+		ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
+			"frequencies counter cannot be determine");
+		return freq;
+	}
+	reg_wr(base, 0x1);
+
+	while(times!=0){
+		status = reg_rd(base);
+		if(status==0x2)
+			break;
+		mdelay(1);
+		times--;
+	};
+
+  freq = reg_rd(base + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
+
+  return freq;
+}
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
@@ -641,6 +673,35 @@ done:
 
 }
 
+static int set_and_verify_freqs(struct icap* icap, unsigned short* freqs, int num_freqs)
+{
+	int i;
+	int err;
+	u32 clock_freq_counter, request_in_khz, tolerance;
+
+	err = set_freqs(icap, freqs, num_freqs);
+	if(err)
+		return err;
+
+	for(i = 0; i <min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
+		clock_freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
+		if(clock_freq_counter == 0){
+			err = -EDOM;
+			break;
+		}
+		request_in_khz =freqs[i]*1000;
+		tolerance = freqs[i]*50;
+		if(tolerance < abs(clock_freq_counter-request_in_khz)){
+			ICAP_ERR(icap, "Frequency is higher than tolerance value, request %u" 
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			err = -EDOM;
+			break;
+		}
+	}
+
+	return err;
+}
+
 static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 	unsigned int region, unsigned short *freqs, int num_freqs)
 {
@@ -701,7 +762,8 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 		goto done;
 	}
 
-	err = set_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
+	err = set_and_verify_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
+
 done:
 	mutex_unlock(&icap->icap_lock);
 	return err;
@@ -2061,13 +2123,20 @@ static ssize_t clock_freqs_show(struct device *dev,
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 	int i;
+	u32 round_up_freq, freq_counter, freq;
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
-		unsigned freq = icap_get_ocl_frequency(icap, i);
-		if (freq == 0)
+		freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
+		if (freq_counter == 0)
 			break; /* No more clocks. */
-		cnt += sprintf(buf + cnt, "%d\n", freq);
+		
+		freq = icap_get_ocl_frequency(icap, i);
+		round_up_freq = round_up(freq_counter, 1000)/1000;
+		if(round_up_freq!=freq)
+			ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
+
+		cnt += sprintf(buf + cnt, "%d\n", round_up_freq);
 	}
 	mutex_unlock(&icap->icap_lock);
 
@@ -2190,6 +2259,9 @@ static int icap_probe(struct platform_device *pdev)
 			break;
 		case 4:
 			regs = (void **)&icap->icap_clock_bases[1];
+			break;
+		case 5:
+			regs = (void **)&icap->icap_clock_freq_counter;
 			break;
 		default:
 			BUG();
