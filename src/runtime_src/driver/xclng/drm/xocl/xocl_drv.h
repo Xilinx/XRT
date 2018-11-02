@@ -336,8 +336,10 @@ struct xocl_mb_scheduler_funcs {
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
 	(xdev->topology->m_mem_data[ddr].m_used == 1)
+#define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
+	((xdev)->topology ? (xdev)->topology->m_count : 0)
 #define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? xdev->topology->m_count :	\
+	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
 
 /* sysmon callbacks */

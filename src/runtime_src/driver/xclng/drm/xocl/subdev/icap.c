@@ -2120,6 +2120,10 @@ static int icap_remove(struct platform_device *pdev)
 static void icap_probe_chip(struct icap *icap)
 {
 	u32 w;
+
+	if (!ICAP_PRIVILEGED(icap))
+		return;
+
 	w = reg_rd(&icap->icap_regs->ir_sr);
 	w = reg_rd(&icap->icap_regs->ir_sr);
 	reg_wr(&icap->icap_regs->ir_gier, 0x0);
