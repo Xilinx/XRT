@@ -110,10 +110,10 @@ if [[ $covbuild == 1 ]]; then
 fi
 
 mkdir -p Debug Release
-#cd Debug
-#time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-#time make -j $jcore $verbose DESTDIR=$PWD install
-#cd $BUILDDIR
+cd Debug
+time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time make -j $jcore $verbose DESTDIR=$PWD install
+cd $BUILDDIR
 
 cd Release
 time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
