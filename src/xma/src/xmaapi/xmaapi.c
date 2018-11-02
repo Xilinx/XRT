@@ -25,7 +25,7 @@
 #include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 
-#define XMA_CFG_DEFAULT "/var/tmp/xma_cfg.yaml"
+#define XMA_CFG_DEFAULT "/var/tmp/xmacfg.yaml"
 #define XMAAPI_MOD "xmaapi"
 
 XmaSingleton *g_xma_singleton;
