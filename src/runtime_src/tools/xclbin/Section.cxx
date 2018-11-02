@@ -257,9 +257,11 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
   m_bufferSize = buffer.tellp();
 
   if (m_bufferSize == 0) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' content is empty.  No data in the given JSON file.", getSectionKindAsString().c_str());
-    throw std::runtime_error(errMsg);
+    std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.  No data in the given JSON file.", getSectionKindAsString().c_str());
+    std::cout << errMsg.c_str() << std::endl;
+    return;
   }
+
   m_pBuffer = new char[m_bufferSize];
   memcpy(m_pBuffer, buffer.str().c_str(), m_bufferSize);
 }
@@ -320,6 +322,16 @@ Section::marshalToJSON(char* _pDataSegment,
                        unsigned int _segmentSize,
                        boost::property_tree::ptree& _ptree) const {
   // Do nothing
+}
+
+
+
+void 
+Section::appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData,
+                                 boost::property_tree::ptree& _ptToAppendTo)
+{
+   std::string errMsg = "ERROR: The Section '" + getSectionKindAsString() + "' does not support appending metadata";
+   throw std::runtime_error(errMsg);
 }
 
 

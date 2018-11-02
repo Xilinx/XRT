@@ -211,6 +211,7 @@ enum ert_cmd_state {
  * @ERT_START_KERNEL:   currently aliased to ERT_START_CU
  * @ERT_CONFIGURE:      configure command scheduler
  * @ERT_WRITE:          write pairs of addr and value
+ * @ERT_CU_STAT:        get stats about CU execution
  */
 enum ert_cmd_opcode {
   ERT_START_CU     = 0,
@@ -219,6 +220,7 @@ enum ert_cmd_opcode {
   ERT_STOP         = 3,
   ERT_ABORT        = 4,
   ERT_WRITE        = 5,
+  ERT_CU_STAT      = 6,
 };
 
 /**

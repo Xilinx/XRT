@@ -15,8 +15,13 @@
 
 #include <linux/pci.h>
 #include <linux/platform_device.h>
+#include "xclfeatures.h"
 #include "xocl_drv.h"
 #include "version.h"
+
+static struct xocl_dsa_vbnv_map dsa_vbnv_map[] = {
+	XOCL_DSA_VBNV_MAP
+};
 
 static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info)
@@ -158,8 +163,33 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct FeatureRomHeader rom;
 	u32	id;
 	int	i, ret = 0;
+
+	/* lookup update table */
+	ret = xocl_subdev_create_one(xdev_hdl,
+		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
+	if (ret)
+		goto failed;
+
+	for (i = 0; i < ARRAY_SIZE(dsa_vbnv_map); i++) {
+		xocl_get_raw_header(core, &rom);
+		if ((core->pdev->vendor == dsa_vbnv_map[i].vendor ||
+			dsa_vbnv_map[i].vendor == (u16)PCI_ANY_ID) &&
+			(core->pdev->device == dsa_vbnv_map[i].device ||
+			dsa_vbnv_map[i].device == (u16)PCI_ANY_ID) &&
+			(core->pdev->subsystem_device ==
+			dsa_vbnv_map[i].subdevice ||
+			dsa_vbnv_map[i].subdevice == (u16)PCI_ANY_ID) &&
+			!strncmp(rom.VBNVName, dsa_vbnv_map[i].vbnv,
+			sizeof(rom.VBNVName))) {
+			sdev_info = dsa_vbnv_map[i].priv_data->subdev_info;
+			subdev_num = dsa_vbnv_map[i].priv_data->subdev_num;
+			xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
+			break;
+		}
+	}
 
 	core->subdev_num = subdev_num;
 
@@ -236,6 +266,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct pci_dev *pdev = core->pdev;
 	unsigned int i;
 
+	memset(&core->priv, 0, sizeof(core->priv));
 	/*
  	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
@@ -253,6 +284,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.flags = in->flags;
 	core->priv.flash_type = in->flash_type;
 	core->priv.board_name = in->board_name;
+	core->priv.mpsoc = in->mpsoc;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
@@ -325,7 +357,7 @@ void xocl_release_userdev(struct pci_dev *userdev)
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-	struct axlf *bin_obj)
+	struct axlf *bin_obj, bool major_only)
 {
 	u32 major, minor, patch;
 	/* check runtime version:
@@ -334,18 +366,28 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	 *    2. compare major and minor, returns error if it does not match.
 	 */
 	sscanf(xrt_build_version, "%d.%d.%d", &major, &minor, &patch);
+	if (major != bin_obj->m_header.m_versionMajor &&
+		bin_obj->m_header.m_versionMajor != 0)
+		goto err;
+
+	if (major_only)
+		return 0;
+
 	if ((major != bin_obj->m_header.m_versionMajor ||
 		minor != bin_obj->m_header.m_versionMinor) &&
 		!(bin_obj->m_header.m_versionMajor == 0 &&
-		bin_obj->m_header.m_versionMinor == 0)) {
-		xocl_err(&XDEV(xdev_hdl)->pdev->dev,
-			"Mismatch xrt version, xrt %s, xclbin "
-			"%d.%d.%d", xrt_build_version,
-			bin_obj->m_header.m_versionMajor,
-			bin_obj->m_header.m_versionMinor,
-			bin_obj->m_header.m_versionPatch);
-		return -EINVAL;
-	}
+		bin_obj->m_header.m_versionMinor == 0))
+		goto err;
 
 	return 0;
+
+err:
+	xocl_err(&XDEV(xdev_hdl)->pdev->dev,
+		"Mismatch xrt version, xrt %s, xclbin "
+		"%d.%d.%d", xrt_build_version,
+		bin_obj->m_header.m_versionMajor,
+		bin_obj->m_header.m_versionMinor,
+		bin_obj->m_header.m_versionPatch);
+
+	return -EINVAL;
 }

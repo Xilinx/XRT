@@ -613,6 +613,11 @@ static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
 
 	qdma_sgt_req_done(descq);
 
+	if (descq->conf.irq_en) {
+		dma_rmb();
+		if (wb->cidx != cidx_hw)
+			schedule_work(&descq->work);
+	}
 	return 0;
 }
 

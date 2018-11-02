@@ -402,6 +402,7 @@ struct xocl_firewall_funcs {
 /* microblaze callbacks */
 struct xocl_mb_funcs {
 	void (*reset)(struct platform_device *pdev);
+	int (*stop)(struct platform_device *pdev);
 	int (*load_mgmt_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
@@ -440,6 +441,10 @@ struct xocl_dna_funcs {
 #define	xocl_mb_reset(xdev)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->reset(XMC_DEV(xdev)) : \
 	(MB_DEV(xdev) ? MB_OPS(xdev)->reset(MB_DEV(xdev)) : NULL))
+
+#define	xocl_mb_stop(xdev)			\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->stop(XMC_DEV(xdev)) : \
+	(MB_DEV(xdev) ? MB_OPS(xdev)->stop(MB_DEV(xdev)) : -ENODEV))
 
 #define xocl_mb_load_mgmt_image(xdev, buf, len)		\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->load_mgmt_image(XMC_DEV(xdev), buf, len) :\
@@ -574,7 +579,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
 void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-        struct axlf *bin_obj);
+        struct axlf *bin_obj, bool major_only);
 
 /* context helpers */
 int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,

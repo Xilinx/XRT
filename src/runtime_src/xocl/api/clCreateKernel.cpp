@@ -27,7 +27,6 @@
 
 #include "detail/program.h"
 #include "api.h"
-#include "xrt/util/memory.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
