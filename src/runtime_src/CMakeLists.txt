@@ -36,7 +36,11 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
-add_compile_options("-Wall" "-Werror")
+# TODO cpu_em_math.c don't support aarch64.
+# Remove this limitation once this being resolved.
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+  add_compile_options("-Wall" "-Werror")
+endif()
 add_subdirectory(xdp)
 add_subdirectory(tools/xclbin)
 add_subdirectory(impl)
