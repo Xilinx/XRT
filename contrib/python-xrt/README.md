@@ -6,6 +6,12 @@
 
 ### Prerequisite
 
+#### Python and NumPy libraries
+
+For Ubuntu, use `sudo apt install python-dev libpython-dev python-numpy`
+
+For CentOS and RedHat, use `sudo yum install python-dev libpython-dev python-numpy`
+
 #### Boost >= 1.63
 
 For Ubuntu >= 18.04, `sudo apt install libboost-all-dev`
