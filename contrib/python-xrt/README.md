@@ -1,4 +1,4 @@
-# No more Makefile: XRT.py (Working in progress, will be ready soon)
+# No more Makefile: XRT.py (Working in progress)
 
 > Python binding for XRT APIs
 
