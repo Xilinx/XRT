@@ -1301,7 +1301,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof (ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	ICAP_INFO(icap, "boot_firmware in axlf format");
@@ -1311,13 +1312,15 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if(!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "timestamp of ROM did not match xclbin");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	ICAP_INFO(icap, "VBNV and timestamps matched");
 
 	if (xocl_xrt_version_check(xdev, bin_obj_axlf, 1)) {
 		ICAP_ERR(icap, "Major version does not match xrt");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
