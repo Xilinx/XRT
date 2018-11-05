@@ -42,7 +42,12 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
   add_compile_options("-Wall" "-Werror")
 endif()
 add_subdirectory(xdp)
-add_subdirectory(tools/xclbin)
+
+# TODO version.h was included.
+# Remove this limitation once we can generate version.h for mpsoc.
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+  add_subdirectory(tools/xclbin)
+endif()
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
