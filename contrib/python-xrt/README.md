@@ -63,3 +63,16 @@ For CentOS, RedHat, use `sudo yum install python-xrt`
 #### Use Docker (working in progress)
 
 Still planning ...
+
+## Example
+
+```python
+from xrt.core import hal
+
+num_device = hal.probe()
+if num_device == 0:
+    return
+hal.open(0, "example_device", "info")
+device_info = hal.info("example_device")
+print(device_info["name"])
+```
