@@ -17,4 +17,6 @@ using namespace std;
 
 py::list read_register(string device_name, string domain, unsigned long offset, unsigned size);
 
+void write_register(string device_name, string domain, unsigned long offset, unsigned size, py::list data);
+
 #endif

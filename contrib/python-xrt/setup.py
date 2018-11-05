@@ -141,7 +141,8 @@ source_files = [
     "xrt/core/src/error_report.cpp",
     "xrt/core/src/buffer_management_api.cpp",
     "xrt/core/src/kernel_management_api.cpp",
-    "xrt/core/src/register_read_write_api.cpp"
+    "xrt/core/src/register_read_write_api.cpp",
+    "xrt/core/src/unmanaged_api.cpp"
 ]
 
 cxx_args_hw = [

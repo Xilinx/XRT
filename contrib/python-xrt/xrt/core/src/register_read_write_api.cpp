@@ -15,3 +15,12 @@ py::list read_register(string device_name, string domain, unsigned long offset, 
     cout << size_back << " bytes was read back from the registers" << endl;
     return res;
 }
+
+void write_register(string device_name, string domain, unsigned long offset, unsigned size, py::list data) {
+    // TODO: implement this API using xclWrite
+    //
+    // Plan: this API will use xclWrite to write data which is a list of unsigned int into the registers
+    // described by domain, offset, and size
+    //
+    // Note: this API is not concerned with performance. it is meant for debugging and profiling
+}
