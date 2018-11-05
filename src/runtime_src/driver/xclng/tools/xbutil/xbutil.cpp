@@ -196,11 +196,6 @@ int main(int argc, char *argv[])
         return xcldev::xclValidate(argc, argv);
     }
 
-    if( std::strcmp( argv[1], "top") == 0) {
-        optind++;
-        return xcldev::xclTop(argc, argv);
-    }
-
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
     if (v == xcldev::commandTable.end()) {
@@ -296,7 +291,7 @@ int main(int argc, char *argv[])
         }
         case xcldev::STREAM:
         {
-            if(cmd != xcldev::QUERY) {
+            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
@@ -499,6 +494,7 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
+    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -632,10 +628,14 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
             result = deviceVec[index]->readSPMCounters();
         }
-	if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-	  result = deviceVec[index]->readSSPMCounters() ;
-	}
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
+            result = deviceVec[index]->readSSPMCounters() ;
+    }
         break;
+    case xcldev::TOP:
+            result = xcldev::xclTop(argc, argv, subcmd);
+        break;
+
     default:
         std::cout << "ERROR: Not implemented\n";
         result = -1;
@@ -664,7 +664,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
-    std::cout << "  status  [--debug_ip_name]\n";   
+    std::cout << "  status  [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
@@ -738,13 +738,27 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     dev->m_mem_usage_bar(devstat, lines);
 
     dev->m_devinfo_stringize_power(devinfo, lines);
-    
+
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
+
+    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
 
     for(auto line:lines) {
             printw("%s\n", line.c_str());
-    } 
+    }
 }
+
+static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devinfo)
+{
+    std::vector<std::string> lines;
+
+    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
+
+    for(auto line:lines) {
+            printw("%s\n", line.c_str());
+    }
+}
+
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
 {
@@ -773,7 +787,34 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     }
 }
 
-int xcldev::xclTop(int argc, char *argv[])
+static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
+{
+    int i = 0;
+
+    while (!ctrl->quit) {
+        if ((i % ctrl->interval) == 0) {
+            xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
+            int result = ctrl->dev->usageInfo(devstat);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            clear();
+            topPrintStreamUsage(ctrl->dev.get(), devinfo);
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        i++;
+    }
+}
+
+int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
 {
     int interval = 1;
     unsigned index = 0;
@@ -815,8 +856,13 @@ int xcldev::xclTop(int argc, char *argv[])
     initscr();
     cbreak();
     noecho();
-
-    std::thread t(topThreadFunc, &ctrl);
+    std::thread t;
+    if (subcmd == xcldev::STREAM) {
+        t = std::thread(topThreadStreamFunc, &ctrl);
+    }
+    else {
+        t = std::thread(topThreadFunc, &ctrl);
+    }
 
     // Waiting for and processing control command from stdin
     while (!ctrl.quit) {

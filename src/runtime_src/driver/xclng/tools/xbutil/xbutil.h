@@ -71,7 +71,8 @@ enum command {
     MEM,
     DD,
     STATUS,
-    CMD_MAX
+    CMD_MAX,
+    TOP
 };
 enum subcommand {
     MEM_READ = 0,
@@ -104,7 +105,8 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("scan", SCAN),
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
-    std::make_pair("status", STATUS)
+    std::make_pair("status", STATUS),
+    std::make_pair("top", TOP)
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -410,7 +412,7 @@ public:
         else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m1v8Top/1000).substr(0,4) + "V";
 
-  
+
 
         if(m_devinfo.m0v85 == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support" << "\n\n";
@@ -433,10 +435,10 @@ public:
 
 
         if(m_devinfo.m12vSW == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support"; 
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.m12vSW == XCL_INVALID_SENSOR_VAL)
             ss << std::setw(16) << "Not support";
-        else 
+        else
             ss << std::setw(16) << std::to_string((float)m_devinfo.m12vSW/1000).substr(0,4) + "V";
 
 
@@ -469,7 +471,7 @@ public:
         m_devinfo_stringize_power(m_devinfo, lines);
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        lines.push_back(ss.str());         
+        lines.push_back(ss.str());
     }
 
     void m_devinfo_stringize(const xclDeviceInfo2& m_devinfo,
@@ -616,6 +618,8 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
+
+        ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
     }
 
@@ -625,15 +629,13 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
-	std::vector<std::string> attrs;
+        std::vector<std::string> attrs;
 
-        ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ss << std::setfill(' ') << "\n";
 
         ss << std::left << std::setw(48) << "Stream Topology" << "\n";
 
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -651,42 +653,42 @@ public:
             ss << "-- none found --. See 'xbutil program'.\n";
         } else if(num < 0) {
             ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
+               << "Has the bitstream been loaded? See 'xbutil program'.";
             lines.push_back(ss.str());
             return;
         } else {
-            ss << std::setw(16) << "Tag"  << std::setw(10) << "Route"
-               << std::setw(10) << "Flow" << std::setw(10) << "Status"
-               << std::setw(16) << "Request (B/#)" << std::setw(16) << "Complete (B/#)"
-               << "\n";
+            ss << std::setw(16) << "Tag"  << std::setw(8) << "Route"
+               << std::setw(5) << "Flow" << std::setw(10) << "Status"
+               << std::setw(14) << "Request(B/#)" << std::setw(14) << "Complete(B/#)"
+               << std::setw(10) << "Pending(B/#)" << "\n";
         }
 
         for(unsigned i = 0; i < num; i++) {
             std::string lname;
+            bool flag = false;
             std::map<std::string, std::string> stat_map;
 
             if (map->m_mem_data[i].m_type != MEM_STREAMING)
                 continue;
 
-            ss << " [" << i << "] " <<
-                std::setw(16 - (std::to_string(i).length()) - 4) << std::left
-                << map->m_mem_data[i].m_tag;
+            ss << " [" << i << "] " << std::setw(16 - (std::to_string(i).length()) - 4) << std::left
+               << map->m_mem_data[i].m_tag;
 
-            ss << std::setw(10) << map->m_mem_data[i].route_id;
-            ss << std::setw(10) << map->m_mem_data[i].flow_id;
+            ss << std::setw(8) << map->m_mem_data[i].route_id;
+            ss << std::setw(5) << map->m_mem_data[i].flow_id;
 
             lname = std::string((char *)map->m_mem_data[i].m_tag);
-
-            if (lname.back() == 'w')
+            if (lname.back() == 'w'){
                 lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
+                flag = true;
+            }
             else
                 lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
+            pcidev::get_dev(m_idx)->user->sysfs_get("str_dma", lname, errmsg, attrs);
 
-            pcidev::get_dev(m_idx)->user->sysfs_get(
-                "str_dma", lname, errmsg, attrs);
             if (!errmsg.empty()) {
                 ss << std::setw(10) << "Inactive";
-                ss << std::setw(16) << "N/A" << std::setw(16) << "N/A";
+                ss << std::setw(14) << "N/A" << std::setw(14) << "N/A" << std::setw(10) << "N/A";
             } else {
                 ss << std::setw(10) << "Active";
                 for (unsigned k = 0; k < attrs.size(); k++) {
@@ -697,13 +699,34 @@ public:
                     stat_map[std::string(key)] = std::to_string(value);
                 }
 
-                ss << std::setw(16) << stat_map[std::string("total_req_bytes")] + 
+                ss << std::setw(14) << stat_map[std::string("total_req_bytes")] +
                     "/" + stat_map[std::string("total_req_num")];
 
-                ss << std::setw(16) << stat_map[std::string("total_complete_bytes")] +
+                ss << std::setw(14) << stat_map[std::string("total_complete_bytes")] +
                     "/" + stat_map[std::string("total_complete_num")];
+
+                pcidev::get_dev(m_idx)->user->sysfs_get("wq2", lname, errmsg, attrs);
+                if (flag) {
+
+                    int write_pending = ((std::stoi(stat_map[std::string("descq_pidx")]) - std::stoi(stat_map[std::string("descq_cidx")])) &
+                                        (std::stoi(stat_map[std::string("descq_rngsz")])- 1))*4096;
+
+                    ss << std::setw(10) << std::to_string(write_pending) ;
+
+                }
+
+                pcidev::get_dev(m_idx)->user->sysfs_get("rq2", lname, errmsg, attrs);
+                if (!flag) {
+
+                    int read_pending = ((std::stoi(stat_map[std::string("c2h_wrb_pidx")]) - std::stoi(stat_map[std::string("descq_cidx_wrb_pend")])) &
+                                       (std::stoi(stat_map[std::string("descq_rngsz")]) - 1))*4096;
+                    ss << std::setw(10) << std::to_string(read_pending);
+
+                }
             }
+
             ss << "\n";
+
         }
 
 
@@ -719,7 +742,7 @@ public:
         std::vector<std::string> lines, usage_lines;
 
         m_devinfo_stringize(m_devinfo, lines);
- 
+
         for(auto line : lines) {
             ostr << line;
         }
@@ -1171,7 +1194,7 @@ private:
 };
 
 void printHelp(const std::string& exe);
-int xclTop(int argc, char *argv[]);
+int xclTop(int argc, char *argv[], xcldev::subcommand subcmd);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 } // end namespace xcldev
