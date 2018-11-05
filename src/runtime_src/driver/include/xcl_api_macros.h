@@ -397,12 +397,13 @@ mtx.unlock();
     }\
     c_msg.set_ack(ack); \
     c_msg.set_slotname(slotname); \
-    c_msg.set_accel(accel);
+    c_msg.set_accel(accel); \
+    c_msg.set_iptype(iptype);
 
 #define xclPerfMonReadTrace_SET_PROTO_RESPONSE() \
     samplessize = r_msg.output_data_size(); \
 
-#define xclPerfMonReadTrace_RPC_CALL(func_name,ack,samplessize,slotname,accel) \
+#define xclPerfMonReadTrace_RPC_CALL(func_name,ack,samplessize,slotname,accel,iptype) \
     RPC_PROLOGUE(func_name); \
     xclPerfMonReadTrace_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\

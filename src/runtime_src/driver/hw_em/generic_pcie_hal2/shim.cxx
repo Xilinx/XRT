@@ -1217,7 +1217,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         do
         {
           bool accel=false;
-          xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+          int iptype=1;
+          xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel,iptype);
 #endif
           for(unsigned int i = 0; i<samplessize ; i++)
           {

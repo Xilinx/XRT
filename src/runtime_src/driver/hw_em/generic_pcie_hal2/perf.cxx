@@ -373,7 +373,7 @@ namespace xclhwemhal2 {
         // *_RPC_CALL uses unix_socket
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
-        xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+        xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel,iptype);
 #endif
         unsigned int i = 0;
         for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
