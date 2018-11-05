@@ -2,6 +2,8 @@
 
 > Python binding for XRT APIs
 
+[Full Documentation](https://tianhaoz95-xilinx.github.io/XRT)
+
 ## Getting Started
 
 ### Prerequisite
