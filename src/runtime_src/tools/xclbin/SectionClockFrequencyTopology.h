@@ -38,6 +38,10 @@ class SectionClockFrequencyTopology : public Section {
   SectionClockFrequencyTopology();
   virtual ~SectionClockFrequencyTopology();
 
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
@@ -55,7 +59,7 @@ class SectionClockFrequencyTopology : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", boost::factory<SectionClockFrequencyTopology*>()); }
+    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", false, boost::factory<SectionClockFrequencyTopology*>()); }
   } _initializer;
 };
 

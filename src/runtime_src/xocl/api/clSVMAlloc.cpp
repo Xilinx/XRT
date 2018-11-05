@@ -20,7 +20,6 @@
 #include "xocl/core/memory.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
 

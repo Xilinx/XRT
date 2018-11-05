@@ -26,6 +26,9 @@ static int32_t xma_scaler_close(XmaScalerSession *sess)
 XmaScalerPlugin scaler_plugin = {
     .hwscaler_type = XMA_POLYPHASE_SCALER_TYPE,
     .hwvendor_string = "Xilinx",
+    .input_format = XMA_NONE_FMT_TYPE,
+    .output_format = XMA_NONE_FMT_TYPE,
+    .bits_per_pixel = 0,
     .plugin_data_size = 0,
     .init = xma_scaler_init,
     .send_frame = xma_scaler_send,

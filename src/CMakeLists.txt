@@ -66,7 +66,7 @@ find_package(Boost REQUIRED COMPONENTS system filesystem )
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (NOT CMAKE_BUILD_TYPE)

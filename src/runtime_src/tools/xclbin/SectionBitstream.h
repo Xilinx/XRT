@@ -38,6 +38,9 @@ class SectionBitstream : public Section {
   SectionBitstream();
   virtual ~SectionBitstream();
 
+ public:
+  std::string getContentTypeAsString();
+
  private:
   // Purposefully private and undefined ctors...
   SectionBitstream(const SectionBitstream& obj);
@@ -47,7 +50,7 @@ class SectionBitstream : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BITSTREAM, "BITSTREAM", "", boost::factory<SectionBitstream*>()); }
+    _init() { registerSectionCtor(BITSTREAM, "BITSTREAM", "", false, boost::factory<SectionBitstream*>()); }
   } _initializer;
 };
 

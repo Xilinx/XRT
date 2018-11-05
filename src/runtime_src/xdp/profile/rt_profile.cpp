@@ -1009,6 +1009,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
      */
     uint32_t kernelClockMhz = getKernelClockFreqMHz(deviceName);
     double deviceCyclesMsec = kernelClockMhz * 1000.0 ;
+    numSlots = XCL::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
     std::string cuName = "";
     std::string kernelName ="";
     bool deviceDataExists = (DeviceBinaryCuSlotsMap.find(key) == DeviceBinaryCuSlotsMap.end()) ? false : true;
@@ -1202,6 +1203,14 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
+        std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
+        std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
+        std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+
+        std::string memoryName;
+        std::string argNames;
+        getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
         uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
         uint64_t strDataBytes =   counterResults.StrDataBytes[s];
@@ -1209,13 +1218,18 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
         uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
         // Skip ports without activity
         if (strBusyCycles <= 0 || strNumTranx == 0)
-                continue;
+          continue;
+
+        double totalCUTimeMsec = PerfCounters.getComputeUnitTotalTime(deviceName, cuName);
+        double transferRateMBps = (totalCUTimeMsec == 0) ? 0.0 :
+            (strDataBytes / (1000.0 * totalCUTimeMsec));
 
         double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
         double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
         double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
         double linkUtil =  100.0 - linkStarve - linkStall;
-        writer->writeKernelStreamSummary(deviceName, cuPortName, strNumTranx, avgSize, linkUtil, linkStarve, linkStall);
+        writer->writeKernelStreamSummary(deviceName, cuPortName, argNames, strNumTranx, transferRateMBps,
+                                         avgSize, linkUtil, linkStarve, linkStall);
       }
     }
   }
@@ -1690,6 +1704,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
   {
     argNames = "All";
     memoryName = "N/A";
+    std::string portName2 = portName.substr(0, portName.find_last_of(":"));
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 
@@ -1698,7 +1713,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       std::string currCU   = std::get<0>(row);
       std::string currPort = std::get<1>(row);
 
-      if ((currCU == cuName) && (currPort == portName)) {
+      if ((currCU == cuName) && (currPort == portName2)) {
         argNames   = std::get<2>(row);
         memoryName = std::get<3>(row);
         break;

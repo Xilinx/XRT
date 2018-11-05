@@ -239,12 +239,13 @@ namespace XCL {
     writeTableRowEnd(getSummaryStream());
   }
 
-  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
-	  		double avgSize, double avgUtil, double linkStarve, double linkStall)
+  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
+      uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
+      double linkStarve, double linkStall)
   {
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName , cuPortName, strNumTranx, 
-      avgSize, avgUtil, linkStarve, linkStall);
+    writeTableCells(getSummaryStream(), deviceName , cuPortName, argNames,
+        strNumTranx, transferRateMBps, avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getSummaryStream());
   }
 
@@ -341,8 +342,17 @@ namespace XCL {
           aveBWUtil, transferRateMBps, maxTransferRateMBps);
     }
 
+    // Get memory name from CU port name string (if found)
+    std::string cuPortName2 = cuPortName;
+    std::string memoryName2 = memoryName;
+    size_t index = cuPortName.find_last_of(":");
+    if (index != std::string::npos) {
+      cuPortName2 = cuPortName.substr(0, index);
+      memoryName2 = cuPortName.substr(index+1);
+    }
+
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName, cuPortName, argNames, memoryName,
+    writeTableCells(getSummaryStream(), deviceName, cuPortName2, argNames, memoryName2,
     	transferType, totalTranx, transferRateMBps, aveBWUtil,
         aveBytes/1000.0, 1.0e6*aveTimeMsec);
 
@@ -766,7 +776,10 @@ namespace XCL {
           traceName = "Kernel_Read";
         }
       }
-      else {
+      else if (tr.Kind == DeviceTrace::DEVICE_STREAM) {
+        traceName = tr.Name;
+        showPortName = true;
+      } else {
         showKernelCUNames = false;
         if (tr.Type == "Write")
           traceName = "Host_Write";
@@ -783,7 +796,12 @@ namespace XCL {
           rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
         }
         else {
-          rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          if (tr.Kind == DeviceTrace::DEVICE_STREAM){
+            rts->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+          }
+          else {
+            rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
           std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);

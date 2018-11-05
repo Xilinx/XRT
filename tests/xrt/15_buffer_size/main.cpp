@@ -111,10 +111,10 @@ static uint64_t getMemBankSize(xclDeviceHandle &handle,axlf_section_kind kind,ui
 #endif
 
 }
-static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned maxSize)
+static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem)
 {
-    unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, 0x0); //buf1      
-    unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, 0x0); // buf2    
+    unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1      
+    unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2    
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
     memset(writeBuffer, 0, maxSize);           
     std::list<uint64_t> deviceHandleList; 
@@ -181,10 +181,10 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
     return 0;
 }
 
-static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned maxSize)
+static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem)
 {
-    unsigned boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, 0x0); //buf1
-    unsigned boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, 0x0); // buf2
+    unsigned boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
+    unsigned boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
     memset(writeBuffer, 0, maxSize);
      std::list<uint64_t> deviceHandleList;
@@ -346,12 +346,15 @@ int main(int argc, char** argv)
     try {
         xclDeviceHandle handle;
         uint64_t cu_base_addr = 0;
+        int first_mem = -1;
         //xclHALProxy proxy(sharedLibrary.c_str(), bitstreamFile.c_str(), index, halLogfile.c_str());
         test_size =  getMemBankSize(handle, MEM_TOPOLOGY, 0);
-         if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
-                return 1;
-            }
-
+        if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
+            return 1;
+        }
+        
+        if (first_mem < 0)
+            return 1;
       
         xclDeviceInfo2 info;
         if (xclGetDeviceInfo2(handle, &info)) {
@@ -360,7 +363,7 @@ int main(int argc, char** argv)
     }
 
         // Max size is 8 MB
-        if (transferSizeTest1(handle, alignment, test_size)  || transferSizeTest2(handle, alignment, 0x400)) { 
+        if (transferSizeTest1(handle, alignment, test_size, first_mem)  || transferSizeTest2(handle, alignment, 0x400, first_mem)) { 
             std::cout << "transferSizeTest1 or transferSizeTest2\n";
             std::cout << "FAILED TEST\n";
             return 1;

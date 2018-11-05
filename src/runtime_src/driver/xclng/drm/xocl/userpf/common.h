@@ -20,6 +20,9 @@
 #include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
 #include "xocl_drm.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#include <linux/hashtable.h>
+#endif
 
 #define	XOCL_XDMA_PCI		"xocl_xdma"
 #define	XOCL_QDMA_PCI		"xocl_qdma"
@@ -85,9 +88,9 @@ struct xocl_dev	{
 	/* memory management */
 	struct drm_device	       *ddev;
 	/* Memory manager array, one per DDR channel */
-	struct drm_mm		       *mm;
+	struct drm_mm		       **mm;
 	struct mutex			mm_lock;
-	struct drm_xocl_mm_stat	       *mm_usage_stat;
+	struct drm_xocl_mm_stat	       **mm_usage_stat;
 	struct mutex			stat_lock;
 
 	struct mem_topology	       *topology;
@@ -103,14 +106,12 @@ struct xocl_dev	{
 	struct xocl_health_thread_arg	thread_arg;
 
 	void * __iomem bypass_bar_addr;
+
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	struct percpu_ref ref;
 	struct completion cmp;
 #endif
-	/*should be removed after mailbox is supported */
-	u64			        unique_id_last_bitstream;
-	/* remove the previous id after we move to uuid */
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
@@ -118,6 +119,9 @@ struct xocl_dev	{
 	atomic_t                        needs_reset;
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+  DECLARE_HASHTABLE(mm_range, 6);
+#endif
 };
 
 /**
@@ -143,6 +147,15 @@ struct client_ctx {
 	struct pid             *pid;
 };
 
+struct xocl_mm_wrapper {
+  struct drm_mm *mm;
+  struct drm_xocl_mm_stat *mm_usage_stat;
+  uint64_t start_addr;
+  uint64_t size;
+  uint32_t ddr;
+  struct hlist_node node;
+};
+
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev,
         void *data, struct drm_file *filp);
@@ -164,6 +177,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
+int xocl_reset_scheduler(struct pci_dev *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);

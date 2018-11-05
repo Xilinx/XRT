@@ -19,6 +19,12 @@ if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     dkms add -m xrt -v "@XRT_VERSION_STRING@"
 fi
 
+DRACUT_CONF_PATH=/etc/dracut.conf.d
+if [ -e $DRACUT_CONF_PATH ]; then
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
+fi
+
 if [ -e /lib/modules/`uname -r`/build/include ]; then
     echo "Building XRT Linux kernel modules sources with dkms"
     dkms build -m xrt -v "@XRT_VERSION_STRING@"

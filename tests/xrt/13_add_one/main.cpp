@@ -101,12 +101,12 @@ static void printHelp()
 
 
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem)
 {
         const size_t DATA_SIZE = n_elements * ARRAY_SIZE;	
 
-        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0); //input a
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0); // output b
+        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); //input a
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); // output b
         unsigned long *bo1 = (unsigned long*)xclMapBO(handle, boHandle1, true);
         memset(bo1, 0, DATA_SIZE);
         unsigned long *bo2 = (unsigned long*)xclMapBO(handle, boHandle2, false);
@@ -338,12 +338,15 @@ int main(int argc, char** argv)
     try {
 	    xclDeviceHandle handle;
     	uint64_t cu_base_addr = 0;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
+    	int first_mem = -1;
+    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
 	        return 1;
 	    }
-
+	    
+	    if (first_mem < 0)
+	        return 1;
         
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements)) {
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem)) {
             return 1;
         }
         
