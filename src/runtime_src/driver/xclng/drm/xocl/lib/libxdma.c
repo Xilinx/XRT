@@ -3009,12 +3009,20 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		struct xdma_transfer *xfer;
 
 		/* one transfer at a time */
+#ifndef CONFIG_PREEMPT_COUNT
 		spin_lock(&engine->desc_lock);
+#else
+		mutex_lock(&engine->desc_mutex);
+#endif
 
 		/* build transfer */
 		rv = transfer_init(engine, req);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			goto unmap_sgl;
 		}
 		xfer = &req->xfer;
@@ -3039,7 +3047,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 		rv = transfer_queue(engine, xfer);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			pr_info("unable to submit %s, %d.\n", engine->name, rv);
 			goto unmap_sgl;
 		}
@@ -3116,7 +3128,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			break;
 		}
 		transfer_destroy(xdev, xfer);
-		spin_unlock(&engine->desc_lock);
+#ifndef CONFIG_PREEMPT_COUNT
+			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 
 		if (rv < 0)
 			goto unmap_sgl;
@@ -3256,6 +3272,9 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
@@ -3265,6 +3284,9 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
