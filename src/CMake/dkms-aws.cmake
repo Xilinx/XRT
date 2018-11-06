@@ -11,20 +11,17 @@ SET (DKMS_PRERM "prerm-aws")
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/dkms-awsmgmt/${DKMS_FILE_NAME}.in"
-  #${DKMS_FILE_NAME}
-  "${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_FILE_NAME}"
+  "xrt-aws-prep/${DKMS_FILE_NAME}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
-  #${DKMS_POSTINST}
-  "${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_POSTINST}"
+  "xrt-aws-prep/${DKMS_POSTINST}"
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
-  #${DKMS_PRERM}
-  "${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_PRERM}"
+  "xrt-aws-prep/${DKMS_PRERM}"
   )
 
 SET (XRT_DKMS_SRCS_aws
@@ -54,26 +51,9 @@ SET (XRT_DKMS_ABS_SRCS_aws)
 
 foreach (DKMS_FILE ${XRT_DKMS_SRCS_aws})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install(FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws}/${DKMS_DIR} #)
-          COMPONENT aws)
+  install(FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws}/${DKMS_DIR})
   list (APPEND XRT_DKMS_ABS_SRCS_aws ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} #)
-        COMPONENT aws)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws})
 
-#find_program(CHECKPATCH checkpatch.pl PATHS /lib/modules/${LINUX_KERNEL_VERSION}/build/scripts/ NO_DEFAULT_PATH)
-
-#message("-- checkpatch ${CHECKPATCH}")
-
-#if (NOT CHECKPATCH)
-#  message (WARNING "-- checkpatch.pl not found, Linux driver code style check disabled")
-#else ()
-#  add_custom_target(
-#    checkpatch
-#    COMMAND ${CHECKPATCH}
-#    --emacs
-#    --no-tree -f
-#    ${XRT_DKMS_ABS_SRCS}
-#    )
-#endif ()
