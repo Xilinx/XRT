@@ -1,0 +1,14 @@
+#!/bin/sh
+
+echo "Unloading old XRT Linux kernel modules"
+modprobe -r awsmgmt
+
+echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
+find /lib/modules -type f -name awsmgmt.ko -delete
+find /lib/modules -type f -name awsmgmt.ko.kz -delete
+depmod -A
+
+rm -f /etc/udev/rules.d/10-awsmgmt.rules
+
+exit 0

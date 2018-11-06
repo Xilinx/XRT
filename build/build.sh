@@ -132,3 +132,4 @@ time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPI
 time make -j $jcore $verbose DESTDIR=$PWD install
 time make package
 cd $here
+
