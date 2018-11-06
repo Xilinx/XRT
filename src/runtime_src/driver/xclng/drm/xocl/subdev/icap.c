@@ -2130,8 +2130,6 @@ static ssize_t clock_freqs_show(struct device *dev,
 		freq = icap_get_ocl_frequency(icap, i);
 		if(!uuid_is_null(&icap->icap_bitstream_uuid)){
 			freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
-			if (freq_counter == 0)
-				break; /* No more clocks. */
 			round_up_freq = round_up(freq_counter, 1000)/1000;
 			if(round_up_freq!=freq)
 				ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
