@@ -554,7 +554,6 @@ namespace xclcpuemhal2 {
               mPair.second = m_tag;
               argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -567,6 +566,7 @@ namespace xclcpuemhal2 {
               argFlowIdMap.clear();
               argNum = 0;
             }
+            argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
