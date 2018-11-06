@@ -197,10 +197,10 @@ namespace XCL {
     // Table 6.1 : Stream Data Transfers
     if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStreamSlots > 0)) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
-		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
+        "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
-      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getSummaryStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getSummaryStream());
     }
@@ -506,7 +506,7 @@ namespace XCL {
 
   // Write API function event to trace
   void WriterI::writeTimeline(double time, const std::string& functionName,
-      const std::string& eventName)
+      const std::string& eventName, unsigned int functionID)
   {
     if (!Timeline_ofs.is_open())
       return;
@@ -519,7 +519,7 @@ namespace XCL {
     // TODO: Windows build support
     //    Variadic Template is not supported
     writeTableCells(getTimelineStream(), timeStr.str(), functionName, eventName,
-        "", "", "", "", "", "", "", "");
+        "", "", "", "", "", "", "", "", std::to_string(functionID));
   #endif
     writeTableRowEnd(getTimelineStream());
   }

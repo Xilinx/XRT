@@ -971,7 +971,7 @@ void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uin
 
 uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
 {
-   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   if (!drv)
     return 0;
   return drv->getPerfMonProperties(type, slotnum);

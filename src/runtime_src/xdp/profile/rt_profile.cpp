@@ -584,7 +584,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     return XCL_PERF_MON_IGNORE_EVENT;
   }
 
-  void RTProfile::logFunctionCallStart(const char* functionName, long long queueAddress)
+  void RTProfile::logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID)
   {
 #ifdef USE_DEVICE_TIMELINE
     double timeStamp = getDeviceTimeStamp(getTraceTime(), CurrentDeviceName);
@@ -602,7 +602,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       (name += "|") +=std::to_string(queueAddress);
     std::lock_guard<std::mutex> lock(LogMutex);
     PerfCounters.logFunctionCallStart(functionName, timeStamp);
-    writeTimelineTrace(timeStamp, name.c_str(), "START");
+    writeTimelineTrace(timeStamp, name.c_str(), "START", functionID);
     FunctionStartLogged = true;
 
     // Write host event to trace buffer
@@ -613,12 +613,12 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     }
   }
 
-  void RTProfile::logFunctionCallEnd(const char* functionName, long long queueAddress)
+  void RTProfile::logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID)
   {
     // Log function call start if not done so already
     // NOTE: this addresses a race condition when constructing the singleton (CR 963297)
     if (!FunctionStartLogged)
-      logFunctionCallStart(functionName, queueAddress);
+      logFunctionCallStart(functionName, queueAddress, functionID);
 
 #ifdef USE_DEVICE_TIMELINE
     double timeStamp = getDeviceTimeStamp(getTraceTime(), CurrentDeviceName);
@@ -634,7 +634,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
     std::lock_guard<std::mutex> lock(LogMutex);
     PerfCounters.logFunctionCallEnd(functionName, timeStamp);
-    writeTimelineTrace(timeStamp, name.c_str(), "END");
+    writeTimelineTrace(timeStamp, name.c_str(), "END", functionID);
 
     // Write host event to trace buffer
     xclPerfMonEventID eventID = getFunctionEventID(name, queueAddress);
@@ -646,13 +646,13 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
   // Write API call events to trace
   void RTProfile::writeTimelineTrace( double traceTime,
-      const char* functionName, const char* eventName) const
+      const char* functionName, const char* eventName, unsigned int functionID) const
   {
     if(!this->isTimelineTraceFileOn())
       return;
 
     for(auto w : Writers) {
-      w->writeTimeline(traceTime, functionName, eventName);
+      w->writeTimeline(traceTime, functionName, eventName, functionID);
     }
   }
 
@@ -1645,7 +1645,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
             //XOCL_DEBUGF("setArgumentsBank: name = %s, aq = %d, atype = %d\n",
             //    arg.name.c_str(), arg.address_qualifier, arg.atype);
 
-            if ((currPort == portName) && (arg.address_qualifier == 1)
+            // Address_Qualifier = 1 : AXI MM Port
+            // Address_Qualifier = 4 : AXI Stream Port
+            if ((currPort == portName) && (arg.address_qualifier == 1 || arg.address_qualifier == 4)
                 && (arg.atype == xocl::xclbin::symbol::arg::argtype::indexed)) {
               std::get<2>(row) += (firstArg) ? arg.name : ("|" + arg.name);
 
