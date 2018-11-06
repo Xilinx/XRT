@@ -134,13 +134,26 @@ add_subdirectory(xma)
 
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
+message("-- CMAKE_AWS_BUILD: ${CMAKE_AWS_BUILD}")
 
-include (CMake/cpack.cmake)
+if(NOT CMAKE_AWS_BUILD)
+    include (CMake/cpack.cmake)
+else()
+    set(CPACK_RPM_COMPONENT_INSTALL ON)
+    set(CPACK_DEB_COMPONENT_INSTALL ON)
+    include (CMake/cpack-aws.cmake)
+endif()
 
 include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
-include (CMake/dkms.cmake)
+
+if(NOT CMAKE_AWS_BUILD)
+    include (CMake/dkms.cmake)
+else()
+    message("-- CMAKE_AWS_BUILD: ${CMAKE_AWS_BUILD}")
+    include (CMake/dkms-aws.cmake)
+endif()
 
 include (CMake/icd.cmake)
 

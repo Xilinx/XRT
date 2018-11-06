@@ -10,7 +10,7 @@ SET (DKMS_POSTINST "postinst")
 SET (DKMS_PRERM "prerm")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
+  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   )
 
