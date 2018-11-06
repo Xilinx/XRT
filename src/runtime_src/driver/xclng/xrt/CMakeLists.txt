@@ -31,44 +31,51 @@ target_link_libraries(xrt_core
   rt
   )
 
-install (TARGETS xrt_core LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install(TARGETS xrt_core
+        LIBRARY
+        DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-# Vendor - AWS
-# Skip for arm
-if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+if(CMAKE_AWS_BUILD)
+    # Vendor - AWS
+    # Skip for arm
+    if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
-add_library(xrt_aws SHARED ${XRT_SRC}
-  $<TARGET_OBJECTS:user_common>
-  $<TARGET_OBJECTS:user_aws>
-  )
+    add_library(xrt_aws SHARED ${XRT_SRC}
+      $<TARGET_OBJECTS:user_common>
+      $<TARGET_OBJECTS:user_aws>
+      )
 
-add_library(xrt_awsstatic STATIC ${XRT_SRC}
-  $<TARGET_OBJECTS:user_common>
-  $<TARGET_OBJECTS:user_aws>
-  )
+    add_library(xrt_awsstatic STATIC ${XRT_SRC}
+      $<TARGET_OBJECTS:user_common>
+      $<TARGET_OBJECTS:user_aws>
+      )
 
-set_target_properties(xrt_aws PROPERTIES LINKER_LANGUAGE CXX)
-add_compile_options("-fPIC" "-fvisibility=hidden")
+    set_target_properties(xrt_aws PROPERTIES LINKER_LANGUAGE CXX)
+    add_compile_options("-fPIC" "-fvisibility=hidden")
 
-add_subdirectory(user_aws)
+    add_subdirectory(user_aws)
 
-set_target_properties(xrt_aws PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+    set_target_properties(xrt_aws PROPERTIES VERSION ${XRT_VERSION_STRING}
+      SOVERSION ${XRT_SOVERSION})
 
-if(${INTERNAL_TESTING})
-  target_link_libraries(xrt_aws
-    pthread
-    rt
-  )
-else()
-  set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../sdk/userspace/lib)
-  target_link_libraries(xrt_aws
-    pthread
-    rt
-    ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
-    )
-endif()
+    if(${INTERNAL_TESTING})
+      target_link_libraries(xrt_aws
+	pthread
+	rt
+      )
+    else()
+      set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../sdk/userspace/lib)
+      target_link_libraries(xrt_aws
+	pthread
+	rt
+	${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
+	)
+    endif()
 
-install (TARGETS xrt_aws LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+    install(TARGETS xrt_aws
+	    LIBRARY
+	    DESTINATION ${XRT_INSTALL_DIR}/lib
+	    COMPONENT aws)
 
-endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+    endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+endif(CMAKE_AWS_BUILD)
