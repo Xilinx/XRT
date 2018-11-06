@@ -48,6 +48,7 @@ class XclBin {
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
   void addSections(ParameterSectionData &_PSD);
+  void appendSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
   void dumpSections(ParameterSectionData &_PSD);

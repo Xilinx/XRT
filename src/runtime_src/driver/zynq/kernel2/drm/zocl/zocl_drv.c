@@ -259,6 +259,7 @@ static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		return;
 
 	zocl_untrack_ctx(dev, fpriv);
+	kfree(fpriv);
 
 	DRM_INFO("Pid %d closed device\n", pid_nr(task_tgid(current)));
 }

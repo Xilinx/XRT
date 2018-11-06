@@ -87,6 +87,8 @@ class Section {
 
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
+  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
+
   void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
 
   void getPayload(boost::property_tree::ptree& _pt) const;
