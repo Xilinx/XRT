@@ -132,9 +132,7 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
-
 message("-- XRT version: ${XRT_VERSION_STRING}")
-message("-- CMAKE_AWS_BUILD: ${CMAKE_AWS_BUILD}")
 
 if(NOT CMAKE_AWS_BUILD)
     include (CMake/cpack.cmake)
@@ -151,7 +149,6 @@ set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
 if(NOT CMAKE_AWS_BUILD)
     include (CMake/dkms.cmake)
 else()
-    message("-- CMAKE_AWS_BUILD: ${CMAKE_AWS_BUILD}")
     include (CMake/dkms-aws.cmake)
 endif()
 
