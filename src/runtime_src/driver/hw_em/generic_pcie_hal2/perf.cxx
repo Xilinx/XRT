@@ -162,10 +162,10 @@ namespace xclhwemhal2 {
     }
     bool accel = (type==XCL_PERF_MON_ACCEL) ? true : false;
     int iptype = 0;
-    if (type == XCL_PERF_MON_ACCEL) {
+    if (type == XCL_PERF_MON_MEMORY) {
       iptype = 1;
     }
-    if (type == XCL_PERF_MON_MEMORY) {
+    if (type == XCL_PERF_MON_ACCEL) {
       iptype = 2;
     }
     if (type == XCL_PERF_MON_STR) {
@@ -202,7 +202,7 @@ namespace xclhwemhal2 {
         getPerfMonSlotName(type,counter,slotname,128);
 
         if (type != XCL_PERF_MON_STR) {
-          std::cout << "Calling old rpc counter message" << std::endl;
+          std::cout << "Calling old fixed rpc counter message" << std::endl;
           xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,
                                           total_wr_latency,rd_byte_count,rd_trans_count,
                                           total_rd_latency,sampleIntervalUsec,slotname,accel);
@@ -212,24 +212,13 @@ namespace xclhwemhal2 {
         }
 #endif
         if (iptype == 1) {
-          std::cout << "writing to data transfer" << std::endl;
           counterResults.WriteBytes[counter] = wr_byte_count;
           counterResults.WriteTranx[counter] = wr_trans_count;
           counterResults.WriteLatency[counter] = total_wr_latency;
           counterResults.ReadBytes[counter] = rd_byte_count;
           counterResults.ReadTranx[counter] = rd_trans_count;
           counterResults.ReadLatency[counter] = total_rd_latency;
-
-          std::cout << "wr_byte_count: " << wr_byte_count << std::endl;
-          std::cout << "wr_trans_count: " << wr_trans_count << std::endl;
-          std::cout << "total_wr_latency: " << total_wr_latency << std::endl;
-          std::cout << "rd_byte_count: " << rd_byte_count << std::endl;
-          std::cout << "rd_trans_count: " << rd_trans_count << std::endl;
-          std::cout << "total_rd_latency: " << total_rd_latency << std::endl;
-          std::cout << "slotname: " << slotname << std::endl;
-        }
-        else if (iptype == 2) {
-          std::cout << "writing to sam" << std::endl;
+        } else if (iptype == 2) {
           counterResults.CuExecCount[counter] = rd_byte_count;
           counterResults.CuExecCycles[counter] = total_wr_latency;
           counterResults.CuMinExecCycles[counter] = rd_trans_count;
@@ -237,16 +226,7 @@ namespace xclhwemhal2 {
           //counterResults.CuStallIntCycles[counter] = total_int_stalls;
           //counterResults.CuStallStrCycles[counter] = total_str_stalls;
           //counterResults.CuStallExtCycles[counter] = total_ext_stalls;
-
-          std::cout << "wr_byte_count: " << wr_byte_count << std::endl;
-          std::cout << "wr_trans_count: " << wr_trans_count << std::endl;
-          std::cout << "total_wr_latency: " << total_wr_latency << std::endl;
-          std::cout << "rd_byte_count: " << rd_byte_count << std::endl;
-          std::cout << "rd_trans_count: " << rd_trans_count << std::endl;
-          std::cout << "total_rd_latency: " << total_rd_latency << std::endl;
-          std::cout << "slotname: " << slotname << std::endl;
         } else if (iptype == 3) {
-          std::cout << "found sspm" << std::endl;
           counterResults.StrNumTranx[counter] = str_num_tranx;
           counterResults.StrDataBytes[counter] = str_data_bytes;
           counterResults.StrBusyCycles[counter] = str_busy_cycles;
