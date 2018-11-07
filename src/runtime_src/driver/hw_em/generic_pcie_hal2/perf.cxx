@@ -202,7 +202,6 @@ namespace xclhwemhal2 {
         getPerfMonSlotName(type,counter,slotname,128);
 
         if (type != XCL_PERF_MON_STR) {
-          std::cout << "Calling old fixed rpc counter message" << std::endl;
           xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,
                                           total_wr_latency,rd_byte_count,rd_trans_count,
                                           total_rd_latency,sampleIntervalUsec,slotname,accel);
