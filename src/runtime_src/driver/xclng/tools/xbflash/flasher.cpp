@@ -138,6 +138,16 @@ std::string charVec2String(std::vector<char>& v)
     return ss.str();
 }
 
+std::string int2PowerString(unsigned lvl)
+{
+    std::vector<std::string> powers{ "75W", "150W", "225W" };
+
+    if (lvl < powers.size())
+        return powers[lvl];
+
+    return std::to_string(lvl);
+}
+
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
@@ -159,7 +169,7 @@ int Flasher::getBoardInfo(BoardInfo& board)
     board.mMacAddr1 = std::move(charVec2String(info[BDINFO_MAC1]));
     board.mMacAddr2 = std::move(charVec2String(info[BDINFO_MAC2]));
     board.mMacAddr3 = std::move(charVec2String(info[BDINFO_MAC3]));
-    board.mMaxPowerLvl = info[BDINFO_MAX_PWR][0];
+    board.mMaxPower = int2PowerString(info[BDINFO_MAX_PWR][0]);
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
     board.mRev = std::move(charVec2String(info[BDINFO_REV]));
     board.mSerialNum = std::move(charVec2String(info[BDINFO_SN]));
@@ -349,8 +359,13 @@ DSAInfo Flasher::getOnBoardDSA()
     }
 
     BoardInfo info;
-    if (getBoardInfo(info) == 0)
-        bmc = info.mBMCVer;
+    int rc = getBoardInfo(info);
+    if (rc == 0)
+        bmc = info.mBMCVer; // Successfully read BMC version
+    else if (rc == -EOPNOTSUPP)
+        bmc.clear(); // BMC is not supported on DSA
+    else
+        bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
     return DSAInfo(vbnv, ts, bmc);
 }
