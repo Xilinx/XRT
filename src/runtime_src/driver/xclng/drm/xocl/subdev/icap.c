@@ -2127,17 +2127,19 @@ static ssize_t clock_freqs_show(struct device *dev,
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
-		freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
-		if (freq_counter == 0)
-			break; /* No more clocks. */
-		
 		freq = icap_get_ocl_frequency(icap, i);
-		round_up_freq = round_up(freq_counter, 1000)/1000;
-		if(round_up_freq!=freq)
-			ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
-
-		cnt += sprintf(buf + cnt, "%d\n", round_up_freq);
+		if(!uuid_is_null(&icap->icap_bitstream_uuid)){
+			freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
+			round_up_freq = round_up(freq_counter, 1000)/1000;
+			if(round_up_freq!=freq)
+				ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
+			cnt += sprintf(buf + cnt, "%d\n", round_up_freq);
+		}
+		else{
+			cnt += sprintf(buf + cnt, "%d\n", freq);
+		}
 	}
+
 	mutex_unlock(&icap->icap_lock);
 
 	return cnt;
