@@ -200,23 +200,36 @@ namespace xclhwemhal2 {
           continue;
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
-        xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters, wr_byte_count, 
-                                        wr_trans_count, total_wr_latency, 
-                                        rd_byte_count, rd_trans_count, 
-                                        total_rd_latency, sampleIntervalUsec, 
-                                        str_num_tranx, str_data_bytes, str_busy_cycles, 
-                                        str_stall_cycles, str_starve_cycles,
-                                        slotname, accel, iptype);
+
+        if (type != XCL_PERF_MON_STR) {
+          std::cout << "Calling old rpc counter message" << std::endl;
+          xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,
+                                          total_wr_latency,rd_byte_count,rd_trans_count,
+                                          total_rd_latency,sampleIntervalUsec,slotname,accel);
+        } else {
+          xclPerfMonReadCounters_Streaming_RPC_CALL(xclPerfMonReadCounters_Streaming, str_num_tranx,str_data_bytes,str_busy_cycles,
+                                                      str_stall_cycles,str_starve_cycles,slotname);
+        }
 #endif
         if (iptype == 1) {
+          std::cout << "writing to data transfer" << std::endl;
           counterResults.WriteBytes[counter] = wr_byte_count;
           counterResults.WriteTranx[counter] = wr_trans_count;
           counterResults.WriteLatency[counter] = total_wr_latency;
           counterResults.ReadBytes[counter] = rd_byte_count;
           counterResults.ReadTranx[counter] = rd_trans_count;
           counterResults.ReadLatency[counter] = total_rd_latency;
+
+          std::cout << "wr_byte_count: " << wr_byte_count << std::endl;
+          std::cout << "wr_trans_count: " << wr_trans_count << std::endl;
+          std::cout << "total_wr_latency: " << total_wr_latency << std::endl;
+          std::cout << "rd_byte_count: " << rd_byte_count << std::endl;
+          std::cout << "rd_trans_count: " << rd_trans_count << std::endl;
+          std::cout << "total_rd_latency: " << total_rd_latency << std::endl;
+          std::cout << "slotname: " << slotname << std::endl;
         }
         else if (iptype == 2) {
+          std::cout << "writing to sam" << std::endl;
           counterResults.CuExecCount[counter] = rd_byte_count;
           counterResults.CuExecCycles[counter] = total_wr_latency;
           counterResults.CuMinExecCycles[counter] = rd_trans_count;
@@ -224,6 +237,14 @@ namespace xclhwemhal2 {
           //counterResults.CuStallIntCycles[counter] = total_int_stalls;
           //counterResults.CuStallStrCycles[counter] = total_str_stalls;
           //counterResults.CuStallExtCycles[counter] = total_ext_stalls;
+
+          std::cout << "wr_byte_count: " << wr_byte_count << std::endl;
+          std::cout << "wr_trans_count: " << wr_trans_count << std::endl;
+          std::cout << "total_wr_latency: " << total_wr_latency << std::endl;
+          std::cout << "rd_byte_count: " << rd_byte_count << std::endl;
+          std::cout << "rd_trans_count: " << rd_trans_count << std::endl;
+          std::cout << "total_rd_latency: " << total_rd_latency << std::endl;
+          std::cout << "slotname: " << slotname << std::endl;
         } else if (iptype == 3) {
           std::cout << "found sspm" << std::endl;
           counterResults.StrNumTranx[counter] = str_num_tranx;
@@ -367,63 +388,105 @@ namespace xclhwemhal2 {
 
       if (simulator_started == true)
       {
-        unsigned int samplessize = 0;
 #ifndef _WINDOWS
+        unsigned int samplessize = 0;
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
-        xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel,iptype);
-#endif
-        unsigned int i = 0;
-        for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
-        {
-#ifndef _WINDOWS
-          // TODO: Windows build support
-          // r_msg is defined as part of *RPC_CALL definition
-          const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
 
-          xclTraceResults result;
-          memset(&result, 0, sizeof(xclTraceResults));
-          // result.TraceID = accel ? counter + 64 : counter * 2;
-          if (iptype == 1) {
-            result.TraceID = counter * 2;
-          } else if (iptype == 2) {
-            result.TraceID = counter + 64;
-          } else if (iptype == 3) {
-            result.TraceID = counter + 576;
-          } else {
-            return 0;
+        if (type != XCL_PERF_MON_STR) {
+          xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+          unsigned int i = 0;
+          for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
+          {
+            // TODO: Windows build support
+            // r_msg is defined as part of *RPC_CALL definition
+            const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+
+            xclTraceResults result;
+            memset(&result, 0, sizeof(xclTraceResults));
+            // result.TraceID = accel ? counter + 64 : counter * 2;
+            if (iptype == 1) {
+              result.TraceID = counter * 2;
+            } else if (iptype == 2) {
+              result.TraceID = counter + 64;
+            } else if (iptype == 3) {
+              result.TraceID = counter + 576;
+            } else {
+              return 0;
+            }
+            result.Timestamp = event.timestamp();
+            result.Overflow = (event.timestamp() >> 17) & 0x1;
+            result.EventFlags = event.eventflags();
+            result.ReadAddrLen = event.arlen();
+            result.WriteAddrLen = event.awlen();
+            result.WriteBytes = (event.wr_bytes());
+            result.ReadBytes  = (event.rd_bytes());
+            result.HostTimestamp = event.host_timestamp();
+            result.EventID = XCL_PERF_MON_HW_EVENT;
+            traceVector.mArray[index++] = result;
           }
-          result.Timestamp = event.timestamp();
-          result.Overflow = (event.timestamp() >> 17) & 0x1;
-          result.EventFlags = event.eventflags();
-          result.ReadAddrLen = event.arlen();
-          result.WriteAddrLen = event.awlen();
-          result.WriteBytes = (event.wr_bytes());
-          result.ReadBytes  = (event.rd_bytes());
-          result.HostTimestamp = event.host_timestamp();
-          result.EventID = XCL_PERF_MON_HW_EVENT;
-          traceVector.mArray[index++] = result;
-#endif
-        }
-        traceVector.mLength = index;
+          traceVector.mLength = index;
 
-        Event eventObj;
-        for(; i<samplessize ; i++)
-        {
+          Event eventObj;
+          for(; i<samplessize ; i++)
+          {
+            // TODO: Windows build support
+            // r_msg is defined as part of *RPC_CALL definition
+            const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+            eventObj.timestamp = event.timestamp();
+            eventObj.eventflags = event.eventflags();
+            eventObj.arlen = event.arlen();
+            eventObj.awlen = event.awlen();
+            eventObj.host_timestamp = event.host_timestamp();
+            eventObj.readBytes = event.rd_bytes();
+            eventObj.writeBytes = event.wr_bytes();
+            list_of_events[counter].push_back(eventObj);
+          }
+#endif
+        } else {
 #ifndef _WINDOWS
-          // TODO: Windows build support
-          // r_msg is defined as part of *RPC_CALL definition
-          const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
-          eventObj.timestamp = event.timestamp();
-          eventObj.eventflags = event.eventflags();
-          eventObj.arlen = event.arlen();
-          eventObj.awlen = event.awlen();
-          eventObj.host_timestamp = event.host_timestamp();
-          eventObj.readBytes = event.rd_bytes();
-          eventObj.writeBytes = event.wr_bytes();
-          list_of_events[counter].push_back(eventObj);
+          xclPerfMonReadTrace_Streaming_RPC_CALL(xclPerfMonReadTrace_Streaming,ack,samplessize,slotname);
+          unsigned int i = 0;
+          for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
+          {
+            // TODO: Windows build support
+            // r_msg is defined as part of *RPC_CALL definition
+            const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
+
+            xclTraceResults result;
+            memset(&result, 0, sizeof(xclTraceResults));
+            // result.TraceID = accel ? counter + 64 : counter * 2;
+            if (iptype == 1) {
+              result.TraceID = counter * 2;
+            } else if (iptype == 2) {
+              result.TraceID = counter + 64;
+            } else if (iptype == 3) {
+              result.TraceID = counter + 576;
+            } else {
+              return 0;
+            }
+            result.Timestamp = event.timestamp();
+            result.Overflow = (event.timestamp() >> 17) & 0x1;
+            result.EventFlags = event.eventflags();
+            result.HostTimestamp = event.host_timestamp();
+            result.EventID = XCL_PERF_MON_HW_EVENT;
+            traceVector.mArray[index++] = result;
+          }
+          traceVector.mLength = index;
+
+          Event eventObj;
+          for(; i<samplessize ; i++)
+          {
+            // TODO: Windows build support
+            // r_msg is defined as part of *RPC_CALL definition
+            const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
+            eventObj.timestamp = event.timestamp();
+            eventObj.eventflags = event.eventflags();
+            eventObj.host_timestamp = event.host_timestamp();
+            list_of_events[counter].push_back(eventObj);
+          }
 #endif
         }
       }
