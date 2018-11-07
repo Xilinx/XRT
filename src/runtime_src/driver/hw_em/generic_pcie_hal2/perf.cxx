@@ -196,7 +196,7 @@ namespace xclhwemhal2 {
       //counterResults.NumSlots = numSlots;
       for(; counter < numSlots; counter++)
       {
-        if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 1 && iptype != 3) // Ignore host slot
+        if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
           continue;
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
