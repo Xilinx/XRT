@@ -200,7 +200,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 
 	ret = xocl_alloc_dev_minor(ocl_dev);
 	if (ret)
-		goto failed;
+		goto failed_alloc_minor;
 
 	ocl_dev->dma_handle = xdma_device_open(XOCL_XDMA_PCI, pdev,
 		&ocl_dev->max_user_intr, &channel,
@@ -288,8 +288,9 @@ failed_set_channel:
 	xocl_subdev_destroy_all(ocl_dev);
 failed_reg_subdevs:
 	xdma_device_close(pdev, ocl_dev->dma_handle);
-	xocl_free_dev_minor(ocl_dev);
 failed:
+	xocl_free_dev_minor(ocl_dev);
+failed_alloc_minor:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
 	devm_kfree(&pdev->dev, xd);

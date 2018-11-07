@@ -132,7 +132,7 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		(unsigned long *)(&ocl_dev->dma_handle));
 	if (ret < 0) {
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
-		goto failed;
+		goto failed_open_dev;
 	}
 
 	xocl_info(&pdev->dev, "QDMA open succeed: intr: %d",
@@ -193,6 +193,7 @@ failed_reg_subdevs:
 	pci_iounmap(pdev, ocl_dev->base_addr);
 failed_map_io:
 	qdma_device_close(pdev, (unsigned long)ocl_dev->dma_handle);
+failed_open_dev:
 	xocl_free_dev_minor(ocl_dev);
 failed:
 	if (ocl_dev->user_msix_table)

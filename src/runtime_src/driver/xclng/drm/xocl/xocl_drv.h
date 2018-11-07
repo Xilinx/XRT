@@ -119,6 +119,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 
 #define INVALID_SUBDEVICE ~0U
 
+#define XOCL_INVALID_MINOR -1
+
 extern struct class *xrt_class;
 
 struct xocl_dev;

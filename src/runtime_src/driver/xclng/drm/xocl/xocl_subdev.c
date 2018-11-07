@@ -528,6 +528,7 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl)
 
 	if (core->dev_minor < 0) {
 		xocl_err(&core->pdev->dev, "Failed to alloc dev minor");
+		core->dev_minor = XOCL_INVALID_MINOR;
 		return -ENOENT;
 	}
 
@@ -538,6 +539,8 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 
-	if (core->dev_minor >= 0)
+	if (core->dev_minor != XOCL_INVALID_MINOR) {
 		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
+		core->dev_minor = XOCL_INVALID_MINOR;
+	}
 }

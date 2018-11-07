@@ -757,13 +757,13 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	rc = xocl_alloc_dev_minor(lro);
 	if (rc)
-		goto err_regions;
+		goto err_alloc_minor;
 
 	rc = pci_request_regions(pdev, DRV_NAME);
 	/* could not request all regions? */
 	if (rc) {
 		xocl_err(&pdev->dev, "pci_request_regions() = %d\n", rc);
-		goto err_alloc_minor;
+		goto err_regions;
 	}
 
 	dev_info = (struct xocl_board_private *)id->driver_data;
@@ -802,9 +802,9 @@ err_cdev:
 	unmap_bars(lro);
 err_map:
 	pci_release_regions(pdev);
-err_alloc_minor:
-	xocl_free_dev_minor(lro);
 err_regions:
+	xocl_free_dev_minor(lro);
+err_alloc_minor:
 	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
 err_alloc:
