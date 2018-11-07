@@ -34,6 +34,7 @@
 #include "../user_common/sensor.h"
 #include "scan.h"
 #include "driver/include/xclbin.h"
+#include <version.h>
 
 #include <chrono>
 typedef std::chrono::high_resolution_clock Clock;
@@ -777,6 +778,10 @@ public:
     
     int readSensors( void ) const
     {
+        gSensorTree.put( "runtime.build.version",   xrt_build_version );
+        gSensorTree.put( "runtime.build.hash",      xrt_build_version_hash );
+        gSensorTree.put( "runtime.build.hash_date", xrt_build_version_hash_date );
+        gSensorTree.put( "runtime.build.branch",    xrt_build_version_branch );
         // info
         gSensorTree.put( "board.info.dsa_name", m_devinfo.mName );
         gSensorTree.put( "board.info.vendor", m_devinfo.mVendorId );
@@ -838,13 +843,11 @@ public:
         // stream
 
         // xclbin
-        std::string errmsg;
-        std::string xclbinid;
+        std::string errmsg, xclbinid;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
-        gSensorTree.put( "board.xclbin.id", xclbinid );
-        if(!errmsg.empty())
-            xclbinid = "invalid";
-        gSensorTree.put( "board.xclbin.id", xclbinid );
+        if(errmsg.empty()) {
+            gSensorTree.put( "board.xclbin.id", xclbinid );
+        }
 
         // compute unit
         std::vector<ip_data> computeUnits;
@@ -863,7 +866,10 @@ public:
         writeTree( gSensorTree );
         
         ostr << std::left;
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "XRT\n   Version: " << gSensorTree.get( "runtime.build.version", "N/A" )
+                << "\n   Date:    " << gSensorTree.get( "runtime.build.hash_date", "N/A" )
+                << "\n   Hash:    " << gSensorTree.get( "runtime.build.hash", "N/A" ) << std::endl;
         ostr << "DSA name\n" << gSensorTree.get( "board.info.dsa_name", "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
         ostr << std::setw(16) << gSensorTree.get( "board.info.vendor", "N/A" )
@@ -881,7 +887,7 @@ public:
         ostr << "GEN " << gSensorTree.get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << gSensorTree.get( "board.info.pcie_width", "N/A" )
              << std::setw(32) << gSensorTree.get( "board.info.dma_threads", "N/A" )
              << std::setw(16) << gSensorTree.get( "board.info.mig_calibrated", "N/A" ) << std::endl;
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
         ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_front", "N/A" )
@@ -915,11 +921,11 @@ public:
         ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.voltage", "N/A" )
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.current", "N/A" )
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status:\n";
         ostr << " Level " << std::setw(2) << gSensorTree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
              << gSensorTree.get( "board.error.firewall.status", "N/A" ) << std::endl;
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << std::setw(48) << "Mem Topology"
              << std::setw(32) << "Device Memory Usage" << std::endl;
         ostr << std::setw(16) << "Tag"  << std::setw(12) << "Type"
@@ -948,10 +954,11 @@ public:
                     else if( subv.first == "size" )
                         mem_size = val;
                 }
-                ostr << std::setw(10) << "[" << mem_index << "] "
-                     << std::setw(16) << mem_tag 
-                     << std::setw(16) << " " << mem_type << " " 
-                     << std::setw(16) << mem_size << " " 
+                ostr << std::left
+                     << std::setw(2) << "[" << mem_index << "] "
+                     << std::left << std::setw(14) << mem_tag 
+                     << std::setw(12) << " " << mem_type << " " 
+                     << std::setw(12) << mem_size << " " 
                      << std::setw(16) << mem_used << std::endl;
             }
         }
@@ -972,12 +979,12 @@ public:
                 ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
             }
         }
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Stream Topology, TODO\n";
         ostr << "#################################\n";
         ostr << "XCLBIN ID:\n";
         ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
-        ostr << "#################################\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status:\n";
         BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
             if( v.first == "cu" ) {
