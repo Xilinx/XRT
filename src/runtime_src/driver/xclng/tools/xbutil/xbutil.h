@@ -213,25 +213,16 @@ public:
     int parseComputeUnits(std::vector<ip_data> &computeUnits) const
     {
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            static int cuCnt = 0;
-            
+            static int cuIndex = 0;
+            boost::property_tree::ptree ptCu;
             unsigned statusBuf;
             xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".count",
-                             cuCnt );
-            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".count",
-                             computeUnits.at( i ).m_type );
-            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".name",
-                             computeUnits.at( i ).m_name );
-            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".base_address",
-                             computeUnits.at( i ).m_base_address );
-            gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".status",
-                             parseCUStatus( statusBuf ) );
-//            if( computeUnits.at( i ).m_type == IP_DNASC ) {
-//                dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
-//                gSensorTree.put( "board.compute_unit.cu" + std::to_string( i ) + ".dna_status",
-//                                 parseDNAStatus( dnaStatus ) );
-//            }
+            ptCu.put( "count",        cuIndex );
+            ptCu.put( "name",         computeUnits.at( i ).m_name );
+            ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
+            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            gSensorTree.add_child( "board.compute_unit.cu", ptCu );
+            cuIndex++;
         }
         return 0;
     }
@@ -925,6 +916,7 @@ public:
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.current", "N/A" )
              << std::setw(16) << gSensorTree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
         ostr << "#################################\n";
+        ostr << "Firewall Last Error Status:\n";
         ostr << " Level " << std::setw(2) << gSensorTree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
              << gSensorTree.get( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "#################################\n";
@@ -934,14 +926,15 @@ public:
              << std::setw(12) << "Temp" << std::setw(8) << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
         
-        int mem_index = -1;
-        int mem_used = -1;
-        std::string mem_tag = "N/A";
-        std::string mem_size = "N/A";
-        std::string mem_type = "N/A";
-        std::string val;
+
         BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
             if( v.first == "mem" ) {
+                int mem_index = -1;
+                int mem_used = -1;
+                std::string mem_tag = "N/A";
+                std::string mem_size = "N/A";
+                std::string mem_type = "N/A";
+                std::string val;
                 BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
                     val = subv.second.get_value<std::string>();
                     if( subv.first == "index" ) 
@@ -964,8 +957,8 @@ public:
         }
         ostr << "Total DMA Transfer Metrics:" << std::endl;
         BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
-            std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
             if( v.first == "chan" ) {
+                std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
                 BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
                     chan_val = subv.second.get_value<std::string>();
                     if( subv.first == "index" )
@@ -980,8 +973,32 @@ public:
             }
         }
         ostr << "#################################\n";
-        
+        ostr << "Stream Topology, TODO\n";
         ostr << "#################################\n";
+        ostr << "XCLBIN ID:\n";
+        ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
+        ostr << "#################################\n";
+        ostr << "Compute Unit Status:\n";
+        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
+            if( v.first == "cu" ) {
+                std::string val, cu_i, cu_n, cu_ba, cu_s = "N/A";
+                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                    val = subv.second.get_value<std::string>();
+                    if( subv.first == "count" ) 
+                        cu_i = val;
+                    else if( subv.first == "name" )
+                        cu_n = val;
+                    else if( subv.first == "base_address" )
+                        cu_ba = val;
+                    else if( subv.first == "status" )
+                        cu_s = val;
+                }
+                ostr << std::setw(6) << "CU[" << cu_i << "]: "
+                     << std::setw(16) << cu_n 
+                     << std::setw(7) << "@0x" << std::hex << cu_ba << " " 
+                     << std::setw(10) << cu_s << std::endl;
+            }
+        }
         return 0;
     }
 
