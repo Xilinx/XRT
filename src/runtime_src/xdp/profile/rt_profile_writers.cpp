@@ -934,6 +934,13 @@ namespace XCL {
       writeTableCells(getSummaryStream(), checkName7, kernelCount.first, kernelCount.second);
       writeTableRowEnd(getSummaryStream());
     }
+
+    // 8. OpenCL objects released
+    std::string checkName8;
+    ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::OBJECTS_RELEASED, checkName8);
+    bool objectsReleased = XCL::RTSingleton::Instance()->isObjectsReleased();
+    int numReleased = (objectsReleased) ? 1 : 0;
+    writeTableCells(getSummaryStream(), checkName8, "all", numReleased);
   }
 
   // ***********

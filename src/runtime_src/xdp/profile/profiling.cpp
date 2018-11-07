@@ -73,7 +73,11 @@ namespace Profiling {
   {
     pActive = false;
 
-    if (!mEndDeviceProfilingCalled && XCL::RTSingleton::Instance()->applicationProfilingOn()) {
+    auto rts = XCL::RTSingleton::Instance();
+    if (rts)
+      rts->setObjectsReleased(mEndDeviceProfilingCalled);
+
+    if (!mEndDeviceProfilingCalled && rts && rts->applicationProfilingOn()) {
       xrt::message::send(xrt::message::severity_level::WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
