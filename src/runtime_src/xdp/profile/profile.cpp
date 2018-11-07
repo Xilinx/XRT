@@ -481,14 +481,14 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
        ,timestampMsec);
 }
 
-void cb_log_function_start (const char* functionName, long long queueAddress)
+void cb_log_function_start (const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress);
+  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
 }
 
-void cb_log_function_end (const char* functionName, long long queueAddress)
+void cb_log_function_end (const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress);
+  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
 }
 
 void cb_log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps)

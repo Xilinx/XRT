@@ -6,7 +6,7 @@ CL_EXT := cl
 AR := ar
 CXX := g++
 
-CXXFLAGS := -Wall -Werror -std=c++11 -pthread
+CXXFLAGS := -Wall -Werror -std=c++14 -pthread
 
 ROOT1 = $(dir $(dir $(CURDIR)))
 ROOT = $(ROOT1)..

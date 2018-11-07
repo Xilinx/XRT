@@ -2077,7 +2077,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	struct client_ctx client;
 	struct ert_packet packet;
-	unsigned int count;
+	unsigned int count = 0;
 	ssize_t sz = 0;
 
 	/* minimum required initialization of client */
