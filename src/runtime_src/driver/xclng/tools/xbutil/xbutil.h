@@ -81,7 +81,9 @@ enum subcommand {
     STATUS_LAPC,
     STATUS_SSPM,
     STREAM,
-    STATUS_UNSUPPORTED
+    STATUS_UNSUPPORTED,
+    MEM_QUERY_ECC,
+    MEM_RESET_ECC
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
@@ -107,6 +109,7 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
     std::make_pair("top", TOP)
+
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
@@ -115,7 +118,9 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("query-ecc", MEM_QUERY_ECC),
+    std::make_pair("reset-ecc", MEM_RESET_ECC)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -213,10 +218,13 @@ public:
         std::vector<std::string> &lines) const
     {
         std::stringstream ss, subss, ssdevice;
+        std::string idcode, fpga, errmsg;
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
 
         ss << std::left;
-        ss << std::setw(16) << "DSA name" <<"\n";
-        ss << std::setw(16) << m_devinfo.mName << "\n\n";
+        ss << std::setw(8) << m_devinfo.mName;
+        ss << " [" << fpga << '(' << idcode << ")]\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
@@ -230,7 +238,7 @@ public:
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
 
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
-        ss << std::setw(16) << "OCL Frequency";
+        ss << std::setw(16) << "Kernel Freq";
 
         subss << std::left << std::setw(16) << unitConvert(m_devinfo.mDDRSize);
         subss << std::setw(16) << m_devinfo.mDDRBankCount << std::setw(16) << " ";
@@ -241,7 +249,7 @@ public:
         }
         ss << "\n" << subss.str() << "\n\n";
 
-        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
+        ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA chan(bidir)";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
         ss << "GEN " << m_devinfo.mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo.mPCIeLinkWidth;
@@ -280,6 +288,9 @@ public:
     {
         std::stringstream ss, subss;
         subss << std::left;
+        std::string errmsg;
+        std::string dna_info;
+
         ss << std::left << "\n";
         unsigned i;
 
@@ -450,7 +461,8 @@ public:
             ss << std::setw(16) << std::to_string((float)m_devinfo.mMgtVtt/1000).substr(0,4) + "V" << "\n\n";
 
 
-        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << "\n";
+        ss << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(32) << "DNA" <<"\n";
+
         if(m_devinfo.mVccIntVol == XCL_NO_SENSOR_DEV_S)
             ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntVol == XCL_INVALID_SENSOR_VAL)
@@ -460,13 +472,22 @@ public:
 
 
         if(m_devinfo.mVccIntCurr == XCL_NO_SENSOR_DEV_S)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else if(m_devinfo.mVccIntCurr == XCL_INVALID_SENSOR_VAL)
-            ss << std::setw(16) << "Not support" << "\n";
+            ss << std::setw(16) << "Not support";
         else{
-            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A") << "\n";
+            ss << std::setw(16) << (m_devinfo.mVccIntCurr >= 10000 ? (std::to_string(m_devinfo.mVccIntCurr) + "mA") : "<10A");
         }
 
+        auto dev = pcidev::get_dev(m_idx);
+
+        dev->mgmt->sysfs_get("dna", "dna", errmsg, dna_info);
+
+        if(dna_info.empty())
+            ss << std::setw(32) << "Not support" << "\n";
+        else{
+            ss << std::setw(32) << dna_info << "\n";
+        }
 
         m_devinfo_stringize_power(m_devinfo, lines);
 
@@ -619,6 +640,17 @@ public:
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
 
+#if 0 // Enable when all platforms with ERT are packaged with new firmware
+        buf.clear();
+        pcidev::get_dev(m_idx)->user->sysfs_get(
+            "mb_scheduler", "kds_custat", errmsg, buf);
+
+        if (buf.size()) {
+          ss << "\nCompute Unit Usage:" << "\n";
+          ss << buf.data() << "\n";
+        }
+#endif
+  
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
     }
@@ -700,6 +732,7 @@ public:
                 }
 
                 ss << std::setw(14) << stat_map[std::string("total_req_bytes")] +
+
                     "/" + stat_map[std::string("total_req_num")];
 
                 ss << std::setw(14) << stat_map[std::string("total_complete_bytes")] +
@@ -707,20 +740,23 @@ public:
 
                 pcidev::get_dev(m_idx)->user->sysfs_get("wq2", lname, errmsg, attrs);
                 if (flag) {
+
                     int write_pending = ((std::stoi(stat_map[std::string("descq_pidx")]) - std::stoi(stat_map[std::string("descq_cidx")])) &
                                         (std::stoi(stat_map[std::string("descq_rngsz")])- 1))*4096;
 
                     ss << std::setw(10) << std::to_string(write_pending) ;
+
                 }
 
                 pcidev::get_dev(m_idx)->user->sysfs_get("rq2", lname, errmsg, attrs);
                 if (!flag) {
+
                     int read_pending = ((std::stoi(stat_map[std::string("c2h_wrb_pidx")]) - std::stoi(stat_map[std::string("descq_cidx_wrb_pend")])) &
                                        (std::stoi(stat_map[std::string("descq_rngsz")]) - 1))*4096;
                     ss << std::setw(10) << std::to_string(read_pending);
+
                 }
             }
-
             ss << "\n";
 
         }
@@ -777,7 +813,7 @@ public:
         printXclbinID(ostr);
         return 0;
     }
-
+  
     /*
      * print stream topology
      */
@@ -798,7 +834,8 @@ public:
         // report xclbinid
         std::string errmsg;
         std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
 
         if(errmsg.empty()) {
             ostr << std::setw(16) << "\nXclbin ID:" << "\n";
@@ -824,6 +861,20 @@ public:
                          << std::dec << parseCUStatus( statusBuf ) << "\n";
                     cuCnt++;
                 }
+
+                if( computeUnits.at( i ).m_type == IP_DNASC ) {
+
+                    std::string errmsg;
+                    int dnaStatus;
+                    auto dev = pcidev::get_dev(m_idx);
+
+                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
+                    ostr << "\nIP[" << cuCnt << "]: "
+                         << computeUnits.at( i ).m_name
+                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
+                         << std::dec << parseDNAStatus(dnaStatus) << "\n";
+                    cuCnt++;
+                }
             }
             if(computeUnits.size() == 0) {
                 ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
@@ -843,6 +894,11 @@ public:
         if(!stream.is_open()) {
             std::cout << "ERROR: Cannot open " << xclbin << ". Check that it exists and is readable." << std::endl;
             return -ENOENT;
+        }
+
+        if(region) {
+            std::cout << "ERROR: Not support other than -r 0 " << std::endl;
+            return -EINVAL;
         }
 
         char temp[8];
@@ -1179,6 +1235,9 @@ public:
     }
 
     int validate(bool quick);
+
+    int printEccInfo(std::ostream& ostr) const;
+    int resetEccInfo();
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
