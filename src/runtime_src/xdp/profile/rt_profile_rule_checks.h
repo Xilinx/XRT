@@ -46,7 +46,8 @@ namespace XCL {
       MIGRATE_MEM,
       DDR_BANKS,
       PORT_BIT_WIDTH,
-      KERNEL_COUNT
+      KERNEL_COUNT,
+      OBJECTS_RELEASED
     };
 
   public:
