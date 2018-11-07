@@ -654,7 +654,7 @@ int main(int argc, char *argv[])
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
             result = deviceVec[index]->readSSPMCounters() ;
-    }
+        }
         break;
     case xcldev::TOP:
             result = xcldev::xclTop(argc, argv, subcmd);
@@ -766,7 +766,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
 
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
-    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
 
     for(auto line:lines) {
             printw("%s\n", line.c_str());
@@ -777,10 +777,10 @@ static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devin
 {
     std::vector<std::string> lines;
 
-    dev -> m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
 
     for(auto line:lines) {
-            printw("%s\n", line.c_str());
+        printw("%s\n", line.c_str());
     }
 }
 
@@ -884,8 +884,7 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
     std::thread t;
     if (subcmd == xcldev::STREAM) {
         t = std::thread(topThreadStreamFunc, &ctrl);
-    }
-    else {
+    } else {
         t = std::thread(topThreadFunc, &ctrl);
     }
 
@@ -909,8 +908,7 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
 const std::string dsaPath("/opt/xilinx/dsa/");
 
 void testCaseProgressReporter(bool *quit)
-{
-    int i = 0;
+{    int i = 0;
     while (!*quit) {
         if (i != 0 && (i % 5 == 0))
             std::cout << "." << std::flush;
