@@ -83,6 +83,9 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     int retries = 5;
     int ret = 0;
 
+    if (!isXMCReady())
+        return -EINVAL;
+
     while (!tiTxtStream.eof() && !endRecordFound && !errorFound) {
         std::string line;
         std::getline(tiTxtStream, line);
@@ -226,6 +229,9 @@ int XMC_Flasher::erase()
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
+
+    if (!isXMCReady())
+        return -EINVAL;
 
     mPkt = {0};
     mPkt.hdr.opCode = XPO_BOARD_INFO;
@@ -468,3 +474,14 @@ int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
     return 0;
 }
 
+bool XMC_Flasher::isXMCReady()
+{
+    bool xmcReady = (XMC_MODE() == 0x1);
+    bool bmcReady = (BMC_MODE() == 0x1);
+
+    if (!xmcReady)
+        std::cout << "ERROR: XMC is not ready: 0x" << std::hex << XMC_MODE() << std::endl;
+    if (!bmcReady)
+        std::cout << "ERROR: BMC is not ready: 0x" << std::hex << BMC_MODE() << std::endl;
+    return (xmcReady && bmcReady);
+}

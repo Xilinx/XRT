@@ -52,6 +52,7 @@
 #define XMC_HOST_MSG_MSP432_FW_LENGTH_ERR   0x04
 #define XMC_HOST_MSG_BRD_INFO_MISSING_ERR   0x05
 
+#define XMC_MODE()    (readReg(XMC_REG_OFF_STATUS) & 0x3)
 #define BMC_MODE()    (readReg(XMC_REG_OFF_STATUS) >> 28)
 
 enum xmc_packet_op {
@@ -109,6 +110,7 @@ private:
     int waitTillIdle();
     unsigned readReg(unsigned RegOffset);
     int writeReg(unsigned RegOffset, unsigned value);
+    bool isXMCReady();
 };
 
 #endif

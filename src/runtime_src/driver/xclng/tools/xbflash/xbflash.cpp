@@ -608,7 +608,7 @@ int scanDevices(int argc, char *argv[])
             std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
             std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
             std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-            std::cout << "\tMax power level:\t" << info.mMaxPowerLvl << std::endl;
+            std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
             std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
             std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
             std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
