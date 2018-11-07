@@ -119,6 +119,9 @@ namespace XCL {
     double getReadMaxBandwidthMBps();
     double getWriteMaxBandwidthMBps();
 
+    void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
+    bool isObjectsReleased() {return IsObjectsReleased;}
+
   public:
     ~RTSingleton();
   private:
@@ -144,6 +147,7 @@ namespace XCL {
 
     e_flow_mode FlowMode = CPU;
     bool OclProfilingOn = true;
+    bool IsObjectsReleased = false;
     int ProfileFlags;
     std::map<unsigned, e_ocl_profile_mode> OclProfileMode;
   };
