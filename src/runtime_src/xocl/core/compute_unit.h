@@ -115,6 +115,12 @@ public:
     return m_symbol->uid;
   }
 
+  context_type
+  get_context_type() const
+  {
+    return m_context_type;
+  }
+
 private:
 
   // Used by xocl::device to cache the acquire context for

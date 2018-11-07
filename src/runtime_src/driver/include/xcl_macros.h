@@ -56,4 +56,7 @@
 #define xclSetupInstance_n 28
 #define xclPollCompletion_n 29
 
+#define xclPerfMonReadCounters_Streaming_n 30
+#define xclPerfMonReadTrace_Streaming_n 31
+
 #endif

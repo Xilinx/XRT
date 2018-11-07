@@ -34,12 +34,24 @@
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 
+static std::string get_name(const std::string& dir, const std::string& subdir)
+{
+    std::string line;
+    std::ifstream ifs(dir + "/" + subdir + "/name");
+
+    if (ifs.is_open())
+        std::getline(ifs, line);
+
+    return line;
+}
+
 // Helper to find subdevice directory name
 // Assumption: all subdevice's sysfs directory name starts with subdevice name!!
 static int get_subdev_dir_name(const std::string& dir,
     const std::string& subDevName, std::string& subdir)
 {
     DIR *dp;
+    size_t sub_nm_sz = subDevName.size();
 
     subdir = "";
     if (subDevName.empty())
@@ -50,12 +62,18 @@ static int get_subdev_dir_name(const std::string& dir,
     if (dp) {
         struct dirent *entry;
         while ((entry = readdir(dp))) {
-            if(strncmp(entry->d_name,
-                subDevName.c_str(), subDevName.size()) == 0) {
-                subdir = entry->d_name;
-                ret = 0;
-                break;
+            std::string nm = get_name(dir, entry->d_name);
+            if (!nm.empty()) {
+                if (nm != subDevName)
+                    continue;
+            } else if(strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
+                entry->d_name[sub_nm_sz] != '.') {
+                continue;
             }
+            // found it
+            subdir = entry->d_name;
+            ret = 0;
+            break;
         }
         closedir(dp);
     }
@@ -133,20 +151,11 @@ void pcidev::pci_func::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::vector<char>& buf)
 {
-    char tmp[4096];
     std::fstream fs = sysfs_open(subdev, entry, err_msg, false, true);
     if (!err_msg.empty())
         return;
 
-    // Don't know the size of sysfs entries upfront. Keep reading till EOF.
-    while (!fs.eof()) {
-        size_t cursize = buf.size();
-        fs.seekg(cursize, std::ios::beg);
-        fs.read(tmp, sizeof (tmp));
-        size_t newsize = cursize + fs.gcount();
-        buf.resize(newsize);
-        memcpy(buf.data() + cursize, tmp, newsize - cursize);
-    }
+    buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),std::istreambuf_iterator<char>());
 }
 
 void pcidev::pci_func::sysfs_get(

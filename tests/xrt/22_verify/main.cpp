@@ -79,10 +79,10 @@ static void printHelp()
 
 
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem)
 {
 	
-	unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, 0x0);//buf1
+	unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_mem);//buf1
 	char* bo = (char*)xclMapBO(handle, boHandle, true);
     
 	memset(bo, 0, 1024);
@@ -272,12 +272,15 @@ int main(int argc, char** argv)
     try {
 	    xclDeviceHandle handle;
     	uint64_t cu_base_addr = 0;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr)) {
+    	int first_mem = -1;
+    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
 	        return 1;
 	    }
-
-        
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements)) {
+	    
+	    if (first_mem < 0)
+	        return 1;
+	            
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem)) {
             return 1;
         }
         
