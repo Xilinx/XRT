@@ -96,7 +96,7 @@ namespace XCL {
 	    // Functions for timeline trace log
 	    // Write timeline trace of a function call such as cl API call
 	    void writeTimeline(double time, const std::string& functionName,
-	        const std::string& eventName);
+	        const std::string& eventName, unsigned int functionID);
 	    // Write timeline trace of Kernel execution
 	    void writeTimeline(double traceTime, const std::string& commandString,
             const std::string& stageString, const std::string& eventString,
