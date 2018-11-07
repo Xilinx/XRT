@@ -15,10 +15,10 @@
  * under the License.
  */
 #include <stdlib.h>
-//#include <strings.h>
-#include <string>
 
 #include <memory.h>
+//#include <strings.h>
+#include <string>
 #include "xma.h"
 #include "lib/xmares.h"
 #include "lib/xmahw.h"
