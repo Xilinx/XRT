@@ -1214,6 +1214,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (!ICAP_PRIVILEGED(icap))
 		return -EPERM;
 
+	/* Read dsabin from file system. */
+
 	if (funcid != 0) {
 		pcidev_user = pci_get_slot(pcidev->bus,
 			PCI_DEVFN(slotid, funcid - 1));
@@ -1233,7 +1235,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		le64_to_cpu(xocl_get_timestamp(xdev)));
 	ICAP_INFO(icap, "try load dsabin %s", fw_name);
 	err = request_firmware(&fw, fw_name, &pcidev->dev);
-
 	if (err) {
 		snprintf(fw_name, sizeof(fw_name),
 			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
@@ -1241,10 +1242,30 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			le16_to_cpu(deviceid + 1),
 			le16_to_cpu(pcidev->subsystem_device),
 			le64_to_cpu(xocl_get_timestamp(xdev)));
+		ICAP_INFO(icap, "try load dsabin %s", fw_name);
 		err = request_firmware(&fw, fw_name, &pcidev->dev);
 	}
+	/* Retry with the legacy dsabin. */
+	if(err) {
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+			le16_to_cpu(pcidev->vendor),
+			le16_to_cpu(pcidev->device + 1),
+			le16_to_cpu(pcidev->subsystem_device),
+			le64_to_cpu(0x0000000000000000));
+		ICAP_INFO(icap, "try load dsabin %s", fw_name);
+		err = request_firmware(&fw, fw_name, &pcidev->dev);
+	}
+	if (err) {
+		/* Give up on finding .dsabin. */
+		ICAP_ERR(icap, "unable to find firmware, giving up");
+		return err;
+	}
 
-	if(!err && xocl_mb_sched_on(xdev)) {
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if(xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
 		bin_obj_axlf = (struct axlf*)fw->data;
 		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
@@ -1259,7 +1280,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		}
 	}
 
-	if(!err && xocl_mb_mgmt_on(xdev)) {
+	if(xocl_mb_mgmt_on(xdev)) {
 		/* Try locating the board mgmt binary. */
 		bin_obj_axlf = (struct axlf*)fw->data;
 		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
@@ -1277,27 +1298,11 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if(load_mbs)
 		xocl_mb_reset(xdev);
 
-	/* Retry with the legacy dsabin. */
-	if(err) {
-		ICAP_INFO(icap,
-			"unable to find firmware %s, try legacy dsabin",
-			fw_name);
-		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-			le16_to_cpu(pcidev->vendor),
-			le16_to_cpu(pcidev->device + 1),
-			le16_to_cpu(pcidev->subsystem_device),
-			le64_to_cpu(0x0000000000000000));
-		err = request_firmware(&fw, fw_name, &pcidev->dev);
-	}
-	if (err) {
-		ICAP_ERR(icap, "unable to find firmware %s", fw_name);
-		return err;
-	}
 
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof (ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	ICAP_INFO(icap, "boot_firmware in axlf format");
@@ -1307,13 +1312,15 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if(!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "timestamp of ROM did not match xclbin");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	ICAP_INFO(icap, "VBNV and timestamps matched");
 
 	if (xocl_xrt_version_check(xdev, bin_obj_axlf, 1)) {
 		ICAP_ERR(icap, "Major version does not match xrt");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
@@ -1343,8 +1350,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		err = -EINVAL;
 		goto done;
 	}
-
-	mutex_lock(&icap->icap_lock);
 
 	if (primaryFirmwareLength) {
 		ICAP_INFO(icap,
