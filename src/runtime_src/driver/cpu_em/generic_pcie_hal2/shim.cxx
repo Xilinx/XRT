@@ -534,20 +534,18 @@ namespace xclcpuemhal2 {
         fflush(fp);
         fclose(fp);
       }
-      //TODO populate flow/route id and instance arg map
-      //
       if(memTopology)
       {
         const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
         if(m_mem)
         {
           uint64_t argNum = 0;
-          uint64_t prev_route_id = ULLONG_MAX;
+          uint64_t prev_instanceBaseAddr = ULLONG_MAX;
           std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
           for (int32_t i=0; i<m_mem->m_count; ++i)
           {
-            uint64_t flow_id =m_mem->m_mem_data[i].flow_id; 
-            uint64_t route_id =m_mem->m_mem_data[i].route_id; 
+            uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo 
+            uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
             {
               std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
@@ -556,26 +554,26 @@ namespace xclcpuemhal2 {
               mPair.second = m_tag;
               argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
-            if(prev_route_id != ULLONG_MAX && route_id != prev_route_id)
+            if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
               bool success = false;
-              xclSetupInstance_RPC_CALL(xclSetupInstance, route_id, argFlowIdMap);
+              xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr , argFlowIdMap);
 
               if(mLogStream.is_open())
-                mLogStream << __func__ << " setup instance: route " << route_id <<" success "<< success << std::endl;
+                mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
               
               argFlowIdMap.clear();
               argNum = 0;
             }
-            prev_route_id = route_id;
+            argNum++;
+            prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
-          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_route_id, argFlowIdMap);
+          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr, argFlowIdMap);
 
           if(mLogStream.is_open())
-            mLogStream << __func__ << " setup instance: route " << prev_route_id <<" success "<< success << std::endl;
+            mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
         }
         delete []memTopology;
         memTopology = NULL;

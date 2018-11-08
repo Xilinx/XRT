@@ -58,6 +58,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
 
+#define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
@@ -117,6 +118,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #endif
 
 #define INVALID_SUBDEVICE ~0U
+
+#define XOCL_INVALID_MINOR -1
 
 extern struct class *xrt_class;
 
@@ -185,6 +188,7 @@ struct xocl_health_thread_arg {
 
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
+	int			dev_minor;
 	struct xocl_subdev	subdevs[XOCL_SUBDEV_NUM];
 	u32			subdev_num;
 	struct xocl_pci_funcs	*pci_ops;
@@ -591,6 +595,8 @@ struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
 void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
         struct axlf *bin_obj, bool major_only);
+int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
+void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 /* context helpers */
 int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,

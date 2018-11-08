@@ -60,8 +60,8 @@ using cb_action_migrate_type = std::function< void (xocl::event* event,cl_int st
  * callback function types for function logging, dependency ...
  */
 
-using cb_log_function_start_type = std::function<void(const char* functionName, long long queueAddress)>;
-using cb_log_function_end_type = std::function<void(const char* functionName, long long queueAddress)>;
+using cb_log_function_start_type = std::function<void(const char* functionName, long long queueAddress, unsigned int functionID)>;
+using cb_log_function_end_type = std::function<void(const char* functionName, long long queueAddress, unsigned int functionID)>;
 using cb_log_dependencies_type = std::function<void(xocl::event* event,  cl_uint num_deps, const cl_event* deps)>;
 using cb_add_to_active_devices_type = std::function<void (const std::string& device_name)>;
 using cb_set_kernel_clock_freq_type = std::function<void(const std::string& device_name, unsigned int freq)>;
@@ -161,6 +161,8 @@ struct function_call_logger
   function_call_logger(const char* function, long long address);
   ~function_call_logger();
 
+  static std::atomic <unsigned int> m_funcid_global;
+  unsigned int m_funcid;
   const char* m_name = nullptr;
   long long m_address = 0;
 };
