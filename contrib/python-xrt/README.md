@@ -40,6 +40,8 @@ Refer to [XRT main repository](https://github.com/Xilinx/XRT)
 
 ### Installation
 
+> Note: virtualenv is recommended
+
 #### Install from source
 
 1. Clone the repository
