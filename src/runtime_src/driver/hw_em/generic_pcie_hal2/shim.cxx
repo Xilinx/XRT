@@ -1420,6 +1420,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMemoryProfilingNumberSlots = 0;
     mAccelProfilingNumberSlots = 0;
     mStallProfilingNumberSlots = 0;
+    mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
 
@@ -2165,12 +2166,6 @@ ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
   bool nonBlocking = false;
   if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) 
   {
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++) 
-    {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
     nonBlocking = true;
   }
   uint64_t fullSize = 0;
@@ -2202,12 +2197,6 @@ ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING) 
   {
     nonBlocking = true;
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++) 
-    {
-      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
   }
 
   void *dest;
@@ -2217,10 +2206,10 @@ ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   {
     dest = (void *)rd->bufs[i].va;
     uint64_t read_size = 0;
-    do
+    while(read_size == 0)
     {
       xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    } while (read_size == 0 && !nonBlocking);
+    }
     fullSize += read_size;
   }
   mReqCounter++;
@@ -2228,53 +2217,6 @@ ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   return fullSize;
 
 }
-/*
- * xclPollCompletion
- */
-int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  if (mLogStream.is_open()) 
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
-  }
-//  struct timespec time, *ptime = NULL;
-//
-//  if (timeout > 0) 
-//  {
-//    memset(&time, 0, sizeof(time));
-//    time.tv_sec = timeout / 1000;
-//    time.tv_nsec = (timeout % 1000) * 1000000;
-//    ptime = &time;
-//  }
-
-  *actual = 0;
-  while(*actual < min_compl)
-  {
-    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
-    while ( it != mReqList.end() )
-    {
-      unsigned numBytesProcessed = 0;
-      uint64_t reqCounter = std::get<0>(*it);
-      void* priv_data = std::get<1>(*it);
-      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
-      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
-      if(numBytesProcessed > 0)
-      {
-        comps[*actual].priv_data = priv_data;
-        comps[*actual].nbytes = numBytesProcessed;
-        (*actual)++;
-        mReqList.erase(it++);
-      }
-      else
-      {
-        it++;
-      }
-    }
-  }
-  PRINTENDFUNC;
-  return (*actual);
-}
-
 /*
  * xclAllocQDMABuf()
  */

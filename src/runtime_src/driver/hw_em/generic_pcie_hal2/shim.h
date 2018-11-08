@@ -200,7 +200,6 @@ using addr_type = uint64_t;
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
 
 
     private:
@@ -265,15 +264,19 @@ using addr_type = uint64_t;
       bool mIsDeviceProfiling = false;
       uint32_t mMemoryProfilingNumberSlots;
       uint32_t mAccelProfilingNumberSlots;
+      uint32_t mStreamProfilingNumberSlots;
       uint32_t mStallProfilingNumberSlots;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
       uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
       uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
+      uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS];
       std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
       std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
+      std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS];
       uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
+      uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
