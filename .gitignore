@@ -10,9 +10,3 @@ tags
 *.mod
 *.ko
 *.nfs*
-
-# python-xrt project
-.DS_Store
-contrib/python-xrt/build
-contrib/python-xrt/dist
-contrib/python-xrt/xrt.egg-info

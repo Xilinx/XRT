@@ -1,0 +1,7 @@
+*.pyc
+
+# python-xrt project
+.DS_Store
+build
+dist
+xrt.egg-info
