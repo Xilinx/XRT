@@ -117,6 +117,10 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 	ocl_dev->core.pdev = pdev;
 	xocl_fill_dsa_priv(ocl_dev, dev_info);
 
+	ret = xocl_alloc_dev_minor(ocl_dev);
+	if (ret)
+		goto failed;
+
 	conf = &qd->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->poll_mode = 0;
@@ -128,7 +132,7 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		(unsigned long *)(&ocl_dev->dma_handle));
 	if (ret < 0) {
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
-		goto failed;
+		goto failed_open_dev;
 	}
 
 	xocl_info(&pdev->dev, "QDMA open succeed: intr: %d",
@@ -189,6 +193,8 @@ failed_reg_subdevs:
 	pci_iounmap(pdev, ocl_dev->base_addr);
 failed_map_io:
 	qdma_device_close(pdev, (unsigned long)ocl_dev->dma_handle);
+failed_open_dev:
+	xocl_free_dev_minor(ocl_dev);
 failed:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
@@ -217,6 +223,8 @@ void xocl_user_qdma_remove(struct pci_dev *pdev)
 	if (qd->ocl_dev.user_msix_table)
 		devm_kfree(&pdev->dev, qd->ocl_dev.user_msix_table);
 	mutex_destroy(&qd->ocl_dev.user_msix_table_lock);
+
+	xocl_free_dev_minor(&qd->ocl_dev);
 
 	devm_kfree(&pdev->dev, qd); 
 	pci_set_drvdata(pdev, NULL);
