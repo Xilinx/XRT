@@ -21,10 +21,11 @@ set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
 add_executable(xclbincat ${XCLBINCAT_SRC})
 target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
-
-# -----------------------------------------------------------------------------
-
-target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
+# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
+# was causing the executable to reference 'linux-vdso.so.1' which would then 
+# produce "Command not found" when running the executable.
+#   Therefore, we direct CMake to end with static, so that it doesn't do that:
+set_target_properties(xclbincat PROPERTIES LINK_SEARCH_END_STATIC 1)
 
 # -----------------------------------------------------------------------------
 
@@ -39,6 +40,11 @@ set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
 target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
+# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
+# was causing the executable to reference 'linux-vdso.so.1' which would then 
+# produce "Command not found" when running the executable.
+#   Therefore, we direct CMake to end with static, so that it doesn't do that:
+set_target_properties(xclbinsplit PROPERTIES LINK_SEARCH_END_STATIC 1)
 
 # -----------------------------------------------------------------------------
 
@@ -77,7 +83,12 @@ file(GLOB XCLBINUTIL_MAIN_FILE
 set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
 add_executable(xclbinutil ${XCLBINUTIL_SRCS})
-target_link_libraries(xclbinutil -static ${Boost_LIBRARIES} )
+target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
+# was causing the executable to reference 'linux-vdso.so.1' which would then 
+# produce "Command not found" when running the executable.
+#   Therefore, we direct CMake to end with static, so that it doesn't do that:
+set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
 
 # -----------------------------------------------------------------------------
 
