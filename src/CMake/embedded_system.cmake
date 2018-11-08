@@ -1,4 +1,4 @@
-# Target processor is x86_64
+# This cmake file is for embedded system. Only support cross compile aarch64
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_INSTALL_DIR
 # XRT_VERSION_MAJOR
@@ -17,7 +17,7 @@ ELSE(DRM_FOUND)
 ENDIF(DRM_FOUND)
 
 # OpenCL header files
-pkg_check_modules(OPENCL REQUIRED OpenCL)
+find_package(OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
   INCLUDE_DIRECTORIES(${OPENCL_INCLUDEDIR})
@@ -25,40 +25,17 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
-find_package(Git)
+#find_package(Git)
+#
+#IF(GIT_FOUND)
+#  message("git found: ${GIT_EXECUTABLE}")
+#ELSE(GIT_FOUND)
+#  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
+#endif(GIT_FOUND)
 
-IF(GIT_FOUND)
-  message("git found: ${GIT_EXECUTABLE}")
-ELSE(GIT_FOUND)
-  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-endif(GIT_FOUND)
+set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
+set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
 
-find_program(LSB_RELEASE lsb_release)
-find_program(UNAME uname)
-
-execute_process(COMMAND ${LSB_RELEASE} -is
-  OUTPUT_VARIABLE LINUX_FLAVOR
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-execute_process(COMMAND ${LSB_RELEASE} -rs
-  OUTPUT_VARIABLE LINUX_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-execute_process(COMMAND ${UNAME} -r
-  OUTPUT_VARIABLE LINUX_KERNEL_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-#set(Boost_DEBUG 1)
-INCLUDE (FindBoost)
-# On older systems libboost_system.a is not compiled with -fPIC which leads to
-# link errors when XRT shared objects try to link with it.
-# Static linking with Boost is enabled on Ubuntu 18.04.
-if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
-   set(Boost_USE_STATIC_LIBS  ON)
-endif()
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
 INCLUDE (FindCurses)
@@ -82,8 +59,6 @@ file(GLOB XRT_EULA
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
 message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
 
-include (CMake/version.cmake)
-
 include (CMake/ccache.cmake)
 
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
@@ -91,30 +66,5 @@ message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
 add_subdirectory(runtime_src)
 
-#XMA settings START
-set (XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set (XMA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
-set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
-set(XMA_SOVERSION ${XRT_SOVERSION})
-add_subdirectory(xma)
-#XMA settings END
-
-
 message("-- XRT version: ${XRT_VERSION_STRING}")
-
-include (CMake/cpack.cmake)
-
-include (CMake/lint.cmake)
-
-set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
-include (CMake/dkms.cmake)
-
-include (CMake/icd.cmake)
-
-include (CMake/pkgconfig.cmake)
-
-include (CMake/coverity.cmake)
-
-set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
-include (CMake/tags.cmake)
 

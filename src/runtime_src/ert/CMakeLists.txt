@@ -1,4 +1,4 @@
-if ((EXISTS /tools/batonroot/rodin/devkits) AND (${CMAKE_SYSTEM_PROCESSOR} STREQUAL x86_64))
+if ((EXISTS /tools/batonroot/rodin/devkits) AND (${XRT_NATIVE_BUILD} STREQUAL "yes"))
 
 message("-- Rodin devkits found, preparing ERT build")
 

@@ -1,5 +1,5 @@
 add_subdirectory(include)
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL x86_64)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xclng)
   add_subdirectory(common_em)
   add_subdirectory(cpu_em)

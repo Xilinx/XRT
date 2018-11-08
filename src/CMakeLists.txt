@@ -41,12 +41,17 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
+message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  include(CMake/x86_64.cmake)
-else(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-  include(CMake/aarch64.cmake)
+
+set(XRT_NATIVE_BUILD "yes")
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
+  set(XRT_NATIVE_BUILD "no")
+endif()
+
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  include(CMake/native.cmake)
 else()
-  message("-- unknown Target processor")
+  include(CMake/embedded_system.cmake)
 endif()
 

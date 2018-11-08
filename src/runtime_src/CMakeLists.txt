@@ -36,16 +36,12 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
-# TODO cpu_em_math.c don't support aarch64.
-# Remove this limitation once this being resolved.
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-  add_compile_options("-Wall" "-Werror")
-endif()
+add_compile_options("-Wall" "-Werror")
 add_subdirectory(xdp)
 
 # TODO version.h was included.
 # Remove this limitation once we can generate version.h for mpsoc.
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(tools/xclbin)
 endif()
 add_subdirectory(impl)
