@@ -28,7 +28,7 @@
 
 #define	PROC_TABLE_HASH_SZ	512
 #define	EBUF_LEN		256
-#define	MINOR_NAME_MASK		0xffff
+#define	MINOR_NAME_MASK		0xffffffff
 
 #define	STREAM_FLOWID_MASK	0xff
 #define	STREAM_SLRID_SHIFT	16

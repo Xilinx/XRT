@@ -33,7 +33,7 @@
 #define XIL_XVC_MAGIC 0x58564344  // "XVCD"
 #define	MINOR_PUB_HIGH_BIT	0x00000
 #define	MINOR_PRI_HIGH_BIT	0x10000
-#define MINOR_NAME_MASK		0xffff
+#define MINOR_NAME_MASK		0xffffffff
 
 enum xvc_algo_type {
 	XVC_ALGO_NULL,
@@ -359,7 +359,7 @@ static int xvc_probe(struct platform_device *pdev)
 	xvc->sys_cdev.owner = THIS_MODULE;
 	xvc->instance = XOCL_DEV_ID(core->pdev) |
 		platform_get_device_id(pdev)->driver_data;
-	xvc->sys_cdev.dev = MKDEV(MAJOR(xvc_dev), xvc->instance);
+	xvc->sys_cdev.dev = MKDEV(MAJOR(xvc_dev), core->dev_minor);
 	err = cdev_add(&xvc->sys_cdev, xvc->sys_cdev.dev, 1);
 	if (err) {
 		xocl_err(&pdev->dev, "cdev_add failed, %d",err);
@@ -433,7 +433,7 @@ int __init xocl_init_xvc(void)
 {
 	int err = 0;
 
-	err = alloc_chrdev_region(&xvc_dev, 0, 16, XVC_DEV_NAME);
+	err = alloc_chrdev_region(&xvc_dev, 0, XOCL_MAX_DEVICES, XVC_DEV_NAME);
 	if (err < 0)
 		goto err_register_chrdev;
 
@@ -444,13 +444,13 @@ int __init xocl_init_xvc(void)
 	return 0;
 
 err_driver_reg:
-	unregister_chrdev_region(xvc_dev, 16);
+	unregister_chrdev_region(xvc_dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
 	return err;
 }
 
 void xocl_fini_xvc(void)
 {
-	unregister_chrdev_region(xvc_dev, 16);
+	unregister_chrdev_region(xvc_dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xvc_driver);
 }
