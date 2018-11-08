@@ -1148,7 +1148,7 @@ load_program(program* program)
     const clock_freq_topology* freqs = m_xclbin.get_clk_freq_topology();
     if(!freqs) {
       if (!is_sw_emulation())
-        std::cout << "WARNING: Please update xclbin. Legacy clocking section support will be removed soon" << std::endl;
+        throw xocl::error(CL_INVALID_PROGRAM,"Legacy xclbin is not supported, please update xclbin");
       unsigned short idx = 0;
       unsigned short target_freqs[4] = {0};
       auto kclocks = m_xclbin.kernel_clocks();

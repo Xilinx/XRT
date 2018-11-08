@@ -18,8 +18,6 @@
 #ifndef _XCL_HAL2_H_
 #define _XCL_HAL2_H_
 
-//#include <uuid.h>
-
 #ifdef __cplusplus
 #include <cstdlib>
 #include <cstdint>
@@ -43,14 +41,6 @@
 #include "xclperf.h"
 #include "xcl_app_debug.h"
 #include "xclerr.h"
-
-#ifndef _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -1173,8 +1163,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  * @timeout:		timeout
  *
  * return number of requests been completed.
- */ 
-XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout); 
+ */
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout);
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

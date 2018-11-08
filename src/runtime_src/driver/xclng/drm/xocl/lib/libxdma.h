@@ -473,6 +473,10 @@ struct xdma_engine {
 	struct work_struct work;	/* Work queue for interrupt handling */
 
 	spinlock_t desc_lock;		/* protects concurrent access */
+#ifdef CONFIG_PREEMPT_COUNT
+	struct mutex desc_mutex;
+#endif
+
 	dma_addr_t desc_bus;
 	struct xdma_desc *desc;
 

@@ -26,6 +26,8 @@ struct xocl_subdev_array {
 	int count;
 };
 
+static DEFINE_IDA(xocl_dev_minor_ida);
+
 static DEFINE_IDA(subdev_multi_inst_ida);
 static struct xocl_dsa_vbnv_map dsa_vbnv_map[] = {
 	XOCL_DSA_VBNV_MAP
@@ -515,4 +517,30 @@ err:
 		bin_obj->m_header.m_versionPatch);
 
 	return -EINVAL;
+}
+
+int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+
+	core->dev_minor = ida_simple_get(&xocl_dev_minor_ida,
+		0, 0, GFP_KERNEL);
+
+	if (core->dev_minor < 0) {
+		xocl_err(&core->pdev->dev, "Failed to alloc dev minor");
+		core->dev_minor = XOCL_INVALID_MINOR;
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
+void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+
+	if (core->dev_minor != XOCL_INVALID_MINOR) {
+		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
+		core->dev_minor = XOCL_INVALID_MINOR;
+	}
 }
