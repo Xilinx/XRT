@@ -820,7 +820,8 @@ namespace XCL {
           std::string memoryName2 = memoryName;
           size_t index = portName.find_last_of(":");
           if (index != std::string::npos) {
-            portName2 = portName.substr(0, index);
+            // Keep memory resource in port name for display purposes
+            //portName2 = portName.substr(0, index);
             memoryName2 = portName.substr(index+1);
           }
 
