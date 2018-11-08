@@ -198,6 +198,10 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	ocl_dev->core.pdev = pdev;
 	xocl_fill_dsa_priv(ocl_dev, dev_info);
 
+	ret = xocl_alloc_dev_minor(ocl_dev);
+	if (ret)
+		goto failed_alloc_minor;
+
 	ocl_dev->dma_handle = xdma_device_open(XOCL_XDMA_PCI, pdev,
 		&ocl_dev->max_user_intr, &channel,
 		&channel);
@@ -285,6 +289,8 @@ failed_set_channel:
 failed_reg_subdevs:
 	xdma_device_close(pdev, ocl_dev->dma_handle);
 failed:
+	xocl_free_dev_minor(ocl_dev);
+failed_alloc_minor:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
 	devm_kfree(&pdev->dev, xd);
@@ -311,6 +317,7 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 		devm_kfree(&pdev->dev, xd->ocl_dev.user_msix_table);
 	mutex_destroy(&xd->ocl_dev.user_msix_table_lock);
 
+	xocl_free_dev_minor(&xd->ocl_dev);
 	devm_kfree(&pdev->dev, xd);
 	pci_set_drvdata(pdev, NULL);
 }
