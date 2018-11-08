@@ -114,6 +114,8 @@ namespace xclhwemhal2 {
       return mStallProfilingNumberSlots;
     if (type == XCL_PERF_MON_HOST)
       return 1;
+    if (type == XCL_PERF_MON_STR)
+      return mStreamProfilingNumberSlots;
 
     return 0;
   }
