@@ -72,6 +72,15 @@ done
 here=$PWD
 cd $BUILDDIR
 
+FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
+FLAVOR=`echo $FLAVOR | tr -d '"'`
+echo "Flavor: $FLAVOR"
+CMAKE_EXE=cmake
+if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
+    CMAKE_EXE=cmake3
+fi
+echo "CMake: $CMAKE_EXE"
+
 if [[ $clean == 1 ]]; then
     echo $PWD
     echo "/bin/rm -rf Release Debug"
@@ -103,7 +112,7 @@ if [[ $covbuild == 1 ]]; then
     fi
     mkdir -p Coverity
     cd Coverity
-    cmake -DCMAKE_BUILD_TYPE=Release ../../src
+    $CMAKE_EXE -DCMAKE_BUILD_TYPE=Release ../../src
     make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
     cd $here
     exit 0
@@ -111,18 +120,15 @@ fi
 
 mkdir -p Debug Release
 cd Debug
-time cmake -DCMAKE_AWS_BUILD=OFF -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+time $CMAKE_EXE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
-time cmake -DCMAKE_AWS_BUILD=OFF -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+echo "CMake: $CMAKE_EXE"
+time $CMAKE_EXE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
 time make package
 cd $here
 
-cd $BUILDDIR/Release
-cmake -DCMAKE_AWS_BUILD=ON -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-make package
-#rm -rfv *-Unspecified*
-cd $here
+echo "CMake: $CMAKE_EXE"
