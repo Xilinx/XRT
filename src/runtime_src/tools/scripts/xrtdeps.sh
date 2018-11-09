@@ -177,13 +177,15 @@ install()
     # Enable EPEL on CentOS/RHEL
     if [ $FLAVOR == "centos" ]; then
         echo "Enabling EPEL repository..."
-        sudo yum install epel-release
+        ${SUDO} yum install -y epel-release
+        echo "Installing cmake3 from EPEL repository..."
+        ${SUDO} yum install -y cmake3
     elif [ $FLAVOR == "rhel" ]; then
         echo "Enabling EPEL repository..."
         rpm -q --quiet epel-release
         if [ $? != 0 ]; then
-	    sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	    sudo yum check-update
+	    ${SUDO} yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	    ${SUDO} yum check-update
         fi
     fi
 
@@ -193,13 +195,13 @@ install()
         sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
-        sudo yum --enablerepo=extras install centos-release-scl
+        ${SUDO} yum --enablerepo=extras install -y centos-release-scl
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
         echo "Installing RHEL/CentOS packages..."
-        sudo yum install -y "${RH_LIST[@]}"
-        sudo yum install devtoolset-6
+        ${SUDO} yum install -y "${RH_LIST[@]}"
+        ${SUDO} yum install -y devtoolset-6
     fi
 }
 
