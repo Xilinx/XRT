@@ -79,7 +79,7 @@ namespace xclhwemhal2 {
       mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreammonProperties, XSSPM_MAX_NUMBER_SLOTS);
+      mStreamMonSlotName, mStreamMonProperties, XSSPM_MAX_NUMBER_SLOTS);
     
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
