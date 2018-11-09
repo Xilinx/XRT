@@ -31,7 +31,9 @@ target_link_libraries(xrt_core
   rt
   )
 
-install (TARGETS xrt_core LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install(TARGETS xrt_core
+        LIBRARY
+        DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 # Vendor - AWS
 # Skip for arm
@@ -57,18 +59,21 @@ set_target_properties(xrt_aws PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 if(${INTERNAL_TESTING})
   target_link_libraries(xrt_aws
-    pthread
-    rt
+  pthread
+  rt
   )
 else()
   set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../sdk/userspace/lib)
   target_link_libraries(xrt_aws
-    pthread
-    rt
-    ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
-    )
+  pthread
+  rt
+  ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
+)
 endif()
 
-install (TARGETS xrt_aws LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install(TARGETS xrt_aws
+        LIBRARY
+        DESTINATION ${XRT_INSTALL_DIR}/lib
+        COMPONENT aws)
 
 endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
