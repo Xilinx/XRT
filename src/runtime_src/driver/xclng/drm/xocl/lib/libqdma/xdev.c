@@ -621,6 +621,20 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	/* enable bus master capability */
 	pci_set_master(pdev);
 
+	/* force MRRS to 512 */
+	rv = pcie_get_readrq(pdev);
+	if (rv < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rv);
+		goto disable_device;
+	}
+	if (rv > 512) {
+		rv = pcie_set_readrq(pdev, 512);
+		if (rv) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rv);
+			goto disable_device;
+		}
+	}
+
 	rv = pci_dma_mask_set(pdev);
 	if (rv)
 		goto disable_device;
