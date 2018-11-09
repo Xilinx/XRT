@@ -120,6 +120,14 @@ namespace xclhwemhal2 {
     return 0;
   }
 
+ uint32_t HwEmShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum)
+ {
+   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS) {
+     return  static_cast <uint32_t> (mStreamMonProperties[slotnum]);
+   }
+   return 0;
+ }
+
   // Get slot name
   void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
    		                            char* slotName, uint32_t length) {
@@ -129,6 +137,9 @@ namespace xclhwemhal2 {
     }
     if (type == XCL_PERF_MON_ACCEL) {
       str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+    }
+    if (type == XCL_PERF_MON_STR) {
+      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
     }
     strncpy(slotName, str.c_str(), length);
   }
@@ -325,7 +336,7 @@ namespace xclhwemhal2 {
     for(; counter < numSlots; counter++)
     {
       // Ignore host
-      if (counter == XPAR_SPM0_HOST_SLOT && !accel)
+      if (counter == XPAR_SPM0_HOST_SLOT && !accel && 3 != iptype)
         continue;
 
       unsigned int numberOfElementsAdded = 0;

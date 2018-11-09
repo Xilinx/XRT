@@ -129,6 +129,8 @@ namespace Profiling {
       if (rts->deviceOclProfilingOn()) {
         xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, true, true);
         rts->logFinalTrace(XCL_PERF_MON_ACCEL);
+        xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_STR, true, true);
+        rts->logFinalTrace(XCL_PERF_MON_STR);
       }
 
       rts->logFinalTrace(XCL_PERF_MON_MEMORY);

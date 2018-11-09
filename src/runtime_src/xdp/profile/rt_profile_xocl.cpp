@@ -428,14 +428,14 @@ get_ddr_bank_count(key k, const std::string& deviceName)
 bool 
 isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 {
-  return ((XCL::RTSingleton::Instance()->deviceTraceProfilingOn() && type == XCL_PERF_MON_MEMORY)
+  return ((XCL::RTSingleton::Instance()->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
           || (XCL::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
 }
 
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
-  return ((XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && type == XCL_PERF_MON_MEMORY)
+  return ((XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
   || (XCL::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
 }
 

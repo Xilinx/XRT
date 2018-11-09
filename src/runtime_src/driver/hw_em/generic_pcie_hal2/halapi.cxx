@@ -175,6 +175,14 @@ uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
   return drv->getPerfMonNumberSlots(type);
 }
 
+uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return 0;
+  return drv->getPerfMonProperties(type, slotnum);
+}
+
 void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
 		                     char* slotName, uint32_t length)
 {
