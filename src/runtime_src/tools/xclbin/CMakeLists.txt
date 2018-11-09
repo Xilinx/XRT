@@ -8,7 +8,6 @@ find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
-set(VERBOSE 1)
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINCAT_FILES
