@@ -5,6 +5,10 @@
 
 static int32_t xma_scaler_init(XmaScalerSession *sess)
 {
+    if(*(uint8_t*)sess->base.plugin_data != 0)
+    {
+        return XMA_ERROR;
+    }
     return 0;
 }
 
@@ -29,7 +33,7 @@ XmaScalerPlugin scaler_plugin = {
     .input_format = XMA_NONE_FMT_TYPE,
     .output_format = XMA_NONE_FMT_TYPE,
     .bits_per_pixel = 0,
-    .plugin_data_size = 0,
+    .plugin_data_size = 1,
     .init = xma_scaler_init,
     .send_frame = xma_scaler_send,
     .recv_frame_list = xma_scaler_recv,

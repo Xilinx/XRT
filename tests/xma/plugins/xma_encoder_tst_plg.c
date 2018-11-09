@@ -5,6 +5,10 @@
 
 static int32_t xma_encoder_init(XmaEncoderSession *sess)
 {
+    if(*(uint8_t*)sess->base.plugin_data != 0)
+    {
+        return XMA_ERROR;
+    }
     return 0;
 }
 
@@ -30,7 +34,7 @@ XmaEncoderPlugin encoder_plugin = {
     .format = XMA_NONE_FMT_TYPE,
     .bits_per_pixel = 0,
     .kernel_data_size = 0,
-    .plugin_data_size = 0,
+    .plugin_data_size = 1,
     .init = xma_encoder_init,
     .send_frame = xma_encoder_send,
     .recv_data = xma_encoder_recv,
