@@ -804,7 +804,7 @@ namespace XCL {
           }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
         }
         std::string kernelName;
         XCL::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
@@ -814,7 +814,18 @@ namespace XCL {
 
         if (showPortName) {
           rts->getProfileManager()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
-          traceName += ("|" + portName + "|" + memoryName);
+
+          // If port is tagged with memory resource, then use it
+          std::string portName2 = portName;
+          std::string memoryName2 = memoryName;
+          size_t index = portName.find_last_of(":");
+          if (index != std::string::npos) {
+            // Keep memory resource in port name for display purposes
+            //portName2 = portName.substr(0, index);
+            memoryName2 = portName.substr(index+1);
+          }
+
+          traceName += ("|" + portName2 + "|" + memoryName2);
         }
       }
 
