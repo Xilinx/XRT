@@ -82,6 +82,15 @@ done
 here=$PWD
 cd $BUILDDIR
 
+FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
+FLAVOR=`echo $FLAVOR | tr -d '"'`
+echo "Flavor: $FLAVOR"
+CMAKE_EXE=cmake
+if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
+    CMAKE_EXE=cmake3
+fi
+echo "CMake: $CMAKE_EXE"
+
 if [[ $clean == 1 ]]; then
     echo $PWD
     echo "/bin/rm -rf Release Debug"

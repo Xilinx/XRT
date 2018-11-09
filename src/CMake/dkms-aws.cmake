@@ -11,17 +11,17 @@ set(DKMS_PRERM "prerm-aws")
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/dkms-awsmgmt/${DKMS_FILE_NAME}.in"
-  "xrt-aws-prep/${DKMS_FILE_NAME}"
+  "dkms-awsmgmt/${DKMS_FILE_NAME}"
   )
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
-  "xrt-aws-prep/${DKMS_POSTINST}"
+  "${DKMS_POSTINST}"
   )
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
-  "xrt-aws-prep/${DKMS_PRERM}"
+  "${DKMS_PRERM}"
   )
 
 set(XRT_DKMS_SRCS_aws
@@ -51,9 +51,9 @@ set(XRT_DKMS_ABS_SRCS_aws)
 
 foreach(DKMS_FILE ${XRT_DKMS_SRCS_aws})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install(FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws}/${DKMS_DIR})
+  install(FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws}/${DKMS_DIR} COMPONENT aws)
   list(APPEND XRT_DKMS_ABS_SRCS_aws ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/xrt-aws-prep/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dkms-awsmgmt/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} COMPONENT aws)
 
