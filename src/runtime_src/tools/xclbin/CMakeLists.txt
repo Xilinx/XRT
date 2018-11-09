@@ -1,13 +1,14 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../driver/include
   )
-
+set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 
 # -----------------------------------------------------------------------------
 
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
+set(VERBOSE 1)
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINCAT_FILES
@@ -45,7 +46,7 @@ target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
 set_target_properties(xclbinsplit PROPERTIES LINK_SEARCH_END_STATIC 1)
-
+ 
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINUTIL_FILES
