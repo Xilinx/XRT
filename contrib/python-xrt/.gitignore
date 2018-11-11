@@ -1,6 +1,6 @@
 *.pyc
-
-# python-xrt project
+*.log
+*.xclbin
 .DS_Store
 build
 dist
