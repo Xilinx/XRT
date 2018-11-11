@@ -73,7 +73,18 @@ py::dict buffer_property(string device_name, unsigned buffer_handle) {
 void sync_buffer(string device_name, unsigned buffer_handle, string type, unsigned size, unsigned offset) {
 	xclBOSyncDirection direction = convert_sync_buffer_type(type);
 	int err = xclSyncBO(device_dict[device_name]->handle, buffer_handle, direction, size, offset);
+	std::cout << "err: " << err << std::endl;
+#if defined(SW_EMU)
 	if (err) {
 		throw runtime_error("Failed to sync buffer");
 	}
+#elif defined(HW_EMU)
+	if (err < 0) {
+		throw runtime_error("Failed to sync buffer");
+	}
+#else
+	if (err) {
+		throw runtime_error("Failed to sync buffer");
+	}
+#endif
 }

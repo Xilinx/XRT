@@ -68,7 +68,7 @@ void start_kernel(string device_name, unsigned buffer_handle, py::dict command)
     delete config;
 }
 
-#if !defined(SW_EMU) && !defined(HW_EMU)
+#if !defined(SW_EMU)
 
 void execute_wait(string device_name, int timeout)
 {

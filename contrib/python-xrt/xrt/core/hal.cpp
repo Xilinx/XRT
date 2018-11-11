@@ -64,7 +64,7 @@ BOOST_PYTHON_MODULE(
 	/* Kernel Management API */
 	py::def("configure_ert", configure_ert);
 	py::def("start_kernel", start_kernel);
-#if !defined(SW_EMU) && !defined(HW_EMU)
+#if !defined(SW_EMU)
 	py::def("execute_buffer", execute_buffer);
 	py::def("execute_wait", execute_wait);
 #endif

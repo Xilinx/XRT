@@ -12,7 +12,7 @@ class RuntimeEnv():
         if self.runtime_type == 'sw_emu':
             os.environ['XCL_EMULATION_MODE'] = 'sw_emu'
         if self.runtime_type == 'hw_emu':
-            os.environ['XCL_EMULATION_MODE'] = 'sw_emu'
+            os.environ['XCL_EMULATION_MODE'] = 'hw_emu'
         if self.runtime_type == 'hw':
             del os.environ['XCL_EMULATION_MODE']
     
@@ -23,6 +23,10 @@ class RuntimeEnv():
             os.environ['EMCONFIG_PATH'] = emu_config_path
         if self.runtime_type == 'hw':
             del os.environ['EMCONFIG_PATH']
+
+    def get_bitstream_path(self, app_id):
+        bitstream_path = os.path.join(self.root, 'bitstreams', app_id, self.runtime_type + '.xclbin')
+        return bitstream_path
 
     def setup(self):
         self.set_emulation_path()
