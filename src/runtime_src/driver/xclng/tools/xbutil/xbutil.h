@@ -66,6 +66,7 @@ enum command {
     BOOT,
     HELP,
     QUERY,
+    JSON,
     RESET,
     RUN,
     FAN,
@@ -100,6 +101,7 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("boot", BOOT),
     std::make_pair("help", HELP),
     std::make_pair("query", QUERY),
+    std::make_pair("json", JSON),
     std::make_pair("reset", RESET),
     std::make_pair("run", RUN),
     std::make_pair("fan", FAN),
@@ -685,13 +687,16 @@ public:
         lines.push_back(ss.str());
     }
 
+    /*
+     * rewrite this function to place stream info in gSensorTree, dump will format the info.
+     */
     void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
         std::vector<std::string> &lines) const
     {
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
-	std::vector<std::string> attrs;
+        std::vector<std::string> attrs;
 
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         ss << std::setfill(' ') << "\n";
@@ -858,17 +863,29 @@ public:
 
         return 0;
     }
-    
-    int dump2(std::ostream& ostr) const
+
+    /*
+     * dumpJson
+     */
+    int dumpJson(std::ostream& ostr) const
     {
         readSensors();
         writeTreeJson( ostr, gSensorTree );
-        
+        return 0;
+    }
+
+    /*
+     * dump
+     *
+     * TODO: Refactor to make function much shorter.
+     */
+    int dump(std::ostream& ostr) const {
+        readSensors();
         ostr << std::left;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "XRT\n   Version: " << gSensorTree.get( "runtime.build.version", "N/A" )
-                << "\n   Date:    " << gSensorTree.get( "runtime.build.hash_date", "N/A" )
-                << "\n   Hash:    " << gSensorTree.get( "runtime.build.hash", "N/A" ) << std::endl;
+             <<    "\n   Date:    " << gSensorTree.get( "runtime.build.hash_date", "N/A" )
+             <<    "\n   Hash:    " << gSensorTree.get( "runtime.build.hash", "N/A" ) << std::endl;
         ostr << "DSA name\n" << gSensorTree.get( "board.info.dsa_name", "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
         ostr << std::setw(16) << gSensorTree.get( "board.info.vendor", "N/A" )
@@ -977,11 +994,13 @@ public:
                 ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
             }
         }
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Stream Topology, TODO\n";
-        ostr << "#################################\n";
-        ostr << "XCLBIN ID:\n";
-        ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
+        /* TODO: Stream topology and xclbin id. */
+//        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+//        ostr << "Stream Topology, TODO\n";
+//        printStreamInfo(ostr);
+//        ostr << "#################################\n";
+//        ostr << "XCLBIN ID:\n";
+//        ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status:\n";
         BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
@@ -1007,69 +1026,6 @@ public:
         return 0;
     }
 
-    /*
-     * dump
-     *
-     * TODO: Refactor to make function much shorter.
-     */
-    int dump(std::ostream& ostr) const {
-        std::vector<std::string> lines, usage_lines;
-
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        
-        
-        m_devinfo_stringize(m_devinfo, lines);
- 
-        for(auto line : lines) {
-            ostr << line;
-        }
-        
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-
-#ifdef AXI_FIREWALL
-        unsigned i = m_errinfo.mFirewallLevel;
-        ostr << "\nFirewall Last Error Status:\n";
-        ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
-             << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
-             << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus);
-
-        if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
-            time_t temp;
-            char cbuf[80];
-            struct tm *ts;
-            temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
-            ts = localtime(&temp);
-            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
-            ostr << ".\n";
-            ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
-        }
-        else{
-            ostr << "\n";
-        }
-        ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        ostr << std::setfill(' ') << "\n";
-#endif // AXI Firewall
-        
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        
-        xclDeviceUsage devstat = { 0 };
-        (void) xclGetUsageInfo(m_handle, &devstat);
-
-        m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
-        for(auto line:usage_lines) {
-            ostr << line << "\n";
-        }
-        
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        
-        printStreamInfo(ostr);
-        
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        
-        printXclbinID(ostr);
-        return 0;
-    }
-
 
     /*
      * print stream topology
@@ -1077,38 +1033,6 @@ public:
     int printStreamInfo(std::ostream& ostr) const {
         std::vector<std::string> usage_lines;
         m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
-
-        for(auto line:usage_lines){
-            ostr << line << "\n";
-        }
-        return 0;
-    }
-
-    /*
-     * print Xclbin ID
-     */
-    int printXclbinID(std::ostream& ostr) const {
-        // report xclbinid
-        std::string errmsg;
-        std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
-
-        if(errmsg.empty()) {
-            ostr << std::setw(16) << "\nXclbin ID:" << "\n";
-            ostr << "0x" << std::setw(14) << xclbinid << "\n";
-        } else { // xclbinid exists, but no data read or reported
-            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. "
-                "Has the bitstream been loaded? See 'xbutil program'.\n";
-        }
-
-        ostr << "\nCompute Unit Status:\n";
-//        std::vector<ip_data> computeUnits;
-//        if( getComputeUnits( computeUnits ) < 0 ) {
-//            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-//        }
-        
-        ostr << std::setfill(' ') << "\n";
-
         return 0;
     }
 
