@@ -357,6 +357,32 @@ pcidev::pci_func::pci_func(const std::string& sysfs) : sysfs_name(sysfs)
     }
 }
 
+static bool find_mgmtpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
+    std::string err;
+    if(!dev->mgmt)
+        return false;
+    if(dev->mgmt->instance){
+        const std::string devName = "/dev/xclmgmt" + std::to_string(dev->mgmt->instance);
+        std::fstream fs = sysfs_open_path(devName, err, false, false);
+        if (fs.is_open())
+            return true;
+    }
+    return false;
+}
+
+static bool find_userpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
+    std::string err;
+    if(!dev->user)
+        return false;
+    if(dev->user->instance){
+        const std::string devName = "/dev/dri/renderD" + std::to_string(dev->user->instance);
+        std::fstream fs = sysfs_open_path(devName, err, false, false);
+        if (fs.is_open())
+            return true;
+    }
+    return false;
+}
+
 static int add_to_device_list(
     std::vector<std::unique_ptr<pcidev::pci_func>>& mgmt_devices,
     std::vector<std::unique_ptr<pcidev::pci_func>>& user_devices,
@@ -364,24 +390,31 @@ static int add_to_device_list(
 {
     int good_dev = 0;
     std::string errmsg;
-
+    bool userpf_devfs_good, mgmtpf_devfs_good; 
+    
     for (auto &mdev : mgmt_devices) {
         for (auto &udev : user_devices) {
             if (udev == nullptr)
                 continue;
-
             // Found the matching user pf.
             if( (mdev->domain == udev->domain) &&
                 (mdev->bus == udev->bus) && (mdev->dev == udev->dev) ) {
                 auto dev = std::unique_ptr<pcidev::pci_device>(
                     new pcidev::pci_device(mdev, udev));
-                // Board not ready goes to end of list, so they are not visible
-                // to applications. Only xbutil sees them.
-                if(!dev->is_ready) {
+                userpf_devfs_good = find_userpf_devfs(dev);
+                mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
+
+                if(userpf_devfs_good && mgmtpf_devfs_good){
+                    if(!dev->is_ready){
+                        devices.push_back(std::move(dev));
+                    }
+                    else{
+                        devices.insert(devices.begin(), std::move(dev));
+                        good_dev++;
+                    }
+                }
+                else if(!userpf_devfs_good && mgmtpf_devfs_good){
                     devices.push_back(std::move(dev));
-                } else {
-                    devices.insert(devices.begin(), std::move(dev));
-                    good_dev++;
                 }
                 break;
             }
@@ -390,10 +423,12 @@ static int add_to_device_list(
             std::unique_ptr<pcidev::pci_func> udev;
             auto dev = std::unique_ptr<pcidev::pci_device>(
                 new pcidev::pci_device(mdev, udev));
-            devices.push_back(std::move(dev));
+            mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
+            if(mgmtpf_devfs_good){
+                devices.push_back(std::move(dev));
+            }
         }
     }
-
     return good_dev;
 }
 

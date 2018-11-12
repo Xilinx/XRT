@@ -153,7 +153,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 
     // Allocate the private data
     filter_session->base.plugin_data =
-        malloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size);
+        calloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size, sizeof(uint8_t));
 
     XmaEndpoint *end_pt = malloc(sizeof(XmaEndpoint));
     end_pt->session = &filter_session->base;

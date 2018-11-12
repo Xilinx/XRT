@@ -46,6 +46,9 @@ typedef void * XmaResources;
 */
 typedef void * XmaKernelRes;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief create and init a decoder kernel request object
@@ -246,4 +249,10 @@ void xma_res_mark_xma_ready(XmaResources shm_cfg);
  * @returns true if init is already complete, false otherwise
 */
 bool xma_res_xma_init_completed(void);
+
+/** @} */
+#ifdef __cplusplus
+}
+#endif
+
 #endif
