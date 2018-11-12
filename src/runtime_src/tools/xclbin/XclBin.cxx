@@ -775,7 +775,10 @@ XclBin::addSection(ParameterSectionData &_PSD)
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
-  if (pSection->getSize() == 0) {
+  bool bAllowZeroSize = ((pSection->getSectionKind() == DEBUG_DATA)
+      && (_PSD.getFormatType() == Section::FT_RAW));
+
+  if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
     std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
