@@ -75,6 +75,10 @@ namespace xclhwemhal2 {
       cu_addr_map[i] = 0;
       cu_usage[i] = 0;
     }
+    
+    for (unsigned int i=0; i<MAX_U32_CU_MASKS; ++i)
+      cu_status[i] = 0;
+      
     ert = true;
     
     num_slot_masks = 1;
@@ -137,7 +141,9 @@ namespace xclhwemhal2 {
   
   unsigned int getFirstSetBitPos(int n) 
   { 
-    return log2(n & -n) + 1; 
+    if(!n)
+      return -1;
+    return log2(n & -n) ; 
   } 
 
   int MBScheduler::get_free_cu(struct xocl_cmd *xcmd)
@@ -349,7 +355,7 @@ namespace xclhwemhal2 {
         exec->cu_addr_map[i] = cfg->data[i];
       }
 
-      if (cfg->ert) 
+      if (cfg->ert && mParent->isMBSchedulerEnabled())
       {
         exec->ert=true;
         exec->polling_mode = 1; //cfg->polling;
@@ -357,7 +363,7 @@ namespace xclhwemhal2 {
       }
       else 
       {
-        //exec->ert=false;
+        exec->ert=false;
         exec->polling_mode = 1; //cfg->polling;
       }
       return 0;
