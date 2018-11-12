@@ -370,6 +370,9 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/*
+ * Should be called with xdev->ctx_list_lock held
+ */
 static uint live_client_size(struct xocl_dev *xdev)
 {
 	const struct list_head *ptr;
@@ -380,7 +383,6 @@ static uint live_client_size(struct xocl_dev *xdev)
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
-		//if (!bitmap_empty(entry->cu_bitmap, MAX_CUS))
 		count++;
 	}
 	return count;
