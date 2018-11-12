@@ -40,4 +40,6 @@ xclBOSyncDirection convert_sync_buffer_type(string type);
 
 xclAddressSpace convert_register_domain(string domain);
 
+bool is_64bit_arch(vector<unsigned long>& kernel_arguments);
+
 #endif

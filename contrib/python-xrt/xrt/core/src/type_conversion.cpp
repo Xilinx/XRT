@@ -330,3 +330,16 @@ xclAddressSpace convert_register_domain(string domain) {
 		throw runtime_error("Unknown register domain. Valid domains are: absolute, DDR, control, monitor, checker and max");
 	}
 }
+
+bool is_64bit_arch(vector<unsigned long>& kernel_args) {
+	unsigned num_args = kernel_args.size();
+	unsigned long threshold = 0xFFFFFFFF;
+	bool is_64bit = false;
+	for (unsigned arg_idx = 0; arg_idx < num_args; ++arg_idx) {
+		if (kernel_args[arg_idx] > threshold) {
+			is_64bit = true;
+			break;
+		}
+	}
+	return is_64bit;
+}

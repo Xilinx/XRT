@@ -41,7 +41,7 @@ void start_kernel(string device_name, unsigned buffer_handle, py::dict command)
         unsigned long arg_addr = py::extract<unsigned long>(command["argument_addr"][arg_idx]);
         arg_value_list.push_back(arg_addr);
     }
-
+    bool is_64bit = is_64bit_arch(arg_value_list);
     unsigned compute_unit_mask = py::extract<unsigned>(command["compute_unit_mask"]);
     Kernel_control_config *config = new Alevo_kernel_control_config();
     memset(start_command, 0, device_dict[device_name]->buffer_dict[buffer_handle].size);
@@ -50,7 +50,7 @@ void start_kernel(string device_name, unsigned buffer_handle, py::dict command)
     start_command->cu_mask = compute_unit_mask;
     unsigned long ap_control_addr = config->get_ap_control();
     unsigned long current_base_arg_addr = config->get_base_arg();
-    unsigned long arg_size = config->get_arg_size();
+    unsigned long arg_size = is_64bit ? config->get_64arch_arg_size() : config->get_32arch_arg_size();
     start_command->data[ap_control_addr] = 0x0;
     for (unsigned arg_idx = 0; arg_idx < num_args; ++arg_idx)
     {
@@ -59,12 +59,13 @@ void start_kernel(string device_name, unsigned buffer_handle, py::dict command)
         unsigned long arg_value_high = (full_addr >> 32) & 0xFFFFFFFF;
         cout << "Setting kernel argument address 0x" << hex << full_addr << " at 0x" << current_base_arg_addr << dec << endl;
         start_command->data[current_base_arg_addr / 4] = arg_value_low;
-        start_command->data[current_base_arg_addr / 4 + 1] = arg_value_high;
+        if (is_64bit) {
+            start_command->data[current_base_arg_addr / 4 + 1] = arg_value_high;
+        }
         current_base_arg_addr = current_base_arg_addr + arg_size;
     }
     unsigned payload_size = current_base_arg_addr / 4;
     start_command->count = payload_size;
-
     delete config;
 }
 
