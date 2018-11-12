@@ -3576,10 +3576,18 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	}
 
 	/* force MRRS to be 512 */
-	rv = pcie_set_readrq(pdev, 512);
-	if (rv)
-		pr_info("device %s, error set PCI_EXP_DEVCTL_READRQ: %d.\n",
-			dev_name(&pdev->dev), rv);
+	rv = pcie_get_readrq(pdev);
+	if (rv < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rv);
+		goto err_regions;
+	}
+	if (rv > 512) {
+		rv = pcie_set_readrq(pdev, 512);
+		if (rv) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rv);
+			goto err_regions;
+		}
+	}
 
 	/* enable bus master capability */
 	pci_set_master(pdev);

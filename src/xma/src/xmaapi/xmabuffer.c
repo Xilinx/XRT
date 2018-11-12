@@ -121,6 +121,9 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     buffer->data.is_clone = true;
     buffer->data.buffer = data;
     buffer->alloc_size = size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
 
     return buffer;
 }
@@ -137,6 +140,9 @@ xma_data_buffer_alloc(size_t size)
     buffer->data.is_clone = false;
     buffer->data.buffer = malloc(size);
     buffer->alloc_size = size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
 
     return buffer;
 }

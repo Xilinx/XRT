@@ -40,6 +40,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   xclemulation::DDRBank bank;
   bank.ddrSize = xclemulation::MEMSIZE_4G;
   DDRBankList.push_back(bank);
+  FeatureRomHeader fRomHeader;
+  std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
   xclcpuemhal2::CpuemShim *handle = NULL;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
@@ -49,7 +51,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   else
   {
-    handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false);
+    handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
@@ -329,22 +331,21 @@ unsigned xclProbe()
   }
 
   unsigned int deviceIndex = 0;
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool> > devicesInfo;
+  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool, FeatureRomHeader> > devicesInfo;
   getDevicesInfo(devicesInfo);
   
   if(devicesInfo.size() == 0)
     return 1;
   
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank>, bool, bool > >::iterator start = devicesInfo.begin();
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool > >::iterator end = devicesInfo.end();
-  for(;start != end; start++)
+  for(auto &it: devicesInfo)
   {
-    xclDeviceInfo2 info = std::get<0>(*start);
-    std::list<xclemulation::DDRBank> DDRBankList = std::get<1>(*start);
-    bool bUnified = std::get<2>(*start);
-    bool bXPR = std::get<3>(*start);
-
-    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR);
+    xclDeviceInfo2 info = std::get<0>(it);
+    std::list<xclemulation::DDRBank> DDRBankList = std::get<1>(it);
+    bool bUnified = std::get<2>(it);
+    bool bXPR = std::get<3>(it);
+    FeatureRomHeader fRomHeader = std::get<4>(it);
+    
+    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 
