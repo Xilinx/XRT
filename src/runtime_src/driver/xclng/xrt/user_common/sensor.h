@@ -7,7 +7,6 @@
 
 static boost::property_tree::ptree gSensorTree;
 
-int createEmptyTree( boost::property_tree::ptree & root );
-int writeTree( boost::property_tree::ptree &root );
+void writeTreeJson( std::ostream &ostr, boost::property_tree::ptree &tree );
 
 #endif // SENSOR_H

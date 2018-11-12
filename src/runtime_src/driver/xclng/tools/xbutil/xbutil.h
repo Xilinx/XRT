@@ -211,7 +211,7 @@ public:
         return 0;
     }
 
-    int parseComputeUnits(std::vector<ip_data> &computeUnits) const
+    int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             static int cuIndex = 0;
@@ -844,7 +844,7 @@ public:
 
         // xclbin
         std::string errmsg, xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "uid", errmsg, xclbinid);
         if(errmsg.empty()) {
             gSensorTree.put( "board.xclbin.id", xclbinid );
         }
@@ -861,9 +861,8 @@ public:
     
     int dump2(std::ostream& ostr) const
     {
-        createEmptyTree( gSensorTree );
         readSensors();
-        writeTree( gSensorTree );
+        writeTreeJson( ostr, gSensorTree );
         
         ostr << std::left;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -931,7 +930,6 @@ public:
         ostr << std::setw(16) << "Tag"  << std::setw(12) << "Type"
              << std::setw(12) << "Temp" << std::setw(8) << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
-        
 
         BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
             if( v.first == "mem" ) {
