@@ -78,6 +78,9 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
 
+# Default component name for any install() command without the COMPONENT argument
+set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
+
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 
@@ -134,8 +137,6 @@ add_subdirectory(xma)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
-set(CPACK_RPM_COMPONENT_INSTALL ON)
-set(CPACK_DEB_COMPONENT_INSTALL ON)
 include (CMake/cpack.cmake)
 
 include (CMake/lint.cmake)
