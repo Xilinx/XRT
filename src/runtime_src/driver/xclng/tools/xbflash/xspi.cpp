@@ -803,23 +803,29 @@ bool XSPI_Flasher::getFlashId()
             flashVendor = flashVendors[i];
 
     //Update max number of sector. Value of 0x18 is 1 128Mbit sector
+    //Note that macronix/micron use different #s
     if(ReadBuffer[3] == 0xFF)
         return false;
     else {
         switch(ReadBuffer[3]) {
+	case 0x38:
         case 0x17:
         case 0x18:
             MAX_NUM_SECTORS = 1;
             break;
+	case 0x39:
         case 0x19:
             MAX_NUM_SECTORS = 2;
             break;
+	case 0x3A:
         case 0x20:
             MAX_NUM_SECTORS = 4;
             break;
+	case 0x3B:
         case 0x21:
             MAX_NUM_SECTORS = 8;
             break;
+	case 0x3C:
         case 0x22:
             MAX_NUM_SECTORS = 16;
             break;

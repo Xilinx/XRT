@@ -152,7 +152,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
 
     // Allocate the private data
     enc_session->base.plugin_data =
-        malloc(g_xma_singleton->encodercfg[enc_handle].plugin_data_size);
+        calloc(g_xma_singleton->encodercfg[enc_handle].plugin_data_size, sizeof(uint8_t));
 
     // For the encoder, only a receiver connection make sense
     // because no HW component consumes an encoded frame at

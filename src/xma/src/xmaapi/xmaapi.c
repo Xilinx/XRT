@@ -25,7 +25,7 @@
 #include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 
-#define XMA_CFG_DEFAULT "/var/tmp/xma_cfg.yaml"
+#define XMA_CFG_DEFAULT "/var/tmp/xmacfg.yaml"
 #define XMAAPI_MOD "xmaapi"
 
 XmaSingleton *g_xma_singleton;
@@ -49,6 +49,13 @@ int32_t xma_initialize(char *cfgfile)
     if (ret != XMA_SUCCESS)
         return ret;
 
+    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
+               "Creating resource shared mem database\n");
+    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
+
+    if (!g_xma_singleton->shm_res_cfg)
+        return XMA_ERROR;
+
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
     if (ret != XMA_SUCCESS)
@@ -60,13 +67,6 @@ int32_t xma_initialize(char *cfgfile)
     if (!rc)
         return XMA_ERROR_INVALID;
 
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
-               "Creating resource shared mem database\n");
-    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
-
-    if (!g_xma_singleton->shm_res_cfg)
-        return XMA_ERROR;
- 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     rc = xma_hw_configure(&g_xma_singleton->hwcfg,
                           &g_xma_singleton->systemcfg,
