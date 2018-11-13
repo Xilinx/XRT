@@ -948,51 +948,62 @@ public:
              << std::setw(12) << "Temp" << std::setw(8) << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
 
-        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
-            if( v.first == "mem" ) {
-                int mem_index = -1;
-                int mem_used = -1;
-                std::string mem_tag = "N/A";
-                std::string mem_size = "N/A";
-                std::string mem_type = "N/A";
-                std::string val;
-                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
-                    val = subv.second.get_value<std::string>();
-                    if( subv.first == "index" ) 
-                        mem_index = subv.second.get_value<int>();
-                    else if( subv.first == "type" )
-                        mem_type = val;
-                    else if( subv.first == "tag" )
-                        mem_tag = val;
-                    else if( subv.first == "used" )
-                        mem_used = subv.second.get_value<int>();
-                    else if( subv.first == "size" )
-                        mem_size = val;
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
+                if( v.first == "mem" ) {
+                    int mem_index = -1;
+                    int mem_used = -1;
+                    std::string mem_tag = "N/A";
+                    std::string mem_size = "N/A";
+                    std::string mem_type = "N/A";
+                    std::string val;
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        val = subv.second.get_value<std::string>();
+                        if( subv.first == "index" ) 
+                            mem_index = subv.second.get_value<int>();
+                        else if( subv.first == "type" )
+                            mem_type = val;
+                        else if( subv.first == "tag" )
+                            mem_tag = val;
+                        else if( subv.first == "used" )
+                            mem_used = subv.second.get_value<int>();
+                        else if( subv.first == "size" )
+                            mem_size = val;
+                    }
+                    ostr << std::left
+                         << std::setw(2) << "[" << mem_index << "] "
+                         << std::left << std::setw(14) << mem_tag 
+                         << std::setw(12) << " " << mem_type << " " 
+                         << std::setw(12) << mem_size << " " 
+                         << std::setw(16) << mem_used << std::endl;
                 }
-                ostr << std::left
-                     << std::setw(2) << "[" << mem_index << "] "
-                     << std::left << std::setw(14) << mem_tag 
-                     << std::setw(12) << " " << mem_type << " " 
-                     << std::setw(12) << mem_size << " " 
-                     << std::setw(16) << mem_used << std::endl;
             }
         }
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
+        }
+        
         ostr << "Total DMA Transfer Metrics:" << std::endl;
-        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
-            if( v.first == "chan" ) {
-                std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
-                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
-                    chan_val = subv.second.get_value<std::string>();
-                    if( subv.first == "index" )
-                        chan_index = chan_val;
-                    else if( subv.first == "h2c" )
-                        chan_h2c = chan_val;
-                    else if( subv.first == "c2h" )
-                        chan_c2h = chan_val;
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
+                if( v.first == "chan" ) {
+                    std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        chan_val = subv.second.get_value<std::string>();
+                        if( subv.first == "index" )
+                            chan_index = chan_val;
+                        else if( subv.first == "h2c" )
+                            chan_h2c = chan_val;
+                        else if( subv.first == "c2h" )
+                            chan_c2h = chan_val;
+                    }
+                    ostr << "  Chan[" << chan_index << "].h2c:  " << chan_h2c << std::endl;
+                    ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
                 }
-                ostr << "  Chan[" << chan_index << "].h2c:  " << chan_h2c << std::endl;
-                ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
             }
+        }
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
         }
         /* TODO: Stream topology and xclbin id. */
 //        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1003,25 +1014,30 @@ public:
 //        ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status:\n";
-        BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
-            if( v.first == "cu" ) {
-                std::string val, cu_i, cu_n, cu_ba, cu_s = "N/A";
-                BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
-                    val = subv.second.get_value<std::string>();
-                    if( subv.first == "count" ) 
-                        cu_i = val;
-                    else if( subv.first == "name" )
-                        cu_n = val;
-                    else if( subv.first == "base_address" )
-                        cu_ba = val;
-                    else if( subv.first == "status" )
-                        cu_s = val;
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
+                if( v.first == "cu" ) {
+                    std::string val, cu_i, cu_n, cu_ba, cu_s = "N/A";
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        val = subv.second.get_value<std::string>();
+                        if( subv.first == "count" ) 
+                            cu_i = val;
+                        else if( subv.first == "name" )
+                            cu_n = val;
+                        else if( subv.first == "base_address" )
+                            cu_ba = val;
+                        else if( subv.first == "status" )
+                            cu_s = val;
+                    }
+                    ostr << std::setw(6) << "CU[" << cu_i << "]: "
+                         << std::setw(16) << cu_n 
+                         << std::setw(7) << "@0x" << std::hex << cu_ba << " " 
+                         << std::setw(10) << cu_s << std::endl;
                 }
-                ostr << std::setw(6) << "CU[" << cu_i << "]: "
-                     << std::setw(16) << cu_n 
-                     << std::setw(7) << "@0x" << std::hex << cu_ba << " " 
-                     << std::setw(10) << cu_s << std::endl;
             }
+        }
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
         }
         return 0;
     }
