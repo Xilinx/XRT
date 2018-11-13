@@ -40,6 +40,14 @@
 #define XMA_DBG_PRINTF(format, ...)
 #endif
 
+typedef struct XmaLoggerCbData
+{
+    XmaLoggerCallback callback;
+    XmaLogLevelType   level;
+} XmaLoggerCbData;
+
+XmaLoggerCbData *g_xma_loggercb_singleton;
+
 extern XmaSingleton *g_xma_singleton;
 
 typedef struct XmaLogLevel2Str
@@ -57,6 +65,17 @@ XmaLogLevel2Str g_loglevel_tbl[] = {
 
 /* Prototype for the logger actor thread */
 void* xma_logger_actor(void *data);
+
+void xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level)
+{
+    // Allocate singleton if it doesn't exist
+    if (g_xma_loggercb_singleton == NULL)
+        g_xma_loggercb_singleton = malloc(sizeof(XmaLoggerCbData));
+
+    g_xma_loggercb_singleton->callback = callback;
+    g_xma_loggercb_singleton->level = level;
+    
+}
 
 int xma_logger_init(XmaLogger *logger)
 {
@@ -127,13 +146,26 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     char            log_name[40];
     const char     *log_level;
     int32_t         hdr_offset;
+    bool            send2callback = false;
+    bool            send2actor = false;
+    char           *buffer;
 
     /* Get XMA logger */
     XmaLogger *logger = &g_xma_singleton->logger;
+    XmaLoggerCbData *cbdata = g_xma_loggercb_singleton;
 
     memset(msg_buff, 0, sizeof(msg_buff));
 
-    if ( level > logger->log_level)
+    if (cbdata)
+    {
+        if (level <= cbdata->level)
+            send2callback = true;
+    }
+
+    if (level <= logger->log_level)
+        send2actor = true;
+
+    if (!(send2callback || send2actor))
         return;
     
     /* Get time */
@@ -164,7 +196,15 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
 
     /* Send message buffer to logger Actor - 
        will be copied to loggers message buffer */
-    xma_actor_sendmsg(logger->actor, msg_buff, sizeof(msg_buff));
+    if (send2actor)
+        xma_actor_sendmsg(logger->actor, msg_buff, sizeof(msg_buff));
+
+    if (send2callback)
+    {
+        buffer = malloc(sizeof(msg_buff));
+        strcpy(buffer, msg_buff);
+        cbdata->callback(buffer);
+    }
 }
 
 void* xma_logger_actor(void *data)
