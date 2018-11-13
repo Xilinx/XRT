@@ -105,10 +105,11 @@ int main_(int argc, char** argv) {
   std::string sInputFile;
   std::string sOutputFile;
 
-  std::vector<std::string> sectionToReplace;
+  std::vector<std::string> sectionsToReplace;
   std::vector<std::string> sectionsToAdd;
   std::vector<std::string> sectionsToRemove;
   std::vector<std::string> sectionsToDump;
+  std::vector<std::string> sectionsToAppend;
 
   std::vector<std::string> keyValuePairs;
   std::vector<std::string> keysToRemove;
@@ -130,7 +131,7 @@ int main_(int argc, char** argv) {
       ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
       ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
       ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
-      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionToReplace)->multitoken(), "Section to replace. ")
+      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToReplace)->multitoken(), "Section to replace. ")
 
       ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
       ("remove-key", boost::program_options::value<std::vector<std::string> >(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
@@ -166,6 +167,7 @@ int main_(int argc, char** argv) {
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
+    ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -271,7 +273,12 @@ int main_(int argc, char** argv) {
       inputFiles.push_back(psd.getFile());
     }
 
-    for (auto section : sectionToReplace ) {
+    for (auto section : sectionsToReplace ) {
+      ParameterSectionData psd(section);
+      inputFiles.push_back(psd.getFile());
+    }
+
+    for (auto section : sectionsToAppend) {
       ParameterSectionData psd(section);
       inputFiles.push_back(psd.getFile());
     }
@@ -357,7 +364,7 @@ int main_(int argc, char** argv) {
     xclBin.removeSection(section);
   }
 
-  for (auto section : sectionToReplace) {
+  for (auto section : sectionsToReplace) {
     ParameterSectionData psd(section);
     xclBin.replaceSection( psd );
   }
@@ -369,6 +376,17 @@ int main_(int argc, char** argv) {
       xclBin.addSections(psd);
     } else {
       xclBin.addSection(psd);
+    }
+  }
+
+  for (auto section : sectionsToAppend) {
+    ParameterSectionData psd(section);
+    if (psd.getSectionName().empty() &&
+        psd.getFormatType() == Section::FT_JSON) {
+      xclBin.appendSections(psd);
+    } else {
+      std::string errMsg = "ERROR: Appending of sections only supported via wildcards and the JSON format (e.g. :JSON:appendfile.rtd).";
+      throw std::runtime_error(errMsg);
     }
   }
 

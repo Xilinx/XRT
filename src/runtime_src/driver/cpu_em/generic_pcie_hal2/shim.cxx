@@ -33,7 +33,7 @@ namespace xclcpuemhal2 {
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr) 
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader) 
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -42,6 +42,7 @@ namespace xclcpuemhal2 {
     ,mDeviceIndex(deviceIndex)
   {
     binaryCounter = 0;
+    mReqCounter = 0;
     sock = NULL;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
@@ -61,6 +62,9 @@ namespace xclcpuemhal2 {
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
+    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
+    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+    
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
@@ -533,20 +537,18 @@ namespace xclcpuemhal2 {
         fflush(fp);
         fclose(fp);
       }
-      //TODO populate flow/route id and instance arg map
-      //
       if(memTopology)
       {
         const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
         if(m_mem)
         {
           uint64_t argNum = 0;
-          uint64_t prev_route_id = ULLONG_MAX;
+          uint64_t prev_instanceBaseAddr = ULLONG_MAX;
           std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
           for (int32_t i=0; i<m_mem->m_count; ++i)
           {
-            uint64_t flow_id =m_mem->m_mem_data[i].flow_id; 
-            uint64_t route_id =m_mem->m_mem_data[i].route_id; 
+            uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo 
+            uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
             {
               std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
@@ -555,26 +557,26 @@ namespace xclcpuemhal2 {
               mPair.second = m_tag;
               argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
-            if(prev_route_id != ULLONG_MAX && route_id != prev_route_id)
+            if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
               bool success = false;
-              xclSetupInstance_RPC_CALL(xclSetupInstance, route_id, argFlowIdMap);
+              xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr , argFlowIdMap);
 
               if(mLogStream.is_open())
-                mLogStream << __func__ << " setup instance: route " << route_id <<" success "<< success << std::endl;
+                mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
               
               argFlowIdMap.clear();
               argNum = 0;
             }
-            prev_route_id = route_id;
+            argNum++;
+            prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
-          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_route_id, argFlowIdMap);
+          xclSetupInstance_RPC_CALL(xclSetupInstance, prev_instanceBaseAddr, argFlowIdMap);
 
           if(mLogStream.is_open())
-            mLogStream << __func__ << " setup instance: route " << prev_route_id <<" success "<< success << std::endl;
+            mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
         }
         delete []memTopology;
         memTopology = NULL;
@@ -822,6 +824,7 @@ namespace xclcpuemhal2 {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << skip << std::endl;
     }
+    dest = ((unsigned char*)dest) + skip;
 
     if(!sock)
     {
@@ -1327,12 +1330,12 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,0);
+    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset);
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,0);
+    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset);
   }
   PRINTENDFUNC;
   return returnVal;
@@ -1412,7 +1415,7 @@ int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
   std::lock_guard<std::mutex> lk(mApiMtx);
   if (mLogStream.is_open()) 
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  
+
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
   if(q_handle <= 0)
@@ -1486,6 +1489,22 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
+
+  bool eot = false;
+  if(wr->flag & XCL_QUEUE_REQ_EOT)
+    eot = true;
+  
+  bool nonBlocking = false;
+  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  {
+    std::map<uint64_t,uint64_t> vaLenMap;
+    for (unsigned i = 0; i < wr->buf_num; i++) 
+    {
+      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+    }
+    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
+    nonBlocking = true;
+  }
   uint64_t fullSize = 0;
   for (unsigned i = 0; i < wr->buf_num; i++) 
   {
@@ -1493,6 +1512,7 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     fullSize += written_size;
   }
   PRINTENDFUNC;
+  mReqCounter++;
   return fullSize;
 }
 
@@ -1505,22 +1525,88 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
+  
+  bool eot = false;
+  if(rd->flag & XCL_QUEUE_REQ_EOT)
+    eot = true;
+
+  bool nonBlocking = false;
+  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  {
+    nonBlocking = true;
+    std::map<uint64_t,uint64_t> vaLenMap;
+    for (unsigned i = 0; i < rd->buf_num; i++) 
+    {
+      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
+    }
+    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
+  }
+
   void *dest;
 
   uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++) {
+  for (unsigned i = 0; i < rd->buf_num; i++) 
+  {
     dest = (void *)rd->bufs[i].va;
     uint64_t read_size = 0;
-    while(read_size == 0)
+    do
     {
       xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    }
+    } while (read_size == 0 && !nonBlocking);
     fullSize += read_size;
   }
+  mReqCounter++;
   PRINTENDFUNC;
   return fullSize;
 
 }
+/*
+ * xclPollCompletion
+ */
+int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
+{
+  if (mLogStream.is_open()) 
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
+  }
+//  struct timespec time, *ptime = NULL;
+//
+//  if (timeout > 0) 
+//  {
+//    memset(&time, 0, sizeof(time));
+//    time.tv_sec = timeout / 1000;
+//    time.tv_nsec = (timeout % 1000) * 1000000;
+//    ptime = &time;
+//  }
+
+  *actual = 0;
+  while(*actual < min_compl)
+  {
+    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
+    while ( it != mReqList.end() )
+    {
+      unsigned numBytesProcessed = 0;
+      uint64_t reqCounter = std::get<0>(*it);
+      void* priv_data = std::get<1>(*it);
+      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
+      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
+      if(numBytesProcessed > 0)
+      {
+        comps[*actual].priv_data = priv_data;
+        comps[*actual].nbytes = numBytesProcessed;
+        (*actual)++;
+        mReqList.erase(it++);
+      }
+      else
+      {
+        it++;
+      }
+    }
+  }
+  PRINTENDFUNC;
+  return (*actual);
+}
+
 /*
  * xclAllocQDMABuf()
  */

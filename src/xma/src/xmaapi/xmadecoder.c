@@ -159,7 +159,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
 
     // Allocate the private data
     dec_session->base.plugin_data =
-        malloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size);
+        calloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
     if (dec_session->decoder_plugin->init(dec_session))

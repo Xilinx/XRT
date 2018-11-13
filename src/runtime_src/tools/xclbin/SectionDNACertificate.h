@@ -38,6 +38,12 @@ class SectionDNACertificate : public Section {
   SectionDNACertificate();
   virtual ~SectionDNACertificate();
 
+ public:
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
+ protected:
+  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
+
  private:
   // Purposefully private and undefined ctors...
   SectionDNACertificate(const SectionDNACertificate& obj);

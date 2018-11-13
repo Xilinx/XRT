@@ -219,6 +219,15 @@
 
 /************************ APM Trace Stream ************************************/
 
+/************************ Trace IDs ************************************/
+
+#define MIN_TRACE_ID_SPM        0
+#define MAX_TRACE_ID_SPM        61
+#define MIN_TRACE_ID_SAM        64
+#define MAX_TRACE_ID_SAM        544
+#define MIN_TRACE_ID_SSPM       576
+#define MAX_TRACE_ID_SSPM       607
+
 /* Bit locations of trace flags */
 #define XAPM_READ_LAST                   6
 #define XAPM_READ_FIRST                  5

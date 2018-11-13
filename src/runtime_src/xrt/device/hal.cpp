@@ -15,7 +15,6 @@
  */
 
 #include "hal.h"
-#include "xrt/util/memory.h"
 
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>

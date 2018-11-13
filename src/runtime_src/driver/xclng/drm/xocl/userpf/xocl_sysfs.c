@@ -19,15 +19,6 @@
 //Attributes followed by bin_attributes.
 //
 /* -Attributes -- */
-/* -xclbinid-- */
-static ssize_t xclbinid_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%llx\n", xdev->unique_id_last_bitstream);
-}
-
-static DEVICE_ATTR_RO(xclbinid);
 
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
@@ -62,11 +53,26 @@ static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf,
-		"context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
-		get_live_client_size(xdev),
-		atomic_read(&xdev->outstanding_execs),
-		atomic64_read(&xdev->total_execs));
+	int size = sprintf(buf,
+			   "xclbin:\t\t\t%pUl\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
+			   &xdev->xclbin_id,
+			   atomic_read(&xdev->outstanding_execs),
+			   atomic64_read(&xdev->total_execs),
+			   get_live_client_size(xdev));
+	buf += size;
+	if (xdev->layout == NULL)
+		return size;
+#if 0
+	// Enable in 2019.1
+	for (i = 0; i < xdev->layout->m_count; i++) {
+		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
+			continue;
+		size += sprintf(buf, "\t%s:\t%d\n", xdev->layout->m_ip_data[i].m_name,
+				xdev->ip_reference[i]);
+		buf += size;
+	}
+#endif
+	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
 
@@ -230,7 +236,6 @@ static struct bin_attribute mem_topology_attr = {
 };
 
 static struct attribute *xocl_attrs[] = {
-	&dev_attr_xclbinid.attr,
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,

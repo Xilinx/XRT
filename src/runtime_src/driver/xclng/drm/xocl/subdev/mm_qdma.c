@@ -202,8 +202,9 @@ static ssize_t error_show(struct device *dev, struct device_attribute *da,
 	int off;
 
 	xdev = xocl_get_xdev(pdev);
-	qdma_error_stat((unsigned long)xdev->dma_handle, false,
+	qdma_error_stat((unsigned long)xdev->dma_handle, true,
 		buf, &off);
+	qdma_arm_err_intr((unsigned long)xdev->dma_handle);
 
 	return off;
 }
@@ -353,8 +354,11 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 	u32	write, qidx;
 	char	ebuf[MM_EBUF_LEN + 1];
 	int	i, ret;
+	bool	reset = false;
 
 	mdev = platform_get_drvdata(pdev);
+	if (mdev->channel == count)
+		reset = true;
 	mdev->channel = count;
 
 	sema_init(&mdev->channel_sem[0], mdev->channel);
@@ -368,14 +372,16 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 	xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "Creating MM Queues, Channel %d", mdev->channel);
-	mdev->chans[0] = devm_kzalloc(&pdev->dev, sizeof (struct mm_channel) *
-		mdev->channel, GFP_KERNEL);
-	mdev->chans[1] = devm_kzalloc(&pdev->dev, sizeof (struct mm_channel) *
-		mdev->channel, GFP_KERNEL);
-	if (mdev->chans[0] == NULL || mdev->chans[1] == NULL) {
-		xocl_err(&pdev->dev, "Alloc channel mem failed");
-		ret = -ENOMEM;
-		goto failed_create_queue;
+	if (!reset) {
+		mdev->chans[0] = devm_kzalloc(&pdev->dev,
+			sizeof(struct mm_channel) * mdev->channel, GFP_KERNEL);
+		mdev->chans[1] = devm_kzalloc(&pdev->dev,
+			sizeof(struct mm_channel) * mdev->channel, GFP_KERNEL);
+		if (mdev->chans[0] == NULL || mdev->chans[1] == NULL) {
+			xocl_err(&pdev->dev, "Alloc channel mem failed");
+			ret = -ENOMEM;
+			goto failed_create_queue;
+		}
 	}
 
 	for (i = 0; i < mdev->channel * 2; i++) {
@@ -402,9 +408,11 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		if (ret) {
 			goto failed_create_queue;
 		}
-		ret = channel_sysfs_create(chan);
-		if (ret)
-			goto failed_create_queue;
+		if (!reset) {
+			ret = channel_sysfs_create(chan);
+			if (ret)
+				goto failed_create_queue;
+		}
 	}
 
 	xocl_info(&pdev->dev, "Created %d MM channels (Queues)", mdev->channel);

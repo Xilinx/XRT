@@ -567,6 +567,12 @@ public:
     return operations_result<void>();
   }
 
+  virtual operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    return operations_result<uint32_t>();
+  }
+
   virtual operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
   {

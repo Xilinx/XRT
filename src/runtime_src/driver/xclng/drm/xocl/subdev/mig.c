@@ -24,199 +24,123 @@
  * AXI4-Lite Slave Control/Status Register Map 
  */
 
-#define ECC_STATUS    0x0
-#define ECC_EN_IRQ    0x4
-#define ECC_ON_OFF    0x8
-#define CE_CNT        0xC
+#define MIG_DEBUG
+#define	MIG_DEV2MIG(dev)	\
+	((struct xocl_mig *)platform_get_drvdata(to_platform_device(dev)))
+#define	MIG_DEV2BASE(dev)	(MIG_DEV2MIG(dev)->base)
 
-#define FAULT_REG     0x300
-
-#define	MIG_MAX_NUM		4
-
-#define MIG_DEBUG      1
+#define ECC_STATUS	0x0
+#define ECC_ON_OFF	0x8
+#define CE_CNT		0xC
+#define CE_ADDR_LO	0x1C0
+#define CE_ADDR_HI	0x1C4
+#define UE_ADDR_LO	0x2C0
+#define UE_ADDR_HI	0x2C4
+#define INJ_FAULT_REG	0x300
 
 struct xocl_mig {
-	void __iomem		**base;
-	struct device		*mig_dev;
+	void __iomem	*base;
+	struct device	*mig_dev;
 };
 
-
-static int mig_get_prop(struct platform_device *pdev, struct xocl_mig	*mig, 
-	uint32_t bank, uint32_t *val)
-{
-
-	if(!mig){
-		xocl_err(&pdev->dev, "found no mig %d", bank);
-		return -EINVAL;
-	}
-
-	if(!mig->base[bank]){
-		xocl_err(&pdev->dev, "invalid bank %d", bank);
-		return -EINVAL;
-	}
-
-	*val = ioread32(mig->base[bank]+CE_CNT);
-
-	return 0;
-}
-
-static ssize_t ecc_cnt0_show(struct device *dev, struct device_attribute *da,
+static ssize_t ecc_ue_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t val, bank;
-
-	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
-		return -EINVAL;
-	}
-
-	if(mig_get_prop(pdev, mig, bank, &val))
-		val = 0xffffdead;
-
-	return sprintf(buf, "%x\n", val);
+	uint64_t val = ioread32(MIG_DEV2BASE(dev) + UE_ADDR_HI);
+	val <<= 32;
+	val |= ioread32(MIG_DEV2BASE(dev) + UE_ADDR_LO);
+	return sprintf(buf, "0x%llx\n", val);
 }
-static DEVICE_ATTR_RO(ecc_cnt0);
+static DEVICE_ATTR_RO(ecc_ue_ffa);
 
 
-static ssize_t ecc_cnt1_show(struct device *dev, struct device_attribute *da,
+static ssize_t ecc_ce_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t val, bank;
-
-	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
-		return -EINVAL;
-	}
-
-	if(mig_get_prop(pdev, mig, bank, &val))
-		val = 0xffffdead;
-
-	return sprintf(buf, "%x\n", val);
+	uint64_t val = ioread32(MIG_DEV2BASE(dev) + CE_ADDR_HI);
+	val <<= 32;
+	val |= ioread32(MIG_DEV2BASE(dev) + CE_ADDR_LO);
+	return sprintf(buf, "0x%llx\n", val);
 }
-static DEVICE_ATTR_RO(ecc_cnt1);
+static DEVICE_ATTR_RO(ecc_ce_ffa);
 
 
-static ssize_t ecc_cnt2_show(struct device *dev, struct device_attribute *da,
+static ssize_t ecc_ce_cnt_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t val, bank;
-
-	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
-		return -EINVAL;
-	}
-
-	if(mig_get_prop(pdev, mig, bank, &val))
-		val = 0xffffdead;
-
-	return sprintf(buf, "%x\n", val);
+	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + CE_CNT));
 }
-static DEVICE_ATTR_RO(ecc_cnt2);
+static DEVICE_ATTR_RO(ecc_ce_cnt);
 
 
-static ssize_t ecc_cnt3_show(struct device *dev, struct device_attribute *da,
+static ssize_t ecc_status_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t val, bank;
-
-	if(sscanf(da->attr.name, "ecc_cnt%d", &bank) !=1){
-		return -EINVAL;
-	}
-
-	if(mig_get_prop(pdev, mig, bank, &val))
-		val = 0xffffdead;
-
-	return sprintf(buf, "%x\n", val);
+	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + ECC_STATUS));
 }
-static DEVICE_ATTR_RO(ecc_cnt3);
+static DEVICE_ATTR_RO(ecc_status);
 
 
-static ssize_t cnt_reset_store(struct device *dev, struct device_attribute *da,
+static ssize_t ecc_reset_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t bank;
-
-	if (sscanf(buf, "%d", &bank) != 1 || (bank >= MIG_MAX_NUM)) {
-		xocl_err(&pdev->dev, "input should be: echo bank > cnt_reset");
-		return -EINVAL;
-	}
-
-	if(!mig->base[bank]){
-		xocl_err(&pdev->dev, "invalid bank %d", bank);
-		return -EINVAL;
-	}
-
-	iowrite32(0, mig->base[bank]+CE_CNT);
-
+	iowrite32(0x3, MIG_DEV2BASE(dev) + ECC_STATUS);
+	iowrite32(0, MIG_DEV2BASE(dev) + CE_CNT);
 	return count;
 }
-static DEVICE_ATTR_WO(cnt_reset);
+static DEVICE_ATTR_WO(ecc_reset);
 
 
-static ssize_t ecc_on_off_store(struct device *dev, struct device_attribute *da,
-	const char *buf, size_t count)
+static ssize_t ecc_enabled_show(struct device *dev, struct device_attribute *da,
+	char *buf)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t bank, val;
+	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + ECC_ON_OFF));
+}
+static ssize_t ecc_enabled_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	uint32_t val;
 
-	if (sscanf(buf, "%d %d", &bank, &val) != 2 || (bank >= MIG_MAX_NUM ) ||
-		val > 1) {
-		xocl_err(&pdev->dev, "input should be: echo bank val > ecc_on_off");
+	if (sscanf(buf, "%d", &val) != 1 || val > 1) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
 	}
 
-	if(!mig->base[bank]){
-		xocl_err(&pdev->dev, "invalid bank %d", bank);
-		return -EINVAL;
-	}
-
-	iowrite32(val, mig->base[bank]+ECC_ON_OFF);
-
+	iowrite32(val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
 	return count;
 }
-static DEVICE_ATTR_WO(ecc_on_off);
+static DEVICE_ATTR_RW(ecc_enabled);
 
 
 #ifdef MIG_DEBUG
 static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_mig	*mig = platform_get_drvdata(pdev);
-	uint32_t bank;
-
-	if (sscanf(buf, "%d", &bank) != 1 || (bank >= MIG_MAX_NUM)) {
-		xocl_err(&pdev->dev, "input should be: echo bank > ecc_inject");
-		return -EINVAL;
-	}
-
-	if(!mig->base[bank]){
-		xocl_err(&pdev->dev, "invalid bank %d", bank);
-		return -EINVAL;
-	}
-
-	iowrite32(1, mig->base[bank]+FAULT_REG);
-
+	iowrite32(1, MIG_DEV2BASE(dev) + INJ_FAULT_REG);
 	return count;
 }
 static DEVICE_ATTR_WO(ecc_inject);
 #endif 
 
+
+/* Standard sysfs entry for all dynamic subdevices. */
+static ssize_t name_show(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	return sprintf(buf, "%s\n", XOCL_GET_SUBDEV_PRIV(dev));
+}
+static DEVICE_ATTR_RO(name);
+
+
 static struct attribute *mig_attributes[] = {
-	&dev_attr_ecc_cnt0.attr,
-	&dev_attr_ecc_cnt1.attr,
-	&dev_attr_ecc_cnt2.attr,
-	&dev_attr_ecc_cnt3.attr,
-	&dev_attr_cnt_reset.attr,
-	&dev_attr_ecc_on_off.attr,
+	&dev_attr_name.attr,
+	&dev_attr_ecc_enabled.attr,
+	&dev_attr_ecc_status.attr,
+	&dev_attr_ecc_ce_cnt.attr,
+	&dev_attr_ecc_ce_ffa.attr,
+	&dev_attr_ecc_ue_ffa.attr,
+	&dev_attr_ecc_reset.attr,
 #ifdef MIG_DEBUG
 	&dev_attr_ecc_inject.attr,
 #endif
@@ -232,83 +156,65 @@ static void mgmt_sysfs_destroy_mig(struct platform_device *pdev)
 	struct xocl_mig *mig;
 
 	mig = platform_get_drvdata(pdev);
-
 	sysfs_remove_group(&pdev->dev.kobj, &mig_attrgroup);
-
 }
 
 static int mgmt_sysfs_create_mig(struct platform_device *pdev)
 {
 	struct xocl_mig *mig;
-	struct xocl_dev_core *core;
 	int err;
 
 	mig = platform_get_drvdata(pdev);
-	core = XDEV(xocl_get_xdev(pdev));
-
 	err = sysfs_create_group(&pdev->dev.kobj, &mig_attrgroup);
 	if (err) {
 		xocl_err(&pdev->dev, "create pw group failed: 0x%x", err);
-		goto create_grp_failed;
+		return err;
 	}
 
 	return 0;
-
-create_grp_failed:
-	return err;
 }
 
 static int mig_probe(struct platform_device *pdev)
 {
 	struct xocl_mig *mig;
 	struct resource *res;
-	int err, i;
+	int err;
 
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
 	if (!mig)
 		return -ENOMEM;
 	
-	mig->base = devm_kzalloc(&pdev->dev, MIG_MAX_NUM*sizeof(void __iomem *), GFP_KERNEL);
-	if (!mig->base)
-		return -ENOMEM;
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_err(&pdev->dev, "resource is NULL");
+		return -EINVAL;
+	}
 
-	for(i =0; i < MIG_MAX_NUM ;++i){
-		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res) {
-			xocl_err(&pdev->dev, "resource %d is NULL", i);
-			return 0;
-		}
-		xocl_info(&pdev->dev, "MIG IO start: 0x%llx, end: 0x%llx",
-			res->start, res->end);
+	xocl_info(&pdev->dev, "MIG name: %s, IO start: 0x%llx, end: 0x%llx",
+		XOCL_GET_SUBDEV_PRIV(&pdev->dev), res->start, res->end);
 
-		mig->base[i] = ioremap_nocache(res->start, res->end - res->start + 1);
-		if (!mig->base[i]) {
-			err = -EIO;
-			xocl_err(&pdev->dev, "Map iomem failed");
-			goto failed;
-		}
+	mig->base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!mig->base) {
+		xocl_err(&pdev->dev, "Map iomem failed");
+		return -EIO;
 	}
 
 	platform_set_drvdata(pdev, mig);
 
 	err = mgmt_sysfs_create_mig(pdev);
 	if (err) {
-		goto create_mig_failed;
+		platform_set_drvdata(pdev, NULL);
+		iounmap(mig->base);
+		return err;
 	}
 
 	return 0;
-
-create_mig_failed:
-	platform_set_drvdata(pdev, NULL);
-failed:
-	return err;
 }
 
 
 static int mig_remove(struct platform_device *pdev)
 {
 	struct xocl_mig	*mig;
-	int i;
 
 	mig = platform_get_drvdata(pdev);
 	if (!mig) {
@@ -316,17 +222,14 @@ static int mig_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_info(&pdev->dev, "MIG name: %s", XOCL_GET_SUBDEV_PRIV(&pdev->dev));
+
 	mgmt_sysfs_destroy_mig(pdev);
 
-	if (mig->base){
-		for(i =0; i < MIG_MAX_NUM ;++i){
-			if(mig->base[i])
-				iounmap(mig->base[i]);
-		}
-	}
+	if (mig->base)
+		iounmap(mig->base);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, mig->base);
 	devm_kfree(&pdev->dev, mig);
 
 	return 0;
