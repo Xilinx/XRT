@@ -76,7 +76,7 @@ static uint64_t getMemBankSize(xclDeviceHandle &handle,axlf_section_kind kind,ui
     uint64_t section_size;
     struct mem_data section_info;
     xclDeviceInfo2 info;
-    bool is_vcu1550;           
+    bool is_vcu1550;
     is_vcu1550 = std::memcmp(info.mName, "xilinx_vcu1550_dynamic_5_0", 26) ? false : true;
     if(is_vcu1550){
       return TEST_SIZE_VCU1550;
@@ -113,11 +113,11 @@ static uint64_t getMemBankSize(xclDeviceHandle &handle,axlf_section_kind kind,ui
 }
 static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem)
 {
-    unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1      
-    unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2    
+    unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
+    unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
-    memset(writeBuffer, 0, maxSize);           
-    std::list<uint64_t> deviceHandleList; 
+    memset(writeBuffer, 0, maxSize);
+    std::list<uint64_t> deviceHandleList;
     for(unsigned j = 0; j < maxSize/4; j++){
         writeBuffer[j] = std::rand();
         //readBuffer[j] = 0;
@@ -294,7 +294,7 @@ int main(int argc, char** argv)
     int option_index = 0;
     bool verbose = false;
     unsigned cu_index = 0;
-    
+
     int c;
     //findSharedLibrary(sharedLibrary);
     while ((c = getopt_long(argc, argv, "s:k:l:a:d:vh", long_options, &option_index)) != -1)
@@ -348,14 +348,15 @@ int main(int argc, char** argv)
         uint64_t cu_base_addr = 0;
         int first_mem = -1;
         //xclHALProxy proxy(sharedLibrary.c_str(), bitstreamFile.c_str(), index, halLogfile.c_str());
-        test_size =  getMemBankSize(handle, MEM_TOPOLOGY, 0);
         if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
             return 1;
         }
-        
+
+        test_size =  getMemBankSize(handle, MEM_TOPOLOGY, 0);
+
         if (first_mem < 0)
             return 1;
-      
+
         xclDeviceInfo2 info;
         if (xclGetDeviceInfo2(handle, &info)) {
         std::cout << "Device query failed\n" << "FAILED TEST\n";
@@ -363,7 +364,7 @@ int main(int argc, char** argv)
     }
 
         // Max size is 8 MB
-        if (transferSizeTest1(handle, alignment, test_size, first_mem)  || transferSizeTest2(handle, alignment, 0x400, first_mem)) { 
+        if (transferSizeTest1(handle, alignment, test_size, first_mem)  || transferSizeTest2(handle, alignment, 0x400, first_mem)) {
             std::cout << "transferSizeTest1 or transferSizeTest2\n";
             std::cout << "FAILED TEST\n";
             return 1;
@@ -372,7 +373,7 @@ int main(int argc, char** argv)
         // Try to fill half the DDR (8 GB); filling all 16 GB puts enormous
         // memory pressure due to backing pages on host RAM
        //printf("val = 0x%llx\n", info.mDDRSize/4);
- 
+
         if (bufferSizeTest(handle, info.mDDRSize / 4)) { //2
             std::cout << "FAILED TEST\n";
             return 1;
