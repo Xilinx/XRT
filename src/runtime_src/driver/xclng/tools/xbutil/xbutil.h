@@ -23,6 +23,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <string>
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xcl_axi_checker_codes.h"
@@ -30,8 +31,10 @@
 #include "../user_common/memaccess.h"
 #include "../user_common/dd.h"
 #include "../user_common/utils.h"
+#include "../user_common/sensor.h"
 #include "scan.h"
 #include "driver/include/xclbin.h"
+#include <version.h>
 
 #include <chrono>
 typedef std::chrono::high_resolution_clock Clock;
@@ -55,6 +58,7 @@ typedef std::chrono::high_resolution_clock Clock;
  */
 
 namespace xcldev {
+
 enum command {
     FLASH,
     PROGRAM,
@@ -62,6 +66,7 @@ enum command {
     BOOT,
     HELP,
     QUERY,
+    JSON,
     RESET,
     RUN,
     FAN,
@@ -99,6 +104,7 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("boot", BOOT),
     std::make_pair("help", HELP),
     std::make_pair("query", QUERY),
+    std::make_pair("json", JSON),
     std::make_pair("reset", RESET),
     std::make_pair("run", RUN),
     std::make_pair("fan", FAN),
@@ -214,6 +220,24 @@ public:
         return 0;
     }
 
+    int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
+    {
+        sensorTree &tree = sensorTree::Instance();
+        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
+            static int cuIndex = 0;
+            boost::property_tree::ptree ptCu;
+            unsigned statusBuf;
+            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+            ptCu.put( "count",        cuIndex );
+            ptCu.put( "name",         computeUnits.at( i ).m_name );
+            ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
+            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            tree.add_child( "board.compute_unit.cu", ptCu );
+            cuIndex++;
+        }
+        return 0;
+    }
+
     void m_devinfo_stringize_statics(const xclDeviceInfo2& m_devinfo,
         std::vector<std::string> &lines) const
     {
@@ -222,27 +246,34 @@ public:
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
 
+        sensorTree &tree = sensorTree::Instance();
         ss << std::left;
+        ss << std::setw(16) << "DSA name" <<"\n";
+        ss << std::setw(16) << tree.get( "board.dsa_name" ) << "\n\n";
         ss << std::setw(8) << m_devinfo.mName;
         ss << " [" << fpga << '(' << idcode << ")]\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
 
-        ss << std::setw(16) << std::hex << m_devinfo.mVendorId << std::dec;
-        ss << std::setw(16) << std::hex << m_devinfo.mDeviceId << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.vendor" ) << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.device" ) << std::dec;
 
         ssdevice << std::setw(4) << std::setfill('0') << std::hex << m_devinfo.mSubsystemId;
         ss << std::setw(16) << ssdevice.str();
-        ss << std::setw(16) << std::hex << m_devinfo.mSubsystemVendorId << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.subdevice" ) << std::dec;
+        
+        // ptree needs help here
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
 
+        // ptree needs help PB instead of GB
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
         ss << std::setw(16) << "Kernel Freq";
 
-        subss << std::left << std::setw(16) << unitConvert(m_devinfo.mDDRSize);
-        subss << std::setw(16) << m_devinfo.mDDRBankCount << std::setw(16) << " ";
+        subss << std::left << std::setw(16) << unitConvert( std::stoi( tree.get( "board.ddr_size" ) ) );
+        subss << std::setw(16) << tree.get( "board.ddr_count" ) << std::setw(16) << " ";
 
+        // ptree needs help here
         for(unsigned i= 0; i < m_devinfo.mNumClocks; ++i) {
             ss << "Clock" << std::setw(11) << i ;
             subss << m_devinfo.mOCLFrequency[i] << std::setw(13) << " MHz";
@@ -252,9 +283,9 @@ public:
         ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA chan(bidir)";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
-        ss << "GEN " << m_devinfo.mPCIeLinkSpeed << "x" << std::setw(10) << m_devinfo.mPCIeLinkWidth;
-        ss << std::setw(32) << m_devinfo.mDMAThreads;
-        ss << std::setw(16) << std::boolalpha << m_devinfo.mMigCalib << std::noboolalpha << "\n";
+        ss << "GEN " << tree.get( "board.pcie_speed" ) << "x" << std::setw(10) << tree.get( "board.pcie_width" );
+        ss << std::setw(32) << tree.get( "board.dma_threads" );
+        ss << std::setw(16) << std::boolalpha << tree.get( "board.mig_calibrated", "false" ) << std::noboolalpha << "\n";
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
    }
@@ -292,19 +323,27 @@ public:
         std::string dna_info;
 
         ss << std::left << "\n";
-        unsigned i;
+        sensorTree &tree = sensorTree::Instance();
+        ss << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << "\n";
+        unsigned short val = std::stoi(tree.get( "power.pcb_top_front" ) );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";
+        
+        val = std::stoi( tree.get( "power.pcb_top_rear" ) );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";
+        
+        val = std::stoi( tree.get( "power.pcb_btm_front" ) );
+        if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
+            subss << std::setw(16) << "Not support";
+        else
+            subss << std::setw(16) << std::to_string( val )+" C";
 
-        const char *se98[4] = {"PCB TOP FRONT", "PCB TOP REAR", "PCB BTM FRONT"};
-
-        for(i= 0; i < 3; ++i){
-            ss << std::setw(16) << se98[i];
-            if((unsigned short)m_devinfo.mSE98Temp[i] == (XCL_NO_SENSOR_DEV & (0xffff)))
-                subss << std::setw(16) << "Not support";
-            else if (m_devinfo.mSE98Temp[i] == XCL_INVALID_SENSOR_VAL)
-                subss << std::setw(16) << "Not support";
-            else
-                subss << std::setw(16) << std::to_string(m_devinfo.mSE98Temp[i]).substr(0,3)+" C";
-        }
+        
         ss << "\n" << subss.str() << "\n\n";
 
         ss << std::setw(16) << "FPGA Temp" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "Fan Speed" << "\n";
@@ -556,6 +595,27 @@ public:
 
         lines.push_back(ss.str());
     }
+    
+    void getMemTopology( void ) const
+    {
+        std::string errmsg;
+        std::vector<char> buf;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        const mem_topology *map = (mem_topology *)buf.data();
+        if(buf.empty())
+            return;
+        
+        sensorTree &tree = sensorTree::Instance();
+        for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
+            boost::property_tree::ptree ptMem;
+            ptMem.put( "index", i );
+            ptMem.put( "type",  map->m_mem_data[i].m_type );
+            ptMem.put( "tag",   map->m_mem_data[i].m_tag );
+            ptMem.put( "used",  map->m_mem_data[i].m_used );
+            ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
+            tree.add_child( "board.memory.mem", ptMem );
+        }
+    }
 
     void m_mem_usage_stringize_dynamics(xclDeviceUsage &devstat,
         const xclDeviceInfo2& m_devinfo, std::vector<std::string> &lines) const
@@ -655,6 +715,9 @@ public:
         lines.push_back(ss.str());
     }
 
+    /*
+     * rewrite this function to place stream info in tree, dump will format the info.
+     */
     void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
         std::vector<std::string> &lines) const
     {
@@ -764,6 +827,101 @@ public:
 
         lines.push_back(ss.str());
     }
+    
+    int readSensors( void ) const
+    {
+        sensorTree &tree = sensorTree::Instance();
+        tree.put( "runtime.build.version",   xrt_build_version );
+        tree.put( "runtime.build.hash",      xrt_build_version_hash );
+        tree.put( "runtime.build.hash_date", xrt_build_version_hash_date );
+        tree.put( "runtime.build.branch",    xrt_build_version_branch );
+        // info
+        tree.put( "board.info.dsa_name", m_devinfo.mName );
+        tree.put( "board.info.vendor", m_devinfo.mVendorId );
+        tree.put( "board.info.device", m_devinfo.mDeviceId );
+        tree.put( "board.info.subdevice", m_devinfo.mSubsystemId );
+        tree.put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
+        tree.put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        tree.put( "board.info.ddr_size", m_devinfo.mDDRSize );
+        tree.put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
+        tree.put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
+        tree.put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
+        tree.put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
+        tree.put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
+        tree.put( "board.info.dma_threads", m_devinfo.mDMAThreads );
+        tree.put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
+        //tree.put( "board.info.dna", 
+        
+        // physical
+        tree.put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] ); 
+        tree.put( "board.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
+        tree.put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
+        tree.put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
+        tree.put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp ); 
+        tree.put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        tree.put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
+        tree.put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
+        tree.put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
+        tree.put( "board.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
+        tree.put( "board.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
+        tree.put( "board.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
+        tree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
+        tree.put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
+        tree.put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
+        tree.put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        tree.put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
+        tree.put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
+        tree.put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
+        tree.put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
+        tree.put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
+        tree.put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        tree.put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
+        
+        // firewall
+        unsigned i = m_errinfo.mFirewallLevel;
+        tree.put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
+        tree.put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
+        
+        // memory
+        getMemTopology();
+        xclDeviceUsage devstat = { 0 };
+        (void) xclGetUsageInfo(m_handle, &devstat);
+        for (unsigned i = 0; i < 2; i++) {
+            boost::property_tree::ptree pt_dma;
+            pt_dma.put( "index", i );
+            pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
+            pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
+            tree.add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
+        }
+        // stream
+
+        // xclbin
+        std::string errmsg, xclbinid;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "uid", errmsg, xclbinid);
+        if(errmsg.empty()) {
+            tree.put( "board.xclbin.id", xclbinid );
+        }
+
+        // compute unit
+        std::vector<ip_data> computeUnits;
+        if( getComputeUnits( computeUnits ) < 0 ) {
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+        }
+        parseComputeUnits( computeUnits );
+
+        return 0;
+    }
+
+    /*
+     * dumpJson
+     */
+    int dumpJson(std::ostream& ostr) const
+    {
+        readSensors();
+        sensorTree &tree = sensorTree::Instance();
+        tree.jsonDump( ostr );
+        return 0;
+    }
 
     /*
      * dump
@@ -771,117 +929,176 @@ public:
      * TODO: Refactor to make function much shorter.
      */
     int dump(std::ostream& ostr) const {
-        std::vector<std::string> lines, usage_lines;
+        readSensors();
+        sensorTree &tree = sensorTree::Instance();
+        ostr << std::left;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "XRT\n   Version: " << tree.get( "runtime.build.version", "N/A" )
+             <<    "\n   Date:    " << tree.get( "runtime.build.hash_date", "N/A" )
+             <<    "\n   Hash:    " << tree.get( "runtime.build.hash", "N/A" ) << std::endl;
+        ostr << "DSA name\n" << tree.get( "board.info.dsa_name", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.info.vendor", "N/A" )
+             << std::setw(16) << tree.get( "board.info.device", "N/A" )
+             << std::setw(16) << tree.get( "board.info.subdevice", "N/A" )
+             << std::setw(16) << tree.get( "board.info.subvendor", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.info.ddr_size", "N/A" )
+             << std::setw(16) << tree.get( "board.info.ddr_count", "N/A" )
+             << std::setw(16) << tree.get( "board.info.ocl_freq", "N/A" )
+             << std::setw(16) << tree.get( "board.info.clock0", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "PCIe" 
+             << std::setw(16) << "DMA bi-directional threads" 
+             << std::setw(16) << "MIG Calibrated" << std::endl;
+        ostr << "GEN " << tree.get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << tree.get( "board.info.pcie_width", "N/A" )
+             << std::setw(32) << tree.get( "board.info.dma_threads", "N/A" )
+             << std::setw(16) << tree.get( "board.info.mig_calibrated", "N/A" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Temperature (C):\n";
+        ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.thermal.pcb.top_front", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.pcb.top_rear", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.pcb.btm_front", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed (RPM)" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.thermal.fpga_temp", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.tcrit_temp", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.fan_speed_rpm", "N/A" ) << std::endl;
+        ostr << "Electrical (mV), (mA):\n";
+        ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.12v_pex.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_aux.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_pex.current", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_aux.current", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.3v3_pex.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.3v3_aux.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.ddr_vpp_bottom.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.ddr_vpp_top.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.sys_v5v.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.1v2_top.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.1v8_top.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.0v85.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.mgt_0v9.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_sw.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.mgt_vtt.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.vccint.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.vccint.current", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Firewall Last Error Status:\n";
+        ostr << " Level " << std::setw(2) << tree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
+             << tree.get( "board.error.firewall.status", "N/A" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << std::left << std::setw(48) << "Mem Topology"
+             << std::setw(32) << "Device Memory Usage" << std::endl;
+        ostr << std::setw(16) << "Tag"  << std::setw(12) << "Type"
+             << std::setw(12) << "Temp" << std::setw(8) << "Size";
+        ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
 
-        m_devinfo_stringize(m_devinfo, lines);
-
-        for(auto line : lines) {
-            ostr << line;
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.memory" ) ) {
+                if( v.first == "mem" ) {
+                    int mem_index = -1;
+                    int mem_used = -1;
+                    std::string mem_tag = "N/A";
+                    std::string mem_size = "N/A";
+                    std::string mem_type = "N/A";
+                    std::string val;
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        val = subv.second.get_value<std::string>();
+                        if( subv.first == "index" ) 
+                            mem_index = subv.second.get_value<int>();
+                        else if( subv.first == "type" )
+                            mem_type = val;
+                        else if( subv.first == "tag" )
+                            mem_tag = val;
+                        else if( subv.first == "used" )
+                            mem_used = subv.second.get_value<int>();
+                        else if( subv.first == "size" )
+                            mem_size = val;
+                    }
+                    ostr << std::left
+                         << std::setw(2) << "[" << mem_index << "] "
+                         << std::left << std::setw(14) << mem_tag 
+                         << std::setw(12) << " " << mem_type << " " 
+                         << std::setw(12) << mem_size << " " 
+                         << std::setw(16) << mem_used << std::endl;
+                }
+            }
         }
-
-#ifdef AXI_FIREWALL
-        unsigned i = m_errinfo.mFirewallLevel;
-        ostr << "\nFirewall Last Error Status:\n";
-        ostr << " Level " << std::setw(2) << i << ": 0x" << std::hex
-             << m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus << std::dec << " "
-             << parseFirewallStatus(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus);
-
-        if(m_errinfo.mAXIErrorStatus[i].mErrFirewallStatus != 0x0) {
-            time_t temp;
-            char cbuf[80];
-            struct tm *ts;
-            temp = (time_t)m_errinfo.mAXIErrorStatus[i].mErrFirewallTime;
-            ts = localtime(&temp);
-            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z",ts);
-            ostr << ".\n";
-            ostr << std::right << std::setw(11) << " " << "Error occurred on " << std::left << cbuf << "\n";
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
         }
-        else{
-            ostr << "\n";
+        
+        ostr << "Total DMA Transfer Metrics:" << std::endl;
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
+                if( v.first == "chan" ) {
+                    std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        chan_val = subv.second.get_value<std::string>();
+                        if( subv.first == "index" )
+                            chan_index = chan_val;
+                        else if( subv.first == "h2c" )
+                            chan_h2c = chan_val;
+                        else if( subv.first == "c2h" )
+                            chan_c2h = chan_val;
+                    }
+                    ostr << "  Chan[" << chan_index << "].h2c:  " << chan_h2c << std::endl;
+                    ostr << "  Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
+                }
+            }
         }
-        ostr << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
-        ostr << std::setfill(' ') << "\n";
-#endif // AXI Firewall
-        xclDeviceUsage devstat = { 0 };
-        (void) xclGetUsageInfo(m_handle, &devstat);
-
-        m_mem_usage_stringize_dynamics(devstat, m_devinfo, usage_lines);
-        for(auto line:usage_lines) {
-            ostr << line << "\n";
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
         }
-        printStreamInfo(ostr);
-        printXclbinID(ostr);
+        /* TODO: Stream topology and xclbin id. */
+//        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+//        ostr << "Stream Topology, TODO\n";
+//        printStreamInfo(ostr);
+//        ostr << "#################################\n";
+//        ostr << "XCLBIN ID:\n";
+//        ostr << tree.get( "board.xclbin.uid", "0" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Compute Unit Status:\n";
+        try {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.compute_unit" ) ) {
+                if( v.first == "cu" ) {
+                    std::string val, cu_i, cu_n, cu_ba, cu_s = "N/A";
+                    BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
+                        val = subv.second.get_value<std::string>();
+                        if( subv.first == "count" ) 
+                            cu_i = val;
+                        else if( subv.first == "name" )
+                            cu_n = val;
+                        else if( subv.first == "base_address" )
+                            cu_ba = val;
+                        else if( subv.first == "status" )
+                            cu_s = val;
+                    }
+                    ostr << std::setw(6) << "CU[" << cu_i << "]: "
+                         << std::setw(16) << cu_n 
+                         << std::setw(7) << "@0x" << std::hex << cu_ba << " " 
+                         << std::setw(10) << cu_s << std::endl;
+                }
+            }
+        }
+        catch( std::exception const& e) {
+            // eat the exception, probably bad path
+        }
         return 0;
     }
-  
+
+
     /*
      * print stream topology
      */
     int printStreamInfo(std::ostream& ostr) const {
         std::vector<std::string> usage_lines;
         m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
-
-        for(auto line:usage_lines){
-            ostr << line << "\n";
-        }
-        return 0;
-    }
-
-    /*
-     * print Xclbin ID
-     */
-    int printXclbinID(std::ostream& ostr) const {
-        // report xclbinid
-        std::string errmsg;
-        std::string xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
-
-
-        if(errmsg.empty()) {
-            ostr << std::setw(16) << "\nXclbin ID:" << "\n";
-            ostr << "0x" << std::setw(14) << xclbinid << "\n";
-        } else { // xclbinid exists, but no data read or reported
-            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. "
-                "Has the bitstream been loaded? See 'xbutil program'.\n";
-        }
-
-        ostr << "\nCompute Unit Status:\n";
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 ) {
-            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-        } else {
-            for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-                static int cuCnt = 0;
-                if( computeUnits.at( i ).m_type == IP_KERNEL ) {
-                    unsigned statusBuf;
-                    xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-                    ostr << "CU[" << cuCnt << "]: "
-                         << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
-                         << std::dec << parseCUStatus( statusBuf ) << "\n";
-                    cuCnt++;
-                }
-
-                if( computeUnits.at( i ).m_type == IP_DNASC ) {
-
-                    std::string errmsg;
-                    int dnaStatus;
-                    auto dev = pcidev::get_dev(m_idx);
-
-                    dev->mgmt->sysfs_get("dna", "status", errmsg, dnaStatus);
-                    ostr << "\nIP[" << cuCnt << "]: "
-                         << computeUnits.at( i ).m_name
-                         << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "
-                         << std::dec << parseDNAStatus(dnaStatus) << "\n";
-                    cuCnt++;
-                }
-            }
-            if(computeUnits.size() == 0) {
-                ostr << std::setw(40) << "-- none found --. See 'xbutil program'.";
-            }
-        }
-        ostr << std::setfill(' ') << "\n";
-
         return 0;
     }
 
