@@ -1,29 +1,38 @@
+/**
+ * Copyright (C) 2017-2018 Xilinx, Inc
+ * Author: Ryan Radjabi
+ * An argument parser to prepare for the 'dd' function in xbsak. This
+ * parser is designed after the Unix 'dd' command.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 #include "sensor.h"
+#include <boost/property_tree/json_parser.hpp>
 
-sensorTree::sensorTree()
+namespace sensor_tree {
+
+// Singleton
+boost::property_tree::ptree&
+instance()
 {
+  static boost::property_tree::ptree s_ptree;
+  return s_ptree;
 }
 
-sensorTree::~sensorTree()
+void
+json_dump(std::ostream &ostr)
 {
+  boost::property_tree::json_parser::write_json( ostr, instance() );
 }
 
-void sensorTree::jsonDump(std::ostream &ostr)
-{
-    boost::property_tree::json_parser::write_json( ostr, tree );
-}
-
-std::string sensorTree::get(const std::string &path, std::string defaultVal)
-{
-    return std::string( tree.get( path, defaultVal ) );
-}
-
-boost::property_tree::ptree sensorTree::get_child(const std::string &path)
-{
-    return tree.get_child( path );
-}
-
-void sensorTree::add_child(const std::string &path, boost::property_tree::ptree &pt)
-{
-    tree.add_child( path, pt );
-}
+} // namespace sensor_tree
