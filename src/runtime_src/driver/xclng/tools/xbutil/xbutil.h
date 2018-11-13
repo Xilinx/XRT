@@ -215,6 +215,7 @@ public:
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
+        sensorTree &tree = sensorTree::Instance();
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             static int cuIndex = 0;
             boost::property_tree::ptree ptCu;
@@ -224,7 +225,7 @@ public:
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
             ptCu.put( "status",       parseCUStatus( statusBuf ) );
-            gSensorTree.add_child( "board.compute_unit.cu", ptCu );
+            tree.add_child( "board.compute_unit.cu", ptCu );
             cuIndex++;
         }
         return 0;
@@ -235,19 +236,20 @@ public:
     {
         std::stringstream ss, subss, ssdevice;
 
+        sensorTree &tree = sensorTree::Instance();
         ss << std::left;
         ss << std::setw(16) << "DSA name" <<"\n";
-        ss << std::setw(16) << gSensorTree.get<std::string>( "board.dsa_name", "N/A" ) << "\n\n";
+        ss << std::setw(16) << tree.get( "board.dsa_name" ) << "\n\n";
         ss << std::setw(16) << "Vendor" << std::setw(16) << "Device";
         ss << std::setw(16) << "SubDevice" <<  std::setw(16) << "SubVendor";
         ss << std::setw(16) << "XMC fw version" << "\n";
 
-        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.vendor", -1 ) << std::dec;
-        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.device", -1 ) << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.vendor" ) << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.device" ) << std::dec;
 
         ssdevice << std::setw(4) << std::setfill('0') << std::hex << m_devinfo.mSubsystemId;
         ss << std::setw(16) << ssdevice.str();
-        ss << std::setw(16) << std::hex << gSensorTree.get<int>( "board.subdevice", -1 ) << std::dec;
+        ss << std::setw(16) << std::hex << tree.get( "board.subdevice" ) << std::dec;
         
         // ptree needs help here
         ss << std::setw(16) << (m_devinfo.mXMCVersion != XCL_NO_SENSOR_DEV_LL ? m_devinfo.mXMCVersion : m_devinfo.mMBVersion) << "\n\n";
@@ -256,8 +258,8 @@ public:
         ss << std::setw(16) << "DDR size" << std::setw(16) << "DDR count";
         ss << std::setw(16) << "OCL Frequency";
 
-        subss << std::left << std::setw(16) << unitConvert( gSensorTree.get<int>( "board.ddr_size", -1 ) );
-        subss << std::setw(16) << gSensorTree.get<int>( "board.ddr_count", -1 ) << std::setw(16) << " ";
+        subss << std::left << std::setw(16) << unitConvert( std::stoi( tree.get( "board.ddr_size" ) ) );
+        subss << std::setw(16) << tree.get( "board.ddr_count" ) << std::setw(16) << " ";
 
         // ptree needs help here
         for(unsigned i= 0; i < m_devinfo.mNumClocks; ++i) {
@@ -269,9 +271,9 @@ public:
         ss << std::setw(16) << "PCIe" << std::setw(32) << "DMA bi-directional threads";
         ss << std::setw(16) << "MIG Calibrated " << "\n";
 
-        ss << "GEN " << gSensorTree.get<int>( "board.pcie_speed", -1 ) << "x" << std::setw(10) << gSensorTree.get<int>( "board.pcie_width", -1 );
-        ss << std::setw(32) << gSensorTree.get<int>( "board.dma_threads", -1 );
-        ss << std::setw(16) << std::boolalpha << gSensorTree.get<bool>( "board.mig_calibrated", "false" ) << std::noboolalpha << "\n";
+        ss << "GEN " << tree.get( "board.pcie_speed" ) << "x" << std::setw(10) << tree.get( "board.pcie_width" );
+        ss << std::setw(32) << tree.get( "board.dma_threads" );
+        ss << std::setw(16) << std::boolalpha << tree.get( "board.mig_calibrated", "false" ) << std::noboolalpha << "\n";
         ss << std::right << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
    }
@@ -309,21 +311,21 @@ public:
         std::string dna_info;
 
         ss << std::left << "\n";
-        
+        sensorTree &tree = sensorTree::Instance();
         ss << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << "\n";
-        unsigned short val = gSensorTree.get<unsigned short>( "power.pcb_top_front", XCL_INVALID_SENSOR_VAL );
+        unsigned short val = std::stoi(tree.get( "power.pcb_top_front" ) );
         if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
             subss << std::setw(16) << "Not support";
         else
             subss << std::setw(16) << std::to_string( val )+" C";
         
-        val = gSensorTree.get<unsigned short>( "power.pcb_top_rear", XCL_INVALID_SENSOR_VAL );
+        val = std::stoi( tree.get( "power.pcb_top_rear" ) );
         if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
             subss << std::setw(16) << "Not support";
         else
-            subss << std::setw(16) << std::to_string( val )+" C";        
+            subss << std::setw(16) << std::to_string( val )+" C";
         
-        val = gSensorTree.get<unsigned short>( "power.pcb_btm_front", XCL_INVALID_SENSOR_VAL );
+        val = std::stoi( tree.get( "power.pcb_btm_front" ) );
         if( ( val ==  (XCL_NO_SENSOR_DEV & (0xffff)) ) || ( val == XCL_INVALID_SENSOR_VAL ) )
             subss << std::setw(16) << "Not support";
         else
@@ -591,6 +593,7 @@ public:
         if(buf.empty())
             return;
         
+        sensorTree &tree = sensorTree::Instance();
         for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
             boost::property_tree::ptree ptMem;
             ptMem.put( "index", i );
@@ -598,7 +601,7 @@ public:
             ptMem.put( "tag",   map->m_mem_data[i].m_tag );
             ptMem.put( "used",  map->m_mem_data[i].m_used );
             ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
-            gSensorTree.add_child( "board.memory.mem", ptMem );
+            tree.add_child( "board.memory.mem", ptMem );
         }
     }
 
@@ -688,7 +691,7 @@ public:
     }
 
     /*
-     * rewrite this function to place stream info in gSensorTree, dump will format the info.
+     * rewrite this function to place stream info in tree, dump will format the info.
      */
     void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
         std::vector<std::string> &lines) const
@@ -783,56 +786,57 @@ public:
     
     int readSensors( void ) const
     {
-        gSensorTree.put( "runtime.build.version",   xrt_build_version );
-        gSensorTree.put( "runtime.build.hash",      xrt_build_version_hash );
-        gSensorTree.put( "runtime.build.hash_date", xrt_build_version_hash_date );
-        gSensorTree.put( "runtime.build.branch",    xrt_build_version_branch );
+        sensorTree &tree = sensorTree::Instance();
+        tree.put( "runtime.build.version",   xrt_build_version );
+        tree.put( "runtime.build.hash",      xrt_build_version_hash );
+        tree.put( "runtime.build.hash_date", xrt_build_version_hash_date );
+        tree.put( "runtime.build.branch",    xrt_build_version_branch );
         // info
-        gSensorTree.put( "board.info.dsa_name", m_devinfo.mName );
-        gSensorTree.put( "board.info.vendor", m_devinfo.mVendorId );
-        gSensorTree.put( "board.info.device", m_devinfo.mDeviceId );
-        gSensorTree.put( "board.info.subdevice", m_devinfo.mSubsystemId );
-        gSensorTree.put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
-        gSensorTree.put( "board.info.xmcversion", m_devinfo.mXMCVersion );
-        gSensorTree.put( "board.info.ddr_size", m_devinfo.mDDRSize );
-        gSensorTree.put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
-        gSensorTree.put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
-        gSensorTree.put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
-        gSensorTree.put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
-        gSensorTree.put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
-        gSensorTree.put( "board.info.dma_threads", m_devinfo.mDMAThreads );
-        gSensorTree.put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
-        //gSensorTree.put( "board.info.dna", 
+        tree.put( "board.info.dsa_name", m_devinfo.mName );
+        tree.put( "board.info.vendor", m_devinfo.mVendorId );
+        tree.put( "board.info.device", m_devinfo.mDeviceId );
+        tree.put( "board.info.subdevice", m_devinfo.mSubsystemId );
+        tree.put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
+        tree.put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        tree.put( "board.info.ddr_size", m_devinfo.mDDRSize );
+        tree.put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
+        tree.put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
+        tree.put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
+        tree.put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
+        tree.put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
+        tree.put( "board.info.dma_threads", m_devinfo.mDMAThreads );
+        tree.put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
+        //tree.put( "board.info.dna", 
         
         // physical
-        gSensorTree.put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] ); 
-        gSensorTree.put( "board.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
-        gSensorTree.put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
-        gSensorTree.put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
-        gSensorTree.put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp ); 
-        gSensorTree.put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
-        gSensorTree.put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
-        gSensorTree.put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
-        gSensorTree.put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
-        gSensorTree.put( "board.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
-        gSensorTree.put( "board.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
-        gSensorTree.put( "board.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
-        gSensorTree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
-        gSensorTree.put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
-        gSensorTree.put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
-        gSensorTree.put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
-        gSensorTree.put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
-        gSensorTree.put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
-        gSensorTree.put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
-        gSensorTree.put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
-        gSensorTree.put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
-        gSensorTree.put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        gSensorTree.put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
+        tree.put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] ); 
+        tree.put( "board.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
+        tree.put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
+        tree.put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
+        tree.put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp ); 
+        tree.put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        tree.put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
+        tree.put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
+        tree.put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
+        tree.put( "board.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
+        tree.put( "board.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
+        tree.put( "board.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
+        tree.put( "board.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
+        tree.put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
+        tree.put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
+        tree.put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        tree.put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
+        tree.put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
+        tree.put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
+        tree.put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
+        tree.put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
+        tree.put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        tree.put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
         
         // firewall
         unsigned i = m_errinfo.mFirewallLevel;
-        gSensorTree.put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
-        gSensorTree.put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
+        tree.put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
+        tree.put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
         
         // memory
         getMemTopology();
@@ -843,7 +847,7 @@ public:
             pt_dma.put( "index", i );
             pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
             pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
-            gSensorTree.add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
+            tree.add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
         }
         // stream
 
@@ -851,7 +855,7 @@ public:
         std::string errmsg, xclbinid;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "uid", errmsg, xclbinid);
         if(errmsg.empty()) {
-            gSensorTree.put( "board.xclbin.id", xclbinid );
+            tree.put( "board.xclbin.id", xclbinid );
         }
 
         // compute unit
@@ -870,7 +874,8 @@ public:
     int dumpJson(std::ostream& ostr) const
     {
         readSensors();
-        writeTreeJson( ostr, gSensorTree );
+        sensorTree &tree = sensorTree::Instance();
+        tree.jsonDump( ostr );
         return 0;
     }
 
@@ -881,66 +886,67 @@ public:
      */
     int dump(std::ostream& ostr) const {
         readSensors();
+        sensorTree &tree = sensorTree::Instance();
         ostr << std::left;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "XRT\n   Version: " << gSensorTree.get( "runtime.build.version", "N/A" )
-             <<    "\n   Date:    " << gSensorTree.get( "runtime.build.hash_date", "N/A" )
-             <<    "\n   Hash:    " << gSensorTree.get( "runtime.build.hash", "N/A" ) << std::endl;
-        ostr << "DSA name\n" << gSensorTree.get( "board.info.dsa_name", "N/A" ) << std::endl;
+        ostr << "XRT\n   Version: " << tree.get( "runtime.build.version", "N/A" )
+             <<    "\n   Date:    " << tree.get( "runtime.build.hash_date", "N/A" )
+             <<    "\n   Hash:    " << tree.get( "runtime.build.hash", "N/A" ) << std::endl;
+        ostr << "DSA name\n" << tree.get( "board.info.dsa_name", "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.info.vendor", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.device", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.subdevice", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.subvendor", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.info.vendor", "N/A" )
+             << std::setw(16) << tree.get( "board.info.device", "N/A" )
+             << std::setw(16) << tree.get( "board.info.subdevice", "N/A" )
+             << std::setw(16) << tree.get( "board.info.subvendor", "N/A" ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.info.ddr_size", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.ddr_count", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.ocl_freq", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.clock0", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.info.ddr_size", "N/A" )
+             << std::setw(16) << tree.get( "board.info.ddr_count", "N/A" )
+             << std::setw(16) << tree.get( "board.info.ocl_freq", "N/A" )
+             << std::setw(16) << tree.get( "board.info.clock0", "N/A" ) << std::endl;
         ostr << std::setw(16) << "PCIe" 
              << std::setw(16) << "DMA bi-directional threads" 
              << std::setw(16) << "MIG Calibrated" << std::endl;
-        ostr << "GEN " << gSensorTree.get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << gSensorTree.get( "board.info.pcie_width", "N/A" )
-             << std::setw(32) << gSensorTree.get( "board.info.dma_threads", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.info.mig_calibrated", "N/A" ) << std::endl;
+        ostr << "GEN " << tree.get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << tree.get( "board.info.pcie_width", "N/A" )
+             << std::setw(32) << tree.get( "board.info.dma_threads", "N/A" )
+             << std::setw(16) << tree.get( "board.info.mig_calibrated", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_front", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.top_rear", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.thermal.pcb.btm_front", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.thermal.pcb.top_front", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.pcb.top_rear", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.pcb.btm_front", "N/A" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed (RPM)" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.thermal.fpga_temp", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.thermal.tcrit_temp", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.thermal.fan_speed_rpm", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.thermal.fpga_temp", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.tcrit_temp", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.thermal.fan_speed_rpm", "N/A" ) << std::endl;
         ostr << "Electrical (mV), (mA):\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_pex.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_aux.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_pex.current", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_aux.current", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.12v_pex.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_aux.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_pex.current", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_aux.current", "N/A" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.3v3_pex.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.3v3_aux.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.ddr_vpp_bottom.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.ddr_vpp_top.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.3v3_pex.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.3v3_aux.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.ddr_vpp_bottom.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.ddr_vpp_top.voltage", "N/A" ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.sys_v5v.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.1v2_top.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.1v8_top.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.0v85.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.sys_v5v.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.1v2_top.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.1v8_top.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.0v85.voltage", "N/A" ) << std::endl;
         ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.mgt_0v9.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.12v_sw.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.mgt_vtt.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.mgt_0v9.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.12v_sw.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.mgt_vtt.voltage", "N/A" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
-        ostr << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.voltage", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.vccint.current", "N/A" )
-             << std::setw(16) << gSensorTree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
+        ostr << std::setw(16) << tree.get( "board.physical.electrical.vccint.voltage", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.vccint.current", "N/A" )
+             << std::setw(16) << tree.get( "board.physical.electrical.dna", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status:\n";
-        ostr << " Level " << std::setw(2) << gSensorTree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
-             << gSensorTree.get( "board.error.firewall.status", "N/A" ) << std::endl;
+        ostr << " Level " << std::setw(2) << tree.get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
+             << tree.get( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << std::setw(48) << "Mem Topology"
              << std::setw(32) << "Device Memory Usage" << std::endl;
@@ -949,7 +955,7 @@ public:
         ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
 
         try {
-            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.memory" ) ) {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.memory" ) ) {
                 if( v.first == "mem" ) {
                     int mem_index = -1;
                     int mem_used = -1;
@@ -985,7 +991,7 @@ public:
         
         ostr << "Total DMA Transfer Metrics:" << std::endl;
         try {
-            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.pcie_dma.transfer_metrics" ) ) {
                 if( v.first == "chan" ) {
                     std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
                     BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
@@ -1011,11 +1017,11 @@ public:
 //        printStreamInfo(ostr);
 //        ostr << "#################################\n";
 //        ostr << "XCLBIN ID:\n";
-//        ostr << gSensorTree.get( "board.xclbin.uid", "0" ) << std::endl;
+//        ostr << tree.get( "board.xclbin.uid", "0" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status:\n";
         try {
-            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, gSensorTree.get_child( "board.compute_unit" ) ) {
+            BOOST_FOREACH( const boost::property_tree::ptree::value_type &v, tree.get_child( "board.compute_unit" ) ) {
                 if( v.first == "cu" ) {
                     std::string val, cu_i, cu_n, cu_ba, cu_s = "N/A";
                     BOOST_FOREACH( const boost::property_tree::ptree::value_type &subv, v.second ) {
