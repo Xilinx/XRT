@@ -1,7 +1,5 @@
 #include "sensor.h"
 
-static boost::property_tree::ptree gSensorTree;
-
 sensorTree::sensorTree()
 {
 }
