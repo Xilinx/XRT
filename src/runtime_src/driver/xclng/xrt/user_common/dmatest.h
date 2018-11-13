@@ -98,37 +98,34 @@ namespace xcldev {
         }
 
         int validate(const char *buf) const {
-            char *bufCmp = new char[mSize];
+            std::unique_ptr<char[]> bufCmp(new char[mSize]);
             int result = 0;
             for (auto i : mBOList) {
                 //Clear out the host buffer
-                std::memset(bufCmp, 0, mSize);
-                result = xclReadBO(mHandle, i, bufCmp, mSize, 0);
+                std::memset(bufCmp.get(), 0, mSize);
+                result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
                 if (result < 0)
                     break;
-                if (std::memcmp(buf, bufCmp, mSize)) {
+                if (std::memcmp(buf, bufCmp.get(), mSize)) {
                     result = -EIO;
                     std::cout << "DMA Test data integrity check failed\n";
                     break;
                 }
             }
-            delete [] bufCmp;
             return result;
         }
 
         int run() const {
-            char *buf = new char[mSize];
-            std::memset(buf, 'x', mSize);
+            std::unique_ptr<char[]> buf(new char[mSize]);
+            std::memset(buf.get(), 'x', mSize);
 
             int result = 0;
-            for (auto i : mBOList) {
-                result += xclWriteBO(mHandle, i, buf, mSize, 0);
-            }
+            for (auto i : mBOList)
+                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
 
-            if (result) {
-                delete [] buf;
+            if (result)
                 return result;
-            }
+
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, false);
             double timer_stop = timer.stop();
@@ -146,8 +143,7 @@ namespace xcldev {
             std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
 
             // data integrity check: compare with initialized value 'x'
-            result = validate(buf);
-            delete [] buf;
+            result = validate(buf.get());
             return result;
         }
     };
