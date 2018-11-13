@@ -1711,7 +1711,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
   {
     argNames = "All";
     memoryName = "DDR";
-    std::string portName2 = portName.substr(0, portName.find_last_of(":"));
+    std::string portName2 = portName.substr(0, portName.find_last_of(PORT_MEM_SEP));
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 
