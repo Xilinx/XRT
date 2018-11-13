@@ -1,0 +1,8 @@
+PACKAGE_NAME="xrt-awsmgmt"
+PACKAGE_VERSION="@XRT_VERSION_STRING@"
+MAKE[0]="cd driver/aws/kernel/mgmt; make; cd ../../../.."
+CLEAN="cd driver/aws/kernel/mgmt; make clean; cd ../../../.."
+BUILT_MODULE_NAME[0]="awsmgmt"
+BUILT_MODULE_LOCATION[0]="driver/aws/kernel/mgmt"
+DEST_MODULE_LOCATION[0]="/kernel/extras"
+AUTOINSTALL="yes"

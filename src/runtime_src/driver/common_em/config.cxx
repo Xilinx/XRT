@@ -476,7 +476,60 @@ namespace xclemulation{
     }
   }
 
-  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
+  static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
+  {
+    for (auto& prop : featureRomTree)
+    {
+      std::string name = prop.first;
+      if(name == "Major_Version")
+      {
+        unsigned int majorVersion = prop.second.get_value<unsigned>();
+        fRomHeader.MajorVersion = majorVersion; 
+      }
+      else if(name == "Minor_Version")
+      {
+        unsigned int minorVersion = prop.second.get_value<unsigned>();
+        fRomHeader.MinorVersion = minorVersion; 
+      }
+      else if(name == "Vivado_Build_Id")
+      {
+        unsigned int vivadoBuildId = prop.second.get_value<unsigned long>();
+        fRomHeader.VivadoBuildID = vivadoBuildId; 
+      }
+      else if(name == "Ip_Build_Id")
+      {
+        unsigned long ipBuildId = prop.second.get_value<unsigned long>();
+        fRomHeader.IPBuildID = ipBuildId; 
+      }
+      else if(name == "Time_Since_Epoch")
+      {
+        unsigned long long timeSinceEpoch = prop.second.get_value<unsigned long long>();
+        fRomHeader.TimeSinceEpoch = timeSinceEpoch; 
+      }
+      else if(name == "Ddr_Channel_Count")
+      {
+        unsigned int ddrChannelCount = prop.second.get_value<unsigned>();
+        fRomHeader.DDRChannelCount = ddrChannelCount; 
+      }
+      else if(name == "Ddr_Channel_Size")
+      {
+        unsigned int ddrChannelSize = prop.second.get_value<unsigned>();
+        fRomHeader.DDRChannelSize = ddrChannelSize; 
+      }
+      else if(name == "Dr_Base_Address")
+      {
+        unsigned long long drBaseAddress = prop.second.get_value<unsigned long long>();
+        fRomHeader.DRBaseAddress = drBaseAddress; 
+      }
+      else if(name == "Feature_Bitmap")
+      {
+        unsigned long long featureBitMap = prop.second.get_value<unsigned long long>();
+        fRomHeader.FeatureBitMap= featureBitMap; 
+      }
+    }
+  }
+  
+  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool,FeatureRomHeader> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
   {
 
     for (auto& device : deviceTree)
@@ -500,6 +553,9 @@ namespace xclemulation{
       DDRBank bank;
       bank.ddrSize = MEMSIZE_4G;
       DDRBankList.push_back(bank);
+      FeatureRomHeader fRomHeader;
+      std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
+
 
       //iterate over all the properties of device and fill the info structure. This info object gets used to create  device object
       for (auto& prop : device.second)
@@ -548,6 +604,11 @@ namespace xclemulation{
           boost::property_tree::ptree ddrBankTree = prop.second;
           populateDDRBankInfo(ddrBankTree, info, DDRBankList,memMap);
         }
+        else if(prop.first == "FeatureRom")
+        {
+          boost::property_tree::ptree featureRomTree = prop.second;
+          populateFeatureRom(featureRomTree,fRomHeader);
+        }
         else if(prop.first == "OclFreqency")
         {
           unsigned oclFrequency = prop.second.get_value<unsigned>();
@@ -563,7 +624,7 @@ namespace xclemulation{
       //iterate using this variable and create that many number of devices.
       for(unsigned int i = 0; i < numDevices;i++)
       {
-        devicesInfo.push_back(make_tuple(info,DDRBankList,bUnified, bXPR));
+        devicesInfo.push_back(make_tuple(info,DDRBankList,bUnified, bXPR,fRomHeader));
       }
     }
     return;
@@ -571,7 +632,7 @@ namespace xclemulation{
 
   //create all the devices If devices child is present in this tree otherwise call this function recursively for all the child trees
   //iterate over devices tree and create all the device objects.
-  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool> >& devicesInfo,std::map<std::string, uint64_t>& memMap)
+  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader > >& devicesInfo,std::map<std::string, uint64_t>& memMap)
   {
     using boost::property_tree::ptree;
     ptree::const_iterator platformEnd = platformTree.end();
@@ -638,7 +699,7 @@ namespace xclemulation{
     return true;
   }
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool > >& devicesInfo)
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool , FeatureRomHeader> >& devicesInfo)
   {
     std::string emConfigFile =  getEmConfigFilePath();
     std::ifstream ifs;

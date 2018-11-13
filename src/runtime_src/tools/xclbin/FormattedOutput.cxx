@@ -289,7 +289,8 @@ reportXclbinInfo( std::ostream & _ostream,
   {
     std::string sKernels;
     if (!_ptMetaData.empty()) {
-      std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(_ptMetaData,"xclbin.user_regions");
+      boost::property_tree::ptree &ptXclBin = _ptMetaData.get_child("xclbin");
+      std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
       for (auto & userRegion : userRegions) {
         std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
         for (auto & kernel : kernels) {
@@ -641,7 +642,8 @@ reportKernels( std::ostream & _ostream,
     }
   }
 
-  std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(_ptMetaData,"xclbin.user_regions");
+  boost::property_tree::ptree &ptXclBin = _ptMetaData.get_child("xclbin");
+  std::vector<boost::property_tree::ptree> userRegions = as_vector<boost::property_tree::ptree>(ptXclBin,"user_regions");
   for (auto & userRegion : userRegions) {
     std::vector<boost::property_tree::ptree> kernels = as_vector<boost::property_tree::ptree>(userRegion,"kernels");
     for (auto & ptKernel : kernels) {
