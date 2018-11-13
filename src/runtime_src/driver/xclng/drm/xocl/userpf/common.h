@@ -112,9 +112,6 @@ struct xocl_dev	{
 	struct percpu_ref ref;
 	struct completion cmp;
 #endif
-	/*should be removed after mailbox is supported */
-	u64			        unique_id_last_bitstream;
-	/* remove the previous id after we move to uuid */
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;

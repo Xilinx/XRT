@@ -26,7 +26,7 @@
 #include <fstream>
 
 static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle& handle, int cu_index,
-	uint64_t& cu_base_addr)
+	uint64_t& cu_base_addr, int& first_used_mem)
 {
     xclDeviceInfo2 deviceInfo;
 
@@ -98,6 +98,17 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 	    std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
 	}
     }
+
+    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+    struct mem_topology* topology = (mem_topology*)(header + topo->m_sectionOffset);
+
+    for (int i=0; i<topology->m_count; ++i) {
+        if (topology->m_mem_data[i].m_used) {
+            first_used_mem = i;
+            break;
+        }
+    }
+    
 
     delete [] header;
 

@@ -81,6 +81,9 @@ namespace XCL {
       case KERNEL_COUNT:
         name = "KERNEL_COUNT";
         break;
+      case OBJECTS_RELEASED:
+        name = "OBJECTS_RELEASED";
+        break;
       default:
         assert(0);
         break;

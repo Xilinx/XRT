@@ -47,11 +47,12 @@ static xuid_t uuid_null = NULL_UUID_LE;
 
 #define	ICAP_PRIVILEGED(icap)	((icap)->icap_regs != NULL)
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
-#define	ICAP_MAX_REG_GROUPS		5
+#define	ICAP_MAX_REG_GROUPS		ARRAY_SIZE(XOCL_RES_ICAP_MGMT)
 
 #define	ICAP_MAX_NUM_CLOCKS		2
 #define OCL_CLKWIZ_STATUS_OFFSET	0x4
 #define OCL_CLKWIZ_CONFIG_OFFSET(n)	(0x200 + 4 * (n))
+#define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
 #define	ICAP_XCLBIN_V2			"xclbin2"
 
 /*
@@ -115,7 +116,7 @@ struct icap {
 	struct mutex		icap_lock;
 	struct icap_reg		*icap_regs;
 	struct icap_generic_state *icap_state;
-
+	unsigned int            idcode;
 	bool			icap_axi_gate_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
 
@@ -132,6 +133,7 @@ struct icap {
 
 	char                    *icap_clock_freq_topology;
 	unsigned long		icap_clock_freq_topology_length;
+	char                    *icap_clock_freq_counter;
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -199,7 +201,7 @@ const static struct xclmgmt_ocl_clockwiz {
 	{/*1000*/  500, 0x0a01, 0x0002}
 };
 
-/* hack to user space to reset scheduler after AXI reset 
+/* hack to user space to reset scheduler after AXI reset
  * defined in xocl_drv.c */
 static void reset_scheduler(struct icap *icap)
 {
@@ -208,6 +210,7 @@ static void reset_scheduler(struct icap *icap)
 	struct mailbox_req mbreq = { 0 };
 	int xocl_reset_scheduler(struct pci_dev *pdev);
 	int (*reset)(struct pci_dev *pdev);
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
 	ICAP_INFO(icap, "calling xocl_reset_scheduler");
 
@@ -219,17 +222,22 @@ static void reset_scheduler(struct icap *icap)
 
 	reset = symbol_get(xocl_reset_scheduler);
 	if (reset) {
-		struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
-		unsigned int slot = PCI_SLOT(pdev->devfn);
-		struct pci_dev *user_dev =
-			pci_get_slot(pdev->bus, PCI_DEVFN(slot, 0));
+		struct pci_dev *user_dev;
 
-		if (user_dev)
-			err = reset(user_dev);
+		user_dev = xocl_hold_userdev(xdev);
 
+		if (!user_dev) {
+			err = -EFAULT;
+			goto failed;
+		}
+
+		err = reset(user_dev);
+
+		xocl_release_userdev(user_dev);
 		symbol_put(xocl_reset_scheduler);
 	}
 
+failed:
 	if (err)
 		ICAP_ERR(icap, "calling xocl_reset_scheduler failed: %d", err);
 }
@@ -399,6 +407,36 @@ static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 	return freq;
 }
 
+static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap, int idx)
+{
+	u32 freq, status;
+	char *base = icap->icap_clock_freq_counter;
+	int times;
+	times = 10;
+	freq = 0;
+	/*
+	 * reset and wait until done
+	 */
+
+	if(uuid_is_null(&icap->icap_bitstream_uuid)){
+		ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
+			"frequencies counter cannot be determine");
+		return freq;
+	}
+	reg_wr(base, 0x1);
+
+	while(times!=0){
+		status = reg_rd(base);
+		if(status==0x2)
+			break;
+		mdelay(1);
+		times--;
+	};
+
+  freq = reg_rd(base + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
+
+  return freq;
+}
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
@@ -635,6 +673,35 @@ done:
 
 }
 
+static int set_and_verify_freqs(struct icap* icap, unsigned short* freqs, int num_freqs)
+{
+	int i;
+	int err;
+	u32 clock_freq_counter, request_in_khz, tolerance;
+
+	err = set_freqs(icap, freqs, num_freqs);
+	if(err)
+		return err;
+
+	for(i = 0; i <min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
+		clock_freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
+		if(clock_freq_counter == 0){
+			err = -EDOM;
+			break;
+		}
+		request_in_khz =freqs[i]*1000;
+		tolerance = freqs[i]*50;
+		if(tolerance < abs(clock_freq_counter-request_in_khz)){
+			ICAP_ERR(icap, "Frequency is higher than tolerance value, request %u" 
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			err = -EDOM;
+			break;
+		}
+	}
+
+	return err;
+}
+
 static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 	unsigned int region, unsigned short *freqs, int num_freqs)
 {
@@ -688,8 +755,15 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 			}
 		}
 	}
+	else{
+		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region."
+			" Validation of accelerator frequencies cannot be determine");
+		err = -EDOM;
+		goto done;
+	}
 
-	err = set_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
+	err = set_and_verify_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
+
 done:
 	mutex_unlock(&icap->icap_lock);
 	return err;
@@ -743,7 +817,7 @@ static inline void free_clock_freq_topology(struct icap *icap)
 }
 
 static int icap_setup_clock_freq_topology(struct icap *icap,
-	const char __user *buffer, unsigned long length)	
+	const char __user *buffer, unsigned long length)
 {
 	int err;
 
@@ -763,7 +837,7 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 	}
 	icap->icap_clock_freq_topology_length = length;
 
-	return 0;    
+	return 0;
 }
 
 static inline void free_clear_bitstream(struct icap *icap)
@@ -1049,7 +1123,7 @@ free_buffers:
 	return err;
 }
 
-static const struct axlf_section_header* get_axlf_section(
+static const struct axlf_section_header* get_axlf_section_hdr(
 	struct icap *icap, const struct axlf* top, enum axlf_section_kind kind)
 {
 	int i;
@@ -1084,6 +1158,32 @@ static const struct axlf_section_header* get_axlf_section(
 	return hdr;
 }
 
+static int alloc_and_get_axlf_section(struct icap *icap,
+	const struct axlf* top, enum axlf_section_kind kind, char __user *buf,
+	void **addr, uint64_t *size)
+{
+	void *section = NULL;
+	const struct axlf_section_header* hdr =
+		get_axlf_section_hdr(icap, top, kind);
+
+	if (hdr == NULL)
+		return -EINVAL;
+
+	section = vmalloc(hdr->m_sectionSize);
+	if(section == NULL)
+		return -ENOMEM;
+
+	if (copy_from_user(section, buf + hdr->m_sectionOffset,
+		hdr->m_sectionSize) != 0) {
+		vfree(section);
+		return -EFAULT;
+	}
+
+	*addr = section;
+	*size = hdr->m_sectionSize;
+	return 0;
+}
+
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1093,7 +1193,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int funcid = PCI_FUNC(pcidev->devfn);
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
-	const struct axlf *bin_obj_axlf;
+	struct axlf *bin_obj_axlf;
 	const struct firmware *fw;
 	char fw_name[128];
 	XHwIcap_Bit_Header bit_header = { 0 };
@@ -1114,6 +1214,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (!ICAP_PRIVILEGED(icap))
 		return -EPERM;
 
+	/* Read dsabin from file system. */
+
 	if (funcid != 0) {
 		pcidev_user = pci_get_slot(pcidev->bus,
 			PCI_DEVFN(slotid, funcid - 1));
@@ -1133,7 +1235,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		le64_to_cpu(xocl_get_timestamp(xdev)));
 	ICAP_INFO(icap, "try load dsabin %s", fw_name);
 	err = request_firmware(&fw, fw_name, &pcidev->dev);
-
 	if (err) {
 		snprintf(fw_name, sizeof(fw_name),
 			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
@@ -1141,13 +1242,33 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			le16_to_cpu(deviceid + 1),
 			le16_to_cpu(pcidev->subsystem_device),
 			le64_to_cpu(xocl_get_timestamp(xdev)));
+		ICAP_INFO(icap, "try load dsabin %s", fw_name);
 		err = request_firmware(&fw, fw_name, &pcidev->dev);
 	}
+	/* Retry with the legacy dsabin. */
+	if(err) {
+		snprintf(fw_name, sizeof(fw_name),
+			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+			le16_to_cpu(pcidev->vendor),
+			le16_to_cpu(pcidev->device + 1),
+			le16_to_cpu(pcidev->subsystem_device),
+			le64_to_cpu(0x0000000000000000));
+		ICAP_INFO(icap, "try load dsabin %s", fw_name);
+		err = request_firmware(&fw, fw_name, &pcidev->dev);
+	}
+	if (err) {
+		/* Give up on finding .dsabin. */
+		ICAP_ERR(icap, "unable to find firmware, giving up");
+		return err;
+	}
 
-	if(!err && xocl_mb_sched_on(xdev)) {
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if(xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (const struct axlf*)fw->data;
-		mbHeader = get_axlf_section(icap, bin_obj_axlf, SCHED_FIRMWARE);
+		bin_obj_axlf = (struct axlf*)fw->data;
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
 		if(mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
 			mbBinaryLength = mbHeader->m_sectionSize;
@@ -1159,10 +1280,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		}
 	}
 
-	if(!err && xocl_mb_mgmt_on(xdev)) {
+	if(xocl_mb_mgmt_on(xdev)) {
 		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (const struct axlf*)fw->data;
-		mbHeader = get_axlf_section(icap, bin_obj_axlf, FIRMWARE);
+		bin_obj_axlf = (struct axlf*)fw->data;
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
 		if(mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
 			mbBinaryLength = mbHeader->m_sectionSize;
@@ -1177,42 +1298,34 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if(load_mbs)
 		xocl_mb_reset(xdev);
 
-	/* Retry with the legacy dsabin. */
-	if(err) {
-		ICAP_INFO(icap,
-			"unable to find firmware %s, try legacy dsabin",
-			fw_name);
-		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-			le16_to_cpu(pcidev->vendor),
-			le16_to_cpu(pcidev->device + 1),
-			le16_to_cpu(pcidev->subsystem_device),
-			le64_to_cpu(0x0000000000000000));
-		err = request_firmware(&fw, fw_name, &pcidev->dev);
-	}
-	if (err) {
-		ICAP_ERR(icap, "unable to find firmware %s", fw_name);
-		return err;
-	}
 
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof (ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	ICAP_INFO(icap, "boot_firmware in axlf format");
-	bin_obj_axlf = (const struct axlf*)fw->data;
+	bin_obj_axlf = (struct axlf*)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
 	/* Match the xclbin with the hardware. */
 	if(!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "timestamp of ROM did not match xclbin");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	ICAP_INFO(icap, "VBNV and timestamps matched");
 
-	primaryHeader = get_axlf_section(icap, bin_obj_axlf, BITSTREAM);
-	secondaryHeader = get_axlf_section(icap, bin_obj_axlf,
+	if (xocl_xrt_version_check(xdev, bin_obj_axlf, 1)) {
+		ICAP_ERR(icap, "Major version does not match xrt");
+		err = -EINVAL;
+		goto done;
+	}
+	ICAP_INFO(icap, "runtime version matched");
+
+	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
+	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 		CLEARING_BITSTREAM);
 	if(primaryHeader) {
 		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
@@ -1237,8 +1350,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		err = -EINVAL;
 		goto done;
 	}
-
-	mutex_lock(&icap->icap_lock);
 
 	if (primaryFirmwareLength) {
 		ICAP_INFO(icap,
@@ -1322,8 +1433,11 @@ static long icap_download_clear_bitstream(struct icap *icap)
 	return err;
 }
 
-static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev, 
-	const char __user *clk_buf, unsigned long length) 
+/*
+ * This function should be called with icap_mutex lock held
+ */
+static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev,
+	const char __user *clk_buf, unsigned long length)
 {
 	long err = 0;
 	char *buffer = NULL;
@@ -1356,13 +1470,13 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 		goto free_buffers;
 	}
 
-	//Error checks - we support 1 data clk (reqd), one kernel clock(reqd) and 
+	//Error checks - we support 1 data clk (reqd), one kernel clock(reqd) and
 	//at most 2 system clocks (optional/reqd for aws).
 	//Data clk needs to be the first entry, followed by kernel clock
 	//and then system clocks
 	//
 
-	for (i = 0; i < freqs->m_count; i++) 
+	for (i = 0; i < freqs->m_count; i++)
 	{
 		freq = &(freqs->m_clock_freq[i]);
 		if(freq->m_type == CT_DATA) {
@@ -1392,7 +1506,7 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 			"More than 2 system clocks found in clock topology");
 		goto free_buffers;
 	}
-	
+
 	for (i = 0; i < freqs->m_count; i++) {
 		freq = &(freqs->m_clock_freq[i]);
 		if(freq->m_type == CT_DATA) {
@@ -1421,7 +1535,7 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 		"sys_freq[0]: %d, sys_freq[1]: %d",
 		ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
 		target_freqs[2], target_freqs[3]);
-	err = icap_ocl_set_freqscaling(pdev, 0, target_freqs, 4);
+	err = set_freqs(icap, target_freqs, 4);
 
 free_buffers:
 	kfree(buffer);
@@ -1513,32 +1627,24 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct axlf bin_obj;
-	char __user *buffer;
+	char __user *buffer = (char __user *)u_xclbin;
 	long err = 0;
 	uint64_t primaryFirmwareOffset = 0;
 	uint64_t primaryFirmwareLength = 0;
 	uint64_t secondaryFirmwareOffset = 0;
 	uint64_t secondaryFirmwareLength = 0;
+	uint64_t section_size = 0;
 	const struct axlf_section_header* primaryHeader = NULL;
+	const struct axlf_section_header* clockHeader = NULL;
 	const struct axlf_section_header* secondaryHeader = NULL;
-	const struct axlf_section_header* ipLayout = NULL;
-	const struct axlf_section_header* certificate = NULL;
 	uint64_t copy_buffer_size = 0;
 	struct axlf* copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	bool need_download;
 	struct ip_layout* layout = NULL;
-	int i = 0, j = 0;
-	uint32_t dynamic_subdev_nums = core->dyna_subdevs_num;
-	struct xocl_subdev_info* subdev_info = NULL;
-	struct resource *res = NULL;
+	struct mem_topology* memtopo = NULL;
 	bool dna_check = false;
-	uint32_t range = 0;
-	uint32_t base_addr[XOCL_SUBDEV_NUM][NUMS_OF_DYNA_IP_ADDR];
-	uint32_t nums_of_ip_section[XOCL_SUBDEV_NUM];
-	uint32_t sub_id;
-	uint32_t id, idx;
+	int i;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1549,7 +1655,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
 
-	buffer = (char __user *)u_xclbin;
 	err = !access_ok(VERIFY_READ, buffer, bin_obj.m_header.m_length);
 	if (err) {
 		err = -EFAULT;
@@ -1571,6 +1676,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
 		err = -EFAULT;
 		goto done;
+	}
+
+	if (xocl_xrt_version_check(xdev, &bin_obj, 0)) {
+		ICAP_ERR(icap, "XRT version does not match");
+		return -EINVAL;
 	}
 
 	/* Match the xclbin with the hardware. */
@@ -1612,38 +1722,30 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 * Find sections in xclbin.
 	 */
 	ICAP_INFO(icap, "finding CLOCK_FREQ_TOPOLOGY section");
-	primaryHeader = get_axlf_section(icap, copy_buffer, CLOCK_FREQ_TOPOLOGY);
-	if (primaryHeader != NULL) {
-		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-		primaryFirmwareLength = primaryHeader->m_sectionSize;
-		buffer = (char __user *)u_xclbin;
-		buffer += primaryFirmwareOffset;
-		err = axlf_set_freqscaling(icap, pdev, buffer, primaryFirmwareLength);
-		if (err)
-			goto done;
-		err = icap_setup_clock_freq_topology(icap, buffer, primaryFirmwareLength);
-		if (err)
-			goto done;
-	}
+	/* Read the CLOCK section but defer changing clocks to later */
+	clockHeader = get_axlf_section_hdr(icap, copy_buffer, CLOCK_FREQ_TOPOLOGY);
 
-	ICAP_INFO(icap, "finding ip layout sections");
-	ipLayout = get_axlf_section(icap, copy_buffer, IP_LAYOUT);
-	if (ipLayout == NULL) {
+	ICAP_INFO(icap, "finding ip layout section");
+	err = alloc_and_get_axlf_section(icap, copy_buffer, IP_LAYOUT,
+		buffer, (void **)&layout, &section_size);
+	if (err != 0)
+		goto done;
+	if (sizeof_sect(layout, m_ip_data) > section_size) {
+		err = -EINVAL;
+		goto done;
+	}
+	ICAP_INFO(icap, "finding mem topology section");
+	err = alloc_and_get_axlf_section(icap, copy_buffer, MEM_TOPOLOGY,
+		buffer, (void **)&memtopo, &section_size);
+	if (err != 0)
+		goto done;
+	if (sizeof_sect(memtopo, m_mem_data) > section_size) {
 		err = -EINVAL;
 		goto done;
 	}
 
-	layout = vmalloc(ipLayout->m_sectionSize);
-	if(layout == NULL)
-		goto done;
-	err = copy_from_user(layout, (char __user *)u_xclbin+ipLayout->m_sectionOffset, ipLayout->m_sectionSize);
-	if (sizeof_sect(layout, m_ip_data) > ipLayout->m_sectionSize) {
-		err = -EINVAL;
-		goto done;
-	}
-  
 	ICAP_INFO(icap, "finding bitstream sections");
-	primaryHeader = get_axlf_section(icap, copy_buffer, BITSTREAM);
+	primaryHeader = get_axlf_section_hdr(icap, copy_buffer, BITSTREAM);
 	if (primaryHeader == NULL) {
 		err = -EINVAL;
 		goto done;
@@ -1651,7 +1753,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	primaryFirmwareOffset = primaryHeader->m_sectionOffset;
 	primaryFirmwareLength = primaryHeader->m_sectionSize;
 
-	secondaryHeader = get_axlf_section(icap, copy_buffer,
+	secondaryHeader = get_axlf_section_hdr(icap, copy_buffer,
 		CLEARING_BITSTREAM);
 	if(secondaryHeader) {
 		if (XOCL_PL_TO_PCI_DEV(pdev)->device == 0x7138) {
@@ -1674,6 +1776,22 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
+	/* All clear, go ahead and start fiddling with hardware */
+
+	if (clockHeader != NULL) {
+		uint64_t clockFirmwareOffset = clockHeader->m_sectionOffset;
+		uint64_t clockFirmwareLength = clockHeader->m_sectionSize;
+		buffer = (char __user *)u_xclbin;
+		buffer += clockFirmwareOffset;
+		err = axlf_set_freqscaling(icap, pdev, buffer, clockFirmwareLength);
+		if (err)
+			goto done;
+		err = icap_setup_clock_freq_topology(icap, buffer, clockFirmwareLength);
+		if (err)
+			goto done;
+	}
+
+
 	icap->icap_bitstream_id = 0;
 	uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 
@@ -1684,115 +1802,112 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 
 	/* Destroy all dynamically add sub-devices*/
-	for(j=0;j<dynamic_subdev_nums;++j){
-		ICAP_INFO(icap, "remove dynamically added subdev: %d", core->dyna_subdevs_id[j]);
-		xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[j]);
-		core->dyna_subdevs_id[j] = INVALID_SUBDEVICE;
-		core->dyna_subdevs_num--;
-	}
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
 
-	subdev_info = kzalloc(sizeof(struct xocl_subdev_info),GFP_KERNEL);
-	if(subdev_info == NULL){
-		err = -ENOMEM;
-		goto done;
-	}
-
-	/* restrict any dynamically added sub-device and has up to 4 base address,
-	 * Has pre-defined length 
+	/*
+	 * Add sub device dynamically.
+	 *
+	 * restrict any dynamically added sub-device and 1 base address,
+	 * Has pre-defined length
 	 *  Ex:    "ip_data": {
 	 *         "m_type": "IP_DNASC",
 	 *         "properties": "0x0",
 	 *         "m_base_address": "0x1100000", <--  base address
 	 *         "m_name": "slr0\/dna_self_check_0"
 	 */
-	res = kzalloc(sizeof(struct resource)*NUMS_OF_DYNA_IP_ADDR, GFP_KERNEL);
-	if(res == NULL){
-		err = -ENOMEM;
-		goto done;
+	for(i = 0; i < layout->m_count; ++i) {
+		struct xocl_subdev_info subdev_info = { 0 };
+		struct resource res = { 0 };
+		struct ip_data *ip = &layout->m_ip_data[i];
+
+		if(ip->m_type == IP_KERNEL)
+			continue;
+
+		if(ip->m_type == IP_DDR4_CONTROLLER) {
+			uint32_t memidx = ip->properties;
+			if (!memtopo || ip->properties >= memtopo->m_count ||
+				!memtopo->m_mem_data[memidx].m_used) {
+				ICAP_ERR(icap, "bad DDR controller index: %u",
+					ip->properties);
+				err = -EINVAL;
+				goto done;
+			}
+			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
+				&subdev_info, &res);
+			if (err) {
+				ICAP_ERR(icap, "can't get MIG subdev info");
+				goto done;
+			}
+			res.start += ip->m_base_address;
+			res.end += ip->m_base_address;
+			subdev_info.priv_data =
+				memtopo->m_mem_data[memidx].m_tag;
+			subdev_info.data_len =
+				sizeof (memtopo->m_mem_data[memidx].m_tag);
+			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create MIG subdev");
+				goto done;
+			}
+		}
+
+		if(ip->m_type == IP_DNASC){
+			dna_check = true;
+			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_DNA,
+				&subdev_info, &res);
+			if (err) {
+				ICAP_ERR(icap, "can't get DNA subdev info");
+				goto done;
+			}
+			res.start += ip->m_base_address;
+			res.end += ip->m_base_address;
+			err = xocl_subdev_create_one(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create DNA subdev");
+				goto done;
+			}
+		}
 	}
 
-	memset(base_addr, 0, sizeof(uint32_t)*XOCL_SUBDEV_NUM*NUMS_OF_DYNA_IP_ADDR);
-	memset(nums_of_ip_section, 0, sizeof(uint32_t)*XOCL_SUBDEV_NUM);
+	if (dna_check) {
+		bool is_axi = ((xocl_dna_capability(xdev) & 0x1) != 0);
 
+		/*
+		 * Any error occurs here should return -EACCES for app to
+		 * know that DNA has failed.
+		 */
+		err = -EACCES;
 
-	/* Add sub device dynamically*/
-	for(i=0;i<layout->m_count;++i){
+		ICAP_INFO(icap, "DNA version: %s", is_axi ? "AXI" : "BRAM");
 
-		if(layout->m_ip_data[i].m_type==IP_DNASC)
-			dna_check = true;
+		if(is_axi){
+			uint32_t *cert = NULL;
 
-		if(layout->m_ip_data[i].m_type==IP_KERNEL)
-			continue;	
-
-		/*!= IP_KERNEL in the future*/
-		if(layout->m_ip_data[i].m_type == IP_DNASC){
-
-			sub_id = xocl_subdev_get_subid(layout->m_ip_data[i].m_type);
-			if (sub_id == INVALID_SUBDEVICE) {
-				err = -ENODEV;
-				ICAP_ERR(icap, "failed to get IP type: %d ", layout->m_ip_data[i].m_type);
+			buffer = (char __user *)u_xclbin;
+			if (alloc_and_get_axlf_section(icap, copy_buffer,
+				DNA_CERTIFICATE, buffer,
+				(void **)&cert, &section_size) != 0) {
+				ICAP_ERR(icap, "Can't get certificate section");
 				goto done;
 			}
 
-			idx = nums_of_ip_section[sub_id];
-			base_addr[sub_id][idx] = layout->m_ip_data[i].m_base_address;
-			nums_of_ip_section[sub_id]++;
+			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
+			if(section_size % 64 || section_size < 576) {
+				ICAP_ERR(icap, "Invalid certificate size");
+			} else {
+				xocl_dna_write_cert(xdev, cert, section_size);
+			}
+
+			vfree(cert);
 		}
-	}
 
-	for(id=0;id<XOCL_SUBDEV_NUM;++id) {
-
-		if(nums_of_ip_section[id]!=0){
-			memset(subdev_info, 0, sizeof(struct xocl_subdev_info));
-			memset(res, 0, sizeof(struct resource)*NUMS_OF_DYNA_IP_ADDR);
-
-			err = xocl_subdev_get_devinfo(subdev_info, res, id);
-			if (err) {
-				ICAP_ERR(icap, "failed to find sub device id: %d ", id);
-				goto add_subdev_failed;
-			}
-			ICAP_INFO(icap, "%s, num_res: %d", subdev_info->name, subdev_info->num_res);
-
-			for(i=0;i<nums_of_ip_section[id];++i){
-				range = subdev_info->res[i].end - subdev_info->res[i].start;
-				subdev_info->res[i].start = base_addr[id][i];
-				subdev_info->res[i].end = subdev_info->res[i].start + range;
-			}
-
-			err = xocl_subdev_create_one(xdev, subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "failed to create subdev %s ", subdev_info->name);
-				goto add_subdev_failed;
-			}
-			core->dyna_subdevs_id[core->dyna_subdevs_num++] = id;
-		}
-	}
-
-	if(dna_check){
-		ICAP_INFO(icap, "DNA version: %s", (xocl_dna_capability(xdev) & 0x1)? "AXI" : "BRAM");
-		/* should be removed after integrated certificate with xclbin*/
-		if(xocl_dna_capability(xdev) & 0x1){
-			certificate = get_axlf_section(icap, copy_buffer, DNA_CERTIFICATE);
-			if(certificate == NULL) {
-				ICAP_ERR(icap, "Can't get certificate section");
-				err = -EACCES;
-				goto dna_check_failed;
-			}
-			
-			if(certificate->m_sectionSize % 64 || certificate->m_sectionSize < 576) {
-				ICAP_ERR(icap, "invalid certificate size, should be at least 576 bytes and a multiple of 64 bytes but size %llu", certificate->m_sectionSize);
-				err = -EACCES;
-				goto dna_check_failed;
-			}
-			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", certificate->m_sectionSize);
-			buffer = (char __user *)u_xclbin;
-			buffer += certificate->m_sectionOffset;
-			xocl_dna_write_cert(xdev, buffer, certificate->m_sectionSize);
-		}
-		err = (0x1 & xocl_dna_status(xdev)) ? 0 : -EACCES;
-		if (err){
+		/* Check DNA validation result. */
+		if (0x1 & xocl_dna_status(xdev)) {
+			err = 0; /* xclbin is valid */
+		} else {
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
-			goto dna_check_failed;
+			goto done;
 		}
 	}
 
@@ -1800,12 +1915,12 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	buffer += secondaryFirmwareOffset;
 	err = icap_setup_clear_bitstream(icap, buffer, secondaryFirmwareLength);
 	if (err)
-		goto dna_check_failed;
+		goto done;
 
 	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
 		err = calibrate_mig(icap);
 	if (err)
-		goto dna_check_failed;
+		goto done;
 
 	/* Remember "this" bitstream, so avoid redownload the next time. */
 	icap->icap_bitstream_id = bin_obj.m_uniqueId;
@@ -1816,25 +1931,17 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		memcpy(&icap->icap_bitstream_uuid,
 			&bin_obj.m_header.m_timeStamp, 8);
 	}
-	goto done;
 
-dna_check_failed:	
-add_subdev_failed:
-	for(;id>=0 && id < XOCL_SUBDEV_NUM;--id){
-		if(nums_of_ip_section[id]!=0){
-			ICAP_INFO(icap, "remove dynamically-added subdev: %d", core->dyna_subdevs_id[id]);
-			xocl_subdev_destroy_one(xdev, core->dyna_subdevs_id[id]);
-			core->dyna_subdevs_id[id] = INVALID_SUBDEVICE;
-			core->dyna_subdevs_num--;
-	  }
-	}
 done:
-	kfree(res);
-	kfree(subdev_info);
-	vfree(layout);
-	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
+	if (err) {
+		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
+		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+	}
 	mutex_unlock(&icap->icap_lock);
+	vfree(layout);
+	vfree(memtopo);
 	vfree(copy_buffer);
+	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	return err;
 }
 
@@ -2010,7 +2117,7 @@ static ssize_t clock_freq_topology_show(struct device *dev,
 	mutex_unlock(&icap->icap_lock);
 
 	return cnt;
-	
+
 }
 
 static DEVICE_ATTR_RO(clock_freq_topology);
@@ -2021,23 +2128,42 @@ static ssize_t clock_freqs_show(struct device *dev,
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 	int i;
+	u32 round_up_freq, freq_counter, freq;
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
-		unsigned freq = icap_get_ocl_frequency(icap, i);
-		if (freq == 0)
-			break; /* No more clocks. */
-		cnt += sprintf(buf + cnt, "%d\n", freq);
+		freq = icap_get_ocl_frequency(icap, i);
+		if(!uuid_is_null(&icap->icap_bitstream_uuid)){
+			freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
+			round_up_freq = round_up(freq_counter, 1000)/1000;
+			if(round_up_freq!=freq)
+				ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
+			cnt += sprintf(buf + cnt, "%d\n", round_up_freq);
+		}
+		else{
+			cnt += sprintf(buf + cnt, "%d\n", freq);
+		}
 	}
+
 	mutex_unlock(&icap->icap_lock);
 
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs);
 
+static ssize_t idcode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	return sprintf(buf, "0x%x\n", icap->idcode);
+}
+
+static DEVICE_ATTR_RO(idcode);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freq_topology.attr,
 	&dev_attr_clock_freqs.attr,
+	&dev_attr_idcode.attr,
 	NULL,
 };
 
@@ -2072,6 +2198,42 @@ static int icap_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/*
+ * Run the following sequence of canned commands to obtain IDCODE of the FPGA
+ */
+static void icap_probe_chip(struct icap *icap)
+{
+	u32 w;
+
+	if (!ICAP_PRIVILEGED(icap))
+		return;
+
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	reg_wr(&icap->icap_regs->ir_gier, 0x0);
+	w = reg_rd(&icap->icap_regs->ir_wfv);
+	reg_wr(&icap->icap_regs->ir_wf, 0xffffffff);
+	reg_wr(&icap->icap_regs->ir_wf, 0xaa995566);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x28018001);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	reg_wr(&icap->icap_regs->ir_wf, 0x20000000);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	reg_wr(&icap->icap_regs->ir_cr, 0x1);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	w = reg_rd(&icap->icap_regs->ir_sr);
+	reg_wr(&icap->icap_regs->ir_sz, 0x1);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+	reg_wr(&icap->icap_regs->ir_cr, 0x2);
+	w = reg_rd(&icap->icap_regs->ir_rfo);
+	icap->idcode = reg_rd(&icap->icap_regs->ir_rf);
+	w = reg_rd(&icap->icap_regs->ir_cr);
+}
+
 static int icap_probe(struct platform_device *pdev)
 {
 	struct icap *icap = NULL;
@@ -2104,6 +2266,9 @@ static int icap_probe(struct platform_device *pdev)
 			break;
 		case 4:
 			regs = (void **)&icap->icap_clock_bases[1];
+			break;
+		case 5:
+			regs = (void **)&icap->icap_clock_freq_counter;
 			break;
 		default:
 			BUG();
@@ -2142,7 +2307,8 @@ static int icap_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	ICAP_INFO(icap, "successfully initialized");
+	icap_probe_chip(icap);
+	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x", icap->idcode);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);
 	return 0;
 

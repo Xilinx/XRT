@@ -52,6 +52,8 @@ struct xocl_subdev_info {
         char			*name;
         struct resource		*res;
         int			num_res;
+	void			*priv_data;
+	int			data_len;
 };
 
 struct xocl_board_private {
@@ -72,6 +74,15 @@ struct xocl_board_private {
          .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
          .subdevice = subsysid, .driver_data =          \
          (kernel_ulong_t) &XOCL_BOARD_##priv
+
+struct xocl_dsa_vbnv_map {
+	uint16_t		vendor;
+	uint16_t		device;
+	uint16_t		subdevice;
+	char			*vbnv;
+	struct xocl_board_private	*priv_data;
+};
+
 #else
 struct xocl_board_info {
 	uint16_t		vendor;
@@ -104,6 +115,7 @@ enum {
 #define	MGMT_SUFFIX		".m"
 #define	USER_SUFFIX		".u"
 
+#define	XOCL_FEATURE_ROM_USER	"rom" USER_SUFFIX
 #define XOCL_FEATURE_ROM	"rom" SUBDEV_SUFFIX
 #define XOCL_MM_XDMA		"mm_dma.v5" SUBDEV_SUFFIX
 #define XOCL_MM_QDMA		"mm_dma.v6" SUBDEV_SUFFIX
@@ -120,7 +132,7 @@ enum {
 #define	XOCL_MIG		"mig" SUBDEV_SUFFIX
 #define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
 #define	XOCL_DNA		"dna" SUBDEV_SUFFIX
-enum {
+enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_MM_DMA,
 	XOCL_SUBDEV_MB_SCHEDULER,
@@ -136,7 +148,7 @@ enum {
 	XOCL_SUBDEV_STR_DMA,
 	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
-        XOCL_SUBDEV_NUM
+	XOCL_SUBDEV_NUM
 };
 
 #define	XOCL_RES_FEATURE_ROM				\
@@ -174,36 +186,22 @@ enum {
 		ARRAY_SIZE(XOCL_RES_SYSMON),		\
 	}
 
-#define	XOCL_RES_MIG_6A8F					\
+/* Will be populated dynamically */
+#define	XOCL_RES_MIG					\
 		((struct resource []) {			\
 			{				\
-			.start	= 0x1000000,		\
-			.end 	= 0x10003FF,		\
+			.start	= 0x0,			\
+			.end 	= 0x3FF,		\
 			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x70000,		\
-			.end 	= 0x703FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x1010000,		\
-			.end 	= 0x10103FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x1020000,		\
-			.end 	= 0x10203FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
+			}				\
 		})
 
-#define	XOCL_DEVINFO_MIG_6A8F				\
+#define	XOCL_DEVINFO_MIG				\
 	{						\
 		XOCL_SUBDEV_MIG,			\
 		XOCL_MIG,				\
-		XOCL_RES_MIG_6A8F,			\
-		ARRAY_SIZE(XOCL_RES_MIG_6A8F),		\
+		XOCL_RES_MIG,				\
+		ARRAY_SIZE(XOCL_RES_MIG),		\
 	}
 
 
@@ -328,13 +326,14 @@ enum {
 	}
 
 
+/* Will be populated dynamically */
 #define	XOCL_RES_DNA					\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x1100000,		\
-			.end	= 0x1100FFF,		\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
+		}					\
 	})
 
 #define	XOCL_DEVINFO_DNA				\
@@ -421,6 +420,12 @@ enum {
 		{					\
 			.start	= 0x051000,		\
 			.end	= 0x051fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
@@ -563,6 +568,7 @@ enum {
 			XOCL_DEVINFO_QDMA,				\
 			XOCL_DEVINFO_QDMA_STREAM,			\
 			XOCL_DEVINFO_SCHEDULER,				\
+			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -613,7 +619,7 @@ enum {
 
 #define	XOCL_BOARD_USER_XDMA_DSA50					\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
 		.subdev_info	= USER_RES_XDMA_DSA50,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA_DSA50),		\
 		.user_bar = 0,						\
@@ -795,7 +801,6 @@ enum {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
-			XOCL_DEVINFO_MIG_6A8F,        \
 		})
 
 #define	XOCL_BOARD_MGMT_6A8F_DSA52					\
@@ -816,7 +821,6 @@ enum {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
-			XOCL_DEVINFO_MIG_6A8F,        \
 		})
 
 #define	XOCL_BOARD_MGMT_XBB_DSA52					\
@@ -949,7 +953,7 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4351, USER_XDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7890, 0x4352, USER_DSA52) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7990, 0x4352, USER_DSA52) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_XDMA_ERT_OFF) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
@@ -960,5 +964,8 @@ enum {
 #define	XOCL_USER_QDMA_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) }
 
+#define XOCL_DSA_VBNV_MAP						\
+	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
+		&XOCL_BOARD_USER_XDMA }
 
 #endif

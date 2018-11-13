@@ -20,7 +20,6 @@
 #include "xocl/core/device.h"
 
 //To access make_unique<>. TODO
-#include "xrt/util/memory.h"
 
 #include "plugin/xdp/profile.h"
 
@@ -45,7 +44,7 @@ clCreateStream(cl_device_id           device,
 	       cl_int*                errcode_ret) 
 {
   validOrError(device,flags,attributes,ext,errcode_ret);
-  auto stream = xrt::make_unique<xocl::stream>(flags,attributes,ext);
+  auto stream = std::make_unique<xocl::stream>(flags,attributes,ext);
   stream->get_stream(xocl::xocl(device));
   xocl::assign(errcode_ret,CL_SUCCESS);
   return stream.release();

@@ -11,10 +11,6 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 ################################################################
 xrt=$XRTBUILD/Release/opt/xilinx/xrt
 
-
-#xrt=/scratch/home/hemn/XRT/XRT/build/Release/opt/xilinx/xrt
-sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
-
 board=vcu1525
 keep=1
 sync=0
@@ -23,6 +19,7 @@ run=1
 tests=
 csv=
 select="PASS"
+rel=2018.3
 
 usage()
 {
@@ -31,6 +28,7 @@ usage()
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
+    echo "[-rel <2018.2|2018.3>          Select branch to havest xclbins from (default: 2018.3)"
     echo "[-select <regex>]              Pattern to grep for in csv to pick test (default: PASS)"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
@@ -45,17 +43,22 @@ usage()
     echo "current directory. "
     echo "% board.sh -board vcu1525"
     echo ""
-    echo "Use -sync to sync all UNIT_HW tests from latest sprite run into working directory."
+    echo "Use -sync to sync all $rel UNIT_HW tests from latest sprite run into working directory."
     echo "% board.sh -board vcu1525 -sync "
+    echo ""
+    echo "Use -rel <release> to sync sprite tests from specified release"
+    echo "% board.sh -board u200 -rel 2018.2 -sync "
     echo ""
     echo "Use -tests <file> (without -sync) to run a subset of curently synced tests.  "
     echo "The specified file should have one tests per line"
     echo "% board.sh -board vcu1525 -tests ~/tmp/files.txt"
     echo ""
-    echo "Use -csv (with -sync) to explicity specify an older csv file to parse for PASSed"
-    echo "tests.  It's possible latest sprite had hickups and had no PASSed tests."
+    echo "Use -csv (with -sync) to explicity specify a csv file to parse for tests to sync."
+    echo "The board script supports any csv file for any suite.  By default the board script"
+    echo "syncs the UNIT_HW test suite, so use -csv option to sync a different suite."
     echo "The path to the csv file must be a absolute path to sprite generated file."
-    echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
+    echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
+    echo "% board.sh -board u200 -sync -csv /proj/fisdata2/results/sdx_2018.3/SDX_CRS_HWBRD/sdx_crs_hw_20181024_223210_lnx64.csv"
     echo ""
     echo "When selecting tests from csv file, only PASS tests are selected by default."
     echo "Use the -select option to pick any tests that matches the regular expression."
@@ -72,6 +75,11 @@ while [ $# -gt 0 ]; do
         -board)
             shift
             board=$1
+            shift
+            ;;
+        -rel)
+            shift
+            rel=$1
             shift
             ;;
         -rm)
@@ -123,6 +131,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/SDx/${rel}
+
 ################################################################
 # Environment
 ################################################################
@@ -153,11 +163,18 @@ echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 ################################################################
 # Test extraction
 ################################################################
+if [[ "X$csv" == "X" ]]; then
+ #default ot SDX_UNIT_HWBRD suite
+ csvdir=/proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD
+else
+ csvdir=$(dirname $csv)
+fi
+
 if [[ $sync == 0 && "X$tests" == "X" ]]; then
  # use existing already rsynced tests
  tests=(`find . -maxdepth 1 -mindepth 1 -type d`)
 elif [ $sync == 1 ] ; then
- base=/proj/fisdata2/results/sdx_2018.2/SDX_UNIT_HWBRD
+ base=$csvdir
 
  # latests csv
  csvs=(`find $base -mindepth 1 -maxdepth 1 -type f -name \*.csv`)
@@ -165,6 +182,7 @@ elif [ $sync == 1 ] ; then
  if [ "X$csv" == "X" ]; then
    csv=${csvs[-1]}
  fi
+
  suffix=$(basename $csv)
  suffix=${suffix%%.*}
  rundir=TEST_WORK_${suffix}
@@ -181,7 +199,6 @@ fi
 for f in ${tests[*]}; do
  echo $f
 done
-
 
 ################################################################
 # Test driver

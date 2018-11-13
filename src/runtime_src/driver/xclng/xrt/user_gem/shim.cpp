@@ -749,8 +749,8 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on card.\n"
-                    << "Please run xbutil flash -a all to flash card."
+                output << "Xclbin does not match DSA on card or xrt version.\n"
+                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
                     mLogStream << output.str();
@@ -1244,6 +1244,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     q_info.write = 1;
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1266,6 +1267,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {

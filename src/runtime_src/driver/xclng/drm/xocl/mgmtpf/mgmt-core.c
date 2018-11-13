@@ -362,7 +362,7 @@ static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
 	/* couple the control device file operations to the character device */
 	cdev_init(&lro_char->cdev, &ctrl_fops);
 	lro_char->cdev.owner = THIS_MODULE;
-	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->instance);
+	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
 	rc = cdev_add(&lro_char->cdev, lro_char->cdev.dev, 1);
 	if (rc < 0) {
 		printk(KERN_INFO "cdev_add() = %d\n", rc);
@@ -490,9 +490,7 @@ static int health_check_cb(void *data)
         } else {
                 ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
 		/* stop user pf */
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, true);
-		}
+		xocl_reset(lro, true);
                 if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
 			mgmt_info(lro, "Issuing pcie hot reset.");
                         xclmgmt_reset_pci(lro);
@@ -503,9 +501,7 @@ static int health_check_cb(void *data)
 	        msleep(500);
 	        freeAXIGate(lro);
 	        msleep(500);
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, false);
-		}
+		xocl_reset(lro, false);
         }
         mutex_unlock(&lro->busy_mutex);
 
@@ -661,13 +657,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
 
-	lro->user_pci_dev = find_user_node(pdev);
-	if (!lro->user_pci_dev) {
-		xocl_err(&pdev->dev,
-			"could not find user pf for instance %d\n",
-			lro->instance);
-	}
-
 	/* We can only support MSI-X. */
 	ret = xclmgmt_setup_msix(lro);
 	if (ret && (ret != -EOPNOTSUPP)) {
@@ -763,9 +752,25 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
 	lro->core.pdev = pdev;
-	memset(lro->core.dyna_subdevs_id, 0xff, sizeof(u32) * XOCL_SUBDEV_NUM);
 	lro->pci_dev = pdev;
 	lro->ready = false;
+
+	rc = pcie_get_readrq(pdev);
+        if (rc < 0) {
+                dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+                goto err_alloc;
+        }
+        if (rc > 512) {
+                rc = pcie_set_readrq(pdev, 512);
+                if (rc) {
+                        dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+                        goto err_alloc;
+                }
+        }
+
+	rc = xocl_alloc_dev_minor(lro);
+	if (rc)
+		goto err_alloc_minor;
 
 	rc = pci_request_regions(pdev, DRV_NAME);
 	/* could not request all regions? */
@@ -811,6 +816,8 @@ err_cdev:
 err_map:
 	pci_release_regions(pdev);
 err_regions:
+	xocl_free_dev_minor(lro);
+err_alloc_minor:
 	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
 err_alloc:
@@ -850,6 +857,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	unmap_bars(lro);
 	pci_disable_device(pdev);
 	pci_release_regions(pdev);
+
+	xocl_free_dev_minor(lro);
 
 	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
@@ -925,8 +934,8 @@ static int __init xclmgmt_init(void)
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 
-	res = alloc_chrdev_region(&xclmgmt_devnode, XCLMGMT_MINOR_BASE,
-				  XCLMGMT_MINOR_COUNT, DRV_NAME);
+	res = alloc_chrdev_region(&xclmgmt_devnode, 0,
+				  XOCL_MAX_DEVICES, DRV_NAME);
 	if (res)
 		goto alloc_err;
 
@@ -949,7 +958,7 @@ reg_err:
 	for (i--; i >= 0; i--) {
 		drv_unreg_funcs[i]();
 	}
-	unregister_chrdev_region(xclmgmt_devnode, XCLMGMT_MINOR_COUNT);
+	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
 	pr_info(DRV_NAME " init() err\n");
 	class_destroy(xrt_class);
@@ -967,7 +976,7 @@ static void xclmgmt_exit(void)
 		drv_unreg_funcs[i]();
 	}
 	/* unregister this driver from the PCI bus driver */
-	unregister_chrdev_region(xclmgmt_devnode, XCLMGMT_MINOR_COUNT);
+	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 	class_destroy(xrt_class);
 }
 

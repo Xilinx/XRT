@@ -1,11 +1,11 @@
-build/Debug
-build/Release
+build/Debug*
+build/Release*
 docs/.buildinfo
 docs/.doctrees
 *.o
 *.swp
 *.swo
-*~ 
+*~
 tags
 *.mod
 *.ko

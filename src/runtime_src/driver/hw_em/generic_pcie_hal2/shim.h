@@ -170,7 +170,7 @@ using addr_type = uint64_t;
       uint32_t getAddressSpace (uint32_t topology);
 
       //constructor
-      HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR);
+      HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR, FeatureRomHeader &featureRom);
 
       //destructor
       ~HwEmShim();
@@ -188,6 +188,9 @@ using addr_type = uint64_t;
       bool isUnified()               { return bUnified; }
       void setUnified(bool _unified) { bUnified = _unified; }
 
+      bool isMBSchedulerEnabled();
+      unsigned int getDsaVersion();
+
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
@@ -200,6 +203,7 @@ using addr_type = uint64_t;
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
 
 
     private:
@@ -275,6 +279,9 @@ using addr_type = uint64_t;
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
+      FeatureRomHeader mFeatureRom;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

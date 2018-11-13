@@ -28,7 +28,7 @@
 
 #define	PROC_TABLE_HASH_SZ	512
 #define	EBUF_LEN		256
-#define	MINOR_NAME_MASK		0xffff
+#define	MINOR_NAME_MASK		0xffffffff
 
 #define	STREAM_FLOWID_MASK	0xff
 #define	STREAM_SLRID_SHIFT	16
@@ -153,6 +153,9 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(pstat, total_req_num);
 	__SHOW_MEMBER(pstat, total_complete_bytes);
 	__SHOW_MEMBER(pstat, total_complete_num);
+
+	__SHOW_MEMBER(pstat, hw_submit_bytes);
+	__SHOW_MEMBER(pstat, hw_complete_bytes);
 
 	__SHOW_MEMBER(pstat, descq_rngsz);
 	__SHOW_MEMBER(pstat, descq_pidx);
@@ -694,7 +697,7 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
         qconf.fetch_credit=1; 
         qconf.cmpl_stat_en=1;
         qconf.cmpl_trig_mode=1;
-	qconf.irq_en = 1;
+	qconf.irq_en = (req.flags & XOCL_QDMA_QUEUE_FLAG_POLLING) ? 0 : 1;
 
 	if (!req.write) {
 		qconf.pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;

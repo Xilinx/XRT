@@ -247,7 +247,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 
     // Allocate the private data
     sc_session->base.plugin_data =
-        malloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size);
+        calloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size, sizeof(uint8_t));
 
     // Allocate a connection for each output
     for (i = 0; i < sc_props->num_outputs; i++)

@@ -5,6 +5,10 @@
 
 static int32_t xma_decoder_init(XmaDecoderSession *sess)
 {
+    if(*(uint8_t*)sess->base.plugin_data != 0)
+    {
+        return XMA_ERROR;
+    }
     return 0;
 }
 
@@ -33,7 +37,7 @@ static int32_t xma_decoder_getp(XmaDecoderSession *sess,
 XmaDecoderPlugin decoder_plugin = {
     .hwdecoder_type = XMA_H264_DECODER_TYPE,
     .hwvendor_string = "Xilinx",
-    .plugin_data_size = 0,
+    .plugin_data_size = 1,
     .init = xma_decoder_init,
     .send_data = xma_decoder_send,
     .get_properties = xma_decoder_getp,

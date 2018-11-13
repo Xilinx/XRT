@@ -143,7 +143,7 @@ static bool mb_sched_on(struct platform_device *pdev)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return rom->mb_sche_enabled;
+	return rom->mb_sche_enabled && !XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(pdev));
 }
 
 static bool cdma_on(struct platform_device *pdev)
@@ -213,6 +213,9 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
+	xocl_info(&pdev->dev, "DSA timestamp: 0x%llx",
+		rom->header.TimeSinceEpoch);
+	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 	return (rom->header.TimeSinceEpoch == timestamp);
 }
 
@@ -247,6 +250,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 	struct resource *res;
 	u32	val;
 	u16	vendor, did;
+	char	*tmp;
 	int	ret;
 
 	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
@@ -327,18 +331,16 @@ static int feature_rom_probe(struct platform_device *pdev)
 	else if (strstr(rom->header.VBNVName,"5_3"))
 		rom->dsa_version = 53;
 
-	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM) {
+	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM)
 		rom->unified = true;
-	}
-	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD) {
+
+	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD)
 		rom->mb_mgmt_enabled = true;
-	}
-	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
-	    && rom->dsa_version>=51
-	    && !strstr(rom->header.VBNVName,"kcu1500")) {
+
+	if(rom->header.FeatureBitMap & MB_SCHEDULER)
 		rom->mb_sche_enabled = true;
-	}
-	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
+
+	if(rom->header.FeatureBitMap & CDMA)
 	    rom->cdma_enabled = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
@@ -347,7 +349,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_info(&pdev->dev, "ROM magic : %s", rom->header.EntryPointString);
+	tmp = rom->header.EntryPointString;
+	xocl_info(&pdev->dev, "ROM magic : %c%c%c%c",
+		tmp[0], tmp[1], tmp[2], tmp[3]);
 	xocl_info(&pdev->dev, "VBNV: %s", rom->header.VBNVName);
 	xocl_info(&pdev->dev, "DDR channel count : %d",
 		rom->header.DDRChannelCount);

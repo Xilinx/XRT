@@ -78,6 +78,9 @@ typedef struct XmaSession {
     by XMA prior to calling plugin init() and freed automatically as part of
     close. */
     void          *plugin_data;
+    /** Private stats data attached to a specific session. This field is
+    allocated and managed by XMA for each session type. */ 
+    void          *stats;
 } XmaSession;
 
 /**

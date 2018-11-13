@@ -199,19 +199,18 @@ unsigned xclProbe()
   }
 
   unsigned int deviceIndex = 0;
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> , bool, bool > > devicesInfo;
+  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> , bool, bool , FeatureRomHeader> > devicesInfo;
   getDevicesInfo(devicesInfo);
   if(devicesInfo.size() == 0)
     return 1;//old behavior
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank>, bool, bool > >::iterator start = devicesInfo.begin();
-  std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank>, bool, bool > >::iterator end = devicesInfo.end();
-  for(;start != end; start++)
+  for(auto &it:devicesInfo)
   {
-    xclDeviceInfo2 info = std::get<0>(*start);
-    std::list<xclemulation::DDRBank> DDRBankList = std::get<1>(*start);
-    bool bUnified = std::get<2>(*start);
-    bool bXPR = std::get<3>(*start);
-    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex,info,DDRBankList, bUnified, bXPR);
+    xclDeviceInfo2 info = std::get<0>(it);
+    std::list<xclemulation::DDRBank> DDRBankList = std::get<1>(it);
+    bool bUnified = std::get<2>(it);
+    bool bXPR = std::get<3>(it);
+    FeatureRomHeader fRomHeader = std::get<4>(it);
+    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
@@ -248,6 +247,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   xclemulation::DDRBank bank;
   bank.ddrSize = xclemulation::MEMSIZE_4G;
   DDRBankList.push_back(bank);
+  FeatureRomHeader fRomHeader;
+  std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
+
 
   xclhwemhal2::HwEmShim *handle = NULL;
 
@@ -259,7 +261,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   else
   {
-    handle = new xclhwemhal2::HwEmShim(deviceIndex,info,DDRBankList, false, false);
+    handle = new xclhwemhal2::HwEmShim(deviceIndex,info,DDRBankList, false, false,fRomHeader);
     bDefaultDevice = true;
   }
 
@@ -479,5 +481,10 @@ ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
 	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
+}
+int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
+{
+   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 

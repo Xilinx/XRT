@@ -22,7 +22,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define MAX_RETRY       300	//Retry is set to 30s which is overkill
+#define MAX_XMC_RETRY       150	//Retry is set to 15s for XMC
+#define MAX_ERT_RETRY       10	//Retry is set to 1s for ERT
 #define RETRY_INTERVAL  100       //100ms
 
 #define	MAX_IMAGE_LEN	0x20000
@@ -156,7 +157,7 @@ struct xocl_xmc {
 
 
 static int load_xmc(struct xocl_xmc *xmc);
-
+static int stop_xmc(struct platform_device *pdev);
 
 /* sysfs support */
 static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
@@ -889,21 +890,20 @@ create_attr_failed:
 	return err;
 }
 
-
-static int load_xmc(struct xocl_xmc *xmc)
-{
+static int stop_xmc_nolock(struct platform_device *pdev) {
+	struct xocl_xmc *xmc;
 	int retry = 0;
 	u32 reg_val = 0;
-	int ret = 0;
 	void *xdev_hdl;
 
-	if (!xmc->enabled) {
-		return 0;
-	}
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
-	mutex_lock(&xmc->xmc_lock);
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
@@ -931,34 +931,33 @@ static int load_xmc(struct xocl_xmc *xmc)
 		}
 
 		retry=0;
-		while (retry++ < MAX_RETRY && 
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED)) 
+		while (retry++ < MAX_XMC_RETRY &&
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
-		//Wait for XMC to stop and then check that ERT has also finished 
-		if (retry >= MAX_RETRY) {
+		//Wait for XMC to stop and then check that ERT has also finished
+		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"Failed to stop XMC");
 			xocl_err(&xmc->pdev->dev,
 				"XMC Error Reg 0x%x",
 				READ_REG32(xmc, XMC_ERROR_REG));
-			ret = -ETIMEDOUT;
 			xmc->state = XMC_STATE_ERROR;
-			goto out;
-		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) && 
+			return -ETIMEDOUT;
+		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
 			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
-			while (retry++ < MAX_RETRY && 
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) 
+			while (retry++ < MAX_ERT_RETRY &&
+				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK))
 				msleep(RETRY_INTERVAL);
-			if (retry >= MAX_RETRY) {
+			if (retry >= MAX_ERT_RETRY) {
 				xocl_err(&xmc->pdev->dev,
 					"Failed to stop sched");
 				xocl_err(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
-				ret = -ETIMEDOUT;
-				xmc->state = XMC_STATE_ERROR;
-				goto out;
+				//We don't exit if ERT doesn't stop since it can hang due to bad kernel
+				//xmc->state = XMC_STATE_ERROR;
+				//return -ETIMEDOUT;
 			}
 		}
 
@@ -978,24 +977,68 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 	if (reg_val != GPIO_RESET) {//Shouldnt make it here but if we do then exit
 		xmc->state = XMC_STATE_ERROR;
-		goto out;
+        	return -EIO;
 	}
 
-	// Load XMC and ERT Image
+	return 0;
+}
+static int stop_xmc(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+	int ret = 0;
+	void *xdev_hdl;
+
+	xocl_info(&pdev->dev, "Stop Microblaze...");
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc)
+		return -ENODEV;
+	else if (!xmc->enabled)
+		return -ENODEV;
+
+	xdev_hdl = xocl_get_xdev(xmc->pdev);
+
+	mutex_lock(&xmc->xmc_lock);
+	ret = stop_xmc_nolock(pdev);
+	mutex_unlock(&xmc->xmc_lock);
+
+	return ret;
+}
+
+static int load_xmc(struct xocl_xmc *xmc)
+{
+	int retry = 0;
+	u32 reg_val = 0;
+	int ret = 0;
+	void *xdev_hdl;
+
+	if (!xmc->enabled) {
+		return -ENODEV;
+	}
+
+
+	mutex_lock(&xmc->xmc_lock);
+
+    	/* Stop XMC first */
+	ret = stop_xmc_nolock(xmc->pdev);
+    	if(ret != 0)
+		goto out;
+
+	xdev_hdl = xocl_get_xdev(xmc->pdev);
+
+	/* Load XMC and ERT Image */
 	if (xocl_mb_mgmt_on(xdev_hdl)) {
 		xocl_info(&xmc->pdev->dev, "Copying XMC image len %d",
 			xmc->mgmt_binary_length);
 		COPY_MGMT(xmc, xmc->mgmt_binary, xmc->mgmt_binary_length);
 	}
 
-	if (!XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(xmc->pdev)) &&
-		xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl)) {
 		xocl_info(&xmc->pdev->dev, "Copying scheduler image len %d",
 			xmc->sche_binary_length);
 		COPY_SCHE(xmc, xmc->sche_binary, xmc->sche_binary_length);
 	}
 
-	// Take XMC and ERT out of reset
+	/* Take XMC and ERT out of reset */
 	WRITE_GPIO(xmc, GPIO_ENABLED, 0);
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
@@ -1004,16 +1047,16 @@ static int load_xmc(struct xocl_xmc *xmc)
 		goto out;
 	}
 
-	//Wait for XMC to start
-	//Note that ERT will start long before XMC so we don't check anything
+	/* Wait for XMC to start
+	 * Note that ERT will start long before XMC so we don't check anything */
 	reg_val = READ_REG32(xmc, XMC_STATUS_REG);
 	if(!(reg_val & STATUS_MASK_INIT_DONE)) {
 		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
 		retry=0;
-		while (retry++ < MAX_RETRY && 
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE)) 
+		while (retry++ < MAX_XMC_RETRY &&
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE))
 			msleep(RETRY_INTERVAL);
-		if (retry >= MAX_RETRY) {
+		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"XMC did not finish init sequence!");
 			xocl_err(&xmc->pdev->dev,
@@ -1113,6 +1156,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
+	.stop			= stop_xmc,
 };
 
 static int xmc_remove(struct platform_device *pdev)

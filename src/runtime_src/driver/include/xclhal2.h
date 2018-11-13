@@ -18,8 +18,6 @@
 #ifndef _XCL_HAL2_H_
 #define _XCL_HAL2_H_
 
-//#include <uuid.h>
-
 #ifdef __cplusplus
 #include <cstdlib>
 #include <cstdint>
@@ -43,14 +41,6 @@
 #include "xclperf.h"
 #include "xcl_app_debug.h"
 #include "xclerr.h"
-
-#ifndef _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -933,6 +923,9 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, 
 XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
                                                  uint32_t slotnum, char* slotName, uint32_t length);
 
+XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type,
+                                                 uint32_t slotnum);
+
 XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type);
@@ -967,6 +960,11 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 /**
  * struct xclQueueContext - structure to describe a Queue
  */
+
+enum {
+	/* keep in sync with cl_stream_type */
+	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
+};
 
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
@@ -1165,8 +1163,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  * @timeout:		timeout
  *
  * return number of requests been completed.
- */ 
-XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout); 
+ */
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout);
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

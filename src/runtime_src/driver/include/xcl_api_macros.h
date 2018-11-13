@@ -538,7 +538,10 @@ mtx.unlock();
 #define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
     c_msg.set_q_handle(q_handle); \
     c_msg.set_src((char*)src,size); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_req(mReqCounter);\
+    c_msg.set_nonblocking(nonBlocking);\
+    c_msg.set_eot(eot);
 
 #define xclWriteQueue_SET_PROTO_RESPONSE() \
   uint64_t written_size = r_msg.written_size();
@@ -554,7 +557,10 @@ mtx.unlock();
 #define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
     c_msg.set_q_handle(q_handle); \
     c_msg.set_dest((char*)dest,size); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_req(mReqCounter);\
+    c_msg.set_nonblocking(nonBlocking);\
+    c_msg.set_eot(eot);
 
 #define xclReadQueue_SET_PROTO_RESPONSE(dest) \
     read_size = r_msg.size();\
@@ -565,6 +571,31 @@ mtx.unlock();
   xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadQueue_SET_PROTO_RESPONSE(dest); \
+  FREE_BUFFERS();
+
+//----------xclPollCompletion-------------------
+#define xclPollCompletion_SET_PROTOMESSAGE(reqcounter) \
+    c_msg.set_req(reqcounter); \
+
+#define xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap) \
+  std::map<uint64_t,uint64_t>::iterator vaLenMapItr = vaLenMap.begin();\
+  if(r_msg.fullrequest_size() == (int)(vaLenMap.size()))\
+  {\
+    for(int i = 0; i < r_msg.fullrequest_size() ; i++) \
+    { \
+      const xclPollCompletion_response::request &oReq = r_msg.fullrequest(i); \
+      uint64_t read_size = oReq.size();\
+      numBytesProcessed  += read_size; \
+      memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
+      vaLenMapItr++;\
+    } \
+  }\
+
+#define xclPollCompletion_RPC_CALL(func_name,reqcounter,vaLenMap) \
+  RPC_PROLOGUE(func_name); \
+  xclPollCompletion_SET_PROTOMESSAGE(reqcounter); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
   FREE_BUFFERS();
 
 //----------xclDestroyQueue-------------------
