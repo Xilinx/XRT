@@ -33,6 +33,8 @@
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
 
+#define XOCL_MAX_CONCURRENT_CLIENTS 32
+
 #define XOCL_DRIVER_VERSION                             \
         __stringify(XOCL_DRIVER_MAJOR) "."              \
         __stringify(XOCL_DRIVER_MINOR) "."              \
