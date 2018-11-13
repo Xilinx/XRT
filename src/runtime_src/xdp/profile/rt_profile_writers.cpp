@@ -345,7 +345,7 @@ namespace XCL {
     // Get memory name from CU port name string (if found)
     std::string cuPortName2 = cuPortName;
     std::string memoryName2 = memoryName;
-    size_t index = cuPortName.find_last_of(":");
+    size_t index = cuPortName.find_last_of(PORT_MEM_SEP);
     if (index != std::string::npos) {
       cuPortName2 = cuPortName.substr(0, index);
       memoryName2 = cuPortName.substr(index+1);
@@ -818,7 +818,7 @@ namespace XCL {
           // If port is tagged with memory resource, then use it
           std::string portName2 = portName;
           std::string memoryName2 = memoryName;
-          size_t index = portName.find_last_of(":");
+          size_t index = portName.find_last_of(PORT_MEM_SEP);
           if (index != std::string::npos) {
             // Keep memory resource in port name for display purposes
             //portName2 = portName.substr(0, index);
