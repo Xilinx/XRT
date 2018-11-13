@@ -1918,6 +1918,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		if (loops == timeout_loops) {
 			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbsak reset -h'\n",outstanding);
 			atomic_set(&xdev->needs_reset,1);
+			/* stop the scheduler loop */
+			global_scheduler0.stop = 1;
 			break;
 		}
 		outstanding = new;
@@ -2077,7 +2079,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	struct client_ctx client;
 	struct ert_packet packet;
-	unsigned int count;
+	unsigned int count = 0;
 	ssize_t sz = 0;
 
 	/* minimum required initialization of client */

@@ -869,8 +869,10 @@ XclBin::addSection(ParameterSectionData &_PSD)
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
-  // Did we read anything in
-  if (pSection->getSize() == 0) {
+  bool bAllowZeroSize = ((pSection->getSectionKind() == DEBUG_DATA)
+      && (_PSD.getFormatType() == Section::FT_RAW));
+
+  if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
     std::cout << std::endl << XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
                                           pSection->getSectionKindAsString().c_str(), 
                                           pSection->getSectionKind(),
@@ -880,7 +882,6 @@ XclBin::addSection(ParameterSectionData &_PSD)
     return;
   }
 
-  // Finish adding the section 
   addSection(pSection);
   updateHeaderFromSection(pSection);
 
@@ -1045,7 +1046,6 @@ XclBin::appendSections(ParameterSectionData &_PSD)
                                           _PSD.getFormatTypeAsStr().c_str(), sectionName.c_str()).c_str() << std::endl;
   }
 }
-
 
 void 
 XclBin::dumpSubSection(ParameterSectionData &_PSD)

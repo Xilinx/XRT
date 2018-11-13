@@ -69,7 +69,18 @@ namespace xclhwemhal2 {
 
     for(unsigned i=0; i <MAX_SLOTS; ++i)
       submitted_cmds[i] = NULL;
+    
+    for (unsigned int i=0; i<MAX_CUS; ++i) 
+    {
+      cu_addr_map[i] = 0;
+      cu_usage[i] = 0;
+    }
+    
+    for (unsigned int i=0; i<MAX_U32_CU_MASKS; ++i)
+      cu_status[i] = 0;
       
+    ert = true;
+    
     num_slot_masks = 1;
 
     sr0 = 0;
@@ -95,6 +106,145 @@ namespace xclhwemhal2 {
     mScheduler = NULL;
     num_pending = 0;
   }
+ 
+//KDS FLOW STARTED...
+  static uint32_t cu_idx_to_addr(struct exec_core *exec,unsigned int cu_idx)
+  {
+    return exec->cu_addr_map[cu_idx];
+  }
+
+  bool MBScheduler::cu_done(struct exec_core *exec, unsigned int cu_idx)
+  {
+    uint32_t cu_addr = cu_idx_to_addr(exec,cu_idx);
+
+    uint32_t mask = 0;
+    mParent->xclRead(XCL_ADDR_KERNEL_CTRL, exec->base + cu_addr, (void*)&mask, 4);
+    /* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+     * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
+     * checking for 0x10 is sufficient. */
+    if(mask & 2) 
+    {
+      unsigned int mask_idx = cu_mask_idx(cu_idx);
+      unsigned int pos = cu_idx_in_mask(cu_idx);
+      exec->cu_status[mask_idx] ^= 1<<pos;
+      return true;
+    }
+    return false;
+  }
+   int MBScheduler::acquire_slot(struct xocl_cmd* xcmd)
+  {
+    if (type(xcmd)==ERT_CTRL)
+      return 0;
+
+    return acquire_slot_idx(xcmd->exec);
+  }
+  
+  unsigned int getFirstSetBitPos(int n) 
+  { 
+    if(!n)
+      return -1;
+    return log2(n & -n) ; 
+  } 
+
+  int MBScheduler::get_free_cu(struct xocl_cmd *xcmd)
+  {
+    int mask_idx=0;
+    int num_masks = cu_masks(xcmd);
+    for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
+      uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
+      uint32_t busy_mask = xcmd->exec->cu_status[mask_idx];
+      int cu_idx = getFirstSetBitPos((cmd_mask | busy_mask) ^ busy_mask);
+      if (cu_idx>=0) 
+      {
+        xcmd->exec->cu_status[mask_idx] ^= 1<<cu_idx;
+        return cu_idx_from_mask(cu_idx,mask_idx);
+      }
+    }
+    return -1;
+  }
+
+  uint32_t MBScheduler::cu_masks(struct xocl_cmd *xcmd)
+  {
+    struct ert_start_kernel_cmd *sk;
+    if (opcode(xcmd)!=ERT_START_KERNEL)
+      return 0;
+    sk = (struct ert_start_kernel_cmd *)xcmd->packet;
+    return 1 + sk->extra_cu_masks;
+  }
+
+  uint32_t MBScheduler::regmap_size(struct xocl_cmd* xcmd)
+  {
+    return payload_size(xcmd) - cu_masks(xcmd);
+  }
+
+  void MBScheduler::configure_cu(struct xocl_cmd *xcmd, int cu_idx)
+  {
+    struct exec_core *exec = xcmd->exec;
+    uint32_t cu_addr = cu_idx_to_addr(xcmd->exec,cu_idx);
+    uint32_t size = regmap_size(xcmd);
+    struct ert_start_kernel_cmd *ecmd = (struct ert_start_kernel_cmd *)xcmd->packet;
+
+    /* write register map, but skip first word (AP_START) */
+    /* can't get memcpy_toio to work */
+    /* memcpy_toio(user_bar + cu_addr + 4,ecmd->data + ecmd->extra_cu_masks + 1,(size-1)*4); */
+
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr + 4 , ecmd->data + ecmd->extra_cu_masks + 1 , size*4);
+
+    /* start CU at base + 0x0 */
+    int ap_start = 0x1;
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr, (void*)&ap_start , 4 );
+  } 
+
+  static unsigned int get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
+  {
+    struct xocl_cmd *xcmd = exec->submitted_cmds[cmd_idx];
+    if(!xcmd)
+      return -1;
+    return xcmd->cu_idx;
+  }
+  
+  int MBScheduler::penguin_submit(xocl_cmd* xcmd)
+  {
+    /* execution done by submit_cmds, ensure the cmd retired properly */
+    if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL || type(xcmd)==ERT_CTRL) {
+      xcmd->slot_idx = acquire_slot(xcmd);
+      return true;
+    }
+
+    if (opcode(xcmd)!=ERT_START_CU)
+      return false;
+
+    /* extract cu list */
+    xcmd->cu_idx = get_free_cu(xcmd);
+    if (xcmd->cu_idx<0)
+      return false;
+
+    /* track cu executions */
+    ++xcmd->exec->cu_usage[xcmd->cu_idx];
+
+    xcmd->slot_idx = acquire_slot(xcmd);
+    if (xcmd->slot_idx<0)
+      return false;
+
+    /* found free cu, transfer regmap and start it */
+    configure_cu(xcmd,xcmd->cu_idx);
+
+    return true;
+  }
+  
+  void MBScheduler::penguin_query(xocl_cmd* xcmd)
+  {
+    uint32_t cmd_opcode = opcode(xcmd);
+    uint32_t cmd_type = type(xcmd);
+
+    if (cmd_type==ERT_KDS_LOCAL || cmd_type==ERT_CTRL
+        ||cmd_opcode==ERT_CONFIGURE
+        ||(cmd_opcode==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
+    {
+      mark_cmd_complete(xcmd);
+    }
+  }
+//KDS FLOW ENDED...
 
   void MBScheduler::mb_query(xocl_cmd *xcmd)
   {
@@ -200,15 +350,21 @@ namespace xclhwemhal2 {
       exec->cu_base_addr = cfg->cu_base_addr;
       exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
 
-      if (cfg->ert) 
+      for (unsigned i=0; i<exec->num_cus; ++i) 
       {
+        exec->cu_addr_map[i] = cfg->data[i];
+      }
+
+      if (cfg->ert && mParent->isMBSchedulerEnabled())
+      {
+        exec->ert=true;
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
-
       }
       else 
       {
-        std::cout<<"ERT not enabled "<<std::endl;
+        exec->ert=false;
+        exec->polling_mode = 1; //cfg->polling;
       }
       return 0;
     }
@@ -280,7 +436,15 @@ namespace xclhwemhal2 {
       configure(xcmd);
     }
 
-    if (mb_submit(xcmd)) {
+    exec_core *exec = xcmd->exec;
+    bool ert = exec->ert;
+    bool submitted  = false;
+    if(ert)
+      submitted = mb_submit(xcmd);
+    else
+      submitted = penguin_submit(xcmd);
+
+    if ( submitted ) {
       set_cmd_state(xcmd,ERT_CMD_STATE_RUNNING);
       if (xcmd->exec->polling_mode)
         mScheduler->poll++;
@@ -293,7 +457,12 @@ namespace xclhwemhal2 {
 
   void MBScheduler::running_to_complete(xocl_cmd *xcmd)
   {
-    mb_query(xcmd);
+    exec_core *exec = xcmd->exec;
+    bool ert = exec->ert;
+    if(ert)
+      mb_query(xcmd);
+    else
+      penguin_query(xcmd);
   }
 
   xocl_cmd* MBScheduler::get_free_xocl_cmd(void)

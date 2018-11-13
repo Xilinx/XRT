@@ -47,19 +47,14 @@
 #include <cstdlib>
 #include <cstdint>
 #include <algorithm>
+#include <uuid/uuid.h>
 #else
 #include <stdlib.h>
 #include <stdint.h>
+#include <uuid/uuid.h>
 #endif
 
 #if !defined(__KERNEL__)
-#if !defined _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
 typedef uuid_t xuid_t;
 #else //(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
@@ -366,7 +361,7 @@ extern "C" {
     {
         CST_UNKNOWN = 0,
         CST_SDBM = 1,
-        CST_LAST 
+        CST_LAST
     };
 
     /**** END : Xilinx internal section *****/

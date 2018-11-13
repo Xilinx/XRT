@@ -82,9 +82,11 @@
 #elif defined(__cplusplus)
 #include <cstdlib>
 #include <cstdint>
+#include <uuid/uuid.h>
 #else
 #include <stdlib.h>
 #include <stdint.h>
+#include <uuid/uuid.h>
 #endif
 
 #if defined(__KERNEL__)

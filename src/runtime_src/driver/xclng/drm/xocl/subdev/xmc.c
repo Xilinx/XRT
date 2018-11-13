@@ -22,7 +22,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define MAX_RETRY       300	//Retry is set to 30s which is overkill
+#define MAX_XMC_RETRY       150	//Retry is set to 15s for XMC
+#define MAX_ERT_RETRY       10	//Retry is set to 1s for ERT
 #define RETRY_INTERVAL  100       //100ms
 
 #define	MAX_IMAGE_LEN	0x20000
@@ -930,12 +931,12 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 		}
 
 		retry=0;
-		while (retry++ < MAX_RETRY &&
+		while (retry++ < MAX_XMC_RETRY &&
 			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
 		//Wait for XMC to stop and then check that ERT has also finished
-		if (retry >= MAX_RETRY) {
+		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"Failed to stop XMC");
 			xocl_err(&xmc->pdev->dev,
@@ -945,17 +946,18 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
 			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
-			while (retry++ < MAX_RETRY &&
+			while (retry++ < MAX_ERT_RETRY &&
 				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK))
 				msleep(RETRY_INTERVAL);
-			if (retry >= MAX_RETRY) {
+			if (retry >= MAX_ERT_RETRY) {
 				xocl_err(&xmc->pdev->dev,
 					"Failed to stop sched");
 				xocl_err(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
-				xmc->state = XMC_STATE_ERROR;
-				return -ETIMEDOUT;
+				//We don't exit if ERT doesn't stop since it can hang due to bad kernel
+				//xmc->state = XMC_STATE_ERROR;
+				//return -ETIMEDOUT;
 			}
 		}
 
@@ -1051,10 +1053,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if(!(reg_val & STATUS_MASK_INIT_DONE)) {
 		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
 		retry=0;
-		while (retry++ < MAX_RETRY &&
+		while (retry++ < MAX_XMC_RETRY &&
 			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE))
 			msleep(RETRY_INTERVAL);
-		if (retry >= MAX_RETRY) {
+		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"XMC did not finish init sequence!");
 			xocl_err(&xmc->pdev->dev,

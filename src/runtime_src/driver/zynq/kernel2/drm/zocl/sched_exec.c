@@ -904,9 +904,10 @@ get_free_cu(struct sched_cmd *cmd)
 {
 	int mask_idx = 0;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int num_masks = cu_masks(cmd);
 
 	SCHED_DEBUG("-> get_free_cu\n");
-	for (mask_idx = 0; mask_idx < zdev->exec->num_cu_masks; ++mask_idx) {
+	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmd->packet->data[mask_idx]; /* skip header */
 		u32 busy_mask = zdev->exec->cu_status[mask_idx];
 		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
