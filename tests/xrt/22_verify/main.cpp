@@ -34,7 +34,7 @@
 // lowlevel common include
 #include "utils.h"
 
-#include "xhello_hw.h"      
+#include "xhello_hw.h"
 
 /**
  * Runs an OpenCL kernel which writes known 16 integers into a 64 byte buffer. Does not use OpenCL
@@ -81,63 +81,64 @@ static void printHelp()
 
 static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem)
 {
-	
-	unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_mem);//buf1
-	char* bo = (char*)xclMapBO(handle, boHandle, true);
-    
-	memset(bo, 0, 1024);
-	
-	if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_TO_DEVICE, 1024,0))
-	    return 1;
 
-	xclBOProperties p;
-	uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
+    unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_mem);//buf1
+    char* bo = (char*)xclMapBO(handle, boHandle, true);
 
-	if((bodevAddr == uint64_t (-1)))
-	    return 1;
+    memset(bo, 0, 1024);
 
-	//Allocate the exec_bo
-	unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
-	void* execData = xclMapBO(handle, execHandle, true);
+    if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_TO_DEVICE, 1024,0))
+      return 1;
 
-    std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
-	//construct the exec buffer cmd to configure.
-	{
-	    auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
+    xclBOProperties p;
+    uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
-	    std::memset(ecmd, 0, 1024);
-	    ecmd->state = ERT_CMD_STATE_NEW;
-	    ecmd->opcode = ERT_CONFIGURE;
+    if((bodevAddr == uint64_t (-1)))
+      return 1;
 
-	    ecmd->slot_size = 1024;
-	    ecmd->num_cus = 1;
-	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+    //Allocate the exec_bo
+    unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
+    void* execData = xclMapBO(handle, execHandle, true);
 
-	    ecmd->ert = ert;
-	    if (ert) {
-		ecmd->cu_dma = 1;
-		ecmd->cu_isr = 1;
-	    }
+    std::cout << "Construct the exe buf cmd to configure FPGA" << std::endl;
+    //construct the exec buffer cmd to configure.
+    {
+      auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
 
-            // CU -> base address mapping
-            ecmd->data[0] = cu_base_addr;
-            ecmd->count = 5 + ecmd->num_cus;
-	}
+      std::memset(ecmd, 0, 1024);
+      ecmd->state = ERT_CMD_STATE_NEW;
+      ecmd->opcode = ERT_CONFIGURE;
+
+      ecmd->slot_size = 1024;
+      ecmd->num_cus = 1;
+      ecmd->cu_shift = 16;
+      ecmd->cu_base_addr = cu_base_addr;
+
+      ecmd->ert = ert;
+      if (ert) {
+        ecmd->cu_dma = 1;
+        ecmd->cu_isr = 1;
+      }
+
+      // CU -> base address mapping
+      ecmd->data[0] = cu_base_addr;
+      ecmd->count = 5 + ecmd->num_cus;
+    }
 
     std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-	//Send the command.
-	if(xclExecBuf(handle, execHandle)) {
-	    std::cout << "Unable to issue xclExecBuf" << std::endl;
-	    return 1;
-	}
+    //Send the command.
+    if(xclExecBuf(handle, execHandle)) {
+      std::cout << "Unable to issue xclExecBuf" << std::endl;
+      return 1;
+    }
 
     std::cout << "Wait until the command finish" << std::endl;
-	//Wait on the command finish	
-	while (xclExecWait(handle,1000) == 0);
+    //Wait on the command finish
+    while (xclExecWait(handle,1000) == 0);
 
 
     std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
+
     //--
     //construct the exec buffer cmd to start the kernel.
     {
@@ -276,14 +277,14 @@ int main(int argc, char** argv)
     	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
 	        return 1;
 	    }
-	    
+
 	    if (first_mem < 0)
 	        return 1;
-	            
+
         if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem)) {
             return 1;
         }
-        
+
     }
     catch (std::exception const& e)
     {
