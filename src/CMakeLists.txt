@@ -1,5 +1,5 @@
 PROJECT(XRT)
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
@@ -78,6 +78,9 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
 
+# Default component name for any install() command without the COMPONENT argument
+set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
+
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 
@@ -132,7 +135,6 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
-
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 include (CMake/cpack.cmake)
@@ -140,7 +142,9 @@ include (CMake/cpack.cmake)
 include (CMake/lint.cmake)
 
 set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
+
 include (CMake/dkms.cmake)
+include (CMake/dkms-aws.cmake)
 
 include (CMake/icd.cmake)
 

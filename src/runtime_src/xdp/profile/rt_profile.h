@@ -36,6 +36,9 @@
 #include <mutex>
 #include <queue>
 
+// Separator used for CU port and memory resource (must match HW linker)
+#define PORT_MEM_SEP ":"
+
 namespace XCL {
   class WriterI;
   class TimeTrace;

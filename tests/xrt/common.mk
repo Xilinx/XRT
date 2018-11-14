@@ -1,18 +1,18 @@
 #lowlevel suite common makefile definitions
 
-ifdef XILINX_SDX
-XILINX_SDACCEL := $(XILINX_SDX)
+ifdef XILINX_SDACCEL
+ XILINX_SDX := $(XILINX_SDACCEL)
 endif
 
-ifndef XILINX_SDACCEL
+ifndef XILINX_SDX
  ifneq ($(MAKECMDGOALS),exe)
-  $(error Environment variable XILINX_SDACCEL should point to SDAccel install area)
+  $(error Environment variable XILINX_SDX should point to SDAccel install area)
  endif
-else
-$(info XILINX_SDACCEL = $(XILINX_SDACCEL))
 endif
 
-CROSS_COMPILE :=
+ifndef XILINX_XRT
+ $(error  Environment variable XILINX_XRT should point to XRT install area)
+endif
 
 CXX := $(CROSS_COMPILE)g++
 CXX_EXT := cpp
@@ -20,13 +20,14 @@ CL_EXT := cl
 
 # Change the DSA name to point to your device
 # % make DSA=mydevice ...
-DSA := xilinx_vcu1525_dynamic_5_1
+DSA ?= xilinx_vcu1525_dynamic_5_1
+MODE ?= hw
 
 COMMON_DIR := host_src
 
 AR := ar
 CPP := g++
-XOCC := $(XILINX_SDACCEL)/bin/xocc
+XOCC := $(XOCCWRAP) $(XILINX_SDX)/bin/xocc
 
 CXXFLAGS := -Wall -Werror -std=c++14
 # For DSAs with 64bit addressing
@@ -34,7 +35,7 @@ CXXFLAGS += -DDSA64
 CXXFLAGS += -DHAL2
 
 ARFLAGS := rcv
-CLFLAGS := --platform $(DSA)
+CLFLAGS := --platform $(DSA) -t $(MODE)
 
 HAL_INC := -I$(XILINX_XRT)/include
 COMMON_INC := -I$(LEVEL)/$(COMMON_DIR)

@@ -1918,6 +1918,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		if (loops == timeout_loops) {
 			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbsak reset -h'\n",outstanding);
 			atomic_set(&xdev->needs_reset,1);
+			/* stop the scheduler loop */
+			global_scheduler0.stop = 1;
 			break;
 		}
 		outstanding = new;
