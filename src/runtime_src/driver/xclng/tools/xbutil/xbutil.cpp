@@ -689,8 +689,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  list\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  mem --query-ecc\n";
-    std::cout << "  mem --reset-ecc\n";
+    std::cout << "  mem --query-ecc [-d card]\n";
+    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
