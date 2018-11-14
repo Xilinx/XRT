@@ -1425,6 +1425,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMemoryProfilingNumberSlots = 0;
     mAccelProfilingNumberSlots = 0;
     mStallProfilingNumberSlots = 0;
+    mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
 
