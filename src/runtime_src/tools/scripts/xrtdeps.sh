@@ -136,6 +136,7 @@ fi
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
 ARCH=`uname -m`
+SUDO=${SUDO:-sudo}
 
 #dmidecode is only applicable for x86_64
 if [ $ARCH == "x86_64" ]; then
@@ -171,7 +172,7 @@ install()
 {
     if [ $FLAVOR == "ubuntu" ]; then
         echo "Installing Ubuntu packages..."
-        sudo apt install -y "${UB_LIST[@]}"
+        ${SUDO} apt install -y "${UB_LIST[@]}"
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -192,7 +193,7 @@ install()
     # Enable GCC 6 compiler set on RHEL/CentOS 7.X
     if [ $FLAVOR == "rhel" ]; then
         echo "Enabling RHEL SCL repository..."
-        sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
+        ${SUDO} yum-config-manager --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
         ${SUDO} yum --enablerepo=extras install -y centos-release-scl
