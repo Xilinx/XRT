@@ -143,7 +143,6 @@ using addr_type = uint64_t;
       size_t xclPerfMonClockTraining();
       size_t xclPerfMonStartCounters();
       size_t xclPerfMonStopCounters();
-      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
       size_t xclPerfMonReadCounters( xclPerfMonType type, xclCounterResults& counterResults);
       size_t xclPerfMonStartTrace(uint32_t startTrigger);
       size_t xclPerfMonStopTrace();
@@ -159,6 +158,8 @@ using addr_type = uint64_t;
       uint32_t getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
                                    std::string * portNames, uint8_t *properties, size_t size);
       void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
+      uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
+      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
@@ -268,15 +269,19 @@ using addr_type = uint64_t;
       bool mIsDeviceProfiling = false;
       uint32_t mMemoryProfilingNumberSlots;
       uint32_t mAccelProfilingNumberSlots;
+      uint32_t mStreamProfilingNumberSlots;
       uint32_t mStallProfilingNumberSlots;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
       uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
       uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
+      uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS];
       std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
       std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
+      std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS];
       uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
+      uint8_t mStreamMonProperties[XSSPM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;

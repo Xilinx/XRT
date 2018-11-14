@@ -613,6 +613,9 @@ int main(int argc, char *argv[])
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
+    case xcldev::JSON:
+        result = deviceVec[index]->dumpJson(std::cout);
+        break;
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
         result = deviceVec[index]->reset(regionIndex);
@@ -682,11 +685,12 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  help\n";
+    std::cout << "  json\n";
     std::cout << "  list\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  mem --query-ecc\n";
-    std::cout << "  mem --reset-ecc\n";
+    std::cout << "  mem --query-ecc [-d card]\n";
+    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
@@ -700,6 +704,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
+    std::cout << "Print JSON file to stdout\n";
+    std::cout << "  " << exe << " json\n";
     std::cout << "List all cards\n";
     std::cout << "  " << exe << " list\n";
     std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
