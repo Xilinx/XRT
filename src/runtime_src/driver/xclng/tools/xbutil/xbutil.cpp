@@ -613,7 +613,7 @@ int main(int argc, char *argv[])
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
-    case xcldev::JSON:
+    case xcldev::DUMP:
         result = deviceVec[index]->dumpJson(std::cout);
         break;
     case xcldev::RESET:
