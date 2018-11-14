@@ -169,6 +169,7 @@ featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
 fwBMC=""
+fwBMCMetaData=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
@@ -312,6 +313,8 @@ initBMCVar()
       if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
          echo "Info: Validated MSP432 flash image MD5 value"
          fwBMC="${file}"
+         fwBMCMetaData="${baseFileName}.json"
+         echo "{\"bmc_metadata\": { \"m_image_name\": \"${bmcImageName}\", \"m_device_name\": \"${bmcDeviceName}\", \"m_version\": \"${bmcVersion}\", \"m_md5value\": \"${bmcMd5Expected}\"}}" > "${fwBMCMetaData}"
       else
          echo "ERROR: MSP432 Flash image failed MD5 varification."
          echo "       Expected: ${bmcMd5Expected}"
@@ -408,6 +411,95 @@ dodsabin()
 
     # -- MCS_PRIMARY image --
     if [ "$mcsPrimary" != "" ]; then
+       xclbinOpts+=" --add-section MCS-PRIMARY:RAW:${mcsPrimary}"
+    fi
+    
+    # -- MCS_SECONDARY image --
+    if [ "$mcsSecondary" != "" ]; then
+       xclbinOpts+=" --add-section MCS-SECONDARY:RAW:${mcsSecondary}"
+    fi
+    
+    # -- Firmware: Scheduler --
+    if [ "${fwScheduler}" != "" ]; then
+       if [ -f "${fwScheduler}" ]; then
+         xclbinOpts+=" --add-section SCHED_FIRMWARE:RAW:${fwScheduler}"
+       else
+         echo "Warning: Scheduler firmware does not exist: ${fwScheduler}"
+       fi
+    fi
+    
+    # -- Firmware: Management --
+    if [ "${fwManagement}" != "" ]; then
+       if [ -f "${fwManagement}" ]; then
+         xclbinOpts+=" --add-section FIRMWARE:RAW:${fwManagement}"
+       else
+         echo "Warning: Management firmware does not exist: ${fwManagement}"
+      fi
+    fi
+
+    # -- Firmware: MSP432 --
+    if [ "${fwBMC}" != "" ]; then
+       if [ -f "${fwBMC}" ]; then
+         xclbinOpts+=" --add-section BMC-FW:RAW:${fwBMC}"
+         xclbinOpts+=" --add-section BMC-METADATA:JSON:${fwBMCMetaData}"
+       else
+         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
+      fi
+    fi
+
+    # -- Clear bitstream --
+    if [ "${clearBitstreamFile}" != "" ]; then
+       xclbinOpts+=" --add-section CLEAR_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
+    fi
+
+    # -- FeatureRom Timestamp --
+    if [ "${featureRomTimestamp}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:FeatureRomTimestamp:${featureRomTimestamp}"
+    else
+       echo "Warning: Missing featureRomTimestamp"
+    fi
+
+    # -- VBNV --
+    if [ "${vbnv}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:PlatformVBNV:${vbnv}"
+    else
+       echo "Warning: Missing Platform VBNV value"
+    fi
+
+
+    # -- Mode Hardware PR --
+    xclbinOpts+=" --key-value SYS:mode:hw_pr"
+
+    # -- Output filename --
+    localFeatureRomTimestamp="${featureRomTimestamp}"
+    if [ "${localFeatureRomTimestamp}" == "" ]; then
+      localFeatureRomTimestamp="0"
+    fi
+
+    # Build output file and lowercase the name
+    dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
+    dsabinOutputFile="${dsabinOutputFile,,}"
+    xclbinOpts+=" --output ./firmware/${dsabinOutputFile}"    
+
+
+    echo "${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}"
+    ${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}
+
+    popd >/dev/null
+}
+
+dodsabin_xclbincat()
+{
+    pushd $opt_pkgdir > /dev/null
+    echo "Creating dsabin for: ${opt_dsa}"
+
+    initDsaBinEnvAndVars
+
+    # Build the xclbincat options
+    xclbinOpts=""
+
+    # -- MCS_PRIMARY image --
+    if [ "$mcsPrimary" != "" ]; then
        xclbinOpts+=" -s MCS_PRIMARY ${mcsPrimary}"
     fi
     
@@ -475,8 +567,7 @@ dodsabin()
     # Build output file and lowercase the name
     dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
     dsabinOutputFile="${dsabinOutputFile,,}"
-    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"    
-
+    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"  
 
     echo "${XILINX_XRT}/bin/xclbincat ${xclbinOpts}"
     ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}

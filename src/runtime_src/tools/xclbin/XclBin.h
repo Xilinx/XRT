@@ -71,6 +71,9 @@ class XclBin {
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
   void addSection(Section* _pSection);
+  void addSubSection(ParameterSectionData &_PSD);
+  void dumpSubSection(ParameterSectionData &_PSD);
+
   void removeSection(const Section* _pSection);
 
   void updateUUID();
