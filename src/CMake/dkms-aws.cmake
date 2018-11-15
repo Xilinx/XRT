@@ -40,7 +40,7 @@ set(XRT_DKMS_SRCS_aws
   driver/xclng/include/mgmt-reg.h
   driver/xclng/include/mgmt-ioctl.h
   driver/xclng/include/qdma_ioctl.h
-  #driver/xclng/include/devices.h
+  driver/xclng/include/devices.h
   driver/include/ert.h
   driver/include/xclfeatures.h
   driver/include/xclbin.h
