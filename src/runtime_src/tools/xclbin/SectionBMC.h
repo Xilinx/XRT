@@ -38,6 +38,29 @@ class SectionBMC : public Section {
   SectionBMC();
   virtual ~SectionBMC();
 
+public:
+  enum SubSection{
+    SS_UNKNOWN,
+    SS_FW,
+    SS_METADATA
+  };
+
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
+  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
+
+ protected:
+  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+
+ protected:
+   enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
+   void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, std::ostringstream &_buffer) const;
+   void createDefaultFWImage(std::fstream & _istream, std::ostringstream &_buffer) const;
+   virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
+   void writeFWImage(std::ostream& _oStream) const;
+   void writeMetadata(std::ostream& _oStream) const;
+
  private:
   // Purposefully private and undefined ctors...
   SectionBMC(const SectionBMC& obj);
@@ -47,7 +70,7 @@ class SectionBMC : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BMC, "BMC", "", false, boost::factory<SectionBMC*>()); }
+    _init() { registerSectionCtor(BMC, "BMC", "", true, boost::factory<SectionBMC*>()); }
   } _initializer;
 };
 
