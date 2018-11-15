@@ -71,6 +71,9 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_dbg(dev, fmt, args...)			\
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
+#define	XOCL_DRV_VER_NUM(ma, mi, p)		\
+	((ma) * 1000 + (mi) * 100 + (p))
+
 #define	XOCL_READ_REG32(addr)		\
 	ioread32(addr)
 #define	XOCL_WRITE_REG32(val, addr)	\
