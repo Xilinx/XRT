@@ -389,12 +389,13 @@ initDsaBinEnvAndVars()
 
     # -- Extract the Metadata
     # Default values
-    SatelliteControllerFamily="Alveo-Gen1"
+    SatelliteControllerFamily=""
     CardMgmtControllerFamily="Legacy"
     SchedulerFamily="ERT-Gen1"
 
     if [[ ${opt_dsa} =~ "xdma" ]]; then
       CardMgmtControllerFamily="CMC-Gen1"
+      SatelliteControllerFamily="Alveo-Gen1"
     fi
 
     if [ "${metaDataJSONFile}" != "" ]; then
