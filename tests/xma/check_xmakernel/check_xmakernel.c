@@ -87,137 +87,139 @@ static inline bool check_xmaapi_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *syst
 static void tst_setup(void);
 static void tst_teardown_check(void);
 
-int test_filter_session_create()
+int test_kernel_session_create()
 {
     extern XmaSingleton *g_xma_singleton;
-    XmaFilterProperties filter_props;
-    XmaFilterSession *sess;
+    XmaKernelProperties kernel_props;
+    XmaKernelSession *sess;
     
     g_xma_singleton->hwcfg = hw_cfg;
 
-    memset(&filter_props, 0, sizeof(XmaFilterProperties));
-    filter_props.hwfilter_type = XMA_2D_FILTER_TYPE;
-    strncpy(filter_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
+    memset(&kernel_props, 0, sizeof(XmaKernelProperties));
+    kernel_props.hwkernel_type = XMA_KERNEL_TYPE;
+    strncpy(kernel_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
 
-    sess = xma_filter_session_create(&filter_props);
+    sess = xma_kernel_session_create(&kernel_props);
     return ck_assert(sess != NULL);
 }
 
-int neg_test_filter_session_create()
+int neg_test_kernel_session_create()
 {
-    XmaFilterSession *sess1, *sess2, *sess3, *sess4, *sess5;
+    XmaKernelSession *sess1, *sess2, *sess3, *sess4, *sess5;
     extern XmaSingleton *g_xma_singleton;
-    XmaFilterProperties filter_props;
-	int rc = 0;
-
-    g_xma_singleton->hwcfg = hw_cfg;
-
-    memset(&filter_props, 0, sizeof(XmaFilterProperties));
-    filter_props.hwfilter_type = XMA_2D_FILTER_TYPE;
-    strncpy(filter_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
-
-    sess1 = xma_filter_session_create(&filter_props);
-    rc |= ck_assert(sess1 != NULL);
-    sess2 = xma_filter_session_create(&filter_props);
-    rc |= ck_assert(sess2 != NULL);
-    sess3 = xma_filter_session_create(&filter_props);
-    rc |= ck_assert(sess3 != NULL);
-    sess4 = xma_filter_session_create(&filter_props);
-    rc |= ck_assert(sess4 != NULL);
-
-    sess5 = xma_filter_session_create(&filter_props);
-    rc |= ck_assert(sess5 == NULL);
-	
-	return rc;
-}
-
-int test_filter_session_create_destroy_create()
-{
-    extern XmaSingleton *g_xma_singleton;
-    XmaFilterProperties filter_props;
-    XmaFilterSession *sess1, *sess2, *sess3, *sess4, *sess5;
-    int32_t rc1 = 0;
+    XmaKernelProperties kernel_props;
     int rc = 0;
     
     g_xma_singleton->hwcfg = hw_cfg;
 
-    memset(&filter_props, 0, sizeof(XmaFilterProperties));
-    filter_props.hwfilter_type = XMA_2D_FILTER_TYPE;
-    strncpy(filter_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
+    memset(&kernel_props, 0, sizeof(XmaKernelProperties));
+    kernel_props.hwkernel_type = XMA_KERNEL_TYPE;
+    strncpy(kernel_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
 
-    sess1 = xma_filter_session_create(&filter_props);
+    sess1 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess1 != NULL);
-    sess2 = xma_filter_session_create(&filter_props);
+    sess2 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess2 != NULL);
-    sess3 = xma_filter_session_create(&filter_props);
+    sess3 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess3 != NULL);
-    sess4 = xma_filter_session_create(&filter_props);
+    sess4 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess4 != NULL);
 
-    sess5 = xma_filter_session_create(&filter_props);
+    sess5 = xma_kernel_session_create(&kernel_props);
+    rc |= ck_assert(sess5 == NULL);
+    
+    return rc;
+}
+
+int test_kernel_session_create_destroy_create()
+{
+    extern XmaSingleton *g_xma_singleton;
+    XmaKernelProperties kernel_props;
+    XmaKernelSession *sess1, *sess2, *sess3, *sess4, *sess5;
+    int32_t rc1;
+    int rc = 0;
+    
+    g_xma_singleton->hwcfg = hw_cfg;
+
+    memset(&kernel_props, 0, sizeof(XmaKernelProperties));
+    kernel_props.hwkernel_type = XMA_KERNEL_TYPE;
+    strncpy(kernel_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
+
+    sess1 = xma_kernel_session_create(&kernel_props);
+    rc |= ck_assert(sess1 != NULL);
+    sess2 = xma_kernel_session_create(&kernel_props);
+    rc |= ck_assert(sess2 != NULL);
+    sess3 = xma_kernel_session_create(&kernel_props);
+    rc |= ck_assert(sess3 != NULL);
+    sess4 = xma_kernel_session_create(&kernel_props);
+    rc |= ck_assert(sess4 != NULL);
+
+    sess5 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess5 == NULL);
 
-    rc1 = xma_filter_session_destroy(sess4);
+    rc1 = xma_kernel_session_destroy(sess4);
     rc |= ck_assert_int_eq(rc1, 0);
 
-    sess5 = xma_filter_session_create(&filter_props);
+    sess5 = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess5 != NULL);
-	
-	return rc;
+    
+    return rc;
 }
 
-int test_filter_session_send()
+int test_kernel_session_write()
 {
     extern XmaSingleton *g_xma_singleton;
-    XmaFilterProperties filter_props;
-    XmaFilterSession *sess;
-    XmaFrame *dummy = (XmaFrame*)malloc(sizeof(XmaFrame));
-    //int32_t data_used = 0;
-    int32_t rc1 = 0;
-	int rc = 0;
+    XmaKernelProperties kernel_props;
+    XmaKernelSession *sess;
+    XmaParameter *params = (XmaParameter*)malloc(sizeof(XmaParameter));
+    int32_t param_cnt = 0;
+    int32_t rc1;
+    int rc = 0;
     
     g_xma_singleton->hwcfg = hw_cfg;
 
-    memset(&filter_props, 0, sizeof(XmaFilterProperties));
-    filter_props.hwfilter_type = XMA_2D_FILTER_TYPE;
-    strncpy(filter_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
+    memset(&kernel_props, 0, sizeof(XmaKernelProperties));
+    kernel_props.hwkernel_type = XMA_KERNEL_TYPE;
+    strncpy(kernel_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
 
-    sess = xma_filter_session_create(&filter_props);
+    sess = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess != NULL);
 
-    rc1 = xma_filter_session_send_frame(sess, dummy);
+    rc1 = xma_kernel_session_write(sess, params, param_cnt);
     
-    rc |= ck_assert(rc1 & XMA_PLG_FIL);
+    rc |= ck_assert(rc1 & XMA_PLG_KERN);
     rc |= ck_assert(rc1 & XMA_PLG_SEND);
-	
-	return rc;
+    
+    return rc;
 }
 
-int test_filter_session_recv()
+int test_kernel_session_read()
 {
     extern XmaSingleton *g_xma_singleton;
-    XmaFilterProperties filter_props;
-    XmaFilterSession *sess;
-    XmaFrame *dummy = (XmaFrame*)malloc(sizeof(XmaFrame));
-    int32_t rc1 = 0;
-	int rc = 0;
+    XmaKernelProperties kernel_props;
+    XmaKernelSession *sess;
+    XmaParameter *params = (XmaParameter*)malloc(sizeof(XmaParameter));
+    int32_t param_cnt = 0;
+    int32_t rc1;
+    int rc = 0;
     
     g_xma_singleton->hwcfg = hw_cfg;
 
-    memset(&filter_props, 0, sizeof(XmaFilterProperties));
-    filter_props.hwfilter_type = XMA_2D_FILTER_TYPE;
-    strncpy(filter_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
+    memset(&kernel_props, 0, sizeof(XmaKernelProperties));
+    kernel_props.hwkernel_type = XMA_KERNEL_TYPE;
+    strncpy(kernel_props.hwvendor_string, "Xilinx", (MAX_VENDOR_NAME - 1));
 
-    sess = xma_filter_session_create(&filter_props);
+    sess = xma_kernel_session_create(&kernel_props);
     rc |= ck_assert(sess != NULL);
 
-    rc1 = xma_filter_session_recv_frame(sess, dummy);
+    rc1 = xma_kernel_session_read(sess, params, &param_cnt);
     
-    rc |= ck_assert(rc1 & XMA_PLG_FIL);
+    rc |= ck_assert(rc1 & XMA_PLG_KERN);
     rc |= ck_assert(rc1 & XMA_PLG_RECV);
-	
-	return rc;
+    
+    return rc;
 }
+
 
 int main()
 {
@@ -263,43 +265,42 @@ int main()
 
 		
     tst_setup();
-    rc = test_filter_session_create();
+    rc = test_kernel_session_create();
     if (rc != 0) {
       number_failed++;
     }
     tst_teardown_check();
     tst_setup();
-    rc = neg_test_filter_session_create();
+    rc = neg_test_kernel_session_create();
     if (rc != 0) {
       number_failed++;
     }
     tst_teardown_check();
     tst_setup();
-    rc = test_filter_session_create_destroy_create();
+    rc = test_kernel_session_create_destroy_create();
     if (rc != 0) {
       number_failed++;
     }
     tst_teardown_check();
     tst_setup();
-    rc = test_filter_session_send();
+    rc = test_kernel_session_write();
     if (rc != 0) {
       number_failed++;
     }
     tst_teardown_check();
-
     tst_setup();
-    rc = test_filter_session_recv();
+    rc = test_kernel_session_read();
     if (rc != 0) {
       number_failed++;
     }
     tst_teardown_check();
 
 	
-    if (number_failed == 0) {
-     printf("XMA check_xmafilter test completed successfully\n");
+   if (number_failed == 0) {
+     printf("XMA check_xmakernel test completed successfully\n");
      return EXIT_SUCCESS;
     } else {
-     printf("ERROR: XMA check_xmafilter test failed\n");
+     printf("ERROR: XMA check_xmakernel test failed\n");
      return EXIT_FAILURE;
     }
     //return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
