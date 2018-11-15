@@ -67,6 +67,7 @@ typedef struct XmaSystemCfg
     bool        logger_initialized;
     char        logfile[PATH_MAX];
     int32_t     loglevel;
+    bool        enable_profile;
     char        pluginpath[PATH_MAX];
     char        xclbinpath[PATH_MAX];
     int32_t     num_images;

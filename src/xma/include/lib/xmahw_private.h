@@ -26,6 +26,8 @@ typedef struct XmaHwInterface
     bool    (*is_compatible)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
     bool    (*configure)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg,
                          bool hw_cfg_status);
+    bool    (*start_profile)(XmaHwCfg *hwcfg);
+    bool    (*stop_profile)(XmaHwCfg *hwcfg);
 } XmaHwInterface;
 
 #endif
