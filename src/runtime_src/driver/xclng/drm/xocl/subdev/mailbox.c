@@ -509,7 +509,7 @@ static void chann_worker(struct work_struct *work)
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
 		MBX_DBG(mbx, "%s worker start", ch->mbc_name);
 		ch->mbc_tran(ch);
-		wait_for_completion_interruptible(&ch->mbc_worker);
+		wait_for_completion(&ch->mbc_worker);
 	}
 }
 
@@ -1202,13 +1202,13 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	if (cb)
 		return 0;
 
-	rv = wait_for_completion_interruptible(&respmsg->mbm_complete);
-	if (rv == 0) {
-		rv = respmsg->mbm_error;
-		if (rv == 0)
-			*resplen = respmsg->mbm_len;
-	}
+	wait_for_completion(&respmsg->mbm_complete);
+	rv = respmsg->mbm_error;
+	if (rv == 0)
+		*resplen = respmsg->mbm_len;
+
 	free_msg(respmsg);
+
 	return rv;
 
 fail:
@@ -1311,9 +1311,7 @@ static void mailbox_recv_request(struct work_struct *work)
 		if (rv != 0)
 			break;
 
-		rv = wait_for_completion_interruptible(&msg->mbm_complete);
-		if (rv != 0)
-			break;
+		wait_for_completion(&msg->mbm_complete);
 		rv = msg->mbm_error;
 		if (rv != 0)
 			break;
