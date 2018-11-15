@@ -22,6 +22,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
+#include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
 #if RHEL_P2P_SUPPORT
@@ -313,10 +314,6 @@ static struct drm_driver mm_drm_driver = {
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
-	.date				= XOCL_DRIVER_DATE,
-	.major				= XOCL_DRIVER_MAJOR,
-	.minor				= XOCL_DRIVER_MINOR,
-	.patchlevel			= XOCL_DRIVER_PATCHLEVEL,
 };
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -427,6 +424,10 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	struct drm_device	*ddev = NULL;
 	int			ret = 0;
 
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", 
+		&mm_drm_driver.major,
+		&mm_drm_driver.minor,
+		&mm_drm_driver.patchlevel);
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
 		userpf_err(xdev, "alloc drm dev failed");
@@ -645,6 +646,9 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		goto out;
 
 	for (i = 0; i < topo->m_count; i++) {
+		if (topo->m_mem_data[i].m_type == MEM_STREAMING)
+			continue;
+
 		if (raw) {
 			memory_usage = 0;
 			bo_count = 0;
