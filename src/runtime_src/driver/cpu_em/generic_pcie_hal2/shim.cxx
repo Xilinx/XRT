@@ -1012,23 +1012,6 @@ namespace xclcpuemhal2 {
 
 /*********************************** Utility ******************************************/
 
-static bool check_bo_user_flags(CpuemShim* dev, unsigned flags)
-{
-	const unsigned ddr_count = dev->xocl_ddr_channel_count();
-
-	if(ddr_count == 0)
-		return false;
-
-	if (flags == 0xffffffff)
-		return true;
-	
-  unsigned ddr = xclemulation::xocl_bo_ddr_idx(flags);
-  if (ddr > ddr_count)
-		return false;
-	
-	return true;
-}
-
 xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
@@ -1080,10 +1063,13 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   if (!size)
     return -1;
 
-  /* Either none or only one DDR should be specified */
-  if (!check_bo_user_flags(this, info->flags))
-    return -1;
-	
+  // system linker doesnt run in sw_emu. if ddr idx morethan ddr_count, then create it in 0 by considering all plrams in zero'th ddr
+	const unsigned ddr_count = xocl_ddr_channel_count();
+  if(ddr_count <= ddr)
+  {
+    ddr = 0;
+  }
+  
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/

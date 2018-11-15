@@ -692,7 +692,7 @@ static int set_and_verify_freqs(struct icap* icap, unsigned short* freqs, int nu
 		request_in_khz =freqs[i]*1000;
 		tolerance = freqs[i]*50;
 		if(tolerance < abs(clock_freq_counter-request_in_khz)){
-			ICAP_ERR(icap, "Frequency is higher than tolerance value, request %u" 
+			ICAP_ERR(icap, "Frequency is higher than tolerance value, request %u"
 					"khz, actual %u khz", request_in_khz, clock_freq_counter);
 			err = -EDOM;
 			break;
@@ -1317,7 +1317,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "VBNV and timestamps matched");
 
-	if (xocl_xrt_version_check(xdev, bin_obj_axlf, 1)) {
+	if (xocl_xrt_version_check(xdev, bin_obj_axlf, true)) {
 		ICAP_ERR(icap, "Major version does not match xrt");
 		err = -EINVAL;
 		goto done;
@@ -1678,7 +1678,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	if (xocl_xrt_version_check(xdev, &bin_obj, 0)) {
+	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		ICAP_ERR(icap, "XRT version does not match");
 		return -EINVAL;
 	}
