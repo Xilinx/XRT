@@ -36,7 +36,10 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
-add_compile_options("-Wall" "-Werror")
+# TODO CL_TARGET_OPENCL_VERSION is not defined..
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_compile_options("-Wall" "-Werror")
+endif()
 add_subdirectory(xdp)
 
 # TODO version.h was included.
