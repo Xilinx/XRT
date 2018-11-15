@@ -15,8 +15,25 @@
  * under the License.
  */
 #include <stdio.h>
+#include <unistd.h>
 #include "xclhal2.h"
 #include "xmaplugin.h"
+#include "xperf.h"
+#include "lib/xmaapi.h"
+
+extern XmaSingleton *g_xma_singleton;
+
+int xmaSyncBO(xclDeviceHandle handle, unsigned int boHandle,
+               xclBOSyncDirection dir, size_t size, size_t offset)
+{
+    int32_t rc = 0;
+    //if( access("./sdaccel_profile_summary.csv", F_OK) != -1)
+    if(g_xma_singleton->enable_profile)
+        rc = xclSyncBOWithProfile(handle, boHandle, dir, size, offset);
+    else
+        rc = xclSyncBO(handle, boHandle, dir, size, offset);
+    return rc;
+}
 
 XmaBufferHandle
 xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
@@ -78,7 +95,7 @@ xma_plg_buffer_write(XmaHwSession s_handle,
     if (rc != 0)
         printf("xclWriteBO failed %d\n", rc);
 
-    rc = xclSyncBO(dev_handle, b_handle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    rc = xmaSyncBO(dev_handle, b_handle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0)
         printf("xclSyncBO failed %d\n", rc);
 
@@ -101,8 +118,7 @@ xma_plg_buffer_read(XmaHwSession s_handle,
     //printf("xma_plg_buffer_read b_handle=%d,dst=%p,size=%lu,offset=%lx\n",
     //       b_handle, dst, size, offset);
 
-    rc = xclSyncBO(dev_handle, b_handle, XCL_BO_SYNC_BO_FROM_DEVICE,
-                   size, offset);
+    rc = xmaSyncBO(dev_handle, b_handle, XCL_BO_SYNC_BO_FROM_DEVICE, size, offset);
     if (rc != 0)
     {
         printf("xclSyncBO failed %d\n", rc);

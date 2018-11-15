@@ -40,6 +40,7 @@ typedef struct XmaHwSession
     void    *dev_handle;
     uint64_t base_address;
     uint32_t ddr_bank;
+    bool     profile;
 } XmaHwSession;
 
 typedef void   *XmaHwHandle;
@@ -126,6 +127,27 @@ bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
  *                   FALSE on failure
  */
 bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status);
+
+/**
+ *  @brief Start profiling hardware
+ *
+ *  This function will start hardware profiling by enabling hardware counters
+ *
+ *  @return          TRUE on success
+ *                   FALSE on failure
+ */
+bool xma_hw_start_profile(XmaHwCfg *hwcfg);
+
+/**
+ *  @brief Stop profiling hardware
+ *
+ *  This function will stop hardware profiling and generate files with
+ *  performance data
+ *
+ *  @return          TRUE on success
+ *                   FALSE on failure
+ */
+bool xma_hw_stop_profile(XmaHwCfg *hwcfg);
 
 /**
  *  @}

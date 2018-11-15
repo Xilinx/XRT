@@ -38,6 +38,7 @@ target_link_libraries(xmaapi
   stdc++
   xml2
   yaml
+  xdp
   )
 
 install(TARGETS xmaapi LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)

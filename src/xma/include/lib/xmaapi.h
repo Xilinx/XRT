@@ -37,6 +37,7 @@ typedef struct XmaSingleton
     XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
     XmaResources      shm_res_cfg;
     bool              shm_freed;
+    bool              enable_profile;
 } XmaSingleton;
 
 #ifdef __cplusplus

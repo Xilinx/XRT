@@ -114,6 +114,12 @@ int32_t xma_initialize(char *cfgfile)
     if (ret)
         goto error;
 
+    if(g_xma_singleton->systemcfg.enable_profile)
+    {
+        g_xma_singleton->enable_profile = true;
+        xma_hw_start_profile(&g_xma_singleton->hwcfg);
+    }
+
     xma_init_sighandlers();
     xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
@@ -128,6 +134,11 @@ error:
 void xma_exit(void)
 {
     extern XmaSingleton *g_xma_singleton;
+
+    if(g_xma_singleton->systemcfg.enable_profile)
+    {
+        xma_hw_stop_profile(&g_xma_singleton->hwcfg);
+    }
 
     if (!g_xma_singleton->shm_freed)
         xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
