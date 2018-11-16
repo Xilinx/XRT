@@ -1675,14 +1675,18 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
                 XOCL_DEBUGF("setArgumentsBank: caught error, using default of %s\n", memoryName.c_str());
               }
 
-              // Adjustments to memory resource name
-              //   1. Don't show indexing (consistent with per port per resource monitoring)
-              //   2. Catch old bank format and report as DDR
-              std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
-              if (memoryName2.find("bank") != std::string::npos)
-                memoryName2 = "DDR";
+              // Catch old bank format and report as DDR
+              //std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
+              if (memoryName.find("bank0") != std::string::npos)
+                memoryName = "DDR[0]";
+              else if (memoryName.find("bank1") != std::string::npos)
+                memoryName = "DDR[1]";
+              else if (memoryName.find("bank2") != std::string::npos)
+                memoryName = "DDR[2]";
+              else if (memoryName.find("bank3") != std::string::npos)
+                memoryName = "DDR[3]";
 
-              std::get<3>(row) = memoryName2;
+              std::get<3>(row) = memoryName;
               std::get<4>(row) = portWidth;
               firstArg = false;
             }
@@ -1712,6 +1716,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     argNames = "All";
     memoryName = "DDR";
     std::string portName2 = portName.substr(0, portName.find_last_of(PORT_MEM_SEP));
+    std::transform(portName2.begin(), portName2.end(), portName2.begin(), ::tolower);
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 
