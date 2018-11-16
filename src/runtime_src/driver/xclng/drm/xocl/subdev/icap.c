@@ -1830,8 +1830,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				!memtopo->m_mem_data[memidx].m_used) {
 				ICAP_ERR(icap, "bad DDR controller index: %u",
 					ip->properties);
-				err = -EINVAL;
-				goto done;
+				continue;
 			}
 			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
 				&subdev_info, &res);
@@ -1851,7 +1850,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				goto done;
 			}
 		}
-
 		if(ip->m_type == IP_DNASC){
 			dna_check = true;
 			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_DNA,
