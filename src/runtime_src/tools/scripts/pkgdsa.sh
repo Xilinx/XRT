@@ -311,6 +311,9 @@ initBMCVar()
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1
       fi
+    else
+      # We are not meant to load MSP432 fWFW
+      return
     fi
 
     # Looking for the MSP432 firmware image
@@ -344,6 +347,9 @@ initBMCVar()
          echo "       File:   : $file"
          exit 1
       fi
+
+      # We only go through this loop once
+      return
     done
 }
 
@@ -530,7 +536,7 @@ dodsabin()
 
     # -- Clear bitstream --
     if [ "${clearBitstreamFile}" != "" ]; then
-       xclbinOpts+=" --add-section CLEAR_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
+       xclbinOpts+=" --add-section CLEARING_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
     fi
 
     # -- FeatureRom Timestamp --
