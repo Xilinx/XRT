@@ -658,30 +658,27 @@ public:
         ostr << "XRT\n   Version:  " << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
              <<    "\n   Date:     " << sensor_tree::get<std::string>( "runtime.build.hash_date", "N/A" )
              <<    "\n   Hash:     " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" ) << std::endl;
-//        ostr << "   DSA name: " << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" ) << std::endl;
-//        ostr << "   FPGA:     " << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" ) << std::endl;
-//        ostr << "   IDCode:   " << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "DSA" << std::setw(32) << "FPGA" << std::setw(32) << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
              << std::setw(32) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << std::setw(32) << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
-        ostr << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.vendor", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.device", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.subdevice", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.subvendor", -1 ) << std::endl;
+        ostr << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.vendor", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.device", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subdevice", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subvendor", -1 ) << std::dec << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get<int>( "board.info.ddr_size", -1 )
-             << std::setw(16) << sensor_tree::get<int>( "board.info.ddr_count", -1 )
-             << std::setw(16) << sensor_tree::get<int>( "board.info.ocl_freq", -1 )
-             << std::setw(16) << sensor_tree::get<int>( "board.info.clock0", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get<long long>( "board.info.ddr_size", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.ocl_freq", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
-             << std::setw(16) << "DMA bi-directional threads"
-             << std::setw(16) << "MIG Calibrated" << std::endl;
-        ostr << "GEN " << sensor_tree::get<int>( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get<int>( "board.info.pcie_width", -1 )
-             << std::setw(32) << sensor_tree::get<int>( "board.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
+             << std::setw(32) << "DMA bi-directional threads" << std::endl;
+        ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
+             << std::setw(32) << sensor_tree::get( "board.info.dma_threads", -1 ) << std::endl;
+        ostr << std::setw(16) << "MIG Calibrated" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
