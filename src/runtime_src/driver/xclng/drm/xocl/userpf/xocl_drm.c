@@ -180,8 +180,13 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 	DRM_ENTER("");
 
+	/* We do not allow users to open PRIMARY node, /dev/dri/cardX node.
+	 * Users should only open RENDER, /dev/dri/renderX node */
 	if (drm_is_primary_client(filp))
 		return -EPERM;
+
+	if (get_live_client_size(xdev) > XOCL_MAX_CONCURRENT_CLIENTS)
+		return -EBUSY;
 
 	if (MB_SCHEDULER_DEV(xdev))
 		ret = xocl_exec_create_client(xdev, &filp->driver_priv);

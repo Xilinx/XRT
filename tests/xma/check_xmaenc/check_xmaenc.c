@@ -125,10 +125,10 @@ int test_enc_session_create_zerocopy_w_scaler()
     rc |= ck_assert(rc1 & XMA_PLG_SCAL);
     rc |= ck_assert(rc1 & XMA_PLG_SEND);
 
-    rc = xma_scaler_session_destroy(scal_sess);
-    rc |= ck_assert_int_eq(rc, 0);
-    rc = xma_enc_session_destroy(enc_sess);
-    rc |= ck_assert_int_eq(rc, 0);
+    rc1 = xma_scaler_session_destroy(scal_sess);
+    rc |= ck_assert_int_eq(rc1, 0);
+    rc1 = xma_enc_session_destroy(enc_sess);
+    rc |= ck_assert_int_eq(rc1, 0);
 
 	return rc;
 }
@@ -310,7 +310,9 @@ static inline bool check_xmaapi_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *sys
 */
 static inline bool check_xmaapi_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status) {
     return true;
+
 }
+
 int main()
 {
     int number_failed = 0;
@@ -398,10 +400,10 @@ int main()
 	tst_teardown_check();
 	
    if (number_failed == 0) {
-     printf("XMA check_xmadec test completed successfully\n");
+     printf("XMA check_xmaenc test completed successfully\n");
      return EXIT_SUCCESS;
     } else {
-     printf("ERROR: XMA check_xmadec test failed\n");
+     printf("ERROR: XMA check_xmaenc test failed\n");
      return EXIT_FAILURE;
     }
     //return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

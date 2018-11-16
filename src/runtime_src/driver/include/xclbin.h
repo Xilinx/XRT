@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2017, Xilinx Inc
+ *  Copyright (C) 2015-2018, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -21,19 +21,18 @@
  *
  *  GPL license Verbiage:
  *
- *  This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
- *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *  You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- */
-
-/**
- *  Xilinx SDAccel xclbin container definition
- *  Copyright (C) 2015-2017, Xilinx Inc - All rights reserved
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _XCLBIN_H_
@@ -93,31 +92,6 @@ extern "C" {
         XCLBIN_SW_EMU,
         XCLBIN_MODE_MAX
     };
-
-
-//    struct xclBin {
-//        char m_magic[8];                    /* should be xclbin0\0  */
-//        uint64_t m_length;                  /* total size of the xclbin file */
-//        uint64_t m_timeStamp;               /* number of seconds since epoch when xclbin was created */
-//        uint64_t m_version;                 /* tool version used to create xclbin */
-//        unsigned m_mode;                    /* XCLBIN_MODE */
-//        char m_nextXclBin[24];              /* Name of next xclbin file in the daisy chain */
-//        uint64_t m_metadataOffset;          /* file offset of embedded metadata */
-//        uint64_t m_metadataLength;          /* size of the embedded metdata */
-//        uint64_t m_primaryFirmwareOffset;   /* file offset of bitstream or emulation archive */
-//        uint64_t m_primaryFirmwareLength;   /* size of the bistream or emulation archive */
-//        uint64_t m_secondaryFirmwareOffset; /* file offset of clear bitstream if any */
-//        uint64_t m_secondaryFirmwareLength; /* size of the clear bitstream */
-//        uint64_t m_driverOffset;            /* file offset of embedded device driver if any (currently unused) */
-//        uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
-//
-//        // Extra debug information for hardware and hardware emulation debug
-//
-//        uint64_t m_dwarfOffset ;
-//        uint64_t m_dwarfLength ;
-//        uint64_t m_ipiMappingOffset ;
-//        uint64_t m_ipiMappingLength ;
-//    };
 
     /*
      *  AXLF LAYOUT

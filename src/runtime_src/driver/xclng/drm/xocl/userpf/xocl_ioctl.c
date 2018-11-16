@@ -370,6 +370,9 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/*
+ * Should be called with xdev->ctx_list_lock held
+ */
 static uint live_client_size(struct xocl_dev *xdev)
 {
 	const struct list_head *ptr;
@@ -380,7 +383,6 @@ static uint live_client_size(struct xocl_dev *xdev)
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
-		//if (!bitmap_empty(entry->cu_bitmap, MAX_CUS))
 		count++;
 	}
 	return count;
@@ -534,7 +536,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
-	if (xocl_xrt_version_check(xdev, &bin_obj, 0))
+	if (xocl_xrt_version_check(xdev, &bin_obj, true))
 		return -EINVAL;
 
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
