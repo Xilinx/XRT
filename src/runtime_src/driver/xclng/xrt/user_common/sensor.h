@@ -29,10 +29,15 @@ boost::property_tree::ptree&
 instance();
 
 template <typename T>
-void
-put(const std::string &path, T val)
+void put(const std::string &path, T val)
 {
   instance().put(path,val);
+}
+
+template <typename T>
+inline T get(const std::string &path, const T &defaultVal)
+{
+    return instance().get( path, defaultVal );
 }
 
 inline void
@@ -40,13 +45,6 @@ add_child(const std::string &path, boost::property_tree::ptree& child)
 {
   instance().add_child( path, child );
 }
-
-inline std::string
-get(const std::string &path, std::string defaultVal = "N/A")
-{
-  return std::string( instance().get( path, defaultVal ) );
-}
-
 
 inline boost::property_tree::ptree
 get_child(const std::string &path)

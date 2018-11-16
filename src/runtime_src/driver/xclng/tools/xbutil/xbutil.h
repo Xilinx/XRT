@@ -567,6 +567,13 @@ public:
         sensor_tree::put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
         sensor_tree::put( "board.info.dma_threads", m_devinfo.mDMAThreads );
         sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
+        { 
+            std::string idcode, fpga, errmsg;
+            pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+            sensor_tree::put( "board.info.idcode", idcode );
+            pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
+            sensor_tree::put( "board.info.fpga_name", fpga );
+        }
         //sensor_tree::put( "board.info.dna",
 
         // physical
@@ -614,9 +621,9 @@ public:
 
         // xclbin
         std::string errmsg, xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "uid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         if(errmsg.empty()) {
-            sensor_tree::put( "board.xclbin.id", xclbinid );
+            sensor_tree::put( "board.xclbin.uuid", xclbinid );
         }
 
         // compute unit
@@ -648,64 +655,71 @@ public:
         readSensors();
         ostr << std::left;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "XRT\n   Version: " << sensor_tree::get( "runtime.build.version", "N/A" )
-             <<    "\n   Date:    " << sensor_tree::get( "runtime.build.hash_date", "N/A" )
-             <<    "\n   Hash:    " << sensor_tree::get( "runtime.build.hash", "N/A" ) << std::endl;
-        ostr << "DSA name\n" << sensor_tree::get( "board.info.dsa_name", "N/A" ) << std::endl;
+        ostr << "XRT\n   Version:  " << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
+             <<    "\n   Date:     " << sensor_tree::get<std::string>( "runtime.build.hash_date", "N/A" )
+             <<    "\n   Hash:     " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" ) << std::endl;
+//        ostr << "   DSA name: " << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" ) << std::endl;
+//        ostr << "   FPGA:     " << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" ) << std::endl;
+//        ostr << "   IDCode:   " << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << std::setw(32) << "DSA" << std::setw(32) << "FPGA" << std::setw(32) << "IDCode" << std::endl;
+        ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
+             << std::setw(32) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
+             << std::setw(32) << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.info.vendor", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.device", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.subdevice", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.subvendor", "N/A" ) << std::endl;
+        ostr << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.vendor", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.device", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.subdevice", -1 )
+             << "0x" << std::setw(14) << std::hex << sensor_tree::get<int>( "board.info.subvendor", -1 ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.info.ddr_size", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.ddr_count", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.ocl_freq", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.clock0", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get<int>( "board.info.ddr_size", -1 )
+             << std::setw(16) << sensor_tree::get<int>( "board.info.ddr_count", -1 )
+             << std::setw(16) << sensor_tree::get<int>( "board.info.ocl_freq", -1 )
+             << std::setw(16) << sensor_tree::get<int>( "board.info.clock0", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
              << std::setw(16) << "DMA bi-directional threads"
              << std::setw(16) << "MIG Calibrated" << std::endl;
-        ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", "N/A" ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", "N/A" )
-             << std::setw(32) << sensor_tree::get( "board.info.dma_threads", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.info.mig_calibrated", "N/A" ) << std::endl;
+        ostr << "GEN " << sensor_tree::get<int>( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get<int>( "board.info.pcie_width", -1 )
+             << std::setw(32) << sensor_tree::get<int>( "board.info.dma_threads", -1 )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_front", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_rear", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.btm_front", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_front", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_rear", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.btm_front", -1 ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed (RPM)" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.fpga_temp", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.tcrit_temp", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.fan_speed_rpm", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.fpga_temp", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.thermal.tcrit_temp", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.thermal.fan_speed_rpm", -1 ) << std::endl;
         ostr << "Electrical (mV), (mA):\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.current", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.current", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.current", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.current", -1 ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_pex.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_aux.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_bottom.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_top.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_pex.voltage",        -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_aux.voltage",        -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_bottom.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_top.voltage",    -1 ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_v5v.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v2_top.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v8_top.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.0v85.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_v5v.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v2_top.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v8_top.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.0v85.voltage",    -1 ) << std::endl;
         ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_0v9.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_sw.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_vtt.voltage", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_0v9.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_sw.voltage",  -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_vtt.voltage", -1 ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.voltage", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", "N/A" )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.dna", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.voltage", -1 )
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", -1 ) << std::endl;
+             //<< std::setw(16) << sensor_tree::get( "board.physical.electrical.dna",            -1 ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status:\n";
-        ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", "N/A" ) << ": 0x0"
-             << sensor_tree::get( "board.error.firewall.status", "N/A" ) << std::endl;
+        ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+             << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << std::setw(48) << "Mem Topology"
              << std::setw(32) << "Device Memory Usage" << std::endl;
@@ -775,8 +789,9 @@ public:
 //        ostr << "Stream Topology, TODO\n";
 //        printStreamInfo(ostr);
 //        ostr << "#################################\n";
-//        ostr << "XCLBIN ID:\n";
-//        ostr << sensor_tree::get( "board.xclbin.uid", "0" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "XCLBIN UUID:\n"
+             << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status:\n";
         try {
