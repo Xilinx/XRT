@@ -474,20 +474,20 @@ add_xcmd(struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = xocl_get_xdev(xcmd->exec->pdev);
 
-	SCHED_DEBUGF("-> add_xcmd(%lu)\n",xcmd->id);
+	SCHED_DEBUGF("-> add_xcmd(%lu) pid(%d)\n",xcmd->id,pid_nr(task_tgid(current)));
 
 	cmd_set_state(xcmd,ERT_CMD_STATE_NEW);
 	mutex_lock(&pending_cmds_mutex);
 	list_add_tail(&xcmd->list,&pending_cmds);
+	atomic_inc(&num_pending);
 	mutex_unlock(&pending_cmds_mutex);
 
 	/* wake scheduler */
-	atomic_inc(&num_pending);
 	atomic_inc(&xdev->outstanding_execs);
 	atomic64_inc(&xdev->total_execs);
 	wake_up_interruptible(&xcmd->xs->wait_queue);
 
-	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d) num_pending(%d)\n",opcode(xcmd),type(xcmd),atomic_read(&num_pending));
 	return 0;
 }
 

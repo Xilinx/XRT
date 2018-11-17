@@ -188,7 +188,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+	if (bitmap_empty(client->cu_bitmap, MAX_CUS) && uuid_is_null(&client->xclbin_id))
 		// Process has no other context on any CU yet, hence we need to lock the xclbin
 		// A process uses just one lock for all its contexts
 		acquire_lock = true;
@@ -693,8 +693,12 @@ done:
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API
 	 */
+#if 0   // doesn't quite work because icap reset scheduler when the lock falls to 0
+	// and no lock is acquire by configure.  Even if configure locked xclbin
+	// it would have to unlock when done and lock could again go 0.
 	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 					  pid_nr(task_tgid(current)));
+#endif
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
