@@ -1,8 +1,8 @@
 /**
- * Copyright (C) 2017-2018 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  * Author: Ryan Radjabi
- * An argument parser to prepare for the 'dd' function in xbsak. This
- * parser is designed after the Unix 'dd' command.
+ * Wrapper around boost::property_tree::ptree for storing data that can
+ * be accessed easily and exported to formats like JSON and XML.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
