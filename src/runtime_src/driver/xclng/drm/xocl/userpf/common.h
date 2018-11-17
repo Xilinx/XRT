@@ -140,6 +140,7 @@ struct xocl_dev	{
 struct client_ctx {
 	struct list_head	link;
 	xuid_t                  xclbin_id;
+	atomic_t                xclbin_locked;
 	atomic_t		trigger;
 	atomic_t                outstanding_execs;
 	atomic_t                abort;
