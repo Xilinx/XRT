@@ -315,7 +315,7 @@ public:
         lines.push_back(ss.str());
     }
 
-    void getMemTopology( void ) const
+    void getMemTopology( xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
         std::vector<char> buf;
@@ -325,12 +325,28 @@ public:
             return;
 
         for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
+            std::string str;
+            if(map->m_mem_data[i].m_used == 0) {
+                str = "**UNUSED**";
+            } else {
+                std::map<MEM_TYPE, std::string> my_map = {
+                    {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
+                    {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
+                    {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
+                    {MEM_ARE, "MEM_ARE"},   {MEM_HBM, "MEM_HBM"},
+                    {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"}
+                };
+                auto search = my_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
+                str = search->second;
+            }
             boost::property_tree::ptree ptMem;
             ptMem.put( "index", i );
-            ptMem.put( "type",  map->m_mem_data[i].m_type );
+            ptMem.put( "type",  str );
+            ptMem.put( "temp",  m_devinfo.mDimmTemp[i] );
             ptMem.put( "tag",   map->m_mem_data[i].m_tag );
-            ptMem.put( "used",  map->m_mem_data[i].m_used );
+            ptMem.put( "used",  unitConvert(map->m_mem_data[i].m_used << 10) );
             ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "bo_allocated", devstat.ddrBOAllocated[i] );
             sensor_tree::add_child( "board.memory.mem", ptMem );
         }
     }
@@ -607,7 +623,6 @@ public:
         sensor_tree::put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
 
         // memory
-        getMemTopology();
         xclDeviceUsage devstat = { 0 };
         (void) xclGetUsageInfo(m_handle, &devstat);
         for (unsigned i = 0; i < 2; i++) {
@@ -617,6 +632,7 @@ public:
             pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
             sensor_tree::add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
         }
+        getMemTopology( devstat );
         // stream
 
         // xclbin
@@ -668,17 +684,17 @@ public:
              << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.device", -1 )
              << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subdevice", -1 )
              << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subvendor", -1 ) << std::dec << std::endl;
-        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "OCL Frequency" << std::setw(16) << "Clock0" << std::endl;
+        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::endl;
         ostr << std::setw(16) << sensor_tree::get<long long>( "board.info.ddr_size", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
-             << std::setw(16) << sensor_tree::get( "board.info.ocl_freq", -1 )
-             << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 ) << std::endl;
+             << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
-             << std::setw(32) << "DMA bi-directional threads" << std::endl;
+             << std::setw(32) << "DMA chan(bidir)"
+             << std::setw(16) << "MIG Calibrated" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
-             << std::setw(32) << sensor_tree::get( "board.info.dma_threads", -1 ) << std::endl;
-        ostr << std::setw(16) << "MIG Calibrated" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
+             << std::setw(32) << sensor_tree::get( "board.info.dma_threads", -1 )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature (C):\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
@@ -721,14 +737,16 @@ public:
         ostr << std::left << std::setw(48) << "Mem Topology"
              << std::setw(32) << "Device Memory Usage" << std::endl;
         ostr << std::setw(16) << "Tag"  << std::setw(12) << "Type"
-             << std::setw(12) << "Temp" << std::setw(8) << "Size";
+             << std::setw(12) << "Temp (C)" << std::setw(8) << "Size";
         ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums" << std::endl;
 
         try {
           for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "mem" ) {
               int mem_index = -1;
-              int mem_used = -1;
+              std::string mem_used = "N/A";
+              int mem_alloc = -1;
+              unsigned long mem_temp = -1;
               std::string mem_tag = "N/A";
               std::string mem_size = "N/A";
               std::string mem_type = "N/A";
@@ -742,16 +760,22 @@ public:
                 else if( subv.first == "tag" )
                   mem_tag = val;
                 else if( subv.first == "used" )
-                  mem_used = subv.second.get_value<int>();
+                  mem_used = val;
+                else if( subv.first == "temp" )
+                  mem_temp = subv.second.get_value<unsigned long>();
+                else if( subv.first == "bo_allocated" )
+                  mem_alloc = subv.second.get_value<int>();
                 else if( subv.first == "size" )
                   mem_size = val;
               }
               ostr << std::left
                    << std::setw(2) << "[" << mem_index << "] "
-                   << std::left << std::setw(14) << mem_tag
-                   << std::setw(12) << " " << mem_type << " "
-                   << std::setw(12) << mem_size << " "
-                   << std::setw(16) << mem_used << std::endl;
+                   << std::setw(11) << mem_tag
+                   << std::setw(12) << mem_type
+                   << std::setw(12) << mem_temp
+                   << std::setw(8) << mem_size
+                   << std::setw(16) << mem_used
+                   << std::setw(8) << mem_alloc << std::endl;
             }
           }
         }
