@@ -545,8 +545,9 @@ int main(int argc, char *argv[])
         std::cout << "ERROR: No card found\n";
         return 1;
     }
-    std::cout << "INFO: Found total " << total << " card(s), "
-        << count << " are usable" << std::endl;
+    if (cmd != xcldev::DUMP)
+        std::cout << "INFO: Found total " << total << " card(s), "
+                  << count << " are usable" << std::endl;
 
     if (cmd == xcldev::SCAN) {
         print_pci_info();
@@ -668,11 +669,10 @@ int main(int argc, char *argv[])
         result = -1;
     }
 
-    if(result == 0) {
-        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
-    } else {
+    if (result != 0)
         std::cout << "ERROR: xbutil " << v->first  << " failed." << std::endl;
-    }
+    else if (cmd != xcldev::DUMP)
+        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
 
     return result;
 }

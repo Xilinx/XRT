@@ -225,13 +225,28 @@ public:
             boost::property_tree::ptree ptCu;
             unsigned statusBuf;
             xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-            ptCu.put( "count",        i );
+            ptCu.put( "index",        i );
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
             ptCu.put( "status",       parseCUStatus( statusBuf ) );
             sensor_tree::add_child( "board.compute_unit.cu", ptCu );
         }
         return 0;
+    }
+
+    unsigned m_devinfo_power(const xclDeviceInfo2& m_devinfo) const
+    {
+        unsigned long long power = 0;
+
+        if (m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
+            m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.m12VPex != XCL_NO_SENSOR_DEV_S) {
+            power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
+                m_devinfo.mAuxCurr * m_devinfo.m12VAux;
+        }
+        power /= 1000000;
+        return static_cast<unsigned>(power);
     }
 
     void m_devinfo_stringize_power(const xclDeviceInfo2& m_devinfo,
@@ -616,6 +631,9 @@ public:
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
         sensor_tree::put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
 
+        // powerm_devinfo_power
+        sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
+
         // firewall
         unsigned i = m_errinfo.mFirewallLevel;
         sensor_tree::put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
@@ -729,7 +747,10 @@ public:
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", -1 ) << std::endl;
-             //<< std::setw(16) << sensor_tree::get( "board.physical.electrical.dna",            -1 ) << std::endl;
+
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Board Power\n";
+        ostr << sensor_tree::get( "board.physical.power",            -1 ) << " W" << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
