@@ -1425,6 +1425,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMemoryProfilingNumberSlots = 0;
     mAccelProfilingNumberSlots = 0;
     mStallProfilingNumberSlots = 0;
+    mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
 
@@ -1433,13 +1434,16 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   bool HwEmShim::isMBSchedulerEnabled()
   {
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
-    return mbSchEnabled;
+    bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
+    return mbSchEnabled && !QDMAPlatform;
   }
 
   //following code is copied from driver/xclng/drm/xocl/subdev/feature_rom.c
   unsigned int HwEmShim::getDsaVersion()
   {
-    std::string vbnv (mFeatureRom.VBNVName, mFeatureRom.VBNVName + sizeof(mFeatureRom.VBNVName)/sizeof(mFeatureRom.VBNVName[0]));
+    std::string vbnv  = mDeviceInfo.mName;
+    if(vbnv.empty())
+      return 52;
     if (vbnv.find("5_0") != std::string::npos)
       return 50;
     else if ( (vbnv.find("5_1") != std::string::npos)

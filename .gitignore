@@ -2,6 +2,8 @@ build/Debug*
 build/Release*
 docs/.buildinfo
 docs/.doctrees
+tests/xrt/build
+tests/unit_test/build
 *.o
 *.swp
 *.swo
