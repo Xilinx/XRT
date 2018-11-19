@@ -564,7 +564,7 @@ mkImageCore (cl_context context,
     //set fields in cl_buffer
     //
     unsigned memExtension = 0;
-    xocl::xocl(image)->add_ext_flags(memExtension);
+    xocl::xocl(image)->set_ext_flags(memExtension);
 
     // allocate device buffer object if context has only one device
     // and if this is not a progvar (clCreateProgramWithBinary)

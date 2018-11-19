@@ -199,7 +199,7 @@ clear_connection(connidx_type conn)
 
 xrt::device::BufferObjectHandle
 device::
-alloc(memory* mem, unsigned int memidx)
+alloc(memory* mem, memidx_type memidx)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
@@ -542,59 +542,16 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
-	  && xdevice->hasBankAlloc())
-  {
-    //Extension flags were passed. Get the extension flags.
-    //First 8 bits will indicate legacy/mem_topology etc.
-    //Rest 24 bits directly indexes into mem topology section OR.
-    //have legacy one-hot encoding.
-    auto flag = mem->get_ext_flags();
-    int32_t memidx = 0;
-    if (auto kernel = mem->get_ext_kernel()) {
-      //param<==>kernel; flag<==>arg_index
-      int32_t conn = 0;
-      flag = flag & 0xffffff;
-      auto& kernel_name = kernel->get_name_from_constructor();
-      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag,conn);
-      assert(conn!=-1);
-      mem->set_connidx(conn);
-    }
-    else if (flag & XCL_MEM_TOPOLOGY) {
-      memidx = flag & 0xffffff;
-    }
-    else {
-      flag = flag & 0xffffff;
-      auto bank = myctz(flag);
-      memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-      if (memidx==-1){
-        memidx = bank;
-      }
-    }
+  if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
+    throw std::runtime_error
+      ("Cannot allocate device buffer for host buffer ("
+       + std::to_string(mem->get_uid())
+       + "). Host buffer has no bank assignment and is not used as kernel argument.");
 
-    try {
-      auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-      throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"could not allocate with memidx: "+std::to_string(memidx));
-    }
-  }
-
-  // If buffer could not be allocated on the requested bank,
-  // or if no bank was specified, then allocate on the bank
-  // (memidx) matching the CU connectivity of CUs in device.
-  auto memidx = get_cu_memidx();
-  if (memidx>=0) {
-    try {
-      auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in bank with idx(",memidx,")\n");
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-    }
-  }
+  xrt::message::send
+    (xrt::message::severity_level::WARNING
+     , "Host buffer (" + std::to_string(mem->get_uid())
+     + ") has no bank assignment and is not used as kernel argument; allocating in default device bank.");
 
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
@@ -603,8 +560,11 @@ allocate_buffer_object(memory* mem)
 
 xrt::device::BufferObjectHandle
 device::
-allocate_buffer_object(memory* mem, uint64_t memidx)
+allocate_buffer_object(memory* mem, memidx_type memidx)
 {
+  if (memidx==-1)
+    return allocate_buffer_object(mem);
+
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
 
@@ -620,19 +580,6 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
       return xdevice->alloc(boh,size,offset);
     }
     throw std::runtime_error("parent sub-buffer memory bank mismatch");
-  }
-
-  auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation()) {
-    auto bank = myctz(flag);
-    auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-    if (midx==-1)
-      midx=bank;
-    if (static_cast<uint64_t>(midx)!=memidx)
-      throw std::runtime_error("implicitly request memidx("
-                               +std::to_string(memidx)
-                               +") does not match explicit memidx("
-                               +std::to_string(midx)+")");
   }
 
   auto boh = alloc(mem,memidx);
@@ -678,6 +625,7 @@ get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
   auto bset = m_xclbin.mem_address_to_memidx(addr);
   if (bset.none() && is_sw_emulation())
     bset.set(0); // default bank in sw_emu
+
   return bset;
 }
 
@@ -692,7 +640,7 @@ get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const
   return m_xclbin.memidx_to_banktag(memidx);
 }
 
-int
+device::memidx_type
 device::
 get_cu_memidx() const
 {
@@ -1232,7 +1180,7 @@ unload_program(const program* program)
 
 bool
 device::
-acquire_context(compute_unit* cu, bool shared) const
+acquire_context(const compute_unit* cu, bool shared) const
 {
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
@@ -1241,7 +1189,7 @@ acquire_context(compute_unit* cu, bool shared) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
-    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
     cu->set_context_type(shared);
     return true;
   }
@@ -1250,7 +1198,7 @@ acquire_context(compute_unit* cu, bool shared) const
 
 bool
 device::
-release_context(compute_unit* cu) const
+release_context(const compute_unit* cu) const
 {
   if (cu->get_context_type() == compute_unit::context_type::none)
     return true;
@@ -1259,7 +1207,7 @@ release_context(compute_unit* cu) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
-    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
     cu->reset_context_type();
     return true;
   }
