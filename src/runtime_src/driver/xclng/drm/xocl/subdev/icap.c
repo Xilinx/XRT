@@ -684,6 +684,8 @@ static int set_and_verify_freqs(struct icap* icap, unsigned short* freqs, int nu
 		return err;
 
 	for(i = 0; i <min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
+		if(!freqs[i])
+			continue;
 		clock_freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
 		if(clock_freq_counter == 0){
 			err = -EDOM;
