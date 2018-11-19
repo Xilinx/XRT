@@ -210,10 +210,8 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (!uuid_is_null(&client->xclbin_id)) {
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
-			pid_nr(task_tgid(current)));
-	}
+	if (atomic_read(&client->xclbin_locked))
+		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
 
 	if (MB_SCHEDULER_DEV(xdev))
 		xocl_exec_destroy_client(xdev, &filp->driver_priv);
