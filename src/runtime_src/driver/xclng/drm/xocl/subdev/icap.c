@@ -2139,7 +2139,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 
 			if(abs(freq_counter-request_in_khz)>tolerance)
 				ICAP_INFO(icap, "Frequency mismatch, Should be %u khz, Now is %ukhz", request_in_khz, freq_counter);
-			cnt += sprintf(buf + cnt, "%d\n", freq_counter);
+			cnt += sprintf(buf + cnt, "%d\n", DIV_ROUND_CLOSEST(freq_counter,1000));
 		}
 		else{
 			cnt += sprintf(buf + cnt, "%d\n", freq);
