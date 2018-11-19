@@ -29,6 +29,8 @@
 
 namespace xocl {
 
+class compute_unit;
+
 class kernel : public refcount, public _cl_kernel
 {
 public:
@@ -569,6 +571,12 @@ public:
     return boost::join(m_printf_args,m_rtinfo_args);
   }
 
+  std::vector<const compute_unit*>
+  get_cus() const
+  {
+    return m_cus;
+  }
+
   ////////////////////////////////////////////////////////////////
   // Conformance helpers
   ////////////////////////////////////////////////////////////////
@@ -576,6 +584,25 @@ public:
   {
     return m_symbol.hash;
   }
+
+private:
+  // Compute units that can be used by this kernel object
+  // The list is dynamically trimmed as kernel arguments are added
+  std::vector<const compute_unit*> m_cus;
+
+  // Trim CUs to keep only those where argument at argidx is
+  // connected to memory bank with memidx
+  void
+  trim_cus(unsigned long argidx, int memidx);
+
+  // Select a CU for argument buffer
+  const compute_unit*
+  select_cu(const memory* buf) const;
+
+  // Assign a buffer argument to a memory bank based on
+  // explicit connection if any or based on CU connectivity
+  void
+  assign_buffer_to_connection(memory* mem, unsigned long argidx);
 
 private:
   unsigned int m_uid = 0;

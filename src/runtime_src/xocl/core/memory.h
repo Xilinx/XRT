@@ -38,6 +38,7 @@ class memory : public refcount, public _cl_mem
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
   using connidx_type = xclbin::connidx_type;
+  using memidx_type = xclbin::memidx_type;
 
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
@@ -77,16 +78,10 @@ public:
     return m_ext_flags;
   }
 
-  const memory_extension_flags_type
-  add_ext_flags(memory_extension_flags_type flags)
+  const void
+  set_ext_flags(memory_extension_flags_type flags)
   {
-    return m_ext_flags |= flags;
-  }
-
-  const connidx_type 
-  get_connidx() const
-  {
-    return m_connidx;
+    m_ext_flags = flags;
   }
 
   void
@@ -95,17 +90,36 @@ public:
     m_connidx = index;
   }
 
+  connidx_type
+  get_connidx() const
+  {
+    return m_connidx;
+  }
+
+  memidx_type
+  get_memidx() const
+  {
+    return m_memidx;
+  }
 
   void
-  add_ext_kernel(const kernel* kernel)
+  set_ext_kernel(const kernel* kernel)
   {
     m_ext_kernel = kernel;
   }
 
   const kernel*
-  get_ext_kernel()
+  get_ext_kernel() const
   {
     return m_ext_kernel;
+  }
+
+  unsigned int
+  get_kernel_argidx() const
+  {
+    if (!m_ext_kernel)
+      throw std::runtime_error("buffer does not specify argument index");
+    return m_ext_flags & 0xffffff;
   }
 
   context*
@@ -144,16 +158,6 @@ public:
    */
   virtual memidx_bitmask_type
   get_memidx(const device* d) const;
-
-  /**
-   * Get memory index of DDR bank where this memory object is allocated
-   * if owning context has one device only.
-   *
-   * @return bitmask identifying matching memory banks, or 0 if not
-   *   allocated on device or there are multiple devices in context.
-   */
-  virtual memidx_bitmask_type
-  get_memidx() const;
 
   /**
    * Get the address and DDR bank where this memory object is allocated
@@ -331,6 +335,16 @@ public:
   get_buffer_object(kernel* kernel, unsigned long argidx);
 
   /**
+   * Get or create device buffer object for buffer allocated in
+   * specified memory bank per argument memidx.
+   *
+   * If buffer is allocated in context with with multiple devices
+   * then device allocation is deferred until enqueue time.
+   */
+  buffer_object_handle
+  get_buffer_object(memidx_type memidx);
+
+  /**
    * Get the buffer object on argument device or error out if none
    * exists.
    *
@@ -472,6 +486,10 @@ private:
   // cl_mem_ext_ptr_t data.  move to buffer derived class
   memory_extension_flags_type m_ext_flags {0};
   const kernel* m_ext_kernel {nullptr};
+
+  // Assigned memory bank index for this object.  Affects behavior of
+  // device side buffer allocation.
+  memidx_type m_memidx = -1;
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.

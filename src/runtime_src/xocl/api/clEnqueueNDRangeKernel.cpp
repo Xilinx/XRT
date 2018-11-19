@@ -251,8 +251,8 @@ validOrError(cl_command_queue command_queue,
     if (auto mem = arg->get_memory_object()) {
       mem->get_buffer_object(xdevice); // make sure buffer is allocated on device
       auto mem_memidx_mask = mem->get_memidx(xdevice);
-      for (auto& cu : xdevice->get_cu_range()) {
-        if (cu->get_symbol()->uid!=xkernel->get_symbol_uid())
+      for (auto cu : xocl::xocl(kernel)->get_cus()) {
+        if (cu->get_device() != xdevice)
           continue;
         auto cu_memidx_mask = cu->get_memidx(argidx);
         if ((cu_memidx_mask & mem_memidx_mask).none()) {

@@ -199,7 +199,7 @@ clear_connection(connidx_type conn)
 
 xrt::device::BufferObjectHandle
 device::
-alloc(memory* mem, unsigned int memidx)
+alloc(memory* mem, memidx_type memidx)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
@@ -543,16 +543,19 @@ allocate_buffer_object(memory* mem)
   }
 
   if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
-	  && xdevice->hasBankAlloc())
+      && xdevice->hasBankAlloc())
   {
-    //Extension flags were passed. Get the extension flags.
-    //First 8 bits will indicate legacy/mem_topology etc.
-    //Rest 24 bits directly indexes into mem topology section OR.
-    //have legacy one-hot encoding.
+    // Extension flags were passed. Get the extension flags.
+    // First 8 bits will indicate legacy/mem_topology etc.
+    // Rest 24 bits directly indexes into mem topology section OR.
+    // have legacy one-hot encoding.
     auto flag = mem->get_ext_flags();
-    int32_t memidx = 0;
+    memidx_type memidx = 0;
     if (auto kernel = mem->get_ext_kernel()) {
-      //param<==>kernel; flag<==>arg_index
+      // This code path should not be called. clCreateBuffer is
+      // calling clSetKernelArg for the interpreted {kernel,argidx}
+      // param<==>kernel; flag<==>arg_index
+      throw std::runtime_error("unexpected error in allocate_buffer_object(mem)");
       int32_t conn = 0;
       flag = flag & 0xffffff;
       auto& kernel_name = kernel->get_name_from_constructor();
@@ -603,8 +606,11 @@ allocate_buffer_object(memory* mem)
 
 xrt::device::BufferObjectHandle
 device::
-allocate_buffer_object(memory* mem, uint64_t memidx)
+allocate_buffer_object(memory* mem, memidx_type memidx)
 {
+  if (memidx==-1)
+    return allocate_buffer_object(mem);
+
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
 
@@ -622,14 +628,16 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
     throw std::runtime_error("parent sub-buffer memory bank mismatch");
   }
 
+  // If cl_ext_mem_ptr is used with legacy bank specification then check
+  // that explicit memidx (per user) matches the implicit per kernel CU.
   auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation()) {
+  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation() && !mem->get_ext_kernel()) {
     auto bank = myctz(flag);
     auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
     if (midx==-1)
       midx=bank;
-    if (static_cast<uint64_t>(midx)!=memidx)
-      throw std::runtime_error("implicitly request memidx("
+    if (midx!=memidx)
+      throw std::runtime_error("implicitly requested memidx("
                                +std::to_string(memidx)
                                +") does not match explicit memidx("
                                +std::to_string(midx)+")");
@@ -692,7 +700,7 @@ get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const
   return m_xclbin.memidx_to_banktag(memidx);
 }
 
-int
+device::memidx_type
 device::
 get_cu_memidx() const
 {
@@ -1232,7 +1240,7 @@ unload_program(const program* program)
 
 bool
 device::
-acquire_context(compute_unit* cu, bool shared) const
+acquire_context(const compute_unit* cu, bool shared) const
 {
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
@@ -1241,7 +1249,7 @@ acquire_context(compute_unit* cu, bool shared) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
-    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
     cu->set_context_type(shared);
     return true;
   }
@@ -1250,7 +1258,7 @@ acquire_context(compute_unit* cu, bool shared) const
 
 bool
 device::
-release_context(compute_unit* cu) const
+release_context(const compute_unit* cu) const
 {
   if (cu->get_context_type() == compute_unit::context_type::none)
     return true;
@@ -1259,7 +1267,7 @@ release_context(compute_unit* cu) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
-    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
     cu->reset_context_type();
     return true;
   }

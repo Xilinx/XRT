@@ -17,6 +17,8 @@
 #include "kernel.h"
 #include "program.h"
 #include "context.h"
+#include "device.h"
+#include "compute_unit.h"
 
 #include <sstream>
 #include <iostream>
@@ -25,6 +27,27 @@
 
 
 namespace xocl {
+
+static std::string
+connectivity_debug(const kernel* kernel)
+{
+  std::stringstream str;
+  const char* line = "-------------------------------";
+  str << "+" << line << "+\n";
+  str << "| " << std::left << std::setw(strlen(line)-1) << kernel->get_name() << std::right << "|\n";
+  str << "|" << line << "|\n";
+  const char* hdr1 = "argument index | memory index";
+  str << "| " << hdr1 << " |\n";
+  for (auto& arg : kernel->get_indexed_argument_range()) {
+    if (auto mem = arg->get_memory_object()) {
+      str << "| " << std::setw(strlen("argument index")) << arg->get_argidx()
+          << " | " << std::setw(strlen("memory index"))
+          << mem->get_memidx() << " |\n";
+    }
+  }
+  str << "+" << line << "+\n";
+  return str.str();
+}
 
 std::unique_ptr<kernel::argument>
 kernel::argument::
@@ -150,7 +173,7 @@ set(size_t size, const void* cvalue)
 
   m_buf = xocl(mem);
   if (m_argidx < std::numeric_limits<unsigned long>::max())
-    m_buf->get_buffer_object(m_kernel,m_argidx);
+    m_kernel->assign_buffer_to_connection(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -204,7 +227,7 @@ set(size_t size, const void* cvalue)
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
   m_buf = xocl(mem);
-  m_buf->get_buffer_object(m_kernel,m_argidx);
+  m_kernel->assign_buffer_to_connection(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -265,7 +288,6 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
   XOCL_DEBUG(std::cout,"xocl::kernel::kernel(",m_uid,")\n");
 
   for (auto& arg : m_symbol.arguments) {
-
     switch (arg.atype) {
     case xclbin::symbol::arg::argtype::printf:
       if (m_printf_args.size())
@@ -322,8 +344,14 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     default:
       throw std::runtime_error("Internal error creating kernel arguments");
     } // switch (arg.atype)
-
   }
+
+  // Collect CUs for all devices
+  auto context = prog->get_context();
+  for (auto device : context->get_device_range())
+    for  (auto& scu : device->get_cus())
+      if (scu->get_symbol_uid()==get_symbol_uid())
+        m_cus.push_back(scu.get());
 }
 
 // TODO: remove and fix compilation of unit tests
@@ -368,6 +396,128 @@ kernel::
 ~kernel()
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::~kernel(",m_uid,")\n");
+}
+
+void
+kernel::
+trim_cus(unsigned long argidx, int memidx)
+{
+  XOCL_DEBUG(std::cout,"xocl::kernel::trim_cus(",argidx,",",memidx,")\n");
+  xclbin::memidx_bitmask_type connections(1<<memidx);
+  auto end = m_cus.end();
+  for (auto itr=m_cus.begin(); itr!=end; ) {
+    auto cu = (*itr);
+    auto cuconn = cu->get_memidx(argidx);
+    if ((cuconn & connections).none()) {
+      XOCL_DEBUG(std::cout,"xocl::kernel::trim_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
+      itr = m_cus.erase(itr);
+      end = m_cus.end();
+    }
+    else
+      ++itr;
+  }
+  XOCL_DEBUG(std::cout,"xocl::kernel::trim_cus remaining CUs ",m_cus.size(),"\n");
+}
+
+const compute_unit*
+kernel::
+select_cu(const memory* buf) const
+{
+  if (m_cus.empty())
+    return nullptr;
+
+  auto ctx = buf->get_context();
+
+  // Kernel is loaded with CUs from program context. If buffer context
+  // is same, then any of kernel's CUs can be used, otherwise we must
+  // limit the CUs to those of the buffer context's devices.
+  if (ctx==m_program->get_context()) {
+    auto cu = m_cus.front();
+    XOCL_DEBUGF("xocl::kernel::select_cu for buf(%d) returns cu(%d)\n",buf->get_uid(),cu->get_uid());
+    return cu;
+  }
+
+  // Optimize this maybe?
+  std::bitset<128> cus;
+  for (auto device : ctx->get_device_range())
+    for (auto& scu : device->get_cus())
+      cus.set(scu->get_index());
+
+  for (auto cu : m_cus) {
+    if (cus.test(cu->get_index())) {
+      XOCL_DEBUGF("xocl::kernel::select_cu for buf(%d) returns cu(%d)\n",buf->get_uid(),cu->get_uid());
+      return cu;
+    }
+  }
+
+  XOCL_DEBUGF("xocl::kernel::select_cu for buf(%d) returns nullptr\n",buf->get_uid());
+  return nullptr;
+}
+
+void
+kernel::
+assign_buffer_to_connection(memory* buf, unsigned long argidx)
+{
+  if (!xrt::config::get_feature_toggle("Runtime.auto_trim_cus")) {
+    buf->get_buffer_object(this,argidx);
+    return;
+  }
+
+  // compute memidx for buffer device allocation
+  int memidx = -1;
+
+  // obey user requested allocation
+  if (buf->get_flags() & CL_MEM_EXT_PTR_XILINX) {
+    if (auto kernel = buf->get_ext_kernel()) {
+      if (kernel!=this || argidx!=buf->get_kernel_argidx())
+        throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE
+                          ,"Buffer created for (kernel,argidx) pair '("
+                          + kernel->get_name() + "," + std::to_string(buf->get_kernel_argidx())
+                          + ")' cannot be used as argument for ('"
+                          + get_name() + "," + std::to_string(argidx) + ")'");
+    }
+
+    auto flag = buf->get_ext_flags() & 0xffffff;
+    if (flag & XCL_MEM_TOPOLOGY)
+      memidx = flag;
+    else {
+      auto bank = __builtin_ctz(flag);
+      auto xclbin = m_program->get_xclbin(nullptr);
+      memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+      if (memidx==-1)
+        memidx = bank;
+    }
+  }
+
+  // if undecided, use first connection of argument of first CU that buf can use
+  if (memidx==-1) {
+    if (auto cu = select_cu(buf)) {
+      auto memmask = cu->get_memidx(argidx); // throws on error
+      size_t idx = 0;
+      while (idx<memmask.size() && !memmask.test(idx))
+        ++idx;
+      if (idx < memmask.size())
+        memidx = idx;
+    }
+  }
+
+  if (memidx==-1)
+    throw std::runtime_error("Internal error: No compute unit for kernel argument");
+
+  // trim CUs to those that support (argidx,memidx)
+  trim_cus(argidx,memidx);
+
+  // error if no CUs
+  if (m_cus.empty())
+    throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
+                      "Kernel '" + get_name() + "' "
+                      + "has no compute units to support required connectivity.\n"
+                      + connectivity_debug(this));
+
+  // Allocate the device buffer object if necessary or check current
+  // device buffer is allocated in selected bank. For multiple device
+  // context, defers until device is selected)
+  buf->get_buffer_object(memidx);
 }
 
 context*

@@ -108,6 +108,19 @@ clSetKernelArg(cl_kernel    kernel,
   return CL_SUCCESS;
 }
 
+namespace api {
+
+cl_int
+clSetKernelArg(cl_kernel    kernel,
+               cl_uint      arg_index,
+               size_t       arg_size,
+               const void * arg_value)
+{
+  return ::xocl::clSetKernelArg(kernel,arg_index,arg_size,arg_value);
+}
+
+} // api
+
 } // xocl
 
 cl_int
@@ -136,5 +149,3 @@ clSetKernelArg(cl_kernel    kernel,
     return CL_OUT_OF_RESOURCES;
   }
 }
-
-
