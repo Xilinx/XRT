@@ -359,7 +359,7 @@ public:
             ptMem.put( "tag",   map->m_mem_data[i].m_tag );
             ptMem.put( "used",  map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i] << 10) );
+            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i]));
             ptMem.put( "bo_count", devstat.ddrBOAllocated[i] );
             sensor_tree::add_child( "board.memory.mem", ptMem );
         }
