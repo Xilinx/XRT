@@ -309,6 +309,9 @@ message xclWriteQueue_call {
   optional uint64 q_handle = 1;
   optional bytes src = 2;
   optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
 }
 
 message xclWriteQueue_response {
@@ -320,11 +323,27 @@ message xclReadQueue_call {
   optional uint64 q_handle = 1;
   optional bytes dest = 2;
   optional uint64 size = 3;
+  optional uint64 req = 4;
+  optional bool nonblocking = 5;
+  optional bool eot = 6;
 }
 
 message xclReadQueue_response {
   optional bytes dest = 1;
   optional uint64 size = 2;
+}
+
+// xclPollCompletion
+message xclPollCompletion_call {
+  optional uint64 req = 1;
+}
+
+message xclPollCompletion_response {
+  message request {
+    optional bytes dest = 1;
+    optional uint64 size = 2;
+  }
+  repeated request fullrequest = 3 ;
 }
 
 // xclDestroyQueue
@@ -334,4 +353,46 @@ message xclDestroyQueue_call {
 
 message xclDestroyQueue_response {
   optional bool success =1;
+}
+
+//instanceArgNumToFlowId
+message xclSetupInstance_call {
+  optional uint64 route = 1 ;
+  message argflowpair {
+       optional uint64 arg = 2;
+       optional uint64 flow = 3;
+       optional string tag = 4;
+  }
+  repeated argflowpair setup = 5;
+}
+
+message xclSetupInstance_response {
+  optional bool success =1;
+}
+
+//messages for SSPM IP
+message xclPerfMonReadCounters_Streaming_call {
+  required string slotname = 1;
+}
+
+message xclPerfMonReadCounters_Streaming_response {
+  optional uint64 str_num_tranx = 7;
+  optional uint64 str_data_bytes = 8;
+  optional uint64 str_busy_cycles = 9;
+  optional uint64 str_stall_cycles = 10;
+  optional uint64 str_starve_cycles = 11;
+}
+
+message xclPerfMonReadTrace_Streaming_call {
+  optional bool ack = 1;
+  optional string slotname = 2;
+}
+
+message xclPerfMonReadTrace_Streaming_response {
+  message events {
+       optional uint32 eventflags = 3;
+       optional uint32 timestamp = 4;
+       optional uint64 host_timestamp = 5;
+  }
+  repeated events output_data = 8;
 }

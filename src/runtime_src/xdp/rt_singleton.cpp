@@ -56,10 +56,10 @@ namespace XCL {
 
   RTSingleton::RTSingleton()
   : Status( CL_SUCCESS ),
+    Platform( nullptr ),
     ProfileMgr( nullptr ),
     DebugMgr( nullptr ),
-    Platform( nullptr ),
-	ProfileFlags( 0 )
+    ProfileFlags( 0 )
   {
     ProfileMgr = new RTProfile(ProfileFlags);
     startProfiling();
@@ -213,6 +213,10 @@ namespace XCL {
     xdp::profile::platform::get_profile_slot_name(Platform.get(), deviceName,
         type, slotnum, slotName);
     //XOCL_DEBUG(std::cout,"Profiling: type = "type," slot ",slotnum," name = ",slotName.c_str(),"\n");
+  }
+
+  unsigned RTSingleton::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) {
+    return xdp::profile::platform::get_profile_slot_properties(Platform.get(), deviceName, type, slotnum);
   }
 
   void RTSingleton::getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) {

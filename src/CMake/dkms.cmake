@@ -10,7 +10,7 @@ SET (DKMS_POSTINST "postinst")
 SET (DKMS_PRERM "prerm")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
+  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   )
 
@@ -31,6 +31,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/mgmtpf/mgmt-ioctl.c
   driver/xclng/drm/xocl/mgmtpf/mgmt-sysfs.c
   driver/xclng/drm/xocl/mgmtpf/mgmt-core.h
+  driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf
   driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules
   driver/xclng/drm/xocl/mgmtpf/Makefile
   driver/xclng/drm/xocl/devices.h
@@ -49,6 +50,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/userpf/xocl_ioctl.c
   driver/xclng/drm/xocl/userpf/xocl_sysfs.c
   driver/xclng/drm/xocl/userpf/xocl_drv.c
+  driver/xclng/drm/xocl/userpf/xocl.dracut.conf
   driver/xclng/drm/xocl/userpf/10-xocl.rules
   driver/xclng/drm/xocl/userpf/Makefile
   driver/xclng/drm/xocl/lib/libxdma.c

@@ -302,7 +302,7 @@ std::string event_debug_view_migrate::getstring(int aVerbose, int aQuotes)
   }
   else {
     sstr << "Migrate " << m_num_objects << " cl_mem objects ";
-    for(auto i = 0; i<m_num_objects; ++i)
+    for(unsigned int i = 0; i<m_num_objects; ++i)
       sstr << std::hex << m_mem_objects[i] << " ";
     sstr << " with flags " << m_flags;
   }
@@ -917,7 +917,7 @@ getArgValueString(const xocl::event* aEvent)
     auto address_space = arg->get_address_space();
     if (address_space == SPIR_ADDRSPACE_PRIVATE)
     {
-      auto arginforange = arg->get_arginfo_range();
+      //auto arginforange = arg->get_arginfo_range();
       //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
       sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
     } else if (address_space==SPIR_ADDRSPACE_PIPES){
@@ -1127,12 +1127,13 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
+  //  unsigned int numSlots = 
+  getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
@@ -1167,7 +1168,7 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
               << "  " << std::setw(16)  << "Last Rd Addr"
               << "  " << std::setw(16)  << "Last Rd Data"
               << std::endl;
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       sstr << std::left
               << std::setw(col1) << cuNameportNames[i].first
               << " " << std::setw(col2) << cuNameportNames[i].second
@@ -1435,7 +1436,8 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
+  // unsigned int numSlots = 
+  getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
 
   bool violations_found = false;
@@ -1443,7 +1445,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
@@ -1480,7 +1482,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
     sstr << "Light-weight AXI protocol checker status\n";
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
                           SnapshotStatus[i], CumulativeStatus[i])) {
         sstr << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
@@ -1523,7 +1525,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
                 << "  " << std::setw(16) << "Cumulative[2]"
                 << "  " << std::setw(16) << "Cumulative[3]"
                 << std::endl;
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
         sstr << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second

@@ -34,6 +34,9 @@ else()
     )
 endif()
 
-install (TARGETS awssak RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install(TARGETS awssak
+        RUNTIME
+        DESTINATION ${XRT_INSTALL_DIR}/bin
+        COMPONENT aws)
 
 endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")

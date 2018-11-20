@@ -20,7 +20,6 @@
 #include "xocl/core/memory.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
 
@@ -143,7 +142,7 @@ clCreateBuffer(cl_context   context,
 
   // Adjust host_ptr based on ext flags if any
   auto ubuf = get_host_ptr(flags,host_ptr);
-  auto buffer = xrt::make_unique<xocl::buffer>(xocl::xocl(context),flags,size,ubuf);
+  auto buffer = std::make_unique<xocl::buffer>(xocl::xocl(context),flags,size,ubuf);
 
   // set fields in cl_buffer
   buffer->add_ext_flags(get_xlnx_ext_flags(flags,host_ptr));

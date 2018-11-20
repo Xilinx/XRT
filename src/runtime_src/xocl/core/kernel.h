@@ -366,7 +366,7 @@ private:
 
 public:
   // only program constructs kernels, but private doesn't work as long
-  // xrt::make_unique is used
+  // std::make_unique is used
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
