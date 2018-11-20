@@ -648,9 +648,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		if (raw) {
 			memory_usage = 0;
 			bo_count = 0;
-			if (!stat[i])
-				userpf_info(xdev, "raw stat[%d] is NULL", i);
-			else {
+			if (stat[i]) {
 				memory_usage = stat[i]->memory_usage;
 				bo_count = stat[i]->bo_count;
 			}
