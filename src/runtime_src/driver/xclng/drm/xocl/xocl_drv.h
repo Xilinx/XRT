@@ -58,6 +58,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
 
+#define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
@@ -98,7 +99,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 	(XDEV(xdev)->priv.mpsoc)
 
 #define	XOCL_DEV_ID(pdev)			\
-	PCI_DEVID(pdev->bus->number, pdev->devfn)
+	((pci_domain_nr(pdev->bus) << 16) |	\
+	PCI_DEVID(pdev->bus->number, pdev->devfn))
 
 #define XOCL_ARE_HOP 0x400000000ull
 
@@ -115,8 +117,9 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define RHEL_P2P_SUPPORT  0
 #endif
 
-#define INVALID_SUBDEVICE 		~0U
-#define NUMS_OF_DYNA_IP_ADDR   4
+#define INVALID_SUBDEVICE ~0U
+
+#define XOCL_INVALID_MINOR -1
 
 extern struct class *xrt_class;
 
@@ -128,6 +131,15 @@ struct xocl_subdev {
 	struct platform_device 		*pldev;
 	void				*ops;
 };
+
+struct xocl_subdev_private {
+	int		id;
+	bool		is_multi;
+	char		priv_data[1];
+};
+
+#define	XOCL_GET_SUBDEV_PRIV(dev)				\
+	((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data
 
 typedef	void *	xdev_handle_t;
 
@@ -176,6 +188,7 @@ struct xocl_health_thread_arg {
 
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
+	int			dev_minor;
 	struct xocl_subdev	subdevs[XOCL_SUBDEV_NUM];
 	u32			subdev_num;
 	struct xocl_pci_funcs	*pci_ops;
@@ -192,9 +205,6 @@ struct xocl_dev_core {
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
-
-	u32			dyna_subdevs_id[XOCL_SUBDEV_NUM];
-	u32			dyna_subdevs_num;
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -336,8 +346,10 @@ struct xocl_mb_scheduler_funcs {
         -ENODEV)
 #define	XOCL_IS_DDR_USED(xdev, ddr)		\
 	(xdev->topology->m_mem_data[ddr].m_used == 1)
+#define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
+	((xdev)->topology ? (xdev)->topology->m_count : 0)
 #define	XOCL_DDR_COUNT(xdev)			\
-	((xocl_is_unified(xdev) ? xdev->topology->m_count :	\
+	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
 
 /* sysmon callbacks */
@@ -412,7 +424,7 @@ struct xocl_mb_funcs {
 struct xocl_dna_funcs {
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
-	void (*write_cert)(struct platform_device *pdev, const char __user *buf, u32 len);
+	void (*write_cert)(struct platform_device *pdev, const uint32_t *buf, u32 len);
 };
 
 #define	XMC_DEV(xdev)		\
@@ -563,15 +575,18 @@ xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
 
 /* subdev functions */
+int xocl_subdev_create_multi_inst(xdev_handle_t xdev_hdl,
+	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
         struct xocl_subdev_info *sdev_info, u32 subdev_num);
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
+void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
 
-uint32_t xocl_subdev_get_subid(uint32_t ip_type);
-int xocl_subdev_get_devinfo(struct xocl_subdev_info *subdev_info, struct resource *res, uint32_t sub_id);
+int xocl_subdev_get_devinfo(uint32_t subdev_id,
+	struct xocl_subdev_info *subdev_info, struct resource *res);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
@@ -580,6 +595,8 @@ struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
 void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
         struct axlf *bin_obj, bool major_only);
+int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
+void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 /* context helpers */
 int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,

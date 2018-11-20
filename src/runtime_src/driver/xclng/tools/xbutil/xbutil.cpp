@@ -191,14 +191,9 @@ int main(int argc, char *argv[])
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
-    if( std::strcmp( argv[1], "validate") == 0 ) {
+    if( std::strcmp( argv[1], "validate" ) == 0 ) {
         optind++;
         return xcldev::xclValidate(argc, argv);
-    }
-
-    if( std::strcmp( argv[1], "top") == 0) {
-        optind++;
-        return xcldev::xclTop(argc, argv);
     }
 
     argv++;
@@ -231,7 +226,10 @@ int main(int argc, char *argv[])
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"stream", no_argument, 0, xcldev::STREAM}
+        {"stream", no_argument, 0, xcldev::STREAM},
+        {"query-ecc", no_argument, 0, xcldev::MEM_QUERY_ECC},
+        {"reset-ecc", no_argument, 0, xcldev::MEM_RESET_ECC},
+        {0, 0, 0, 0}
     };
 
     int long_index;
@@ -296,11 +294,29 @@ int main(int argc, char *argv[])
         }
         case xcldev::STREAM:
         {
-            if(cmd != xcldev::QUERY) {
+            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
             subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::MEM_QUERY_ECC : {
+            //--query-ecc
+            if (cmd != xcldev::MEM) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::MEM_QUERY_ECC;
+            break;
+        }
+        case xcldev::MEM_RESET_ECC : {
+            //--reset-ecc
+            if (cmd != xcldev::MEM) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::MEM_RESET_ECC;
             break;
         }
         //short options are dealt here
@@ -499,6 +515,7 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
+    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -528,8 +545,9 @@ int main(int argc, char *argv[])
         std::cout << "ERROR: No card found\n";
         return 1;
     }
-    std::cout << "INFO: Found total " << total << " card(s), "
-        << count << " are usable" << std::endl;
+    if (cmd != xcldev::DUMP)
+        std::cout << "INFO: Found total " << total << " card(s), "
+                  << count << " are usable" << std::endl;
 
     if (cmd == xcldev::SCAN) {
         print_pci_info();
@@ -596,6 +614,9 @@ int main(int argc, char *argv[])
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
+    case xcldev::DUMP:
+        result = deviceVec[index]->dumpJson(std::cout);
+        break;
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
         result = deviceVec[index]->reset(regionIndex);
@@ -609,9 +630,12 @@ int main(int argc, char *argv[])
     case xcldev::MEM:
         if (subcmd == xcldev::MEM_READ) {
             result = deviceVec[index]->memread(outMemReadFile, startAddr, sizeInBytes);
-        }
-        else if (subcmd == xcldev::MEM_WRITE) {
+        } else if (subcmd == xcldev::MEM_WRITE) {
             result = deviceVec[index]->memwrite(startAddr, sizeInBytes, pattern_byte);
+        } else if(subcmd == xcldev::MEM_QUERY_ECC) {
+            result = deviceVec[index]->printEccInfo(std::cout);
+        } else if(subcmd == xcldev::MEM_RESET_ECC) {
+            result = deviceVec[index]->resetEccInfo();
         }
         break;
     case xcldev::DD:
@@ -632,20 +656,23 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
             result = deviceVec[index]->readSPMCounters();
         }
-	if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-	  result = deviceVec[index]->readSSPMCounters() ;
-	}
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
+            result = deviceVec[index]->readSSPMCounters() ;
+        }
         break;
+    case xcldev::TOP:
+            result = xcldev::xclTop(argc, argv, subcmd);
+        break;
+
     default:
         std::cout << "ERROR: Not implemented\n";
         result = -1;
     }
 
-    if(result == 0) {
-        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
-    } else {
+    if (result != 0)
         std::cout << "ERROR: xbutil " << v->first  << " failed." << std::endl;
-    }
+    else if (cmd != xcldev::DUMP)
+        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
 
     return result;
 }
@@ -657,10 +684,13 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Command and option summary:\n";
     std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
+    std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
+    std::cout << "  mem --query-ecc [-d card]\n";
+    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
@@ -674,6 +704,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
+    std::cout << "Print JSON file to stdout\n";
+    std::cout << "  " << exe << " dump\n";
     std::cout << "List all cards\n";
     std::cout << "  " << exe << " list\n";
     std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
@@ -740,10 +772,24 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
 
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+
     for(auto line:lines) {
             printw("%s\n", line.c_str());
     }
 }
+
+static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devinfo)
+{
+    std::vector<std::string> lines;
+
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+
+    for(auto line:lines) {
+        printw("%s\n", line.c_str());
+    }
+}
+
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
 {
@@ -772,7 +818,34 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     }
 }
 
-int xcldev::xclTop(int argc, char *argv[])
+static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
+{
+    int i = 0;
+
+    while (!ctrl->quit) {
+        if ((i % ctrl->interval) == 0) {
+            xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
+            int result = ctrl->dev->usageInfo(devstat);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            clear();
+            topPrintStreamUsage(ctrl->dev.get(), devinfo);
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        i++;
+    }
+}
+
+int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
 {
     int interval = 1;
     unsigned index = 0;
@@ -814,8 +887,12 @@ int xcldev::xclTop(int argc, char *argv[])
     initscr();
     cbreak();
     noecho();
-
-    std::thread t(topThreadFunc, &ctrl);
+    std::thread t;
+    if (subcmd == xcldev::STREAM) {
+        t = std::thread(topThreadStreamFunc, &ctrl);
+    } else {
+        t = std::thread(topThreadFunc, &ctrl);
+    }
 
     // Waiting for and processing control command from stdin
     while (!ctrl.quit) {
@@ -837,8 +914,7 @@ int xcldev::xclTop(int argc, char *argv[])
 const std::string dsaPath("/opt/xilinx/dsa/");
 
 void testCaseProgressReporter(bool *quit)
-{
-    int i = 0;
+{    int i = 0;
     while (!*quit) {
         if (i != 0 && (i % 5 == 0))
             std::cout << "." << std::flush;
@@ -1079,5 +1155,134 @@ int xcldev::xclValidate(int argc, char *argv[])
     }
 
     std::cout << "INFO: All cards validated successfully." << std::endl;
+    return 0;
+}
+
+static int getEccMemTags(const pcidev::pci_device *dev,
+    std::vector<std::string>& tags)
+{
+    std::string errmsg;
+    std::vector<char> buf;
+
+    dev->user->sysfs_get("", "mem_topology", errmsg, buf);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    const mem_topology *map = (mem_topology *)buf.data();
+
+    if(buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' not found, "
+            << "unable to query ECC info. Has the xclbin been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+
+    // Only support DDR4 mem controller for ECC status
+    for(int32_t i = 0; i < map->m_count; i++) {
+        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+            continue;
+        tags.emplace_back(
+            reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+    }
+
+    if (tags.empty()) {
+        std::cout << "No supported ECC controller detected!" << std::endl;
+        return -ENOENT;
+    }
+
+    // See if xclbin contains ECC base addresses for supported in-use DDR type
+    unsigned onoff = 0;
+    dev->mgmt->sysfs_get(tags[0], "ecc_enabled", errmsg, onoff);
+    if (!errmsg.empty()) {
+        std::cout << "No supported ECC controller detected!" << std::endl;
+        return -ENOENT;
+    }
+
+    return 0;
+}
+
+static int eccStatus2String(unsigned int status, std::string& str)
+{
+    const int ce_mask = (0x1 << 1);
+    const int ue_mask = (0x1 << 0);
+
+    str.clear();
+
+    // If unknown status bits, can't support.
+    if (status & ~(ce_mask | ue_mask)) {
+        std::cout << "Bad ECC status detected!" << std::endl;
+        return -EINVAL;
+    }
+
+    if (status == 0) {
+        str = "(None)";
+        return 0;
+    }
+
+    if (status & ue_mask)
+        str += "UE ";
+    if (status & ce_mask)
+        str += "CE ";
+    // Remove the trailing space.
+    str.pop_back();
+    return 0;
+}
+
+int xcldev::device::printEccInfo(std::ostream& ostr) const
+{
+    std::string errmsg;
+    std::vector<std::string> tags;
+    auto dev = pcidev::get_dev(m_idx);
+
+    int err = getEccMemTags(dev, tags);
+    if (err)
+        return err;
+
+    // Report ECC status
+    ostr << std::endl;
+    ostr << std::left << std::setw(16) << "Tag" << std::setw(12) << "Errors"
+        << std::setw(12) << "CE Count" << std::setw(20) << "CE FFA"
+        << std::setw(20) << "UE FFA" << std::endl;
+    for (auto tag : tags) {
+        unsigned status = 0;
+        std::string st;
+        dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
+        err = eccStatus2String(status, st);
+        if (err)
+            return err;
+
+        unsigned ce_cnt = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
+        uint64_t ce_ffa = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ce_ffa", errmsg, ce_ffa);
+        uint64_t ue_ffa = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ue_ffa", errmsg, ue_ffa);
+        ostr << std::left << std::setw(16) << tag << std::setw(12) << st
+            << std::setw(12) << ce_cnt << "0x" << std::setw(18) << std::hex
+            << ce_ffa << "0x" << std::setw(18) << ue_ffa << std::endl;
+    }
+    ostr << std::endl;
+    return 0;
+}
+
+int xcldev::device::resetEccInfo()
+{
+    std::string errmsg;
+    std::vector<std::string> tags;
+    auto dev = pcidev::get_dev(m_idx);
+
+    if ((getuid() != 0) && (geteuid() != 0)) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    int err = getEccMemTags(dev, tags);
+    if (err)
+        return err;
+
+    std::cout << "Resetting ECC info..." << std::endl;
+    for (auto tag : tags)
+        dev->mgmt->sysfs_put(tag, "ecc_reset", errmsg, "1");
     return 0;
 }

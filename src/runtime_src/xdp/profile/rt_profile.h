@@ -36,6 +36,9 @@
 #include <mutex>
 #include <queue>
 
+// Separator used for CU port and memory resource (must match HW linker)
+#define PORT_MEM_SEP "-"
+
 namespace XCL {
   class WriterI;
   class TimeTrace;
@@ -172,8 +175,8 @@ namespace XCL {
       const std::string eventString, const std::string dependString);
 
     // log user or cl API function calls
-    void logFunctionCallStart(const char* functionName, long long queueAddress);
-    void logFunctionCallEnd(const char* functionName, long long queueAddress);
+    void logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID);
+    void logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID);
 
 
   public:
@@ -202,7 +205,7 @@ namespace XCL {
 
     // Timeline Trace
     void writeTimelineTrace(double traceTime, const char* functionName,
-        const char* eventName) const;
+        const char* eventName, unsigned int functionID) const;
     void writeTimelineTrace(double traceTime, const std::string& commandString,
         const std::string& stageString, const std::string& eventString,
         const std::string& dependString, uint64_t objId, size_t size) const;

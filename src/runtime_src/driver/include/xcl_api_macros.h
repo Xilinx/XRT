@@ -328,6 +328,7 @@ mtx.unlock();
 
 
 //----------xclPerfMonReadCounters------------
+//----------xclPerfMonReadCounters------------
 #define xclPerfMonReadCounters_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
@@ -348,13 +349,43 @@ mtx.unlock();
 
 #define xclPerfMonReadCounters_RETURN()
 
-#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname,accel) \
+#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency, \
+                                        rd_byte_count,rd_trans_count,total_rd_latency, \
+                                        sampleIntervalUsec,slotname,accel) \
     RPC_PROLOGUE(func_name); \
     xclPerfMonReadCounters_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
     xclPerfMonReadCounters_RETURN();
+
+//----------xclPerfMonReadCounters(Streaming)------------
+#define xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_slotname(slotname);
+
+#define xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE() \
+    str_num_tranx       = r_msg.str_num_tranx(); \
+    str_data_bytes      = r_msg.str_data_bytes(); \
+    str_busy_cycles     = r_msg.str_busy_cycles(); \
+    str_stall_cycles    = r_msg.str_stall_cycles(); \
+    str_starve_cycles   = r_msg.str_starve_cycles();
+
+
+#define xclPerfMonReadCounters_Streaming_RETURN()
+
+#define xclPerfMonReadCounters_Streaming_RPC_CALL(func_name, str_num_tranx, str_data_bytes, str_busy_cycles, \
+                                        str_stall_cycles, str_starve_cycles, slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclPerfMonReadCounters_Streaming_RETURN();
 
 //----------xclPerfMonGetTraceCount------------
 #define xclPerfMonGetTraceCount_SET_PROTOMESSAGE() \
@@ -397,6 +428,26 @@ mtx.unlock();
     xclPerfMonReadTrace_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
+
+//----------xclPerfMonReadTrace(Streaming)------------
+#define xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_ack(ack); \
+    c_msg.set_slotname(slotname);
+
+#define xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE() \
+    samplessize = r_msg.output_data_size(); \
+
+#define xclPerfMonReadTrace_Streaming_RPC_CALL(func_name,ack,samplessize,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS();
 
 //----------xclWriteHostEvent------------

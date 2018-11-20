@@ -3009,12 +3009,20 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		struct xdma_transfer *xfer;
 
 		/* one transfer at a time */
+#ifndef CONFIG_PREEMPT_COUNT
 		spin_lock(&engine->desc_lock);
+#else
+		mutex_lock(&engine->desc_mutex);
+#endif
 
 		/* build transfer */
 		rv = transfer_init(engine, req);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			goto unmap_sgl;
 		}
 		xfer = &req->xfer;
@@ -3039,7 +3047,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 		rv = transfer_queue(engine, xfer);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			pr_info("unable to submit %s, %d.\n", engine->name, rv);
 			goto unmap_sgl;
 		}
@@ -3116,7 +3128,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			break;
 		}
 		transfer_destroy(xdev, xfer);
-		spin_unlock(&engine->desc_lock);
+#ifndef CONFIG_PREEMPT_COUNT
+			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 
 		if (rv < 0)
 			goto unmap_sgl;
@@ -3256,6 +3272,9 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
@@ -3265,6 +3284,9 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
@@ -3470,8 +3492,10 @@ static void pci_enable_capability(struct pci_dev *pdev, int cap)
 static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 {
 	u16 cap;
+#if 0
 	u32 v;
 	void *__iomem reg;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
 	pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &cap);
@@ -3493,6 +3517,15 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	/* extended tag not enabled */
 	pr_info("0x%p EXT_TAG disabled.\n", pdev);
 
+#if 0
+	/* Confirmed with Karen. This code is needed when ExtTag is disabled.
+	 * Reason to disable below code:
+	 * We observed that the ExtTag was cleared on some system. The SSD-
+	 * FPGA board will not work on that system (DMA failed). The solution
+	 * is that XDMA driver should enable ExtTag in that case.
+	 *
+	 * If ExtTag need to be disabled for your system, please enable this.
+	 */
 	if (xdev->config_bar_idx < 0) {
 		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
 				pdev, xdev);
@@ -3504,6 +3537,10 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	v = (v & 0xFF) | (((u32)32) << 8);
 	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
 	return 0;
+#else
+	/* Return 1 will go to enable ExtTag */
+	return 1;
+#endif
 }
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
@@ -3554,10 +3591,18 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	}
 
 	/* force MRRS to be 512 */
-	rv = pcie_set_readrq(pdev, 512);
-	if (rv)
-		pr_info("device %s, error set PCI_EXP_DEVCTL_READRQ: %d.\n",
-			dev_name(&pdev->dev), rv);
+	rv = pcie_get_readrq(pdev);
+	if (rv < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rv);
+		goto err_regions;
+	}
+	if (rv > 512) {
+		rv = pcie_set_readrq(pdev, 512);
+		if (rv) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rv);
+			goto err_regions;
+		}
+	}
 
 	/* enable bus master capability */
 	pci_set_master(pdev);

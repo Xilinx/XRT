@@ -180,7 +180,7 @@ namespace xocl {
     if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
       for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mPerfmonProperties[i] & 0x4) count++;
+        if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) count++;
       }
       return count;
     }
@@ -489,6 +489,46 @@ namespace xocl {
                       baseAddress + XSPM_SAMPLE_READ_LATENCY_OFFSET, 
                       &counterResults.ReadLatency[s], 4);
 
+      // Read upper 32 bits (if available)
+      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+        uint64_t upper[6] = {};
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
+                        &upper[0], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
+                        &upper[1], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET,
+                        &upper[2], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
+                        &upper[3], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET,
+                        &upper[4], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET,
+                        &upper[5], 4);
+
+        counterResults.WriteBytes[s]   += (upper[0] << 32);
+        counterResults.WriteTranx[s]   += (upper[1] << 32);
+        counterResults.WriteLatency[s] += (upper[2] << 32);
+        counterResults.ReadBytes[s]    += (upper[3] << 32);
+        counterResults.ReadTranx[s]    += (upper[4] << 32);
+        counterResults.ReadLatency[s]  += (upper[5] << 32);
+
+        if (mLogStream.is_open()) {
+          mLogStream << "SPM Upper 32, slot " << s << std::endl;
+          mLogStream << "  WriteBytes : " << upper[0] << std::endl;
+          mLogStream << "  WriteTranx : " << upper[1] << std::endl;
+          mLogStream << "  WriteLatency : " << upper[2] << std::endl;
+          mLogStream << "  ReadBytes : " << upper[3] << std::endl;
+          mLogStream << "  ReadTranx : " << upper[4] << std::endl;
+          mLogStream << "  ReadLatency : " << upper[5] << std::endl;
+        }
+      }
+
       if (mLogStream.is_open()) {
         mLogStream << "Reading SPM ...SlotNum : " << s << std::endl;
         mLogStream << "Reading SPM ...WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
@@ -499,6 +539,7 @@ namespace xocl {
         mLogStream << "Reading SPM ...ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
       }
     }
+
     /*
      * Read SDx Accel Monitor Data
      */
@@ -512,6 +553,7 @@ namespace xocl {
       if (mLogStream.is_open()) {
         mLogStream << "SAM Core Version : " << version << std::endl;
       }
+
       // Read sample interval register
       // NOTE: this also latches the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
@@ -520,6 +562,7 @@ namespace xocl {
       if (mLogStream.is_open()) {
         mLogStream << "SAM Sample Interval : " << sampleInterval << std::endl;
       }
+
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 
                       &counterResults.CuExecCount[s], 4); 
@@ -532,6 +575,37 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuMaxExecCycles[s], 4);
+
+      // Read upper 32 bits (if available)
+      if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
+        uint64_t upper[4] = {};
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+                        &upper[0], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[1], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[2], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[3], 4);
+
+        counterResults.CuExecCount[s]     += (upper[0] << 32);
+        counterResults.CuExecCycles[s]    += (upper[1] << 32);
+        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
+        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
+
+        if (mLogStream.is_open()) {
+          mLogStream << "SAM Upper 32, slot " << s << std::endl;
+          mLogStream << "  CuExecCount : " << upper[0] << std::endl;
+          mLogStream << "  CuExecCycles : " << upper[1] << std::endl;
+          mLogStream << "  CuMinExecCycles : " << upper[2] << std::endl;
+          mLogStream << "  CuMaxExecCycles : " << upper[3] << std::endl;
+        }
+      }
+
       if (mLogStream.is_open()) {
         mLogStream << "Reading SAM ...SlotNum : " << s << std::endl;
         mLogStream << "Reading SAM ...CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
@@ -539,8 +613,9 @@ namespace xocl {
         mLogStream << "Reading SAM ...CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
         mLogStream << "Reading SAM ...CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
       }
+
       // Check Stall bit
-      if (mAccelmonProperties[s] & 0x4) {
+      if (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_STALL_INT_OFFSET, 
                       &counterResults.CuStallIntCycles[s], 4); 
@@ -971,7 +1046,7 @@ void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uin
 
 uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
 {
-   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   if (!drv)
     return 0;
   return drv->getPerfMonProperties(type, slotnum);

@@ -452,7 +452,6 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
 	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
 	uint64_t base_addr_offset;
-	base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 
 //	//Only one bit should be set in ddr. Other bits are now in "type"
 //	if (hweight_long(ddr) > 1)
@@ -477,6 +476,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		return PTR_ERR(xobj);
 	}
 
+	base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 	if(bar_mapped){
 		if((xobj->mm_node->start - base_addr_offset
 			   + xobj->mm_node->size) > xdev->bypass_bar_len){

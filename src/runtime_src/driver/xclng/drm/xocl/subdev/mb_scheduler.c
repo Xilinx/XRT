@@ -474,20 +474,20 @@ add_xcmd(struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = xocl_get_xdev(xcmd->exec->pdev);
 
-	SCHED_DEBUGF("-> add_xcmd(%lu)\n",xcmd->id);
+	SCHED_DEBUGF("-> add_xcmd(%lu) pid(%d)\n",xcmd->id,pid_nr(task_tgid(current)));
 
 	cmd_set_state(xcmd,ERT_CMD_STATE_NEW);
 	mutex_lock(&pending_cmds_mutex);
 	list_add_tail(&xcmd->list,&pending_cmds);
+	atomic_inc(&num_pending);
 	mutex_unlock(&pending_cmds_mutex);
 
 	/* wake scheduler */
-	atomic_inc(&num_pending);
 	atomic_inc(&xdev->outstanding_execs);
 	atomic64_inc(&xdev->total_execs);
 	wake_up_interruptible(&xcmd->xs->wait_queue);
 
-	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d) num_pending(%d)\n",opcode(xcmd),type(xcmd),atomic_read(&num_pending));
 	return 0;
 }
 
@@ -1878,6 +1878,7 @@ create_client(struct platform_device *pdev, void **priv)
 
 	client->pid = task_tgid(current);
 	mutex_init(&client->lock);
+	atomic_set(&client->xclbin_locked,false);
 	atomic_set(&client->trigger, 0);
 	atomic_set(&client->abort, 0);
 	atomic_set(&client->outstanding_execs, 0);
@@ -1918,6 +1919,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		if (loops == timeout_loops) {
 			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbsak reset -h'\n",outstanding);
 			atomic_set(&xdev->needs_reset,1);
+			/* stop the scheduler loop */
+			global_scheduler0.stop = 1;
 			break;
 		}
 		outstanding = new;
@@ -2077,7 +2080,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	struct client_ctx client;
 	struct ert_packet packet;
-	unsigned int count;
+	unsigned int count = 0;
 	ssize_t sz = 0;
 
 	/* minimum required initialization of client */

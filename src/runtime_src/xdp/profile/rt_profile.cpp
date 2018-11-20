@@ -584,7 +584,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     return XCL_PERF_MON_IGNORE_EVENT;
   }
 
-  void RTProfile::logFunctionCallStart(const char* functionName, long long queueAddress)
+  void RTProfile::logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID)
   {
 #ifdef USE_DEVICE_TIMELINE
     double timeStamp = getDeviceTimeStamp(getTraceTime(), CurrentDeviceName);
@@ -602,7 +602,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       (name += "|") +=std::to_string(queueAddress);
     std::lock_guard<std::mutex> lock(LogMutex);
     PerfCounters.logFunctionCallStart(functionName, timeStamp);
-    writeTimelineTrace(timeStamp, name.c_str(), "START");
+    writeTimelineTrace(timeStamp, name.c_str(), "START", functionID);
     FunctionStartLogged = true;
 
     // Write host event to trace buffer
@@ -613,12 +613,12 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     }
   }
 
-  void RTProfile::logFunctionCallEnd(const char* functionName, long long queueAddress)
+  void RTProfile::logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID)
   {
     // Log function call start if not done so already
     // NOTE: this addresses a race condition when constructing the singleton (CR 963297)
     if (!FunctionStartLogged)
-      logFunctionCallStart(functionName, queueAddress);
+      logFunctionCallStart(functionName, queueAddress, functionID);
 
 #ifdef USE_DEVICE_TIMELINE
     double timeStamp = getDeviceTimeStamp(getTraceTime(), CurrentDeviceName);
@@ -634,7 +634,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
     std::lock_guard<std::mutex> lock(LogMutex);
     PerfCounters.logFunctionCallEnd(functionName, timeStamp);
-    writeTimelineTrace(timeStamp, name.c_str(), "END");
+    writeTimelineTrace(timeStamp, name.c_str(), "END", functionID);
 
     // Write host event to trace buffer
     xclPerfMonEventID eventID = getFunctionEventID(name, queueAddress);
@@ -646,13 +646,13 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
   // Write API call events to trace
   void RTProfile::writeTimelineTrace( double traceTime,
-      const char* functionName, const char* eventName) const
+      const char* functionName, const char* eventName, unsigned int functionID) const
   {
     if(!this->isTimelineTraceFileOn())
       return;
 
     for(auto w : Writers) {
-      w->writeTimeline(traceTime, functionName, eventName);
+      w->writeTimeline(traceTime, functionName, eventName, functionID);
     }
   }
 
@@ -1637,7 +1637,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
           std::get<1>(row) = portName;
 
           bool firstArg = true;
-          std::string memoryName = "N/A";
+          std::string memoryName;
 
           for (auto arg : currSymbol->arguments) {
             auto currPort = arg.port;
@@ -1645,7 +1645,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
             //XOCL_DEBUGF("setArgumentsBank: name = %s, aq = %d, atype = %d\n",
             //    arg.name.c_str(), arg.address_qualifier, arg.atype);
 
-            if ((currPort == portName) && (arg.address_qualifier == 1)
+            // Address_Qualifier = 1 : AXI MM Port
+            // Address_Qualifier = 4 : AXI Stream Port
+            if ((currPort == portName) && (arg.address_qualifier == 1 || arg.address_qualifier == 4)
                 && (arg.atype == xocl::xclbin::symbol::arg::argtype::indexed)) {
               std::get<2>(row) += (firstArg) ? arg.name : ("|" + arg.name);
 
@@ -1654,14 +1656,12 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
               //XOCL_DEBUGF("setArgumentsBank: getting bank for index %d\n", index);
 
               try {
-                // TODO: deal with arguments connected to multiple memory banks
-                // TODO: store DDR bank as a string not an integer!
                 auto memidx_mask = cu->get_memidx(index);
-		// auto memidx = 0;
+                // auto memidx = 0;
                 for (unsigned int memidx=0; memidx<memidx_mask.size(); ++memidx) {
                   if (memidx_mask.test(memidx)) {
                     // Get bank tag string from index
-                    memoryName = "DDR[0]";
+                    memoryName = "DDR";
                     if (device_id->is_active())
                       memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
 
@@ -1671,9 +1671,20 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
                 }
               }
               catch (const std::runtime_error& ex) {
-                memoryName = "DDR[0]";
+                memoryName = "DDR";
                 XOCL_DEBUGF("setArgumentsBank: caught error, using default of %s\n", memoryName.c_str());
               }
+
+              // Catch old bank format and report as DDR
+              //std::string memoryName2 = memoryName.substr(0, memoryName.find_last_of("["));
+              if (memoryName.find("bank0") != std::string::npos)
+                memoryName = "DDR[0]";
+              else if (memoryName.find("bank1") != std::string::npos)
+                memoryName = "DDR[1]";
+              else if (memoryName.find("bank2") != std::string::npos)
+                memoryName = "DDR[2]";
+              else if (memoryName.find("bank3") != std::string::npos)
+                memoryName = "DDR[3]";
 
               std::get<3>(row) = memoryName;
               std::get<4>(row) = portWidth;
@@ -1703,8 +1714,9 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 								   std::string& memoryName) const
   {
     argNames = "All";
-    memoryName = "N/A";
-    std::string portName2 = portName.substr(0, portName.find_last_of(":"));
+    memoryName = "DDR";
+    std::string portName2 = portName.substr(0, portName.find_last_of(PORT_MEM_SEP));
+    std::transform(portName2.begin(), portName2.end(), portName2.begin(), ::tolower);
 
     //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
 

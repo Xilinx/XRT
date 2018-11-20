@@ -180,8 +180,13 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 	DRM_ENTER("");
 
+	/* We do not allow users to open PRIMARY node, /dev/dri/cardX node.
+	 * Users should only open RENDER, /dev/dri/renderX node */
 	if (drm_is_primary_client(filp))
 		return -EPERM;
+
+	if (get_live_client_size(xdev) > XOCL_MAX_CONCURRENT_CLIENTS)
+		return -EBUSY;
 
 	if (MB_SCHEDULER_DEV(xdev))
 		ret = xocl_exec_create_client(xdev, &filp->driver_priv);
@@ -205,10 +210,8 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (!uuid_is_null(&client->xclbin_id)) {
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
-			pid_nr(task_tgid(current)));
-	}
+	if (atomic_read(&client->xclbin_locked))
+		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
 
 	if (MB_SCHEDULER_DEV(xdev))
 		xocl_exec_destroy_client(xdev, &filp->driver_priv);
@@ -630,6 +633,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = xdev->topology;
@@ -641,14 +646,16 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	for (i = 0; i < topo->m_count; i++) {
 		if (raw) {
-			if (!stat[i]) {
-				userpf_info(xdev, "raw stat[%d] is NULL", i);
-				continue;
+			memory_usage = 0;
+			bo_count = 0;
+			if (stat[i]) {
+				memory_usage = stat[i]->memory_usage;
+				bo_count = stat[i]->bo_count;
 			}
 
 			count = sprintf(buf, raw_fmt,
-				stat[i]->memory_usage,
-				stat[i]->bo_count);
+				memory_usage,
+				bo_count);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?

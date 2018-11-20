@@ -15,6 +15,7 @@
  */
 
 #include "shim.h"
+#include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
 #include <unistd.h>
 
@@ -895,6 +896,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   size_t HwEmShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip, uint32_t topology)
   {
+    dest = ((unsigned char*)dest) + skip;
     if(!sock)
     {
       if(!mMemModel)
@@ -1362,7 +1364,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   }
 
-  HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr)
+  HwEmShim::HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader &fRomHeader)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
@@ -1390,7 +1392,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
-
+  
+    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
+    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+    
     last_clk_time = clock();
     mCloseAll = false;
     mMemModel = NULL;
@@ -1420,9 +1425,41 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mMemoryProfilingNumberSlots = 0;
     mAccelProfilingNumberSlots = 0;
     mStallProfilingNumberSlots = 0;
+    mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
 
+  }
+
+  bool HwEmShim::isMBSchedulerEnabled()
+  {
+    bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
+    bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
+    return mbSchEnabled && !QDMAPlatform;
+  }
+
+  //following code is copied from driver/xclng/drm/xocl/subdev/feature_rom.c
+  unsigned int HwEmShim::getDsaVersion()
+  {
+    std::string vbnv  = mDeviceInfo.mName;
+    if(vbnv.empty())
+      return 52;
+    if (vbnv.find("5_0") != std::string::npos)
+      return 50;
+    else if ( (vbnv.find("5_1") != std::string::npos)
+        || (vbnv.find("u200_xdma_201820_1") != std::string::npos))
+      return 51;
+    else if ((vbnv.find("5_2") != std::string::npos)
+        ||   (vbnv.find("u200_xdma_201820_2") != std::string::npos )
+        ||   (vbnv.find("u250_xdma_201820_1") != std::string::npos )
+        ||   (vbnv.find("201830") != std::string::npos))
+      return 52;
+    else if (vbnv.find("5_3") != std::string::npos)
+      return 53;
+    else if (vbnv.find("6_0") != std::string::npos)
+      return 60;
+  
+    return 52;
   }
 
   void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
@@ -1950,12 +1987,12 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,0, bo->topology);
+    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset, bo->topology);
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,0, bo->topology);
+    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology);
   }
   PRINTENDFUNC;
   return returnVal;

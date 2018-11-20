@@ -52,10 +52,9 @@ static DEVICE_ATTR_RO(user_pf);
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	int i;
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	int size = sprintf(buf,
-			   "xclbin:\t\t\t%pUl\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
+			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
 			   &xdev->xclbin_id,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),

@@ -52,6 +52,8 @@ struct xocl_subdev_info {
         char			*name;
         struct resource		*res;
         int			num_res;
+	void			*priv_data;
+	int			data_len;
 };
 
 struct xocl_board_private {
@@ -130,7 +132,7 @@ enum {
 #define	XOCL_MIG		"mig" SUBDEV_SUFFIX
 #define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
 #define	XOCL_DNA		"dna" SUBDEV_SUFFIX
-enum {
+enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_MM_DMA,
 	XOCL_SUBDEV_MB_SCHEDULER,
@@ -146,7 +148,7 @@ enum {
 	XOCL_SUBDEV_STR_DMA,
 	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
-        XOCL_SUBDEV_NUM
+	XOCL_SUBDEV_NUM
 };
 
 #define	XOCL_RES_FEATURE_ROM				\
@@ -184,36 +186,22 @@ enum {
 		ARRAY_SIZE(XOCL_RES_SYSMON),		\
 	}
 
-#define	XOCL_RES_MIG_6A8F					\
+/* Will be populated dynamically */
+#define	XOCL_RES_MIG					\
 		((struct resource []) {			\
 			{				\
-			.start	= 0x1000000,		\
-			.end 	= 0x10003FF,		\
+			.start	= 0x0,			\
+			.end 	= 0x3FF,		\
 			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x70000,		\
-			.end 	= 0x703FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x1010000,		\
-			.end 	= 0x10103FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x1020000,		\
-			.end 	= 0x10203FF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
+			}				\
 		})
 
-#define	XOCL_DEVINFO_MIG_6A8F				\
+#define	XOCL_DEVINFO_MIG				\
 	{						\
 		XOCL_SUBDEV_MIG,			\
 		XOCL_MIG,				\
-		XOCL_RES_MIG_6A8F,			\
-		ARRAY_SIZE(XOCL_RES_MIG_6A8F),		\
+		XOCL_RES_MIG,				\
+		ARRAY_SIZE(XOCL_RES_MIG),		\
 	}
 
 
@@ -338,13 +326,14 @@ enum {
 	}
 
 
+/* Will be populated dynamically */
 #define	XOCL_RES_DNA					\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x1100000,		\
-			.end	= 0x1100FFF,		\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
+		}					\
 	})
 
 #define	XOCL_DEVINFO_DNA				\
@@ -431,6 +420,12 @@ enum {
 		{					\
 			.start	= 0x051000,		\
 			.end	= 0x051fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
@@ -806,7 +801,6 @@ enum {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
-			XOCL_DEVINFO_MIG_6A8F,        \
 		})
 
 #define	XOCL_BOARD_MGMT_6A8F_DSA52					\
@@ -827,7 +821,6 @@ enum {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
-			XOCL_DEVINFO_MIG_6A8F,        \
 		})
 
 #define	XOCL_BOARD_MGMT_XBB_DSA52					\
@@ -926,14 +919,15 @@ enum {
 	{ XOCL_PCI_DEVID(0x10EE, 0x788F, 0x4351, MGMT_XBB_DSA51) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x788F, 0x4352, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x798F, 0x4352, MGMT_XBB_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4353, MGMT_XBB_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4353, MGMT_6A8F_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5000, PCI_ANY_ID, MGMT_XBB_DSA51) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5004, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
-	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280")) }
+	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) }
 
 #define	XOCL_USER_XDMA_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A48, PCI_ANY_ID, USER_XDMA) },	\

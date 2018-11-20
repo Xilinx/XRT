@@ -590,7 +590,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     dev->mgmt->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
 
     dev->mgmt->sysfs_get("sysmon", "temp", errmsg, info->mOnChipTemp);
-    info->mOnChipTemp /= 1000;
+
     dev->mgmt->sysfs_get("sysmon", "vcc_int", errmsg, info->mVInt);
     dev->mgmt->sysfs_get("sysmon", "vcc_aux", errmsg, info->mVAux);
     dev->mgmt->sysfs_get("sysmon", "vcc_bram", errmsg, info->mVBram);

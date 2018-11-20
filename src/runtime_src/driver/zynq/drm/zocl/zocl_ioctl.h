@@ -20,6 +20,6 @@
 #ifndef _XCL_ZOCL_IOCTL_H_
 #define _XCL_ZOCL_IOCTL_H_
 
-#include "../../../include/zynq_ioctl.h"
+#include "../../include/zynq_ioctl.h"
 
 #endif
