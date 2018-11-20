@@ -1826,10 +1826,18 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		if(ip->m_type == IP_DDR4_CONTROLLER) {
 			uint32_t memidx = ip->properties;
+
 			if (!memtopo || ip->properties >= memtopo->m_count ||
-				!memtopo->m_mem_data[memidx].m_used) {
-				ICAP_ERR(icap, "bad DDR controller index: %u",
+				memtopo->m_mem_data[memidx].m_type !=
+				MEM_DDR4) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
 					ip->properties);
+				continue;
+			}
+			if (!memtopo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					memtopo->m_mem_data[memidx].m_tag);
 				continue;
 			}
 			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
