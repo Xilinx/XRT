@@ -35,6 +35,7 @@
 #include "scan.h"
 #include "driver/include/xclbin.h"
 #include <version.h>
+#include <boost/property_tree/json_parser.hpp>
 
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
@@ -328,7 +329,7 @@ public:
         lines.push_back(ss.str());
     }
 
-    void getMemTopology( xclDeviceUsage &devstat ) const
+    void getMemTopology( const xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
         std::vector<char> buf;
@@ -337,7 +338,7 @@ public:
         if(buf.empty())
             return;
 
-        for(unsigned i = 0; i < (unsigned)map->m_count; i++) {
+        for(int32_t i = 0; i < map->m_count; i++) {
             std::string str;
             if(map->m_mem_data[i].m_used == 0) {
                 str = "**UNUSED**";
@@ -354,10 +355,10 @@ public:
             }
             boost::property_tree::ptree ptMem;
             ptMem.put( "index", i );
-            ptMem.put( "type",  str );
             ptMem.put( "temp",  m_devinfo.mDimmTemp[i] );
+            ptMem.put( "type",  str );
             ptMem.put( "tag",   map->m_mem_data[i].m_tag );
-            ptMem.put( "used",  map->m_mem_data[i].m_used ? true : false );
+            ptMem.put( "used", map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
             ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i] << 10) );
             ptMem.put( "bo_count", devstat.ddrBOAllocated[i] );
@@ -698,10 +699,10 @@ public:
              << std::setw(28) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
-        ostr << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.vendor", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.device", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subdevice", -1 )
-             << "0x" << std::setw(14) << std::hex << sensor_tree::get( "board.info.subvendor", -1 ) << std::dec << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.vendor",    "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.device",    "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subvendor", "N/A", true ) << std::dec << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::endl;
         ostr << std::setw(16) << sensor_tree::get<long long>( "board.info.ddr_size", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
@@ -716,41 +717,41 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_front", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.top_rear", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.pcb.btm_front", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_front" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_rear"  )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed(RPM)" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.thermal.fpga_temp", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.tcrit_temp", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.thermal.fan_speed", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fpga_temp" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.tcrit_temp" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV, mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_pex.current", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_aux.current", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_pex.voltage",        -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.3v3_aux.voltage",        -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_bottom.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_top.voltage",    -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        ) 
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        ) 
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" ) 
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_v5v.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v2_top.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v8_top.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.0v85.voltage",    -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.sys_5v5.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_top.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v8_top.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.voltage"    ) << std::endl;
         ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_0v9.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.12v_sw.voltage",  -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_vtt.voltage", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_0v9.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", -1 ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Board Power\n";
-        ostr << sensor_tree::get( "board.physical.power",            -1 ) << " W" << std::endl;
+        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
