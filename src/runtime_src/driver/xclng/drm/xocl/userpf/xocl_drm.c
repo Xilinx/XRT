@@ -633,6 +633,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = xdev->topology;
@@ -644,14 +646,18 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	for (i = 0; i < topo->m_count; i++) {
 		if (raw) {
-			if (!stat[i]) {
+			memory_usage = 0;
+			bo_count = 0;
+			if (!stat[i])
 				userpf_info(xdev, "raw stat[%d] is NULL", i);
-				continue;
+			else {
+				memory_usage = stat[i]->memory_usage;
+				bo_count = stat[i]->bo_count;
 			}
 
 			count = sprintf(buf, raw_fmt,
-				stat[i]->memory_usage,
-				stat[i]->bo_count);
+				memory_usage,
+				bo_count);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?
