@@ -354,14 +354,14 @@ public:
                 str = search->second;
             }
             boost::property_tree::ptree ptMem;
-            ptMem.put( "index", i );
-            ptMem.put( "temp",  m_devinfo.mDimmTemp[i] );
-            ptMem.put( "type",  str );
-            ptMem.put( "tag",   map->m_mem_data[i].m_tag );
-            ptMem.put( "used", map->m_mem_data[i].m_used ? true : false );
-            ptMem.put( "size",  unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i] << 10) );
-            ptMem.put( "bo_count", devstat.ddrBOAllocated[i] );
+            ptMem.put( "index",     i );
+            ptMem.put( "type",      str );
+            ptMem.put( "temp",      m_devinfo.mDimmTemp[i] );
+            ptMem.put( "tag",       map->m_mem_data[i].m_tag );
+            ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
+            ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
+            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i]));
+            ptMem.put( "bo_count",  devstat.ddrBOAllocated[i] );
             sensor_tree::add_child( "board.memory.mem", ptMem );
         }
     }
@@ -725,7 +725,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.tcrit_temp" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Electrical(mV, mA)\n";
+        ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.voltage" )
