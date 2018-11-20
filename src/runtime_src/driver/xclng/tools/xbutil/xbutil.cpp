@@ -191,11 +191,23 @@ int main(int argc, char *argv[])
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
+<<<<<<< HEAD
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
+=======
+    if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
+>>>>>>> parent of ce8406b... changed top and validate to use strcmp
         optind++;
         return xcldev::xclValidate(argc, argv);
     }
 
+<<<<<<< HEAD
+=======
+    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
+        optind++;
+        return xcldev::xclTop(argc, argv);
+    }
+
+>>>>>>> parent of ce8406b... changed top and validate to use strcmp
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
     if (v == xcldev::commandTable.end()) {
