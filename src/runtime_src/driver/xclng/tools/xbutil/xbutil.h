@@ -765,30 +765,23 @@ public:
         try {
           for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "mem" ) {
-              int mem_index = -1;
-              unsigned mem_bo_count = 0;
-              std::string mem_mem_usage = "N/A";
-              unsigned long mem_temp = -1;
-              std::string mem_tag = "N/A";
-              std::string mem_size = "N/A";
-              std::string mem_type = "N/A";
-              std::string val;
+              std::string mem_usage, mem_tag, mem_size, mem_type;
+              std::string mem_index, mem_bo_count, mem_temp;
               for (auto& subv : v.second) {
-                val = subv.second.get_value<std::string>();
                 if( subv.first == "index" )
-                  mem_index = subv.second.get_value<int>();
+                  mem_index = sensor_tree::pretty<int>(subv.second.get_value<int>());
                 else if( subv.first == "type" )
-                  mem_type = val;
+                  mem_type = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
                 else if( subv.first == "tag" )
-                  mem_tag = val;
+                  mem_tag = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
                 else if( subv.first == "temp" )
-                  mem_temp = subv.second.get_value<unsigned long>();
+                  mem_temp = sensor_tree::pretty<unsigned short>(subv.second.get_value<unsigned short>());
                 else if( subv.first == "bo_count" )
-                  mem_bo_count = subv.second.get_value<unsigned>();
+                  mem_bo_count = sensor_tree::pretty<unsigned>(subv.second.get_value<unsigned>());
                 else if( subv.first == "mem_usage" )
-                  mem_mem_usage = val;
+                  mem_usage = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
                 else if( subv.first == "size" )
-                  mem_size = val;
+                  mem_size = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << mem_index << "] " << std::left
@@ -796,7 +789,7 @@ public:
                    << std::setw(12) << mem_type
                    << std::setw(9) << mem_temp
                    << std::setw(8) << mem_size
-                   << std::setw(16) << mem_mem_usage
+                   << std::setw(16) << mem_usage
                    << std::setw(8) << mem_bo_count << std::endl;
             }
           }
@@ -841,21 +834,20 @@ public:
         try {
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             if( v.first == "cu" ) {
-              std::string val, cu_n, cu_s = "N/A";
-              int cu_i = 0, cu_ba = 0;
+              std::string cu_n, cu_s, cu_i, cu_ba;
               for (auto& subv : v.second) {
                 if( subv.first == "count" )
-                  cu_i = subv.second.get_value<int>();
+                  cu_i = sensor_tree::pretty<int>(subv.second.get_value<int>());
                 else if( subv.first == "name" )
-                  cu_n = subv.second.get_value<std::string>();
+                  cu_n = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
                 else if( subv.first == "base_address" )
-                  cu_ba = subv.second.get_value<int>();
+                  cu_ba = sensor_tree::pretty<int>(subv.second.get_value<int>(), "N/A", true);
                 else if( subv.first == "status" )
-                  cu_s = subv.second.get_value<std::string>();
+                  cu_s = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
               }
               ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
                    << std::left << std::setw(32) << cu_n
-                   << "@0x" << std::setw(16) << std::hex << cu_ba
+                   << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
             }
           }

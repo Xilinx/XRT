@@ -26,58 +26,71 @@
 #include <limits>
 #include <string>
 #include <sstream>
-#include <mutex>
 
 namespace sensor_tree {
 
 boost::property_tree::ptree&
 instance();
 
-static std::mutex mtx;
-
+/* 
+ * Puts @val at the @path for instance()'s ptree.
+ */
 template <typename T>
 void put(const std::string &path, T val)
 {
-  mtx.lock();
-  instance().put(path,val);
-  mtx.unlock();
+    instance().put(path,val);
 } 
 
-
+/* 
+ * Gets value of type @T at the @path for instance()'s ptree.
+ * @defaultVal is returned if @path does not exist.
+ */
 template <typename T>
 inline T get(const std::string &path, const T &defaultVal)
 {
     return instance().get( path, defaultVal );
 }
 
+/* 
+ * Gets value of type @T at the @path for instance()'s ptree.
+ */
 template <typename T>
 inline T get(const std::string &path)
 {
     return instance().get<T>( path );
 }
 
+/* 
+ * Inserts child node @child at @path.
+ */
 inline void
 add_child(const std::string &path, const boost::property_tree::ptree& child)
 {
-  mtx.lock();
-  instance().add_child( path, child );
-  mtx.unlock();
+    instance().add_child( path, child );
 }
 
+/* 
+ * Gets child node at @path.
+ */
 inline boost::property_tree::ptree
 get_child(const std::string &path)
 {
-  return instance().get_child( path );
+    return instance().get_child( path );
 }
 
-void
-json_dump(std::ostream &ostr);
+/* 
+ * Dumps json format of ptree to @ostr.
+ */
+void json_dump(std::ostream &ostr);
 
+/*
+ * Pretty formats @val. If @val is non-string, and is equal to max_value of type @T, 
+ * returns @default_val.
+ * Returns a string.
+ */
 template <typename T>
-inline std::string
-get_pretty( const std::string &path, const std::string &default_val = "N/A", bool isHex = false )
-{
-    T val = instance().get<T>( path );
+inline std::string pretty( const T &val, const std::string &default_val = "N/A", bool isHex = false )
+{   
     if( typeid(val).name() != typeid(std::string).name() ) {
         if( val >= std::numeric_limits<T>::max() ) {
             return default_val;
@@ -90,6 +103,17 @@ get_pretty( const std::string &path, const std::string &default_val = "N/A", boo
         }
     }
     return boost::lexical_cast<std::string>(val);
+}
+
+/*
+ * Wrapper around get() that formats as pretty.
+ */
+template <typename T>
+inline std::string
+get_pretty( const std::string &path, const std::string &default_val = "N/A", bool isHex = false )
+{
+    T val = instance().get<T>( path );
+    return pretty( val, default_val, isHex );
 }
 
 } // namespace sensor_tree
