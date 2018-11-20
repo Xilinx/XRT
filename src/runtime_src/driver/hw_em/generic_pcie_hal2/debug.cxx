@@ -77,8 +77,11 @@ namespace xclhwemhal2 {
     
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
+
+    mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
+      mStreamMonSlotName, mStreamMonProperties, XSSPM_MAX_NUMBER_SLOTS);
     
-    mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
+    mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
@@ -91,6 +94,7 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: memory slots = " << mMemoryProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: accel slots  = " << mAccelProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: stall slots  = " << mStallProfilingNumberSlots << std::endl;
+      mLogStream << "debug_ip_layout: sspm slots  = " << mStreamProfilingNumberSlots << std::endl;
 
       for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
@@ -101,6 +105,11 @@ namespace xclhwemhal2 {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;
+      }
+      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
+        mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
+                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
+                   << ", name = " << mStreamMonSlotName[i] << std::endl;
       }
     }
   }

@@ -34,11 +34,23 @@
 */
 
 class SectionMCS : public Section {
- protected:
-  virtual void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const;
+ public:
+  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
+  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
 
  protected:
+  virtual void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream &_buf, const std::string &_sSubSectionName, enum Section::FormatType _eFormatType) const;
+  virtual void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const;
+  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
+
+ protected:
+  enum MCS_TYPE getMCSTypeEnum(const std::string & _sSubSectionType) const;
   const std::string getMCSTypeStr(enum MCS_TYPE _mcsType) const;
+
+  typedef std::pair< enum MCS_TYPE, std::ostringstream *> mcsBufferPair;
+  void extractBuffers(const char* _pDataSection, unsigned int _sectionSize, std::vector<mcsBufferPair> &_mcsBuffers) const;
+  void buildBuffer(const std::vector<mcsBufferPair> &_mcsBuffers, std::ostringstream &_buffer) const;
 
  public:
   SectionMCS();
@@ -53,7 +65,7 @@ class SectionMCS : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(MCS, "MCS", "", false, boost::factory<SectionMCS*>()); }
+    _init() { registerSectionCtor(MCS, "MCS", "", true, boost::factory<SectionMCS*>()); }
   } _initializer;
 };
 

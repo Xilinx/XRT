@@ -180,8 +180,13 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 	DRM_ENTER("");
 
+	/* We do not allow users to open PRIMARY node, /dev/dri/cardX node.
+	 * Users should only open RENDER, /dev/dri/renderX node */
 	if (drm_is_primary_client(filp))
 		return -EPERM;
+
+	if (get_live_client_size(xdev) > XOCL_MAX_CONCURRENT_CLIENTS)
+		return -EBUSY;
 
 	if (MB_SCHEDULER_DEV(xdev))
 		ret = xocl_exec_create_client(xdev, &filp->driver_priv);
@@ -205,10 +210,8 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (!uuid_is_null(&client->xclbin_id)) {
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
-			pid_nr(task_tgid(current)));
-	}
+	if (atomic_read(&client->xclbin_locked))
+		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
 
 	if (MB_SCHEDULER_DEV(xdev))
 		xocl_exec_destroy_client(xdev, &filp->driver_priv);

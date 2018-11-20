@@ -35,7 +35,7 @@ public:
     uint16_t vendor_id = INVALID_ID;
     uint16_t device_id = INVALID_ID;
     uint16_t subsystem_id = INVALID_ID;
-    uint16_t instance = INVALID_ID;
+    uint32_t instance = INVALID_ID;
     std::string sysfs_name; // dir name under /sys/bus/pci/devices
     std::string driver_name = "???";
     std::string driver_version = "???";

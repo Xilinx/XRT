@@ -86,6 +86,10 @@ namespace xclhwemhal2 {
 
     uint32_t                        cu_status[MAX_U32_CU_MASKS];
     unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
+    uint32_t                        cu_addr_map[MAX_CUS];
+    uint32_t                        cu_usage[MAX_CUS];
+    bool ert;
+
 
     /* Status register pending complete.  Written by ISR, cleared
        by scheduler */
@@ -118,8 +122,13 @@ namespace xclhwemhal2 {
     uint32_t opcode(xocl_cmd* xcmd) { return xcmd->packet->opcode; }
     uint32_t payload_size(xocl_cmd *xcmd) { return xcmd->packet->count; }
     uint32_t packet_size(xocl_cmd *xcmd) { return payload_size(xcmd) + 1; }
+    uint32_t type(struct xocl_cmd* xcmd) { return xcmd->packet->type; }
+
     void mb_query(xocl_cmd *xcmd);
     int mb_submit(xocl_cmd *xcmd);
+    void penguin_query(xocl_cmd *xcmd);
+    int penguin_submit(xocl_cmd *xcmd);
+    int acquire_slot(struct xocl_cmd* xcmd);
     int acquire_slot_idx(exec_core *exec);
     int configure(xocl_cmd *xcmd);
     void release_slot_idx(exec_core *exec, unsigned int slot_idx);
@@ -134,7 +143,12 @@ namespace xclhwemhal2 {
     int scheduler_wait_condition() ;
     void scheduler_queue_cmds();
     void scheduler_iterate_cmds();
-    
+    int get_free_cu(struct xocl_cmd *xcmd);
+    void configure_cu(struct xocl_cmd *xcmd, int cu_idx);
+    bool cu_done(struct exec_core *exec, unsigned int cu_idx);
+    uint32_t cu_masks(struct xocl_cmd *xcmd);
+    uint32_t regmap_size(struct xocl_cmd* xcmd);
+
     friend void scheduler_loop(xocl_sched *xs);
     friend void* scheduler(void* data) ;
 

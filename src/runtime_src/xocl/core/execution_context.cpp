@@ -384,6 +384,10 @@ start()
   auto offset = packet.size();  // start of regmap
   auto& regmap = packet;
 
+  // Ensure that S_AXI_CONTROL is created even when kernel
+  // has no arguments.
+  packet[offset] = 0;
+
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
     if (m_lsize[d]) // actually always true

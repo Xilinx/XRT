@@ -33,6 +33,8 @@
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
 
+#define XOCL_MAX_CONCURRENT_CLIENTS 32
+
 #define XOCL_DRIVER_VERSION                             \
         __stringify(XOCL_DRIVER_MAJOR) "."              \
         __stringify(XOCL_DRIVER_MINOR) "."              \
@@ -138,6 +140,7 @@ struct xocl_dev	{
 struct client_ctx {
 	struct list_head	link;
 	xuid_t                  xclbin_id;
+	atomic_t                xclbin_locked;
 	atomic_t		trigger;
 	atomic_t                outstanding_execs;
 	atomic_t                abort;
