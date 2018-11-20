@@ -455,7 +455,7 @@ public:
           ss << buf.data() << "\n";
         }
 #endif
-  
+
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
     }
@@ -1243,4 +1243,3 @@ std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
-
