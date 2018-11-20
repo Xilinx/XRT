@@ -1254,3 +1254,4 @@ std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
+
