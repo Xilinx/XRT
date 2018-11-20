@@ -113,6 +113,10 @@ namespace XCL {
       mStreamTxStarts[i] = std::queue<uint64_t>();
       mStreamStallStarts[i] = std::queue<uint64_t>();
       mStreamStarveStarts[i] = std::queue<uint64_t>();
+
+      mStreamTxStartsHostTime[i] = std::queue<uint64_t>();
+      mStreamStallStartsHostTime[i] = std::queue<uint64_t>();
+      mStreamStarveStartsHostTime[i] = std::queue<uint64_t>();
     }
   }
 
@@ -324,6 +328,77 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             }
             mAccelMonStartedEvents[s] ^= XSAM_TRACE_CU_MASK;
           }
+        }
+        else if(trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM) { // SSPM Trace : HW Emu
+            s = trace.TraceID - MIN_TRACE_ID_SSPM;
+            kernelTrace.Kind = DeviceTrace::DEVICE_STREAM;
+
+            bool isSingle    = trace.EventFlags & 0x10;
+            bool txEvent     = trace.EventFlags & 0x8;
+            bool stallEvent  = trace.EventFlags & 0x4;
+            bool starveEvent = trace.EventFlags & 0x2;
+            bool isStart     = trace.EventFlags & 0x1;
+
+            uint64_t startTime = 0;
+            uint64_t hostStartTime = 0;
+
+            unsigned ipInfo = XCL::RTSingleton::Instance()->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+            bool isRead     = (ipInfo & 0x2) ? true : false;
+            if (isStart) {
+              if (txEvent) {
+                mStreamTxStarts[s].push(timestamp);
+                mStreamTxStartsHostTime[s].push(hostTimestampNsec);
+              } else if (starveEvent) {
+                mStreamStarveStarts[s].push(timestamp);
+                mStreamStarveStartsHostTime[s].push(hostTimestampNsec);
+              } else if (stallEvent) {
+                mStreamStallStarts[s].push(timestamp);
+                mStreamStallStartsHostTime[s].push(hostTimestampNsec);
+              }
+            } else {
+                if (txEvent) {
+                  if (isSingle || mStreamTxStarts[s].empty()) {
+                    startTime = timestamp;
+                    hostStartTime = hostTimestampNsec;
+                  } else {
+                    startTime = mStreamTxStarts[s].front();
+                    hostStartTime = mStreamTxStartsHostTime[s].front();
+                    mStreamTxStarts[s].pop();
+                    mStreamTxStartsHostTime[s].pop();
+                  }
+                  kernelTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
+                } else if (starveEvent) {
+                    if (mStreamStarveStarts[s].empty()) {
+                    startTime = timestamp;
+                    hostStartTime = hostTimestampNsec;
+                  } else {
+                    startTime = mStreamStarveStarts[s].front();
+                    hostStartTime = mStreamStarveStartsHostTime[s].front();
+                    mStreamStarveStarts[s].pop();
+                    mStreamStarveStartsHostTime[s].pop();
+                  }
+                  kernelTrace.Type = "Stream_Starve";
+                } else if (stallEvent) {
+                  if (mStreamStallStarts[s].empty()) {
+                    startTime = timestamp;
+                    hostStartTime = hostTimestampNsec;
+                  } else {
+                    startTime = mStreamStallStarts[s].front();
+                    hostStartTime = mStreamStallStartsHostTime[s].front();
+                    mStreamStallStarts[s].pop();
+                    mStreamStallStartsHostTime[s].pop();
+                  }
+                  kernelTrace.Type = "Stream_Stall";
+                }
+                kernelTrace.SlotNum = s;
+                kernelTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
+                kernelTrace.StartTime = startTime;
+                kernelTrace.EndTime = timestamp;
+                kernelTrace.BurstLength = timestamp - startTime + 1;
+                kernelTrace.Start = hostStartTime / 1e6;
+                kernelTrace.End = hostTimestampNsec / 1e6;
+                resultVector.push_back(kernelTrace);
+            }
         }
         else continue;
       } // If Hw Emu

@@ -33,7 +33,7 @@ namespace xclcpuemhal2 {
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
  
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr) 
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader) 
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -62,6 +62,9 @@ namespace xclcpuemhal2 {
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
+    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
+    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+    
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
@@ -821,6 +824,7 @@ namespace xclcpuemhal2 {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << skip << std::endl;
     }
+    dest = ((unsigned char*)dest) + skip;
 
     if(!sock)
     {
@@ -1008,23 +1012,6 @@ namespace xclcpuemhal2 {
 
 /*********************************** Utility ******************************************/
 
-static bool check_bo_user_flags(CpuemShim* dev, unsigned flags)
-{
-	const unsigned ddr_count = dev->xocl_ddr_channel_count();
-
-	if(ddr_count == 0)
-		return false;
-
-	if (flags == 0xffffffff)
-		return true;
-	
-  unsigned ddr = xclemulation::xocl_bo_ddr_idx(flags);
-  if (ddr > ddr_count)
-		return false;
-	
-	return true;
-}
-
 xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
@@ -1076,10 +1063,13 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   if (!size)
     return -1;
 
-  /* Either none or only one DDR should be specified */
-  if (!check_bo_user_flags(this, info->flags))
-    return -1;
-	
+  // system linker doesnt run in sw_emu. if ddr idx morethan ddr_count, then create it in 0 by considering all plrams in zero'th ddr
+	const unsigned ddr_count = xocl_ddr_channel_count();
+  if(ddr_count <= ddr)
+  {
+    ddr = 0;
+  }
+  
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
@@ -1326,12 +1316,12 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,0);
+    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset);
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,0);
+    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset);
   }
   PRINTENDFUNC;
   return returnVal;

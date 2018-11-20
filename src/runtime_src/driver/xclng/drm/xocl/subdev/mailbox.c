@@ -1202,13 +1202,13 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	if (cb)
 		return 0;
 
-	rv = wait_for_completion_interruptible(&respmsg->mbm_complete);
-	if (rv == 0) {
-		rv = respmsg->mbm_error;
-		if (rv == 0)
-			*resplen = respmsg->mbm_len;
-	}
+	wait_for_completion(&respmsg->mbm_complete);
+	rv = respmsg->mbm_error;
+	if (rv == 0)
+		*resplen = respmsg->mbm_len;
+
 	free_msg(respmsg);
+
 	return rv;
 
 fail:
@@ -1312,8 +1312,10 @@ static void mailbox_recv_request(struct work_struct *work)
 			break;
 
 		rv = wait_for_completion_interruptible(&msg->mbm_complete);
-		if (rv != 0)
+		if (rv != 0) {
+			(void) chan_msg_dequeue(&mbx->mbx_rx, msg->mbm_req_id);
 			break;
+		}
 		rv = msg->mbm_error;
 		if (rv != 0)
 			break;

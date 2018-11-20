@@ -164,16 +164,21 @@ mcsPrimary=""
 mcsSecondary=""
 fullBitFile=""
 clearBitstreamFile=""
+metaDataJSONFile=""
 dsaXmlFile="dsa.xml"
 featureRomTimestamp="0"
 fwScheduler=""
 fwManagement=""
 fwBMC=""
+fwBMCMetaData=""
 vbnv=""
 pci_vendor_id="0x0000"
 pci_device_id="0x0000"
 pci_subsystem_id="0x0000"
 dsabinOutputFile=""
+SatelliteControllerFamily=""
+CardMgmtControllerFamily=""
+SchedulerFamily=""
 
 XBUTIL=/opt/xilinx/xrt/bin/xbutil
 post_inst_msg="DSA package installed successfully.
@@ -241,6 +246,11 @@ recordDsaFiles()
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "CLEAR_BIT" ]; then
      clearBitstreamFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
+
+   # Metadata
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
 }
 
 readDsaMetaData()
@@ -291,13 +301,29 @@ readDsaMetaData()
 
 initBMCVar()
 {
+    prefix=""
+    if [ "${SatelliteControllerFamily}" != "" ]; then
+      if [ "${SatelliteControllerFamily}" == "Alveo-Gen1" ]; then
+         prefix="Alveo-Gen1:"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen2" ]; then
+         prefix="Alveo-Gen2:"
+      else
+         echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
+         exit 1
+      fi
+    else
+      # We are not meant to load MSP432 fWFW
+      return
+    fi
+
     # Looking for the MSP432 firmware image
-    for file in ${XILINX_XRT}/share/fw/*.txt; do
+    for file in ${XILINX_XRT}/share/fw/${prefix}*.txt; do
       [ -e "$file" ] || continue
 
       # Found "something" break it down into the basic parts
       baseFileName="${file%.*txt}"        # Remove suffix
       baseFileName="${baseFileName##*/}"  # Remove Path
+      baseFileName=${baseFileName#"$prefix"}  # Remove prefix
 
       set -- `echo ${baseFileName} | tr '-' ' '`
       bmcImageName="${1}"
@@ -310,8 +336,10 @@ initBMCVar()
       bmcMd5Actual="${1}"
 
       if [ "${bmcMd5Expected}" == "${bmcMd5Actual}" ]; then
-         echo "Info: Validated MSP432 flash image MD5 value"
+         echo "Info: Validated ${prefix}:${baseFileName} flash image MD5 value"
          fwBMC="${file}"
+         fwBMCMetaData="${baseFileName}.json"
+         echo "{\"bmc_metadata\": { \"m_image_name\": \"${bmcImageName}\", \"m_device_name\": \"${bmcDeviceName}\", \"m_version\": \"${bmcVersion}\", \"m_md5value\": \"${bmcMd5Expected}\"}}" > "${fwBMCMetaData}"
       else
          echo "ERROR: MSP432 Flash image failed MD5 varification."
          echo "       Expected: ${bmcMd5Expected}"
@@ -319,6 +347,9 @@ initBMCVar()
          echo "       File:   : $file"
          exit 1
       fi
+
+      # We only go through this loop once
+      return
     done
 }
 
@@ -362,15 +393,74 @@ initDsaBinEnvAndVars()
        unzip -q -d "./firmware" "${dsaFile}" "${clearBitstreamFile}"
     fi
 
-    # -- Determine firmware --
+    # -- Extract the Metadata
+    # Default values
+    SatelliteControllerFamily=""
+    CardMgmtControllerFamily="Legacy"
+    SchedulerFamily="ERT-Gen1"
+
     if [[ ${opt_dsa} =~ "xdma" ]]; then
-      fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
-      fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
-    else
-      fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
-      fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+      CardMgmtControllerFamily="CMC-Gen1"
+      SatelliteControllerFamily="Alveo-Gen1"
     fi
 
+    if [ "${metaDataJSONFile}" != "" ]; then
+       echo "Info: Extracting Metadata file: ${metaDataJSONFile}"
+       unzip -q -d "." "${dsaFile}" "${metaDataJSONFile}"
+
+       # Brute force to obtain this data
+       # See if there is a dsabin section
+       set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin).get('dsabin','NOT_DEFINED')"`
+       if [ "${1}" != "NOT_DEFINED" ]; then
+          # Satellite Controller Family (MSP432)
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Satellite Controller Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            SatelliteControllerFamily="${1}"
+          fi
+
+          # Card Management Controller Family
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Card Management Controller Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            CardMgmtControllerFamily="${1}"
+          fi
+
+          # Scheduler Family
+          set -- `cat "${metaDataJSONFile}" | python -c "import sys, json; print json.load(sys.stdin)['dsabin'].get('Scheduler Family','NOT_DEFINED')"`
+          if [ "${1}" != "NOT_DEFINED" ]; then
+            SchedulerFamily="${1}"
+          fi
+       fi
+    fi
+
+    echo "Info: Satellite Controller Family: ${SatelliteControllerFamily}"
+    echo "Info: Card Management Controller Family: ${CardMgmtControllerFamily}"
+    echo "Info: Scheduler Family: ${SchedulerFamily}"
+
+    # -- Determine scheduler firmware --
+    fwScheduler=""
+    if [ "${SchedulerFamily}" != "" ]; then
+      if [ "${SchedulerFamily}" == "ERT-Gen1" ]; then
+         fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
+      else
+         echo "ERROR: Unknown scheduler firmware family: ${SchedulerFamily}"
+         exit 1
+      fi
+    fi
+
+    # -- Determine management firmware --
+    fwManagement=""
+    if [ "${CardMgmtControllerFamily}" != "" ]; then
+      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
+      else
+         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
+         exit 1
+      fi
+    fi
+
+    # -- MSP432 --
     initBMCVar
 }
 
@@ -397,6 +487,95 @@ doubuntu()
 }
 
 dodsabin()
+{
+    pushd $opt_pkgdir > /dev/null
+    echo "Creating dsabin for: ${opt_dsa}"
+
+    initDsaBinEnvAndVars
+
+    # Build the xclbincat options
+    xclbinOpts=""
+
+    # -- MCS_PRIMARY image --
+    if [ "$mcsPrimary" != "" ]; then
+       xclbinOpts+=" --add-section MCS-PRIMARY:RAW:${mcsPrimary}"
+    fi
+    
+    # -- MCS_SECONDARY image --
+    if [ "$mcsSecondary" != "" ]; then
+       xclbinOpts+=" --add-section MCS-SECONDARY:RAW:${mcsSecondary}"
+    fi
+    
+    # -- Firmware: Scheduler --
+    if [ "${fwScheduler}" != "" ]; then
+       if [ -f "${fwScheduler}" ]; then
+         xclbinOpts+=" --add-section SCHED_FIRMWARE:RAW:${fwScheduler}"
+       else
+         echo "Warning: Scheduler firmware does not exist: ${fwScheduler}"
+       fi
+    fi
+    
+    # -- Firmware: Management --
+    if [ "${fwManagement}" != "" ]; then
+       if [ -f "${fwManagement}" ]; then
+         xclbinOpts+=" --add-section FIRMWARE:RAW:${fwManagement}"
+       else
+         echo "Warning: Management firmware does not exist: ${fwManagement}"
+      fi
+    fi
+
+    # -- Firmware: MSP432 --
+    if [ "${fwBMC}" != "" ]; then
+       if [ -f "${fwBMC}" ]; then
+         xclbinOpts+=" --add-section BMC-FW:RAW:${fwBMC}"
+         xclbinOpts+=" --add-section BMC-METADATA:JSON:${fwBMCMetaData}"
+       else
+         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
+      fi
+    fi
+
+    # -- Clear bitstream --
+    if [ "${clearBitstreamFile}" != "" ]; then
+       xclbinOpts+=" --add-section CLEARING_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
+    fi
+
+    # -- FeatureRom Timestamp --
+    if [ "${featureRomTimestamp}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:FeatureRomTimestamp:${featureRomTimestamp}"
+    else
+       echo "Warning: Missing featureRomTimestamp"
+    fi
+
+    # -- VBNV --
+    if [ "${vbnv}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:PlatformVBNV:${vbnv}"
+    else
+       echo "Warning: Missing Platform VBNV value"
+    fi
+
+
+    # -- Mode Hardware PR --
+    xclbinOpts+=" --key-value SYS:mode:hw_pr"
+
+    # -- Output filename --
+    localFeatureRomTimestamp="${featureRomTimestamp}"
+    if [ "${localFeatureRomTimestamp}" == "" ]; then
+      localFeatureRomTimestamp="0"
+    fi
+
+    # Build output file and lowercase the name
+    dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
+    dsabinOutputFile="${dsabinOutputFile,,}"
+    xclbinOpts+=" --output ./firmware/${dsabinOutputFile}"    
+
+
+    echo "${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}"
+    ${XILINX_XRT}/bin/xclbinutil ${xclbinOpts}
+
+    popd >/dev/null
+}
+
+dodsabin_xclbincat()
 {
     pushd $opt_pkgdir > /dev/null
     echo "Creating dsabin for: ${opt_dsa}"
@@ -475,8 +654,7 @@ dodsabin()
     # Build output file and lowercase the name
     dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
     dsabinOutputFile="${dsabinOutputFile,,}"
-    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"    
-
+    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"  
 
     echo "${XILINX_XRT}/bin/xclbincat ${xclbinOpts}"
     ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}

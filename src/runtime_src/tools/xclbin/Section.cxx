@@ -493,6 +493,14 @@ Section::dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) cons
   }
 }
 
+void 
+Section::dumpSubSection(std::fstream& _ostream, 
+                        std::string _sSubSection, 
+                        enum FormatType _eFormatType) const
+{
+  writeSubPayload(_sSubSection, _eFormatType, _ostream);
+}
+
 
 void 
 Section::printHeader(std::ostream &_ostream) const
@@ -520,3 +528,104 @@ Section::doesSupportDumpFormatType(FormatType _eFormatType) const
   }
   return false;
 }
+
+bool 
+Section::supportsSubSection(const std::string &_sSubSectionName) const
+{
+  return false;
+}
+
+bool 
+Section::getSubPayload(std::ostringstream &_buf, 
+                       const std::string _sSubSection, 
+                       enum Section::FormatType _eFormatType) const
+{
+  // Make sure we support this subsection
+  if (supportsSubSection(_sSubSection) == false) {
+    return false;
+  }
+
+  // Make sure we support the format type
+  if (_eFormatType != FT_RAW) {
+    return false;
+  }
+
+  // All is good now get the data from the section
+  getSubPayload(m_pBuffer, m_bufferSize, _buf, _sSubSection, _eFormatType);
+
+  if (_buf.tellp() == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+void 
+Section::getSubPayload(char* _pDataSection, 
+                       unsigned int _sectionSize, 
+                       std::ostringstream &_buf, 
+                       const std::string &_sSubSection, 
+                       enum Section::FormatType _eFormatType) const
+{
+  // Empty
+}
+
+void
+Section::readSubPayload(std::fstream& _istream, 
+                        const std::string & _sSubSection, 
+                        enum Section::FormatType _eFormatType)
+{
+  // Make sure we support this subsection
+  if (supportsSubSection(_sSubSection) == false) {
+    return;
+  }
+
+  // All is good now get the data from the section
+  std::ostringstream buffer;
+  readSubPayload(m_pBuffer, m_bufferSize, _istream, _sSubSection, _eFormatType, buffer);
+
+  // Now for some how cleaning
+  if (m_pBuffer != nullptr) {
+    delete m_pBuffer;
+    m_pBuffer = nullptr;
+    m_bufferSize = 0;
+  }
+
+  m_bufferSize = buffer.tellp();
+
+  if (m_bufferSize == 0) {
+    std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.", getSectionKindAsString().c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  m_pBuffer = new char[m_bufferSize];
+  memcpy(m_pBuffer, buffer.str().c_str(), m_bufferSize);
+}
+
+void 
+Section::readSubPayload(const char* _pOrigDataSection, 
+                        unsigned int _origSectionSize,  
+                        std::fstream& _istream, 
+                        const std::string & _sSubSection, 
+                        enum Section::FormatType _eFormatType, 
+                        std::ostringstream &_buffer) const
+{
+   std::string errMsg = XUtil::format("FATAL ERROR: Section '%s' virtual method readSubPayLoad() not defined.", getSectionKindAsString().c_str());
+   throw std::runtime_error(errMsg);
+}
+
+bool 
+Section::subSectionExists(const std::string &_sSubSectionName) const
+{
+  return false;
+}
+
+void 
+Section::writeSubPayload(const std::string & _sSubSectionName, 
+                         FormatType _eFormatType, 
+                         std::fstream&  _oStream) const
+{
+  std::string errMsg = XUtil::format("FATAL ERROR: Section '%s' virtual method writeSubPayload() not defined.", getSectionKindAsString().c_str());
+  throw std::runtime_error(errMsg);
+}
+
