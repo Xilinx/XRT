@@ -869,6 +869,7 @@ int xcldev::xclTop(int argc, char *argv[])
         }
         case 's': 
             printOnlyStream = true;
+            break;
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
