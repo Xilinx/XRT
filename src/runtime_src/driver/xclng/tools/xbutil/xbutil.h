@@ -224,6 +224,8 @@ public:
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             boost::property_tree::ptree ptCu;
             unsigned statusBuf;
+            if (computeUnits.at( i ).m_type != IP_KERNEL)
+                continue;
             xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
             ptCu.put( "index",        i );
             ptCu.put( "name",         computeUnits.at( i ).m_name );
