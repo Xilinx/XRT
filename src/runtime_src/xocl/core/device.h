@@ -673,11 +673,12 @@ public:
   bool
   release_context(compute_unit* cu) const;
 
+  /**
+   * @return
+   *   Number of CDMA copy kernels available
+   */
   size_t
-  get_num_cdmas() const
-  {
-    return m_xdevice->get_cdma_count();
-  }
+  get_num_cdmas() const;
 
   void clear_connection(connidx_type conn);
 
