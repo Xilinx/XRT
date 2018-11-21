@@ -196,6 +196,11 @@ int main(int argc, char *argv[])
         return xcldev::xclValidate(argc, argv);
     }
 
+        if( std::strcmp( argv[1], "top" ) == 0 ) {
+        optind++;
+        return xcldev::xclValidate(argc, argv);
+    }
+
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
     if (v == xcldev::commandTable.end()) {
@@ -294,7 +299,7 @@ int main(int argc, char *argv[])
         }
         case xcldev::STREAM:
         {
-            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
+            if(cmd != xcldev::QUERY) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
@@ -515,7 +520,6 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
-    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -659,9 +663,6 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
             result = deviceVec[index]->readSSPMCounters() ;
         }
-        break;
-    case xcldev::TOP:
-            result = xcldev::xclTop(argc, argv, subcmd);
         break;
 
     default:
@@ -845,15 +846,16 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     }
 }
 
-int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
+int xcldev::xclTop(int argc, char *argv[])
 {
     int interval = 1;
     unsigned index = 0;
     int c;
+    bool printOnlyStream = false;
     const std::string usage("Options: [-d index] [-i <interval>]");
     struct topThreadCtrl ctrl = { 0 };
 
-    while ((c = getopt(argc, argv, "d:i:")) != -1) {
+    while ((c = getopt(argc, argv, "d:i:s")) != -1) {
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
@@ -864,6 +866,9 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
                 return ret;
             break;
         }
+        case 's': 
+            printOnlyStream = true;
+            break;
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
@@ -888,7 +893,7 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
     cbreak();
     noecho();
     std::thread t;
-    if (subcmd == xcldev::STREAM) {
+    if (printOnlyStream) {
         t = std::thread(topThreadStreamFunc, &ctrl);
     } else {
         t = std::thread(topThreadFunc, &ctrl);

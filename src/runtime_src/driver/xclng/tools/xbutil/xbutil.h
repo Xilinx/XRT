@@ -76,7 +76,6 @@ enum command {
     DD,
     STATUS,
     CMD_MAX,
-    TOP
 };
 enum subcommand {
     MEM_READ = 0,
@@ -113,7 +112,6 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("top", TOP)
 
 };
 
@@ -1239,7 +1237,7 @@ private:
 };
 
 void printHelp(const std::string& exe);
-int xclTop(int argc, char *argv[], xcldev::subcommand subcmd);
+int xclTop(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 } // end namespace xcldev
