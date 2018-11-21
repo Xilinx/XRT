@@ -35,7 +35,6 @@
 #include "scan.h"
 #include "driver/include/xclbin.h"
 #include <version.h>
-#include <boost/property_tree/json_parser.hpp>
 
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
