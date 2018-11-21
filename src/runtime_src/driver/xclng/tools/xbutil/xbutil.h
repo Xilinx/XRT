@@ -141,6 +141,18 @@ static const std::vector<std::pair<std::string, std::string>> flash_types = {
     std::make_pair( "ku115",   "spi" )
 };
 
+static const std::map<MEM_TYPE, std::string> memtype_map = {
+    {MEM_DDR3, "MEM_DDR3"},
+    {MEM_DDR4, "MEM_DDR4"},
+    {MEM_DRAM, "MEM_DRAM"},
+    {MEM_STREAMING, "MEM_STREAMING"},
+    {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
+    {MEM_ARE, "MEM_ARE"},
+    {MEM_HBM, "MEM_HBM"},
+    {MEM_BRAM, "MEM_BRAM"},
+    {MEM_URAM, "MEM_URAM"}
+};
+
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
 class device {
@@ -338,19 +350,10 @@ public:
         if(buf.empty())
             return;
 
-        for(int32_t i = 0; i < map->m_count; i++) {
-            std::string str;
-            if(map->m_mem_data[i].m_used == 0) {
-                str = "**UNUSED**";
-            } else {
-                std::map<MEM_TYPE, std::string> my_map = {
-                    {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
-                    {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
-                    {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
-                    {MEM_ARE, "MEM_ARE"},   {MEM_HBM, "MEM_HBM"},
-                    {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"}
-                };
-                auto search = my_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
+        for(int i = 0; i < map->m_count; i++) {
+            std::string str = "**UNUSED**";
+            if(map->m_mem_data[i].m_used != 0) {
+                auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
                 str = search->second;
             }
             boost::property_tree::ptree ptMem;
@@ -581,7 +584,7 @@ public:
     {
         sensor_tree::put( "runtime.build.version",   xrt_build_version );
         sensor_tree::put( "runtime.build.hash",      xrt_build_version_hash );
-        sensor_tree::put( "runtime.build.date", xrt_build_version_date );
+        sensor_tree::put( "runtime.build.date",      xrt_build_version_date );
         sensor_tree::put( "runtime.build.branch",    xrt_build_version_branch );
         // info
         sensor_tree::put( "board.info.dsa_name", m_devinfo.mName );
@@ -699,6 +702,7 @@ public:
              << std::setw(28) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
+        // get_pretty since we want these as hex
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.vendor",    "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.device",    "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
@@ -716,6 +720,7 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
+        // use get_pretty for Temperature and Electrical since the driver may rail unsupported values high
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_rear"  )
@@ -748,7 +753,6 @@ public:
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" ) << std::endl;
-
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Board Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
@@ -758,39 +762,40 @@ public:
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
-        ostr << std::setw(17) << "     Tag" << std::setw(12) << "Type"
-             << std::setw(9) << "Temp(C)" << std::setw(8) << "Size";
-        ostr << std::setw(16) << "Mem Usage" << std::setw(8) << "BO count" << std::endl;
+        ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
+             << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size";
+        ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
         try {
           for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "mem" ) {
-              std::string mem_usage, mem_tag, mem_size, mem_type;
-              std::string mem_index, mem_bo_count, mem_temp;
+              std::string mem_usage, tag, size, type, temp;
+              int index;
+              unsigned bo_count;
               for (auto& subv : v.second) {
                 if( subv.first == "index" )
-                  mem_index = sensor_tree::pretty<int>(subv.second.get_value<int>());
+                  index = subv.second.get_value<int>();
                 else if( subv.first == "type" )
-                  mem_type = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  type = subv.second.get_value<std::string>();
                 else if( subv.first == "tag" )
-                  mem_tag = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  tag = subv.second.get_value<std::string>();
                 else if( subv.first == "temp" )
-                  mem_temp = sensor_tree::pretty<unsigned short>(subv.second.get_value<unsigned short>());
+                  temp = sensor_tree::pretty<unsigned short>(subv.second.get_value<unsigned short>());
                 else if( subv.first == "bo_count" )
-                  mem_bo_count = sensor_tree::pretty<unsigned>(subv.second.get_value<unsigned>());
+                  bo_count = subv.second.get_value<unsigned>();
                 else if( subv.first == "mem_usage" )
-                  mem_usage = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  mem_usage = subv.second.get_value<std::string>();
                 else if( subv.first == "size" )
-                  mem_size = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  size = subv.second.get_value<std::string>();
               }
               ostr << std::left
-                   << "[" << std::right << std::setw(2) << mem_index << "] " << std::left
-                   << std::setw(12) << mem_tag
-                   << std::setw(12) << mem_type
-                   << std::setw(9) << mem_temp
-                   << std::setw(8) << mem_size
+                   << "[" << std::right << std::setw(2) << index << "] " << std::left
+                   << std::setw(12) << tag
+                   << std::setw(12) << type
+                   << std::setw(9) << temp
+                   << std::setw(8) << size
                    << std::setw(16) << mem_usage
-                   << std::setw(8) << mem_bo_count << std::endl;
+                   << std::setw(8) << bo_count << std::endl;
             }
           }
         }
@@ -834,16 +839,17 @@ public:
         try {
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             if( v.first == "cu" ) {
-              std::string cu_n, cu_s, cu_i, cu_ba;
+              std::string cu_n, cu_s, cu_ba;
+              int cu_i;
               for (auto& subv : v.second) {
-                if( subv.first == "count" )
-                  cu_i = sensor_tree::pretty<int>(subv.second.get_value<int>());
+                if( subv.first == "index" )
+                  cu_i = subv.second.get_value<int>();
                 else if( subv.first == "name" )
-                  cu_n = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  cu_n = subv.second.get_value<std::string>();
                 else if( subv.first == "base_address" )
                   cu_ba = sensor_tree::pretty<int>(subv.second.get_value<int>(), "N/A", true);
                 else if( subv.first == "status" )
-                  cu_s = sensor_tree::pretty<std::string>(subv.second.get_value<std::string>());
+                  cu_s = subv.second.get_value<std::string>();
               }
               ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
                    << std::left << std::setw(32) << cu_n
