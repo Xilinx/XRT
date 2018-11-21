@@ -635,7 +635,6 @@ int main(int argc, char *argv[])
         if (subcmd == xcldev::MEM_READ) {
             result = deviceVec[index]->memread(outMemReadFile, startAddr, sizeInBytes);
         } else if (subcmd == xcldev::MEM_WRITE) {
-            
             result = deviceVec[index]->memwrite(startAddr, sizeInBytes, pattern_byte);
         } else if(subcmd == xcldev::MEM_QUERY_ECC) {
             result = deviceVec[index]->printEccInfo(std::cout);
@@ -746,7 +745,7 @@ std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
             std::cout << "ERROR: Card index " << index << " out of range";
             std::cout << std::endl;
         } else {
-          return std::make_unique<xcldev::device>(index,nullptr);
+         return std::make_unique<xcldev::device>(index,nullptr);
         }
     }
     catch (const std::exception& ex) {
