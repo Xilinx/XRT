@@ -402,7 +402,7 @@ std::string clmem_debug_view::getstring(int aVerbose, int aQuotes)
 
   sstr << quotes << "Mem" << quotes << " : " << quotes << std::hex <<  m_mem << quotes << ", ";
   sstr << quotes << "MemID" << quotes << " : " << quotes << std::dec << m_uid << quotes << ", ";
-  sstr << quotes << "DDRAddress" << quotes << " : " << quotes << "0x" << std::hex << m_device_addr << quotes << ", ";
+  sstr << quotes << "Device Memory Address" << quotes << " : " << quotes << "0x" << std::hex << m_device_addr << quotes << ", ";
   if (!m_bank.empty()) {
     sstr << quotes << "Bank" << quotes << " : " << quotes << std::dec << m_bank << quotes << ", ";
   }
