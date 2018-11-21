@@ -769,7 +769,7 @@ public:
           for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "mem" ) {
               std::string mem_usage, tag, size, type, temp;
-              int index;
+              int index = 0;
               unsigned bo_count;
               for (auto& subv : v.second) {
                 if( subv.first == "index" )
@@ -839,7 +839,7 @@ public:
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             if( v.first == "cu" ) {
               std::string cu_n, cu_s, cu_ba;
-              int cu_i;
+              int cu_i = 0;
               for (auto& subv : v.second) {
                 if( subv.first == "index" )
                   cu_i = subv.second.get_value<int>();
