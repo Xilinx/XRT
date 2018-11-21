@@ -203,11 +203,15 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	DRM_ENTER("");
 
 	/* This happens when application exists without formally releasing the contexts on CUs.
-	   Give up our contexts on CUs and our lock on xclbin */
+	 * Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicitly CUs (such as CDMA) do not add to ip_reference
+	*/
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
-		userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
-			    bit);
-		xdev->ip_reference[bit]--;
+		if (xdev->ip_reference[bit]) {
+			userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
+				    bit);
+			xdev->ip_reference[bit]--;
+		}
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
