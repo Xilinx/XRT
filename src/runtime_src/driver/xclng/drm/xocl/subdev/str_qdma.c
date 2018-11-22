@@ -309,6 +309,7 @@ static int queue_wqe_complete(struct qdma_complete_event *compl_event)
         kiocb->ki_complete(kiocb, compl_event->done_bytes,
 		compl_event->error);
 #else
+	atomic_set(&kiocb->ki_users, 1);
         aio_complete(kiocb, compl_event->done_bytes, compl_event->error);
 #endif
 
@@ -618,7 +619,7 @@ end:
 }
 #endif
 
-static int queue_release(struct inode *inode, struct file *file)
+static int queue_flush(struct file *file, fl_owner_t id)
 {
 	struct str_device *sdev;
 	struct stream_queue *queue;
@@ -626,6 +627,9 @@ static int queue_release(struct inode *inode, struct file *file)
 	long	ret = 0;
 
 	queue = (struct stream_queue *)file->private_data;
+	if (!queue)
+		return 0;
+
 	sdev = queue->sdev;
 
 	xdev = xocl_get_xdev(sdev->pdev);
@@ -647,6 +651,7 @@ static int queue_release(struct inode *inode, struct file *file)
 	}
 
 	devm_kfree(&sdev->pdev->dev, queue);
+	file->private_data = NULL;
 		
 failed:
 	return ret;
@@ -661,7 +666,7 @@ static struct file_operations queue_fops = {
 	.aio_read = queue_aio_read,
 	.aio_write = queue_aio_write,
 #endif
-	.release = queue_release,
+	.flush = queue_flush,
 };
 
 static long stream_ioctl_create_queue(struct str_device *sdev,
