@@ -11,6 +11,8 @@ if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     find /lib/modules -type f -name xclmgmt.ko -delete
     find /lib/modules -type f -name xocl.ko.kz -delete
     find /lib/modules -type f -name xclmgmt.ko.kz -delete
+    find /lib/modules -type f -name xocl.ko.xz -delete
+    find /lib/modules -type f -name xclmgmt.ko.xz -delete
     depmod -A
 fi
 
