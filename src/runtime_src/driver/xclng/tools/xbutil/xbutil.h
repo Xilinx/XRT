@@ -736,7 +736,7 @@ public:
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_bottom.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_top.voltage",    -1 ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_v5v.voltage", -1 )
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_5v5.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v2_top.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v8_top.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.0v85.voltage",    -1 ) << std::endl;
