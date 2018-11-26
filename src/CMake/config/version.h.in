@@ -17,7 +17,7 @@ static const char xrt_build_version_date[] = "@XRT_DATE@";
 
 static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 
-#define XRT_DRIVER_VERSION "@XRT_VERSION_STRING@"
+#define XRT_DRIVER_VERSION "@XRT_VERSION_STRING@,@XRT_HASH@"
 
 # ifdef __cplusplus
 #include <iostream>
