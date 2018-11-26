@@ -176,6 +176,7 @@ dev_get_xdev(struct device *dev)
  * @wait_queue: conditional wait queue for scheduler thread
  * @error: set to 1 to indicate scheduler error
  * @stop: set to 1 to indicate scheduler should stop
+ * @reset: set to 1 to reset the scheduler
  * @command_queue: list of command objects managed by scheduler
  * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
@@ -188,6 +189,7 @@ struct xocl_sched
         wait_queue_head_t          wait_queue;
         unsigned int               error;
         unsigned int               stop;
+        unsigned int               reset;
 
         struct list_head           command_queue;
         atomic_t                   intc; /* pending interrupt shared with isr */
@@ -195,6 +197,16 @@ struct xocl_sched
 };
 
 static struct xocl_sched global_scheduler0;
+
+static void
+reset_scheduler(struct xocl_sched *xs)
+{
+	xs->error=0;
+	xs->stop=0;
+	xs->poll=0;
+	xs->reset=0;
+	atomic_set(&xs->intc,0);
+}
 
 /**
  * Command data used by scheduler
@@ -908,7 +920,7 @@ configure(struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
 	}
 
-	if (cdma) {
+	if (cdma && cfg->cdma) {
 		exec->num_cdma = 1; /* TBD */
 		exec->num_cus += exec->num_cdma;
 		for (; i<exec->num_cus; ++i) {
@@ -1511,6 +1523,11 @@ scheduler_loop(struct xocl_sched *xs)
 	if (xs->stop)
 		return;
 
+	if (xs->reset) {
+		SCHED_DEBUG("scheduler is resetting after timeout\n");
+		reset_scheduler(xs);
+	}
+
 	/* queue new pending commands */
 	scheduler_queue_cmds(xs);
 
@@ -1544,12 +1561,8 @@ init_scheduler_thread(void)
 		return 0;
 
 	init_waitqueue_head(&global_scheduler0.wait_queue);
-	global_scheduler0.error = 0;
-	global_scheduler0.stop = 0;
-
 	INIT_LIST_HEAD(&global_scheduler0.command_queue);
-	atomic_set(&global_scheduler0.intc,0);
-	global_scheduler0.poll=0;
+	reset_scheduler(&global_scheduler0);
 
 	global_scheduler0.scheduler_thread = kthread_run(scheduler,(void*)&global_scheduler0,"xocl-scheduler-thread0");
 	if (IS_ERR(global_scheduler0.scheduler_thread)) {
@@ -1917,10 +1930,10 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		new = atomic_read(&client->outstanding_execs);
 		loops = (new==outstanding ? (loops + 1) : 0);
 		if (loops == timeout_loops) {
-			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbsak reset -h'\n",outstanding);
+			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbutil reset -h'\n",outstanding);
 			atomic_set(&xdev->needs_reset,1);
-			/* stop the scheduler loop */
-			global_scheduler0.stop = 1;
+			/* reset the scheduler loop */
+			global_scheduler0.reset=1;
 			break;
 		}
 		outstanding = new;

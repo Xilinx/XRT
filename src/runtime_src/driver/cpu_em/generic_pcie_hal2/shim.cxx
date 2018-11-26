@@ -549,14 +549,6 @@ namespace xclcpuemhal2 {
           {
             uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo 
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
-            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
-            {
-              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
-              std::pair<uint64_t,std::string> mPair;
-              mPair.first  = flow_id;
-              mPair.second = m_tag;
-              argFlowIdMap[argNum] = mPair;
-            }
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -568,6 +560,14 @@ namespace xclcpuemhal2 {
               
               argFlowIdMap.clear();
               argNum = 0;
+            }
+            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            {
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
+              std::pair<uint64_t,std::string> mPair;
+              mPair.first  = flow_id;
+              mPair.second = m_tag;
+              argFlowIdMap[argNum] = mPair;
             }
             argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
