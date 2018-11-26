@@ -310,6 +310,7 @@ static void xocl_subdev_destroy_common(xdev_handle_t xdev_hdl,
 {
 	int i;
 	struct xocl_subdev_private *priv;
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 
 	bus_for_each_dev(&platform_bus_type, NULL, subdevs,
 		match);
@@ -329,6 +330,8 @@ static void xocl_subdev_destroy_common(xdev_handle_t xdev_hdl,
 		if (priv->is_multi)
 			ida_simple_remove(&subdev_multi_inst_ida,
 				subdevs->pldevs[i]->id);
+		else
+			core->subdevs[subdevs->id].pldev = NULL;
 		device_release_driver(&subdevs->pldevs[i]->dev);
 		platform_device_unregister(subdevs->pldevs[i]);
 	}
