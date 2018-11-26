@@ -684,6 +684,8 @@ static int set_and_verify_freqs(struct icap* icap, unsigned short* freqs, int nu
 		return err;
 
 	for(i = 0; i <min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
+		if(!freqs[i])
+			continue;
 		clock_freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
 		if(clock_freq_counter == 0){
 			err = -EDOM;
@@ -1826,10 +1828,18 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		if(ip->m_type == IP_DDR4_CONTROLLER) {
 			uint32_t memidx = ip->properties;
+
 			if (!memtopo || ip->properties >= memtopo->m_count ||
-				!memtopo->m_mem_data[memidx].m_used) {
-				ICAP_ERR(icap, "bad DDR controller index: %u",
+				memtopo->m_mem_data[memidx].m_type !=
+				MEM_DDR4) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
 					ip->properties);
+				continue;
+			}
+			if (!memtopo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					memtopo->m_mem_data[memidx].m_tag);
 				continue;
 			}
 			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
@@ -2126,17 +2136,20 @@ static ssize_t clock_freqs_show(struct device *dev,
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 	int i;
-	u32 round_up_freq, freq_counter, freq;
+	u32 freq_counter, freq, request_in_khz, tolerance;
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
 		freq = icap_get_ocl_frequency(icap, i);
 		if(!uuid_is_null(&icap->icap_bitstream_uuid)){
 			freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
-			round_up_freq = round_up(freq_counter, 1000)/1000;
-			if(round_up_freq!=freq)
-				ICAP_INFO(icap, "Frequency mismatch, Should be %u, Now is %u", freq, round_up_freq);
-			cnt += sprintf(buf + cnt, "%d\n", round_up_freq);
+
+			request_in_khz =freq*1000;
+			tolerance = freq*50;
+
+			if(abs(freq_counter-request_in_khz)>tolerance)
+				ICAP_INFO(icap, "Frequency mismatch, Should be %u khz, Now is %ukhz", request_in_khz, freq_counter);
+			cnt += sprintf(buf + cnt, "%d\n", DIV_ROUND_CLOSEST(freq_counter,1000));
 		}
 		else{
 			cnt += sprintf(buf + cnt, "%d\n", freq);
