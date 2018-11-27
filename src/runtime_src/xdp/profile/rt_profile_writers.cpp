@@ -814,18 +814,7 @@ namespace XCL {
 
         if (showPortName) {
           rts->getProfileManager()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
-
-          // If port is tagged with memory resource, then use it
-          std::string portName2 = portName;
-          std::string memoryName2 = memoryName;
-          size_t index = portName.find_last_of(PORT_MEM_SEP);
-          if (index != std::string::npos) {
-            // Keep memory resource in port name for display purposes
-            //portName2 = portName.substr(0, index);
-            memoryName2 = portName.substr(index+1);
-          }
-
-          traceName += ("|" + portName2 + "|" + memoryName2);
+          traceName += ("|" + portName + "|" + memoryName);
         }
       }
 
@@ -916,18 +905,27 @@ namespace XCL {
     std::string checkName5;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::DDR_BANKS, checkName5);
 
-    auto cuPortsToMemory = profile->getCUPortsToMemoryMap();
+    auto cuPortVector = profile->getCUPortVector();
+    std::map<std::string, int> cuPortsToMemory;
+
+    for (auto& cuPort : cuPortVector) {
+      auto memoryName = std::get<3>(cuPort);
+      auto iter = cuPortsToMemory.find(memoryName);
+      int numPorts = (iter == cuPortsToMemory.end()) ? 1 : (iter->second + 1);
+      cuPortsToMemory[memoryName] = numPorts;
+    }
+
     auto memoryIter = cuPortsToMemory.begin();
     for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
       writeTableCells(getSummaryStream(), checkName5, memoryIter->first, memoryIter->second);
       writeTableRowEnd(getSummaryStream());
     }
+    cuPortsToMemory.clear();
 
     // 6. Port data widths
     std::string checkName6;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::PORT_BIT_WIDTH, checkName6);
 
-    auto cuPortVector = profile->getCUPortVector();
     for (auto& cuPort : cuPortVector) {
       auto cu    = std::get<0>(cuPort);
       auto port  = std::get<1>(cuPort);
