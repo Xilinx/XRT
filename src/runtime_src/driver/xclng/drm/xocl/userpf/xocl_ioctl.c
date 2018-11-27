@@ -27,6 +27,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
+#include "version.h"
 #include "common.h"
 
 #if defined(XOCL_UUID)
@@ -69,14 +70,17 @@ int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_xocl_info *obj = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct pci_dev *pdev = xdev->core.pdev;
+	u32 major, minor, patch;
 
 	userpf_info(xdev, "INFO IOCTL");
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = pdev->vendor;
 	obj->device = pdev->device;
 	obj->subsystem_vendor = pdev->subsystem_vendor;
 	obj->subsystem_device = pdev->subsystem_device;
-	obj->driver_version = XOCL_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(pdev->devfn);
 
 	return 0;
@@ -189,6 +193,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct client_ctx *client = filp->driver_priv;
 	int ret = 0;
 
+	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
@@ -196,6 +201,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (args->cu_index >= xdev->layout->m_count) {
+		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",args->cu_index,xdev->layout->m_count);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -205,8 +211,10 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		if (ret) // No context was previously allocated for this CU
 			goto out;
 
-		xdev->ip_reference[args->cu_index]--;
-		if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
+		// CU unlocked explicitly
+		--client->num_cus;
+		--xdev->ip_reference[args->cu_index];
+		if (!client->num_cus) {
                         // We just gave up the last context, give up the xclbin lock
 			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
 							 pid_nr(task_tgid(current)));
@@ -227,7 +235,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	if (bitmap_empty(client->cu_bitmap, MAX_CUS) && !atomic_read(&client->xclbin_locked))
+	if (!client->num_cus && !atomic_read(&client->xclbin_locked))
 		// Process has no other context on any CU yet, hence we need to lock the xclbin
 		// A process uses just one lock for all its contexts
 		acquire_lock = true;
@@ -253,12 +261,15 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	// Everything is good so far, hence increment the CU reference count
-	xdev->ip_reference[args->cu_index]++;
+	++client->num_cus; // explicitly acquired
+	++xdev->ip_reference[args->cu_index];
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u, %d)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index,acquire_lock);
 out:
-	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
+	// If all explicit resources are given up, then release the xclbin
+	if (!client->num_cus)
 		atomic_set(&client->xclbin_locked,false);
 	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
 	return ret;
 }
 

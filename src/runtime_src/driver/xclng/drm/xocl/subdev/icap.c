@@ -1896,8 +1896,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			if (alloc_and_get_axlf_section(icap, copy_buffer,
 				DNA_CERTIFICATE, buffer,
 				(void **)&cert, &section_size) != 0) {
+
+				// We keep dna sub device if IP_DNASC presents
 				ICAP_ERR(icap, "Can't get certificate section");
-				goto done;
+				goto dna_cert_fail;
 			}
 
 			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
@@ -1915,7 +1917,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			err = 0; /* xclbin is valid */
 		} else {
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
-			goto done;
+			goto dna_cert_fail;
 		}
 	}
 
@@ -1945,6 +1947,7 @@ done:
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
 	}
+dna_cert_fail:
 	mutex_unlock(&icap->icap_lock);
 	vfree(layout);
 	vfree(memtopo);

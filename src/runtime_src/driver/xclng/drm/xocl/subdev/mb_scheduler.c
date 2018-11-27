@@ -29,12 +29,12 @@
 #define SCHED_UNUSED __attribute__((unused))
 #endif
 
-#define sched_error_on(exec,expr,msg)		                  \
+#define sched_error_on(exec,expr,msg)		                          \
 ({		                                                          \
 	unsigned int ret = 0;                                             \
 	if ((expr)) {						          \
 		xocl_err(&exec->pdev->dev, "Assertion failed %s %s",#expr,msg);\
-		exec->scheduler->error=1;                                       \
+		exec->scheduler->error=1;                                 \
 		ret = 1; 					          \
 	}                                                                 \
 	(ret);                                                            \
@@ -146,10 +146,16 @@ exec_get_pdev(struct exec_core *exec)
 }
 
 static inline struct exec_core *
+pdev_get_exec(struct platform_device *pdev)
+{
+	return platform_get_drvdata(pdev);
+}
+
+static inline struct exec_core *
 dev_get_exec(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	return pdev ? platform_get_drvdata(pdev) : NULL;
+	return pdev ? pdev_get_exec(pdev) : NULL;
 }
 
 /**
@@ -880,7 +886,7 @@ configure(struct xocl_cmd *xcmd)
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
 	bool ert = xocl_mb_sched_on(xdev);
-	bool cdma = xocl_cdma_on(xdev);
+	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
 	int i;
@@ -921,15 +927,19 @@ configure(struct xocl_cmd *xcmd)
 	}
 
 	if (cdma && cfg->cdma) {
-		exec->num_cdma = 1; /* TBD */
+		struct client_ctx *client  = xcmd->client;
+		exec->num_cdma = 1; /* until verified that address is null terminated TBD */
 		exec->num_cus += exec->num_cdma;
+		mutex_lock(&client->lock);
 		for (; i<exec->num_cus; ++i) {
 			++cfg->num_cus;
 			++cfg->count;
-			exec->cu_addr_map[i] = 0x250000; // TBD
-			cfg->data[i] = 0x250000;
+			exec->cu_addr_map[i] = cdma[0];
+			cfg->data[i] = cdma[0];
+			set_bit(i,client->cu_bitmap); // implicit shared resource
 			SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
 		}
+		mutex_unlock(&client->lock);
 	}
 
 	if (ert && cfg->ert) {
@@ -1895,6 +1905,7 @@ create_client(struct platform_device *pdev, void **priv)
 	atomic_set(&client->trigger, 0);
 	atomic_set(&client->abort, 0);
 	atomic_set(&client->outstanding_execs, 0);
+	client->num_cus = 0;
 	mutex_lock(&xdev->ctx_list_lock);
 	client->xdev = xocl_get_xdev(pdev);
 	list_add_tail(&client->link, &xdev->ctx_list);
@@ -2020,21 +2031,24 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	u32 ctx_cus[4] = {0};
 	u32 cumasks = 0;
 	int i = 0;
+	int err = 0;
 
 	SCHED_DEBUGF("-> validate opcode(%d)\n",ecmd->opcode);
 
 	/* cus for start kernel commands only */
 	if (ecmd->opcode!=ERT_START_CU) {
-		SCHED_DEBUG("<- validate(0), not a CU cmd\n");
+		userpf_err(xocl_get_xdev(pdev),"validate got unexpected command opcode(%d)\n",ecmd->opcode);
 		return 0; /* ok */
 	}
+
+	/* client context cu bitmap may not change while validating */
+	mutex_lock(&client->lock);
 
 	/* no specific CUs selected, maybe ctx is not used by client */
 	if (bitmap_empty(client->cu_bitmap,MAX_CUS)) {
-		SCHED_DEBUG("<- validate(0), no CUs in ctx\n");
-		return 0; /* ok */
+		userpf_err(xocl_get_xdev(pdev),"validate found no CUs in ctx\n");
+		goto out; /* ok */
 	}
-
 
 	/* Check CUs in cmd BO against CUs in context */
 	cumasks = 1 + scmd->extra_cu_masks;
@@ -2049,12 +2063,17 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		if (cmd_cus & ~ctx_cus[i]) {
 			SCHED_DEBUGF("<- validate(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
 				     i,cmd_cus,ctx_cus[i]);
-			return 1; /* error */
+			err = 1;
+			goto out; /* error */
 		}
 	}
 
-	SCHED_DEBUG("<- validate(0) cmd and ctx CUs match\n");
-	return 0;
+
+out:
+	mutex_unlock(&client->lock);
+	SCHED_DEBUGF("<- validate(%d) cmd and ctx CUs match\n",err);
+	return err;
+
 }
 
 struct xocl_mb_scheduler_funcs sche_ops = {
@@ -2080,7 +2099,7 @@ static ssize_t
 kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_xdev(dev);
-	bool cdma = xocl_cdma_on(xdev);
+	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int cdmas = cdma ? 1 : 0; //TBD
 	return sprintf(buf,"%d\n",cdmas);
 }
