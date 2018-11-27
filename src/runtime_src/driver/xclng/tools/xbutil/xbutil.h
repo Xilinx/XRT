@@ -598,13 +598,15 @@ public:
         sensor_tree::put( "board.info.dma_threads", m_devinfo.mDMAThreads );
         sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
         {
-            std::string idcode, fpga, errmsg;
+            std::string idcode, fpga, dna, errmsg;
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
             sensor_tree::put( "board.info.idcode", idcode );
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
             sensor_tree::put( "board.info.fpga_name", fpga );
+            pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
+            sensor_tree::put( "board.info.dna", dna);
         }
-        //sensor_tree::put( "board.info.dna",
+        
 
         // physical
         sensor_tree::put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
@@ -736,7 +738,7 @@ public:
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_bottom.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.ddr_vpp_top.voltage",    -1 ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_v5v.voltage", -1 )
+        ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.sys_5v5.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v2_top.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.1v8_top.voltage", -1 )
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.0v85.voltage",    -1 ) << std::endl;
@@ -746,7 +748,8 @@ public:
              << std::setw(16) << sensor_tree::get( "board.physical.electrical.mgt_vtt.voltage", -1 ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.voltage", -1 )
-             << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", -1 ) << std::endl;
+             << std::setw(16) << sensor_tree::get( "board.physical.electrical.vccint.current", -1 )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Board Power\n";

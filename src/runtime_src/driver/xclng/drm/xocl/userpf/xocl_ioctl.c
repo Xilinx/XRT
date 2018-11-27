@@ -27,6 +27,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
+#include "version.h"
 #include "common.h"
 
 #if defined(XOCL_UUID)
@@ -69,14 +70,17 @@ int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_xocl_info *obj = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct pci_dev *pdev = xdev->core.pdev;
+	u32 major, minor, patch;
 
 	userpf_info(xdev, "INFO IOCTL");
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = pdev->vendor;
 	obj->device = pdev->device;
 	obj->subsystem_vendor = pdev->subsystem_vendor;
 	obj->subsystem_device = pdev->subsystem_device;
-	obj->driver_version = XOCL_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(pdev->devfn);
 
 	return 0;
