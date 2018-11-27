@@ -40,6 +40,18 @@ inline T get(const std::string &path, const T &defaultVal)
     return instance().get( path, defaultVal );
 }
 
+template <typename T>
+std::string get_string(const std::string &path, const T &defaultVal)
+{
+    T originVal = instance().get(path, defaultVal);
+
+    if((unsigned short)originVal == 65535){
+      return "N/A";
+    }
+
+    return std::to_string(originVal);
+}
+
 inline void
 add_child(const std::string &path, boost::property_tree::ptree& child)
 {
