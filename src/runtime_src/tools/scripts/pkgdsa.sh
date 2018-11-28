@@ -702,7 +702,7 @@ EOF
 dodeb()
 {
     uRel=`lsb_release -r -s`
-    dir=debbuild/$dsa-$version_${uRel}
+    dir=debbuild/$dsa-${version}_${uRel}
     mkdir -p $opt_pkgdir/$dir/DEBIAN
 
 cat <<EOF > $opt_pkgdir/$dir/DEBIAN/control
