@@ -601,13 +601,15 @@ public:
         sensor_tree::put( "board.info.dma_threads", m_devinfo.mDMAThreads );
         sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
         {
-            std::string idcode, fpga, errmsg;
+            std::string idcode, fpga, dna, errmsg;
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
             sensor_tree::put( "board.info.idcode", idcode );
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
             sensor_tree::put( "board.info.fpga_name", fpga );
+            pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
+            sensor_tree::put( "board.info.dna", dna);
         }
-        //sensor_tree::put( "board.info.dna",
+        
 
         // physical
         sensor_tree::put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
@@ -751,7 +753,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Board Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;

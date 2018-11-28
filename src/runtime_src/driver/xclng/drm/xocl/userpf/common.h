@@ -131,11 +131,13 @@ struct xocl_dev	{
  *
  * @link: Client context is added to list in device
  * @xclbin_id: UUID for xclbin loaded by client, or nullid if no xclbin loaded
+ * @xclbin_locked: Flag to denote that this context locked the xclbin
  * @trigger: Poll wait counter for number of completed exec buffers
  * @outstanding_execs: Counter for number outstanding exec buffers
  * @abort: Flag to indicate that this context has detached from user space (ctrl-c)
+ * @num_cus: Number of resources (CUs) explcitly aquired
  * @lock: Mutex lock for exclusive access
- * @cu_bitmap: CUs reserved by this context
+ * @cu_bitmap: CUs reserved by this context, may contain implicit resources
  */
 struct client_ctx {
 	struct list_head	link;
@@ -144,9 +146,10 @@ struct client_ctx {
 	atomic_t		trigger;
 	atomic_t                outstanding_execs;
 	atomic_t                abort;
+	unsigned int            num_cus;     /* number of resource locked explicitly by client */
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
+	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */
 	struct pid             *pid;
 };
 

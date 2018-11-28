@@ -922,6 +922,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       unmap_buffer(dbuf,hbuf_dst);
       c->done();
     };
+    XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
     xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }

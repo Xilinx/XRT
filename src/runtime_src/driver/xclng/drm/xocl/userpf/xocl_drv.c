@@ -17,6 +17,7 @@
 #include <linux/pci.h>
 #include "../xocl_drv.h"
 #include "common.h"
+#include "version.h"
 
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
@@ -161,7 +162,7 @@ static void __exit xocl_exit(void)
 module_init(xocl_init);
 module_exit(xocl_exit);
 
-MODULE_VERSION(XOCL_DRIVER_VERSION);
+MODULE_VERSION(XRT_DRIVER_VERSION);
 
 MODULE_DESCRIPTION(XOCL_DRIVER_DESC);
 MODULE_AUTHOR("Lizhi Hou <lizhi.hou@xilinx.com>");
