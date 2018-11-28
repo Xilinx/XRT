@@ -29,7 +29,6 @@ struct feature_rom {
 	bool			unified;
 	bool			mb_mgmt_enabled;
 	bool			mb_sche_enabled;
-	bool			cdma_enabled;
 	bool			are_dev;
 	bool			aws_dev;
 };
@@ -146,14 +145,14 @@ static bool mb_sched_on(struct platform_device *pdev)
 	return rom->mb_sche_enabled && !XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(pdev));
 }
 
-static bool cdma_on(struct platform_device *pdev)
+static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
 
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return rom->cdma_enabled;
+	return (rom->header.FeatureBitMap & CDMA) ? rom->header.CDMABaseAddress : 0;
 }
 
 static u16 get_ddr_channel_count(struct platform_device *pdev)
@@ -234,7 +233,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
 	.mb_sched_on = mb_sched_on,
-	.cdma_on = cdma_on,
+	.cdma_addr = get_cdma_base_addresses,
 	.get_ddr_channel_count = get_ddr_channel_count,
 	.get_ddr_channel_size = get_ddr_channel_size,
 	.is_are = is_are,
@@ -339,9 +338,6 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	if(rom->header.FeatureBitMap & MB_SCHEDULER)
 		rom->mb_sche_enabled = true;
-
-	if(rom->header.FeatureBitMap & CDMA)
-	    rom->cdma_enabled = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {

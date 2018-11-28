@@ -5,8 +5,6 @@ static const char xrt_build_version[] = "@XRT_VERSION_STRING@";
 
 static const char xrt_build_version_branch[] = "@XRT_BRANCH@";
 
-static const char xrt_build_version_branch_extended[] = "@XRT_BRANCH_EXTENDED@";
-
 static const char xrt_build_version_hash[] = "@XRT_HASH@";
 
 static const char xrt_build_version_hash_date[] = "@XRT_HASH_DATE@";
@@ -30,7 +28,6 @@ class version {
   static void print(std::ostream & output)
   {
      output << "       XRT Build Version: " << xrt_build_version << std::endl;
-     output << "  Build Version Extended: " << xrt_build_version_branch_extended << std::endl;
      output << "    Build Version Branch: " << xrt_build_version_branch << std::endl;
      output << "      Build Version Hash: " << xrt_build_version_hash << std::endl;
      output << " Build Version Hash Date: " << xrt_build_version_hash_date << std::endl;

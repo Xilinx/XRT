@@ -6,14 +6,6 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# Get the extended branch
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} --no-pager describe --tags --always
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE XRT_BRANCH_EXTENDED
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
 
 # Get the latest abbreviated commit hash of the working branch
 execute_process(
