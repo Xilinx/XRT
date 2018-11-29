@@ -1021,7 +1021,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (buf < i->size()) {
+      if (buf < i->start() + i->size()) {
         i->free(buf);
       }
     }
