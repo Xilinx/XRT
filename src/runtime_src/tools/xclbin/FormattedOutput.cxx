@@ -529,12 +529,14 @@ reportClocks( std::ostream & _ostream,
   }
 
   std::vector<boost::property_tree::ptree> clockFreqs = as_vector<boost::property_tree::ptree>(ptClockFreqTopology,"m_clock_freq");
-  for (auto & ptClockFreq : clockFreqs) {
+  for (unsigned int index = 0; index < clockFreqs.size(); ++index) {
+    boost::property_tree::ptree &ptClockFreq = clockFreqs[index];
     std::string sName = ptClockFreq.get<std::string>("m_name");
     std::string sType = ptClockFreq.get<std::string>("m_type");
     std::string sFreqMhz = ptClockFreq.get<std::string>("m_freq_Mhz");
 
     _ostream << XUtil::format("   %-10s %s", "Name:", sName.c_str()).c_str() << std::endl;
+    _ostream << XUtil::format("   %-10s %d", "Index:", index).c_str() << std::endl;
     _ostream << XUtil::format("   %-10s %s", "Type:", sType.c_str()).c_str() << std::endl;
     _ostream << XUtil::format("   %-10s %s MHz", "Frequency:", sFreqMhz.c_str()).c_str() << std::endl;
 
@@ -569,7 +571,9 @@ reportMemoryConfiguration( std::ostream & _ostream,
   }
 
   std::vector<boost::property_tree::ptree> memDatas = as_vector<boost::property_tree::ptree>(ptMemTopology,"m_mem_data");
-  for (auto& ptMemData : memDatas) {
+  for (unsigned int index = 0; index < memDatas.size(); ++index) {
+    boost::property_tree::ptree & ptMemData = memDatas[index];
+
     std::string sName = ptMemData.get<std::string>("m_tag");
     std::string sType = ptMemData.get<std::string>("m_type");
     std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
@@ -584,6 +588,7 @@ reportMemoryConfiguration( std::ostream & _ostream,
     }
 
     _ostream << XUtil::format("   %-13s %s", "Name:", sName.c_str()).c_str() << std::endl;
+    _ostream << XUtil::format("   %-13s %d", "Index:", index).c_str() << std::endl;
     _ostream << XUtil::format("   %-13s %s", "Type:", sType.c_str()).c_str() << std::endl;
     _ostream << XUtil::format("   %-13s %s", "Base Address:", sBaseAddress.c_str()).c_str() << std::endl;
     _ostream << XUtil::format("   %-13s 0x%lx", "Address Size:", addressSize).c_str() << std::endl;
