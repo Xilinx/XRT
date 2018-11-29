@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include "../xocl_drv.h"
+#include "version.h"
 
 //#define USE_FEATURE_ROM
 
@@ -221,16 +222,17 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
-	u32 val;
+	u32 val, major, minor, patch;
 	struct FeatureRomHeader rom;
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = lro->core.pdev->vendor;
 	obj->device = lro->core.pdev->device;
 	obj->subsystem_vendor = lro->core.pdev->subsystem_vendor;
 	obj->subsystem_device = lro->core.pdev->subsystem_device;
-	obj->driver_version = XCLMGMT_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
 	val = MGMT_READ_REG32(lro, GENERAL_STATUS_BASE);
@@ -985,6 +987,5 @@ module_exit(xclmgmt_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Lizhi Hou <lizhi.hou@xilinx.com>");
-MODULE_VERSION(XCLMGMT_MODULE_VERSION);
-
+MODULE_VERSION(XRT_DRIVER_VERSION);
 MODULE_DESCRIPTION("Xilinx SDx management function driver");

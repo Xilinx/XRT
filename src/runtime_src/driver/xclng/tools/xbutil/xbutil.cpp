@@ -196,6 +196,11 @@ int main(int argc, char *argv[])
         return xcldev::xclValidate(argc, argv);
     }
 
+    if( std::strcmp( argv[1], "top" ) == 0 ) {
+        optind++;
+        return xcldev::xclTop(argc, argv);
+    }
+
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
     if (v == xcldev::commandTable.end()) {
@@ -294,7 +299,7 @@ int main(int argc, char *argv[])
         }
         case xcldev::STREAM:
         {
-            if(cmd != xcldev::QUERY && cmd != xcldev::TOP) {
+            if(cmd != xcldev::QUERY) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
@@ -515,7 +520,6 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
     case xcldev::SCAN:
     case xcldev::STATUS:
-    case xcldev::TOP:
         break;
     case xcldev::PROGRAM:
     {
@@ -660,9 +664,6 @@ int main(int argc, char *argv[])
             result = deviceVec[index]->readSSPMCounters() ;
         }
         break;
-    case xcldev::TOP:
-            result = xcldev::xclTop(argc, argv, subcmd);
-        break;
 
     default:
         std::cout << "ERROR: Not implemented\n";
@@ -788,8 +789,8 @@ static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devin
     for(auto line:lines) {
         printw("%s\n", line.c_str());
     }
-}
 
+}
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
 {
@@ -845,15 +846,22 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     }
 }
 
-int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
+void xclTopHelp()
+{
+    std::cout << "Options: [-d <card>]: device index\n";
+    std::cout << "         [-i <interval>]: refresh interval\n";
+    std::cout << "         [-s]: display stream topology \n";
+}
+
+int xcldev::xclTop(int argc, char *argv[])
 {
     int interval = 1;
     unsigned index = 0;
     int c;
-    const std::string usage("Options: [-d index] [-i <interval>]");
+    bool printStreamOnly = false;
     struct topThreadCtrl ctrl = { 0 };
 
-    while ((c = getopt(argc, argv, "d:i:")) != -1) {
+    while ((c = getopt(argc, argv, "d:i:s")) != -1) {
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
@@ -864,14 +872,17 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
                 return ret;
             break;
         }
+        case 's':
+            printStreamOnly = true;
+            break;
         default:
-            std::cerr << usage << std::endl;
+            xclTopHelp();
             return -EINVAL;
         }
     }
 
     if (optind != argc) {
-        std::cerr << usage << std::endl;
+        xclTopHelp();
         return -EINVAL;
     }
 
@@ -888,11 +899,12 @@ int xcldev::xclTop(int argc, char *argv[], xcldev::subcommand subcmd)
     cbreak();
     noecho();
     std::thread t;
-    if (subcmd == xcldev::STREAM) {
+    if (printStreamOnly) {
         t = std::thread(topThreadStreamFunc, &ctrl);
     } else {
         t = std::thread(topThreadFunc, &ctrl);
     }
+
 
     // Waiting for and processing control command from stdin
     while (!ctrl.quit) {

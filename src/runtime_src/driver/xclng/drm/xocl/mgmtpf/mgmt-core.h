@@ -32,20 +32,6 @@
 #include "xclfeatures.h"
 #include "../xocl_drv.h"
 
-
-#define XCLMGMT_DRIVER_MAJOR 2018
-#define XCLMGMT_DRIVER_MINOR 2
-#define XCLMGMT_DRIVER_PATCHLEVEL 2
-
-#define	XCLMGMT_MODULE_VERSION		\
-	__stringify(XCLMGMT_DRIVER_MAJOR) "."		      \
-	__stringify(XCLMGMT_DRIVER_MINOR) "."		      \
-	__stringify(XCLMGMT_DRIVER_PATCHLEVEL)
-
-#define XCLMGMT_DRIVER_VERSION_NUMBER					\
-	((XCLMGMT_DRIVER_MAJOR)*1000 + (XCLMGMT_DRIVER_MINOR)*100 + 	\
-	XCLMGMT_DRIVER_PATCHLEVEL)
-
 #define DRV_NAME "xclmgmt"
 
 #define	MGMT_READ_REG32(lro, off)	\

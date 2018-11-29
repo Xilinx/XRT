@@ -23,6 +23,7 @@
 #include "xocl/api/plugin/xdp/debug.h"
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/scheduler/scheduler.h"
+#include "xrt/util/config_reader.h"
 
 #include <iostream>
 #include <fstream>
@@ -921,6 +922,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       unmap_buffer(dbuf,hbuf_dst);
       c->done();
     };
+    XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
     xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
     return;
   }
@@ -960,6 +962,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
 
   sk_cmd->count = offset-1; // number of words in payload (excludes header)
+  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma((%p,%p,%d)\n",dst_addr,src_addr,size);
   xrt::scheduler::schedule(cmd);
 }
 
@@ -1262,6 +1265,13 @@ release_context(compute_unit* cu) const
   }
 
   return false;
+}
+
+size_t
+device::
+get_num_cdmas() const
+{
+  return xrt::config::get_cdma() ? m_xdevice->get_cdma_count() : 0;
 }
 
 xclbin
