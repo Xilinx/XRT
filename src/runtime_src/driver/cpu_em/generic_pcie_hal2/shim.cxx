@@ -701,7 +701,7 @@ namespace xclcpuemhal2 {
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (offset < i->size()) {
+      if (offset < i->start() + i->size()) {
         i->free(offset);
       }
     }
