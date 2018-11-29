@@ -1,5 +1,11 @@
 #!/bin/sh
 
+lsb_release -si | grep -Eq "^RedHat|^CentOS"
+if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
+	echo "Cleanup is skipped for package upgrade"
+	exit 0
+fi
+
 echo "Unloading old XRT Linux kernel modules"
 modprobe -r xocl
 modprobe -r xclmgmt
