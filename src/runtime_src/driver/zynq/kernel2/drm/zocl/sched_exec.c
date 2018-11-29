@@ -47,6 +47,10 @@
 #endif
 
 static struct scheduler global_scheduler0;
+/* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
+#define MAX_SCHED_LOOP 8
+static int    sched_loop_cnt;
+
 static struct sched_ops penguin_ops;
 static struct sched_ops ps_ert_ops;
 
@@ -1144,6 +1148,13 @@ scheduler_loop(struct scheduler *sched)
 
 	/* iterate all commands */
 	scheduler_iterate_cmds(sched);
+
+	if (sched_loop_cnt < MAX_SCHED_LOOP)
+		sched_loop_cnt++;
+	else {
+		sched_loop_cnt = 0;
+		schedule();
+	}
 }
 
 /**
@@ -1175,6 +1186,7 @@ init_scheduler_thread(void)
 	init_waitqueue_head(&global_scheduler0.wait_queue);
 	global_scheduler0.error = 0;
 	global_scheduler0.stop = 0;
+	sched_loop_cnt = 0;
 
 	INIT_LIST_HEAD(&global_scheduler0.command_queue);
 	global_scheduler0.poll = 0;
