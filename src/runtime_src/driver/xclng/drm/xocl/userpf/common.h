@@ -114,6 +114,11 @@ struct xocl_dev	{
 	struct percpu_ref ref;
 	struct completion cmp;
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+  struct dev_pagemap pgmap;
+#endif
+
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
