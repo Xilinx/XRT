@@ -105,6 +105,19 @@ static struct platform_device *find_pdev(char *name)
 	return pdev;
 }
 
+/**
+ * zocl_gem_create_object - Create drm_zocl_bo object instead of DRM CMA object.
+ *
+ * @dev: DRM device struct
+ * @size: This size was not use, just to match function prototype.
+ *
+ */
+struct drm_gem_object *
+zocl_gem_create_object(struct drm_device *dev, size_t size)
+{
+	return kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+}
+
 void zocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_zocl_bo *zocl_obj;
@@ -335,6 +348,7 @@ static struct drm_driver zocl_driver = {
 	.postclose                 = zocl_client_release,
 	.gem_free_object           = zocl_free_bo,
 	.gem_vm_ops                = &zocl_bo_vm_ops,
+	.gem_create_object         = zocl_gem_create_object,
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
 	.gem_prime_import          = drm_gem_prime_import,
