@@ -60,6 +60,10 @@
 # define SCHED_DEBUG_PACKET(packet,size)
 #endif
 
+/* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
+#define MAX_SCHED_LOOP 8
+static int    sched_loop_cnt;
+
 /* Forward declaration */
 struct exec_core;
 struct sched_ops;
@@ -1543,6 +1547,13 @@ scheduler_loop(struct xocl_sched *xs)
 
 	/* iterate all commands */
 	scheduler_iterate_cmds(xs);
+
+	if (sched_loop_cnt < MAX_SCHED_LOOP)
+		sched_loop_cnt++;
+	else {
+		sched_loop_cnt = 0;
+		schedule();
+	}
 }
 
 /**
@@ -1569,6 +1580,8 @@ init_scheduler_thread(void)
 	SCHED_DEBUGF("init_scheduler_thread use_count=%d\n",global_scheduler0.use_count);
 	if (global_scheduler0.use_count++)
 		return 0;
+
+	sched_loop_cnt = 0;
 
 	init_waitqueue_head(&global_scheduler0.wait_queue);
 	INIT_LIST_HEAD(&global_scheduler0.command_queue);
