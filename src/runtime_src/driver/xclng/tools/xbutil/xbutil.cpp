@@ -1137,7 +1137,7 @@ static int getEccMemTags(const pcidev::pci_device *dev,
 
     // Only support DDR4 mem controller for ECC status
     for(int32_t i = 0; i < map->m_count; i++) {
-        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+        if(!map->m_mem_data[i].m_used)
             continue;
         tags.emplace_back(
             reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
@@ -1147,15 +1147,6 @@ static int getEccMemTags(const pcidev::pci_device *dev,
         std::cout << "No supported ECC controller detected!" << std::endl;
         return -ENOENT;
     }
-
-    // See if xclbin contains ECC base addresses for supported in-use DDR type
-    unsigned onoff = 0;
-    dev->mgmt->sysfs_get(tags[0], "ecc_enabled", errmsg, onoff);
-    if (!errmsg.empty()) {
-        std::cout << "No supported ECC controller detected!" << std::endl;
-        return -ENOENT;
-    }
-
     return 0;
 }
 
@@ -1205,6 +1196,8 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
         unsigned status = 0;
         std::string st;
         dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
+        if (!errmsg.empty())
+            continue;
         err = eccStatus2String(status, st);
         if (err)
             return err;
