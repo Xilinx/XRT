@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Embedded Runtime Library &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Embedded Runtime Library &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,10 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="Multi-Process Support" href="multiprocess.html"/>
         <link rel="prev" title="Tools and Utilities" href="tools.html"/> 
 
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,17 +87,22 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Embedded Runtime Library</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -105,8 +116,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -115,23 +128,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Embedded Runtime Library</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Embedded Runtime Library</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/ert.main.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/ert.main.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -139,47 +169,16 @@
             
   <div class="section" id="embedded-runtime-library">
 <h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
-<dt id="c._ERT_H_">
-<code class="descname">_ERT_H_</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c._ERT_H_" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<p><strong>Parameters</strong></p>
-<p><strong>Description</strong></p>
-<blockquote>
-<div><p>This file is dual licensed.  It may be redistributed and/or modified
-under the terms of the Apache 2.0 License OR version 2 of the GNU
-General Public License.</p>
-<p>Apache License Verbiage</p>
-<p>Licensed under the Apache License, Version 2.0 (the &#8220;License&#8221;);
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at</p>
-<p><a class="reference external" href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a></p>
-<p>Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an &#8220;AS IS&#8221; BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.</p>
-<p>GPL license Verbiage:</p>
-<p>This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the
-License, or (at your option) any later version.  This program is
-distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
-License for more details.  You should have received a copy of the
-GNU General Public License along with this program; if not, write
-to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
-Boston, MA 02111-1307 USA</p>
-</div></blockquote>
+<p><strong>Xilinx SDAccel Embedded Runtime definition</strong></p>
+<p>Header file <em>ert.h</em> defines data structures used by Emebdded Runtime (ERT) and
+XRT <a class="reference internal" href="xclhal2.main.html#c.xclExecBuf" title="xclExecBuf"><code class="xref c c-func docutils literal"><span class="pre">xclExecBuf()</span></code></a> API.</p>
 <dl class="type">
 <dt id="c.ert_packet">
 struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.ert_packet" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct ert_packet {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct ert_packet {
   union {unnamed_union};
   uint32_t data;
 };
@@ -198,7 +197,7 @@ struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" h
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct ert_start_kernel_cmd {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct ert_start_kernel_cmd {
   union {unnamed_union};
   uint32_t cu_mask;
   uint32_t data;
@@ -224,7 +223,7 @@ struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct ert_configure_cmd {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct ert_configure_cmd {
   union {unnamed_union};
   uint32_t slot_size;
   uint32_t num_cus;
@@ -235,6 +234,7 @@ struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href
   uint32_t cu_dma:1;
   uint32_t cu_isr:1;
   uint32_t cq_int:1;
+  uint32_t cdma:1;
   uint32_t dsa52:1;
   uint32_t data;
 };
@@ -262,6 +262,8 @@ struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href
 <dd>1         enable CUISR custom module for HW scheduler</dd>
 <dt><code class="docutils literal"><span class="pre">cq_int</span></code></dt>
 <dd>1         enable interrupt from host to HW scheduler</dd>
+<dt><code class="docutils literal"><span class="pre">cdma</span></code></dt>
+<dd>1           enable CDMA kernel</dd>
 <dt><code class="docutils literal"><span class="pre">dsa52</span></code></dt>
 <dd>1          reserved for internal use</dd>
 <dt><code class="docutils literal"><span class="pre">data</span></code></dt>
@@ -273,7 +275,7 @@ struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct ert_abort_cmd {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct ert_abort_cmd {
   union {unnamed_union};
 };
 </pre></div>
@@ -402,6 +404,18 @@ MB(W)</p>
 
 <p><strong>Parameters</strong></p>
 <dl class="function">
+<dt id="c.ERT_STOP_CMD">
+<code class="descname">ERT_STOP_CMD</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_STOP_CMD" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="function">
+<dt id="c.ERT_HLS_MODULE_IDLE">
+<code class="descname">ERT_HLS_MODULE_IDLE</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_HLS_MODULE_IDLE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="function">
 <dt id="c.ERT_INTC_IPR_ADDR">
 <code class="descname">ERT_INTC_IPR_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_INTC_IPR_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -413,15 +427,18 @@ MB(W)</p>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="multiprocess.html" class="btn btn-neutral float-right" title="Multi-Process Support" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="multiprocess.html" class="btn btn-neutral float-right" title="Multi-Process Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="tools.html" class="btn btn-neutral" title="Tools and Utilities" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tools.html" class="btn btn-neutral" title="Tools and Utilities" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -452,10 +469,11 @@ MB(W)</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

@@ -19,7 +19,7 @@ Tools of the Trade
 ``xclbinsplit``
    Unpack an ``xclbin``
 XRT API Trace
-   Run failing application with HAL logging enabled in ``sdaccel.ini`` ::
+   Run failing application with XRT logging enabled in ``sdaccel.ini`` ::
 
      [Runtime]
      hal_log=myfail.log
@@ -68,7 +68,7 @@ flags to ``xclAllocBO()`` and ``xclAllocUserPtr()``.
 If an application is producing incorrect results it is important to
 review the host code to ensure that host application and ``xclbin``
 agree on memory topology. One way to validate this at runtime is to
-enable HAL logging in ``sdaccel.ini`` and then carefully go through
+enable XRT logging in ``sdaccel.ini`` and then carefully go through
 all buffer allocation requests.
 
 Memory Read Before Write

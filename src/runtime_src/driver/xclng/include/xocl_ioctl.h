@@ -43,6 +43,9 @@
  * backed by scatter gather list -- which provides backing storage on host -- and the corresponding device
  * side allocation of contiguous buffer in one of the memory mapped DDRs/BRAMs, etc.
  *
+ * Exection model is asynchronous where execute commands are submitted using command buffers and POSIX poll
+ * is used to wait for finished commands. Commands for a compute unit can only be submitted after an explicit
+ * context has been opened by the client.
  *
  * *xocl* driver functionality is described in the following table. All the APIs are multi-threading and
  * multi-process safe.
@@ -62,12 +65,16 @@
  * 6    Update bo backing storage with user's  DRM_IOCTL_XOCL_PWRITE_BO       drm_xocl_pwrite_bo
  *      data
  * 7    Read back data in bo backing storage   DRM_IOCTL_XOCL_PREAD_BO        drm_xocl_pread_bo
- * 8    Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
- * 9    Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
- * 10   Obtain device usage statistics         DRM_IOCTL_XOCL_USAGE_STAT      drm_xocl_usage_stat
- * 11   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
+ * 8    Open/close a context on a compute unit DRM_XOCL_CTX                   drm_xocl_ctx
+ *      on the device
+ * 9    Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
+ * 10   Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
+ * 11   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
+ * 12   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
- * 12   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ * 13   Update device view with a specific     DRM_XOCL_READ_AXLF             drm_xocl_axlf
+ *      xclbin image
+ * 14   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  *      buffer
  * ==== ====================================== ============================== ==================================
  */
@@ -122,7 +129,7 @@ enum drm_xocl_ops {
 	DRM_XOCL_PREAD_BO,
 	/* Other ioctls */
 	DRM_XOCL_OCL_RESET,
-	/* Currently unused */
+	/* Open/close a context */
 	DRM_XOCL_CTX,
 	/* Get information from device */
 	DRM_XOCL_INFO,
@@ -322,6 +329,17 @@ enum drm_xocl_ctx_code {
 #define XOCL_CTX_SHARED    0x0
 #define XOCL_CTX_EXCLUSIVE 0x1
 
+/**
+ * struct drm_xocl_ctx - Open or close a context on a compute unit on device
+ * used with DRM_XOCL_CTX ioctl
+ *
+ * @op:            Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)
+ * @xclbin_id:	   UUID of the device image (xclbin)
+ * @cu_index:	   Index of the compute unit in the device inage for which
+ *                 the request is being made
+ * @flags:	   Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
+ * @handle:	   Unused
+ */
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
         xuid_t   xclbin_id;
@@ -417,19 +435,6 @@ struct drm_xocl_debug {
         uint64_t code_ptr;
 };
 
-/*
- * Opcodes for the embedded scheduler provided by the client to the driver
- */
-enum drm_xocl_execbuf_code {
-        DRM_XOCL_EXECBUF_RUN_KERNEL = 0,
-        DRM_XOCL_EXECBUF_RUN_KERNEL_XYZ,
-        DRM_XOCL_EXECBUF_PING,
-        DRM_XOCL_EXECBUF_DEBUG,
-};
-
-/*
- * State of exec request managed by the kernel driver
- */
 enum drm_xocl_execbuf_state {
         DRM_XOCL_EXECBUF_STATE_COMPLETE = 0,
         DRM_XOCL_EXECBUF_STATE_RUNNING,
@@ -439,17 +444,16 @@ enum drm_xocl_execbuf_state {
         DRM_XOCL_EXECBUF_STATE_ABORT,
 };
 
-/*
- * Layout of BO of EXECBUF kind
- */
-struct drm_xocl_execbuf_bo {
-        enum drm_xocl_execbuf_state state;
-        enum drm_xocl_execbuf_code code;
-        uint64_t cu_bitmap;
-        uint64_t token;
-        char buf[3584]; // inline regmap layout
-};
 
+/**
+ * struct drm_xocl_execbuf - Submit a command buffer for execution on a compute unit
+ * used with DRM_IOCTL_XOCL_EXECBUF ioctl
+ *
+ * @ctx_id:         Pass 0
+ * @exec_bo_handle: BO handle of command buffer formatted as ERT command
+ * @deps:	    Upto 8 dependency command BO handles this command is dependent on
+ *                  for automatic event dependency handling by ERT
+ */
 struct drm_xocl_execbuf {
         uint32_t ctx_id;
         uint32_t exec_bo_handle;
@@ -470,7 +474,7 @@ struct drm_xocl_user_intr {
         int msix;
 };
 
-/**
+/*
  * Core ioctls numbers
  */
 
@@ -483,7 +487,7 @@ struct drm_xocl_user_intr {
 #define DRM_IOCTL_XOCL_SYNC_BO	      DRM_IOW (DRM_COMMAND_BASE +       \
 					       DRM_XOCL_SYNC_BO, struct drm_xocl_sync_bo)
 #define DRM_IOCTL_XOCL_COPY_BO        DRM_IOW (DRM_COMMAND_BASE +       \
-                 DRM_XOCL_COPY_BO, struct drm_xocl_copy_bo)
+                                               DRM_XOCL_COPY_BO, struct drm_xocl_copy_bo)
 #define DRM_IOCTL_XOCL_INFO_BO	      DRM_IOWR(DRM_COMMAND_BASE +       \
 					       DRM_XOCL_INFO_BO, struct drm_xocl_info_bo)
 #define DRM_IOCTL_XOCL_PWRITE_BO      DRM_IOW (DRM_COMMAND_BASE +       \

@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Linux Sys FileSystem Nodes &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Linux Sys FileSystem Nodes &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,10 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="Tools and Utilities" href="tools.html"/>
         <link rel="prev" title="User Physical Function" href="xocl_ioctl.main.html"/> 
 
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,11 +87,15 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Linux Sys FileSystem Nodes</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Linux Sys FileSystem Nodes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xocl">xocl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xclmgmt">xclmgmt</a></li>
 </ul>
@@ -96,6 +106,7 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -109,8 +120,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -119,23 +132,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Linux Sys FileSystem Nodes</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Linux Sys FileSystem Nodes</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/sysfs.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/sysfs.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -143,27 +173,43 @@
             
   <div class="section" id="linux-sys-filesystem-nodes">
 <h1>Linux Sys FileSystem Nodes<a class="headerlink" href="#linux-sys-filesystem-nodes" title="Permalink to this headline">¶</a></h1>
-<p><em>xocl</em> and <em>xclmgmt</em> drivers expose several sysfs nodes under the pci device root node.</p>
+<p><code class="docutils literal"><span class="pre">xocl</span></code> and <code class="docutils literal"><span class="pre">xclmgmt</span></code> drivers expose several <code class="docutils literal"><span class="pre">sysfs</span></code> nodes under
+the <code class="docutils literal"><span class="pre">pci</span></code> device root node.</p>
 <div class="section" id="xocl">
 <h2>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h2>
-<p>xocl driver exposes various sections of xclbin image including the xclbin Id on sysfs. This makes it very convenient for tools (such as <em>xbutil</em>) to discover characteristics of image currently loaded on the FPGA. The data layout of xclbin sections are defined in file <em>xclbin.h</em> which can be found under <code class="docutils literal"><span class="pre">runtime/driver/include</span> <span class="pre">directory</span></code>.</p>
-<ol class="arabic simple">
-<li>ip_layout
-Exposes IP LAYOUT section of xclbin</li>
-<li>connectivity
-Exposes CONNECTIVITY section of xclbin</li>
-<li>mem_topology
-Exposes MEM TOPOLOGY section of xclbin</li>
-<li>xclbinid
-Exposes xclbin unique identifier</li>
-</ol>
+<p>The <code class="docutils literal"><span class="pre">xocl</span></code> driver exposes various sections of the <code class="docutils literal"><span class="pre">xclbin</span></code> image
+including the <code class="docutils literal"><span class="pre">xclbin</span></code> <code class="docutils literal"><span class="pre">Id</span></code> on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it very
+convenient for tools (such as <code class="docutils literal"><span class="pre">xbutil</span></code>) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of <code class="docutils literal"><span class="pre">xclbin</span></code>
+sections are defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code> which can be found under
+<code class="docutils literal"><span class="pre">runtime/driver/include</span></code> directory.</p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">ip_layout</span></code></dt>
+<dd>Exposes IP LAYOUT section of <code class="docutils literal"><span class="pre">xclbin</span></code></dd>
+<dt><code class="docutils literal"><span class="pre">connectivity</span></code></dt>
+<dd>Exposes CONNECTIVITY section of <code class="docutils literal"><span class="pre">xclbin</span></code></dd>
+<dt><code class="docutils literal"><span class="pre">mem_topology</span></code></dt>
+<dd>Exposes MEM TOPOLOGY section of <code class="docutils literal"><span class="pre">xclbin</span></code></dd>
+<dt><code class="docutils literal"><span class="pre">xclbinid</span></code></dt>
+<dd>Exposes <code class="docutils literal"><span class="pre">xclbin</span></code> unique identifier</dd>
+</dl>
 </div>
 <div class="section" id="xclmgmt">
 <h2>xclmgmt<a class="headerlink" href="#xclmgmt" title="Permalink to this headline">¶</a></h2>
-<p>xclmgmt driver exposes the instance number (suffix used in /dev/xclmgmt%d) on sysfs. This makes it convenient to uniquely map a PCIe slot on sysfs to /dev/xclmgmt%d device node created by the driver.</p>
-<p>Device sensors are exposed as standard <code class="docutils literal"><span class="pre">hwmon</span></code> file hierarchy. Two hwmon nodes are created: <em>sysmon</em> and <em>microblaze</em>. sysmon exposes device temperature and voltages. microblaze exposes device currents on various rails by using an embedded board management firmware. Values with _input suffix represent live values. Thie values are compatible with Linux standard <em>lm-sensors</em> tool.</p>
-<p>For example if the bus number of mgmt physical function is <code class="docutils literal"><span class="pre">0000:01:00.1</span></code> then hwmon would show up under <code class="docutils literal"><span class="pre">/sys/bus/pci/devices/0000:01:00.1</span></code>. See sample session log below:</p>
-<div class="highlight-none"><div class="highlight"><pre>dx4300:~&gt;tree -L 1 /sys/bus/pci/devices/0000:01:00.1/hwmon
+<p><code class="docutils literal"><span class="pre">xclmgmt</span></code> driver exposes the instance number (suffix used in
+<code class="docutils literal"><span class="pre">/dev/xclmgmt%d</span></code>) on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it convenient to uniquely map a
+PCIe slot on <code class="docutils literal"><span class="pre">sysfs</span></code> to <code class="docutils literal"><span class="pre">/dev/xclmgmt%d</span></code> device node created by the
+driver.</p>
+<p>Device sensors are exposed as standard <code class="docutils literal"><span class="pre">hwmon</span></code> file hierarchy. Two
+<code class="docutils literal"><span class="pre">hwmon</span></code> nodes are created: <code class="docutils literal"><span class="pre">sysmon</span></code> and <code class="docutils literal"><span class="pre">microblaze</span></code>. <code class="docutils literal"><span class="pre">sysmon</span></code>
+exposes device temperature and voltages. <code class="docutils literal"><span class="pre">microblaze</span></code> exposes device
+currents on various rails by using an embedded board management
+firmware. Values with <code class="docutils literal"><span class="pre">_input</span></code> suffix represent live values. The
+values are compatible with the Linux standard <code class="docutils literal"><span class="pre">lm-sensors</span></code> tool.</p>
+<p>For example if the bus address of a physical function is
+<code class="docutils literal"><span class="pre">0000:01:00.1</span></code> then <code class="docutils literal"><span class="pre">hwmon</span></code> would show up under
+<code class="docutils literal"><span class="pre">/sys/bus/pci/devices/0000:01:00.1</span></code>. See sample session log below:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>dx4300:~&gt;tree -L 1 /sys/bus/pci/devices/0000:01:00.1/hwmon
 /sys/bus/pci/devices/0000:01:00.1/hwmon
 ├── hwmon3
 └── hwmon4
@@ -196,15 +242,18 @@ temp1:        +46.6°C  (lowest = +36.1°C, highest = +48.8°C)
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tools.html" class="btn btn-neutral float-right" title="Tools and Utilities" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tools.html" class="btn btn-neutral float-right" title="Tools and Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xocl_ioctl.main.html" class="btn btn-neutral" title="User Physical Function" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral" title="User Physical Function" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -235,10 +284,11 @@ temp1:        +46.6°C  (lowest = +36.1°C, highest = +48.8°C)
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Binary Formats &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Binary Formats &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,10 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="System Requirements" href="system_requirements.html"/>
         <link rel="prev" title="Multi-Process Support" href="multiprocess.html"/> 
 
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,21 +87,26 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Binary Formats</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Binary Formats</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xclbin">xclbin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#feature-rom">Feature ROM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -109,8 +120,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -119,23 +132,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Binary Formats</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Binary Formats</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/formats.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/formats.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -145,28 +175,56 @@
 <h1>Binary Formats<a class="headerlink" href="#binary-formats" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="xclbin">
 <h2>xclbin<a class="headerlink" href="#xclbin" title="Permalink to this headline">¶</a></h2>
-<p>xclbin container format is defined in file <em>xclbin.h</em>. Since 2017.1 tools use xclbin2 format also known as AXLF format. AXLF is an extensible, future proof container of (bitstream/platform) hardware as well as software (MPSoC/Microblaze elf files) design data.  This unified container can hold outputs of our hardware compilers (sdaccel xocc) as well as software compilers (processor elf formats for MPSoc/Microblaze). This allows for easier integration of embedded processors and SDx on the same device. It also has structures to describe the memory topology, acceleration kernel instantiations and kernel connectivity for each kernel.</p>
-<p>The compiler generates unique xclbin file for every design compiled. Runtime loadsThe vivado front end tools programtically populate this file (layout described in driver/include/xclbin.h, attached) and then the device drivers read the information and apply it accordingly.</p>
-<p>The path to xclbin.h is <code class="docutils literal"><span class="pre">runtime/driver/include/xclbin.h</span></code> under SDx installation directory.</p>
+<p><code class="docutils literal"><span class="pre">xclbin</span></code> container format is defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code>. Since
+2017.1, tools use <code class="docutils literal"><span class="pre">xclbin2</span></code> format also known as AXLF format. AXLF is
+an extensible, future-proof container of (bitstream/platform) hardware
+as well as software (MPSoC/Microblaze ELF files) design data.  This
+unified container can hold outputs of our hardware compilers (SDAccel
+<code class="docutils literal"><span class="pre">xocc</span></code>) as well as software compilers (processor ELF formats for
+MPSoc/Microblaze). This allows for easier integration of embedded
+processors and SDx on the same device. It also has structures to
+describe the memory topology, acceleration kernel instantiations and
+kernel connectivity for each kernel.</p>
+<p>The compiler generates unique <code class="docutils literal"><span class="pre">xclbin</span></code> file for every design
+compiled. The Vivado front-end tools programmatically
+populate this file (layout described in <code class="docutils literal"><span class="pre">driver/include/xclbin.h</span></code>,
+attached) and then the runtime &amp; device drivers read the information and apply
+it accordingly.</p>
+<p>The path to <code class="docutils literal"><span class="pre">xclbin.h</span></code> is <code class="docutils literal"><span class="pre">runtime/driver/include/xclbin.h</span></code> under
+SDx installation directory.</p>
 </div>
 <div class="section" id="feature-rom">
 <h2>Feature ROM<a class="headerlink" href="#feature-rom" title="Permalink to this headline">¶</a></h2>
-<p>Feature ROM is like a BIOS like table for FPGA which describes key properties of the device like its name and features enabled in the Shell of the platform. The format for the data in Feature ROM is defined in file <em>xclfeatures.h</em>. It a section of memory mapped BRAM memory which can be used for data sharing, error checking, functionality discover and optimizations in SDx. The Vivado tools will programmatically capture and populate BRAM memory in the platform during platform creation time. Runtime components like drivers read it and enable functionality in driver and also use the information to perform hardware/software compatibilty checks.</p>
-<p>The path to xclfeatures.h is <code class="docutils literal"><span class="pre">runtime/driver/include/xclfeatures.h</span></code> under SDx installation directory.</p>
+<p>Feature ROM is like a BIOS like table for FPGA which describes key
+properties of the device like its name and features enabled in the
+Shell of the platform. The format for the data in Feature ROM is
+defined in file <code class="docutils literal"><span class="pre">xclfeatures.h</span></code>. It a section of memory mapped BRAM
+memory which can be used for data sharing, error checking,
+functionality discover and optimizations in SDx. The Vivado tools will
+programmatically capture and populate BRAM memory in the platform
+during platform creation time. Runtime components like drivers read it
+and enable functionality in driver and also use the information to
+perform hardware/software compatibility checks.</p>
+<p>The path to <code class="docutils literal"><span class="pre">xclfeatures.h</span></code> is
+<code class="docutils literal"><span class="pre">runtime/driver/include/xclfeatures.h</span></code> under SDx installation
+directory.</p>
 </div>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
            </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="system_requirements.html" class="btn btn-neutral float-right" title="System Requirements" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="system_requirements.html" class="btn btn-neutral float-right" title="System Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="multiprocess.html" class="btn btn-neutral" title="Multi-Process Support" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="multiprocess.html" class="btn btn-neutral" title="Multi-Process Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -197,10 +255,11 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
