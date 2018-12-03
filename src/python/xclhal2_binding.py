@@ -9,7 +9,9 @@ xclDeviceHandle = c_void_p
 
 
 class xclDeviceInfo2(Structure):
-    fields_= [
+    # "_fields_" is a required keyword
+
+    _fields_= [
      ("mMagic", c_uint),
      ("mName", c_char*256),
      ("mHALMajorVersion", c_ushort),
@@ -161,8 +163,10 @@ def xclClose(handle):
 def xclProbe():
     return libc.xclProbe()
 
+
 def xclVersion():
     return libc.xclVersion()
+
 
 def xclOpen(deviceIndex, logFileName, level):
     """
@@ -173,7 +177,7 @@ def xclOpen(deviceIndex, logFileName, level):
     :param level: (int) Severity level of messages to log
     :return: device handle
     """
-    libc.xclOpen.restype = xclDeviceHandle
+    libc.xclOpen.restype = POINTER(xclDeviceHandle)
     libc.xclOpen.argtypes = [c_uint, c_char_p, c_int]
     return libc.xclOpen(deviceIndex, logFileName, level)
 

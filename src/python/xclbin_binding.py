@@ -77,6 +77,6 @@ class axlf (Structure):
 #  libc.get_axlf_section.restype = POINTER(axlf_section_header)
 #  libc.get_axlf_scetion.argtypes = [POINTER(axlf), c_int]#axlf_section_kind]
 #  return libc.get_axlf_section(top, kind)
-    
-    
+#
+#
 # print("get_axlf_section %s") %get_axlf_section("kernel.xclbin",1)
