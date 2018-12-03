@@ -81,13 +81,11 @@ def main(args):
     try:
         handle = xclDeviceHandle()
         cu_base_addr = 0
-        if initXRT(opt.bitstreamFile, opt.index, opt.halLogFile, handle, opt.cu_index,
-                       cu_base_addr, opt.first_mem):
+        if initXRT(opt):  # opt.bitstreamFile, opt.index, opt.halLogFile, handle, opt.cu_index,cu_base_addr, opt.first_mem
             return 1
 
         print(opt.first_mem)
         if opt.first_mem < 0:
-            print("shouldn't go in here")
             return 1
 
         boHandle1 = xclAllocBO(handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
@@ -100,7 +98,7 @@ def main(args):
         testVector = "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n"
         bo1 = testVector
 
-        # if xclSyncBO(handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
+        # if xclSyncBO(handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
         #     print("s")
         #     return 1
 
@@ -112,14 +110,14 @@ def main(args):
         #     return 1
 
         # Allocate the exec_bo unsigned
-        execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, 1)
+        execHandle = xclAllocBO(handle, opt.DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, 1)
 
         # Get the output
 
-        if xclSyncBO(handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, False):
+        if xclSyncBO(handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, False):
             bo2 = xclMapBO(handle, boHandle1, False)
             # return 1
-            if len(bo1) == len(bo2) and all(x == y for x, y in zip(bo1,bo2)):
+            if len(bo1) == len(bo2) and all(x == y for x, y in zip(bo1, bo2)):
                 print("FAILED TEST")
                 print("Value read back does not match value written")
                 # return 1

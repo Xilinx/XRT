@@ -3,27 +3,26 @@ import sys
 sys.path.append('../../../src/python/')
 from xclbin_binding import *
 from xclhal2_binding import *
-import main
+
 
 libc = CDLL("../../../build/Debug/opt/xilinx/xrt/lib/libxrt_core.so")
 
 handle = xclDeviceHandle
 
 
-def initXRT(bit, deviceIndex, halLog, handle, cu_index, cu_base_addr, first_mem_used):
+def initXRT(opt):
     deviceInfo = xclDeviceInfo2()
-    if deviceIndex >= xclProbe():
+    if opt.index >= xclProbe():
         print("Error")
         return -1
 
-    handle = xclOpen(deviceIndex, halLog, xclVerbosityLevel.XCL_INFO)
-    print(type(handle))
+    handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
     if xclGetDeviceInfo2(handle, byref(deviceInfo)):
         print("Error 2")
         return -1
 
     print("DSA = %s") % deviceInfo.mName
-    print("Index = %s") % deviceIndex
+    print("Index = %s") % opt.index
     print("PCIe = GEN%s" + " x %s") % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth)
     print("OCL Frequency = %s MHz") % deviceInfo.mOCLFrequency[0]
     print("DDR Bank = %s") % deviceInfo.mDDRBankCount
@@ -31,15 +30,15 @@ def initXRT(bit, deviceIndex, halLog, handle, cu_index, cu_base_addr, first_mem_
     print("MIG Calibration = %s") % deviceInfo.mMigCalib
 
     cu_base_addr = 0xffffffffffffffff  # long
-    if not bit or not len(bit):
-        print(bit)
+    if not opt.bitstreamFile or not len(opt.bitstreamFile):
+        print(opt.bitstreamFile)
         return 0
 
     if xclLockDevice(handle):
         print("Cannot unlock device")
         sys.exit()
 
-    tempFileName = bit[:]
+    tempFileName = opt.bitstreamFile[:]
     print(tempFileName)
 
     with open(tempFileName, "rb") as f:
@@ -51,10 +50,9 @@ def initXRT(bit, deviceIndex, halLog, handle, cu_index, cu_base_addr, first_mem_
         if xclLoadXclBin(handle, f.read()):
             print("Bitsream download failed")
 
-        print("Finished downloading bitstream %s") % bit
+        print("Finished downloading bitstream %s") % opt.bitstreamFile
         # 83
-        print("<<<<<<<<<<<")
-        first_mem_used = 1
+        opt.first_mem = 1
     return 0
 
 
