@@ -46,6 +46,10 @@
 # define SCHED_DEBUG(format, ...)
 #endif
 
+/* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
+#define MAX_SCHED_LOOP 8
+static int    sched_loop_cnt;
+
 static struct scheduler g_sched0;
 static struct sched_ops penguin_ops;
 static struct sched_ops ps_ert_ops;
@@ -1162,6 +1166,13 @@ scheduler_loop(struct scheduler *sched)
 
 	/* iterate all commands */
 	scheduler_iterate_cmds(sched);
+
+	if (sched_loop_cnt < MAX_SCHED_LOOP)
+		sched_loop_cnt++;
+	else {
+		sched_loop_cnt = 0;
+		schedule();
+	}
 }
 
 /**
@@ -1191,6 +1202,8 @@ init_scheduler_thread(void)
 	SCHED_DEBUG("init_scheduler_thread use_count=%d\n", g_sched0.use_count);
 	if (g_sched0.use_count++)
 		return 0;
+
+	sched_loop_cnt = 0;
 
 	init_waitqueue_head(&g_sched0.wait_queue);
 	g_sched0.error = 0;
