@@ -909,7 +909,7 @@ XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsig
  */
 
 enum {
-	/* keep in sync with cl_stream_type */
+	/* Enum for xclQueueContext.flags */
 	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
 };
 
