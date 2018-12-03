@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Xilinx Runtime (XRT) Architecture &mdash; Xilinx Runtime 2018.3 documentation</title>
+  <title>Yocto Recipes For Embedded Flow &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
   
@@ -35,8 +35,9 @@
         <link rel="index" title="Index"
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="#"/>
-        <link rel="next" title="Xilinx Runtime (XRT) Core Library" href="xclhal2.main.html"/> 
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
+        <link rel="next" title="Developer Build and Test Instructions" href="test.html"/>
+        <link rel="prev" title="Building and Installing Software Stack" href="build.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -55,7 +56,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> Xilinx Runtime
           
 
           
@@ -90,7 +91,7 @@
             
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
@@ -102,7 +103,10 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Yocto Recipes For Embedded Flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#tbd">TBD</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -119,7 +123,7 @@
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">Xilinx Runtime</a>
+          <a href="index.html">Xilinx Runtime</a>
         
       </nav>
 
@@ -147,15 +151,15 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#">Docs</a> &raquo;</li>
+      <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Xilinx Runtime (XRT) Architecture</li>
+      <li>Yocto Recipes For Embedded Flow</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/yocto.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -168,32 +172,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xilinx-runtime-xrt-architecture">
-<h1>Xilinx Runtime (XRT) Architecture<a class="headerlink" href="#xilinx-runtime-xrt-architecture" title="Permalink to this headline">¶</a></h1>
-<p>Xilinx Runtime (XRT) is implemented as a combination of userspace and kernel
-driver components. XRT supports both PCIe based accelerator cards and MPSoC
-based embedded architecture provides standardized software interface to Xilinx
-FPGA. The key user APIs are defined in <code class="docutils literal"><span class="pre">xclhal2.h</span></code> header file.</p>
-<div align="center" class="align-center"><img alt="_images/XRT-Layers.svg" src="_images/XRT-Layers.svg" /></div>
-<hr class="docutils" />
-<div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
-</ul>
+  <div class="section" id="yocto-recipes-for-embedded-flow">
+<h1>Yocto Recipes For Embedded Flow<a class="headerlink" href="#yocto-recipes-for-embedded-flow" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="tbd">
+<h2>TBD<a class="headerlink" href="#tbd" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 
@@ -207,8 +189,10 @@ FPGA. The key user APIs are defined in <code class="docutils literal"><span clas
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xclhal2.main.html" class="btn btn-neutral float-right" title="Xilinx Runtime (XRT) Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="test.html" class="btn btn-neutral float-right" title="Developer Build and Test Instructions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
+      
+        <a href="build.html" class="btn btn-neutral" title="Building and Installing Software Stack" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

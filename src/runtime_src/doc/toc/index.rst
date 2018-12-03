@@ -21,10 +21,12 @@ FPGA. The key user APIs are defined in ``xclhal2.h`` header file.
    xocl_ioctl.main.rst
    sysfs.rst
    tools.rst
+   xclbintools.rst
    ert.main.rst
    multiprocess.rst
    formats.rst
    system_requirements.rst
    build.rst
+   yocto.rst
    test.rst
    debug-faq.rst
