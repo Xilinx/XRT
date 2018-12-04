@@ -33,6 +33,7 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
+#include "mgmt-core.h"
 
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
@@ -1647,6 +1648,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct mem_topology* memtopo = NULL;
 	bool dna_check = false;
 	int i;
+	struct device *dev;
+	struct xclmgmt_dev *lro;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1720,6 +1723,15 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if(!need_download)
 		return 0;
 
+	// clean up lro->mem_topo if need to download xclbin
+	dev = pdev->dev.parent;
+	lro = (struct xclmgmt_dev *)dev_get_drvdata(dev);
+
+	if((struct mem_topology*)lro->mem_topo != NULL){
+		vfree(lro->mem_topo);
+		lro->mem_topo = NULL;
+	}
+
 	/*
 	 * Find sections in xclbin.
 	 */
@@ -1741,6 +1753,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		buffer, (void **)&memtopo, &section_size);
 	if (err != 0)
 		goto done;
+
 	if (sizeof_sect(memtopo, m_mem_data) > section_size) {
 		err = -EINVAL;
 		goto done;
@@ -1942,15 +1955,17 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			&bin_obj.m_header.m_timeStamp, 8);
 	}
 
+	lro->mem_topo = memtopo;
+
 done:
 	if (err) {
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
+		vfree(memtopo);
 	}
 dna_cert_fail:
 	mutex_unlock(&icap->icap_lock);
 	vfree(layout);
-	vfree(memtopo);
 	vfree(copy_buffer);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	return err;

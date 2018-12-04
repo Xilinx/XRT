@@ -63,6 +63,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		 fmt, ##args)
+#define MAX_M_COUNT      64
+
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)

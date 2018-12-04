@@ -106,6 +106,7 @@ struct xclmgmt_dev {
 #endif
 	int msix_user_start_vector;
 	bool ready;
+	struct mem_topology *mem_topo;
 };
 
 struct xclmgmt_char {

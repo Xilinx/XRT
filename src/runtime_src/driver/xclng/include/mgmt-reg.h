@@ -154,19 +154,6 @@ enum PFO_BARS {
 #define XHWICAP_RFO             HWICAP_BASE+0x118
 #define XHWICAP_ASR             HWICAP_BASE+0x11c
 
-/**
- * Bitstream header information.
- */
-typedef struct {
-	unsigned int HeaderLength;     /* Length of header in 32 bit words */
-	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
-	unsigned char *DesignName;     /* Design name read from bitstream header */
-	unsigned char *PartName;       /* Part name read from bitstream header */
-	unsigned char *Date;           /* Date read from bitstream header */
-	unsigned char *Time;           /* Bitstream creation time read from header */
-	unsigned int MagicLength;      /* Length of the magic numbers in header */
-} XHwIcap_Bit_Header;
-
 /* Used for parsing bitstream header */
 #define XHI_EVEN_MAGIC_BYTE     0x0f
 #define XHI_ODD_MAGIC_BYTE      0xf0

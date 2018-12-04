@@ -862,6 +862,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(lro);
 
+	vfree(lro->mem_topo);
 	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
 }

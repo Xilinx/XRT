@@ -343,10 +343,12 @@ public:
     void getMemTopology( const xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
-        std::vector<char> buf;
+        std::vector<char> buf, temp_buf;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
         const mem_topology *map = (mem_topology *)buf.data();
-        if(buf.empty())
+        const uint32_t *temp = (uint32_t *)temp_buf.data();
+        if(buf.empty() || temp_buf.empty())
             return;
 
         for(int i = 0; i < map->m_count; i++) {
@@ -358,16 +360,7 @@ public:
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
- 
-            /* TODO:
-             * Only 4 entries in mDimmTemp[]. m_count can be greater than 4, so this will
-             * overrun mDimmTemp[]. Fill any further entries with the data type (unsigned short)
-             * max value of 65535. This get's parsed as "N/A" by sensor_tree::get_pretty().
-             */
-            if( i < 4 )
-                ptMem.put( "temp",      m_devinfo.mDimmTemp[i] ); 
-            else
-                ptMem.put( "temp", 65535 ); 
+            ptMem.put( "temp",      temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
