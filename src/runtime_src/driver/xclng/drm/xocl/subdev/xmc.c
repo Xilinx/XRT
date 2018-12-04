@@ -821,10 +821,10 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 	}
 
-	if (count == size - offset)
-		nread = size-offset;
+	if (count < size - offset)
+		nread = count;
 	else
-		return 0;
+		nread = size - offset;
 
 	memcpy(buffer, temp, nread);
 	return nread;
