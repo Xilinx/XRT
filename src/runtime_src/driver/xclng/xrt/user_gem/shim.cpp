@@ -965,7 +965,7 @@ int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
     std::memset(info, 0, sizeof(xclDeviceUsage));
     std::memcpy(info->h2c, stat.h2c, sizeof(size_t) * 8);
     std::memcpy(info->c2h, stat.c2h, sizeof(size_t) * 8);
-    for (int i = 0; i < 8; i++) {
+    for (uint i = 0; i < std::min(ARRAY_SIZE(info->ddrMemUsed), ARRAY_SIZE(stat.mm)); i++) {
         info->ddrMemUsed[i] = stat.mm[i].memory_usage;
         info->ddrBOAllocated[i] = stat.mm[i].bo_count;
     }

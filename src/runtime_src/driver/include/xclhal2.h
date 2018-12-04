@@ -227,8 +227,8 @@ enum xclResetKind {
 struct xclDeviceUsage {
     size_t h2c[8];
     size_t c2h[8];
-    size_t ddrMemUsed[8];
-    unsigned ddrBOAllocated[8];
+    size_t ddrMemUsed[64];
+    unsigned ddrBOAllocated[64];
     unsigned totalContexts;
     uint64_t xclbinId[4];
     unsigned dma_channel_cnt;
