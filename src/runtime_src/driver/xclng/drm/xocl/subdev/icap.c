@@ -33,7 +33,7 @@
 #include "xclbin.h"
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
-#include "mgmt-core.h"
+#include "../mgmtpf/mgmt-core.h"
 
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
