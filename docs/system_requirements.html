@@ -95,8 +95,10 @@
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
@@ -105,7 +107,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#xilinx-accelerator-card">Xilinx Accelerator Card</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#software-platform">Software Platform</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#centos-rhel-7-4-7-5">CentOS/RHEL 7.4, 7.5</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#switching-to-c-11-build-environment">Switching to C++11 build environment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#switching-to-c-14-build-environment">Switching to C++14 build environment</a></li>
 </ul>
 </li>
 </ul>
@@ -113,6 +115,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -200,12 +203,12 @@
 </div>
 <div class="section" id="software-platform">
 <h2>Software Platform<a class="headerlink" href="#software-platform" title="Permalink to this headline">¶</a></h2>
-<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++11 features. The stack has been tested on RHEL/CentOS 7.4, 7.5 and Ubuntu 16.04.4 LTS, 18.04.1 LTS. CentOS/RHEL 7.4, 7.5 require additional steps to get C++11 tool set and a few dependent libraies. Please use the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.</p>
+<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++14 features. The stack has been tested on RHEL/CentOS 7.4, 7.5 and Ubuntu 16.04.4 LTS, 18.04.1 LTS. CentOS/RHEL 7.4, 7.5 require additional steps to get C++11 tool set and a few dependent libraies. Please use the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.</p>
 <div class="section" id="centos-rhel-7-4-7-5">
 <h3>CentOS/RHEL 7.4, 7.5<a class="headerlink" href="#centos-rhel-7-4-7-5" title="Permalink to this headline">¶</a></h3>
 <p>XRT requires <em>EPEL 7</em> and SCL repositories. The included xrtdeps.sh script will attempt to automatically configure the repositories and download the required dependent packages.</p>
-<div class="section" id="switching-to-c-11-build-environment">
-<h4>Switching to C++11 build environment<a class="headerlink" href="#switching-to-c-11-build-environment" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="switching-to-c-14-build-environment">
+<h4>Switching to C++14 build environment<a class="headerlink" href="#switching-to-c-14-build-environment" title="Permalink to this headline">¶</a></h4>
 <div class="highlight-none"><div class="highlight"><pre><span></span>scl enable devtoolset-6 bash
 </pre></div>
 </div>
