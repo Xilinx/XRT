@@ -72,7 +72,8 @@ enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM  = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
   XCL_DEBUG_READ_TYPE_SPM  = 2,
-  XCL_DEBUG_READ_TYPE_SSPM = 3
+  XCL_DEBUG_READ_TYPE_SSPM = 3,
+  XCL_DEBUG_READ_TYPE_SAM = 4
 };
 
 /* Debug counter results */
@@ -101,6 +102,17 @@ typedef struct {
   unsigned long long int StrStallCycles [XSSPM_MAX_NUMBER_SLOTS] ;
   unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS] ;
 } xclStreamingDebugCountersResults ;
+
+typedef struct {
+  unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
+} xclAccelMonitorCounterResults;
 
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,

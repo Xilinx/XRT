@@ -316,7 +316,19 @@ namespace xocl {
     return size;
   } 
 
-} // namespace xocl_gem
+  size_t XOCLShim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
+    size_t size = 0;
+
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id()
+      << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
+      << ", Read device counters..." << std::endl;
+    }
+    return 0;
+  }
+
+} 
+// namespace xocl_gem
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
@@ -328,6 +340,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+    case XCL_DEBUG_READ_TYPE_SAM :
+      return 0;
   case XCL_DEBUG_READ_TYPE_SSPM :
     return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     default:
