@@ -4,12 +4,12 @@ Building and Installing Software Stack
 XRT
 ~~~
 
-XRT requires C++11 compiler and a few development libraries bundled with modern Linux
+XRT requires C++14 compiler and a few development libraries bundled with modern Linux
 distribution. Please install the necessary tools and dependencies
 using the provided ``src/runtime_src/tools/scripts/xrtdeps.sh``
 
-On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
-is not applicable to Ubuntu which already has C++11 capable GCC.
+On RHEL/CentOS use devtoolset to switch to C++14 devlopment environment. This step
+is not applicable to Ubuntu which already has C++14 capable GCC.
 
 ::
 

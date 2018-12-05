@@ -358,7 +358,16 @@ public:
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      m_devinfo.mDimmTemp[i] );
+ 
+            /* TODO:
+             * Only 4 entries in mDimmTemp[]. m_count can be greater than 4, so this will
+             * overrun mDimmTemp[]. Fill any further entries with the data type (unsigned short)
+             * max value of 65535. This get's parsed as "N/A" by sensor_tree::get_pretty().
+             */
+            if( i < 4 )
+                ptMem.put( "temp",      m_devinfo.mDimmTemp[i] ); 
+            else
+                ptMem.put( "temp", 65535 ); 
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );

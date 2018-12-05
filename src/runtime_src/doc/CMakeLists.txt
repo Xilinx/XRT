@@ -10,8 +10,6 @@ file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
 
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-#execute_process(COMMAND mkdir -p ${DOC_CORE_DIR})
-#execute_process(COMMAND /bin/cp -rf ${XRT_DOC_TOC_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 file(GLOB XRT_DOC_SRC
   ${DOC_TOC_DIR}/*.rst

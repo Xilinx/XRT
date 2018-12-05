@@ -479,7 +479,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
 
-		DRM_INFO("DDR bank%d Info", i);
+		DRM_INFO("  Mem Index %d", i);
 		DRM_INFO("  Base Address:0x%llx\n", mem_data->m_base_address);
 		DRM_INFO("  Size:0x%lx", ddr_bank_size);
 		DRM_INFO("  Type:%d", mem_data->m_type);

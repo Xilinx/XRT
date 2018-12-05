@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
-        <link rel="next" title="Developer Build and Test Instructions" href="test.html"/>
+        <link rel="next" title="Yocto Recipes For Embedded Flow" href="yocto.html"/>
         <link rel="prev" title="System Requirements" href="system_requirements.html"/> 
 
   
@@ -95,8 +95,10 @@
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
@@ -112,6 +114,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#xrt-documentation">XRT Documentation</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
@@ -181,11 +184,11 @@
 <h1>Building and Installing Software Stack<a class="headerlink" href="#building-and-installing-software-stack" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="xrt">
 <h2>XRT<a class="headerlink" href="#xrt" title="Permalink to this headline">¶</a></h2>
-<p>XRT requires C++11 compiler and a few development libraries bundled with modern Linux
+<p>XRT requires C++14 compiler and a few development libraries bundled with modern Linux
 distribution. Please install the necessary tools and dependencies
 using the provided <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code></p>
-<p>On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
-is not applicable to Ubuntu which already has C++11 capable GCC.</p>
+<p>On RHEL/CentOS use devtoolset to switch to C++14 devlopment environment. This step
+is not applicable to Ubuntu which already has C++14 capable GCC.</p>
 <div class="highlight-none"><div class="highlight"><pre><span></span>scl enable devtoolset-6 bash
 </pre></div>
 </div>
@@ -250,7 +253,7 @@ xdg-open Release/runtime_src/doc/html/index.html
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="test.html" class="btn btn-neutral float-right" title="Developer Build and Test Instructions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="yocto.html" class="btn btn-neutral float-right" title="Yocto Recipes For Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="system_requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
