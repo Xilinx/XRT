@@ -348,10 +348,83 @@ namespace xocl {
   size_t XOCLShim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
     size_t size = 0;
 
+    /*
+      Here should read the version number
+      and return immediately if version 
+      is not supported
+    */
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
+      << ", " << XCL_PERF_MON_MEMORY << ", " << samResult
       << ", Read device counters..." << std::endl;
+    }
+
+    uint64_t sam_offsets[] = {
+        XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
+        XSAM_ACCEL_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_STALL_INT_OFFSET,
+        XSAM_ACCEL_STALL_STR_OFFSET,
+        XSAM_ACCEL_STALL_EXT_OFFSET,
+        XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_TOTAL_CU_START_OFFSET
+    };
+
+    uint64_t sam_upper_offsets[] = { 
+        XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+        XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_INT_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_STR_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_EXT_UPPER_OFFSET,
+        XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
+    };
+
+    // Read all metric counters
+    uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
+    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+
+    uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+
+    samResult->NumSlots = numSlots;
+    snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
+    for (uint32_t s=0; s < numSlots; s++) {
+      uint32_t sampleInterval;
+      // Read sample interval register to latch the sampled metric counters
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                    baseAddress[s] + XSPM_SAMPLE_OFFSET,
+                    &sampleInterval, 4);
+
+      // If applicable, read the upper 32-bits of the 64-bit debug counters
+      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+        for (int c = 0 ; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+            baseAddress[s] + sam_upper_offsets[c],
+            &temp[c], 4) ;
+        }
+        samResult->CuExecCount[s]      = ((uint64_t)(temp[0])) << 32;
+        samResult->CuExecCycles[s]     = ((uint64_t)(temp[1])) << 32;
+        samResult->CuStallExtCycles[s] = ((uint64_t)(temp[2])) << 32;
+        samResult->CuStallIntCycles[s] = ((uint64_t)(temp[3])) << 32;
+        samResult->CuStallStrCycles[s] = ((uint64_t)(temp[4])) << 32;
+        samResult->CuMinExecCycles[s]  = ((uint64_t)(temp[5])) << 32;
+        samResult->CuMaxExecCycles[s]  = ((uint64_t)(temp[6])) << 32;
+        samResult->CuStartCount[s]     = ((uint64_t)(temp[7])) << 32;
+      }
+
+      for (int c=0; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
+
+      samResult->CuExecCount[s]      |= temp[0];
+      samResult->CuExecCycles[s]     |= temp[1];
+      samResult->CuStallExtCycles[s] |= temp[2];
+      samResult->CuStallIntCycles[s] |= temp[3];
+      samResult->CuStallStrCycles[s] |= temp[4];
+      samResult->CuMinExecCycles[s]  |= temp[5];
+      samResult->CuMaxExecCycles[s]  |= temp[6];
+      samResult->CuStartCount[s]     |= temp[7];
     }
 
     return size;
@@ -371,7 +444,7 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SAM :
-      return 0;
+      return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_SSPM :
     return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     default:

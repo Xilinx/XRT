@@ -45,6 +45,9 @@ extern "C" {
 /************************ SPM Debug Counters ********************************/
 #define XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
 
+/************************ SAM Debug Counters ********************************/
+#define XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     8
+
 /************************ SSPM Debug Counters ********************************/
 #define XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT    5
 
@@ -102,6 +105,9 @@ typedef struct {
 } xclStreamingDebugCountersResults ;
 
 typedef struct {
+  unsigned int           NumSlots ;
+  char                   DevUserName    [256] ;
+
   unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
