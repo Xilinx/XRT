@@ -353,7 +353,8 @@ namespace xocl {
       << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
       << ", Read device counters..." << std::endl;
     }
-    return 0;
+
+    return size;
   }
 
 } 
