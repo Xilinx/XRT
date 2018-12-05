@@ -519,7 +519,7 @@ namespace XCL {
     // TODO: Windows build support
     //    Variadic Template is not supported
     writeTableCells(getTimelineStream(), timeStr.str(), functionName, eventName,
-        "", "", "", "", "", "", "", "", std::to_string(functionID));
+        "", "", "", "", "", "", "", "", "", "", std::to_string(functionID));
   #endif
     writeTableRowEnd(getTimelineStream());
   }

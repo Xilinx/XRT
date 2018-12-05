@@ -229,9 +229,21 @@ namespace xocl {
         XSPM_SAMPLE_LAST_READ_DATA_OFFSET
     };
 
+    uint64_t spm_upper_offsets[] = { 
+        XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
+        XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
+        XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
+        XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET,
+        XSPM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET,
+        XSPM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET,
+        XSPM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET,
+        XSPM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET,
+        XSPM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
+    };
+
     // Read all metric counters
     uint64_t baseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -244,19 +256,36 @@ namespace xocl {
                     baseAddress[s] + XSPM_SAMPLE_OFFSET,
                     &sampleInterval, 4);
 
+      // If applicable, read the upper 32-bits of the 64-bit debug counters
+      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+	for (int c = 0 ; c < XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+		  baseAddress[s] + spm_upper_offsets[c],
+		  &temp[c], 4) ;
+	}
+	aCounterResults->WriteBytes[s]    = ((uint64_t)(temp[0])) << 32 ;
+	aCounterResults->WriteTranx[s]    = ((uint64_t)(temp[1])) << 32 ;
+	aCounterResults->ReadBytes[s]     = ((uint64_t)(temp[2])) << 32 ;
+	aCounterResults->ReadTranx[s]     = ((uint64_t)(temp[3])) << 32 ;
+	aCounterResults->OutStandCnts[s]  = ((uint64_t)(temp[4])) << 32 ;
+	aCounterResults->LastWriteAddr[s] = ((uint64_t)(temp[5])) << 32 ;
+	aCounterResults->LastWriteData[s] = ((uint64_t)(temp[6])) << 32 ;
+	aCounterResults->LastReadAddr[s]  = ((uint64_t)(temp[7])) << 32 ;
+	aCounterResults->LastReadData[s]  = ((uint64_t)(temp[8])) << 32 ;
+      }
+
       for (int c=0; c < XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], 4);
 
-      aCounterResults->WriteBytes[s]      = temp[0];
-      aCounterResults->WriteTranx[s]      = temp[1];
-
-      aCounterResults->ReadBytes[s]       = temp[2];
-      aCounterResults->ReadTranx[s]       = temp[3];
-      aCounterResults->OutStandCnts[s]    = temp[4];
-      aCounterResults->LastWriteAddr[s]   = temp[5];
-      aCounterResults->LastWriteData[s]   = temp[6];
-      aCounterResults->LastReadAddr[s]    = temp[7];
-      aCounterResults->LastReadData[s]    = temp[8];
+      aCounterResults->WriteBytes[s]    |= temp[0];
+      aCounterResults->WriteTranx[s]    |= temp[1];
+      aCounterResults->ReadBytes[s]     |= temp[2];
+      aCounterResults->ReadTranx[s]     |= temp[3];
+      aCounterResults->OutStandCnts[s]  |= temp[4];
+      aCounterResults->LastWriteAddr[s] |= temp[5];
+      aCounterResults->LastWriteData[s] |= temp[6];
+      aCounterResults->LastReadAddr[s]  |= temp[7];
+      aCounterResults->LastReadData[s]  |= temp[8];
     }
     return size;
   }
