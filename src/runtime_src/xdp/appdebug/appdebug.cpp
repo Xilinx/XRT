@@ -180,6 +180,7 @@ template class app_debug_view<event_debug_view_base>;
 template class app_debug_view<std::vector<kernel_debug_view*>>;
 template class app_debug_view<spm_debug_view>;
 template class app_debug_view<sspm_debug_view>;
+template class app_debug_view<sam_debug_view>;
 template class app_debug_view<lapc_debug_view>;
 template class app_debug_view<std::vector<cl_command_queue>>;
 template class app_debug_view<std::vector<cl_mem>>;
@@ -1396,6 +1397,186 @@ clGetDebugStreamCounters()
   auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
   return adv ;
 }
+
+// Accel monitor
+struct sam_debug_view {
+  unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
+
+  unsigned int NumSlots ;
+  std::string  DevUserName ;
+
+  sam_debug_view() 
+  {
+    std::fill(CuExecCount, CuExecCount + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuExecCycles, CuExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallExtCycles, CuStallExtCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallIntCycles, CuStallIntCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallStrCycles, CuStallStrCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMinExecCycles, CuMinExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxExecCycles, CuMaxExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStartCount, CuStartCount + XSAM_MAX_NUMBER_SLOTS, 0);
+
+    NumSlots = 0;
+  }
+  ~sam_debug_view() { }
+  std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
+  
+  std::string getJSONString(bool aVerbose) ;
+  std::string getXGDBString(bool aVerbose) ;
+} ;
+
+std::string
+sam_debug_view::getstring(int aVerbose, int aJSONFormat) {
+  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
+  else return getXGDBString(aVerbose != 0 ? true : false) ;
+}
+
+std::string
+sam_debug_view::getJSONString(bool aVerbose) {
+  std::stringstream sstr ;
+
+  sstr << "[" ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    if (i > 0) sstr << "," ;
+    sstr << "{" ;
+    sstr << "\"" << "CuExecCount"  << "\"" << ":" 
+	 << "\"" << CuExecCount[i] << "\"" << "," ;
+    sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
+	 << "\"" << CuExecCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallExtCycles"  << "\"" << ":" 
+	 << "\"" << CuStallExtCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallIntCycles"  << "\"" << ":" 
+	 << "\"" << CuStallIntCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallStrCycles"  << "\"" << ":" 
+	 << "\"" << CuStallStrCycles[i] << "\"" ;
+    sstr << "\"" << "CuMinExecCycles"  << "\"" << ":" 
+	 << "\"" << CuMinExecCycles[i] << "\"" ;
+    sstr << "\"" << "CuMaxExecCycles"  << "\"" << ":" 
+	 << "\"" << CuMaxExecCycles[i] << "\"" ;
+    sstr << "\"" << "CuStartCount"  << "\"" << ":" 
+	 << "\"" << CuStartCount[i] << "\"" ;
+    sstr << "}" ;
+  }
+  sstr << "]" ;
+
+  return sstr.str();
+}
+
+std::string
+sam_debug_view::getXGDBString(bool aVerbose) {
+  std::stringstream sstr;
+
+  sstr << "SDx Streaming Performance Monitor Counters\n" ;
+  sstr << std::left
+       <<         std::setw(32) << "CuExecCount"
+       << "  " << std::setw(16) << "CuExecCycles" 
+       << "  " << std::setw(16) << "CuStallExtCycles"
+       << "  " << std::setw(16) << "CuStallIntCycles"
+       << "  " << std::setw(16) << "CuStallStrCycles"
+       << "  " << std::setw(16) << "CuMinExecCycles"
+       << "  " << std::setw(16) << "CuMaxExecCycles"
+       << "  " << std::setw(16) << "CuStartCount"
+       << std::endl ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    sstr << std::left
+	 <<         std::setw(32) << CuExecCount[i] 
+	 << "  " << std::setw(16) << CuExecCycles[i]
+	 << "  " << std::setw(16) << CuStallExtCycles[i]
+	 << "  " << std::setw(16) << CuStallIntCycles[i]
+   << "  " << std::setw(16) << CuStallStrCycles[i]
+   << "  " << std::setw(16) << CuMinExecCycles[i]
+   << "  " << std::setw(16) << CuMaxExecCycles[i]
+   << "  " << std::setw(16) << CuStartCount[i]
+	 << std::endl ;
+  }
+
+  return sstr.str() ;
+}
+
+app_debug_view<sam_debug_view>*
+clGetDebugAccelMonitorCounters()
+{
+  // Check for error conditions where we cannot read the streaming counters
+  if (isEmulationMode()) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    return adv;
+  }
+  if (!XCL::active()) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    return adv;
+  }
+  auto rts = XCL::RTSingleton::Instance();
+  if (!rts) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    return adv;
+  }
+
+  cl_int ret = CL_SUCCESS;
+
+  xclAccelMonitorCounterResults samCounters;  
+  memset(&samCounters, 0, sizeof(xclAccelMonitorCounterResults));
+
+  auto platform = rts->getcl_platform_id();
+  for (auto device : platform->get_device_range())
+  {
+    if (device->is_active())
+    {
+      // At this point, we are dealing with only one device
+      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+    }
+  }
+
+  if (ret) 
+  {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error reading sam counters");
+    return adv;
+  }
+
+  auto sam_view = new sam_debug_view () ;
+  
+  std::copy(samCounters.CuExecCount,
+	    samCounters.CuExecCount+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuExecCount);
+  std::copy(samCounters.CuExecCycles,
+	    samCounters.CuExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuExecCycles);
+  std::copy(samCounters.CuStallExtCycles,
+	    samCounters.CuStallExtCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallExtCycles);
+  std::copy(samCounters.CuStallIntCycles,
+	    samCounters.CuStallIntCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallIntCycles);
+  std::copy(samCounters.CuStallStrCycles,
+	    samCounters.CuStallStrCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallStrCycles);
+  std::copy(samCounters.CuMinExecCycles,
+	    samCounters.CuMinExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMinExecCycles);
+  std::copy(samCounters.CuMaxExecCycles,
+	    samCounters.CuMaxExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMaxExecCycles);
+  std::copy(samCounters.CuStartCount,
+	    samCounters.CuStartCount+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStartCount);
+  
+  sam_view->NumSlots    = samCounters.NumSlots ;
+  sam_view->DevUserName = samCounters.DevUserName ;
+
+  auto adv = new app_debug_view<sam_debug_view>(sam_view, [sam_view]() { delete sam_view;}, false, "") ;
+
+  return adv ;
+}
+// End of Accel monitor
+
 
 struct lapc_debug_view {
   unsigned int   OverallStatus[XLAPC_MAX_NUMBER_SLOTS];
