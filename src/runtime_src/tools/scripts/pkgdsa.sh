@@ -692,6 +692,7 @@ EOF
     rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/hw/
     rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa/sw/
     chmod -R +r $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa
+    chmod -R o=g $opt_pkgdir/$dir/opt/xilinx/platforms/$opt_dsa
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
@@ -734,6 +735,8 @@ EOF
     mkdir -p $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
     rsync -avz ${opt_dsadir}/test/ $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa/test
     chmod -R +r $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa
+    chmod -R o=g $opt_pkgdir/$dir/opt/xilinx/dsa/$opt_dsa
+    chmod -R o=g $opt_pkgdir/$dir/lib/firmware/xilinx
     dpkg-deb --build $opt_pkgdir/$dir
 
     echo "================================================================"
