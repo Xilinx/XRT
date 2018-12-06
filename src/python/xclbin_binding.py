@@ -4,6 +4,27 @@ from enum import *
 libc = CDLL("../../../build/Debug/opt/xilinx/xrt/lib/libxrt_core.so")
 
 
+class AXLF_SECTION_KIND (Enum):
+    BITSTREAM = 0
+    CLEARING_BITSTREAM = 1
+    EMBEDDED_METADATA = 2
+    FIRMWARE = 3
+    DEBUG_DATA = 4
+    SCHED_FIRMWARE = 5
+    MEM_TOPOLOGY = 6
+    CONNECTIVITY = 7
+    IP_LAYOUT = 8
+    DEBUG_IP_LAYOUT = 9
+    DESIGN_CHECK_POINT = 10
+    CLOCK_FREQ_TOPOLOGY = 11
+    MCS = 12
+    BMC = 13
+    BUILD_METADATA = 14
+    KEYVALUE_METADATA = 15
+    USER_METADATA = 16
+    DNA_CERTIFICATE = 17
+
+
 class XCLBIN_MODE (Enum):
     XCLBIN_FLAT = 1
     XCLBIN_PR = 2
@@ -22,6 +43,52 @@ class axlf_section_header (Structure):
         ("m_sectionSize", c_uint64)
     ]
 
+
+class mem_u1 (Union):
+    _fields_ = [
+        ("m_size", c_int64),
+        ("route_id", c_int64)
+    ]
+
+
+class mem_u2 (Union):
+    _fields_ = [
+        ("m_base_address", c_int64),
+        ("flow_id", c_int64)
+    ]
+
+
+class mem_data (Structure):
+    _anonymous_ = ("mem_u1", "mem_u2")
+    _fields_ = [
+        ("m_type", c_uint8),
+        ("m_used", c_uint8),
+        ("mem_u1", mem_u1),
+        ("mem_u2", mem_u2),
+        ("m_tag", c_char * 16)
+    ]
+
+class mem_topology (Structure):
+    _fields_ = [
+        ("m_count", c_int32),
+        ("m_mem_data", mem_data*1)
+    ]
+
+
+class ip_data (Structure):
+    _fields_ = [
+        ("m_type", c_uint32),
+        ("properties", c_uint32),
+        ("m_base_address", c_uint64),
+        ("m_name", c_uint8 * 64)
+    ]
+
+
+class ip_layout (Structure):
+    _fields_ = [
+        ("m_count", c_int32),
+        ("m_ip_data", ip_data*1)
+    ]
 
 class s1 (Structure):
     _fields_ = [
@@ -73,10 +140,8 @@ class axlf (Structure):
     ]
 
 
-# def get_axlf_section(top, kind):
-#  libc.get_axlf_section.restype = POINTER(axlf_section_header)
-#  libc.get_axlf_scetion.argtypes = [POINTER(axlf), c_int]#axlf_section_kind]
-#  return libc.get_axlf_section(top, kind)
-#
-#
-# print("get_axlf_section %s") %get_axlf_section("kernel.xclbin",1)
+def wrap_get_axlf_section(top, kind):
+   libc.wrap_get_axlf_section.restype = POINTER(axlf_section_header)
+   libc.wrap_get_axlf_section.argtypes = [c_void_p, c_int]
+   return libc.wrap_get_axlf_section(top, kind)
+

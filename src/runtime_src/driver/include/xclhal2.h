@@ -1172,6 +1172,9 @@ XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
 
 /** @} */
 
+//FOR 00_hello test
+XCL_DRIVER_DLLESPEC const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind);
+
 #ifdef __cplusplus
 }
 #endif

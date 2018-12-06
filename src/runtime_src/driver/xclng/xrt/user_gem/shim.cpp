@@ -1938,3 +1938,10 @@ char *xclMapMgmt(xclDeviceHandle handle)
   xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
   return drv ? drv->xclMapMgmt() : nullptr;
 }
+
+//FOR 00_hello TEST
+const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+    return xclbin::get_axlf_section(top, kind);
+}
+
