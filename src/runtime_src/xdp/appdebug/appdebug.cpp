@@ -1486,7 +1486,7 @@ sam_debug_view::getXGDBString(bool aVerbose) {
     col = std::max(col, (int)slotName.length() + 4);
   });
 
-  sstr << "SDx Streaming Performance Monitor Counters\n" ;
+  sstr << "SDx Accel Monitor Counters\n" ;
   sstr << std::left
        <<         std::setw(col) << "CU Name"
        << "  " << std::setw(16) << "Exec Count" 

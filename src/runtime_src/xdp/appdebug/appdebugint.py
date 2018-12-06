@@ -190,6 +190,7 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 			print (e.message)
 			return
 		obj_spm.invoke(arg, 0)
+		obj_sam.invoke(arg, 0)
 		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()
 
