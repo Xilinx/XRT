@@ -671,8 +671,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
-				stat[i]->memory_usage / 1024,
-				stat[i]->bo_count);
+				stat[i] ? stat[i]->memory_usage / 1024 : 0,
+				stat[i] ? stat[i]->bo_count : 0);
 		}
 		buf += count;
 		size += count;
