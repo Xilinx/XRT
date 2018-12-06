@@ -23,11 +23,12 @@
 #include "appdebug.h"
 #include "appdebug_track.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/rt_profile.h"
+#include "xdp/profile/core/profile_logger.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 #include "xocl/core/context.h"
 #include "xocl/core/compute_unit.h"
 #include "xocl/core/execution_context.h"

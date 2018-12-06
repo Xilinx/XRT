@@ -15,12 +15,12 @@
  */
 
 #include "rt_perf_counters.h"
-#include "debug.h"
-#include "rt_profile_xocl.h"
+#include "../debug.h"
+#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
 #include "rt_profile_results.h"
-#include "rt_profile_writers.h"
-#include "rt_profile_device.h"
-#include "rt_profile_rule_checks.h"
+#include "../writer/base_writer.h"
+#include "../device/rt_profile_device.h"
+#include "../writer/profile_rule_checks.h"
 #include "xdp/rt_singleton.h"
 
 #include "xocl/core/device.h"

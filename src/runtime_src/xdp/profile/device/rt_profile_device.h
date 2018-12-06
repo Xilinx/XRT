@@ -37,9 +37,9 @@
 #include <string>
 #include <fstream>
 #include <CL/opencl.h>
-#include "../../driver/include/xclperf.h"
-#include "rt_profile_results.h"
-#include "debug.h"
+#include "driver/include/xclperf.h"
+#include "../collection/rt_profile_results.h"
+#include "../debug.h"
 
 namespace XCL {
   class DeviceTrace;

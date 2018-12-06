@@ -17,10 +17,10 @@
 #ifndef __XILINX_RT_PROFILE_H
 #define __XILINX_RT_PROFILE_H
 
-#include "rt_perf_counters.h"
-#include "rt_profile_device.h"
-#include "rt_profile_results.h"
-#include "rt_profile_xocl.h"
+#include "../collection/rt_perf_counters.h"
+#include "../device/rt_profile_device.h"
+#include "../collection/rt_profile_results.h"
+#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
 #include "xrt/util/time.h"
 //#include <chrono>
 //#include <time.h>

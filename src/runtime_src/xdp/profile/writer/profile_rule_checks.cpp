@@ -15,12 +15,13 @@
  */
 
 // Copyright 2014 Xilinx, Inc. All rights reserved.
-#include "rt_profile_rule_checks.h"
-#include "rt_profile_writers.h"
-#include "rt_profile.h"
+#include "profile_rule_checks.h"
+#include "base_writer.h"
+#include "../core/profile_logger.h"
 #include "xdp/rt_singleton.h"
 
 #include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 
 #include <iostream>
 #include <sstream>

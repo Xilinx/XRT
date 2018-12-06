@@ -15,8 +15,8 @@
  */
 
 // Copyright 2016 Xilinx, Inc. All rights reserved.
-#ifndef __XILINX_RT_PROFILE_RULE_CHECKS_H
-#define __XILINX_RT_PROFILE_RULE_CHECKS_H
+#ifndef __XILINX_XDP_PROFILE_RULE_CHECKS_H
+#define __XILINX_XDP_PROFILE_RULE_CHECKS_H
 
 #include <map>
 #include <string>

@@ -22,10 +22,9 @@
 #include "xocl/core/execution_context.h"
 #include "xrt/util/config_reader.h"
 
-#include "xdp/profile/profile.h"
-#include "xdp/profile/rt_profile.h"
-#include "xdp/profile/rt_profile_writers.h"
-#include "xdp/profile/rt_profile_xocl.h"
+#include "xdp/profile/plugin/ocl/xocl_profile_cb.h"
+#include "xdp/profile/writer/csv_writer.h"
+#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
 
 #include <cstdlib>
 #include <cstdio>

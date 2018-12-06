@@ -14,20 +14,21 @@
  * under the License.
  */
 
-#include "rt_profile.h"
-#include "rt_profile_xocl.h"
-#include "rt_profile_results.h"
-#include "rt_profile_writers.h"
-#include "rt_profile_device.h"
-#include "rt_profile_rule_checks.h"
-#include "rt_perf_counters.h"
+#include "profile_logger.h"
+#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
+#include "../collection/rt_profile_results.h"
+#include "../writer/base_writer.h"
+#include "../device/rt_profile_device.h"
+#include "../writer/profile_rule_checks.h"
+#include "../collection/rt_perf_counters.h"
 #include "xdp/rt_singleton.h"
-#include "debug.h"
+#include "../debug.h"
 
 //#include <CL/opencl.h>
 #include "xocl/core/device.h"
 #include "xocl/xclbin/xclbin.h"
-#include "../../driver/include/xclperf.h"
+#include "xocl/core/platform.h"
+#include "driver/include/xclperf.h"
 
 #include <iostream>
 #include <sstream>

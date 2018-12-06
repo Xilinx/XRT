@@ -15,25 +15,38 @@
  */
 
 // Copyright 2014 Xilinx, Inc. All rights reserved.
-#ifndef __XILINX_RT_PROFILE_WRITERS_H
-#define __XILINX_RT_PROFILE_WRITERS_H
+#ifndef __XILINX_XDP_BASE_WRITERS_H
+#define __XILINX_XDP_BASE_WRITERS_H
 
-#include <limits>
-#include <cstdint>
-#include <map>
-#include <list>
-#include <vector>
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <chrono>
+//#include <limits>
+//#include <cstdint>
+//#include <map>
+//#include <list>
+//#include <vector>
+//#include <string>
+//#include <sstream>
+//#include <fstream>
+//#include <chrono>
 // #include <unistd.h>
-#include <cassert>
-#include <thread>
-#include <mutex>
+//#include <cassert>
+//#include <thread>
+//#include <mutex>
+//#include <iostream>
+////#include <iomanip>
+//#include <algorithm>
+//#include <cstdio>
+//#include <cstring>
+//#include <ctime>
+#include <boost/format.hpp>
 #include <CL/opencl.h>
-#include "rt_profile_device.h"
-#include "rt_profile_rule_checks.h"
+#include "../device/rt_profile_device.h"
+#include "profile_rule_checks.h"
+#include "../core/profile_logger.h"
+#include "../collection/rt_profile_results.h"
+#include "xdp/rt_singleton.h"
+#include "../debug.h"
+#include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 
 // Use this class to build run time user services functions
 // such as debugging and profiling
@@ -182,127 +195,6 @@ namespace XCL {
 	    xclCounterResults CountersPrev;
 	    std::map<std::string, std::string> DeviceBinaryNameMap;
     };
-
-    //
-    // CSV Writer
-    //
-    class CSVWriter: public WriterI {
-
-	public:
-      CSVWriter(const std::string& summaryFileName, const std::string& timelineFileName,
-                const std::string& platformName);
-	    ~CSVWriter();
-
-	    virtual void writeSummary(RTProfile* profile);
-
-	protected:
-	    void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
-	    void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) override;
-	    void writeTableHeader(std::ofstream& ofs, const std::string& caption, const std::vector<std::string>& columnLabels) override;
-	    void writeTableRowStart(std::ofstream& ofs) override { ofs << "";}
-	    void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
-	    void writeTableFooter(std::ofstream& ofs) override { ofs << "\n";};
-	    void writeDocumentFooter(std::ofstream& ofs) override;
-	    void writeTimelineFooter(std::ofstream& ofs);
-
-	    // Cell and Row marking tokens
-	    const char* cellStart() override { return ""; }
-	    const char* cellEnd() override { return ","; }
-	    const char* rowStart() override { return ""; }
-	    const char* rowEnd() override { return ""; }
-	    const char* newLine() override { return "\n"; }
-
-	private:
-	    std::string SummaryFileName;
-	    std::string TimelineFileName;
-	    std::string PlatformName;
-	    const std::string FileExtension = ".csv";
-    };
-
-    //
-    // Unified CSV Writer
-    //
-    class UnifiedCSVWriter: public WriterI {
-
-	public:
-      UnifiedCSVWriter(const std::string& summaryFileName, const std::string& timelineFileName,
-                const std::string& platformName);
-	    ~UnifiedCSVWriter();
-
-	    virtual void writeSummary(RTProfile* profile);
-
-	protected:
-	    void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
-	    void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) override;
-	    void writeTableHeader(std::ofstream& ofs, const std::string& caption, const std::vector<std::string>& columnLabels) override;
-	    void writeTableRowStart(std::ofstream& ofs) override { ofs << "";}
-	    void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
-	    void writeTableFooter(std::ofstream& ofs) override { ofs << "\n";};
-	    void writeDocumentFooter(std::ofstream& ofs) override;
-
-	    void writeSummary(const KernelTrace& trace) override;
-	    void writeSummary(const BufferTrace& trace) override;
-        void writeTopKernelTransferSummary(
-          const std::string& deviceName, const std::string& accelName,
-          uint64_t totalWriteTranx, uint64_t totalReadTranx,
-          uint64_t totalWriteBytes, uint64_t totalReadBytes,
-          double totalWriteTimeMsec, double totalReadTimeMsec,
-          uint32_t maxBytesPerTransfer, double maxTransferRateMBps) override;
-	    void writeHostTransferSummary(const std::string& name,
-          const BufferStats& stats, uint64_t totalTranx, uint64_t totalBytes,
-          double totalTimeMsec, double maxTransferRateMBps) override;
-          
-	    // Cell and Row marking tokens
-	    const char* cellStart() override { return ""; }
-	    const char* cellEnd() override { return ","; }
-	    const char* rowStart() override { return ""; }
-	    const char* rowEnd() override { return ""; }
-	    const char* newLine() override { return "\n"; }
-
-	private:
-	    std::string SummaryFileName;
-	    std::string PlatformName;
-	    const std::string FileExtension = ".csv";
-    };
-
-    //
-    // HTML Writer
-    //
-  class HTMLWriter: public WriterI {
-
-	public:
-      HTMLWriter(const std::string& summaryFileName, const std::string& timelineFileName,
-                 const std::string& platformName);
-	    ~HTMLWriter();
-
-	    virtual void writeSummary(RTProfile* profile);
-
-	protected:
-	    void writeTableRowStart(std::ofstream& ofs) override { ofs << "<TR>";}
-	    void writeTableRowEnd(std::ofstream& ofs) override { ofs << "</TR>\n";}
-	    void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
-	    void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) override;
-	    void writeTableHeader(std::ofstream& ofs, const std::string& caption, const std::vector<std::string>& columnLabels) override;
-	    void writeTableFooter(std::ofstream& ofs) override { ofs << "</TABLE>\n";};
-	    void writeDocumentFooter(std::ofstream& ofs) override;
-
-	    // Cell and Row marking tokens
-	    const char* cellStart() override {
-	    	return "<TD>";
-	    }
-	    const char* cellEnd() override {
-	    	return "</TD>";
-	    }
-	    const char* rowStart() override { return "<TR>"; }
-	    const char* rowEnd() override { return "</TR>"; }
-
-	private:
-	    std::string SummaryFileName;
-      std::string TimelineFileName;
-      std::string PlatformName;
-      const std::string FileExtension = ".html";
-    };
-
 };
 #endif
 

@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xdp_profile_h
-#define xdp_profile_h
+#ifndef XDP_XOCL_PROFILE_CB_H
+#define XDP_XOCL_PROFILE_CB_H
 
 /**
  * This file contains the API for adapting the xocl

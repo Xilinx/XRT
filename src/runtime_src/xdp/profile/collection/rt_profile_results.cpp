@@ -24,9 +24,9 @@
 #include <time.h>
 // #include <unistd.h>
 #include "rt_profile_results.h"
-#include "rt_profile_writers.h"
-#include "rt_profile_device.h"
-#include "../../driver/include/xclperf.h"
+#include "../writer/base_writer.h"
+#include "../device/rt_profile_device.h"
+#include "driver/include/xclperf.h"
 
 XCL::KernelTrace* XCL::KernelTrace::RecycleHead = nullptr;
 XCL::BufferTrace* XCL::BufferTrace::RecycleHead = nullptr;

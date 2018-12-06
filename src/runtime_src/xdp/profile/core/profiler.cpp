@@ -33,9 +33,9 @@
 #include <iomanip>
 #include <chrono>
 
-#include "profiling.h"
-#include "debug.h"
-#include "rt_profile.h"
+#include "profiler.h"
+#include "../debug.h"
+#include "profile_logger.h"
 #include "xdp/rt_singleton.h"
 #include "driver/include/xclperf.h"
 #include "xrt/util/message.h"

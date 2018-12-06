@@ -24,11 +24,11 @@
  * are strictly forbidden in xocl.
  */
 
-#include "profile.h"
-#include "xdp/profile/profiling.h"
+#include "xocl_profile_cb.h"
+#include "xdp/profile/core/profiler.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/rt_profile.h"
-#include "xdp/profile/rt_profile_xocl.h"
+#include "xdp/profile/core/profile_logger.h"
+#include "rt_profile_xocl.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"

@@ -19,12 +19,16 @@
 #define __XILINX_RT_SINGLETON_H
 
 #include <CL/opencl.h>
-#include <string>
-#include <map>
-#include "xdp/profile/rt_profile.h"
 #include "xdp/debug/rt_debug.h"
-#include "driver/include/xclperf.h"
-#include "xocl/core/platform.h"
+#include "driver/include/xclperf.h" 
+#include "xdp/profile/core/profile_logger.h"
+
+#include <cstdlib>
+#include <cstdio>
+#include <string>
+#include <chrono>
+#include <iostream>
+#include <map>
 
 // Use XCL::RTSingleton::Instance() to get to the singleton runtime object
 // Runtime code base can now get access to the singleton and make certain

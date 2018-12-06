@@ -15,7 +15,7 @@
  */
 
 #include "rt_profile_xocl.h"
-#include "debug.h"
+#include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"

@@ -27,6 +27,7 @@
 
 #include <CL/opencl.h>
 #include <string>
+#include <chrono>
 
 // Use Profiling::Profiler::Instance() to get to the singleton runtime object
 // Runtime code base can access the singleton and make decisions based on the
