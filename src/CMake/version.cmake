@@ -1,4 +1,4 @@
-# Get the branch 
+# Get the branch
 execute_process(
   COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -25,7 +25,7 @@ execute_process(
 
 # Get all of the modified files in the current git environment
 execute_process(
-  COMMAND ${GIT_EXECUTABLE} status --porcelain
+  COMMAND ${GIT_EXECUTABLE} status --porcelain -u no
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   OUTPUT_VARIABLE XRT_MODIFIED_FILES
   OUTPUT_STRIP_TRAILING_WHITESPACE

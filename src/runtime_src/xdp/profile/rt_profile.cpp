@@ -1187,7 +1187,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     }
   }
 
-  void RTProfile::writeKernelStreamSummary(WriterI* writer) const
+  void RTProfile::writeKernelStreamSummary(WriterI* writer)
   {
     auto iter = FinalCounterResultsMap.begin();
     for (; iter != FinalCounterResultsMap.end(); ++iter) {
@@ -1196,7 +1196,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
       if (!isDeviceActive(deviceName) || (DeviceBinaryStrSlotsMap.find(key) == DeviceBinaryStrSlotsMap.end()))
         continue;
 
-    // Get results
+      // Get results
       xclCounterResults counterResults = iter->second;
       std::string cuPortName = "";
       uint32_t numSlots = DeviceBinaryStrSlotsMap.at(key).size();
@@ -1205,7 +1205,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
         cuPortName = DeviceBinaryStrSlotsMap.at(key)[s];
         std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
         std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-        std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+        //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
 
         std::string memoryName;
         std::string argNames;
@@ -1234,7 +1234,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
     }
   }
 
-  void RTProfile::writeKernelTransferSummary(WriterI* writer) const
+  void RTProfile::writeKernelTransferSummary(WriterI* writer)
   {
     auto iter = FinalCounterResultsMap.begin();
     for (; iter != FinalCounterResultsMap.end(); ++iter) {
@@ -1276,7 +1276,7 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
    	    std::string cuPortName = DeviceBinaryDataSlotsMap.at(key)[s];
         std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
         std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-        std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+        //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
 
         std::string memoryName;
         std::string argNames;
@@ -1692,12 +1692,6 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
             }
           }
 
-          // Increment total CU ports connected to this memory resource
-          //CUPortsToMemoryMap[memoryName]++;
-          auto iter = CUPortsToMemoryMap.find(memoryName);
-          int numPorts = (iter == CUPortsToMemoryMap.end()) ? 1 : (iter->second + 1);
-          CUPortsToMemoryMap[memoryName] = numPorts;
-
           XOCL_DEBUGF("setArgumentsBank: %s/%s, args = %s, memory = %s, width = %d\n",
               std::get<0>(row).c_str(), std::get<1>(row).c_str(), std::get<2>(row).c_str(),
               std::get<3>(row).c_str(), std::get<4>(row));
@@ -1711,23 +1705,34 @@ else if (functionName.find("clEnqueueMigrateMemObjects") != std::string::npos)
 
   void RTProfile::getArgumentsBank(const std::string& deviceName, const std::string& cuName,
 	                               const std::string& portName, std::string& argNames,
-								   std::string& memoryName) const
+								   std::string& memoryName)
   {
     argNames = "All";
     memoryName = "DDR";
-    std::string portName2 = portName.substr(0, portName.find_last_of(PORT_MEM_SEP));
-    std::transform(portName2.begin(), portName2.end(), portName2.begin(), ::tolower);
 
-    //XOCL_DEBUGF("getArgumentsBank: %s/%s\n", cuName.c_str(), portName.c_str());
+    bool foundMemory = false;
+    std::string portNameCheck = portName;
+
+    size_t index = portName.find_last_of(PORT_MEM_SEP);
+    if (index != std::string::npos) {
+      foundMemory = true;
+      portNameCheck = portName.substr(0, index);
+      memoryName = portName.substr(index+1);
+    }
+    std::transform(portNameCheck.begin(), portNameCheck.end(), portNameCheck.begin(), ::tolower);
 
     // Find CU and port, then capture arguments and bank
-    for (auto row : CUPortVector) {
+    for (auto& row : CUPortVector) {
       std::string currCU   = std::get<0>(row);
       std::string currPort = std::get<1>(row);
 
-      if ((currCU == cuName) && (currPort == portName2)) {
-        argNames   = std::get<2>(row);
-        memoryName = std::get<3>(row);
+      if ((currCU == cuName) && (currPort == portNameCheck)) {
+        argNames = std::get<2>(row);
+        // If already found, replace it; otherwise, use it
+        if (foundMemory)
+          std::get<3>(row) = memoryName;
+        else
+          memoryName = std::get<3>(row);
         break;
       }
     }

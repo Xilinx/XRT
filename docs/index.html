@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Xilinx Runtime (XRT) Architecture &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Xilinx Runtime (XRT) Architecture &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,8 +32,11 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="#"/>
-        <link rel="next" title="Hardware Abstraction Library" href="xclhal2.main.html"/> 
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="#"/>
+        <link rel="next" title="Xilinx Runtime (XRT) Core Library" href="xclhal2.main.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -40,6 +45,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -59,7 +65,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -80,17 +86,25 @@
           
             
             
-                <ul>
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -104,8 +118,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="#">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -114,23 +130,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="#">Docs</a> &raquo;</li>
-      
-    <li>Xilinx Runtime (XRT) Architecture</li>
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>Xilinx Runtime (XRT) Architecture</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -139,21 +172,28 @@
   <div class="section" id="xilinx-runtime-xrt-architecture">
 <h1>Xilinx Runtime (XRT) Architecture<a class="headerlink" href="#xilinx-runtime-xrt-architecture" title="Permalink to this headline">¶</a></h1>
 <p>Xilinx Runtime (XRT) is implemented as a combination of userspace and kernel
-driver components. XRT which supports both PCIe based boards and Zynq/MPSoC
-provides software interface to Xilinx FPGA. The key user APIs are defined in
-<em>xclhal2.h</em> header file.</p>
+driver components. XRT supports both PCIe based accelerator cards and MPSoC
+based embedded architecture provides standardized software interface to Xilinx
+FPGA. The key user APIs are defined in <code class="docutils literal"><span class="pre">xclhal2.h</span></code> header file.</p>
+<div align="center" class="align-center"><img alt="_images/XRT-Layers.svg" src="_images/XRT-Layers.svg" /></div>
+<hr class="docutils" />
 <div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 </div>
@@ -161,12 +201,15 @@ provides software interface to Xilinx FPGA. The key user APIs are defined in
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xclhal2.main.html" class="btn btn-neutral float-right" title="Hardware Abstraction Library" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xclhal2.main.html" class="btn btn-neutral float-right" title="Xilinx Runtime (XRT) Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>
@@ -198,10 +241,11 @@ provides software interface to Xilinx FPGA. The key user APIs are defined in
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

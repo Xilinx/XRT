@@ -946,6 +946,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    unsetenv("XCL_EMULATION_MODE");
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;

@@ -2047,7 +2047,10 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0;
 
-	BUG_ON(uuid_is_null(id));
+	if (uuid_is_null(id)) {
+		ICAP_ERR(icap, "proc %d invalid UUID", pid);
+		return -EINVAL;
+	}
 
 	mutex_lock(&icap->icap_lock);
 

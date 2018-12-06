@@ -143,15 +143,16 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     //construct the exec buffer cmd to start the kernel.
     {
         auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);
-        auto rsz = (XHELLO_CONTROL_ADDR_BUF_R_DATA/4+2) + 1; // regmap array size
+        auto rsz = (XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4+1) + 1; // regmap array size
         std::memset(ecmd,0,(sizeof *ecmd) + rsz);
         ecmd->state = ERT_CMD_STATE_NEW;
         ecmd->opcode = ERT_START_CU;
         ecmd->count = 1 + rsz;
         ecmd->cu_mask = 0x1;
 
-        ecmd->data[XHELLO_CONTROL_ADDR_AP_CTRL] = 0x1; // ap_start
-        ecmd->data[XHELLO_CONTROL_ADDR_BUF_R_DATA] = bodevAddr; // a
+        ecmd->data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
+        ecmd->data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4] = bodevAddr; // low part of a
+        ecmd->data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF; // high part of a
     }
 
 

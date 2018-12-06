@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>System Requirements &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>System Requirements &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,10 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="Building and Installing Software Stack" href="build.html"/>
         <link rel="prev" title="Binary Formats" href="formats.html"/> 
 
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,31 +87,36 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">System Requirements</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#host-platform">Host Platform</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xilinx-accelerator-card">Xilinx Accelerator Card</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#software-platform">Software Platform</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#centos-rhel-7-4">CentOS/RHEL 7.4</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#installing-c-11-build-tools-on-centos-7-x">Installing C++11 build tools on CentOS 7.X</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#installing-c-11-build-tools-on-rhel-7-x">Installing C++11 build tools on RHEL 7.X</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#switching-to-c-11-build-environment">Switching to C++11 build environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#centos-rhel-7-4-7-5">CentOS/RHEL 7.4, 7.5</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#switching-to-c-14-build-environment">Switching to C++14 build environment</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#ubuntu-16-04-4-lts">Ubuntu 16.04.4 LTS</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -119,8 +130,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -129,23 +142,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>System Requirements</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>System Requirements</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/system_requirements.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/system_requirements.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -164,57 +194,43 @@
 <div class="section" id="xilinx-accelerator-card">
 <h2>Xilinx Accelerator Card<a class="headerlink" href="#xilinx-accelerator-card" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>VCU1525 (xilinx_vcu1525_dynamic_5_1)</li>
-<li>KCU1500 (xilinx_kcu1500_dynamic_5_0)</li>
-<li>AWS F1 (xilinx_aws-vu9p-f1_dynamic_5_0)</li>
+<li>VCU1525</li>
+<li>U200</li>
+<li>U250</li>
+<li>U280</li>
+<li>AWS F1</li>
 </ol>
 </div>
 <div class="section" id="software-platform">
 <h2>Software Platform<a class="headerlink" href="#software-platform" title="Permalink to this headline">¶</a></h2>
-<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++11 features. The stack has been tested on RHEL/CentOS 7.4 and Ubuntu 16.04.4 LTS. CentOS/RHEL 7.4 requires additional steps to get C++11 tool set. Detailed dependencies and instructions are below.</p>
-<div class="section" id="centos-rhel-7-4">
-<h3>CentOS/RHEL 7.4<a class="headerlink" href="#centos-rhel-7-4" title="Permalink to this headline">¶</a></h3>
-<p>Please install <em>EPEL 7</em> by following instructions at <a class="reference external" href="https://fedoraproject.org/wiki/EPEL">https://fedoraproject.org/wiki/EPEL</a></p>
-<p>Then install required packages using the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code></p>
-<div class="section" id="installing-c-11-build-tools-on-centos-7-x">
-<h4>Installing C++11 build tools on CentOS 7.X<a class="headerlink" href="#installing-c-11-build-tools-on-centos-7-x" title="Permalink to this headline">¶</a></h4>
-<div class="highlight-none"><div class="highlight"><pre>sudo yum install centos-release-scl (CentOS)
-sudo yum install devtoolset-6
+<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++14 features. The stack has been tested on RHEL/CentOS 7.4, 7.5 and Ubuntu 16.04.4 LTS, 18.04.1 LTS. CentOS/RHEL 7.4, 7.5 require additional steps to get C++11 tool set and a few dependent libraies. Please use the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.</p>
+<div class="section" id="centos-rhel-7-4-7-5">
+<h3>CentOS/RHEL 7.4, 7.5<a class="headerlink" href="#centos-rhel-7-4-7-5" title="Permalink to this headline">¶</a></h3>
+<p>XRT requires <em>EPEL 7</em> and SCL repositories. The included xrtdeps.sh script will attempt to automatically configure the repositories and download the required dependent packages.</p>
+<div class="section" id="switching-to-c-14-build-environment">
+<h4>Switching to C++14 build environment<a class="headerlink" href="#switching-to-c-14-build-environment" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-none"><div class="highlight"><pre><span></span>scl enable devtoolset-6 bash
 </pre></div>
 </div>
 </div>
-<div class="section" id="installing-c-11-build-tools-on-rhel-7-x">
-<h4>Installing C++11 build tools on RHEL 7.X<a class="headerlink" href="#installing-c-11-build-tools-on-rhel-7-x" title="Permalink to this headline">¶</a></h4>
-<div class="highlight-none"><div class="highlight"><pre>sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
-sudo yum install devtoolset-6
-</pre></div>
-</div>
-</div>
-<div class="section" id="switching-to-c-11-build-environment">
-<h4>Switching to C++11 build environment<a class="headerlink" href="#switching-to-c-11-build-environment" title="Permalink to this headline">¶</a></h4>
-<div class="highlight-none"><div class="highlight"><pre>scl enable devtoolset-6 bash
-</pre></div>
-</div>
-</div>
-</div>
-<div class="section" id="ubuntu-16-04-4-lts">
-<h3>Ubuntu 16.04.4 LTS<a class="headerlink" href="#ubuntu-16-04-4-lts" title="Permalink to this headline">¶</a></h3>
-<p>Install required packages using the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code></p>
 </div>
 </div>
 </div>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="build.html" class="btn btn-neutral float-right" title="Building and Installing Software Stack" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="build.html" class="btn btn-neutral float-right" title="Building and Installing Software Stack" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="formats.html" class="btn btn-neutral" title="Binary Formats" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="formats.html" class="btn btn-neutral" title="Binary Formats" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -245,10 +261,11 @@ sudo yum install devtoolset-6
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

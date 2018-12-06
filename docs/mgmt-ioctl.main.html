@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Management Physical Function &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Management Physical Function &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,9 +32,12 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="User Physical Function" href="xocl_ioctl.main.html"/>
-        <link rel="prev" title="Hardware Abstraction Library" href="xclhal2.main.html"/> 
+        <link rel="prev" title="Xilinx Runtime (XRT) Core Library" href="xclhal2.main.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,9 +87,13 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Management Physical Function</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
@@ -92,6 +102,7 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -105,8 +116,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -115,23 +128,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Management Physical Function</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Management Physical Function</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/mgmt-ioctl.main.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/mgmt-ioctl.main.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -203,7 +233,7 @@ struct <code class="descname">xclmgmt_ioc_info</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclmgmt_ioc_info {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_info {
 };
 </pre></div>
 </div>
@@ -217,7 +247,7 @@ struct <code class="descname">xclmgmt_ioc_bitstream_axlf</code><a class="headerl
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclmgmt_ioc_bitstream_axlf {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_bitstream_axlf {
   struct axlf * xclbin;
 };
 </pre></div>
@@ -225,7 +255,7 @@ struct <code class="descname">xclmgmt_ioc_bitstream_axlf</code><a class="headerl
 <p><strong>Members</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclbin</span></code></dt>
-<dd>Pointer to user&#8217;s xclbin structure in memory</dd>
+<dd>Pointer to user’s xclbin structure in memory</dd>
 </dl>
 <dl class="type">
 <dt id="c.xclmgmt_ioc_freqscaling">
@@ -234,7 +264,7 @@ struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclmgmt_ioc_freqscaling {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_freqscaling {
   unsigned ocl_region;
   unsigned short ocl_target_freq;
 };
@@ -251,15 +281,18 @@ struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-right" title="User Physical Function" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-right" title="User Physical Function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xclhal2.main.html" class="btn btn-neutral" title="Hardware Abstraction Library" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xclhal2.main.html" class="btn btn-neutral" title="Xilinx Runtime (XRT) Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -290,10 +323,11 @@ struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

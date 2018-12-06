@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Developer Build and Test Instructions &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Developer Build and Test Instructions &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,12 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/> 
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
+        <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html"/>
+        <link rel="prev" title="Building and Installing Software Stack" href="build.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -39,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -58,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -79,8 +87,12 @@
           
             
             
-                <ul>
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
@@ -90,6 +102,13 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Developer Build and Test Instructions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#building-xrt">Building XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-xrt">Running XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-xrt">Testing XRT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unit-testing-xrt">Unit Testing XRT</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -103,8 +122,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -113,23 +134,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Developer Build and Test Instructions</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Developer Build and Test Instructions</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/test.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/test.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -143,7 +181,7 @@ downtime provided you use a few scripts we have created:</p>
 <li><code class="docutils literal"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</li>
 <li><code class="docutils literal"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
 built with <code class="docutils literal"><span class="pre">build.sh</span></code>.</li>
-<li><code class="docutils literal"><span class="pre">board.sh</span></code> harvests sprite UNIT_HW test cases and runs board tests.</li>
+<li><code class="docutils literal"><span class="pre">board.sh</span></code> harvests sprite <code class="docutils literal"><span class="pre">UNIT_HW</span></code> test cases and runs board tests.</li>
 </ul>
 <div class="section" id="building-xrt">
 <h2>Building XRT<a class="headerlink" href="#building-xrt" title="Permalink to this headline">¶</a></h2>
@@ -151,9 +189,9 @@ built with <code class="docutils literal"><span class="pre">build.sh</span></cod
 <p>It is probably safest if you keep your Git clone of XRT on a network
 mounted drive that can be accessed from different hosts.  One
 advantage is that you can have your editor run on a host that is not
-used for board testing, since you don&#8217;t really want host/driver
+used for board testing, since you don’t really want host/driver
 crashes to leave your unsaved edits in limbo.</p>
-<div class="highlight-none"><div class="highlight"><pre>git clone https://github.com/Xilinx/XRT.git
+<div class="highlight-none"><div class="highlight"><pre><span></span>git clone https://github.com/Xilinx/XRT.git
 cd XRT/build
 ./build.sh
 </pre></div>
@@ -171,14 +209,14 @@ script.</p>
 <p>To run your locally built XRT with a sample <code class="docutils literal"><span class="pre">host.exe</span></code> and
 <code class="docutils literal"><span class="pre">kernel.xclbin</span></code>, simply prepend your command line invocation with
 <code class="docutils literal"><span class="pre">XRT/build/run.sh</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre>&lt;path&gt;/XRT/build/run.sh ./host.exe kernel.xclbin
+<div class="highlight-none"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh ./host.exe kernel.xclbin
 </pre></div>
 </div>
 <p>By default the <code class="docutils literal"><span class="pre">run.sh</span></code> script uses the binaries from the Release
 profile.  In order run with the binaries from Debug profile use <code class="docutils literal"><span class="pre">-dbg</span></code>
 flag; this way you can even start your favorite debugger by prefixing its
 invocation with <code class="docutils literal"><span class="pre">run.sh</span> <span class="pre">-dbg</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre>&lt;path&gt;/XRT/build/run.sh -dbg emacs
+<div class="highlight-none"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh -dbg emacs
 </pre></div>
 </div>
 </div>
@@ -187,7 +225,7 @@ invocation with <code class="docutils literal"><span class="pre">run.sh</span> <
 <p>After making changes to XRT in your Git clone, rebuild with
 <code class="docutils literal"><span class="pre">build.sh</span></code> as explained above, then run a full set of board tests
 using the <code class="docutils literal"><span class="pre">board.sh</span></code> script.  For example:</p>
-<div class="highlight-none"><div class="highlight"><pre>mkdir tests
+<div class="highlight-none"><div class="highlight"><pre><span></span>mkdir tests
 cd tests
 &lt;path&gt;/XRT/build/board.sh -board vcu1525 -sync
 </pre></div>
@@ -196,15 +234,84 @@ cd tests
 nightly sprite area.  Without the <code class="docutils literal"><span class="pre">-sync</span></code> option, the board script will
 run all tests that were previously synced into the current directory.</p>
 <p>While tests run a file named <code class="docutils literal"><span class="pre">results.all</span></code> will list the test with
-PASS/FAIL keyword.  This file is appended (not removed between runs).
-A complete run should take 5-10 mins for approximately 70 tests.</p>
+<code class="docutils literal"><span class="pre">PASS</span></code>/<code class="docutils literal"><span class="pre">FAIL</span></code> keyword.  This file is appended (not removed
+between runs).  A complete run should take 5-10 mins for approximately
+70 tests.</p>
+</div>
+<div class="section" id="unit-testing-xrt">
+<h2>Unit Testing XRT<a class="headerlink" href="#unit-testing-xrt" title="Permalink to this headline">¶</a></h2>
+<p>We use GTest to do unit testing. The GTest package is installed by
+running <code class="docutils literal"><span class="pre">XRT/src/runtime_src/tools/scripts/xrtdeps.sh</span></code>.</p>
+<p>The GTest package on CentOS/RHEL 7.5 provides the GTest libraries
+here:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">/usr/lib64/libgtest.so</span></code></li>
+<li><code class="docutils literal"><span class="pre">/usr/lib64/libgtest_main.so</span></code></li>
+</ul>
+</div></blockquote>
+<p>In recent versions of Ubuntu, the GTest <code class="docutils literal"><span class="pre">libgtest-dev</span></code> package
+provides the compiled libraries in</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></li>
+<li><code class="docutils literal"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></li>
+</ul>
+</div></blockquote>
+<p>However, the GTest package on Ubuntu up to 18.04 provides source only!
+So, to use GTest on older Ubuntu versions, use:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>cd /usr/src/gtest
+sudo cmake CMakeLists.txt
+sudo make
+cd /usr/lib
+sudo ln -s /usr/src/gtest/libgtest.a
+sudo ln -s /usr/src/gtest/libgtest_main.a
+# Validate:
+ls *gtest*
+</pre></div>
+</div>
+<p>This will add GTest static library symbolic links here:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">/usr/lib/libgtest.a</span></code></li>
+<li><code class="docutils literal"><span class="pre">/usr/lib/libgtest_main.a</span></code></li>
+</ul>
+</div></blockquote>
+<p>CMake will handle linking, finding etc. for you.</p>
+<p>To add GTest support to a <code class="docutils literal"><span class="pre">CMakeLists.txt</span></code> use the following, and this is using
+an example executable called <code class="docutils literal"><span class="pre">xclbintest</span></code>:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>find_package(GTest)
+if (GTEST_FOUND)
+  enable_testing()
+  message (STATUS &quot;GTest include dirs: &#39;${GTEST_INCLUDE_DIRS}&#39;&quot;)
+  include_directories(${GTEST_INCLUDE_DIRS})
+  add_executable(xclbintest unittests/main.cpp unittests/test.cpp)
+  message (STATUS &quot;GTest libraries: &#39;${GTEST_BOTH_LIBRARIES}&#39;&quot;)
+  target_link_libraries(xclbintest ${GTEST_BOTH_LIBRARIES} pthread)
+else()
+  message (STATUS &quot;GTest was not found, skipping generation of test executables&quot;)
+endif()
+</pre></div>
+</div>
 </div>
 </div>
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="build.html" class="btn btn-neutral" title="Building and Installing Software Stack" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -233,10 +340,11 @@ A complete run should take 5-10 mins for approximately 70 tests.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>
