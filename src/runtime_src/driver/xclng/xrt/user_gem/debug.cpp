@@ -384,7 +384,7 @@ namespace xocl {
 
     // Read all metric counters
     uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, XSAM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -394,11 +394,11 @@ namespace xocl {
       uint32_t sampleInterval;
       // Read sample interval register to latch the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddress[s] + XSPM_SAMPLE_OFFSET,
+                    baseAddress[s] + XSAM_SAMPLE_OFFSET,
                     &sampleInterval, 4);
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
-      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+      if (mPerfmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
         for (int c = 0 ; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
           xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[s] + sam_upper_offsets[c],
