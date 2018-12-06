@@ -1444,11 +1444,6 @@ sam_debug_view::getJSONString(bool aVerbose) {
   std::vector<std::string> slotNames;
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
   getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
-  std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-  if (widths.first <= 0) {
-    sstr << "{ \"err\": \"Invalid CU name\" }";
-    return sstr.str();
-  }
 
   sstr << "[" ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
@@ -1456,7 +1451,7 @@ sam_debug_view::getJSONString(bool aVerbose) {
     if (i > 0) sstr << "," ;
     sstr << "{" ;
     sstr << "\"" << "CuName"  << "\"" << ":" 
-	 << "\"" << cuNameportNames[i].first << "\"" << "," ;
+	 << "\"" << slotNames[i] << "\"" << "," ;
     sstr << "\"" << "CuExecCount"  << "\"" << ":" 
 	 << "\"" << CuExecCount[i] << "\"" << "," ;
     sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
@@ -1486,8 +1481,10 @@ sam_debug_view::getXGDBString(bool aVerbose) {
   std::vector<std::string> slotNames;
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
   getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
-  std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-  int col = std::max(widths.first, strlen("CU Name")) + 4;
+  int col = 11;
+  std::for_each(slotNames.begin(), slotNames.end(), [&](std::string& slotName){
+    col = std::max(col, (int)slotName.length() + 4);
+  });
 
   sstr << "SDx Streaming Performance Monitor Counters\n" ;
   sstr << std::left
@@ -1503,14 +1500,15 @@ sam_debug_view::getXGDBString(bool aVerbose) {
        << std::endl ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
   {
+    unsigned long long minCycle = (CuMinExecCycles[i] == 0xFFFFFFFFFFFFFFFF) ? 0 : CuMinExecCycles[i];
     sstr << std::left
-	 <<         std::setw(col) << cuNameportNames[i].first 
+	 <<         std::setw(col) << slotNames[i]
 	 << "  " << std::setw(16) << CuExecCount[i]
    << "  " << std::setw(16) << CuExecCycles[i]
 	 << "  " << std::setw(16) << CuStallExtCycles[i]
 	 << "  " << std::setw(16) << CuStallIntCycles[i]
    << "  " << std::setw(16) << CuStallStrCycles[i]
-   << "  " << std::setw(16) << CuMinExecCycles[i]
+   << "  " << std::setw(16) << minCycle
    << "  " << std::setw(16) << CuMaxExecCycles[i]
    << "  " << std::setw(16) << CuStartCount[i]
 	 << std::endl ;
