@@ -1441,12 +1441,22 @@ sam_debug_view::getstring(int aVerbose, int aJSONFormat) {
 std::string
 sam_debug_view::getJSONString(bool aVerbose) {
   std::stringstream sstr ;
+  std::vector<std::string> slotNames;
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+  getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
+  std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+  if (widths.first <= 0) {
+    sstr << "{ \"err\": \"Invalid CU name\" }";
+    return sstr.str();
+  }
 
   sstr << "[" ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
   {
     if (i > 0) sstr << "," ;
     sstr << "{" ;
+    sstr << "\"" << "CuName"  << "\"" << ":" 
+	 << "\"" << cuNameportNames[i].first << "\"" << "," ;
     sstr << "\"" << "CuExecCount"  << "\"" << ":" 
 	 << "\"" << CuExecCount[i] << "\"" << "," ;
     sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
@@ -1473,23 +1483,30 @@ sam_debug_view::getJSONString(bool aVerbose) {
 std::string
 sam_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
+  std::vector<std::string> slotNames;
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+  getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
+  std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+  int col = std::max(widths.first, strlen("CU Name")) + 4;
 
   sstr << "SDx Streaming Performance Monitor Counters\n" ;
   sstr << std::left
-       <<         std::setw(32) << "CuExecCount"
-       << "  " << std::setw(16) << "CuExecCycles" 
-       << "  " << std::setw(16) << "CuStallExtCycles"
-       << "  " << std::setw(16) << "CuStallIntCycles"
-       << "  " << std::setw(16) << "CuStallStrCycles"
-       << "  " << std::setw(16) << "CuMinExecCycles"
-       << "  " << std::setw(16) << "CuMaxExecCycles"
-       << "  " << std::setw(16) << "CuStartCount"
+       <<         std::setw(col) << "CU Name"
+       << "  " << std::setw(16) << "Exec Count" 
+       << "  " << std::setw(16) << "Exec Cycles" 
+       << "  " << std::setw(16) << "Ext Stall Cycles"
+       << "  " << std::setw(16) << "Int Stall Cycles"
+       << "  " << std::setw(16) << "Str Stall Cycles"
+       << "  " << std::setw(16) << "Min Exec Cycles"
+       << "  " << std::setw(16) << "Max Exec Cycles"
+       << "  " << std::setw(16) << "Start Count"
        << std::endl ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
   {
     sstr << std::left
-	 <<         std::setw(32) << CuExecCount[i] 
-	 << "  " << std::setw(16) << CuExecCycles[i]
+	 <<         std::setw(col) << cuNameportNames[i].first 
+	 << "  " << std::setw(16) << CuExecCount[i]
+   << "  " << std::setw(16) << CuExecCycles[i]
 	 << "  " << std::setw(16) << CuStallExtCycles[i]
 	 << "  " << std::setw(16) << CuStallIntCycles[i]
    << "  " << std::setw(16) << CuStallStrCycles[i]
