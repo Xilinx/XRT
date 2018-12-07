@@ -904,15 +904,14 @@ XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsig
  * preview. These can only be used with DSAs with QDMA engine under the hood.
  */
 
-/**
- * struct xclQueueContext - structure to describe a Queue
- */
-
-enum {
+enum xclStreamContextFlags {
 	/* Enum for xclQueueContext.flags */
 	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
 };
 
+/**
+ * struct xclQueueContext - structure to describe a Queue
+ */
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
     uint32_t	state;	   /* initialized, running */
