@@ -18,35 +18,17 @@
 #ifndef __XILINX_XDP_BASE_WRITERS_H
 #define __XILINX_XDP_BASE_WRITERS_H
 
-//#include <limits>
-//#include <cstdint>
-//#include <map>
-//#include <list>
-//#include <vector>
-//#include <string>
-//#include <sstream>
-//#include <fstream>
-//#include <chrono>
-// #include <unistd.h>
-//#include <cassert>
-//#include <thread>
-//#include <mutex>
-//#include <iostream>
-////#include <iomanip>
-//#include <algorithm>
-//#include <cstdio>
-//#include <cstring>
-//#include <ctime>
 #include <boost/format.hpp>
-#include <CL/opencl.h>
 #include "../device/rt_profile_device.h"
 #include "profile_rule_checks.h"
-#include "../core/profile_logger.h"
-#include "../collection/rt_profile_results.h"
-#include "xdp/rt_singleton.h"
 #include "../debug.h"
-#include "xocl/core/device.h"
-#include "xocl/core/platform.h"
+
+#include <cstdlib>
+#include <cstdio>
+#include <string>
+#include <chrono>
+#include <iostream>
+#include <map>
 
 // Use this class to build run time user services functions
 // such as debugging and profiling

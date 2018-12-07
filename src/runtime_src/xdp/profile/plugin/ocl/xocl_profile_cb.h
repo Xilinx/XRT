@@ -25,9 +25,11 @@
  * hence profile.cpp currently lives under runtime_src/api/profile.cpp
  */
 
-#include "xocl/core/object.h"
-#include "xocl/core/event.h"
-#include "xocl/core/command_queue.h"
+#include "rt_profile_xocl.h"
+#include "xocl/api/plugin/xdp/profile.h"
+
+#include <map>
+#include <sstream>
 #include <utility>
 #include <string>
 

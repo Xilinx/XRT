@@ -18,19 +18,8 @@
 
 #include "rt_singleton.h"
 #include "xdp/appdebug/appdebug.h"
-#include "xocl/core/platform.h"
-#include "xocl/core/execution_context.h"
 #include "xrt/util/config_reader.h"
-
-#include "xdp/profile/plugin/ocl/xocl_profile_cb.h"
 #include "xdp/profile/writer/csv_writer.h"
-#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
-
-#include <cstdlib>
-#include <cstdio>
-#include <string>
-#include <chrono>
-#include <iostream>
 
 namespace XCL {
 

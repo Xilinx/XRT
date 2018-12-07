@@ -17,6 +17,7 @@
 // Copyright 2014 Xilinx, Inc. All rights reserved.
 
 #include "base_writer.h"
+#include "xdp/rt_singleton.h"
 
 namespace XCL {
   //************

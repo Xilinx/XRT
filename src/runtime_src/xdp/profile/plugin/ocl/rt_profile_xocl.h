@@ -28,10 +28,21 @@
 #include "driver/include/xclperf.h"
 #include "driver/include/xcl_app_debug.h"
 #include "xocl/core/object.h"
+#include "xocl/core/platform.h"
+#include "xocl/core/device.h"
+#include "xocl/core/event.h"
+#include "xocl/core/command_queue.h"
+#include "xocl/core/kernel.h"
+#include "xocl/core/context.h"
+#include "xocl/core/program.h"
+#include "xocl/core/range.h"
 #include "xocl/core/execution_context.h"
-#include <string>
+#include "xocl/xclbin/xclbin.h"
+
 #include <map>
 #include <memory>
+#include <cmath>
+#include <string>
 
 namespace xdp { namespace profile {
 

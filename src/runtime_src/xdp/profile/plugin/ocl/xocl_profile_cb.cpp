@@ -28,22 +28,6 @@
 #include "xdp/profile/core/profiler.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/profile_logger.h"
-#include "rt_profile_xocl.h"
-
-#include "xocl/core/event.h"
-#include "xocl/core/command_queue.h"
-#include "xocl/core/device.h"
-#include "xocl/core/kernel.h"
-#include "xocl/core/context.h"
-#include "xocl/core/program.h"
-#include "xocl/core/range.h"
-#include "xocl/core/execution_context.h"
-
-#include "xocl/xclbin/xclbin.h"
-
-#include <map>
-#include <sstream>
-#include "xocl/api/plugin/xdp/profile.h"
 
 namespace XCL {
 

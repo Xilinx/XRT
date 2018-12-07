@@ -19,8 +19,9 @@
 #define __XILINX_RT_SINGLETON_H
 
 #include <CL/opencl.h>
+#include "xdp/profile/plugin/ocl/rt_profile_xocl.h"
+#include "xdp/profile/plugin/ocl/xocl_profile_cb.h"
 #include "xdp/debug/rt_debug.h"
-#include "driver/include/xclperf.h" 
 #include "xdp/profile/core/profile_logger.h"
 
 #include <cstdlib>
