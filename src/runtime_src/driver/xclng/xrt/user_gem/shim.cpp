@@ -1873,6 +1873,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
+const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+    return xclbin::get_axlf_section(top, kind);
+}
+
 // QDMA streaming APIs
 int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
