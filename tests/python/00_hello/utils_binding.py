@@ -1,5 +1,6 @@
 from ctypes import *
 import sys
+import struct
 sys.path.append('../../../src/python/')
 from xclbin_binding import *
 from xclhal2_binding import *
@@ -49,42 +50,54 @@ def initXRT(opt):
             print("Bitsream download failed")
 
         print("Finished downloading bitstream %s") % opt.bitstreamFile
-        print("\n<-------------DEBUG------------>\n")
+
         f.seek(0)
         top = f.read()
         ip = wrap_get_axlf_section(top, AXLF_SECTION_KIND.IP_LAYOUT)
-        print("ip.contents.m_sectionOffset: %d") % ip.contents.m_sectionOffset  # correct
-        layout = ip_layout(8 + ip.contents.m_sectionOffset)  # size of header = 8 not sure about this
-        print("Layout->m_count: %d (Expected 5)") % layout.m_count  # should give 5
 
-        if opt.cu_index > layout.m_count:
+        f.seek(ip.contents.m_sectionOffset)
+        count = int(f.read(1).encode("hex"))
+
+        if opt.cu_index > count:
             print("Can't determine cu base address")
             sys.exit()
 
-        # cur_index = 0
-        # for i in range(layout.m_count):
-        #     if layout.m_ip_data[i].m_type != 1:
-        #         continue
-        #     if cur_index == opt.cu_index:
-        #         cu_base_addr = layout.m_ip_data[i].m_base_address
-        #         print("base address %d") % cu_base_addr # sould be 25165824 or 1800000
+        f.seek(ip.contents.m_sectionOffset + sizeof(c_int32) + sizeof(c_int32))
+        struct_fmt = '=1I1I1Q64s'
+        struct_len = struct.calcsize(struct_fmt)
+        struct_unpack = struct.Struct(struct_fmt).unpack_from
+
+        for i in range(count):
+            temp = f.read(struct_len)
+            s = struct_unpack(temp)
+            if s[0] == 1:
+                opt.cu_base_addr = s[2]
+                print("base address %s") % hex(s[2])
 
         topo = wrap_get_axlf_section(top, AXLF_SECTION_KIND.MEM_TOPOLOGY)
-        print("topo.contents.m_sectionOffset: %d") % topo.contents.m_sectionOffset  # correct
-        topology = mem_topology(8 + topo.contents.m_sectionOffset)  # size of header = 8
-        print("topology->m_count: %d (Expected 7)") % topology.m_count
-        #
-        #
-        # for i in range(topology.m_count):
-        #     if topology.m_mem_data[i].m_used:
-        #         first_used_mem = i
-        #         break
-        print("\n<-------------DEBUG END------------>\n")
+        f.seek(topo.contents.m_sectionOffset)
+        topo_count = int(f.read(1).encode("hex"))
+        #print(topo_count)
 
+
+        f.seek(topo.contents.m_sectionOffset + sizeof(c_int32)+ sizeof(c_int32))
+        struct_fmt = '=1b1b6b1Q1Q16s'
+        struct_len = struct.calcsize(struct_fmt)
+        #print(struct_len, sizeof(mem_data))
+        struct_unpack = struct.Struct(struct_fmt).unpack_from
+
+        for i in range(topo_count):
+            temp = f.read(40)
+        # for b in range(struct_len):
+        #     print(ord(f.read(1)))
+            s = struct_unpack(temp)
+
+            if s[1] == 1:
+                opt.first_mem = i
+                break
     # <----------HARDCODED VALUES---------->
-    opt.first_mem = 1
-    opt.cu_base_addr = 25165824  # this isn't used anywhere in the main function
-    print("base address %i") % opt.cu_base_addr
+    #opt.first_mem = 1
+    #opt.cu_base_addr = 25165824  # this isn't used anywhere in the main function
 
     return 0
 

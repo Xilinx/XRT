@@ -80,7 +80,6 @@ def main(args):
     try:
         if initXRT(opt):
             return 1
-
         if opt.first_mem < 0:
             return 1
 
