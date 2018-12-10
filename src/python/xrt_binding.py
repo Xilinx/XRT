@@ -1,8 +1,8 @@
 from ctypes import *
 from enum import *
 from xclbin_binding import *
-
-libc = CDLL("../../../build/Debug/opt/xilinx/xrt/lib/libxrt_core.so")
+import os
+libc = CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 xclDeviceHandle = c_void_p
 
@@ -187,6 +187,18 @@ def xclClose(handle):
     libc.xclClose(handle)
 
 
+def xclResetDevice(handle, kind):
+    """
+    xclResetDevice() - Reset a device or its CL
+    :param handle: Device handle
+    :param kind: Reset kind
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclResetDevice.restype = c_int
+    libc.xclResetDevice.argtypes = [xclDeviceHandle, c_int]
+    libc.xclResetDevice(handle, kind)
+
+
 def xclGetDeviceInfo2 (handle, info):
     """
     xclGetDeviceInfo2() - Obtain various bits of information from the device
@@ -201,18 +213,28 @@ def xclGetDeviceInfo2 (handle, info):
     return libc.xclGetDeviceInfo2(handle, info)
 
 
-def xclLockDevice(handle):
+def xclGetUsageInfo (handle, info):
     """
-    Get exclusive ownership of the device
-
-    :param handle: (xclDeviceHandle) device handle
+    xclGetUsageInfo() - Obtain usage information from the device
+    :param handle: Device handle
+    :param info: Information record
     :return: 0 on success or appropriate error number
-
-    The lock is necessary before performing buffer migration, register access or bitstream downloads
     """
-    libc.xclLockDevice.restype = c_int
-    libc.xclLockDevice.argtype = xclDeviceHandle
-    return libc.xclLockDevice(handle)
+    libc.xclGetUsageInfo.restype = c_int
+    libc.xclGetUsageInfo.argtypes = [xclDeviceHandle, POINTER(xclDeviceInfo2)]
+    return libc.xclGetUsageInfo(handle, info)
+
+
+def xclGetErrorStatus(handle, info):
+    """
+    xclGetErrorStatus() - Obtain error information from the device
+    :param handle: Device handle
+    :param info: Information record
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclGetErrorStatus.restype = c_int
+    libc.xclGetErrorStatus.argtypes = [xclDeviceHandle, POINTER(xclDeviceInfo2)]
+    return libc.xclGetErrorStatus(handle, info)
 
 
 def xclLoadXclBin(handle, buf):
@@ -230,6 +252,61 @@ def xclLoadXclBin(handle, buf):
     libc.xclLoadXclBin.restype = c_int
     libc.xclLoadXclBin.argtypes = [xclDeviceHandle, c_void_p]
     return libc.xclLoadXclBin(handle, buf)
+
+
+def xclGetSectionInfo(handle, info, size, kind, index):
+    """
+    xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
+    :param handle: Device handle
+    :param info: Pointer to preallocated memory which will store the return value.
+    :param size: Pointer to preallocated memory which will store the return size.
+    :param kind: axlf_section_kind for which info is being queried
+    :param index: The (sub)section index for the "kind" type.
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclGetSectionInfo.restype = c_int
+    libc.xclGetSectionInfo.argtypes = [xclDeviceHandle, POINTER(xclDeviceInfo2), POINTER(sizeof(xclDeviceInfo2)),
+                                       c_int, c_int]
+    return libc.xclGetSectionInfo(handle, info, size, kind, index)
+
+
+def xclReClock2(handle, region, targetFreqMHz):
+    """
+    xclReClock2() - Configure PR region frequencies
+    :param handle: Device handle
+    :param region: PR region (always 0)
+    :param targetFreqMHz: Array of target frequencies in order for the Clock Wizards driving the PR region
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclReClock2.restype = c_int
+    libc.xclReClock2.argtypes = [xclDeviceHandle, c_uint, c_uint]
+    return libc.xclReClock2(handle, region, targetFreqMHz)
+
+
+def xclLockDevice(handle):
+    """
+    Get exclusive ownership of the device
+
+    :param handle: (xclDeviceHandle) device handle
+    :return: 0 on success or appropriate error number
+
+    The lock is necessary before performing buffer migration, register access or bitstream downloads
+    """
+    libc.xclLockDevice.restype = c_int
+    libc.xclLockDevice.argtype = xclDeviceHandle
+    return libc.xclLockDevice(handle)
+
+
+def xclUnlockDevice(handle):
+    """
+    xclUnlockDevice() - Release exclusive ownership of the device
+
+    :param handle: (xclDeviceHandle) device handle
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclUnlockDevice.restype = c_int
+    libc.xclUnlockDevice.argtype = xclDeviceHandle
+    return libc.xclUnlockDevice(handle)
 
 
 def xclAllocBO(handle, size, domain, flags):

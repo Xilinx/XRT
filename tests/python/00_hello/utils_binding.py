@@ -3,7 +3,7 @@ from ctypes import *
 # import source files
 sys.path.append('../../../src/python/')
 from xclbin_binding import *
-from xclhal2_binding import *
+from xrt_binding import *
 
 
 class Options(object):

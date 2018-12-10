@@ -1,7 +1,7 @@
 import sys
 # import source files
 sys.path.append('../../../src/python/')
-from xclhal2_binding import *
+from xrt_binding import *
 from utils_binding import *
 
 

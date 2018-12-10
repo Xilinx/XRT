@@ -1,7 +1,7 @@
 from ctypes import *
 from enum import *
-
-libc = CDLL("../../../build/Debug/opt/xilinx/xrt/lib/libxrt_core.so")
+import os
+libc = CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
 class AXLF_SECTION_KIND (Enum):
