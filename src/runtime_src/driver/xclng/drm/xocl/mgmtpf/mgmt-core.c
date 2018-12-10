@@ -410,56 +410,56 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
-        if(temp < LOW_TEMP || temp > HI_TEMP) {
-                mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
-                        LOW_TEMP, HI_TEMP, temp);
-        }
+	if(temp < LOW_TEMP || temp > HI_TEMP) {
+		mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
+			LOW_TEMP, HI_TEMP, temp);
+	}
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 {
-        if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
-                mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
-                        LOW_MILLVOLT, HI_MILLVOLT, volt);
-        }
+	if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
+		mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
+			LOW_MILLVOLT, HI_MILLVOLT, volt);
+	}
 }
 
 static void check_sysmon(struct xclmgmt_dev *lro)
 {
-        u32             val;
+	u32 val;
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
-        check_temp_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	check_temp_within_range(lro, val);
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
-        check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
+	check_volt_within_range(lro, val);
 }
 
 static int health_check_cb(void *data)
 {
-        struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
 	bool tripped;
 
-        if (!health_check)
-                return 0;
+	if (!health_check)
+		return 0;
 
-        mutex_lock(&lro->busy_mutex);
+	mutex_lock(&lro->busy_mutex);
 	tripped = xocl_af_check(lro, NULL);
-        mutex_unlock(&lro->busy_mutex);
+	mutex_unlock(&lro->busy_mutex);
 
-        if (!tripped) {
-                check_sysmon(lro);
-        } else {
+	if (!tripped) {
+		check_sysmon(lro);
+	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-                (void) xocl_peer_notify(lro, &mbreq);
-        }
+		(void) xocl_peer_notify(lro, &mbreq);
+	}
 
-        return 0;
+	return 0;
 }
 
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
