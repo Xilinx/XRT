@@ -4,11 +4,19 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
+
 /**
  * @file
  * @brief This file contains the definitions for qdma configuration apis
@@ -42,13 +50,19 @@
 int qdma_set_qmax(unsigned long dev_hndl, u32 qsets_max, bool forced)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
+
 	/**<b> Detailed Description </b>*/
 	/**
 	 *  If xdev is NULL or qdev is NULL, return error as Invalid parameter
 	 */
-	if (!xdev || !qdev)
+	if (!xdev)
+		return -EINVAL;
+
+	qdev = xdev_2_qdev(xdev);
+
+	if (!qdev)
 		return -EINVAL;
 
 	/** If qdev->init_qrange is set,
@@ -131,15 +145,19 @@ unsigned int qdma_get_qmax(unsigned long dev_hndl)
 int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 intr_rngsz)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
 
 	/**<b> Detailed Description </b>*/
 	/**
-	 *  If xdev is NULL or qdev is NULL,
-	 *  return error as Invalid parameter
+	 *  If xdev is NULL or qdev is NULL, return error as Invalid parameter
 	 */
-	if (!xdev || !qdev)
+	if (!xdev)
+		return -EINVAL;
+
+	qdev = xdev_2_qdev(xdev);
+
+	if (!qdev)
 		return -EINVAL;
 
 	/** If the input intr_rngsz is same as the
@@ -155,8 +173,9 @@ int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 intr_rngsz)
 	/** If interrupt aggregation is not enabled, then no need to change the
 	 *  interrupt ring size. Retrun error in this case.
 	 */
-	if (!xdev->conf.intr_agg) {
-		pr_err("xdev 0x%p, interrupt coalescing is disabled\n", xdev);
+	if ((xdev->conf.qdma_drv_mode != INDIRECT_INTR_MODE) &&
+			(xdev->conf.qdma_drv_mode != AUTO_MODE)) {
+		pr_err("xdev 0x%p, interrupt aggregation is disabled\n", xdev);
 		return rv;
 	}
 
@@ -209,9 +228,9 @@ unsigned int qdma_get_intr_rngsz(unsigned long dev_hndl)
 	/** If interrupt aggregation is not enabled, then return 0
 	 *  As the intr_rngsz value is irrelevant in this case
 	 */
-	if (!(xdev->conf.intr_agg)) {
-		pr_info("xdev 0x%p, interrupt coalescing is disabled[%d]\n",
-					xdev, xdev->conf.intr_agg);
+	if ((xdev->conf.qdma_drv_mode != INDIRECT_INTR_MODE) &&
+			(xdev->conf.qdma_drv_mode != AUTO_MODE)) {
+		pr_info("xdev 0x%p, interrupt aggregation is disabled\n", xdev);
 		return 0;
 	}
 
@@ -387,18 +406,18 @@ int qdma_set_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt)
 	if (!xdev || !qdev)
 		return -EINVAL;
 
-    /** If qdev->init_qrange is set,
+   /**  If qdev->init_qrange is set,
     *  it indicates that FMAP programming is done
     *      That meansat least one queue is added in the system.
     *  qmax is not allowed to change after FMAP programming is done.
     *  Hence, If qdev->init_qrange is set, return error as qmax
     *  cannot be changed now.
     */
-    if (qdev->init_qrange) {
+	if (qdev->init_qrange) {
 		pr_err("xdev 0x%p, FMAP prog done, can not modify timer count\n",
 						xdev);
 		return rv;
-    }
+	}
 
 	rv = qdma_csr_write_timer_cnt(xdev, tmr_cnt);
 
@@ -445,23 +464,24 @@ int qdma_set_cnt_thresh(unsigned long dev_hndl, unsigned int *cnt_th)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_dev *qdev = xdev_2_qdev(xdev);
-    int rv = -1;
+	int rv = -1;
 
 	if (!xdev || !qdev)
 		return -EINVAL;
 
-    /** If qdev->init_qrange is set,
+   /** If qdev->init_qrange is set,
     *  it indicates that FMAP programming is done
     *  That means at least one queue is added in the system.
-    *  csr count threshold is not allowed to change after FMAP programming is done.
+    *  csr count threshold is not allowed to change after FMAP
+    *  programming is done.
     *  Hence, If qdev->init_qrange is set, return error as csr count threshold
     *  cannot be changed now.
     */
-    if (qdev->init_qrange) {
+	if (qdev->init_qrange) {
 		pr_err("xdev 0x%p, FMAP prog done, can not modify threshold count\n",
 						xdev);
 		return rv;
-    }
+	}
 
 	rv = qdma_csr_write_cnt_thresh(xdev, cnt_th);
 
@@ -496,18 +516,20 @@ unsigned int qdma_get_cnt_thresh(unsigned long dev_hndl, u32 *cnt_th)
 
 /*****************************************************************************/
 /**
- * qdma_set_wrb_acc() -  Handler function to set the wrb_acc configuration value
+ * qdma_set_cmpl_status_acc() -  Handler function to set the cmpl_status_acc
+ * configuration value
  *
  * @param[in]	dev_hndl:	qdma device handle
- * @param[in]	wrb_acc:	Writeback Accumulation value
+ * @param[in]	cmpl_status_acc:	Writeback Accumulation value
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
  * @return	-1 on failure
  *****************************************************************************/
-int qdma_set_wrb_acc(unsigned long dev_hndl, u32 wrb_acc)
+int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
 	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	unsigned int reg;
 
 	/**<b> Detailed Description </b>*/
 	/**
@@ -517,14 +539,17 @@ int qdma_set_wrb_acc(unsigned long dev_hndl, u32 wrb_acc)
 		return -EINVAL;
 
 	if (qdev->init_qrange) {
-		pr_err("xdev 0x%p, FMAP prog done, cannot modify wrb acc\n",
+		pr_err("xdev 0x%p, FMAP prog done, cannot modify cmpt acc\n",
 				xdev);
 		return -EINVAL;
 	}
 	/**
-	 * Write the given wrb_acc value to the register
+	 * Write the given cmpl_status_acc value to the register
 	 */
-	__write_reg(xdev, QDMA_REG_GLBL_WB_ACC, wrb_acc);
+	reg = __read_reg(xdev, QDMA_REG_GLBL_DSC_CFG);
+	reg &= ~QDMA_REG_GLBL_DSC_CFG_CMPL_STATUS_ACC_MASK;
+	reg |= cmpl_status_acc;
+	__write_reg(xdev, QDMA_REG_GLBL_DSC_CFG, reg);
 
 	/**
 	 *  Return Operation Successful
@@ -534,20 +559,21 @@ int qdma_set_wrb_acc(unsigned long dev_hndl, u32 wrb_acc)
 
 /*****************************************************************************/
 /**
- * qdma_get_wrb_acc() -  Handler function to get the wrb_acc configuration value
+ * qdma_get_cmpl_status_acc() -  Handler function to get the cmpl_status_acc
+ * configuration value
  *
  * @param[in] dev_hndl:		qdma device handle
  *
  * Handler function to get the writeback accumulation value
  *
- * @return	wrb_acc on success
+ * @return	cmpl_status_acc on success
  * @return	-1 on failure
  *
  *****************************************************************************/
-unsigned int qdma_get_wrb_acc(unsigned long dev_hndl)
+unsigned int qdma_get_cmpl_status_acc(unsigned long dev_hndl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	unsigned int wb_acc;
+	unsigned int cs_acc;
 
 	/**<b> Detailed Description </b>*/
 	/**
@@ -557,10 +583,11 @@ unsigned int qdma_get_wrb_acc(unsigned long dev_hndl)
 		return -EINVAL;
 
 	/**
-	 * Read the current wrb_acc value from the register and return
+	 * Read the current cmpl_status_acc value from the register and return
 	 */
-	wb_acc = __read_reg(xdev, QDMA_REG_GLBL_WB_ACC);
+	cs_acc = __read_reg(xdev, QDMA_REG_GLBL_DSC_CFG) &
+			QDMA_REG_GLBL_DSC_CFG_CMPL_STATUS_ACC_MASK;
 
-	return wb_acc;
+	return cs_acc;
 }
 #endif
