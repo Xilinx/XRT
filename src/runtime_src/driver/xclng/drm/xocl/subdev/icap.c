@@ -2035,6 +2035,8 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 			err = icap->icap_bitstream_ref;
 	} else {
 		err = icap_lock_unlock_peer_bitstream(icap, id, pid, false);
+		if (err==0)
+			xocl_exec_reset(xocl_get_xdev(pdev));
 	}
 
 	ICAP_INFO(icap, "proc %d try to unlock bitstream %pUb, ref=%d, err=%d",

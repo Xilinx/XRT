@@ -202,7 +202,7 @@ struct xocl_sched
         unsigned int               reset;
 
         struct list_head           command_queue;
-        atomic_t                   intc; /* pending interrupt shared with isr */
+        unsigned int               intc; /* pending intr shared with isr, word aligned atomic */
         unsigned int               poll; /* number of cmds to poll */
 };
 
@@ -214,8 +214,8 @@ reset_scheduler(struct xocl_sched *xs)
 	xs->error=0;
 	xs->stop=0;
 	xs->poll=0;
-	xs->reset=0;
-	atomic_set(&xs->intc,0);
+	xs->reset=false;
+	xs->intc=0;
 }
 
 /**
@@ -397,7 +397,7 @@ cmd_set_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 static inline enum ert_cmd_state
 cmd_update_state(struct xocl_cmd *xcmd)
 {
-	if (xcmd->state!=ERT_CMD_STATE_RUNNING && atomic_read(&xcmd->client->abort))
+	if (xcmd->state!=ERT_CMD_STATE_RUNNING && xcmd->client->abort)
 		cmd_set_state(xcmd,ERT_CMD_STATE_ABORT);
 	return xcmd->state;
 }
@@ -1386,24 +1386,6 @@ abort_to_free(struct xocl_cmd *xcmd)
 	SCHED_DEBUG("<- abort_to_free\n");
 }
 
-#if 0
-static void
-abort_cmd(struct xocl_cmd *xcmd)
-{
-	struct xocl_cmd *abort_cmd = get_free_xocl_cmd();
-	abort_cmd->bo=NULL;
-	abort_cmd->exec=xcmd->exec;
-
-	ert_abort_cmd abort;
-	abort.state = 1;
-	abort.idx = xcmd->slot_idx;
-
-	iowrite32
-	SCHED_DEBUG("-> abort_cmd\n");
-	SCHED_DEBUG("<- abort_cmd\n");
-}
-#endif
-
 /**
  * scheduler_queue_cmds() - Queue any pending commands
  *
@@ -1494,9 +1476,9 @@ scheduler_wait_condition(struct xocl_sched *xs)
 		return 0;
 	}
 
-	if (atomic_read(&xs->intc)) {
+	if (xs->intc) {
 		SCHED_DEBUG("scheduler wakes on interrupt\n");
-		atomic_set(&xs->intc,0);
+		xs->intc=0;
 		return 0;
 	}
 
@@ -1877,7 +1859,7 @@ static irqreturn_t exec_isr(int irq, void *arg)
 			atomic_set(&exec->sr3,1);
 
 		/* wake up all scheduler ... currently one only */
-		atomic_set(&global_scheduler0.intc,1);
+		global_scheduler0.intc = 1;
 		wake_up_interruptible(&global_scheduler0.wait_queue);
 	} else {
 		xocl_err(&exec->pdev->dev, "Unhandled isr irq %d, is_ert %d, "
@@ -1916,9 +1898,9 @@ create_client(struct platform_device *pdev, void **priv)
 	if (!xdev->offline) {
 		client->pid = task_tgid(current);
 		mutex_init(&client->lock);
-		atomic_set(&client->xclbin_locked,false);
+		client->xclbin_locked = false;
+		client->abort=false;
 		atomic_set(&client->trigger, 0);
-		atomic_set(&client->abort, 0);
 		atomic_set(&client->outstanding_execs, 0);
 		client->num_cus = 0;
 		client->xdev = xocl_get_xdev(pdev);
@@ -1945,9 +1927,10 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
+	int pid = pid_nr(task_tgid(current));
 
 	/* force scheduler to abort execs for this client */
-	atomic_set(&client->abort,1);
+	client->abort=true;
 
 	/* wait for outstanding execs to finish */
 	while (outstanding) {
@@ -1958,22 +1941,22 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		loops = (new==outstanding ? (loops + 1) : 0);
 		if (loops == timeout_loops) {
 			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbutil reset -h'\n",outstanding);
-			atomic_set(&xdev->needs_reset,1);
+			xdev->needs_reset=true;
 			/* reset the scheduler loop */
-			global_scheduler0.reset=1;
+			global_scheduler0.reset=true;
 			break;
 		}
 		outstanding = new;
 	}
 
-	DRM_INFO("client exits pid(%d)\n",pid_nr(client->pid));
+	DRM_INFO("client exits pid(%d)\n",pid);
 
 	mutex_lock(&xdev->ctx_list_lock);
 	list_del(&client->link);
-	if (list_empty(&xdev->ctx_list))
-		reset_exec(platform_get_drvdata(pdev));
 	mutex_unlock(&xdev->ctx_list_lock);
 
+	if (client->xclbin_locked)
+		xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid);
 	mutex_destroy(&client->lock);
 	devm_kfree(&pdev->dev, client);
 	*priv = NULL;
@@ -2133,8 +2116,8 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	ssize_t sz = 0;
 
 	/* minimum required initialization of client */
-	atomic_set(&client.trigger, 0);
-	atomic_set(&client.abort, 0);
+	client.abort=false;
+	atomic_set(&client.trigger,0);
 	atomic_set(&client.outstanding_execs, 0);
 
 	if (!exec->configured) {
