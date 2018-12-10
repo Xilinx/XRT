@@ -44,7 +44,7 @@ struct BoardInfo
     std::string mMacAddr2;
     std::string mMacAddr3;
     std::string mBMCVer;
-    unsigned int mMaxPowerLvl;
+    std::string mMaxPower;
     unsigned int mConfigMode;
     char mFanPresence;
 };
