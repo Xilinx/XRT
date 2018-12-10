@@ -198,28 +198,34 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
-	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap, xdev->layout->m_count) : MAX_CUS;
+	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap,
+		xdev->layout->m_count) : MAX_CUS;
 
 	DRM_ENTER("");
 
-	/* This happens when application exists without formally releasing the contexts on CUs.
-	 * Give up our contexts on CUs and our lock on xclbin.
-	 * Note, that implicitly CUs (such as CDMA) do not add to ip_reference
-	*/
+	/*
+	 * This happens when application exists without formally releasing the
+	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicitly CUs (such as CDMA) do not add to ip_reference.
+	 */
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
 		if (xdev->ip_reference[bit]) {
-			userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
-				    bit);
+			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
+				&client->xclbin_id, pid_nr(task_tgid(current)),
+				bit);
 			xdev->ip_reference[bit]--;
 		}
-		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
+		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count,
+			bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (atomic_read(&client->xclbin_locked))
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
+	if (atomic_read(&client->xclbin_locked)) {
+		if (xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
+			pid_nr(task_tgid(current))) == 0)
+			xocl_exec_reset(xdev);
+	}
 
-	if (MB_SCHEDULER_DEV(xdev))
-		xocl_exec_destroy_client(xdev, &filp->driver_priv);
+	xocl_exec_destroy_client(xdev, &filp->driver_priv);
 }
 
 static uint xocl_poll(struct file *filp, poll_table *wait)
@@ -325,7 +331,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 {
 	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-	int ret = 0;
 
 	if (err != 0)
 		return;
@@ -333,19 +338,11 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_HOT_RESET_BEGIN:
-		xocl_reset_notify(xdev->core.pdev, true);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_HOT_RESET_END:
-		xocl_reset_notify(xdev->core.pdev, false);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_RESET_ERT:
-		ret = xocl_reset_scheduler(xdev->core.pdev);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_FIREWALL:
+		(void) xocl_hot_reset(xdev, true);
 		break;
 	default:
+		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
 	}
 }

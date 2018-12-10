@@ -29,16 +29,10 @@ struct class *xrt_class = NULL;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
-#define	EBUF_LEN	256
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
         struct xocl_dev *xdev = pci_get_drvdata(pdev);
 
-	if (!pdev->driver ||
-		strcmp(pdev->driver->driver.mod_name, XOCL_MODULE_NAME)) {
-		xocl_err(&pdev->dev, "XOCL driver is not bound");
-		return;
-	}
         xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
         if (prepare) {
@@ -50,15 +44,73 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_mailbox_reset(xdev, true);
         }
 }
-EXPORT_SYMBOL_GPL(xocl_reset_notify);
 
-/* hack for mgmt driver to request scheduler reset */
-int xocl_reset_scheduler(struct pci_dev *pdev)
+static void kill_all_clients(struct xocl_dev *xdev)
 {
-	return xocl_exec_reset(pci_get_drvdata(pdev));
-}
-EXPORT_SYMBOL_GPL(xocl_reset_scheduler);
+	struct list_head *ptr;
+	struct client_ctx *entry;
+	int ret;
+	int total_wait_secs = 10; // sec
+	int wait_interval = 100; // millisec
+	int retry = total_wait_secs * 1000 / wait_interval;
 
+	mutex_lock(&xdev->ctx_list_lock);
+
+	list_for_each(ptr, &xdev->ctx_list) {
+		entry = list_entry(ptr, struct client_ctx, link);
+		ret = kill_pid(entry->pid, SIGBUS, 1);
+		if (ret) {
+			userpf_err(xdev, "killing pid: %d failed. err: %d",
+				pid_nr(entry->pid), ret);
+		}
+	}
+
+	mutex_unlock(&xdev->ctx_list_lock);
+
+	while (!list_empty(&xdev->ctx_list) && retry--)
+		msleep(wait_interval);
+
+	if (!list_empty(&xdev->ctx_list))
+		userpf_err(xdev, "failed to kill all clients");
+}
+
+int xocl_hot_reset(struct xocl_dev *xdev, bool force)
+{
+	bool skip = false;
+	int ret = 0;
+	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
+	size_t resplen = sizeof (ret);
+	int mbret;
+
+	mutex_lock(&xdev->ctx_list_lock);
+	if (xdev->offline) {
+		skip = true;
+	} else if (!force && !list_empty(&xdev->ctx_list)) {
+		userpf_err(xdev, "device is in use, can't reset");
+		ret = -EBUSY;
+	} else {
+		xdev->offline = true;
+	}
+	mutex_unlock(&xdev->ctx_list_lock);
+	if (ret < 0 || skip)
+		return ret;
+
+	userpf_info(xdev, "resetting device...");
+
+	kill_all_clients(xdev);
+
+	xocl_reset_notify(xdev->core.pdev, true);
+	mbret = xocl_peer_request(xdev, &mbreq, &ret, &resplen, NULL, NULL);
+	if (mbret)
+		ret = mbret;
+	xocl_reset_notify(xdev->core.pdev, false);
+
+	mutex_lock(&xdev->ctx_list_lock);
+	xdev->offline = false;
+	mutex_unlock(&xdev->ctx_list_lock);
+
+	return ret;
+}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)

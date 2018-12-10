@@ -59,10 +59,7 @@ static int user_dev_online(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (xdev->offline) {
-		xdma_device_online(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = false;
-	}
+	xdma_device_online(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device online");
 
 	return 0;
@@ -72,10 +69,7 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (!xdev->offline) {
-		xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = true;
-	}
+	xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device offline");
 	return 0;
 }

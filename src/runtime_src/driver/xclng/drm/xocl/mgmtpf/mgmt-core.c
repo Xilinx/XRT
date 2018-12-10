@@ -69,8 +69,6 @@ static int char_open(struct inode *inode, struct file *file)
 {
 	struct xclmgmt_char *lro_char;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_proc_ctx ctx;
-	int	ret;
 
 	/* pointer to containing data structure of the character device inode */
 	lro_char = container_of(inode->i_cdev, struct xclmgmt_char, cdev);
@@ -79,23 +77,6 @@ static int char_open(struct inode *inode, struct file *file)
 	file->private_data = lro_char;
 	lro = lro_char->lro;
 	BUG_ON(!lro);
-
-	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mutex_unlock(&lro->busy_mutex);
-		mgmt_err(lro, "resetting firewall");
-		return -EAGAIN;
-	}
-	mutex_unlock(&lro->busy_mutex);
-
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	ctx.signaled = false;
-	ret = xocl_ctx_add(&lro->ctx_table, &ctx, sizeof (ctx));
-	if (ret && ret != -EEXIST) {
-		mgmt_err(lro, "add proc context failed, ret = %d", ret);
-		return ret;
-	}
 
 	mgmt_info(lro, "opened file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
@@ -110,7 +91,6 @@ static int char_close(struct inode *inode, struct file *file)
 {
 	struct xclmgmt_dev *lro;
 	struct xclmgmt_char *lro_char;
-	struct xclmgmt_proc_ctx ctx;
 
 	lro_char = (struct xclmgmt_char *)file->private_data;
 	BUG_ON(!lro_char);
@@ -118,10 +98,6 @@ static int char_close(struct inode *inode, struct file *file)
 	/* fetch device specific data stored earlier during open */
 	lro = lro_char->lro;
 	BUG_ON(!lro);
-
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	(void) xocl_ctx_remove(&lro->ctx_table, &ctx);
 
 	mgmt_info(lro, "Closing file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
@@ -463,69 +439,27 @@ static void check_sysmon(struct xclmgmt_dev *lro)
         check_volt_within_range(lro, val);
 }
 
-static int kill_process(struct xocl_context_hash *ctx_hash, void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        int     ret = 0;
-
-        if (!ctx->signaled) {
-                ret = kill_pid(ctx->pid, SIGBUS, 1);
-                if (ret != 0)
-                        mgmt_err(ctx->lro, "Killing pid: %d failed. Err: %d",
-                                pid_nr(ctx->pid), ret);
-                ctx->signaled = true;
-        }
-
-        return ret;
-}
-
 static int health_check_cb(void *data)
 {
         struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-        int     ret = 0;
+	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	bool tripped;
 
         if (!health_check)
                 return 0;
-        mutex_lock(&lro->busy_mutex);
-        if (!xocl_af_check(lro, NULL)) {
-                check_sysmon(lro);
-        } else {
-                ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
-		/* stop user pf */
-		xocl_reset(lro, true);
-                if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
-			mgmt_info(lro, "Issuing pcie hot reset.");
-                        xclmgmt_reset_pci(lro);
-                }
-		xocl_af_check(lro, NULL);
 
-		freezeAXIGate(lro);
-	        msleep(500);
-	        freeAXIGate(lro);
-	        msleep(500);
-		xocl_reset(lro, false);
-        }
+        mutex_lock(&lro->busy_mutex);
+	tripped = xocl_af_check(lro, NULL);
         mutex_unlock(&lro->busy_mutex);
 
+        if (!tripped) {
+                check_sysmon(lro);
+        } else {
+		mgmt_info(lro, "firewall tripped, notify peer");
+                (void) xocl_peer_notify(lro, &mbreq);
+        }
+
         return 0;
-}
-
-static u32 proc_hash(void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        u32 pid = pid_nr(ctx->pid);
-
-        return (pid % MGMT_PROC_TABLE_HASH_SZ);
-}
-
-static int proc_cmp(void *arg_o, void *arg_n)
-{
-        struct xclmgmt_proc_ctx *ctx_o = arg_o;
-        struct xclmgmt_proc_ctx *ctx_n = arg_n;
-        u32 pid_o = pid_nr(ctx_o->pid);
-        u32 pid_n = pid_nr(ctx_n->pid);
-
-        return (pid_o - pid_n);
 }
 
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
@@ -643,6 +577,9 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			req->u.req_bit_lock.pid);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
+	case MAILBOX_REQ_HOT_RESET:
+		ret = (int) reset_hot_ioctl(lro);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 	default:
 		break;
 	}
@@ -692,13 +629,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto fail_all_subdev;
-
-	ret = xocl_ctx_init(&pdev->dev, &lro->ctx_table,
-		MGMT_PROC_TABLE_HASH_SZ, proc_hash, proc_cmp);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to create ctx table\n");
-		goto fail_all_subdev;
-	}
 
 	xocl_af_start_health_check(lro, health_check_cb, lro,
 		health_interval * 1000);
@@ -844,9 +774,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_fini_sysfs(&pdev->dev);
 
 	xocl_subdev_destroy_all(lro);
-
-	/* free contexts */
-	xocl_ctx_fini(&pdev->dev, &lro->ctx_table);
 
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */

@@ -67,8 +67,7 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
-	freezeAXIGate(lro);
-	freeAXIGate(lro);
+	xocl_icap_reset_axi_gate(lro);
 	return compute_unit_busy(lro) ? -EBUSY : 0;
 }
 
@@ -108,11 +107,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -EFAULT;
 
 	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mgmt_err(lro, "Firewall tripped!");
-		mutex_unlock(&lro->busy_mutex);
-		return -EBUSY;
-	}
 
 	switch (cmd) {
 	case XCLMGMT_IOCINFO:

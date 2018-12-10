@@ -479,9 +479,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET_BEGIN,
-	MAILBOX_REQ_HOT_RESET_END,
-	MAILBOX_REQ_RESET_ERT,
+	MAILBOX_REQ_HOT_RESET,
+	MAILBOX_REQ_FIREWALL,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -529,8 +528,7 @@ struct xocl_mailbox_funcs {
 	end) : -ENODEV)
 
 struct xocl_icap_funcs {
-	int (*freeze_axi_gate)(struct platform_device *pdev);
-	int (*free_axi_gate)(struct platform_device *pdev);
+	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
@@ -548,10 +546,8 @@ struct xocl_icap_funcs {
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
-#define	xocl_icap_freeze_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->freeze_axi_gate(ICAP_DEV(xdev))
-#define	xocl_icap_free_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->free_axi_gate(ICAP_DEV(xdev))
+#define	xocl_icap_reset_axi_gate(xdev)					\
+	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev))
 #define	xocl_icap_reset_bitstream(xdev)					\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev))
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
@@ -594,8 +590,6 @@ int xocl_subdev_get_devinfo(uint32_t subdev_id,
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
-struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
-void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
         struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);

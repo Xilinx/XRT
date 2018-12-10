@@ -1904,44 +1904,47 @@ static int
 create_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx	*client;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-
-	DRM_INFO("scheduler client created pid(%d)\n",pid_nr(task_tgid(current)));
+	struct xocl_dev		*xdev = xocl_get_xdev(pdev);
+	int			ret = 0;
 
 	client = devm_kzalloc(&pdev->dev, sizeof (*client), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
 
-	client->pid = task_tgid(current);
-	mutex_init(&client->lock);
-	atomic_set(&client->xclbin_locked,false);
-	atomic_set(&client->trigger, 0);
-	atomic_set(&client->abort, 0);
-	atomic_set(&client->outstanding_execs, 0);
-	client->num_cus = 0;
 	mutex_lock(&xdev->ctx_list_lock);
-	client->xdev = xocl_get_xdev(pdev);
-	list_add_tail(&client->link, &xdev->ctx_list);
 
-	/* kds must be configured on first xdev context even if that context
-	 * does not trigger an xclbin download */
-	if (list_is_singular(&xdev->ctx_list))
-		reset_exec(platform_get_drvdata(pdev));
+	if (!xdev->offline) {
+		client->pid = task_tgid(current);
+		mutex_init(&client->lock);
+		atomic_set(&client->xclbin_locked,false);
+		atomic_set(&client->trigger, 0);
+		atomic_set(&client->abort, 0);
+		atomic_set(&client->outstanding_execs, 0);
+		client->num_cus = 0;
+		client->xdev = xocl_get_xdev(pdev);
+		list_add_tail(&client->link, &xdev->ctx_list);
+		*priv =  client;
+	} else {
+		/* Do not allow new client to come in while being offline. */
+		devm_kfree(&pdev->dev, client);
+		ret = -EBUSY;
+	}
 
 	mutex_unlock(&xdev->ctx_list_lock);
 
-	*priv =  client;
+	DRM_INFO("creating scheduler client for pid(%d), ret: %d\n",
+		pid_nr(task_tgid(current)), ret);
 
-	return 0;
+	return ret;
 }
 
 static void destroy_client(struct platform_device *pdev, void **priv)
 {
-	struct client_ctx 	*client = (struct client_ctx *)(*priv);
-	struct xocl_dev         *xdev = xocl_get_xdev(pdev);
-	unsigned int            outstanding = atomic_read(&client->outstanding_execs);
-	unsigned int            timeout_loops = 20;
-	unsigned int            loops = 0;
+	struct client_ctx *client = (struct client_ctx *)(*priv);
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
+	unsigned int	timeout_loops = 20;
+	unsigned int	loops = 0;
 
 	/* force scheduler to abort execs for this client */
 	atomic_set(&client->abort,1);
@@ -1967,6 +1970,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 
 	mutex_lock(&xdev->ctx_list_lock);
 	list_del(&client->link);
+	if (list_empty(&xdev->ctx_list))
+		reset_exec(platform_get_drvdata(pdev));
 	mutex_unlock(&xdev->ctx_list_lock);
 
 	mutex_destroy(&client->lock);
@@ -2050,7 +2055,6 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 	/* cus for start kernel commands only */
 	if (ecmd->opcode!=ERT_START_CU) {
-		userpf_err(xocl_get_xdev(pdev),"validate got unexpected command opcode(%d)\n",ecmd->opcode);
 		return 0; /* ok */
 	}
 
