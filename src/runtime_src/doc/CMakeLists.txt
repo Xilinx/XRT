@@ -11,10 +11,6 @@ file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(GLOB XRT_DOC_SRC
-  ${DOC_TOC_DIR}/*.rst
-  )
-
 set(KERNELDOC "./kernel-doc")
 set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52")
 MESSAGE(STATUS "${KERNELDOC} downloading")
@@ -52,14 +48,12 @@ else ()
     )
 
   add_custom_target(
-    xrt_docs
-    DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
+    xrt_docs ALL
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND mkdir -p html
-    COMMAND ${SPHINX_EXECUTABLE} ${DOC_TOC_DIR} html
-    COMMAND rm -rf ${XRT_RUNTIME_SRC_DIR}/../../docs/
-    COMMAND /bin/cp -rf html/ ${XRT_RUNTIME_SRC_DIR}/../../docs/
-    COMMAND touch ${XRT_RUNTIME_SRC_DIR}/../../docs/.nojekyll
-    VERBATIM
+    COMMAND rm -rf ${DOC_TOC_DIR}/*
+    COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
+    COMMAND ${SPHINX_EXECUTABLE} -a ${DOC_TOC_DIR} html
     )
 endif ()
