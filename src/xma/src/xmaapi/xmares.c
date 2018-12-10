@@ -965,10 +965,10 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
     }
 
     xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD, "No available kernels of type '%s' from vendor %s\n",
-               kern_props->kernel_spec.scal_type ? "scaler" :
-               kern_props->kernel_spec.enc_type ? "encoder" :
-               kern_props->kernel_spec.dec_type ? "decoder" :
-               kern_props->kernel_spec.filter_type ? "filter" :
+               type == xma_res_scaler ? "scaler" :
+               type == xma_res_encoder ? "encoder" :
+               type == xma_res_decoder ? "decoder" :
+               type == xma_res_filter ? "filter" :
                "kernel", kern_props->vendor);
     return XMA_ERROR_NO_KERNEL;
 
