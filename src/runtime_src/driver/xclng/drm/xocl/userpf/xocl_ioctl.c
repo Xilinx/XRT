@@ -35,9 +35,9 @@ xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
 static int
-xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
-{
-	if (atomic_read(&client->xclbin_locked))
+xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client) {
+
+	if (client->xclbin_locked)
 		return 0;
 
 	if (xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,pid_nr(task_tgid(current)))) {
@@ -45,23 +45,29 @@ xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
 		return 1;
 	}
 
-//      Allow second process to use current xclbin without downloading
-//	if (uuid_is_null(&client->xclbin_id))
-//		uuid_copy(&client->xclbin_id,&xdev->xclbin_id);
-//	else
 	if (!uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
 		userpf_err(xdev,"device xclbin does not match context xclbin, cannot obtain lock for process %d",
 			   pid_nr(task_tgid(current)));
 		goto out;
 	}
 
-	atomic_set(&client->xclbin_locked,true);
+	client->xclbin_locked=true;
 	userpf_info(xdev,"process %d successfully locked xcblin",pid_nr(task_tgid(current)));
 	return 0;
 
 out:
 	(void) xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid_nr(task_tgid(current)));
 	return 1;
+}
+
+static int
+xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int ret = 0;
+	mutex_lock(&client->lock);
+	ret = xocl_client_lock_bitstream_nolock(xdev,client);
+	mutex_unlock(&client->lock);
+	return ret;
 }
 
 
@@ -98,8 +104,8 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	int numdeps;
 	int ret = 0;
 
-	if (atomic_read(&xdev->needs_reset)) {
-		userpf_err(xdev, "device needs reset, use 'xbsak reset -h'");
+	if (xdev->needs_reset) {
+		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
 
@@ -212,12 +218,12 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 			goto out;
 
 		// CU unlocked explicitly
-		--client->num_cus;
 		--xdev->ip_reference[args->cu_index];
-		if (!client->num_cus) {
-                        // We just gave up the last context, give up the xclbin lock
-			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
-							 pid_nr(task_tgid(current)));
+		// If all explicit resources are given up, then release the xclbin
+		if (!--client->num_cus) {
+			// We just gave up the last context, give up the xclbin lock
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid_nr(task_tgid(current)));
+			client->xclbin_locked=false;
 		}
 		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
 			  args->cu_index);
@@ -235,7 +241,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	if (!client->num_cus && !atomic_read(&client->xclbin_locked))
+	if (!client->num_cus && !client->xclbin_locked)
 		// Process has no other context on any CU yet, hence we need to lock the xclbin
 		// A process uses just one lock for all its contexts
 		acquire_lock = true;
@@ -249,7 +255,7 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 
 	if (acquire_lock) {
                 // This is the first context on any CU for this process, lock the xclbin
-		ret = xocl_client_lock_bitstream(xdev, client);
+		ret = xocl_client_lock_bitstream_nolock(xdev, client);
 		if (ret) {
 			// Locking of xclbin failed, give up our context
 			clear_bit(args->cu_index, client->cu_bitmap);
@@ -265,9 +271,6 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	++xdev->ip_reference[args->cu_index];
 	xocl_info(dev->dev, "CTX add(%pUb, %d, %u, %d)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index,acquire_lock);
 out:
-	// If all explicit resources are given up, then release the xclbin
-	if (!client->num_cus)
-		atomic_set(&client->xclbin_locked,false);
 	mutex_unlock(&xdev->ctx_list_lock);
 	mutex_unlock(&client->lock);
 	return ret;
@@ -782,6 +785,6 @@ uint get_live_client_size(struct xocl_dev *xdev) {
 
 void reset_notify_client_ctx(struct xocl_dev *xdev)
 {
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	wmb();
 }

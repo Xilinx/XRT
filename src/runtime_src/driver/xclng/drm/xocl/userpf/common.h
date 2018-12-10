@@ -123,7 +123,7 @@ struct xocl_dev	{
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
-	atomic_t                        needs_reset;
+	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -147,11 +147,11 @@ struct xocl_dev	{
 struct client_ctx {
 	struct list_head	link;
 	xuid_t                  xclbin_id;
-	atomic_t                xclbin_locked;
-	atomic_t		trigger;
-	atomic_t                outstanding_execs;
-	atomic_t                abort;
+	unsigned int            xclbin_locked;
+	unsigned int            abort;
 	unsigned int            num_cus;     /* number of resource locked explicitly by client */
+	atomic_t 		trigger;     /* count of poll notification to acknowledge */
+	atomic_t                outstanding_execs;
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */

@@ -215,7 +215,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (atomic_read(&client->xclbin_locked))
+	if (client->xclbin_locked)
 		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
 
 	if (MB_SCHEDULER_DEV(xdev))
@@ -428,7 +428,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	struct drm_device	*ddev = NULL;
 	int			ret = 0;
 
-	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", 
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
 		&mm_drm_driver.major,
 		&mm_drm_driver.minor,
 		&mm_drm_driver.patchlevel);
@@ -473,7 +473,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	mutex_init(&xdev->ctx_list_lock);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 	ddev->dev_private = xdev;
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
