@@ -288,9 +288,10 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 
 	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
 		int rv;
+		struct qdma_request *req = (struct qdma_request *)cb;
 
 		if (cb->cancel) {
-			qdma_request_cancel_done(descq, (struct qdma_request *)cb);
+			qdma_request_cancel_done(descq, req);
 			continue;
 		}
 
@@ -312,7 +313,9 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 
 		if (!cb->left)
 			qdma_sgt_req_done(descq, cb, 0);
-		else
+		else if (req->eot && req->eot_rcved)
+			qdma_sgt_req_done(descq, cb, 0);
+		else			
 			break;
 	}
 
