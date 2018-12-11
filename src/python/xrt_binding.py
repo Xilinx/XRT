@@ -140,8 +140,8 @@ class xclBOProperties (Structure):
     _fields_ = [
      ("handle", c_uint),
      ("flags" , c_uint),
-     ("size", c_uint),
-     ("paddr", c_uint),
+     ("size", c_ulonglong),
+     ("paddr", c_ulonglong),
      ("domain", c_uint),
     ]
 
@@ -309,6 +309,64 @@ def xclUnlockDevice(handle):
     return libc.xclUnlockDevice(handle)
 
 
+def xclOpenContext(handle, xclbinId, ipIndex, shared):
+    """
+    xclOpenContext() - Create shared/exclusive context on compute units
+    :param handle: Device handle
+    :param xclbinId: UUID of the xclbin image running on the device
+    :param ipIndex: IP/CU index in the IP LAYOUT array
+    :param shared: Shared access or exclusive access
+    :return: 0 on success or appropriate error number
+
+    The context is necessary before submitting execution jobs using xclExecBuf(). Contexts may be
+    exclusive or shared. Allocation of exclusive contexts on a compute unit would succeed
+    only if another client has not already setup up a context on that compute unit. Shared
+    contexts can be concurrently allocated by many processes on the same compute units.
+    """
+    libc.xclOpenContext.restype = c_int
+    libc.xclOpenContext.argtypes = [xclDeviceHandle, c_uint, c_uint, c_bool]
+    return libc.xclOpenContext(handle, xclbinId, ipIndex, shared)
+
+
+def xclCloseContext(handle, xclbinId, ipIndex):
+    """
+    xclCloseContext() - Close previously opened context
+    :param handle: Device handle
+    :param xclbinId: UUID of the xclbin image running on the device
+    :param ipIndex: IP/CU index in the IP LAYOUT array
+    :return: 0 on success or appropriate error number
+
+    Close a previously allocated shared/exclusive context for a compute unit.
+    """
+    libc.xclCloseContext.restype = c_int
+    libc.xclCloseContext.argtypes = [xclDeviceHandle, c_uint, c_uint]
+    return libc.xclCloseContext(handle, xclbinId, ipIndex)
+
+
+def xclUpgradeFirmware(handle, fileName):
+    """
+    Update the device BPI PROM with new image
+    :param handle: Device handle
+    :param fileName:
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclUpgradeFirmware.restype = c_int
+    libc.xclUpgradeFirmware.argtypes = [xclDeviceHandle, c_void_p]
+    return libc.xclUpgradeFirmware(handle, fileName)
+
+
+def xclUpgradeFirmware2(handle, file1, file2):
+    """
+    Update the device BPI PROM with new image with clearing bitstream
+    :param handle: Device handle
+    :param fileName:
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclUpgradeFirmware2.restype = c_int
+    libc.xclUpgradeFirmware2.argtypes = [xclDeviceHandle, c_void_p, c_void_p]
+    return libc.xclUpgradeFirmware2(handle, file1, file2)
+
+
 def xclAllocBO(handle, size, domain, flags):
     """
     Allocate a BO of requested size with appropriate flags
@@ -369,3 +427,34 @@ def xclGetBOProperties(handle, boHandle, properties):
     libc.xclGetBOProperties.restype = c_int
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, c_uint, POINTER(xclBOProperties)]
     return libc.xclGetBOProperties(handle, boHandle, properties)
+
+
+def xclExecBuf(handle, cmdBO):
+    """
+    xclExecBuf() - Submit an execution request to the embedded (or software) scheduler
+    :param handle: Device handle
+    :param cmdBO: BO handle containing command packet
+    :return: 0 or standard error number
+
+    Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
+    which is defined in file *ert.h*. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
+    """
+    libc.xclExecBuf.restype = c_int
+    libc.xclExecBuf.argtypes = [xclDeviceHandle, c_uint]
+    return libc.xclExecBuf(handle, cmdBO)
+
+
+def xclExecWait(handle, timeoutMilliSec):
+    """
+    xclExecWait() - Wait for one or more execution events on the device
+    :param handle: Device handle
+    :param timeoutMilliSec: How long to wait for
+    :return:  Same code as poll system call
+
+    Wait for notification from the hardware. The function essentially calls "poll" system
+    call on the driver file handle. The return value has same semantics as poll system call.
+    If return value is > 0 caller should check the status of submitted exec buffers
+    """
+    libc.xclExecWait.restype = c_int
+    libc.xclExecWait.argtypes = [xclDeviceHandle, c_int]
+    return libc.xclExecWait(handle, timeoutMilliSec)
