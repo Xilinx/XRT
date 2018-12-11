@@ -874,6 +874,7 @@ FLAVOR=`echo $FLAVOR | tr -d '"'`
 
 case "$FLAVOR" in
   ("centos") docentos ;;
+  ("rhel") docentos ;;
   ("ubuntu") doubuntu ;;
   (*) echo "Unsupported OS '${FLAVOR}'" && exit 1 ;;
 esac
