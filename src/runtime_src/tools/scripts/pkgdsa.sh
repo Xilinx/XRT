@@ -27,11 +27,29 @@
 #       -xrt 2.1.0 \
 #       -cl 12345678
 
+if [ "X${XILINX_XRT}" == "X" ]; then
+  echo "Environment variable XILINX_XRT is not set.  Please source the XRT setup script."
+  exit 1;
+fi
+
+opt_xrt=""
+parseVersionFile()
+{
+  # Need to encapsulte this proc so that it doesn't interfer with the usage
+  version_json="${XILINX_XRT}/version.json"
+    if [ -f "${version_json}" ]; then
+    # Get the XRT version
+    set -- `cat "${version_json}" | python -c "import sys, json; print json.load(sys.stdin).get('BUILD_VERSION','')"`
+    opt_xrt="${1}"
+  fi
+}
+
+parseVersionFile
+
 opt_dsa=""
 opt_dsadir=""
 opt_pkgdir="/tmp/pkgdsa"
 opt_sdx="/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2"
-opt_xrt=""
 opt_cl=0
 opt_dev=0
 license_dir=""
@@ -45,8 +63,8 @@ usage()
     echo
     echo "-dsa <name>                Name of dsa, e.g. xilinx-vcu1525-dynamic_5_1"
     echo "-sdx <path>                Full path to SDx install (default: 2018.2_daily_latest)"
-    echo "-xrt <version>             Requires xrt >= <version>"
-    echo "-cl <changelist>           Changelist for package revision"
+    echo "[-xrt <version>]           Requires xrt >= <version>"
+    echo "[-cl <changelist>]         Changelist for package revision"
     echo "[-dsadir <path>]           Full path to directory with platforms (default: <sdx>/platforms/<dsa>)"
     echo "[-pkgdir <path>]           Full path to direcory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
     echo "[-dev]                     Build development package"
@@ -132,11 +150,6 @@ fi
 if [ "X$opt_xrt" == "X" ]; then
   echo "Must specify -xrt"
   usage
-  exit 1;
-fi
-
-if [ "X${XILINX_XRT}" == "X" ]; then
-  echo "Environment variable XILINX_XRT is not set.  Please source the XRT setup script."
   exit 1;
 fi
 
