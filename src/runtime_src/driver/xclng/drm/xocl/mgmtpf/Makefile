@@ -43,7 +43,7 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD	:= $(shell pwd)
 
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include -I$(ROOT)/mgmtpf
+XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include
 
 ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=MGMT_SUFFIX
 ifeq ($(DEBUG),1)

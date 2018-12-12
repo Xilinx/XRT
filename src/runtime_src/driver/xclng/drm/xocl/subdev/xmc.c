@@ -22,7 +22,6 @@
 #include <ert.h>
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
-#include "mgmt-core.h"
 
 #define MAX_XMC_RETRY       150	//Retry is set to 15s for XMC
 #define MAX_ERT_RETRY       10	//Retry is set to 1s for ERT
@@ -814,7 +813,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 
 	if(!memtopo)
 		return 0;
-	
+
 	size = sizeof(u32)*(memtopo->m_count);
 
 	if (offset >= size)

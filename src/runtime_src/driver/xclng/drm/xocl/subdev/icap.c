@@ -1952,7 +1952,6 @@ done:
 	if (err) {
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
-		vfree(memtopo);
 	}
 dna_cert_fail:
 	mutex_unlock(&icap->icap_lock);
