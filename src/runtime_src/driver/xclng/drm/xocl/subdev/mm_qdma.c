@@ -224,12 +224,10 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	struct xocl_mm_device *mdev;
 	struct xocl_dev *xdev;
 	struct qdma_request req;
-	struct scatterlist *sg;
 	enum dma_data_direction dir;
 	u32 nents;
 	pid_t pid = current->pid;
 	ssize_t ret;
-	int i;
 
 	mdev = platform_get_drvdata(pdev);
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, write: %d",
@@ -246,17 +244,6 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	}
 	sgt->nents = nents;
 	
-	ret = 0;
-	for_each_sg(sgt->sgl, sg, sgt->nents, i)
-		ret += sg_dma_len(sg);
-
-	if (ret != len) {
-		xocl_err(&pdev->dev, "sgt 0x%p dma len %lx != %llu.\n",
-			sgt, ret, len);
-		ret = -EIO;
-		goto sgl_unmap;
-	}
-
 	memset(&req, 0, sizeof(struct qdma_request));
 	req.write = write;
 	req.count = len;
@@ -269,7 +256,6 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	ret = qdma_request_submit((unsigned long)xdev->dma_handle, chan->queue,
 				&req);
 
-sgl_unmap:
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
 	} else  {

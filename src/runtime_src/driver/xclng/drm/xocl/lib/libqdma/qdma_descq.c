@@ -1080,9 +1080,9 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		return -EINVAL;
 	}
 
-	if (descq->xdev->stm_rev != STM_SUPPORTED_REV) {
-		pr_err("%s: No supported STM rev found in hw\n",
-		       descq->conf.name);
+	if (descq->xdev->stm_rev < STM_SUPPORTED_REV_MIN) {
+		pr_err("%s: No supported STM rev found in hw, 0x%x\n",
+		       descq->conf.name, descq->xdev->stm_rev);
 		return -ENODEV;
 	}
 

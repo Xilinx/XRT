@@ -19,6 +19,7 @@
 
 #ifndef __LIBQDMA_EXPORT_API_H__
 #define __LIBQDMA_EXPORT_API_H__
+
 /**
  * @file
  * @brief This file contains the declarations for libqdma interfaces
@@ -887,6 +888,7 @@ int qdma_queue_remove(unsigned long dev_hndl, unsigned long qhndl, char *buf,
  *
  * @param[in]	dev_hndl:	dev_hndl returned from qdma_device_open()
  * @param[in]	qhndl:		queue handle
+ * @param[in]	qconf:		pointer to the qdma_queue_conf struct
  * @param[in]	buflen:		length of the input buffer
  * @param[out]	buf:		message buffer
  *
@@ -894,8 +896,8 @@ int qdma_queue_remove(unsigned long dev_hndl, unsigned long qhndl, char *buf,
  *	otherwise QDMA_OPERATION_SUCCESSFUL
  * @return	<0: error
  *****************************************************************************/
-struct qdma_queue_conf *qdma_queue_get_config(unsigned long dev_hndl,
-				unsigned long qhndl, char *buf, int buflen);
+int qdma_queue_get_config(unsigned long dev_hndl, unsigned long qhndl,
+			struct qdma_queue_conf *qconf, char *buf, int buflen);
 
 /*****************************************************************************/
 /**
