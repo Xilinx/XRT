@@ -356,7 +356,7 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		rev = readl(xdev->stm_regs + STM_REG_BASE + STM_REG_REV);
 		if (!(((rev >> 24) == 'S') && (((rev >> 16) & 0xFF) == 'T') &&
 		      (((rev >> 8) & 0xFF) == 'M') &&
-		      ((rev & 0xFF) >= STM_SUPPORTED_REV))) {
+		      ((rev & 0xFF) >= STM_SUPPORTED_REV_MIN))) {
 			pr_err("%s: Unsupported STM Rev found, rev 0x%x\n",
 			       xdev->conf.name, rev);
 			xdev_unmap_bars(xdev, pdev);

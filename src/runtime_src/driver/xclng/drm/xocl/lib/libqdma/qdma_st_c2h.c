@@ -259,7 +259,10 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 
 	if (xdev->stm_en) {
 		unsigned int last = ring_idx_incr(pidx, fl_used - 1, flq->size);
+		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 
+		pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
+			descq->conf.name, req, cb->offset, req->count);
 		req->eot_rcved = flq->sdesc_info[last].f.stm_eot;
 	}
 
@@ -346,18 +349,23 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 
 	dma_rmb();
 
-#ifdef DEBUG 
-	print_hex_dump(KERN_INFO, "cmpl entry ", DUMP_PREFIX_OFFSET,
-			16, 1, (void *)cmpt, descq->cmpt_entry_len,
-			false);
-#endif
-
 	cmpl->entry = cmpt;
 	cmpl->f.format = cmpt[0] & F_C2H_CMPT_ENTRY_F_FORMAT ? 1 : 0;
 	cmpl->f.color = cmpt[0] & F_C2H_CMPT_ENTRY_F_COLOR ? 1 : 0;
 	cmpl->f.err = cmpt[0] & F_C2H_CMPT_ENTRY_F_ERR ? 1 : 0;
 	cmpl->f.eot = cmpt[0] & F_C2H_CMPT_ENTRY_F_EOT ? 1 : 0;
 	cmpl->f.desc_used = cmpt[0] & F_C2H_CMPT_ENTRY_F_DESC_USED ? 1 : 0;
+
+	pr_debug("%s, cmpl fmt %d, color %d, err %d, eot %d, desc %d,%llx.\n",
+		descq->conf.name, cmpl->f.format, cmpl->f.color, cmpl->f.err,
+		cmpl->f.eot, cmpl->f.desc_used,
+		(cmpt[0] >> S_C2H_CMPT_ENTRY_LENGTH) & M_C2H_CMPT_ENTRY_LENGTH);
+#ifdef DEBUG
+	print_hex_dump(KERN_INFO, "cmpl entry ", DUMP_PREFIX_OFFSET,
+			16, 1, (void *)cmpt, descq->cmpt_entry_len,
+			false);
+#endif
+
 	if (!cmpl->f.format && cmpl->f.desc_used) {
 		cmpl->len = (cmpt[0] >> S_C2H_CMPT_ENTRY_LENGTH) &
 				M_C2H_CMPT_ENTRY_LENGTH;

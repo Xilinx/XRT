@@ -230,21 +230,26 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
  *	otherwise QDMA_OPERATION_SUCCESSFUL
  * @return	<0: error
  *****************************************************************************/
-struct qdma_queue_conf *qdma_queue_get_config(unsigned long dev_hndl,
-				unsigned long id, char *buf, int buflen)
+int qdma_queue_get_config(unsigned long dev_hndl, unsigned long qhndl,
+			struct qdma_queue_conf *qconf, char *buf, int buflen)
 {
 	struct qdma_descq *descq = qdma_device_get_descq_by_id(
 					(struct xlnx_dma_dev *)dev_hndl,
-					id, buf, buflen, 0);
+					qhndl, buf, buflen, 0);
+
+	if (!qconf)
+		return -EINVAL;
 
 	/**<b> Detailed Description </b>*/
 	/** make sure that descq is not NULL
 	 *  return error is it is null else return the config data
 	 */
-	if (descq)
-		return &descq->conf;
+	if (descq) {
+		memcpy(qconf, &descq->conf, sizeof(struct qdma_queue_conf));
+		return 0;
+	}
 
-	return NULL;
+	return -EINVAL;
 }
 
 int qdma_queue_get_stats(unsigned long dev_hndl, unsigned long qhndl,
@@ -633,7 +638,6 @@ int qdma_queue_remove(unsigned long dev_hndl, unsigned long qhndl, char *buf,
 		pr_info("queue %s, id %u invalid q state 0x%x.\n",
 			descq->conf.name, descq->conf.qidx, descq->q_state);
 		return QDMA_ERR_INVALID_DESCQ_STATE;
-
 	}
 
 #ifdef DEBUGFS

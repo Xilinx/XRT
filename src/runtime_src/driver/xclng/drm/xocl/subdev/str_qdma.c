@@ -74,8 +74,10 @@ struct stream_queue {
 	struct str_device	*sdev;
 	kuid_t			uid;
 
-	spinlock_t		lock;
-	struct list_head	req_list;
+	spinlock_t		req_lock;
+	struct list_head	req_pend_list;
+	struct list_head	req_free_list;
+	struct stream_async_req *req_cache;
 };
 
 struct str_device {
@@ -96,8 +98,6 @@ struct str_device {
 /* sysfs */
 #define	__SHOW_MEMBER(P, M)		off += snprintf(buf + off, 32,		\
 	"%s:%lld\n", #M, (int64_t)P->M)
-
-static struct kmem_cache *req_cache; /* cache for struct stream_async_req */
 
 static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
 	char *buf)
@@ -285,6 +285,42 @@ static const struct vm_operations_struct stream_vm_ops = {
 	.close = drm_gem_vm_close,
 };
 
+static struct stream_async_req *queue_req_new(struct stream_queue *queue)
+{
+	struct stream_async_req *io_req;
+
+	spin_lock_bh(&queue->req_lock);
+	if (list_empty(&queue->req_free_list)) {
+		spin_unlock_bh(&queue->req_lock);
+		return NULL;
+	}
+
+	io_req = list_first_entry(&queue->req_free_list,
+				struct stream_async_req, list);
+	list_del(&io_req->list);
+	spin_unlock_bh(&queue->req_lock);
+
+	memset(io_req, 0, sizeof(struct stream_async_req));
+	return io_req;
+}
+
+static void queue_req_free(struct stream_queue *queue,
+				struct stream_async_req *io_req)
+{
+	spin_lock_bh(&queue->req_lock);
+        list_del(&io_req->list);
+	list_add_tail(&io_req->list, &queue->req_free_list);
+	spin_unlock_bh(&queue->req_lock);
+}
+
+static void queue_req_pending(struct stream_queue *queue,
+				struct stream_async_req *io_req)
+{
+	spin_lock_bh(&queue->req_lock);
+	list_add_tail(&io_req->list, &queue->req_pend_list);
+	spin_unlock_bh(&queue->req_lock);
+}
+
 static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 				int error)
 {
@@ -292,10 +328,6 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	struct stream_async_req *io_req = cb->io_req;
 	struct kiocb *kiocb = cb->kiocb;
 	struct stream_queue *queue = cb->queue;
-
-	spin_lock(&queue->lock);
-	list_del(&io_req->list);
-	spin_unlock(&queue->lock);
 
 	if (cb->is_unmgd) {
 		struct xocl_dev	*xdev = xocl_get_xdev(cb->queue->sdev->pdev);
@@ -314,7 +346,8 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	aio_complete(kiocb, done_bytes, error);
 #endif
 
-	kmem_cache_free(req_cache, io_req);
+	queue_req_free(queue, io_req);
+
 	return 0;
 }
 
@@ -342,18 +375,18 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	drm_gem_object_reference(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
-	io_req = kmem_cache_alloc(req_cache, GFP_KERNEL);
+	io_req = queue_req_new(queue);
 	if (!io_req) {
-		xocl_err(&sdev->pdev->dev, "io request OOM");
+		xocl_err(&sdev->pdev->dev, "io request list full");
 		ret = -ENOMEM;
 		goto failed;
 	}
-	memset(io_req, 0, sizeof(*io_req));
-	req = &io_req->req;
+
 	cb = &io_req->cb;
 	cb->io_req = io_req;
 	cb->queue = queue;
 
+	req = &io_req->req;
 	req->write = write;
 	req->count = len;
 	req->use_sgt = 1;
@@ -369,27 +402,18 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 
 		kiocb->private = io_req;
 	}
+	queue_req_pending(queue, io_req);
 
 	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
         	__func__, dev_name(&sdev->pdev->dev), req,
         	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
         	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", len);
 
-	spin_lock(&queue->lock);
-	list_add_tail(&io_req->list, &queue->req_list);
-	spin_unlock(&queue->lock);
-
 	ret = qdma_request_submit((unsigned long)xdev->dma_handle, queue->queue,
 				req);
-
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
-
-		spin_lock(&queue->lock);
-		list_del(&io_req->list);
-		spin_unlock(&queue->lock);
-
-		kmem_cache_free(req_cache, io_req);
+		queue_req_free(queue, io_req);
 	}
 
 failed:
@@ -471,12 +495,12 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 		return -EFAULT;
 	}
 
-	io_req = kmem_cache_alloc(req_cache, GFP_KERNEL);
+	io_req = queue_req_new(queue);
 	if (!io_req) {
 		xocl_err(&sdev->pdev->dev, "io request OOM");
 		return -ENOMEM;
 	}
-	memset(io_req, 0, sizeof(*io_req));
+
 	req = &io_req->req;
 	cb = &io_req->cb;
 	cb->io_req = io_req;
@@ -499,24 +523,17 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 
 		kiocb->private = io_req;
 	}
+	queue_req_pending(queue, io_req);
 
 	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
         	__func__, dev_name(&sdev->pdev->dev), req,
         	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
         	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", sz);
 
-	spin_lock(&queue->lock);
-	list_add_tail(&io_req->list, &queue->req_list);
-	spin_unlock(&queue->lock);
-
 	ret = qdma_request_submit((unsigned long)xdev->dma_handle, queue->queue,
 				req);
 	if (ret < 0) {
-		spin_lock(&queue->lock);
-		list_del(&io_req->list);
-		spin_unlock(&queue->lock);
-
-		kmem_cache_free(req_cache, io_req);
+		queue_req_free(queue, io_req);
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
@@ -687,22 +704,25 @@ static int queue_flush(struct file *file, fl_owner_t id)
 	}
 	queue->queue = 0UL;
 
-	spin_lock(&queue->lock);
-	while(!list_empty(&queue->req_list)) {
+	spin_lock_bh(&queue->req_lock);
+	while (!list_empty(&queue->req_pend_list)) {
 		struct stream_async_req *io_req = list_first_entry(
-							&queue->req_list,
+							&queue->req_pend_list,
 							struct stream_async_req,
 							list);
 
-		spin_unlock(&queue->lock);
+		spin_unlock_bh(&queue->req_lock);
+		xocl_info(&sdev->pdev->dev, "Queue 0x%lx, cancel req 0x%p",
+			queue->queue, &io_req->req);
 		queue_req_complete((unsigned long)&io_req->cb, 0, -ECANCELED);
-		spin_lock(&queue->lock);
+		spin_lock_bh(&queue->req_lock);
 	}
-	spin_unlock(&queue->lock);
 
+	if (queue->req_cache)
+		vfree(queue->req_cache);
 	devm_kfree(&sdev->pdev->dev, queue);
 	file->private_data = NULL;
-		
+
 failed:
 	return ret;
 }
@@ -740,8 +760,9 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 		return -ENOMEM;
 	}
 	queue->qfd = -1;
-	INIT_LIST_HEAD(&queue->req_list);
-	spin_lock_init(&queue->lock);
+	INIT_LIST_HEAD(&queue->req_pend_list);
+	INIT_LIST_HEAD(&queue->req_free_list);
+	spin_lock_init(&queue->req_lock);
 
 	xdev = xocl_get_xdev(sdev->pdev);
 
@@ -796,12 +817,35 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 			ret);
 		goto failed;
 	}
+
 	ret = qdma_queue_prog_stm((unsigned long)xdev->dma_handle, queue->queue,
 			NULL, 0);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "STM prog. Queue failed ret = %ld",
 			ret);
 		goto failed;
+	}
+
+	ret = qdma_queue_get_config((unsigned long)xdev->dma_handle,
+				queue->queue, qconf, NULL, 0);
+	if (ret < 0) {
+		xocl_err(&sdev->pdev->dev, "Get Q conf. failed ret = %ld", ret);
+		goto failed;
+	}
+
+	/* pre-allocate 2x io request struct */
+	queue->req_cache = vzalloc((qconf->rngsz << 1) *
+					sizeof(struct stream_async_req));
+	if (!queue->req_cache) {
+		xocl_err(&sdev->pdev->dev, "req. cache OOM %u", qconf->rngsz); 
+		goto failed;
+	} else {
+		int i;
+		struct stream_async_req *io_req = queue->req_cache;
+		unsigned int max = qconf->rngsz << 1;
+
+		for (i = 0; i < max; i++, io_req++)
+			list_add_tail(&io_req->list, &queue->req_free_list);
 	}
 
 	xocl_info(&sdev->pdev->dev, "Created Queue handle 0x%lx, idx %d, sz %d",
@@ -851,6 +895,8 @@ failed:
 	}
 
 	if (queue) {
+		if (queue->req_cache)
+			vfree(queue->req_cache);
 		devm_kfree(&sdev->pdev->dev, queue);
 	}
 
@@ -1132,19 +1178,8 @@ int __init xocl_init_str_qdma(void)
 		goto err_reg_chrdev;
 
 	err = platform_driver_register(&str_dma_driver);
-	if (err) {
+	if (err)
 		goto err_drv_reg;
-	}
-
-	req_cache = kmem_cache_create("xocl_str_req_cache",
-				sizeof(struct stream_async_req),
-				0,
-				SLAB_HWCACHE_ALIGN,
-				NULL);
-	if (!req_cache) {
-		err = -ENOMEM;
-		goto err_drv_reg;
-	}
 
 	return 0;
 
@@ -1156,7 +1191,6 @@ err_reg_chrdev:
 
 void xocl_fini_str_qdma(void)
 {
-        kmem_cache_destroy(req_cache);
 	unregister_chrdev_region(str_dev, XOCL_CHARDEV_REG_COUNT);
 	platform_driver_unregister(&str_dma_driver);
 }
