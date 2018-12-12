@@ -518,3 +518,97 @@ out:
 
 	return ret;
 }
+
+static struct drm_gem_cma_object *
+zocl_cma_create(struct drm_device *dev, size_t size)
+{
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_gem_object *gem_obj;
+	int ret;
+
+	gem_obj = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+	if (!gem_obj)
+		return ERR_PTR(-ENOMEM);
+	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
+
+	ret = drm_gem_object_init(dev, gem_obj, size);
+	if (ret)
+		goto error;
+
+	ret = drm_gem_create_mmap_offset(gem_obj);
+	if (ret) {
+		drm_gem_object_release(gem_obj);
+		goto error;
+	}
+
+	return cma_obj;
+
+error:
+	kfree(cma_obj);
+	return ERR_PTR(ret);
+}
+
+int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
+		       struct drm_file *filp)
+{
+	struct drm_zocl_bo *bo;
+	struct drm_zocl_host_bo *args = data;
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	u64 host_mem_start = zdev->host_mem;
+	u64 host_mem_end = zdev->host_mem + zdev->host_mem_len;
+	int ret;
+
+	if (!(host_mem_start <= args->paddr &&
+	      args->paddr + args->size <= host_mem_end)) {
+		DRM_ERROR("Buffer at out side of reserved memory region\n");
+		return -ENOMEM;
+	}
+
+	cma_obj = zocl_cma_create(dev, args->size);
+	if (IS_ERR(cma_obj))
+		return -ENOMEM;
+
+	cma_obj->paddr = args->paddr;
+	cma_obj->vaddr = memremap(args->paddr, args->size, MEMREMAP_WB);
+	if (!cma_obj->vaddr) {
+		DRM_ERROR("failed to allocate buffer with size %zu\n",
+			  args->size);
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	bo = to_zocl_bo(&cma_obj->base);
+
+	bo->flags |= DRM_ZOCL_BO_FLAGS_HOST_BO;
+	bo->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+
+	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
+	if (ret) {
+		drm_gem_cma_free_object(&bo->cma_base.base);
+		DRM_DEBUG("handle creation failed\n");
+		return ret;
+	}
+
+	zocl_describe(bo);
+	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+
+	return ret;
+error:
+	drm_gem_object_put_unlocked(&cma_obj->base);
+	return ret;
+}
+
+void zocl_free_host_bo(struct drm_gem_object *gem_obj)
+{
+	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
+
+	DRM_INFO("zocl_free_host_bo: obj 0x%p", zocl_bo);
+
+	memunmap(zocl_bo->cma_base.vaddr);
+
+	drm_gem_object_release(gem_obj);
+
+	kfree(&zocl_bo->cma_base);
+}
+

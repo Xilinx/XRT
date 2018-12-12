@@ -20,7 +20,7 @@
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
-#include "driver/include/xclhal2.h"
+#include "driver/zynq/include/xclhal2_mpsoc.h"
 #include "driver/zynq/include/zynq_ioctl.h"
 //#include "driver/include/xclperf.h"
 //#include "driver/zynq/include/zynq_perfmon_params.h"
@@ -40,6 +40,7 @@ public:
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
   unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+  unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
   int xclGetBOInfo(uint64_t handle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);

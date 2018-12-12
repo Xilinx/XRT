@@ -44,6 +44,8 @@ struct drm_zocl_dev {
 	void __iomem            *regs;
 	phys_addr_t              res_start;
 	resource_size_t          res_len;
+	phys_addr_t              host_mem;
+	resource_size_t          host_mem_len;
 	unsigned int             irq;
 	struct sched_exec_core  *exec;
 
