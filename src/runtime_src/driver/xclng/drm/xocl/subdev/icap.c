@@ -2368,7 +2368,7 @@ static struct bin_attribute ip_layout_attr = {
 	.write = NULL,
 	.size = 0
 };
-#if 1
+
 //-Connectivity--
 static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
@@ -2404,7 +2404,6 @@ static struct bin_attribute connectivity_attr = {
 	.size = 0
 };
 
-#endif 
 
 //-Mem_topology--
 static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
