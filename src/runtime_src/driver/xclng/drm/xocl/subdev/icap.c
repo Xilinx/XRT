@@ -201,47 +201,6 @@ const static struct xclmgmt_ocl_clockwiz {
 	{/*1000*/  500, 0x0a01, 0x0002}
 };
 
-/* hack to user space to reset scheduler after AXI reset
- * defined in xocl_drv.c */
-static void reset_scheduler(struct icap *icap)
-{
-	int err = -EINVAL;
-	size_t resplen = sizeof (err);
-	struct mailbox_req mbreq = { 0 };
-	int xocl_reset_scheduler(struct pci_dev *pdev);
-	int (*reset)(struct pci_dev *pdev);
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-
-	ICAP_INFO(icap, "calling xocl_reset_scheduler");
-
-	mbreq.req = MAILBOX_REQ_RESET_ERT;
-	(void) xocl_peer_request(xocl_get_xdev(icap->icap_pdev),
-		&mbreq, &err, &resplen, NULL, NULL);
-	if (err == 0)
-		return;
-
-	reset = symbol_get(xocl_reset_scheduler);
-	if (reset) {
-		struct pci_dev *user_dev;
-
-		user_dev = xocl_hold_userdev(xdev);
-
-		if (!user_dev) {
-			err = -EFAULT;
-			goto failed;
-		}
-
-		err = reset(user_dev);
-
-		xocl_release_userdev(user_dev);
-		symbol_put(xocl_reset_scheduler);
-	}
-
-failed:
-	if (err)
-		ICAP_ERR(icap, "calling xocl_reset_scheduler failed: %d", err);
-}
-
 static struct icap_bitstream_user *alloc_user(pid_t pid)
 {
 	struct icap_bitstream_user *u =
@@ -567,25 +526,6 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	return 0;
 }
 
-static int platform_freeze_axi_gate(struct platform_device *pdev)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	int err;
-
-	/* Can only be done from mgmt pf. */
-	if (!ICAP_PRIVILEGED(icap))
-		return -EPERM;
-
-	mutex_lock(&icap->icap_lock);
-	if (icap_bitstream_in_use(icap, 0))
-		err = -EBUSY;
-	else
-		err = icap_freeze_axi_gate(platform_get_drvdata(pdev));
-	mutex_unlock(&icap->icap_lock);
-
-	return err;
-}
-
 static int icap_free_axi_gate(struct icap *icap)
 {
 	ICAP_INFO(icap, "freeing AXI gate");
@@ -617,29 +557,25 @@ static int icap_free_axi_gate(struct icap *icap)
 
 	icap->icap_axi_gate_frozen = false;
 
-	/* reset kds after AXI freeze */
-	reset_scheduler(icap);
-
 	return 0;
 }
 
-static int platform_free_axi_gate(struct platform_device *pdev)
+static void platform_reset_axi_gate(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
-		return -EPERM;
+		return;
 
 	mutex_lock(&icap->icap_lock);
-	if (icap_bitstream_in_use(icap, 0))
-		err = -EBUSY;
-	else
-		err = icap_free_axi_gate(platform_get_drvdata(pdev));
+	if (!icap_bitstream_in_use(icap, 0)) {
+		(void) icap_freeze_axi_gate(platform_get_drvdata(pdev));
+		msleep(500);
+		(void) icap_free_axi_gate(platform_get_drvdata(pdev));
+		msleep(500);
+	}
 	mutex_unlock(&icap->icap_lock);
-
-	return err;
 }
 
 static int set_freqs(struct icap* icap, unsigned short* freqs, int num_freqs)
@@ -2062,6 +1998,8 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 		} else {
 			err = -EBUSY;
 		}
+		if (err >= 0)
+			err = icap->icap_bitstream_ref;
 	} else {
 		err = icap_lock_unlock_peer_bitstream(icap, id, pid, true);
 	}
@@ -2093,6 +2031,8 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 			err = del_user(icap, pid);
 		else
 			err = -EINVAL;
+		if (err >= 0)
+			err = icap->icap_bitstream_ref;
 	} else {
 		err = icap_lock_unlock_peer_bitstream(icap, id, pid, false);
 	}
@@ -2107,8 +2047,7 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
-	.freeze_axi_gate = platform_freeze_axi_gate,
-	.free_axi_gate = platform_free_axi_gate,
+	.reset_axi_gate = platform_reset_axi_gate,
 	.reset_bitstream = icap_reset_bitstream,
 	.download_boot_firmware = icap_download_boot_firmware,
 	.download_bitstream_axlf = icap_download_bitstream_axlf,

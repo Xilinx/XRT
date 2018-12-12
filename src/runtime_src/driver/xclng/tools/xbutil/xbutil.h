@@ -66,7 +66,6 @@ enum command {
     HELP,
     QUERY,
     DUMP,
-    RESET,
     RUN,
     FAN,
     DMATEST,
@@ -103,7 +102,6 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("help", HELP),
     std::make_pair("query", QUERY),
     std::make_pair("dump", DUMP),
-    std::make_pair("reset", RESET),
     std::make_pair("run", RUN),
     std::make_pair("fan", FAN),
     std::make_pair("dmatest", DMATEST),
@@ -954,11 +952,6 @@ public:
         }
     }
 
-    int reset(unsigned region) {
-        const xclResetKind kind = (region == 0xffffffff) ? XCL_RESET_FULL : XCL_RESET_KERNEL;
-        return xclResetDevice(m_handle, kind);
-    }
-
     int run(unsigned region, unsigned cu) {
         std::cout << "ERROR: Not implemented\n";
         return -1;
@@ -1240,6 +1233,7 @@ public:
 
     int printEccInfo(std::ostream& ostr) const;
     int resetEccInfo();
+    int reset(xclResetKind kind);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1251,6 +1245,7 @@ private:
 
 void printHelp(const std::string& exe);
 int xclTop(int argc, char *argv[]);
+int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
 } // end namespace xcldev

@@ -94,10 +94,7 @@ struct xclmgmt_dev {
 	int axi_gate_frozen;
 	unsigned short ocl_frequency[4];
 
-	struct xocl_context_hash ctx_table;
-
 	struct mutex busy_mutex;
-	bool reset_firewall;
 	struct mgmt_power power;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
@@ -117,8 +114,6 @@ struct xclmgmt_char {
 extern int health_check;
 
 int ocl_freqscaling_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
-void freezeAXIGate(struct xclmgmt_dev *lro);
-void freeAXIGate(struct xclmgmt_dev *lro);
 void platform_axilite_flush(struct xclmgmt_dev *lro);
 u16 get_dsa_version(struct xclmgmt_dev *lro);
 void fill_frequency_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
@@ -131,19 +126,14 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 unsigned compute_unit_busy(struct xclmgmt_dev *lro);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
-/* Note: Use reset_hot_ioctl over pcie fundamental reset.
- * This method is known to work better.
- */
 long reset_hot_ioctl(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
-void xocl_reset(struct xclmgmt_dev *lro, bool prepare);
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 
 // firewall.c
 void init_firewall(struct xclmgmt_dev *lro);
 void xclmgmt_killall_processes(struct xclmgmt_dev *lro);
 void xclmgmt_list_add(struct xclmgmt_dev *lro, struct pid *new_pid);
-//struct proc_list *xclmgmt_find_by_pid(struct xclmgmt_dev *lro, struct pid *find_pid);
 void xclmgmt_list_remove(struct xclmgmt_dev *lro, struct pid *remove_pid);
 void xclmgmt_list_del(struct xclmgmt_dev *lro);
 bool xclmgmt_check_proc(struct xclmgmt_dev *lro, struct pid *pid);
