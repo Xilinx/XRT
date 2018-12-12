@@ -720,6 +720,9 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 	int ret, digit_len;
 	char temp[4];
 
+	if(!xmc)
+		return -ENODEV;
+
 	start = m_tag;
 	left_parentness = strstr(m_tag, "[");
 	right_parentness = strstr(m_tag, "]");
@@ -799,19 +802,19 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	u32 nread = 0;
 	size_t size = 0;
 	u32 i;
-	struct xclmgmt_dev *lro;
-	struct mem_topology* memtopo;
+	struct mem_topology* memtopo = NULL;
 	struct xocl_xmc *xmc;
 	uint32_t temp[MAX_M_COUNT] = {0};
+	struct xclmgmt_dev *lro;
 
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
 	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	memtopo = lro->mem_topo;
+	memtopo = (struct mem_topology*)xocl_icap_get_axlf_section_data(lro, MEM_TOPOLOGY);
 
 	if(!memtopo)
 		return 0;
-
+	
 	size = sizeof(u32)*(memtopo->m_count);
 
 	if (offset >= size)

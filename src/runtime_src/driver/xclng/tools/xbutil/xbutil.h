@@ -212,7 +212,7 @@ public:
     {
         std::string errmsg;
         std::vector<char> buf;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "ip_layout", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "ip_layout", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
@@ -295,7 +295,7 @@ public:
         ss << "Device Memory Usage\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -344,7 +344,7 @@ public:
     {
         std::string errmsg;
         std::vector<char> buf, temp_buf;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
@@ -381,7 +381,7 @@ public:
             << std::setw(32) << "Device Memory Usage" << "\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -483,7 +483,7 @@ public:
 
         ss << std::left << std::setw(48) << "Stream Topology" << "\n";
 
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -989,7 +989,7 @@ public:
         std::vector<char> buf;
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;

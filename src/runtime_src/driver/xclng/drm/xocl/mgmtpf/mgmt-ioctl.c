@@ -75,12 +75,16 @@ static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
 	struct xclmgmt_ioc_bitstream_axlf bitstream_obj;
-
+	int ret = 0;
 	if (copy_from_user((void *)&bitstream_obj, arg,
 		sizeof(struct xclmgmt_ioc_bitstream_axlf)))
 		return -EFAULT;
 
-	return xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
+	ret = xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
+	if(ret)
+		return ret;
+	ret = xocl_icap_parse_axlf_section(lro, bitstream_obj.xclbin, MEM_TOPOLOGY);
+	return ret;
 }
 
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
