@@ -31,4 +31,5 @@ FPGA. The key user APIs are defined in ``xclhal2.h`` header file.
    yocto.rst
    test.rst
    newdsa-bringup.rst
+   create_platforms.rst
    debug-faq.rst
