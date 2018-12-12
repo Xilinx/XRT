@@ -660,6 +660,7 @@ reset_exec(struct exec_core* exec)
 
 	exec->num_slots = 16;
 	exec->num_cus = 0;
+	exec->num_cdma = 0;
 	exec->cu_shift_offset = 0;
 	exec->cu_base_addr = 0;
 	exec->polling_mode = 1;
@@ -893,7 +894,7 @@ configure(struct xocl_cmd *xcmd)
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
-	int i;
+	int cuidx=0;
 
 	if (sched_error_on(exec,opcode(xcmd)!=ERT_CONFIGURE,"expected configure command"))
 		return 1;
@@ -925,23 +926,27 @@ configure(struct xocl_cmd *xcmd)
 	exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
 	exec->num_slot_masks = ((exec->num_slots-1)>>5) + 1;
 
-	for (i=0; i<exec->num_cus; ++i) {
-		exec->cu_addr_map[i] = cfg->data[i];
-		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+	for (cuidx=0; cuidx<exec->num_cus; ++cuidx) {
+		exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",cuidx,exec->cu_addr_map[cuidx]);
 	}
 
-	if (cdma && cfg->cdma) {
+	if (cdma) {
 		struct client_ctx *client  = xcmd->client;
-		exec->num_cdma = 1; /* until verified that address is null terminated TBD */
-		exec->num_cus += exec->num_cdma;
-		mutex_lock(&client->lock);
-		for (; i<exec->num_cus; ++i) {
-			++cfg->num_cus;
-			++cfg->count;
-			exec->cu_addr_map[i] = cdma[0];
-			cfg->data[i] = cdma[0];
-			set_bit(i,client->cu_bitmap); // implicit shared resource
-			SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+		uint32_t* addr=0;
+		mutex_lock(&client->lock); /* for modification to client cu_bitmap */
+		for (addr=cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
+			if (*addr) {
+				++exec->num_cus;
+				++exec->num_cdma;
+				++cfg->num_cus;
+				++cfg->count;
+				exec->cu_addr_map[cuidx] = *addr;
+				cfg->data[cuidx] = *addr;
+				set_bit(cuidx,client->cu_bitmap); /* cdma is shared */
+				userpf_info(xdev,"configure cdma as cu(%d) at 0x%x\n",cuidx,exec->cu_addr_map[cuidx]);
+				++cuidx;
+			}
 		}
 		mutex_unlock(&client->lock);
 	}
@@ -967,7 +972,7 @@ configure(struct xocl_cmd *xcmd)
 		 ,exec->num_slots
 		 ,cfg->cu_dma ? 1 : 0
 		 ,cfg->cu_isr ? 1 : 0
-		 ,cfg->cdma ? 1 : 0
+		 ,exec->num_cdma
 		 ,exec->num_cus
 		 ,exec->cu_shift_offset
 		 ,exec->cu_base_addr
