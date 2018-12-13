@@ -344,11 +344,17 @@ public:
     {
         std::string errmsg;
         std::vector<char> buf, temp_buf;
+        std::vector<std::string> mm_buf;
+        uint64_t memoryUsage, boCount;
+        
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
-        if(buf.empty() || temp_buf.empty())
+
+        if(buf.empty() || temp_buf.empty() || mm_buf.empty())
             return;
 
         for(int i = 0; i < map->m_count; i++) {
@@ -357,6 +363,9 @@ public:
                 auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
                 str = search->second;
             }
+            std::stringstream ss(mm_buf[i]);
+            ss >> memoryUsage >> boCount;
+
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
@@ -364,8 +373,8 @@ public:
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i]));
-            ptMem.put( "bo_count",  devstat.ddrBOAllocated[i] );
+            ptMem.put( "mem_usage", unitConvert(memoryUsage));
+            ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( "board.memory.mem", ptMem );
         }
     }
