@@ -85,7 +85,9 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	mutex_lock(&xdev->ctx_list_lock);
 	if (xdev->offline) {
 		skip = true;
-	} else if (!force && !list_empty(&xdev->ctx_list)) {
+	} else if (!force && !list_is_singular(&xdev->ctx_list)) {
+		/* We should have one context for ourselves. */
+		BUG_ON(list_empty(&xdev->ctx_list));
 		userpf_err(xdev, "device is in use, can't reset");
 		ret = -EBUSY;
 	} else {
@@ -97,7 +99,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "resetting device...");
 
-	kill_all_clients(xdev);
+	if (force)
+		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 	mbret = xocl_peer_request(xdev, &mbreq, &ret, &resplen, NULL, NULL);
