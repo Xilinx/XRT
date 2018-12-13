@@ -49,6 +49,8 @@
 #define DRM_DBG(fmt, args...)
 #endif
 
+char driver_date[9];
+
 static void xocl_free_object(struct drm_gem_object *obj)
 {
 	DRM_ENTER("");
@@ -318,6 +320,7 @@ static struct drm_driver mm_drm_driver = {
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
+	.date				= driver_date,
 };
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -426,12 +429,17 @@ failed:
 int xocl_drm_init(struct xocl_dev *xdev)
 {
 	struct drm_device	*ddev = NULL;
+	int			year, mon, day;
 	int			ret = 0;
 
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", 
 		&mm_drm_driver.major,
 		&mm_drm_driver.minor,
 		&mm_drm_driver.patchlevel);
+	sscanf(xrt_build_version_date, "%d-%d-%d ", &year, &mon, &day);
+	snprintf(driver_date, sizeof(driver_date),
+		"%d%02d%02d", year, mon, day);
+
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
 		userpf_err(xdev, "alloc drm dev failed");
