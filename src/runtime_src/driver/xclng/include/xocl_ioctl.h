@@ -148,6 +148,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_READ_AXLF,
 	/* Copy buffer to Destination buffer by using DMA */
 	DRM_XOCL_COPY_BO,
+	/* Hot reset request */
+	DRM_XOCL_HOT_RESET,
 
 	DRM_XOCL_NUM_IOCTLS
 };
@@ -512,5 +514,6 @@ struct drm_xocl_user_intr {
 					       DRM_XOCL_EXECBUF, struct drm_xocl_execbuf)
 #define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
 					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
+#define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
 
 #endif

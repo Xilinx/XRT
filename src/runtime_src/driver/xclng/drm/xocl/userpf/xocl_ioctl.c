@@ -792,3 +792,12 @@ void reset_notify_client_ctx(struct xocl_dev *xdev)
 	xdev->needs_reset=false;
 	wmb();
 }
+
+int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int err = xocl_hot_reset(dev->dev_private, false);
+
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
+	return err;
+}

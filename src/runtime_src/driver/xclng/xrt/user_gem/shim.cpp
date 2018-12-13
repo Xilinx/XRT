@@ -662,16 +662,17 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
-    // Call a new IOCTL to just reset the OCL region
-    if (kind == XCL_RESET_FULL) {
-        ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
-        return ret ? -errno : ret;
-    }
-    else if (kind == XCL_RESET_KERNEL) {
+
+    if (kind == XCL_RESET_FULL)
+        ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
+    else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-        return ret ? -errno : ret;
-    }
-    return -EINVAL;
+    else if (kind == XCL_USER_RESET)
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
+    else
+        return -EINVAL;
+
+    return ret ? errno : 0;
 }
 
 /*

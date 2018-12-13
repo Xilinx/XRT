@@ -221,7 +221,8 @@ enum xclVerbosityLevel {
 
 enum xclResetKind {
     XCL_RESET_KERNEL,
-    XCL_RESET_FULL
+    XCL_RESET_FULL,
+    XCL_USER_RESET
 };
 
 struct xclDeviceUsage {

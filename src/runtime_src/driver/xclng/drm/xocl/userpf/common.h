@@ -168,17 +168,16 @@ struct xocl_mm_wrapper {
 };
 
 /* ioctl functions */
-int xocl_info_ioctl(struct drm_device *dev,
-        void *data, struct drm_file *filp);
-int xocl_execbuf_ioctl(struct drm_device *dev,
-        void *data, struct drm_file *filp);
-int xocl_ctx_ioctl(struct drm_device *dev, void *data,
-                   struct drm_file *filp);
+int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
-                         struct drm_file *filp);
-int xocl_read_axlf_ioctl(struct drm_device *dev,
-                        void *data,
-                        struct drm_file *filp);
+	struct drm_file *filp);
+int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
