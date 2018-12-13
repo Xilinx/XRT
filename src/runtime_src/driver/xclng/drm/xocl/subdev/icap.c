@@ -918,6 +918,30 @@ static int icap_write(struct icap *icap, const u32 *word_buf, int size)
 	return -EIO;
 }
 
+static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind kind)
+{
+	uint64_t size;
+
+		switch(kind){
+		case IP_LAYOUT:
+			size = sizeof_sect(icap->ip_layout, m_ip_data);
+			break;
+		case MEM_TOPOLOGY:
+			size = sizeof_sect(icap->mem_topo, m_mem_data);
+			break;
+		case DEBUG_IP_LAYOUT:
+			size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
+			break;
+		case CONNECTIVITY:
+			size = sizeof_sect(icap->connectivity, m_connection);
+			break;
+		default:
+			break;		
+	}
+
+	return size;
+}
+
 static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	unsigned int Size, XHwIcap_Bit_Header *Header)
 {
@@ -2156,40 +2180,38 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 	switch(kind){
 		case IP_LAYOUT:
-			target = (void **)&icap->ip_layout;
-			sect_sz = sizeof_sect(((struct ip_layout *)*target), m_ip_data);
+		  target = (void **)&icap->ip_layout;
 			break;
 		case MEM_TOPOLOGY:
 			target = (void **)&icap->mem_topo;
-			sect_sz = sizeof_sect(((struct mem_topology *)*target), m_mem_data);
 			break;
 		case DEBUG_IP_LAYOUT:
 			target = (void **)&icap->debug_layout;
-			sect_sz = sizeof_sect(((struct debug_ip_layout *)*target), m_debug_ip_data);
+			break;
 			break;
 		case CONNECTIVITY:
 			target = (void **)&icap->connectivity;
-			sect_sz = sizeof_sect(((struct connectivity *)*target), m_connection);
 			break;
 		default:
 			break;		
 	}
+	vfree(*target);
 	err = alloc_and_get_axlf_section(icap, copy_buffer, kind,
 	buffer, target, &section_size);
 	if (err != 0)
 		goto done;
+	sect_sz = icap_get_section_size(icap, kind);
 	if (sect_sz > section_size) {
 		err = -EINVAL;
 		goto done;
 	}
-
 done:
 	if (err) {
 		vfree(*target);
 	}
 	mutex_unlock(&icap->icap_lock);
 	vfree(copy_buffer);
-	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
+	ICAP_INFO(icap, "%s kind %d, err: %ld", __FUNCTION__, kind, err);
 	return err;
 }
 
@@ -2303,7 +2325,7 @@ static struct attribute *icap_attrs[] = {
 };
 
 //- Debug IP_layout--
-static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
+static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap;
@@ -2311,6 +2333,9 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->debug_layout)
+		return 0;
 
 	size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
 	if (offset >= size)
@@ -2330,13 +2355,13 @@ static struct bin_attribute debug_ip_layout_attr = {
 		.name = "debug_ip_layout",
 		.mode = 0444
 	},
-	.read = read_debug_ip_layout,
+	.read = icap_read_debug_ip_layout,
 	.write = NULL,
 	.size = 0
 };
 
 //IP layout
-static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
+static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap;
@@ -2344,6 +2369,9 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->ip_layout)
+		return 0;
 
 	size = sizeof_sect(icap->ip_layout, m_ip_data);
 	if (offset >= size)
@@ -2364,13 +2392,13 @@ static struct bin_attribute ip_layout_attr = {
 		.name = "ip_layout",
 		.mode = 0444
 	},
-	.read = read_ip_layout,
+	.read = icap_read_ip_layout,
 	.write = NULL,
 	.size = 0
 };
 
 //-Connectivity--
-static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
+static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap;
@@ -2378,6 +2406,9 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->connectivity)
+		return 0;
 
 	size = sizeof_sect(icap->connectivity, m_connection);
 	if (offset >= size)
@@ -2399,14 +2430,14 @@ static struct bin_attribute connectivity_attr = {
 		.name = "connectivity",
 		.mode = 0444
 	},
-	.read = read_connectivity,
+	.read = icap_read_connectivity,
 	.write = NULL,
 	.size = 0
 };
 
 
 //-Mem_topology--
-static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
+static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct icap *icap;
@@ -2414,6 +2445,9 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 	size_t size = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->mem_topo)
+		return 0;
 
 	size = sizeof_sect(icap->mem_topo, m_mem_data);
 	if (offset >= size)
@@ -2435,7 +2469,7 @@ static struct bin_attribute mem_topology_attr = {
 		.name = "mem_topology",
 		.mode = 0444
 	},
-	.read = read_mem_topology,
+	.read = icap_read_mem_topology,
 	.write = NULL,
 	.size = 0
 };

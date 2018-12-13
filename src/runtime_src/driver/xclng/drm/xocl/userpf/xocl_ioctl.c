@@ -735,18 +735,10 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
-	err = xocl_icap_parse_axlf_section(xdev, buf, IP_LAYOUT);
-	if(err)
-		goto done;
-	err = xocl_icap_parse_axlf_section(xdev, buf, MEM_TOPOLOGY);
-	if(err)
-		goto done;
-	err = xocl_icap_parse_axlf_section(xdev, buf, CONNECTIVITY);
-	if(err)
-		goto done;
-	err = xocl_icap_parse_axlf_section(xdev, buf, DEBUG_IP_LAYOUT);
-	if(err)
-		goto done;
+	xocl_icap_parse_axlf_section(xdev, buf, IP_LAYOUT);
+	xocl_icap_parse_axlf_section(xdev, buf, MEM_TOPOLOGY);
+	xocl_icap_parse_axlf_section(xdev, buf, CONNECTIVITY);
+	xocl_icap_parse_axlf_section(xdev, buf, DEBUG_IP_LAYOUT);
 
 done:
 	if (size < 0)
