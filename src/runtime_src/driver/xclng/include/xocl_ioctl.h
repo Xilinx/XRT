@@ -418,7 +418,7 @@ struct drm_xocl_usage_stat {
 	unsigned mm_channel_count;
 	uint64_t h2c[8];
 	uint64_t c2h[8];
-	struct drm_xocl_mm_stat mm[64];
+	struct drm_xocl_mm_stat mm[8];
 };
 
 enum drm_xocl_debug_code {
