@@ -49,7 +49,7 @@
 #define DRM_DBG(fmt, args...)
 #endif
 
-char driver_date[9];
+static char driver_date[9];
 
 static void xocl_free_object(struct drm_gem_object *obj)
 {
