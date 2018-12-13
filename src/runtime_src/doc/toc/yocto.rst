@@ -4,35 +4,28 @@ Yocto Recipes For Embedded Flow
 -------------------------------
 
 XRT provide Yocto recipes to build libraries and driver for MPSoC platform.
-This page explains how to build Linux image with by PetaLinux Tool.
-But this page is NOT the petalinux document or user guide.
+This page explains how to build Linux image by PetaLinux Tool.
+It is NOT targeting to be a PetaLinux document or user guide.
 Please read PetaLinux document before you read the rest of this page.
-At the end, you can get these files as output.
 
-- ``image.ub``
-- ``bl31.elf``
-- ``fsbl.elf``
-- ``pmufw.elf``
-- ``u-boot.elf``
-
-*NOTE* The purpose of this page is only for easy to getting start.
-If you are intrested in details about create software images for a platform.
+*NOTE* The purpose of this page is only for easy to get started.
+If you are interested in details about creating software images for embedded platform.
 Please read the Software Platform section of Xilinx Document UG1146.
 
 Prerequisite
 ~~~~~~~~~~~~
 
-Before start to build Linux image. Make sure your have:
+Before start to build Linux image, make sure your have:
         1. PetaLinux tool chain installed and setup;
         2. Hardware Definithion File(.hdf) for your platform;
 
 The PetaLinux tool chain can be downloaded from xilinx.com.
-If you don't have .hdf file, please see :ref:`Build Boot Images`.
+If you don't have a .hdf file, please see :ref:`Build Boot Images`.
 
 Create PetaLinux Project with XRT recipes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All of the XRT recipes are in ``XRT/src/platform/recipes-xrt`` directory.
+All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Where <XRT> is the root directory of your XRT git repository.
 
 .. code-block:: bash
 
@@ -52,7 +45,7 @@ All of the XRT recipes are in ``XRT/src/platform/recipes-xrt`` directory.
         $ mkdir recipes-xrt/opencl-headers
         $ wget -O recipes-xrt/opencl-headers/opencl-headers_git.bb http://cgit.openembedded.org/meta-openembedded/plain/meta-oe/recipes-core/opencl-headers/opencl-headers_git.bb
 
-The above commands add necessary recipes to build XRT library and driver. Please check all the .bb file for details of the recipes.
+The above commands create PetaLinux project and add necessary recipes to build XRT library and driver. Please check all the .bb files for details.
 
 The next step is to add all recipes to PetaLinux Rootfs Menu.
 Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-image.bbappend`` then add below lines at the end.
@@ -69,6 +62,9 @@ An example of device tree is in ``<XRT>/src/runtime_src/driver/zynq/fragments/xl
 Configure Linux kernel and enable XRT module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Now we can configure linux kernel and rootfs.
+Please see the comments in below code block. Enable "xrt" and "xrt-dev" options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable "zocl" option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.
+
 .. code-block:: bash
 
         #Configure Linux kernel (default kernel config is good for zocl driver)
@@ -83,5 +79,12 @@ Configure Linux kernel and enable XRT module
         # Build package
         $ petalinux-build
 
-You can find all output images in images/linux directory in your PetaLinux project.
+You can find all output files from images/linux directory in your PetaLinux project.
+These files can be used when creating an embedded platform.
+
+- ``image.ub``
+- ``bl31.elf``
+- ``fsbl.elf``
+- ``pmufw.elf``
+- ``u-boot.elf``
 
