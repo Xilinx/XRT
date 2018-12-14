@@ -496,8 +496,7 @@ static int mb_start(struct xocl_mb *mb)
 		COPY_MGMT(mb, mb->mgmt_binary, mb->mgmt_binary_length);
 	}
 
-	if (!XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(mb->pdev)) &&
-		xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl)) {
 		xocl_info(&mb->pdev->dev, "Copying scheduler image len %d",
 			mb->sche_binary_length);
 		COPY_SCHE(mb, mb->sche_binary, mb->sche_binary_length);
@@ -607,11 +606,19 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	return 0;
 }
 
+//Have a function stub but don't actually do anything when this is called
+static int mb_ignore(struct platform_device *pdev) {
+	return 0;
+}
+
 static struct xocl_mb_funcs mb_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= mb_reset,
+	.stop			= mb_ignore,
 };
+
+
 
 static int mb_remove(struct platform_device *pdev)
 {

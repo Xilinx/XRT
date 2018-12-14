@@ -21,7 +21,6 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
-#include "xrt/util/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
 
@@ -543,7 +542,7 @@ mkImageCore (cl_context context,
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
 
     //cxt, flags, sz, w, h, depth , row, slice, "image_type", *format, xlnx_fmt, bpp
-    auto ubuffer = xrt::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth,
+    auto ubuffer = std::make_unique<xocl::image>(xocl::xocl(context),flags,sz,w,h,depth,
 	    adjusted_row_pitch,adjusted_slice_pitch,bpp,image_type,*format,user_ptr);
 
     cl_mem image = ubuffer.get();

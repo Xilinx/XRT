@@ -19,7 +19,6 @@
 #include "context.h"
 #include "error.h"
 
-#include "xrt/util/memory.h"
 
 #include <iostream>
 
@@ -254,7 +253,7 @@ memory::
 add_dtor_notify(std::function<void()> fcn)
 {
   if (!m_dtor_notify)
-    m_dtor_notify = xrt::make_unique<std::vector<std::function<void()>>>();
+    m_dtor_notify = std::make_unique<std::vector<std::function<void()>>>();
   m_dtor_notify->emplace_back(std::move(fcn));
 }
 

@@ -452,7 +452,6 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
 	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
 	uint64_t base_addr_offset;
-	base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 
 //	//Only one bit should be set in ddr. Other bits are now in "type"
 //	if (hweight_long(ddr) > 1)
@@ -478,6 +477,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	}
 
 	if(bar_mapped){
+		base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 		if((xobj->mm_node->start - base_addr_offset
 			   + xobj->mm_node->size) > xdev->bypass_bar_len){
 			DRM_DEBUG("No enough P2P mem region available\n");
@@ -1064,7 +1064,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		return (struct drm_gem_object *)importing_xobj;
 	}
 
-	importing_xobj->flags |= XOCL_BO_IMPORT;
+	importing_xobj->type |= XOCL_BO_IMPORT;
 	importing_xobj->sgt = sgt;
 	importing_xobj->pages = drm_malloc_ab(attach->dmabuf->size >> PAGE_SHIFT, sizeof(*importing_xobj->pages));
 	if (!importing_xobj->pages) {

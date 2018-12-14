@@ -27,25 +27,64 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
+#include "version.h"
 #include "common.h"
 
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
+static int
+xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int pid = pid_nr(task_tgid(current));
+
+	if (client->xclbin_locked)
+		return 0;
+
+	if (!uuid_equal(&xdev->xclbin_id, &client->xclbin_id)) {
+		userpf_err(xdev, "device xclbin does not match context xclbin, "
+			   "cannot obtain lock for process %d", pid);
+		return 1;
+	}
+
+	if (xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id, pid) < 0) {
+		userpf_err(xdev,"could not lock bitstream for process %d", pid);
+		return 1;
+	}
+
+	client->xclbin_locked=true;
+	userpf_info(xdev, "process %d successfully locked xcblin", pid);
+	return 0;
+}
+
+static int
+xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int ret = 0;
+	mutex_lock(&client->lock);
+	ret = xocl_client_lock_bitstream_nolock(xdev,client);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+
 int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_info *obj = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct pci_dev *pdev = xdev->core.pdev;
+	u32 major, minor, patch;
 
 	userpf_info(xdev, "INFO IOCTL");
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = pdev->vendor;
 	obj->device = pdev->device;
 	obj->subsystem_vendor = pdev->subsystem_vendor;
 	obj->subsystem_device = pdev->subsystem_device;
-	obj->driver_version = XOCL_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(pdev->devfn);
 
 	return 0;
@@ -63,20 +102,14 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	int numdeps;
 	int ret = 0;
 
-	if (atomic_read(&xdev->needs_reset)) {
-		userpf_err(xdev, "device needs reset, use 'xbsak reset -h'");
+	if (xdev->needs_reset) {
+		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
 
 	if (!MB_SCHEDULER_DEV(xdev)) {
 		userpf_err(xdev, "scheduler subdev does not exist");
 		return -EINVAL;
-	}
-
-	/* If ctx xclbin uuid mismatch or no xclbin uuid then EPERM */
-	if (uuid_is_null(&client->xclbin_id) || !uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
-		userpf_err(xdev, "Invalid xclbin for current process");
-		return -EPERM;
 	}
 
 	/* Look up the gem object corresponding to the BO handle.
@@ -121,6 +154,14 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 		deps[numdeps] = xbo;
 	}
 
+	/* acquire lock on xclbin if necessary */
+	ret = xocl_client_lock_bitstream(xdev,client);
+	if (ret) {
+		userpf_err(xdev, "Failed to lock xclbin\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* Add exec buffer to scheduler (kds).  The scheduler manages the
 	 * drm object references acquired by xobj and deps.  It is vital
 	 * that the references are released properly. */
@@ -155,7 +196,9 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
 	int ret = 0;
+	int pid = pid_nr(task_tgid(current));
 
+	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
@@ -163,22 +206,27 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (args->cu_index >= xdev->layout->m_count) {
+		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
+			args->cu_index,xdev->layout->m_count);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EINVAL;
+		ret = test_and_clear_bit(args->cu_index,
+					 client->cu_bitmap) ? 0 : -EINVAL;
 		if (ret) // No context was previously allocated for this CU
 			goto out;
 
-		xdev->ip_reference[args->cu_index]--;
-		if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-                        // We jsut gave up the last context, give up the xclbin lock
-			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
-							 pid_nr(task_tgid(current)));
-		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
-			  args->cu_index);
+		// CU unlocked explicitly
+		--xdev->ip_reference[args->cu_index];
+		if (!--client->num_cus) {
+			// We just gave up the last context, unlock the xclbin
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid);
+			client->xclbin_locked=false;
+		}
+		xocl_info(dev->dev,"CTX del(%pUb, %d, %u)",
+			  &xdev->xclbin_id, pid, args->cu_index);
 		goto out;
 	}
 
@@ -188,38 +236,46 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->flags != XOCL_CTX_SHARED)) {
-		userpf_err(xdev, "Only shared contexts are supported in this release");
+		userpf_err(xdev,"Only shared contexts are supported in this release");
 		ret = -EPERM;
 		goto out;
 	}
 
-	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-		// Process has no other context on any CU ye, hence we need to lock the xclbin
-		// Process uses just one lock for all its contexts
+	if (!client->num_cus && !client->xclbin_locked)
+		// Process has no other context on any CU yet, hence we need to
+		// lock the xclbin A process uses just one lock for all its ctxs
 		acquire_lock = true;
 
 	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
-		userpf_err(xdev, "Context has already been allocated before by this process");
-		// Context was previously allocated for the same CU, cannot allocate again
-		ret = -EPERM;
+		userpf_info(xdev, "CTX already allocated by this process");
+		// Context was previously allocated for the same CU,
+		// cannot allocate again
+		ret = 0;
 		goto out;
 	}
 
-	if (acquire_lock) // This is the first context on any CU for this process, lock the xclbin
-		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
-					       pid_nr(task_tgid(current)));
-
-	if (ret) {
-                // Locking of xclbin failed, give up our context
-		clear_bit(args->cu_index, client->cu_bitmap);
-		goto out;
+	if (acquire_lock) {
+                // This is the first context on any CU for this process,
+		// lock the xclbin
+		ret = xocl_client_lock_bitstream_nolock(xdev, client);
+		if (ret) {
+			// Locking of xclbin failed, give up our context
+			clear_bit(args->cu_index, client->cu_bitmap);
+			goto out;
+		}
+		else {
+			uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+		}
 	}
 
-	xdev->ip_reference[args->cu_index]++;
-	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
+	// Everything is good so far, hence increment the CU reference count
+	++client->num_cus; // explicitly acquired
+	++xdev->ip_reference[args->cu_index];
+	xocl_info(dev->dev, "CTX add(%pUb, %d, %u, %d)",
+		  &xdev->xclbin_id, pid, args->cu_index,acquire_lock);
 out:
-	uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
 	return ret;
 }
 
@@ -369,6 +425,9 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/*
+ * Should be called with xdev->ctx_list_lock held
+ */
 static uint live_client_size(struct xocl_dev *xdev)
 {
 	const struct list_head *ptr;
@@ -379,7 +438,6 @@ static uint live_client_size(struct xocl_dev *xdev)
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
-		//if (!bitmap_empty(entry->cu_bitmap, MAX_CUS))
 		count++;
 	}
 	return count;
@@ -397,6 +455,8 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	struct xocl_mm_wrapper *wrapper;
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
+	uint64_t reserved_start;
+	uint64_t reserved_end;
 	int err = 0;
 	int i = 0;
 
@@ -425,7 +485,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
 
-		DRM_INFO("DDR bank%d Info", i);
+		DRM_INFO("  Mem Index %d", i);
 		DRM_INFO("  Base Address:0x%llx\n", mem_data->m_base_address);
 		DRM_INFO("  Size:0x%lx", ddr_bank_size);
 		DRM_INFO("  Type:%d", mem_data->m_type);
@@ -444,9 +504,16 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 		ddr_bank_size = mem_data->m_size * 1024;
 		DRM_INFO("XOCL: Allocating DDR bank%d", i);
-		DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
+		DRM_INFO("  base_addr:0x%llx, total size:0x%lx\n",
 				mem_data->m_base_address,
 				ddr_bank_size);
+
+		if (XOCL_DSA_IS_MPSOC(xdev)) {
+			reserved_end = mem_data->m_base_address + ddr_bank_size;
+			reserved_start = reserved_end - reserved1 - reserved2;
+			DRM_INFO("  reserved region:0x%llx - 0x%llx\n",
+				 reserved_start, reserved_end - 1);
+		}
 
 		shared = xocl_get_shared_ddr(xdev, mem_data);
 		if (shared != 0xffffffff) {
@@ -508,6 +575,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size_of_header;
 	size_t num_of_sections;
 	size_t size;
+	int preserve_mem = 0;
+	struct mem_topology *new_topology;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -522,11 +591,15 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
+	if (xocl_xrt_version_check(xdev, &bin_obj, true))
+		return -EINVAL;
+
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
 		// Legacy xclbin, convert legacy id to new id
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
+	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->ctx_list_lock so no new contexts can be opened and no live contexts
@@ -543,13 +616,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 			err = -EBUSY;
 			goto done;
 		}
-		// Check if there are other open contexts on this device
-		if (!list_is_singular(&xdev->ctx_list)) {
-			err = -EPERM;
-			goto done;
-		}
 	}
 
+	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	//Ignore timestamp matching for AWS platform
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
@@ -562,20 +631,15 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
 	err = xocl_icap_lock_bitstream(xdev, &bin_obj.m_header.uuid,
 		pid_nr(task_tgid(current)));
-	if (err)
+	if (err < 0)
 		goto done;
+	err = 0;
 
-	if(bin_obj.m_uniqueId == xdev->unique_id_last_bitstream) {
+	if (uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
 		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
 		goto done;
 	}
 
-	//Switching the xclbin, make sure none of the buffers are used.
-	err = xocl_check_topology(xdev);
-	if(err)
-		goto done;
-
-	xocl_cleanup_mem(xdev);
 
 	//Copy from user space and proceed.
 	size_of_header = sizeof(struct axlf_section_header);
@@ -600,6 +664,42 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		err = -EFAULT;
 		goto done;
 	}
+
+	/* Populating MEM_TOPOLOGY sections. */
+	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
+	if (xocl_is_aws(xdev) && (xdev->topology != NULL)) {
+		if ( (size == sizeof_sect(xdev->topology, m_mem_data)) &&
+		    !memcmp(new_topology, xdev->topology, size) ) {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
+			preserve_mem = 1;
+		} else {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
+		}
+	}
+
+	/* Switching the xclbin, make sure none of the buffers are used. */
+	if (!preserve_mem) {
+		err = xocl_check_topology(xdev);
+		if(err)
+			goto done;
+		xocl_cleanup_mem(xdev);
+	}
+	xocl_cleanup_connectivity(xdev);
+
+	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
+	if (!preserve_mem)
+		xdev->topology = new_topology;
+	else
+		vfree(new_topology);
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -632,32 +732,25 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	/* Populating MEM_TOPOLOGY sections */
-	size = xocl_read_sect(MEM_TOPOLOGY, &xdev->topology, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
+	if (!preserve_mem) {
+		err = xocl_init_mm(xdev);
+		if (err)
 			goto done;
-	} else if (sizeof_sect(xdev->topology, m_mem_data) != size) {
-		err = -EINVAL;
-		goto done;
 	}
 
-	err = xocl_init_mm(xdev);
-	if (err)
-		goto done;
-
 	//Populate with "this" bitstream, so avoid redownload the next time
-	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
 	if (size < 0)
 		err = size;
-	if (err != 0) {
-		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
-			pid_nr(task_tgid(current)));
-	}
+	/*
+	 * Always give up ownership for multi process use case; the real locking
+	 * is done by context creation API or by execbuf
+	 */
+	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
+					  pid_nr(task_tgid(current)));
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
@@ -674,7 +767,14 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 
 	mutex_lock(&xdev->ctx_list_lock);
 	err = xocl_read_axlf_helper(xdev, axlf_obj_ptr);
+	/*
+	 * Record that user land configured this context for current device xclbin
+	 * It doesn't mean that the context has a lock on the xclbin, only that
+	 * when a lock is eventually acquired it can be verified to be against to
+	 * be a lock on expected xclbin
+	 */
 	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
+	//uuid_copy(&client->xclbin_id, &uuid_null);
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
 }
@@ -689,6 +789,15 @@ uint get_live_client_size(struct xocl_dev *xdev) {
 
 void reset_notify_client_ctx(struct xocl_dev *xdev)
 {
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	wmb();
+}
+
+int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int err = xocl_hot_reset(dev->dev_private, false);
+
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
+	return err;
 }

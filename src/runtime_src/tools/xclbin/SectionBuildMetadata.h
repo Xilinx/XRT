@@ -39,6 +39,10 @@ class SectionBuildMetadata : public Section {
   SectionBuildMetadata();
   virtual ~SectionBuildMetadata();
 
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
@@ -52,7 +56,7 @@ class SectionBuildMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", boost::factory<SectionBuildMetadata*>()); }
+    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", false, boost::factory<SectionBuildMetadata*>()); }
   } _initializer;
 };
 

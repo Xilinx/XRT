@@ -51,7 +51,7 @@ namespace xcldev {
 
         int runSyncWorker(std::vector<unsigned>::const_iterator b,
                           std::vector<unsigned>::const_iterator e,
-                          xclBOSyncDirection dir) {
+                          xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
                 result = xclSyncBO(mHandle, *b, dir, mSize, 0);
@@ -62,7 +62,7 @@ namespace xcldev {
             return result;
         }
 
-        int runSync(xclBOSyncDirection dir, bool mt) {
+        int runSync(xclBOSyncDirection dir, bool mt) const {
             const std::vector<unsigned>::const_iterator b = mBOList.begin();
             const std::vector<unsigned>::const_iterator e = mBOList.end();
             if (mt) {
@@ -97,19 +97,35 @@ namespace xcldev {
                 xclFreeBO(mHandle, i);
         }
 
-        int run() {
-            char *buf = new char[mSize];
-            std::memset(buf, 'x', mSize);
-
+        int validate(const char *buf) const {
+            std::unique_ptr<char[]> bufCmp(new char[mSize]);
             int result = 0;
             for (auto i : mBOList) {
-                result += xclWriteBO(mHandle, i, buf, mSize, 0);
+                //Clear out the host buffer
+                std::memset(bufCmp.get(), 0, mSize);
+                result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
+                if (result < 0)
+                    break;
+                if (std::memcmp(buf, bufCmp.get(), mSize)) {
+                    result = -EIO;
+                    std::cout << "DMA Test data integrity check failed\n";
+                    break;
+                }
             }
+            return result;
+        }
 
-            if (result) {
-            delete [] buf;
+        int run() const {
+            std::unique_ptr<char[]> buf(new char[mSize]);
+            std::memset(buf.get(), 'x', mSize);
+
+            int result = 0;
+            for (auto i : mBOList)
+                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
+
+            if (result)
                 return result;
-            }
+
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, false);
             double timer_stop = timer.stop();
@@ -118,8 +134,6 @@ namespace xcldev {
             rate *= 1000000; // s
             std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
 
-            //Clear out the host buffer
-            std::memset(buf, 0, mSize);
             timer.reset();
             result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
             timer_stop = timer.stop();
@@ -129,21 +143,10 @@ namespace xcldev {
             std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
 
             // data integrity check: compare with initialized value 'x'
-            for (auto i : mBOList) {
-                xclReadBO(mHandle, i, buf, mSize, 0);
-            }
-            for (unsigned int i = 0; i < mSize; i++) {
-                if (buf[ i ] != 'x') {
-                    delete [] buf;
-                    std::cout << "DMA Test data integrity check failed.\n";
-                    return -1;
-                }
-            }
-            delete [] buf;
+            result = validate(buf.get());
             return result;
         }
     };
 }
 
 #endif /* DMATEST_H */
-

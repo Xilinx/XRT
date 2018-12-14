@@ -64,6 +64,14 @@ class Section {
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
+  static bool supportsSubSections(enum axlf_section_kind &_eKind);
+
+
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
+  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
 
  public:
   enum axlf_section_kind getSectionKind() const;
@@ -79,10 +87,14 @@ class Section {
   void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);
   void readPayload(std::fstream& _istream, enum FormatType _eFormatType);
   void printHeader(std::ostream &_ostream) const;
-
+  bool getSubPayload(std::ostringstream &_buf, const std::string _sSubSection, enum Section::FormatType _eFormatType) const;
+  void readSubPayload(std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::fstream& _ostream) const;
+  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
+
   void dumpContents(std::fstream& _ostream, enum FormatType _eFormatType) const;
+  void dumpSubSection(std::fstream& _ostream, std::string _sSubSection, enum FormatType _eFormatType) const;
 
   void getPayload(boost::property_tree::ptree& _pt) const;
   void purgeBuffers();
@@ -92,13 +104,16 @@ class Section {
   // Child class option to create an JSON metadata
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  virtual void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream &_buf, const std::string &_sSubSection, enum Section::FormatType _eFormatType) const;
+  virtual void readSubPayload(const char *_pOrigDataSection, unsigned int _origSectionSize,  std::fstream &_istream, const std::string &_sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
 
  protected:
   Section();
 
  protected:
   typedef std::function<Section*()> Section_factory;
-  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, Section_factory _Section_factory);
+  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, Section_factory _Section_factory);
 
  protected:
   enum axlf_section_kind m_eKind;
@@ -113,6 +128,7 @@ class Section {
   static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
   static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
+  static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
 
  private:
   // Purposefully private and undefined ctors...

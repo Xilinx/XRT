@@ -30,6 +30,8 @@
 #include <vector>
  
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>       // for to_string
@@ -449,6 +451,7 @@ namespace xclbincat1 {
       case BUILD_METADATA: return "BUILD_METADATA";
       case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
       case USER_METADATA: return "USER_METADATA";
+      case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
         break;
     }
 
@@ -562,7 +565,9 @@ namespace xclbincat1 {
     memset( data.getHead().m_keyBlock, 0xFF, sizeof(data.getHead().m_keyBlock) );
     data.getHead().m_uniqueId = time( nullptr );
     data.getHead().m_header.m_timeStamp = time( nullptr );
-    data.getHead().m_header.m_version = 2017;
+    data.getHead().m_header.m_versionMajor = 0;
+    data.getHead().m_header.m_versionMinor = 0;
+    data.getHead().m_header.m_versionPatch = 2017;
     populateXclbinUUID(data);
   }
 
@@ -685,7 +690,16 @@ namespace xclbincat1 {
       } else if ( strcmp( key.c_str(), "featureRomTimestamp" ) == 0 ) {
         populateFeatureRomTimestamp( value.c_str(), _data );
       } else if ( strcmp( key.c_str(), "version" ) == 0 ) {
-        ss >> std::hex >> _data.getHead().m_header.m_version;
+        std::vector<std::string> tokens;
+        boost::split(tokens, value, boost::is_any_of("."));
+        if ( tokens.size() != 3 ) {
+          std::ostringstream errMsgBuf;
+          errMsgBuf << "ERROR: The version value (" << value << "') is not in the form <major>.<minor>.<patch>.  For example: 2.1.0\n";
+          throw std::runtime_error(errMsgBuf.str());
+        }
+        _data.getHead().m_header.m_versionMajor = (uint8_t) std::stoi(tokens[0]);
+        _data.getHead().m_header.m_versionMinor = (uint8_t) std::stoi(tokens[1]);
+        _data.getHead().m_header.m_versionPatch = (uint16_t) std::stoi(tokens[2]);
       } else if ( strcmp( key.c_str(), "mode" ) == 0 ) {
         if ( ! populateMode( value.c_str(), _data ) ) {
           std::ostringstream errMsgBuf;

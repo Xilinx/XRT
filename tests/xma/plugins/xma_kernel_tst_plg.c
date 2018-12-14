@@ -5,6 +5,10 @@
 
 static int32_t xma_kernel_init(XmaKernelSession *sess)
 {
+    if(*(uint8_t*)sess->base.plugin_data != 0)
+    {
+        return XMA_ERROR;
+    }
     return 0;
 }
 
@@ -28,7 +32,7 @@ static int32_t xma_kernel_close(XmaKernelSession *sess)
 XmaKernelPlugin kernel_plugin = {
     .hwkernel_type = XMA_KERNEL_TYPE,
     .hwvendor_string = "Xilinx",
-    .plugin_data_size = 0,
+    .plugin_data_size = 1,
     .init = xma_kernel_init,
     .write = xma_kernel_write,
     .read = xma_kernel_read,

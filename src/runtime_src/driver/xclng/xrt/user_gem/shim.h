@@ -211,6 +211,7 @@ public:
     double xclGetWriteMaxBandwidthMBps();
     void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
     uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+    uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
     void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                             char* slotName, uint32_t length);
     size_t xclPerfMonClockTraining(xclPerfMonType type);
@@ -238,8 +239,8 @@ public:
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
-    int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-    int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
+    int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }

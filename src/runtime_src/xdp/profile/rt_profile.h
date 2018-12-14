@@ -36,6 +36,9 @@
 #include <mutex>
 #include <queue>
 
+// Separator used for CU port and memory resource (must match HW linker)
+#define PORT_MEM_SEP "-"
+
 namespace XCL {
   class WriterI;
   class TimeTrace;
@@ -172,8 +175,8 @@ namespace XCL {
       const std::string eventString, const std::string dependString);
 
     // log user or cl API function calls
-    void logFunctionCallStart(const char* functionName, long long queueAddress);
-    void logFunctionCallEnd(const char* functionName, long long queueAddress);
+    void logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID);
+    void logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID);
 
 
   public:
@@ -183,10 +186,10 @@ namespace XCL {
     void writeAPISummary(WriterI* writer) const;
     void writeKernelSummary(WriterI* writer) const;
     void writeStallSummary(WriterI* writer) const;
-    void writeKernelStreamSummary(WriterI* writer) const;
+    void writeKernelStreamSummary(WriterI* writer);
     void writeComputeUnitSummary(WriterI* writer) const;
     void writeHostTransferSummary(WriterI* writer) const;
-    void writeKernelTransferSummary(WriterI* writer) const;
+    void writeKernelTransferSummary(WriterI* writer);
     void writeDeviceTransferSummary(WriterI* writer) const;
     // Top offenders lists
     void writeTopKernelSummary(WriterI* writer) const;
@@ -202,7 +205,7 @@ namespace XCL {
 
     // Timeline Trace
     void writeTimelineTrace(double traceTime, const char* functionName,
-        const char* eventName) const;
+        const char* eventName, unsigned int functionID) const;
     void writeTimelineTrace(double traceTime, const std::string& commandString,
         const std::string& stageString, const std::string& eventString,
         const std::string& dependString, uint64_t objId, size_t size) const;
@@ -266,7 +269,7 @@ namespace XCL {
   public:
     void getArgumentsBank(const std::string& deviceName, const std::string& cuName,
     	                  const std::string& portName, std::string& argNames,
-						  std::string& memoryName) const;
+						  std::string& memoryName);
 
   private:
     typedef std::tuple<std::string, std::string, std::string, std::string, uint32_t> CUPortArgsBankType;
@@ -274,7 +277,6 @@ namespace XCL {
 
   public:
     std::vector<CUPortArgsBankType> getCUPortVector() const {return CUPortVector;}
-    std::map<std::string, int> getCUPortsToMemoryMap() const {return CUPortsToMemoryMap;}
 
   private:
     bool IsZynq = false;
@@ -313,7 +315,6 @@ namespace XCL {
   private:
     std::vector<WriterI*> Writers;
     std::set<std::string> ActiveDevices;
-    std::map<std::string, int> CUPortsToMemoryMap;
 
   // Platform data and Device data
   private:

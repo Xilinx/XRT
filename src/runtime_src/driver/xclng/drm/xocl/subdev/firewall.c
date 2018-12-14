@@ -72,6 +72,7 @@ struct firewall {
 	struct task_struct	*health_thread;
 	struct xocl_health_thread_arg thread_arg;
 
+	bool			inject_firewall;
 };
 
 static int clear_firewall(struct platform_device *pdev);
@@ -165,6 +166,16 @@ static ssize_t clear_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_WO(clear);
 
+static ssize_t inject_store(struct device *dev, struct device_attribute *da,
+        const char *buf, size_t count)
+{
+	struct firewall *fw = platform_get_drvdata(to_platform_device(dev));
+
+	fw->inject_firewall = true;
+	return count;
+}
+static DEVICE_ATTR_WO(inject);
+
 static struct attribute *firewall_attributes[] = {
 	&sensor_dev_attr_status.dev_attr.attr,
 	&sensor_dev_attr_level.dev_attr.attr,
@@ -172,6 +183,7 @@ static struct attribute *firewall_attributes[] = {
 	&sensor_dev_attr_detected_level.dev_attr.attr,
 	&sensor_dev_attr_detected_time.dev_attr.attr,
 	&dev_attr_clear.attr,
+	&dev_attr_inject.attr,
 	NULL
 };
 
@@ -212,7 +224,14 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	fw->curr_status = val;
 	fw->curr_level = i >= fw->max_level ? -1 : i;
 
-	return (val);
+	/* Inject firewall for testing. */
+	if (fw->curr_level == -1 && fw->inject_firewall) {
+		fw->inject_firewall = false;
+		fw->curr_level = 0;
+		fw->curr_status = 0x1;
+	}
+
+	return (fw->curr_status);
 }
 
 static int clear_firewall(struct platform_device *pdev)

@@ -177,7 +177,7 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
 int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                void            *dst,
                                size_t           size,
-                               size_t           offset);
+                               size_t           offset) __attribute__ ((deprecated));
 
 /**
  *  @brief Read kernel registers
@@ -199,7 +199,7 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
 int32_t xma_plg_register_read(XmaHwSession     s_handle,
                               void            *dst,
                               size_t           size,
-                              size_t           offset);
+                              size_t           offset) __attribute__ ((deprecated));
 
 /**
  *  @brief Dump kernel registers

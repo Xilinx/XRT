@@ -195,12 +195,12 @@ namespace XCL {
     writeTableFooter(getSummaryStream());
 
     // Table 6.1 : Stream Data Transfers
-    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStreamSlots > 0)) {
+    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE || flowMode == XCL::RTSingleton::HW_EM) && (numStreamSlots > 0)) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
-		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
+        "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
-      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getSummaryStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getSummaryStream());
     }
@@ -345,7 +345,7 @@ namespace XCL {
     // Get memory name from CU port name string (if found)
     std::string cuPortName2 = cuPortName;
     std::string memoryName2 = memoryName;
-    size_t index = cuPortName.find_last_of("|");
+    size_t index = cuPortName.find_last_of(PORT_MEM_SEP);
     if (index != std::string::npos) {
       cuPortName2 = cuPortName.substr(0, index);
       memoryName2 = cuPortName.substr(index+1);
@@ -506,7 +506,7 @@ namespace XCL {
 
   // Write API function event to trace
   void WriterI::writeTimeline(double time, const std::string& functionName,
-      const std::string& eventName)
+      const std::string& eventName, unsigned int functionID)
   {
     if (!Timeline_ofs.is_open())
       return;
@@ -519,7 +519,7 @@ namespace XCL {
     // TODO: Windows build support
     //    Variadic Template is not supported
     writeTableCells(getTimelineStream(), timeStr.str(), functionName, eventName,
-        "", "", "", "", "", "", "", "");
+        "", "", "", "", "", "", "", "", "", "", std::to_string(functionID));
   #endif
     writeTableRowEnd(getTimelineStream());
   }
@@ -776,7 +776,10 @@ namespace XCL {
           traceName = "Kernel_Read";
         }
       }
-      else {
+      else if (tr.Kind == DeviceTrace::DEVICE_STREAM) {
+        traceName = tr.Name;
+        showPortName = true;
+      } else {
         showKernelCUNames = false;
         if (tr.Type == "Write")
           traceName = "Host_Write";
@@ -793,10 +796,15 @@ namespace XCL {
           rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
         }
         else {
-          rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          if (tr.Kind == DeviceTrace::DEVICE_STREAM){
+            rts->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+          }
+          else {
+            rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
         }
         std::string kernelName;
         XCL::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
@@ -897,18 +905,27 @@ namespace XCL {
     std::string checkName5;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::DDR_BANKS, checkName5);
 
-    auto cuPortsToMemory = profile->getCUPortsToMemoryMap();
+    auto cuPortVector = profile->getCUPortVector();
+    std::map<std::string, int> cuPortsToMemory;
+
+    for (auto& cuPort : cuPortVector) {
+      auto memoryName = std::get<3>(cuPort);
+      auto iter = cuPortsToMemory.find(memoryName);
+      int numPorts = (iter == cuPortsToMemory.end()) ? 1 : (iter->second + 1);
+      cuPortsToMemory[memoryName] = numPorts;
+    }
+
     auto memoryIter = cuPortsToMemory.begin();
     for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
       writeTableCells(getSummaryStream(), checkName5, memoryIter->first, memoryIter->second);
       writeTableRowEnd(getSummaryStream());
     }
+    cuPortsToMemory.clear();
 
     // 6. Port data widths
     std::string checkName6;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::PORT_BIT_WIDTH, checkName6);
 
-    auto cuPortVector = profile->getCUPortVector();
     for (auto& cuPort : cuPortVector) {
       auto cu    = std::get<0>(cuPort);
       auto port  = std::get<1>(cuPort);
@@ -926,6 +943,13 @@ namespace XCL {
       writeTableCells(getSummaryStream(), checkName7, kernelCount.first, kernelCount.second);
       writeTableRowEnd(getSummaryStream());
     }
+
+    // 8. OpenCL objects released
+    std::string checkName8;
+    ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::OBJECTS_RELEASED, checkName8);
+    bool objectsReleased = XCL::RTSingleton::Instance()->isObjectsReleased();
+    int numReleased = (objectsReleased) ? 1 : 0;
+    writeTableCells(getSummaryStream(), checkName8, "all", numReleased);
   }
 
   // ***********

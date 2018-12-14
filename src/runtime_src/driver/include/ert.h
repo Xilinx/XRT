@@ -1,4 +1,4 @@
-/**
+/*
  *  Copyright (C) 2018, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
@@ -36,12 +36,10 @@
  */
 
 /**
- *  Xilinx SDAccel Embedded Runtime definition
- *  Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * DOC: Xilinx SDAccel Embedded Runtime definition
  *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
+ * Header file *ert.h* defines data structures used by Emebdded Runtime (ERT) and
+ * XRT xclExecBuf() API.
  */
 
 #ifndef _ERT_H_
@@ -211,6 +209,7 @@ enum ert_cmd_state {
  * @ERT_START_KERNEL:   currently aliased to ERT_START_CU
  * @ERT_CONFIGURE:      configure command scheduler
  * @ERT_WRITE:          write pairs of addr and value
+ * @ERT_CU_STAT:        get stats about CU execution
  */
 enum ert_cmd_opcode {
   ERT_START_CU     = 0,
@@ -219,6 +218,7 @@ enum ert_cmd_opcode {
   ERT_STOP         = 3,
   ERT_ABORT        = 4,
   ERT_WRITE        = 5,
+  ERT_CU_STAT      = 6,
 };
 
 /**

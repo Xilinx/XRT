@@ -20,7 +20,6 @@
 
 #include "xrt/config.h"
 #include "xrt/util/task.h"
-#include "xrt/util/memory.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
 
@@ -263,7 +262,7 @@ add_callback(callback_function_type fcn)
     std::lock_guard<std::mutex> lk(m_mutex);
     if ((complete=(m_status==CL_COMPLETE))==false) {
       if (!m_callbacks)
-        m_callbacks = xrt::make_unique<callback_list>();
+        m_callbacks = std::make_unique<callback_list>();
       m_callbacks->emplace_back(std::move(fcn));
     }
   }

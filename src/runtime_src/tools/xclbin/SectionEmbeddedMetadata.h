@@ -47,7 +47,7 @@ class SectionEmbeddedMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(EMBEDDED_METADATA, "EMBEDDED_METADATA", "", boost::factory<SectionEmbeddedMetadata*>()); }
+    _init() { registerSectionCtor(EMBEDDED_METADATA, "EMBEDDED_METADATA", "", false, boost::factory<SectionEmbeddedMetadata*>()); }
   } _initializer;
 };
 

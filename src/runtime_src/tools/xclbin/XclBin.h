@@ -48,10 +48,12 @@ class XclBin {
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
   void addSections(ParameterSectionData &_PSD);
+  void appendSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
   void dumpSections(ParameterSectionData &_PSD);
   void setKeyValue(const std::string & _keyValue);
+  void removeKey(const std::string & _keyValue);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind);
@@ -69,6 +71,9 @@ class XclBin {
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
   void addSection(Section* _pSection);
+  void addSubSection(ParameterSectionData &_PSD);
+  void dumpSubSection(ParameterSectionData &_PSD);
+
   void removeSection(const Section* _pSection);
 
   void updateUUID();

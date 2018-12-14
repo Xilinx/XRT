@@ -21,6 +21,7 @@
 #include <linux/hwmon-sysfs.h>
 
 #include "mgmt-core.h"
+#include "version.h"
 
 static ssize_t instance_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -95,7 +96,10 @@ static DEVICE_ATTR_RO(mgmt_pf);
 static ssize_t version_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", XCLMGMT_DRIVER_VERSION_NUMBER);
+	u32 major, minor, patch;
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
+	return sprintf(buf, "%d\n", XOCL_DRV_VER_NUM(major, minor, patch));
 }
 static DEVICE_ATTR_RO(version);
 

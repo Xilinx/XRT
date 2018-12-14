@@ -83,7 +83,7 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
         boost::property_tree::ptree ptKeyValueBuffer;
         ptKeyValueBuffer.put("key", ptKeyValue.get<std::string>("key"));
         ptKeyValueBuffer.put("value", ptKeyValue.get<std::string>("value"));
-        ptKeyValuesBuffer.add_child("kv_data", ptKeyValueBuffer);
+        ptKeyValuesBuffer.push_back(std::make_pair("", ptKeyValueBuffer));
      }
    }
 
@@ -93,5 +93,23 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
    boost::property_tree::write_json(_buf, ptKeyValueMetadataBuffer, false );
 }
 
+bool 
+SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
 
+bool 
+SectionKeyValueMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML))
+    {
+      return true;
+    }
 
+    return false;
+}

@@ -217,6 +217,22 @@ get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
   return xdp::profile::device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
+unsigned
+get_profile_slot_properties(key k, std::string& deviceName, xclPerfMonType type,
+		              unsigned slotnum)
+{
+  auto platform = k;
+  for (auto device : platform->get_device_range()) {
+    std::string currDeviceName = device->get_unique_name();
+    if (currDeviceName.compare(deviceName) == 0)
+      return xdp::profile::device::getProfileSlotProperties(device, type, slotnum);
+  }
+
+  // If not found, return the timestamp of the first device
+  auto device = platform->get_device_range()[0];
+  return xdp::profile::device::getProfileSlotProperties(device.get(), type, slotnum);
+}
+
 cl_int
 get_profile_kernel_name(key k, const std::string& deviceName, const std::string& cuName, std::string& kernelName)
 {
@@ -412,14 +428,14 @@ get_ddr_bank_count(key k, const std::string& deviceName)
 bool 
 isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 {
-  return ((XCL::RTSingleton::Instance()->deviceTraceProfilingOn() && type == XCL_PERF_MON_MEMORY)
+  return ((XCL::RTSingleton::Instance()->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
           || (XCL::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
 }
 
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
-  return ((XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && type == XCL_PERF_MON_MEMORY)
+  return ((XCL::RTSingleton::Instance()->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
   || (XCL::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
 }
 
@@ -469,6 +485,13 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned slotnum,
   device->get_xrt_device()->getProfilingSlotName(type, slotnum, name, 128);
   slotName = name;
   return CL_SUCCESS;
+}
+
+unsigned
+getProfileSlotProperties(key k, xclPerfMonType type, unsigned slotnum)
+{
+  auto device = k;
+  return device->get_xrt_device()->getProfilingSlotProperties(type, slotnum).get();
 }
 
 cl_int 
