@@ -4,437 +4,550 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "qdma_descq.h"
-
 #include <linux/kernel.h>
 #include <linux/delay.h>
 
+#include "qdma_request.h"
+#include "qdma_descq.h"
 #include "qdma_device.h"
 #include "qdma_intr.h"
 #include "qdma_regs.h"
 #include "qdma_thread.h"
 #include "qdma_context.h"
+#include "qdma_st_c2h.h"
 #include "thread.h"
 #include "version.h"
-#ifdef ERR_DEBUG
-#include "qdma_nl.h"
-#endif
 
-void intr_cidx_update(struct qdma_descq *descq, unsigned int sw_cidx)
+void intr_cidx_update(struct qdma_descq *descq, unsigned int sw_cidx,
+		int ring_index)
 {
 	unsigned int cidx = 0;
 
-	cidx |= V_INTR_CIDX_UPD_SW_CIDX(sw_cidx);
-
-	if (descq->conf.c2h)
-		cidx |= 1 << S_INTR_CIDX_UPD_DIR_SEL;
+	cidx |= V_INTR_CIDX_UPD_SW_CIDX(sw_cidx) |
+			V_INTR_CIDX_UPD_RING_INDEX(ring_index);
 
 	__write_reg(descq->xdev,
 		QDMA_REG_INT_CIDX_BASE + descq->conf.qidx * QDMA_REG_PIDX_STEP,
 		cidx);
-
-	dma_wmb();
 }
 
 /*
  * dma transfer requests
  */
-#ifdef DEBUG
-static void sgl_dump(struct qdma_sw_sg *sgl, unsigned int sgcnt)
-{
-	struct qdma_sw_sg *sg = sgl;
-	int i;
-
-	pr_info("sgl 0x%p, sgcntt %u.\n", sgl, sgcnt);
-
-	for (i = 0; i < sgcnt; i++, sg++)
-		pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx.\n",
-			i, sg, sg->pg, sg->offset, sg->len, sg->dma_addr);
-}
-#endif
-
-static int sgl_find_offset(struct qdma_sw_sg *sgl, unsigned int sgcnt,
-			unsigned int offset, struct qdma_sw_sg **sg_p,
-			unsigned int *sg_offset)
-{
-	struct qdma_sw_sg *sg = sgl;
-	unsigned int len = 0;
-	int i;
-
-	for (i = 0;  i < sgcnt; i++, sg++) {
-		len += sg->len;
-
-		if (len == offset) {
-			*sg_p = sg + 1;
-			*sg_offset = 0;
-			return ++i;
-		} else if (len > offset) {
-			*sg_p = sg;
-			*sg_offset = len - offset;
-			return i;
-		}
-	}
-
-	return -EINVAL;
-}
-
 static inline void req_submitted(struct qdma_descq *descq,
 				struct qdma_sgt_req_cb *cb)
 {
-	cb->req_state = QDMA_REQ_SUBMIT_COMPLETE;
+	pr_debug("%s: req 0x%p posted.\n", descq->conf.name, cb);
+
+	cb->req_state = QDMA_REQ_SUBMITTED;
 	list_del(&cb->list);
 	list_add_tail(&cb->list, &descq->pend_list);
 }
 
-static ssize_t descq_mm_proc_request(struct qdma_descq *descq,
-				struct qdma_sgt_req_cb *cb)
-{
-	struct qdma_request *req = (struct qdma_request *)cb;
-	struct qdma_sw_sg *sg = req->sgl;
-	unsigned int sg_offset = 0;
-	unsigned int sg_max = req->sgcnt;
-	u64 ep_addr = req->ep_addr + cb->offset;
-	struct qdma_mm_desc *desc = (struct qdma_mm_desc *)descq->desc;
-	struct qdma_mm_desc *desc_start = NULL;
-	struct qdma_mm_desc *desc_end = NULL;
-	unsigned int desc_max = descq->avail;
-	unsigned int data_cnt = 0;
-	unsigned int desc_cnt = 0;
-	unsigned int len = 0;
-	int i = 0;
+static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq);
 
-	if (!desc_max) {
-		pr_debug("descq %s, full, try again.\n", descq->conf.name);
+static int descq_poll_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
+{
+	enum qdma_drv_mode drv_mode = descq->xdev->conf.qdma_drv_mode;
+
+	if ((drv_mode == POLL_MODE) || (drv_mode == AUTO_MODE)) {
+		descq->proc_req_running = 1;
+		return descq_mm_n_h2c_cmpl_status(descq);
+	} else
+		return 0;
+}
+
+static unsigned int mm_desc_fill(struct qdma_descq *descq, u64 *ep_addr_p,
+				dma_addr_t addr, unsigned int tlen,
+				bool sop, bool eop)
+{
+	unsigned int pidx = descq->pidx;
+	u64 ep_addr = *ep_addr_p;
+	struct qdma_mm_desc *desc = (struct qdma_mm_desc *)descq->desc +
+					pidx;
+	bool c2h = descq->conf.c2h;
+	unsigned int rngsz = descq->conf.rngsz;
+	unsigned int desc_avail = descq->avail;
+	unsigned int data_cnt = 0;
+
+	while (tlen && desc_avail) {
+		unsigned int len = min_t(unsigned int,
+					tlen, QDMA_DESC_BLEN_MAX);
+
+		desc_avail--;
+
+		desc->rsvd1 = 0UL;
+		desc->rsvd0 = 0U;
+
+		if (c2h) {
+			desc->src_addr = ep_addr;
+			desc->dst_addr = addr;
+		} else {
+			desc->dst_addr = ep_addr;
+			desc->src_addr = addr;
+		}
+
+		desc->flag_len = len;
+		desc->flag_len |= (1 << S_DESC_F_DV);
+		if (!data_cnt && sop)
+			desc->flag_len |= (1 << S_DESC_F_SOP);
+
+		ep_addr += len;
+		data_cnt += len;
+		addr += len;
+		tlen -= len;
+
+		if (!tlen && eop)
+			desc->flag_len |= (1 << S_DESC_F_EOP);
+
+		if (++pidx == rngsz) {
+			pidx = 0;
+			desc = (struct qdma_mm_desc *)descq->desc;
+		} else {
+			desc++;
+		}
+	}
+
+	descq->pidx = pidx;
+	descq->avail = desc_avail;
+	*ep_addr_p = ep_addr;
+
+	return data_cnt;
+}
+
+static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
+{
+	unsigned int desc_written = 0;
+	unsigned int rngsz = descq->conf.rngsz;
+
+	lock_descq(descq);
+	/* process completion of submitted requests */
+	if (descq->q_stop_wait) {
+		descq_mm_n_h2c_cmpl_status(descq);
+		unlock_descq(descq);
+		return 0;
+	}
+	if (unlikely(descq->q_state != Q_STATE_ONLINE)) {
+		unlock_descq(descq);
 		return 0;
 	}
 
-	if (cb->offset) {
-		int rv = sgl_find_offset(req->sgl, req->sgcnt, cb->offset, &sg,
-					&sg_offset);
-		if (rv < 0 || rv >= sg_max) {
-			pr_info("descq %s, req 0x%p, OOR %u/%u, %d/%u.\n",
-				descq->conf.name, req, cb->offset, req->count,
-				rv, sg_max);
-			return -EINVAL;
-		}
-		i = rv;
-		pr_debug("%s, req 0x%p, offset %u/%u -> sg %d, 0x%p,%u.\n",
-			descq->conf.name, req, cb->offset, req->count, rv, sg,
-			sg_offset);
-	} else {
-		i = 0;
-		descq->cur_req_count = req->count;
-		descq->cur_req_count_completed = 0;
+	if (descq->proc_req_running) {
+		unlock_descq(descq);
+		return 0;
 	}
 
-	desc += descq->pidx;
-	desc_start = desc;
-	for (; i < sg_max && desc_cnt < desc_max; i++, sg++) {
-		unsigned int tlen = sg->len;
-		dma_addr_t addr = sg->dma_addr;
-		unsigned int pg_off = sg->offset;
+	descq_poll_mm_n_h2c_cmpl_status(descq);
 
-		pr_debug("desc %u/%u, sgl %d, len %u,%u, offset %u.\n",
-			desc_cnt, desc_max, i, len, tlen, sg_offset);
+	while (!list_empty(&descq->work_list)) {
+		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->work_list,
+						struct qdma_sgt_req_cb, list);
+		struct qdma_request *req = (struct qdma_request *)cb;
+		u64 ep_addr = req->ep_addr + cb->offset;
+		unsigned int pidx = descq->pidx;
+		unsigned int desc_cnt = 0;
+		int i = cb->sg_idx;
 
-		if (sg_offset) {
-			sg_offset = 0;
-			tlen -= sg_offset;
-			addr += sg_offset;
-			pg_off += sg_offset;
-		}
+		if (!descq->avail) {
+			descq_poll_mm_n_h2c_cmpl_status(descq);
 
-		while (tlen) {
-			unsigned int len = min_t(unsigned int, tlen,
-						QDMA_DESC_BLEN_MAX);
-			desc_end = desc;
-
-			desc->rsvd1 = 0UL;
-			desc->rsvd0 = 0U;
-
-			if (descq->conf.c2h) {
-				desc->src_addr = ep_addr;
-				desc->dst_addr = addr;
-			} else {
-				desc->dst_addr = ep_addr;
-				desc->src_addr = addr;
-			}
-
-			desc->flag_len = len;
-			desc->flag_len |= (1 << S_DESC_F_DV);
-
-			ep_addr += len;
-			data_cnt += len;
-			addr += len;
-			tlen -= len;
-			pg_off += len;
-
-			if (++descq->pidx == descq->conf.rngsz) {
-				descq->pidx = 0;
-				desc = (struct qdma_mm_desc *)descq->desc;
-			} else {
-				desc++;
-			}
-
-			desc_cnt++;
-			descq->cur_req_count_completed += len;
-			if (desc_cnt == desc_max)
+			if (!descq->avail) 
 				break;
 		}
+
+		if (cb->cancel) {
+			if (!cb->offset)
+				qdma_request_cancel_done(descq, req);
+			else
+				req_submitted(descq, cb);
+			continue;
+		}
+
+		pr_debug("%s, req 0x%p, %s, %u/%u.\n",
+			descq->conf.name, req, req->write ? "W":"R", cb->offset,
+			req->count);
+
+		if (req->use_sgt) {
+			struct scatterlist *sg = (struct scatterlist *)cb->sg;
+			unsigned int sgmax = req->sgt->nents - 1;
+			unsigned int sgoff = cb->sg_offset;
+			unsigned int data_used = 0;
+
+			for (; i <= sgmax && descq->avail; i++, sg = sg_next(sg)) {
+				unsigned int len = sg_dma_len(sg) - sgoff;
+
+				data_used = mm_desc_fill(descq, &ep_addr,
+						sg_dma_address(sg) + sgoff,
+						len,
+						i == 0, i == sgmax);
+				cb->offset += data_used;
+				if (data_used < len)
+					break;
+
+				data_used = 0;
+				if (sgoff)
+					sgoff = 0;
+			}
+
+			cb->sg_idx = i;
+			cb->sg = (void *)sg;
+			cb->sg_offset = sgoff + data_used;
+
+		} else {
+			struct qdma_sw_sg *sg = (struct qdma_sw_sg *)cb->sg;
+			unsigned int sgmax = req->sgcnt - 1;
+			unsigned int sgoff = cb->sg_offset;
+			unsigned int data_used = 0;
+
+			for (; i <= sgmax && descq->avail; i++, sg = sg->next) {
+				unsigned int len = sg->len - sgoff;
+
+				data_used = mm_desc_fill(descq, &ep_addr,
+						sg->dma_addr + sgoff,
+						len,
+						i == 0, i == sgmax);
+
+				cb->offset += data_used;
+				if (data_used < len)
+					break;
+
+				data_used = 0;
+				if (sgoff)
+					sgoff = 0;
+			}
+
+			cb->sg_idx = i;
+			cb->sg = (void *)sg;
+			cb->sg_offset = sgoff + data_used;
+		}
+
+		desc_cnt = ring_idx_delta(descq->pidx, pidx, rngsz);
+		if (!desc_cnt) {
+			pr_info("descq %s, %u, no prog. pidx 0x%x ~ 0x%x.\n",
+				descq->conf.name, descq->qidx_hw, pidx,
+				descq->pidx);
+			break;
+		}
+
+		cb->desc_nr += desc_cnt;
+		desc_written += desc_cnt;
+
+		pr_debug("descq %s, +%u,%u, avail %u, ep_addr 0x%llx + %x(%u).\n",
+			descq->conf.name, desc_cnt, pidx, descq->avail,
+			req->ep_addr, cb->offset, cb->offset);
+
+		descq->pend_req_desc -= desc_cnt;
+		if (cb->offset == req->count)
+			req_submitted(descq, cb);
+		else
+			cb->req_state = QDMA_REQ_SUBMIT_PARTIAL;
 	}
 
-	if (!desc_end || !desc_start) {
-		pr_info("descq %s, %u, pidx 0x%x, desc 0x%p ~ 0x%p.\n",
-			descq->conf.name, descq->qidx_hw, descq->pidx,
-			desc_start, desc_end);
-		return -EIO;
+	if (desc_written) {
+		descq->pend_list_empty = 0;
+		if (descq->conf.c2h)
+			descq_c2h_pidx_update(descq, descq->pidx);
+		else
+			descq_h2c_pidx_update(descq, descq->pidx);
+
+		descq_poll_mm_n_h2c_cmpl_status(descq);
 	}
 
-	if (descq->conf.c2h)
-		descq_c2h_pidx_update(descq, descq->pidx);
-	else
-		descq_h2c_pidx_update(descq, descq->pidx);
+	descq->proc_req_running = 0;
+	unlock_descq(descq);
 
-	/* set eop */
-	desc_end->flag_len |= (1 << S_DESC_F_EOP);
-	/* set sop */
-	desc_start->flag_len |= (1 << S_DESC_F_SOP);
-
-	descq->avail -= desc_cnt;
-	cb->desc_nr += desc_cnt;
-	cb->offset += data_cnt;
-
-	pr_debug("descq %s, +%u,%u, avail %u, ep_addr 0x%llx + 0x%x(%u).\n",
-		descq->conf.name, desc_cnt, descq->pidx, descq->avail,
-		req->ep_addr, data_cnt, data_cnt);
-
-	if (cb->offset == req->count) {
-		descq->cur_req_count = 0;
-		descq->cur_req_count_completed = 0;
-		req_submitted(descq, cb);
-	} else
-		cb->req_state = QDMA_REQ_SUBMIT_PARTIAL;
-
-	if (descq->wbthp)
-		qdma_kthread_wakeup(descq->wbthp);
+	if (desc_written && descq->cmplthp)
+		qdma_kthread_wakeup(descq->cmplthp);
 
 	return 0;
 }
 
-static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq,
-				struct qdma_sgt_req_cb *cb)
+static unsigned int st_h2c_desc_fill(struct qdma_descq *descq,
+				dma_addr_t addr, unsigned int tlen,
+				bool sop, bool eop, bool eot)
 {
-	struct qdma_request *req = (struct qdma_request *)cb;
-	struct qdma_sw_sg *sg = req->sgl;
-	unsigned int sg_offset = 0;
-	unsigned int sg_max = req->sgcnt;
-	struct qdma_h2c_desc *desc =
-		(struct qdma_h2c_desc *)descq->desc + descq->pidx;
-	unsigned int desc_max = descq->avail;
-	unsigned int data_cnt = 0;
-	unsigned int desc_cnt = 0;
-	int i = 0;
+	struct xlnx_dma_dev *xdev = descq->xdev;
+	unsigned int pidx = descq->pidx;
+	struct qdma_h2c_desc *desc = (struct qdma_h2c_desc *)descq->desc + 
+					pidx;
+	unsigned int pktsz = PAGE_SIZE;
+	unsigned int desc_avail = descq->avail;
+	unsigned int data_used = 0;
+	unsigned int rngsz = descq->conf.rngsz;
 
-	/* calling function should hold the lock */
+	pr_debug("%s: stm %d, tm %d,%d, addr 0x%llx,%u, sop %d, eop %d, eot %d.\n",
+		descq->conf.name, xdev->stm_en, xdev->conf.tm_mode_en,
+		xdev->conf.tm_one_cdh_en, addr, tlen, sop, eop, eot);
 
-	if (!desc_max) {
-		pr_debug("descq %s, full, try again.\n", descq->conf.name);
-		return 0;
-	}
+	while (desc_avail) { /* allow zero byte transfer */
+		unsigned int len = min_t(unsigned int, tlen, pktsz);
+
+		desc_avail--;
+
+		if (!data_used && sop)
+			desc->flags |= S_H2C_DESC_F_SOP;
+
+		desc->src_addr = addr;
+		desc->len = len;
+		desc->pld_len = len;
+		desc->cdh_flags |= S_H2C_DESC_F_ZERO_CDH;
+
+		if (xdev->stm_en) {
+			desc->pld_len = len;
+			desc->cdh_flags = (1 << S_H2C_DESC_F_ZERO_CDH) |
+					V_H2C_DESC_NUM_GL(1);
+
+			/* if we are about to exhaust ring, request h2c-wb */
+			if (!desc_avail)
+				desc->cdh_flags |=
+					1 << S_H2C_DESC_F_REQ_CMPL_STATUS;
+
+		} else if (unlikely(xdev->conf.tm_mode_en)) {
+			/** Check if we are running in TM mode to test sending
+			 * TMH and CDH with Traffic Manager example design for
+			 * Streaming H2C queue in bypass mode
+			 */
+
+			/** In TM mode, check if we are to run  with 1 CDH or
+			 * Zero CDH
+			 */
+			if (xdev->conf.tm_one_cdh_en) {
+			      /** In 1 CDH case, this desc carries CDH -
+			       * comprising of 4B TMH (pld_len and cdh_flags
+			       * fields) and 12B CDH.
+			       *
+			       * Next desc carries the GL. So, advance to next
+			       * desc.
+			       *
+			       * Max supported payload with GL is 4K.
+			       */
+				desc->pld_len = len;
+				desc->cdh_flags = (V_H2C_DESC_NUM_CDH(1) |
+					V_H2C_DESC_NUM_GL(1) |
+					(1 << S_H2C_DESC_F_REQ_CMPL_STATUS) |
+					(1 << S_H2C_DESC_F_EOT));
+				desc->flags = 0;
+				desc->len = 0;
+				desc->src_addr = 0;
+
+				if (++pidx == rngsz) {
+					pidx = 0;
+					desc = (struct qdma_h2c_desc *)
+						descq->desc;
+				} else {
+					desc++;
+				}
+				/* below due to one CDH desc */
+				descq->pend_req_desc += 1;
+				desc->pld_len = 0;
+				desc->cdh_flags = 0;
+				desc->src_addr = addr;
+				desc->len = len;
+			} else {
+				/** In zero CDH case, this desc holds the 4B
+				 * TMH (pld_len and cdh_flags fields).
+				 * And the desc carries the GL too.
+				 * Max supported payload with GL is 4K.
+				 */
+				desc->pld_len = len;
+				desc->cdh_flags = (1 << S_H2C_DESC_F_ZERO_CDH) |
+					V_H2C_DESC_NUM_GL(1) |
+					(1 << S_H2C_DESC_F_REQ_CMPL_STATUS) |
+					(1 << S_H2C_DESC_F_EOT);
+			}
+		}
+
+		data_used += len;
+		addr += len;
+		tlen -= len;
+
+		if (!tlen && eop) {
+			desc->flags |= S_H2C_DESC_F_EOP;
+
+			if (xdev->stm_en)
+				desc->cdh_flags |=  (eot << S_H2C_DESC_F_EOT) |
+					(1 << S_H2C_DESC_F_REQ_CMPL_STATUS);
+		}
 
 #ifdef DEBUG
-	pr_info("%s, req %u.\n", descq->conf.name, req->count);
-	sgl_dump(req->sgl, sg_max);
+		pr_info("%s desc %u, addr 0x%llx, len 0x%x.\n",
+			descq->conf.name, pidx, addr, len);
+		print_hex_dump(KERN_INFO, "desc", DUMP_PREFIX_OFFSET, 16, 1,
+			(void *)desc, sizeof(*desc), false);
 #endif
-
-	if (cb->offset) {
-		int rv = sgl_find_offset(req->sgl, sg_max, cb->offset, &sg,
-					&sg_offset);
-
-		if (rv < 0 || rv >= sg_max) {
-			pr_info("descq %s, req 0x%p, OOR %u/%u, %d/%u.\n",
-				descq->conf.name, req, cb->offset, req->count,
-				rv, sg_max);
-			return -EINVAL;
-		}
-		i = rv;
-		pr_debug("%s, req 0x%p, offset %u/%u -> sg %d, 0x%p,%u.\n",
-			descq->conf.name, req, cb->offset, req->count, rv, sg,
-			sg_offset);
-	} else {
-		i = 0;
-		descq->cur_req_count = req->count;
-		descq->cur_req_count_completed = 0;
-		desc->flags |= S_H2C_DESC_F_SOP;
-
-		if (descq->xdev->stm_en) {
-			if (sg_max > descq->conf.pipe_gl_max) {
-				pr_err("%s configured gl_max %u > given gls %u\n",
-				       descq->conf.name,
-				       descq->conf.pipe_gl_max, sg_max);
-				return -EINVAL;
-			}
-
-			if (req->count > descq->xdev->pipe_stm_max_pkt_size) {
-				pr_err("%s max stm pkt size %u > given %u\n",
-				       descq->conf.name,
-				       descq->xdev->pipe_stm_max_pkt_size,
-				       req->count);
-				return -EINVAL;
-			}
-
-			desc->cdh_flags = (1 << S_H2C_DESC_F_ZERO_CDH);
-			desc->cdh_flags |= V_H2C_DESC_NUM_GL(sg_max);
-			desc->pld_len = req->count;
-
-			desc->cdh_flags |= (req->eot << S_H2C_DESC_F_EOT) |
-				(1 << S_H2C_DESC_F_REQ_WRB);
-		}
-	}
-
-	for (; i < sg_max && desc_cnt < desc_max; i++, sg++) {
-		unsigned int tlen = sg->len;
-		dma_addr_t addr = sg->dma_addr;
-
-		if (sg_offset) {
-			sg_offset = 0;
-			tlen -= sg_offset;
-			addr += sg_offset;
-		}
-
-		do { /* to support zero byte transfer */
-			unsigned int len = min_t(unsigned int, tlen, PAGE_SIZE);
-
-			desc->src_addr = addr;
-			desc->len = len;
-#ifdef ER_DEBUG
-			if (descq->induce_err & (1 << len_mismatch)) {
-				desc->len = 0xFFFFFFFF;
-				pr_info("inducing %d err", len_mismatch);
-			}
-#endif
-
-			data_cnt += len;
-			addr += len;
-			tlen -= len;
-			descq->cur_req_count_completed += len;
-
-			if ((i == sg_max - 1)) {
-				desc->flags |= S_H2C_DESC_F_EOP;
-			}
-
-#if 0
-			pr_info("desc %d, pidx 0x%x:\n", i, descq->pidx);
-			print_hex_dump(KERN_INFO, "desc", DUMP_PREFIX_OFFSET,
-					 16, 1, (void *)desc, 16, false);
-#endif
-
-			if (++descq->pidx == descq->conf.rngsz) {
-				descq->pidx = 0;
-				desc = (struct qdma_h2c_desc *)descq->desc;
-			} else {
-				desc++;
-			}
-
-			desc_cnt++;
-			if (desc_cnt == desc_max)
-				break;
-		} while (tlen);
-	}
-
-	if (descq->xdev->stm_en) {
-		u16 pidx_diff = 0;
-
-		if (desc_cnt < descq->conf.pipe_gl_max)
-			pidx_diff = descq->conf.pipe_gl_max - desc_cnt;
-
-		if ((descq->pidx + pidx_diff) >= descq->conf.rngsz) {
-			descq->pidx = descq->pidx + pidx_diff -
-				descq->conf.rngsz;
-			desc = (struct qdma_h2c_desc *)(descq->desc +
-							descq->pidx);
+		if (++pidx == rngsz) {
+			pidx = 0;
+			desc = (struct qdma_h2c_desc *)descq->desc;
 		} else {
-			descq->pidx += pidx_diff;
-			desc += pidx_diff;
+			desc++;
 		}
-		desc_cnt += pidx_diff;
-	}
 
-	descq_h2c_pidx_update(descq, descq->pidx);
-
-	descq->avail -= desc_cnt;
-	cb->desc_nr += desc_cnt;
-	cb->offset += data_cnt;
-
-	pr_debug("descq %s, +%u,%u, avail %u, 0x%x(%u).\n",
-		descq->conf.name, desc_cnt, descq->pidx, descq->avail, data_cnt,
-		data_cnt);
-
-	if (cb->offset == req->count) {
-		descq->cur_req_count = req->count;
-		descq->cur_req_count_completed = 0;
-		req_submitted(descq, cb);
-	}
-
-	if (descq->wbthp)
-		qdma_kthread_wakeup(descq->wbthp);
-
-	return 0;
-}
-
-static void req_update_pend(struct qdma_descq *descq, unsigned int credit)
-{
-	struct qdma_sgt_req_cb *cb, *tmp;
-	struct qdma_mm_desc *mm_desc;
-	struct qdma_h2c_desc *h2c_desc;
-	unsigned int delta, i;
-
-	pr_debug("%s, 0x%p, credit %u + %u.\n",
-		descq->conf.name, descq, credit, descq->credit);
-
-	/* calling routine should hold the lock */
-	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
-		pr_debug("%s, 0x%p, cb 0x%p, desc_nr %u, credit %u.\n",
-			descq->conf.name, descq, cb, cb->desc_nr, credit);
-		if (credit >= cb->desc_nr) {
-			pr_debug("%s, cb 0x%p done, credit %u > %u.\n",
-				descq->conf.name, cb, credit, cb->desc_nr);
-			delta = cb->desc_nr;
-			cb->done = 1;
-			cb->err_code = 0;
-		} else {
-			pr_debug("%s, cb 0x%p not done, credit %u < %u.\n",
-				descq->conf.name, cb, credit, cb->desc_nr);
-			delta = credit;
-			credit = 0;
-		}
-		for (i = 0; i < delta; i++) {
-			if (descq->conf.st) {
-				h2c_desc = (struct qdma_h2c_desc *)descq->desc +
-					descq->cidx;
-				cb->offset += h2c_desc->len;
-			} else {
-				mm_desc = (struct qdma_mm_desc *)descq->desc +
-					descq->cidx;
-				cb->offset += (mm_desc->flag_len & S_DESC_F_MASK);
-			}
-			descq->cidx = ring_idx_incr(descq->cidx, 1,
-				descq->conf.rngsz);
-		}
-		descq->avail += delta;
-		cb->desc_nr -= delta;
-
-		if (!credit)
+		if (!tlen)
 			break;
 	}
+
+	descq->pidx = pidx;
+	descq->avail = desc_avail;
+	return data_used;
+}
+
+
+static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
+{
+	unsigned int rngsz = descq->conf.rngsz;
+	unsigned int desc_written = 0;
+
+	lock_descq(descq);
+	/* process completion of submitted requests */
+	if (descq->q_stop_wait) {
+		descq_mm_n_h2c_cmpl_status(descq);
+		unlock_descq(descq);
+		return 0;
+	}
+	if (unlikely(descq->q_state != Q_STATE_ONLINE)) {
+		unlock_descq(descq);
+		return 0;
+	}
+
+	if (descq->proc_req_running) {
+		unlock_descq(descq);
+		return 0;
+	}
+
+	/* service completion first */
+	descq_poll_mm_n_h2c_cmpl_status(descq);
+
+	while (!list_empty(&descq->work_list)) {
+		unsigned int pidx = descq->pidx;
+		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->work_list,
+						struct qdma_sgt_req_cb, list);
+		struct qdma_request *req = (struct qdma_request *)cb;
+		unsigned int desc_cnt = 0;
+
+		if (cb->cancel) {
+			if (!cb->offset)
+				qdma_request_cancel_done(descq, req);
+			else
+				req_submitted(descq, cb);
+			continue;
+		}
+
+		if (!descq->avail) {
+			descq_poll_mm_n_h2c_cmpl_status(descq);
+			if (!descq->avail)
+				break;
+		}
+
+		if (req->use_sgt) {
+			struct scatterlist *sg = (struct scatterlist *)cb->sg;
+			unsigned int sgmax = req->sgt->nents - 1;
+			unsigned int sgoff = cb->sg_offset;
+			unsigned int data_used = 0;
+			int i = cb->sg_idx;
+
+			for (; i <= sgmax && descq->avail; i++, sg = sg_next(sg)) {
+				unsigned int len = sg_dma_len(sg) - sgoff;
+
+				data_used = st_h2c_desc_fill(descq,
+						sg_dma_address(sg) + sgoff,
+						len, i == 0, (i == sgmax),
+						req->eot);
+				cb->offset += data_used;
+
+				/* sg entry not finished */
+				if (data_used < len)
+					break;
+
+				data_used = 0;
+				if (sgoff)
+					sgoff = 0;
+			}
+			cb->sg_idx = i;
+			cb->sg = (void *)sg;
+			cb->sg_offset = sgoff + data_used;
+
+		} else {
+			struct qdma_sw_sg *sg = (struct qdma_sw_sg *)cb->sg;
+			unsigned int sgmax = req->sgcnt - 1;
+			unsigned int sgoff = cb->sg_offset;
+			unsigned int data_used = 0;
+			int i = cb->sg_idx;
+
+			for (; i <= sgmax && descq->avail; i++, sg = sg->next) {
+				unsigned int len = sg->len - sgoff;
+
+				data_used = st_h2c_desc_fill(descq,
+						sg->dma_addr + sgoff,
+						len, i == 0, i == sgmax,
+						req->eot);
+				cb->offset += data_used;
+
+				/* sg entry not finished */
+				if (data_used < len)
+					break;
+
+				data_used = 0;
+				if (sgoff)
+					sgoff = 0;
+			}
+			cb->sg_idx = i;
+			cb->sg = (void *)sg;
+			cb->sg_offset = sgoff + data_used;
+		}
+
+		desc_cnt = ring_idx_delta(descq->pidx, pidx, rngsz);
+		if (!desc_cnt) {
+			pr_info("descq %s, %u, no prog. pidx 0x%x ~ 0x%x.\n",
+				descq->conf.name, descq->qidx_hw, pidx,
+				descq->pidx);
+			break;
+		}
+
+		cb->desc_nr += desc_cnt;
+		desc_written += desc_cnt;
+
+		pr_debug("descq %s, +%u,%u, avail %u, cb off %u.\n",
+			descq->conf.name, desc_cnt, pidx, descq->avail,
+			cb->offset);
+
+		descq->pend_req_desc -= desc_cnt;
+
+		if (cb->offset == req->count)
+			req_submitted(descq, cb);
+		else
+			cb->req_state = QDMA_REQ_SUBMIT_PARTIAL;
+	}
+
+	if (desc_written) {
+		descq->pend_list_empty = 0;
+		descq_h2c_pidx_update(descq, descq->pidx);
+		descq_poll_mm_n_h2c_cmpl_status(descq);
+
+	}
+
+	descq->proc_req_running = 0;
+
+	if (descq->cmplthp)
+		qdma_kthread_wakeup(descq->cmplthp);
+
+	unlock_descq(descq);
+
+	return 0;
 }
 
 /*
@@ -442,6 +555,8 @@ static void req_update_pend(struct qdma_descq *descq, unsigned int credit)
  */
 static inline int get_desc_size(struct qdma_descq *descq)
 {
+	if (descq->conf.desc_bypass && (descq->conf.sw_desc_sz == DESC_SZ_64B))
+		return DESC_SZ_64B_BYTES;
 	if (!descq->conf.st)
 		return (int)sizeof(struct qdma_mm_desc);
 
@@ -451,40 +566,40 @@ static inline int get_desc_size(struct qdma_descq *descq)
 	return (int)sizeof(struct qdma_h2c_desc);
 }
 
-static inline int get_desc_wb_size(struct qdma_descq *descq)
+static inline int get_desc_cmpl_status_size(struct qdma_descq *descq)
 {
-	return (int)sizeof(struct qdma_desc_wb);
+	return (int)sizeof(struct qdma_desc_cmpl_status);
 }
 
 static inline void desc_ring_free(struct xlnx_dma_dev *xdev, int ring_sz,
-			int desc_sz, int wb_sz, u8 *desc, dma_addr_t desc_bus)
+			int desc_sz, int cs_sz, u8 *desc, dma_addr_t desc_bus)
 {
-	unsigned int len = ring_sz * desc_sz + wb_sz;
+	unsigned int len = ring_sz * desc_sz + cs_sz;
 
 	pr_debug("free %u(0x%x)=%d*%u+%d, 0x%p, bus 0x%llx.\n",
-		len, len, desc_sz, ring_sz, wb_sz, desc, desc_bus);
+		len, len, desc_sz, ring_sz, cs_sz, desc, desc_bus);
 
-	dma_free_coherent(&xdev->conf.pdev->dev, ring_sz * desc_sz + wb_sz,
+	dma_free_coherent(&xdev->conf.pdev->dev, ring_sz * desc_sz + cs_sz,
 			desc, desc_bus);
 }
 
 static void *desc_ring_alloc(struct xlnx_dma_dev *xdev, int ring_sz,
-			int desc_sz, int wb_sz, dma_addr_t *bus, u8 **wb_pp)
+			int desc_sz, int cs_sz, dma_addr_t *bus, u8 **cs_pp)
 {
-	unsigned int len = ring_sz * desc_sz + wb_sz;
+	unsigned int len = ring_sz * desc_sz + cs_sz;
 	u8 *p = dma_alloc_coherent(&xdev->conf.pdev->dev, len, bus, GFP_KERNEL);
 
 	if (!p) {
-		pr_info("%s, OOM, sz ring %d, desc %d, wb %d.\n",
-			xdev->conf.name, ring_sz, desc_sz, wb_sz);
+		pr_info("%s, OOM, sz ring %d, desc %d, cmpl status sz %d.\n",
+			xdev->conf.name, ring_sz, desc_sz, cs_sz);
 		return NULL;
 	}
 
-	*wb_pp = p + ring_sz * desc_sz;
+	*cs_pp = p + ring_sz * desc_sz;
 	memset(p, 0, len);
 
-	pr_debug("alloc %u(0x%x)=%d*%u+%d, 0x%p, bus 0x%llx, wb 0x%p.\n",
-		len, len, desc_sz, ring_sz, wb_sz, p, *bus, *wb_pp);
+	pr_debug("alloc %u(0x%x)=%d*%u+%d, 0x%p, bus 0x%llx, cmpl status 0x%p.\n",
+		len, len, desc_sz, ring_sz, cs_sz, p, *bus, *cs_pp);
 
 	return p;
 }
@@ -498,8 +613,8 @@ static void desc_free_irq(struct qdma_descq *descq)
 		return;
 
 	spin_lock_irqsave(&xdev->lock, flags);
-	if (xdev->intr_list_cnt[descq->intr_id])
-		xdev->intr_list_cnt[descq->intr_id]--;
+	if (xdev->dev_intr_info_list[descq->intr_id].intr_list_cnt)
+		xdev->dev_intr_info_list[descq->intr_id].intr_list_cnt--;
 	spin_unlock_irqrestore(&xdev->lock, flags);
 }
 
@@ -513,24 +628,24 @@ static void desc_alloc_irq(struct qdma_descq *descq)
 		return;
 
 	/** Pick the MSI-X vector that currently has the fewest queues
-	  * on PF0, vector#0 is dedicated for Error interrupts and
-	  * vector #1 is dedicated for User interrupts
-	  * For all other PFs, vector#0 is dedicated for User interrupts
-	  */
-	min = xdev->intr_list_cnt[xdev->dvec_start_idx];
+	 * on PF0, vector#0 is dedicated for Error interrupts and
+	 * vector #1 is dedicated for User interrupts
+	 * For all other PFs, vector#0 is dedicated for User interrupts
+	 */
+	min = xdev->dev_intr_info_list[xdev->dvec_start_idx].intr_list_cnt;
 	idx = xdev->dvec_start_idx;
-	if (!xdev->intr_coal_en) {
+	if (xdev->conf.qdma_drv_mode == DIRECT_INTR_MODE) {
 		spin_lock_irqsave(&xdev->lock, flags);
 		for (i = xdev->dvec_start_idx; i < xdev->num_vecs; i++) {
-			if (xdev->intr_list_cnt[i] < min) {
-				min = xdev->intr_list_cnt[i];
+			if (xdev->dev_intr_info_list[i].intr_list_cnt < min) {
+				min = xdev->dev_intr_info_list[i].intr_list_cnt;
 				idx = i;
 			}
 
 			if (!min)
 				break;
 		}
-		xdev->intr_list_cnt[idx]++;
+		xdev->dev_intr_info_list[idx].intr_list_cnt++;
 		spin_unlock_irqrestore(&xdev->lock, flags);
 	}
 	descq->intr_id = idx;
@@ -541,84 +656,90 @@ static void desc_alloc_irq(struct qdma_descq *descq)
 /*
  * writeback handling
  */
-static inline int descq_wb_credit(struct qdma_descq *q, unsigned int cidx)
-{
-	unsigned int n;
-
-	if (cidx == q->cidx)
-		return 0;
-
-	/* wrapped around */
-	n = (cidx < q->cidx) ? (q->conf.rngsz - q->cidx) + cidx :
-				cidx - q->cidx;
-
-	pr_debug("descq %s, cidx 0x%x -> 0x%x, avail 0x%x + 0x%x.\n",
-		q->conf.name, q->cidx, cidx, q->avail, n);
-
-	return n;
-}
-
-static int descq_mm_n_h2c_wb(struct qdma_descq *descq)
+static int descq_mm_n_h2c_cmpl_status(struct qdma_descq *descq)
 {
 	unsigned int cidx, cidx_hw;
 	unsigned int cr;
-	struct qdma_desc_wb *wb;
-	unsigned int max_io_block;
+
+	pr_debug("descq 0x%p, %s, pidx %u, cidx %u.\n",
+		descq, descq->conf.name, descq->pidx, descq->cidx);
 
 	if (descq->pidx == descq->cidx) { /* queue empty? */
+		pr_debug("descq %s empty, return.\n", descq->conf.name);
 		return 0;
 	}
 
 	cidx = descq->cidx;
-	wb = (struct qdma_desc_wb *)descq->desc_wb;
-	dma_rmb();
-
-	cidx_hw = wb->cidx;
-
-	if (cidx_hw == cidx && !descq->conf.irq_en) {
-		return 0;
-	}
-
-#if 0
-	print_hex_dump(KERN_INFO, "desc WB ", DUMP_PREFIX_OFFSET,
-			 16, 1, (void *)wb, 8, false);
-	pr_info("descq %s, wb 0x%08x, cidx 0x%x/0x%x, pidx 0x%04x.\n",
-		descq->conf.name, wb->rsvd, wb->cidx, cidx, wb->pidx);
+#ifdef __READ_ONCE_DEFINED__
+	cidx_hw = READ_ONCE(((struct qdma_desc_cmpl_status *)
+				descq->desc_cmpl_status)->cidx);
+#else
+	cidx_hw = ((struct qdma_desc_cmpl_status *)
+					descq->desc_cmpl_status)->cidx;
 #endif
 
-	cr = descq_wb_credit(descq, cidx_hw);
+	if (cidx_hw == cidx) /* no new writeback? */
+		return 0;
+
+	/* completion credits */
+	cr = (cidx_hw < cidx) ? (descq->conf.rngsz - cidx) + cidx_hw :
+				cidx_hw - cidx;
+
+	pr_debug("descq %s, cidx 0x%x -> 0x%x, avail 0x%x + 0x%x.\n",
+		descq->conf.name, cidx, cidx_hw, descq->avail, cr);
+
+	descq->cidx = cidx_hw;
+	descq->avail += cr;
+	descq->credit += cr;
+
+	incr_cmpl_desc_cnt(descq, cr);
+
+	/* completes requests */
+	pr_debug("%s, 0x%p, credit %u + %u.\n",
+		descq->conf.name, descq, cr, descq->credit);
+
+	cr = descq->credit;
+
+	while (!list_empty(&descq->pend_list)) {
+		struct qdma_sgt_req_cb *cb = list_first_entry(&descq->pend_list,
+						struct qdma_sgt_req_cb, list);
+
+		pr_debug("%s, 0x%p, cb 0x%p, desc_nr %u, credit %u.\n",
+			descq->conf.name, descq, cb, cb->desc_nr, cr);
+
+		if (cr >= cb->desc_nr) {
+			pr_debug("%s, cb 0x%p done, credit %u > %u.\n",
+				descq->conf.name, cb, cr, cb->desc_nr);
+			cr -= cb->desc_nr;
+			qdma_sgt_req_done(descq, cb, 0);
+		} else {
+			pr_debug("%s, cb 0x%p not done, credit %u < %u.\n",
+				descq->conf.name, cb, cr, cb->desc_nr);
+			cb->desc_nr -= cr;
+			cr = 0;
+		}
+
+		if (!cr)
+			break;
+	}
+
+	descq->credit = cr;
+	pr_debug("%s, 0x%p, credit %u.\n",
+		descq->conf.name, descq, descq->credit);
+
+	if (descq->conf.c2h)
+		descq_c2h_pidx_update(descq, descq->pidx);
+	else
+		descq_h2c_pidx_update(descq, descq->pidx);
 
 	/* Request thread may have only setup a fraction of the transfer (e.g.
 	 * there wasn't enough space in desc ring). We now have more space
 	 * available again so we can continue programming the
 	 * dma transfer by resuming the thread here.
 	 */
-	if (!list_empty(&descq->work_list) && descq->avail) {
-		/* batch the request thread wakeup for max_io_block */
-		max_io_block = descq->io_batch_cnt * PAGE_SIZE;
-		if (((descq->cur_req_count - descq->cur_req_count_completed) <
-				max_io_block) ||
-				(descq->avail  >= descq->io_batch_cnt))
-			qdma_kthread_wakeup(descq->wrkthp);
-	}
 
-	req_update_pend(descq, cr);
 
-#if 0
-	if (descq->conf.c2h)
-		descq_c2h_pidx_update(descq, descq->pidx);
-	else
-		descq_h2c_pidx_update(descq, descq->pidx);
-#endif
-
-	qdma_sgt_req_done(descq);
-
-	if (descq->conf.irq_en) {
-		dma_rmb();
-		if (wb->cidx != cidx_hw)
-			schedule_work(&descq->work);
-	}
-	return 0;
+	return 1;
 }
 
 /* ************** public function definitions ******************************* */
@@ -631,14 +752,13 @@ void qdma_descq_init(struct qdma_descq *descq, struct xlnx_dma_dev *xdev,
 	memset(descq, 0, sizeof(struct qdma_descq));
 
 	spin_lock_init(&descq->lock);
-	spin_lock_init(&descq->cancel_lock);
 	INIT_LIST_HEAD(&descq->work_list);
 	INIT_LIST_HEAD(&descq->pend_list);
+	qdma_waitq_init(&descq->pend_list_wq);
 	INIT_LIST_HEAD(&descq->intr_list);
-	INIT_LIST_HEAD(&descq->cancel_list);
+	INIT_LIST_HEAD(&descq->legacy_intr_q_list);
 	INIT_WORK(&descq->work, intr_work);
-	INIT_DELAYED_WORK(&descq->dwork, delayed_intr_work);
-	init_completion(&descq->cancel_comp);
+
 	descq->xdev = xdev;
 	descq->channel = 0;
 	descq->qidx_hw = qdev->qbase + idx_hw;
@@ -653,64 +773,69 @@ void qdma_descq_cleanup(struct qdma_descq *descq)
 		descq->q_state = Q_STATE_ENABLED;
 		qdma_descq_context_clear(descq->xdev, descq->qidx_hw,
 					descq->conf.st, descq->conf.c2h, 0);
-	}
-	else
+	} else
 		goto end;
-
 	desc_free_irq(descq);
 
 	qdma_descq_free_resource(descq);
 
 end:
 	unlock_descq(descq);
-	return;
 }
 
 int qdma_descq_alloc_resource(struct qdma_descq *descq)
 {
 	struct xlnx_dma_dev *xdev = descq->xdev;
 	int rv;
-
+#ifdef TEST_64B_DESC_BYPASS_FEATURE
+	int i = 0;
+	u8 *desc_bypass;
+	u8 bypass_data[DESC_SZ_64B_BYTES];
+#endif
 	/* descriptor ring */
 	descq->desc = desc_ring_alloc(xdev, descq->conf.rngsz,
-				get_desc_size(descq), get_desc_wb_size(descq),
-				&descq->desc_bus, &descq->desc_wb);
+				get_desc_size(descq),
+				get_desc_cmpl_status_size(descq),
+				&descq->desc_bus, &descq->desc_cmpl_status);
 	if (!descq->desc) {
 		pr_info("dev %s, descq %s, sz %u, desc ring OOM.\n",
 			xdev->conf.name, descq->conf.name, descq->conf.rngsz);
 		goto err_out;
 	}
 
+
 	if (descq->conf.st && descq->conf.c2h) {
-		struct qdma_flq *flq = &descq->flq;
+		struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 
 		descq->color = 1;
 		flq->desc = (struct qdma_c2h_desc *)descq->desc;
 		flq->size = descq->conf.rngsz;
 		flq->pg_shift = fls(descq->conf.c2h_bufsz) - 1;
 
-		/* These code changes are to accomodate buf_sz of less than 4096*/
-		if(flq->pg_shift < PAGE_SHIFT) {
+		/* These code changes are to accomodate buf_sz
+		 *  of less than 4096
+		 */
+		if (flq->pg_shift < PAGE_SHIFT) {
 			flq->pg_shift = PAGE_SHIFT;
 			flq->pg_order = 0;
-		}
-		else
-		    flq->pg_order = flq->pg_shift - PAGE_SHIFT;
+		} else
+			flq->pg_order = flq->pg_shift - PAGE_SHIFT;
 
 		/* writeback ring */
-		descq->desc_wrb = desc_ring_alloc(xdev,
-					descq->conf.rngsz_wrb,
-					descq->wb_entry_len,
-					sizeof(struct qdma_c2h_wrb_wb),
-					&descq->desc_wrb_bus,
-					&descq->desc_wrb_wb);
-		if (!descq->desc_wrb) {
-			pr_warn("dev %s, descq %s, sz %u, wrb ring OOM.\n",
+		descq->desc_cmpt = desc_ring_alloc(xdev,
+					descq->conf.rngsz_cmpt,
+					descq->cmpt_entry_len,
+					sizeof(struct
+					       qdma_c2h_cmpt_cmpl_status),
+					&descq->desc_cmpt_bus,
+					&descq->desc_cmpt_cmpl_status);
+		if (!descq->desc_cmpt) {
+			pr_warn("dev %s, descq %s, sz %u, cmpt ring OOM.\n",
 				xdev->conf.name, descq->conf.name,
-				descq->conf.rngsz_wrb);
+				descq->conf.rngsz_cmpt);
 			goto err_out;
 		}
-		descq->desc_wrb_cur = descq->desc_wrb;
+		descq->desc_cmpt_cur = descq->desc_cmpt;
 
 		/* freelist / rx buffers */
 		rv = descq_flq_alloc_resource(descq);
@@ -718,14 +843,28 @@ int qdma_descq_alloc_resource(struct qdma_descq *descq)
 			goto err_out;
 	}
 
-	pr_debug("%s: %u/%u, rng %u,%u, desc 0x%p, wb 0x%p.\n",
+	pr_debug("%s: %u/%u, rng %u,%u, desc 0x%p, cmpl status 0x%p.\n",
 		descq->conf.name, descq->conf.qidx, descq->qidx_hw,
-		descq->conf.rngsz, descq->conf.rngsz_wrb, descq->desc,
-		descq->desc_wrb);
+		descq->conf.rngsz, descq->conf.rngsz_cmpt, descq->desc,
+		descq->desc_cmpt);
 
 	/* interrupt vectors */
 	desc_alloc_irq(descq);
 
+	/* Fill in the descriptors with some hard coded value for testing */
+#ifdef TEST_64B_DESC_BYPASS_FEATURE
+	desc_bypass = descq->desc;
+	if (descq->conf.st && !(descq->conf.c2h)) {
+		if (descq->conf.desc_bypass &&
+				(descq->conf.sw_desc_sz == DESC_SZ_64B)) {
+			for (i = 0; i < descq->conf.rngsz; i++) {
+				memset(bypass_data, i+1, DESC_SZ_64B_BYTES);
+				memcpy(&desc_bypass[i*DESC_SZ_64B_BYTES],
+					bypass_data, DESC_SZ_64B_BYTES);
+			}
+		}
+	}
+#endif
 	return 0;
 
 err_out:
@@ -733,63 +872,37 @@ err_out:
 	return QDMA_ERR_OUT_OF_MEMORY;
 }
 
-void qdma_descq_cancel_all(struct qdma_descq *descq)
-{
-	struct qdma_sgt_req_cb *cb, *tmp;
-	struct qdma_request *req;
-
-	list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
-		req = (struct qdma_request *)cb;
-		list_del(&cb->list);
-		cb->pending = false;
-		descq_cancel_req(descq, req);
-	}
-	schedule_work(&descq->work);
-}
-
 void qdma_descq_free_resource(struct qdma_descq *descq)
 {
 	if (!descq)
 		return;
 
-	pr_debug("%s: desc 0x%p, wrb 0x%p.\n",
-		descq->conf.name, descq->desc, descq->desc_wrb);
-
-	/* free all pending requests */
-	if (!list_empty(&descq->pend_list)) {
-		reinit_completion(&descq->cancel_comp);
-		qdma_descq_cancel_all(descq);
-		unlock_descq(descq);
-		wait_for_completion(&descq->cancel_comp);
-		lock_descq(descq);
-	}
-
 	if (descq->desc) {
 
 		int desc_sz = get_desc_size(descq);
-		int wb_sz = get_desc_wb_size(descq);
+		int cs_sz = get_desc_cmpl_status_size(descq);
 
-		pr_debug("%s: desc 0x%p, wrb 0x%p.\n",
-			descq->conf.name, descq->desc, descq->desc_wrb);
+		pr_debug("%s: desc 0x%p, cmpt 0x%p.\n",
+			descq->conf.name, descq->desc, descq->desc_cmpt);
 
-		desc_ring_free(descq->xdev, descq->conf.rngsz, desc_sz, wb_sz,
+		desc_ring_free(descq->xdev, descq->conf.rngsz, desc_sz, cs_sz,
 				descq->desc, descq->desc_bus);
 
-		descq->desc_wb = NULL;
+		descq->desc_cmpl_status = NULL;
 		descq->desc = NULL;
 		descq->desc_bus = 0UL;
 	}
 
-	if (descq->desc_wrb) {
+	if (descq->desc_cmpt) {
 		descq_flq_free_resource(descq);
-		desc_ring_free(descq->xdev, descq->conf.rngsz_wrb,
-			descq->wb_entry_len,
-			sizeof(struct qdma_c2h_wrb_wb),
-			descq->desc_wrb, descq->desc_wrb_bus);
+		desc_ring_free(descq->xdev, descq->conf.rngsz_cmpt,
+			descq->cmpt_entry_len,
+			sizeof(struct qdma_c2h_cmpt_cmpl_status),
+			descq->desc_cmpt, descq->desc_cmpt_bus);
 
-		descq->desc_wrb_wb = NULL;
-		descq->desc_wrb = NULL;
-		descq->desc_wrb_bus = 0UL;
+		descq->desc_cmpt_cmpl_status = NULL;
+		descq->desc_cmpt = NULL;
+		descq->desc_cmpt_bus = 0UL;
 	}
 }
 
@@ -810,39 +923,42 @@ void qdma_descq_config(struct qdma_descq *descq, struct qdma_queue_conf *qconf,
 #else
 		len = sprintf(descq->conf.name, "qdma");
 #endif
-		len += sprintf(descq->conf.name + len, "%05x-%s-%u",
+		len += sprintf(descq->conf.name + len, "%05x-%s-%s-%u",
 			descq->xdev->conf.bdf, descq->conf.st ? "ST" : "MM",
+			descq->conf.c2h ? "C2H" : "H2C",
 			descq->conf.qidx);
 		descq->conf.name[len] = '\0';
 
 		descq->conf.st = qconf->st;
 		descq->conf.c2h = qconf->c2h;
-		descq->conf.irq_en = (descq->xdev->num_vecs) ?
-			descq->conf.irq_en : 0;
 
 	} else {
 		descq->conf.desc_rng_sz_idx = qconf->desc_rng_sz_idx;
 		descq->conf.cmpl_rng_sz_idx = qconf->cmpl_rng_sz_idx;
 		descq->conf.c2h_buf_sz_idx = qconf->c2h_buf_sz_idx;
 
-		descq->conf.irq_en = (descq->xdev->num_vecs) ? 1 : 0;
-		descq->conf.wbk_en = qconf->wbk_en;
-		descq->conf.wbk_acc_en = qconf->wbk_acc_en;
-		descq->conf.wbk_pend_chk = qconf->wbk_pend_chk;
+		descq->conf.irq_en = (descq->xdev->conf.qdma_drv_mode !=
+				POLL_MODE) ? 1 : 0;
+		descq->conf.cmpl_status_en = qconf->cmpl_status_en;
+		descq->conf.cmpl_status_acc_en = qconf->cmpl_status_acc_en;
+		descq->conf.cmpl_status_pend_chk = qconf->cmpl_status_pend_chk;
 		descq->conf.cmpl_stat_en = qconf->cmpl_stat_en;
 		descq->conf.cmpl_trig_mode = qconf->cmpl_trig_mode;
 		descq->conf.cmpl_timer_idx = qconf->cmpl_timer_idx;
 		descq->conf.fetch_credit = qconf->fetch_credit;
 		descq->conf.cmpl_cnt_th_idx = qconf->cmpl_cnt_th_idx;
 
-		descq->conf.bypass = qconf->bypass;
+		descq->conf.desc_bypass = qconf->desc_bypass;
+		descq->conf.pfetch_bypass = qconf->pfetch_bypass;
 		descq->conf.pfetch_en = qconf->pfetch_en;
 		descq->conf.cmpl_udd_en = qconf->cmpl_udd_en;
 		descq->conf.cmpl_desc_sz = qconf->cmpl_desc_sz;
+		descq->conf.sw_desc_sz = qconf->sw_desc_sz;
 		descq->conf.pipe_gl_max = qconf->pipe_gl_max;
 		descq->conf.pipe_flow_id = qconf->pipe_flow_id;
 		descq->conf.pipe_slr_id = qconf->pipe_slr_id;
 		descq->conf.pipe_tdest = qconf->pipe_tdest;
+		descq->conf.cmpl_ovf_chk_dis = qconf->cmpl_ovf_chk_dis;
 	}
 }
 
@@ -864,7 +980,7 @@ int qdma_descq_config_complete(struct qdma_descq *descq)
 		return rv;
 
 	qconf->rngsz = csr_info.array[qconf->desc_rng_sz_idx] - 1;
-	
+
 	/* <= 2018.2 IP
 	 * make the cmpl ring size bigger if possible to avoid run out of
 	 * cmpl entry while desc. ring still have free entries
@@ -872,16 +988,23 @@ int qdma_descq_config_complete(struct qdma_descq *descq)
 	if (qconf->st && qconf->c2h) {
 		int i;
 		unsigned int v = csr_info.array[qconf->cmpl_rng_sz_idx];
+		int best_fit_idx = -1;
 
-		for (i = 0; i < QDMA_GLOBAL_CSR_ARRAY_SZ; i++)
-			if (csr_info.array[i] > v)
-				break;
-		
-		if (i < QDMA_GLOBAL_CSR_ARRAY_SZ)
-			qconf->cmpl_rng_sz_idx = i;
+		for (i = 0; i < QDMA_GLOBAL_CSR_ARRAY_SZ; i++) {
+			if (csr_info.array[i] > v) {
+				if (best_fit_idx < 0)
+					best_fit_idx = i;
+				else if ((best_fit_idx >= 0) &&
+						(csr_info.array[i] <
+						csr_info.array[best_fit_idx]))
+					best_fit_idx = i;
+			}
+		}
 
-		
-		qconf->rngsz_wrb = csr_info.array[qconf->cmpl_rng_sz_idx] - 1;
+		if (best_fit_idx >= 0)
+			qconf->cmpl_rng_sz_idx = best_fit_idx;
+
+		qconf->rngsz_cmpt = csr_info.array[qconf->cmpl_rng_sz_idx] - 1;
 		qconf->c2h_bufsz = csr_info.bufsz;
 	}
 
@@ -890,25 +1013,24 @@ int qdma_descq_config_complete(struct qdma_descq *descq)
 	 * usable entries is ring_size - 1
 	 */
 	descq->avail = descq->conf.rngsz - 1;
+	descq->pend_list_empty = 1;
 
 	descq->pidx = 0;
 	descq->cidx = 0;
-	descq->cidx_wrb = 0;
-	descq->pidx_wrb = 0;
+	descq->cidx_cmpt = 0;
+	descq->pidx_cmpt = 0;
 	descq->credit = 0;
-	descq->io_batch_cnt = descq->conf.rngsz >> 1;
+	descq->io_batch_cnt = (descq->conf.st && descq->conf.c2h) ?
+			(1 << descq->conf.cmpl_cnt_th_idx) :
+			(1 << (csr_info.cmpl_status_acc + 3)); /* tuned value */
+	descq->pend_req_desc = 0;
 
 	/* ST C2H only */
 	if (qconf->c2h && qconf->st) {
-		if (qconf->cmpl_desc_sz == DESC_SZ_RSV)
-			qconf->cmpl_desc_sz = DESC_SZ_8B;
-		descq->wb_entry_len = 8 << qconf->cmpl_desc_sz;
-
-		if (descq->wb_entry_len > 8)
-			qconf->cmpl_udd_en = 1;
+		descq->cmpt_entry_len = 8 << qconf->cmpl_desc_sz;
 
 		pr_debug("%s: cmpl sz %u(%d), udd_en %d.\n",
-			descq->conf.name, descq->wb_entry_len,
+			descq->conf.name, descq->cmpt_entry_len,
 			descq->conf.cmpl_desc_sz, descq->conf.cmpl_udd_en);
 	}
 
@@ -929,14 +1051,18 @@ int qdma_descq_prog_hw(struct qdma_descq *descq)
 
 	/* update pidx/cidx */
 	if (descq->conf.st && descq->conf.c2h) {
-		descq_wrb_cidx_update(descq, 0);
-		descq_c2h_pidx_update(descq, descq->conf.rngsz - 1);
+		if (!descq->xdev->stm_en) {
+			/* For STM enabled device, these updates need to be
+			 * delayed until STM context is setup for the queue
+			 */
+			descq_cmpt_cidx_update(descq, 0);
+			descq_c2h_pidx_update(descq, descq->conf.rngsz - 1);
+		}
 	}
 
 	return rv;
 }
 
-/* STM */
 #ifndef __QDMA_VF__
 int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 {
@@ -954,7 +1080,13 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		return -EINVAL;
 	}
 
-	if (!descq->conf.c2h && !descq->conf.bypass) {
+	if (descq->xdev->stm_rev < STM_SUPPORTED_REV_MIN) {
+		pr_err("%s: No supported STM rev found in hw, 0x%x\n",
+		       descq->conf.name, descq->xdev->stm_rev);
+		return -ENODEV;
+	}
+
+	if (!descq->conf.c2h && !descq->conf.desc_bypass) {
 		pr_err("%s: H2C queue needs to be in bypass with STM\n",
 		       descq->conf.name);
 		return -EINVAL;
@@ -968,127 +1100,125 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		pr_warn("%s: failed to program stm", descq->conf.name);
 		return rv;
 	}
+
+	/* update pidx/cidx for C2H */
+	if (descq->conf.c2h) {
+		descq_cmpt_cidx_update(descq, 0);
+		descq_c2h_pidx_update(descq, descq->conf.rngsz - 1);
+	}
+
 	return rv;
 }
 #endif
 
-void qdma_descq_service_wb(struct qdma_descq *descq, int budget,
+void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
-	int ret;
-
-	lock_descq(descq);
-	ret = qdma_notify_cancel(descq);
-	if (descq->q_state != Q_STATE_ONLINE && !ret) {
-		complete(&descq->cancel_comp);
-	} else if (descq->conf.st && descq->conf.c2h)
-		descq_process_completion_st_c2h(descq, budget, c2h_upd_cmpl);
-	else
-		descq_mm_n_h2c_wb(descq);
-	unlock_descq(descq);
+	if (descq->conf.st && descq->conf.c2h) {
+		lock_descq(descq);
+		if (descq->q_state == Q_STATE_ONLINE)
+			descq_process_completion_st_c2h(descq, budget,
+							c2h_upd_cmpl);
+		unlock_descq(descq);
+	} else if ((descq->xdev->conf.qdma_drv_mode == POLL_MODE) ||
+			(descq->xdev->conf.qdma_drv_mode == AUTO_MODE)) {
+		if (!descq->proc_req_running)
+			qdma_descq_proc_sgt_request(descq);
+	} else {
+		lock_descq(descq);
+		descq_mm_n_h2c_cmpl_status(descq);
+		if (descq->pend_req_desc) {
+			unlock_descq(descq);
+			qdma_descq_proc_sgt_request(descq);
+			return;
+		}
+		unlock_descq(descq);
+	}
 }
 
-ssize_t qdma_descq_proc_sgt_request(struct qdma_descq *descq,
-					struct qdma_sgt_req_cb *cb)
+ssize_t qdma_descq_proc_sgt_request(struct qdma_descq *descq)
 {
 	if (!descq->conf.st) /* MM H2C/C2H */
-		return descq_mm_proc_request(descq, cb);
+		return descq_mm_proc_request(descq);
 	else if (descq->conf.st && !descq->conf.c2h) /* ST H2C */
-		return descq_proc_st_h2c_request(descq, cb);
+		return descq_proc_st_h2c_request(descq);
 	else	/* ST C2H - should not happen - handled separately */
 		return -1;
 }
 
-int qdma_notify_cancel(struct qdma_descq *descq)
+void incr_cmpl_desc_cnt(struct qdma_descq *descq, unsigned int cnt)
 {
-	struct qdma_sgt_req_cb *cb, *tmp;
-	struct qdma_request *req = NULL;
-	unsigned long flags;
-	bool resch = false;
-	struct timeval ts;
-	int ret = 0;
-
-       	do_gettimeofday(&ts);
-
-	spin_lock_irqsave(&descq->cancel_lock, flags);
-        /* calling routine should hold the lock */
-        list_for_each_entry_safe(cb, tmp, &descq->cancel_list, list_cancel) {
-		req = (struct qdma_request *)cb;
-
-		pr_debug("%s queue, req %p\n",
-			descq->conf.c2h ? "read" : "write", req);
-		/*
-		 * cancel c2h immediately because we have copy queue for c2h
-		 * TODO: Zero copy case in the future. 
-		 */
-	        if (cb->done != 1 && (!descq->conf.st || !descq->conf.c2h) &&
-			descq->q_state == Q_STATE_ONLINE &&
-			ts.tv_sec - cb->cancel_ts.tv_sec <
-			QDMA_CANCEL_TIMEOUT) {
-			if (descq->conf.irq_en)
-				resch = true;
-			ret = -EAGAIN;
-			continue;
-		}
-
-		list_del(&cb->list_cancel);
-		spin_unlock_irqrestore(&descq->cancel_lock, flags);
-		if (req->fp_cancel) {
-			req->fp_cancel(req);
-		} else {
-			cb->done = 1;
-			qdma_waitq_wakeup(&cb->wq);
-		}
-		spin_lock_irqsave(&descq->cancel_lock, flags);
+	descq->total_cmpl_descs += cnt;
+	switch ((descq->conf.st << 1) | descq->conf.c2h) {
+	case 0:
+		descq->xdev->total_mm_h2c_pkts += cnt;
+		break;
+	case 1:
+		descq->xdev->total_mm_c2h_pkts += cnt;
+		break;
+	case 2:
+		descq->xdev->total_st_h2c_pkts += cnt;
+		break;
+	case 3:
+		descq->xdev->total_st_c2h_pkts += cnt;
+		break;
+	default:
+		break;
 	}
-	spin_unlock_irqrestore(&descq->cancel_lock, flags);
-
-	if (resch)
-		schedule_delayed_work(&descq->dwork,
-			msecs_to_jiffies(QDMA_CANCEL_TIMEOUT * 1000));
-
-	return ret;
 }
 
-void qdma_sgt_req_done(struct qdma_descq *descq)
+void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
+			int error)
 {
-	struct qdma_request *req;
-	struct qdma_sgt_req_cb *cb, *tmp;
+	struct qdma_request *req = (struct qdma_request *)cb;
 
-        /* calling routine should hold the lock */
-        list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
-		req = (struct qdma_request *)cb;
-		if (cb->unmap_needed) {
-			sgl_unmap(descq->xdev->conf.pdev, req->sgl,
-				req->sgcnt,
-				descq->conf.c2h ? DMA_FROM_DEVICE :
-				DMA_TO_DEVICE);
-			cb->unmap_needed = 0;
-		}
-		if (req->fp_done) {
-			if (!cb->canceled) {
-				unlock_descq(descq);
-				req->fp_done(req, cb->offset, cb->err_code);
-				lock_descq(descq);
-			}
-		} else {
-			pr_debug("req 0x%p, cb 0x%p, wake up.\n", req, cb);
-			qdma_waitq_wakeup(&cb->wq);
-		}
-		cb->offset = 0;
+	if (error)
+		pr_info("req 0x%p, cb 0x%p, fp_done 0x%p done, err %d.\n",
+			req, cb, req->fp_done, error);
 
-		if (!cb->done)
-			break;
+	list_del(&cb->list);
+	if (cb->unmap_needed) {
+		qdma_request_unmap(descq->xdev->conf.pdev, req);
+		cb->unmap_needed = 0;
 	}
+	cb->req_state = QDMA_REQ_COMPLETE;
+	if (cb->cancel) {
+		qdma_request_cancel_done(descq, req);
+	} else {
+		if ((cb->offset != req->count) &&
+		    !(descq->conf.st && descq->conf.c2h)) {
+			pr_info("req 0x%p not completed %u != %u.\n",
+				req, cb->offset, req->count);
+			error = -EINVAL;
+		}
+
+		cb->status = error;
+		cb->done = 1;
+
+	       	if (req->fp_done) 
+			req->fp_done(req->uld_data, cb->offset, error);
+		else
+			qdma_waitq_wakeup(&cb->wq);
+	}
+
+	if (descq->conf.st && descq->conf.c2h)
+		descq->pend_list_empty = (descq->avail == 0);
+	else
+		descq->pend_list_empty = (descq->avail ==
+				(descq->conf.rngsz - 1));
+
+	if (descq->q_stop_wait && descq->pend_list_empty)
+		qdma_waitq_wakeup(&descq->pend_list_wq);
 }
 
 int qdma_descq_dump_desc(struct qdma_descq *descq, int start,
 			int end, char *buf, int buflen)
 {
+	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	int desc_sz = get_desc_size(descq);
 	u8 *p = descq->desc + start * desc_sz;
 	struct qdma_sw_sg *fl = (descq->conf.st && descq->conf.c2h) ?
-				descq->flq.sdesc + start : NULL;
+				flq->sdesc + start : NULL;
 	int i = start;
 	int len = strlen(buf);
 
@@ -1097,9 +1227,16 @@ int qdma_descq_dump_desc(struct qdma_descq *descq, int start,
 
 	for (; i < end && i < descq->conf.rngsz; i++, p += desc_sz) {
 		len += sprintf(buf + len, "%d: 0x%p ", i, p);
-		hex_dump_to_buffer(p, desc_sz, (desc_sz < 16) ? 16 : 32,
-				4, buf + len, buflen - len, 0);
+		hex_dump_to_buffer(p, desc_sz,
+				  (desc_sz < DESC_SZ_16B_BYTES) ? 16 : 32,
+				  4, buf + len, buflen - len, 0);
 		len = strlen(buf);
+		if (desc_sz > DESC_SZ_32B_BYTES) {
+			len += sprintf(buf + len, " ");
+			hex_dump_to_buffer(p + DESC_SZ_32B_BYTES, desc_sz,
+					32, 4, buf + len, buflen - len, 0);
+			len = strlen(buf);
+		}
 		if (fl) {
 			len += sprintf(buf + len, " fl pg 0x%p, 0x%llx.\n",
 				fl->pg, fl->dma_addr);
@@ -1108,12 +1245,12 @@ int qdma_descq_dump_desc(struct qdma_descq *descq, int start,
 			buf[len++] = '\n';
 	}
 
-	p = descq->desc_wb;
+	p = descq->desc_cmpl_status;
 
 	dma_rmb();
 
-	len += sprintf(buf + len, "WB: 0x%p ", p);
-	hex_dump_to_buffer(p, get_desc_wb_size(descq), 16, 4,
+	len += sprintf(buf + len, "CMPL STATUS: 0x%p ", p);
+	hex_dump_to_buffer(p, get_desc_cmpl_status_size(descq), 16, 4,
 			buf + len, buflen - len, 0);
 	len = strlen(buf);
 	buf[len++] = '\n';
@@ -1121,44 +1258,65 @@ int qdma_descq_dump_desc(struct qdma_descq *descq, int start,
 	if (descq->conf.st && descq->conf.c2h) {
 		p = page_address(fl->pg);
 		len += sprintf(buf + len, "data 0: 0x%p ", p);
-		hex_dump_to_buffer(p, descq->wb_entry_len,
-				(descq->wb_entry_len < 16) ? 16 : 32,
-				4, buf + len,
-				buflen - len, 0);
+		hex_dump_to_buffer(p, descq->cmpt_entry_len,
+			(descq->cmpt_entry_len < DESC_SZ_16B_BYTES) ? 16 : 32,
+			4, buf + len,
+			buflen - len, 0);
 		len = strlen(buf);
+		if (descq->cmpt_entry_len > DESC_SZ_32B_BYTES) {
+			len += sprintf(buf + len, " ");
+			hex_dump_to_buffer(p + DESC_SZ_32B_BYTES,
+					descq->cmpt_entry_len, 32, 4,
+					buf + len, buflen - len, 0);
+			len = strlen(buf);
+		}
 		buf[len++] = '\n';
 	}
 
 	return len;
 }
 
-int qdma_descq_dump_wrb(struct qdma_descq *descq, int start,
+int qdma_descq_dump_cmpt(struct qdma_descq *descq, int start,
 			int end, char *buf, int buflen)
 {
-	uint8_t *wrb = descq->desc_wrb;
+	uint8_t *cmpt = descq->desc_cmpt;
 	u8 *p;
 	int i = start;
 	int len = strlen(buf);
-	int stride = descq->wb_entry_len;
+	int stride = descq->cmpt_entry_len;
 
-	if (!descq->desc_wrb)
+	if (!descq->desc_cmpt)
 		return 0;
 
-	for (wrb += (start * stride);
-			i < end && i < descq->conf.rngsz_wrb; i++,
-			wrb += stride) {
-		len += sprintf(buf + len, "%d: 0x%p ", i, wrb);
-		hex_dump_to_buffer(wrb, descq->wb_entry_len,
+	for (cmpt += (start * stride);
+			i < end && i < descq->conf.rngsz_cmpt; i++,
+			cmpt += stride) {
+		mdelay(100);
+		len += sprintf(buf + len, "%d: 0x%p ", i, cmpt);
+		hex_dump_to_buffer(cmpt, descq->cmpt_entry_len,
 				32, 4, buf + len, buflen - len, 0);
+		mdelay(100);
 		len = strlen(buf);
+		if (descq->cmpt_entry_len > DESC_SZ_32B_BYTES) {
+			mdelay(100);
+			len += sprintf(buf + len, " ");
+			hex_dump_to_buffer(cmpt + DESC_SZ_32B_BYTES,
+					   descq->cmpt_entry_len,
+					   32, 4, buf + len, buflen - len, 0);
+			mdelay(100);
+			len = strlen(buf);
+		}
+		mdelay(100);
 		buf[len++] = '\n';
 	}
 
-	len += sprintf(buf + len, "WB: 0x%p ", descq->desc_wrb_wb);
+	len += sprintf(buf + len,
+			"CMPL STATUS: 0x%p ",
+			descq->desc_cmpt_cmpl_status);
 
-	p = descq->desc_wrb_wb;
+	p = descq->desc_cmpt_cmpl_status;
 	dma_rmb();
-	hex_dump_to_buffer(p, sizeof(struct qdma_c2h_wrb_wb),
+	hex_dump_to_buffer(p, sizeof(struct qdma_c2h_cmpt_cmpl_status),
 			16, 4, buf + len, buflen - len, 0);
 	len = strlen(buf);
 	buf[len++] = '\n';
@@ -1220,19 +1378,18 @@ int qdma_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 		return cur - buf;
 
 	cur += snprintf(cur, end - cur,
-		"\thw_ID %d, thp %s, %s, desc 0x%p/0x%llx, %u\n",
+		"\thw_ID %d, thp %s, desc 0x%p/0x%llx, %u\n",
 		descq->qidx_hw,
-		descq->wrkthp ? descq->wrkthp->name : "?",
-		descq->wbthp ? descq->wbthp->name : "?",
+		descq->cmplthp ? descq->cmplthp->name : "?",
 		descq->desc, descq->desc_bus, descq->conf.rngsz);
 	if (cur >= end)
 		goto handle_truncation;
 
 	if (descq->conf.st && descq->conf.c2h) {
 		cur += snprintf(cur, end - cur,
-			"\twrb desc 0x%p/0x%llx, %u",
-			descq->desc_wrb, descq->desc_wrb_bus,
-			descq->conf.rngsz_wrb);
+			"\tcmpt desc 0x%p/0x%llx, %u\n",
+			descq->desc_cmpt, descq->desc_cmpt_bus,
+			descq->conf.rngsz_cmpt);
 		if (cur >= end)
 			goto handle_truncation;
 	}
@@ -1240,19 +1397,20 @@ int qdma_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 	if (!detail)
 		return cur - buf;
 
-	if (descq->desc_wb) {
-		u8 *wb = descq->desc_wb;
+	if (descq->desc_cmpl_status) {
+		u8 *cs = descq->desc_cmpl_status;
 
-		cur += snprintf(cur, end - cur, "\n\tWB: 0x%p, ", wb);
+		cur += snprintf(cur, end - cur, "\n\tcmpl status: 0x%p, ", cs);
 		if (cur >= end)
 			goto handle_truncation;
 
 		dma_rmb();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
-		cur += hex_dump_to_buffer(wb, sizeof(struct qdma_desc_wb),
+		cur += hex_dump_to_buffer(cs,
+					  sizeof(struct qdma_desc_cmpl_status),
 					  16, 4, cur, end - cur, 0);
 #else
-		hex_dump_to_buffer(wb, sizeof(struct qdma_desc_wb),
+		hex_dump_to_buffer(cs, sizeof(struct qdma_desc_cmpl_status),
 					  16, 4, cur, end - cur, 0);
 		cur += strlen(cur);
 #endif
@@ -1263,19 +1421,21 @@ int qdma_descq_dump(struct qdma_descq *descq, char *buf, int buflen, int detail)
 		if (cur >= end)
 			goto handle_truncation;
 	}
-	if (descq->desc_wrb_wb) {
-		u8 *wb = descq->desc_wrb_wb;
+	if (descq->desc_cmpt_cmpl_status) {
+		u8 *cs = descq->desc_cmpt_cmpl_status;
 
-		cur += snprintf(cur, end - cur, "\tWRB WB: 0x%p, ", wb);
+		cur += snprintf(cur, end - cur, "\tCMPT CMPL STATUS: 0x%p, ",
+				cs);
 		if (cur >= end)
 			goto handle_truncation;
 
 		dma_rmb();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
-		cur += hex_dump_to_buffer(wb, sizeof(struct qdma_c2h_wrb_wb),
-					  16, 4, cur, end - cur, 0);
+		cur += hex_dump_to_buffer(cs,
+				sizeof(struct qdma_c2h_cmpt_cmpl_status),
+				16, 4, cur, end - cur, 0);
 #else
-		hex_dump_to_buffer(wb, sizeof(struct qdma_c2h_wrb_wb),
+		hex_dump_to_buffer(cs, sizeof(struct qdma_c2h_cmpt_cmpl_status),
 					  16, 4, cur, end - cur, 0);
 		cur += strlen(cur);
 #endif
@@ -1311,29 +1471,6 @@ int qdma_queue_avail_desc(unsigned long dev_hndl, unsigned long id)
 	return avail;
 }
 
-#ifdef ERR_DEBUG
-int qdma_queue_set_err_injection(unsigned long dev_hndl, unsigned long id,
-			u64 err_sel, u64 err_mask, char *buf, int buflen)
-{
-	struct qdma_descq *descq = qdma_device_get_descq_by_id(
-					(struct xlnx_dma_dev *)dev_hndl,
-					id, buf, buflen, 1);
-	const char *dummy; /* to avoid compiler warnings */
-
-	dummy = xnl_attr_str[0];
-	dummy = xnl_op_str[0];
-	if (!descq)
-		return QDMA_ERR_INVALID_QIDX;
-	descq->induce_err &= ~err_mask;
-	descq->induce_err |= err_sel;
-	pr_info("Errs enabled = [1]: 0x%08x [0]: 0x%08x",
-		(u32)(descq->induce_err >> 32),
-		(u32)descq->induce_err);
-
-	return 0;
-}
-#endif
-
 int qdma_queue_packet_write(unsigned long dev_hndl, unsigned long id,
 				struct qdma_request *req)
 {
@@ -1356,8 +1493,7 @@ int qdma_queue_packet_write(unsigned long dev_hndl, unsigned long id,
 	qdma_waitq_init(&cb->wq);
 
 	if (!req->dma_mapped) {
-		rv = sgl_map(descq->xdev->conf.pdev, req->sgl, req->sgcnt,
-				DMA_TO_DEVICE);
+		rv = qdma_request_map(descq->xdev->conf.pdev, req);
 		if (rv < 0) {
 			pr_info("%s map sgl %u failed, %u.\n",
 				descq->conf.name, req->sgcnt, req->count);
@@ -1380,42 +1516,52 @@ int qdma_queue_packet_write(unsigned long dev_hndl, unsigned long id,
 
 	pr_debug("%s: cb 0x%p submitted.\n", descq->conf.name, cb);
 
-	qdma_kthread_wakeup(descq->wrkthp);
-
 	return req->count;
 
 unmap_sgl:
 	if (cb->unmap_needed)
-		sgl_unmap(descq->xdev->conf.pdev, req->sgl, req->sgcnt,
-			DMA_TO_DEVICE);
+		qdma_request_unmap(descq->xdev->conf.pdev, req);
 	return rv;
 }
 
-int qdma_descq_get_wrb_udd(unsigned long dev_hndl, unsigned long id, char *buf, int buflen)
+int qdma_descq_get_cmpt_udd(unsigned long dev_hndl, unsigned long id,
+		char *buf, int buflen)
 {
-	uint8_t *wrb;
+	uint8_t *cmpt;
 	uint8_t i = 0;
 	int len = 0;
 	int print_len = 0;
 	struct qdma_descq *descq = qdma_device_get_descq_by_id(
 					(struct xlnx_dma_dev *)dev_hndl,
 					id, buf, buflen, 1);
-	struct qdma_c2h_wrb_wb *wb;
+	struct qdma_c2h_cmpt_cmpl_status *cs;
 
 	if (!descq)
 		return QDMA_ERR_INVALID_QIDX;
 
-	wb = (struct qdma_c2h_wrb_wb *)
-						descq->desc_wrb_wb;
+	if (!buf || !buflen)
+		return QDMA_ERR_INVALID_INPUT_PARAM;
 
-	wrb = descq->desc_wrb + ((wb->pidx - 1) * descq->wb_entry_len);
+	cs = (struct qdma_c2h_cmpt_cmpl_status *)
+						descq->desc_cmpt_cmpl_status;
 
-	for(i = 2; i < descq->wb_entry_len; i++) {
+	cmpt = descq->desc_cmpt + ((cs->pidx - 1) * descq->cmpt_entry_len);
+
+	/*
+	 * Ignoring the first 4 bits of the completion entry as they represent
+	 * the error and color bits.
+	 * TODO: May need to change the masking logic and move that in thegtest,
+	 * as error and color bit positions may change in the future releases.
+	 */
+	for (i = 0; i < descq->cmpt_entry_len; i++) {
 		if (buf && buflen) {
-			if(i == 2)
-				print_len = sprintf(buf + len,"%02x", (wrb[i] & 0xF0));
+			if (i == 0)
+				print_len = sprintf(buf + len, "%02x",
+						(cmpt[i] & 0xF0));
 			else
-				print_len = sprintf(buf + len,"%02x", wrb[i]);
+				print_len = sprintf(buf + len, "%02x",
+						    cmpt[i]);
+
 		}
 		buflen -= print_len;
 		len += print_len;
