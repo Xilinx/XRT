@@ -455,6 +455,12 @@ def xclExecWait(handle, timeoutMilliSec):
     call on the driver file handle. The return value has same semantics as poll system call.
     If return value is > 0 caller should check the status of submitted exec buffers
     """
-    libc.xclExecWait.restype = c_int
+    libc.xclExecWait.restype = c_size_t
     libc.xclExecWait.argtypes = [xclDeviceHandle, c_int]
     return libc.xclExecWait(handle, timeoutMilliSec)
+
+def xclReadBO(handle, boHandle, dst, size, skip):
+    libc.xclReadBO.restype = c_int
+    libc.xclReadBO.argtypes = [xclDeviceHandle, c_uint, c_void_p, c_size_t, c_size_t]
+    return libc.xclReadBO(handle, boHandle, dst, size, skip)
+

@@ -1,10 +1,30 @@
-import getopt, sys, struct
+import getopt, sys, struct, mmap
 from ctypes import *
 # import source files
 sys.path.append('../../../src/python/')
 from xclbin_binding import *
 from xrt_binding import *
 from ert_binding import *
+from cffi import FFI
+
+XHELLO_HELLO_CONTROL_ADDR_AP_CTRL              = 0x00
+XHELLO_HELLO_CONTROL_ADDR_GIE                  = 0x04
+XHELLO_HELLO_CONTROL_ADDR_IER                  = 0x08
+XHELLO_HELLO_CONTROL_ADDR_ISR                  = 0x0c
+XHELLO_HELLO_CONTROL_ADDR_GROUP_ID_X_DATA      = 0x10
+XHELLO_HELLO_CONTROL_BITS_GROUP_ID_X_DATA      = 32
+XHELLO_HELLO_CONTROL_ADDR_GROUP_ID_Y_DATA      = 0x18
+XHELLO_HELLO_CONTROL_BITS_GROUP_ID_Y_DATA      = 32
+XHELLO_HELLO_CONTROL_ADDR_GROUP_ID_Z_DATA      = 0x20
+XHELLO_HELLO_CONTROL_BITS_GROUP_ID_Z_DATA      = 32
+XHELLO_HELLO_CONTROL_ADDR_GLOBAL_OFFSET_X_DATA = 0x28
+XHELLO_HELLO_CONTROL_BITS_GLOBAL_OFFSET_X_DATA = 32
+XHELLO_HELLO_CONTROL_ADDR_GLOBAL_OFFSET_Y_DATA = 0x30
+XHELLO_HELLO_CONTROL_BITS_GLOBAL_OFFSET_Y_DATA = 32
+XHELLO_HELLO_CONTROL_ADDR_GLOBAL_OFFSET_Z_DATA = 0x38
+XHELLO_HELLO_CONTROL_BITS_GLOBAL_OFFSET_Z_DATA = 32
+XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA         = 0x40
+XHELLO_HELLO_CONTROL_BITS_ACCESS1_DATA         = 64
 
 
 class Options(object):
@@ -86,7 +106,11 @@ def initXRT(opt):
         print("Error")
         return -1
 
-    opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
+    print( "xclOpen args", opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO )
+    #opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
+    opt.handle = xclOpen(0, "", xclVerbosityLevel.XCL_INFO)
+    print( "xclOpen handle:", opt.handle )
+    #opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
     if xclGetDeviceInfo2(opt.handle, byref(deviceInfo)):
         print("Error 2")
         return -1
@@ -114,10 +138,11 @@ def initXRT(opt):
         if header != "xclbin2":
             print("Invalid Bitsream")
             sys.exit()
+        f.seek(0)
         blob = f.read()
-        if not xclLoadXclBin(opt.handle, blob):
-            print("Bitsream download failed")
-
+        #if not xclLoadXclBin(opt.handle, blob):
+        #    print("Bitsream download failed")
+        xclLoadXclBin(opt.handle, blob)
         print("Finished downloading bitstream %s") % opt.bitstreamFile
 
         f.seek(0)
@@ -162,10 +187,32 @@ def initXRT(opt):
 
     return 0
 
+def validate( bo ):
+    ecmd = ert_configure_cmd.from_buffer( bo )
+    print( ecmd.m_uert.m_cmd_struct.opcode )
+    print( ecmd.m_uert.m_cmd_struct.count )
+    print( ecmd.m_uert.m_cmd_struct.state )
+    return 0
+
+def validate2( bo ):
+    ffi = FFI()
+    #i_ecmd = ffi.cast( "int", bo )
+    buf = ffi.buffer( bo, sizeof(ert_configure_cmd) )
+    ecmd = ert_configure_cmd.from_buffer( buf )
+    print( ecmd.m_uert.m_cmd_struct.opcode )
+    print( ecmd.m_uert.m_cmd_struct.count )
+    print( ecmd.m_uert.m_cmd_struct.state )
+    return 0
+
 
 def runKernel(opt):
+    ffi = FFI() # create the FFI obj
     boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
     bo1 = xclMapBO(opt.handle, boHandle, True)
+
+    print( "before memset" )
+    #memset( addressof( c_int(bo1) ), 0, 1024 )
+    print( "after memset" )
 
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
         return 1
@@ -178,84 +225,122 @@ def runKernel(opt):
 
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True)
-    x = cast(execData, POINTER(c_uint32))
-    print(x)
+    print( "xclAllocBO : ", execHandle )
+    execData = xclMapBO(opt.handle, execHandle, True) # returns mmap()
+    c_f = ffi.cast( "FILE *", execData )
+    print( "type execData: ", type(execData) )
+    print( "type c_f: ", type(c_f) )
+    if execData is ffi.NULL:
+        print( "execData is NULL" )
     print("Construct the exe buf cmd to configure FPGA")
-    # ecmd = cast_p_to_ert_p(execData)
-    # print("<<<<<<<<<", ecmd)
-    # print("<<<<<<<<<<", x)
 
     ecmd = ert_configure_cmd()
-    ecmd.state = 1
-    ecmd.opcode = 2
+    ecmd.m_uert.m_cmd_struct.state = 1#ERT_CMD_STATE_NEW
+    ecmd.m_uert.m_cmd_struct.opcode = 2#ERT_CONFIGURE
+
     ecmd.slot_size = opt.DATA_SIZE
     ecmd.num_cus = 1
     ecmd.cu_shift = 16
     ecmd.cu_base_addr = opt.cu_base_addr
 
-    ecmd.ert = opt.ert
+    ecmd.m_features.ert = opt.ert
     if opt.ert:
-        ecmd.cu_dma = 1
-        ecmd.cu_isr = 1
+        ecmd.m_features.cu_dma = 1
+        ecmd.m_features.cu_isr = 1
 
     # CU -> base address mapping
     ecmd.data[0] = opt.cu_base_addr
-    ecmd.count = 5 + ecmd.num_cus
-    print("ECMD:      ", ecmd.state, ecmd.opcode, ecmd.slot_size, ecmd.num_cus, ecmd.cu_shift,
-          ecmd.cu_base_addr, ecmd.ert, ecmd.cu_dma, ecmd.cu_isr)
-    print("TYPE:    ",byref(ecmd))
+    ecmd.m_uert.m_cmd_struct.count = 5 + ecmd.num_cus
 
-    y = cast(byref(ecmd), POINTER(ert_configure_cmd))
-    print(y)
-    print(y.contents.configure_cmd)
-
-
-
-
-    # x = cast_p_to_ert_p(execData, ecmd)
-    #
-    # print(x)
-
-
-    # ecmd.contents.state = 1
-    # ecmd.contents.opcode = 2
-    # ecmd.contents.slot_size = opt.DATA_SIZE
-    # ecmd.contents.num_cus = 1
-    # ecmd.contents.cu_shift = 16
-    # ecmd.contents.cu_base_addr = opt.cu_base_addr
-    #
-    # ecmd.contents.ert = opt.ert
-    # if opt.ert:
-    #     ecmd.contents.cu_dma = 1
-    #     ecmd.contents.cu_isr = 1
+    sz = sizeof(ert_configure_cmd)
+    ffi.memmove( c_f, ecmd, sz )
+    validate( ecmd )
+    validate2( c_f )
 
     print("Send the exec command and configure FPGA (ERT)")
 
     # Send the command.
-    if xclExecBuf(opt.handle, execHandle):  # -22
+    ret = xclExecBuf(opt.handle, execHandle)
+    print( "xclExecBuf: ", ret )
+    if ret:  # -22
         print("Unable to issue xclExecBuf")
         return 1
 
     print("Wait until the command finish")
 
-    # while xclExecWait(opt.handle, 1000)) !=0
+    #while xclExecWait(opt.handle, 1000)) !=0
+    while xclExecWait(opt.handle, 1000) != 0:
+        print( "." )
 
     print("Construct the exec command to run the kernel on FPGA")
     # L144
 
+    # construct the exec buffer cmd to start the kernel
+    start_cmd = ert_start_kernel_cmd()
+    rsz = (XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4+1) +1# regmap array size
+    # how to grow start_cmd so data[] is larger than 1 Byte.
+    new_data = ((start_cmd.data._type_)*rsz)()
+    start_cmd.m_uert.m_start_cmd_struct.state = 1#ERT_CMD_STATE_NEW
+    start_cmd.m_uert.m_start_cmd_struct.opcode = 0#ERT_START_CU
+    start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
+    start_cmd.cu_mask = 0x1
+
+    new_data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0
+    new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4] = bodevAddr
+    new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF
+
+    sz_start_minus_data = sizeof( start_cmd ) - sizeof( start_cmd.data )
+    print( "size: sz_start_minus_data: ", sz_start_minus_data )
+    ffi.memmove( c_f, start_cmd, sz_start_minus_data ) # send start_cmd minus data[], which is one c_uint32
+
+    # hokey way to move the pointer of c_f
+    tmp_buf = ffi.buffer( c_f, sz_start_minus_data + rsz ) # alloc buffer size of entire command
+    data_ptr = ffi.from_buffer( tmp_buf )
+    ffi.memmove( data_ptr + sz_start_minus_data, new_data, rsz )
+
+    ret = xclExecBuf(opt.handle, execHandle)
+    print( "xclExecBuf: ", ret )
+    if ret:  # -22
+        print("Unable to issue xclExecBuf")
+        return 1
+
+    print("Wait until the command finish")
+
+    while xclExecWait(opt.handle, 1000) != 0:
+        print( "." )
+    
+
+    # get the output xclSyncBO
+    if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
+        return 1
+
+    bo1_c_f = ffi.cast( "FILE *", bo1 )
+    bo1_buf = ffi.buffer( bo1_c_f, opt.DATA_SIZE )
+
+
+    # Print data in bo1, but need to make a buffer first
+    #bo1_buf = ffi.buffer( bo1_c_f, opt.DATA_SIZE )
+    #bo1_read = ffi.from_buffer( bo1_buf )
+    for i in range(20):
+        print( "bo[", i, "]:", bo1_buf[ i ] )
+
+    import pdb; pdb.set_trace() # breakpoint
+
+    #char_buf = c_char( 20 )
+    #abuf = ffi.buffer( char_buf )
+    #xclReadBO( opt.handle, boHandle, ffi.from_buffer( abuf ), 19, 0 )
+
+
+    result = bytearray(20)
+    ffi.memmove( result, bo1_buf, 19 )
+    print( result )
+
+    # result = memcmp( bo1_buf, gold, sizeof(gold) )
+    #bo1_buf
+
+
+
+
     return 0
-
-
-def cast_p_to_ert_p(a, ecmd_c):
-    ecmd_p = POINTER(ert_configure_cmd)
-    ptr = cast(ecmd_c, POINTER(a))
-    return ptr
-
-
-
-
-
-
 
 
