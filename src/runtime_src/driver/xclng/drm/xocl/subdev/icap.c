@@ -2196,6 +2196,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 			break;		
 	}
 	vfree(*target);
+	*target = NULL;
 	err = alloc_and_get_axlf_section(icap, copy_buffer, kind,
 	buffer, target, &section_size);
 	if (err != 0)
@@ -2208,6 +2209,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 done:
 	if (err) {
 		vfree(*target);
+		*target = NULL;
 	}
 	mutex_unlock(&icap->icap_lock);
 	vfree(copy_buffer);
