@@ -922,7 +922,7 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 {
 	uint64_t size;
 
-		switch(kind){
+	switch(kind){
 		case IP_LAYOUT:
 			size = sizeof_sect(icap->ip_layout, m_ip_data);
 			break;
@@ -2159,8 +2159,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		goto done;
 	}
 	/*
-	 * Copy headers in xclbin. Done before potentially skipping redownload
-	 * due to freq scaling requirements.
+	 * Copy headers in xclbin. 
 	 */
 	copy_buffer_size = bin_obj.m_header.m_numSections *
 		sizeof(struct axlf_section_header) + sizeof(struct axlf);
@@ -2198,7 +2197,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	vfree(*target);
 	*target = NULL;
 	err = alloc_and_get_axlf_section(icap, copy_buffer, kind,
-	buffer, target, &section_size);
+		buffer, target, &section_size);
 	if (err != 0)
 		goto done;
 	sect_sz = icap_get_section_size(icap, kind);
@@ -2339,9 +2338,11 @@ static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj
 	if(!icap || !icap->debug_layout)
 		return 0;
 
+	mutex_lock(&icap->icap_lock);
+
 	size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
 	if (offset >= size)
-		return 0;
+		goto unlock;
 
 	if (count < size - offset)
 		nread = count;
@@ -2350,6 +2351,8 @@ static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj
 
 	memcpy(buffer, ((char *)icap->debug_layout) + offset, nread);
 
+unlock:
+	mutex_unlock(&icap->icap_lock);
 	return nread;
 }
 static struct bin_attribute debug_ip_layout_attr = {
@@ -2375,9 +2378,11 @@ static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 	if(!icap || !icap->ip_layout)
 		return 0;
 
+	mutex_lock(&icap->icap_lock);
+
 	size = sizeof_sect(icap->ip_layout, m_ip_data);
 	if (offset >= size)
-		return 0;
+		goto unlock;
 
 	if (count < size - offset)
 		nread = count;
@@ -2386,6 +2391,8 @@ static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 
 	memcpy(buffer, ((char *)icap->ip_layout) + offset, nread);
 
+unlock:
+	mutex_unlock(&icap->icap_lock);
 	return nread;
 }
 
@@ -2412,9 +2419,11 @@ static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	if(!icap || !icap->connectivity)
 		return 0;
 
+	mutex_lock(&icap->icap_lock);
+
 	size = sizeof_sect(icap->connectivity, m_connection);
 	if (offset >= size)
-		return 0;
+		goto unlock;
 
 	if (count < size - offset)
 		nread = count;
@@ -2423,8 +2432,9 @@ static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 
 	memcpy(buffer, ((char *)icap->connectivity) + offset, nread);
 
+unlock:
+	mutex_unlock(&icap->icap_lock);
 	return nread;
-
 }
 
 static struct bin_attribute connectivity_attr = {
@@ -2451,9 +2461,11 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	if(!icap || !icap->mem_topo)
 		return 0;
 
+	mutex_lock(&icap->icap_lock);
+
 	size = sizeof_sect(icap->mem_topo, m_mem_data);
 	if (offset >= size)
-		return 0;
+		goto unlock;
 
 	if (count < size - offset)
 		nread = count;
@@ -2461,7 +2473,8 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 		nread = size - offset;
 
 	memcpy(buffer, ((char *)icap->mem_topo) + offset, nread);
-
+unlock:
+	mutex_unlock(&icap->icap_lock);
 	return nread;
 }
 
