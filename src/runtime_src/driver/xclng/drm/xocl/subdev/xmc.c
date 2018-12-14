@@ -710,28 +710,37 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 
 	/**
 	 *   m_tag get from xclbin must follow this format
-	 *   DDR[0] or BANK[1]
+	 *   DDR[0] or bank1
 	 *   we check the index in m_tag to decide which temperature
 	 *   to get from XMC IP base address
 	 */
 	char *start, *left_parentness, *right_parentness;
 	long idx;
-	int ret, digit_len;
+	int ret = 0, digit_len;
 	char temp[4];
 
 	if(!xmc)
 		return -ENODEV;
 
-	start = m_tag;
-	left_parentness = strstr(m_tag, "[");
-	right_parentness = strstr(m_tag, "]");
-	digit_len = right_parentness-(1+left_parentness);
-	ret = 0;
+
+	if(!strncmp(m_tag, "bank", 4)) {
+		start = m_tag;
+		// bank0, no left parentness
+		left_parentness = m_tag+3;
+		right_parentness = m_tag+strlen(m_tag)+1;
+		digit_len = right_parentness-(2+left_parentness);
+	} else if (!strncmp(m_tag, "DDR", 3)) {
+
+		start = m_tag;
+		left_parentness = strstr(m_tag, "[");
+		right_parentness = strstr(m_tag, "]");
+		digit_len = right_parentness-(1+left_parentness);
+	}
 
 	if(!left_parentness || !right_parentness)
 		return ret;
 
-	if(!strncmp(m_tag, "DDR", left_parentness-start) || !strncmp(m_tag, "BANK", left_parentness-start)){
+	if(!strncmp(m_tag, "DDR", left_parentness-start) || !strncmp(m_tag, "bank", left_parentness-start)){
 
 		strncpy(temp, left_parentness+1, digit_len);
 		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
