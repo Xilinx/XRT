@@ -209,6 +209,7 @@ def runKernel(opt):
     ffi = FFI() # create the FFI obj
     boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
     bo1 = xclMapBO(opt.handle, boHandle, True)
+    read_fp = ffi.cast( "FILE *", bo1 )
 
     print( "before memset" )
     #memset( addressof( c_int(bo1) ), 0, 1024 )
@@ -216,6 +217,18 @@ def runKernel(opt):
 
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
         return 1
+
+    # test write hello, read hello from BO
+    # fp = ffi.cast( "FILE *", bo1 )
+    # teststr = "hello"
+    # ffi.memmove( fp, teststr, len(teststr) )
+    # ret = xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
+    # # xbutil mem --read -a 0x500000 -i 20 -o f.out , will show "hello"
+    # read_fp = ffi.cast( "FILE *", bo1 )
+    # comparestr = "HELLO"
+    # rd_buf = ffi.buffer( read_fp, len(teststr) ) 
+    # ret = xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
+    # print( rd_buf )
 
     p = xclBOProperties()
     bodevAddr = p.paddr if not(xclGetBOProperties(opt.handle, boHandle, p)) else -1
@@ -285,18 +298,27 @@ def runKernel(opt):
     start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
     start_cmd.cu_mask = 0x1
 
+    #import pdb; pdb.set_trace() # breakpoint
+
     new_data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0
     new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4] = bodevAddr
     new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA/4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF
+    #for i in range( 18 ):
+    #    new_data[ i ] = i
+    #new_data[17]=50
 
-    sz_start_minus_data = sizeof( start_cmd ) - sizeof( start_cmd.data )
-    print( "size: sz_start_minus_data: ", sz_start_minus_data )
-    ffi.memmove( c_f, start_cmd, sz_start_minus_data ) # send start_cmd minus data[], which is one c_uint32
+    #sz_start_minus_data = sizeof( start_cmd ) - sizeof( start_cmd.data )
+    #print( "size: sz_start_minus_data: ", sz_start_minus_data )
+    len_start_cmd = sizeof( start_cmd )
+    ffi.memmove( c_f, start_cmd, 2*sizeof(c_uint32)) # send start_cmd minus data[], which is one c_uint32
+    #ffi.memmove( c_f, start_cmd, 2 )#sz_start_minus_data ) # send start_cmd minus data[], which is one c_uint32
 
     # hokey way to move the pointer of c_f
-    tmp_buf = ffi.buffer( c_f, sz_start_minus_data + rsz ) # alloc buffer size of entire command
+    tmp_buf = ffi.buffer( c_f, 2*sizeof(c_uint32)+(len(new_data)*sizeof(c_uint32)) ) # alloc buffer size of entire command
+    #tmp_buf = ffi.buffer( c_f, rsz )#sz_start_minus_data + rsz ) # alloc buffer size of entire command
     data_ptr = ffi.from_buffer( tmp_buf )
-    ffi.memmove( data_ptr + sz_start_minus_data, new_data, rsz )
+    ffi.memmove( data_ptr + 2*sizeof(c_uint32), new_data, len( new_data )*sizeof(c_uint32) )
+    #ffi.memmove( data_ptr + 2, new_data, rsz )
 
     ret = xclExecBuf(opt.handle, execHandle)
     print( "xclExecBuf: ", ret )
@@ -306,39 +328,21 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 1) != 0:
         print( "." )
+
+
+    # read status or state of scheduler
+    
     
 
     # get the output xclSyncBO
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
         return 1
 
-    bo1_c_f = ffi.cast( "FILE *", bo1 )
-    bo1_buf = ffi.buffer( bo1_c_f, opt.DATA_SIZE )
-
-
-    # Print data in bo1, but need to make a buffer first
-    #bo1_buf = ffi.buffer( bo1_c_f, opt.DATA_SIZE )
-    #bo1_read = ffi.from_buffer( bo1_buf )
-    for i in range(20):
-        print( "bo[", i, "]:", bo1_buf[ i ] )
-
-    import pdb; pdb.set_trace() # breakpoint
-
-    #char_buf = c_char( 20 )
-    #abuf = ffi.buffer( char_buf )
-    #xclReadBO( opt.handle, boHandle, ffi.from_buffer( abuf ), 19, 0 )
-
-
-    result = bytearray(20)
-    ffi.memmove( result, bo1_buf, 19 )
-    print( result )
-
-    # result = memcmp( bo1_buf, gold, sizeof(gold) )
-    #bo1_buf
-
-
+    #import pdb; pdb.set_trace() # breakpoint
+    rd_buf = ffi.buffer( read_fp, len("Hello World") )
+    print( "rd_buf: ", rd_buf[:] )
 
 
     return 0
