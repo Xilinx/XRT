@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; Xilinx Runtime 2018.3 documentation</title>
+  <title>Create MPSoC Based Embedded Platforms &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
   
@@ -34,8 +34,10 @@
   
         <link rel="index" title="Index"
               href="genindex.html"/>
-        <link rel="search" title="Search" href="#"/>
-    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/> 
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
+        <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html"/>
+        <link rel="prev" title="New DSA Bringup" href="newdsa-bringup.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -71,7 +73,7 @@
 
           
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -89,7 +91,7 @@
             
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
@@ -105,7 +107,12 @@
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Create MPSoC Based Embedded Platforms</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#build-hardware-platform">Build Hardware Platform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#build-boot-images">Build Boot Images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#build-software-platform">Build Software Platform</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -151,10 +158,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Search</li>
+      <li>Create MPSoC Based Embedded Platforms</li>
     
     
       <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/create_platforms.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -166,19 +177,67 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="create-mpsoc-based-embedded-platforms">
+<h1>Create MPSoC Based Embedded Platforms<a class="headerlink" href="#create-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h1>
+<p>An MPSoC Based Embedded platform defines a base hardware and software
+architecture and application context. We provide a few scripts and
+some basic source files as an example to create a custom MPSoC platform.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">src/platform/zcu102</span></code></li>
+<li><code class="docutils literal"><span class="pre">src/platform/zcu102_svm</span></code></li>
+</ul>
+<p>Before creating platform, make sure to properly set up environment
+for vivado. It takes same procedures to create platform for
+zcu102 and zcu102_svm. Take zcu102 as an example.</p>
+<p><em>NOTE</em> The purpose of this page is only for easy to get started.
+If you are interested in details about creating DSA for a platform.
+Please read the Hardware Platform section of Xilinx Document UG1146.</p>
+<div class="section" id="build-hardware-platform">
+<h2>Build Hardware Platform<a class="headerlink" href="#build-hardware-platform" title="Permalink to this headline">¶</a></h2>
+<p>To create Hardware Platform, under platform/zcu102/</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102_dsa.tcl
+</pre></div>
+</div>
+<p>This will generate hardware Device Support Archive
+<code class="docutils literal"><span class="pre">platform/zcu102/zcu102.dsa</span></code> and Hardware Definition File
+<code class="docutils literal"><span class="pre">platform/zcu102/zcu102_vivado/zcu102.hdf</span></code></p>
+</div>
+<div class="section" id="build-boot-images">
+<span id="id1"></span><h2>Build Boot Images<a class="headerlink" href="#build-boot-images" title="Permalink to this headline">¶</a></h2>
+<p>Using PetaLinux to build necessray Boot Images for the software
+platform with the Hardware Definition File we created. <a class="reference internal" href="yocto.html#yocto-recipes-for-embedded-flow"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a>.</p>
+<p>The boot image files required include</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">image.ub</span></code></li>
+<li><code class="docutils literal"><span class="pre">bl31.elf</span></code></li>
+<li><code class="docutils literal"><span class="pre">fsbl.elf</span></code></li>
+<li><code class="docutils literal"><span class="pre">pmufw.elf</span></code></li>
+<li><code class="docutils literal"><span class="pre">u-boot.elf</span></code></li>
+</ul>
+<p>Copy image.ub to <code class="docutils literal"><span class="pre">platform/zcu102/src/a53/ocl/image/</span></code> and copy other elf
+files to <code class="docutils literal"><span class="pre">platform/zcu102/src/boot/</span></code></p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>cp image.ub platform/zcu102/src/a53/ocl/image/
+mkdir platform/zcu102/src/boot
+cp bl31.elf platform/zcu102/src/boot/
+cp fsbl.elf platform/zcu102/src/boot/
+cp pmufw.elf platform/zcu102/src/boot/
+cp u-boot.elf platform/zcu102/src/boot/
+</pre></div>
+</div>
+</div>
+<div class="section" id="build-software-platform">
+<h2>Build Software Platform<a class="headerlink" href="#build-software-platform" title="Permalink to this headline">¶</a></h2>
+<p>To Create Software Platform, under platform/zcu102/</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>xsct -sdx ./zcu102_pfm.tcl
+</pre></div>
+</div>
+<p>The created zcu102 platform will be posted at</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">platform/zcu102/output/zcu102/export/zcu102</span></code></li>
+</ul>
+</div>
+</div>
 
-  
-  <div id="search-results">
-  
-  </div>
 
            </div>
            <div class="articleComments">
@@ -186,6 +245,15 @@
            </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="newdsa-bringup.html" class="btn btn-neutral" title="New DSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -224,7 +292,6 @@
       <script type="text/javascript" src="_static/jquery.js"></script>
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="_static/searchtools.js"></script>
 
   
 
@@ -240,14 +307,7 @@
           SphinxRtdTheme.StickyNav.enable();
       });
   </script>
-  
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
    
-
 
 </body>
 </html>
