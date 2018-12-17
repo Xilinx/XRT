@@ -235,18 +235,6 @@ static struct bin_attribute mem_topology_attr = {
 	.size = 0
 };
 
-static ssize_t reset_store(struct device *dev, struct device_attribute *da,
-	const char *buf, size_t count)
-{
-	int ret = xocl_hot_reset(dev_get_drvdata(dev), false);
-
-	if (ret == 0)
-		return count;
-
-	return ret;
-}
-static DEVICE_ATTR_WO(reset);
-
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
@@ -254,7 +242,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
-	&dev_attr_reset.attr,
 	NULL,
 };
 

@@ -1,7 +1,7 @@
 if(${INTERNAL_TESTING})
   add_definitions(-DINTERNAL_TESTING)
 else()
-  include_directories(../../../../../../../sdk/userspace/include/)
+  include_directories(${AWS_FPGA_REPO_DIR}/sdk/userspace/include/)
 endif()
 
 include_directories(

@@ -120,6 +120,7 @@ class xclVerbosityLevel (Enum):
 class xclResetKind (Enum):
     XCL_RESET_KERNEL = 0
     XCL_RESET_FULL = 1
+    XCL_USER_RESET = 2
 
 
 class xclDeviceUsage (Structure):

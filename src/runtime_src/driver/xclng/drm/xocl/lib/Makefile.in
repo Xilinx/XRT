@@ -15,17 +15,20 @@
 
 xocl_lib-y	:= ../lib/libxdma.o
 xocl_lib-y	+=  \
+		../lib/libqdma/libqdma_config.o	\
+		../lib/libqdma/libqdma_export.o	\
+		../lib/libqdma/qdma_context.o	\
+		../lib/libqdma/qdma_debugfs.o	\
+		../lib/libqdma/qdma_debugfs_cmpt_queue.o	\
+		../lib/libqdma/qdma_debugfs_dev.o	\
+		../lib/libqdma/qdma_debugfs_queue.o	\
 		../lib/libqdma/qdma_descq.o	\
 		../lib/libqdma/qdma_device.o	\
 		../lib/libqdma/qdma_intr.o	\
+		../lib/libqdma/qdma_qconf_mgr.o	\
 		../lib/libqdma/qdma_regs.o	\
-		../lib/libqdma/qdma_thread.o	\
-		../lib/libqdma/qdma_context.o	\
-		../lib/libqdma/qdma_mbox.o	\
-		../lib/libqdma/qdma_sriov.o	\
+		../lib/libqdma/qdma_request.o	\
 		../lib/libqdma/qdma_st_c2h.o	\
-		../lib/libqdma/qdma_wq.o	\
+		../lib/libqdma/qdma_thread.o	\
 		../lib/libqdma/thread.o	\
-		../lib/libqdma/xdev.o	\
-		../lib/libqdma/libqdma_config.o	\
-		../lib/libqdma/libqdma_export.o
+		../lib/libqdma/xdev.o

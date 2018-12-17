@@ -1326,20 +1326,23 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (ocl_only || force) {
-        if (!root) {
-            std::cout << "ERROR: root privileges required." << std::endl;
-            return -EPERM;
-        }
-
-        std::unique_ptr<device> d = xclGetDevice(index);
-        if (!d)
-            return -EINVAL;
-        return d->reset(ocl_only ? XCL_RESET_KERNEL : XCL_RESET_FULL);
+    if ((ocl_only || force) && !root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
     }
 
-    std::string errmsg;
-    auto dev = pcidev::get_dev(index);
-    dev->user->sysfs_put("", "reset", errmsg, "1");
-    return 0;
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    int err = 0;
+    if (ocl_only)
+        err = d->reset(XCL_RESET_KERNEL);
+    if (force)
+        err = d->reset(XCL_RESET_FULL);
+    else
+        err = d->reset(XCL_USER_RESET);
+    if (err)
+        std::cout << "ERROR: " << strerror(err) << std::endl;
+    return err;
 }
