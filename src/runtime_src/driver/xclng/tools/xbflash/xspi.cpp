@@ -808,24 +808,24 @@ bool XSPI_Flasher::getFlashId()
         return false;
     else {
         switch(ReadBuffer[3]) {
-	case 0x38:
+        case 0x38:
         case 0x17:
         case 0x18:
             MAX_NUM_SECTORS = 1;
             break;
-	case 0x39:
+        case 0x39:
         case 0x19:
             MAX_NUM_SECTORS = 2;
             break;
-	case 0x3A:
+        case 0x3A:
         case 0x20:
             MAX_NUM_SECTORS = 4;
             break;
-	case 0x3B:
+        case 0x3B:
         case 0x21:
             MAX_NUM_SECTORS = 8;
             break;
-	case 0x3C:
+        case 0x3C:
         case 0x22:
             MAX_NUM_SECTORS = 16;
             break;

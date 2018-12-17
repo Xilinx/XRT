@@ -196,16 +196,7 @@ using addr_type = uint64_t;
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
 
-      //QDMA Support
-      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclDestroyQueue(uint64_t q_hdl);
-      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
-      int xclFreeQDMABuf(uint64_t buf_hdl);
-      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-
+      bool isAWSLegacy () { return std::string(mDeviceInfo.mName).find("xilinx_aws-vu9p-f1-04261818_dynamic_5_0") != std::string::npos; }
 
     private:
       //hw_em_profile* _profile_inst;

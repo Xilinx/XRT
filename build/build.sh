@@ -135,6 +135,7 @@ cd Release
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
+#time make xrtpkg
 time make package
 
 if [[ $docs == 1 ]]; then

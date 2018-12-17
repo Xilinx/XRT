@@ -187,14 +187,14 @@ namespace awsbwhal {
                   return -retVal;
               }
               retVal = sleepUntilLoaded( std::string(afi_id) );
-              if (!retVal) {
-                  drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
-                  retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-                  if (retVal) {
-                      std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
-                  } else {
-                      std::cout << "AFI load complete." << std::endl;
-                  }
+          }
+          if (!retVal) {
+              drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
+              retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+              if (retVal) {
+                  std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
+              } else {
+                  std::cout << "AFI load complete." << std::endl;
               }
           }
           return retVal;
@@ -540,13 +540,19 @@ namespace awsbwhal {
                    maxDMASize(0xfa0000),
                    mLocked(false),
                    mOffsets{0x0, 0x0, 0x0, 0x0},
-                                                      mMemoryProfilingNumberSlots(0),
-                                                      mAccelProfilingNumberSlots(0),
-                                                      mStallProfilingNumberSlots(0)
+                   mMemoryProfilingNumberSlots(0),
+                   mAccelProfilingNumberSlots(0),
+                   mStallProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
 #endif
+        if (logfileName != nullptr) {
+          mLogStream.open(logfileName);
+          mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+        }
+
         const std::string devName = "/dev/dri/renderD" + std::to_string(xcldev::pci_device_scanner::device_list[mBoardNumber].user_instance);
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle <= 0) {
@@ -602,22 +608,6 @@ namespace awsbwhal {
         }
 #endif
 
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-
-        //
         // Profiling - defaults
         // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
         mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;

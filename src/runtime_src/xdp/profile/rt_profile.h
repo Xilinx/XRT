@@ -321,6 +321,18 @@ namespace XCL {
     bool mLoggingTrace[XCL_PERF_MON_TOTAL_PROFILE] = {false};
     uint64_t mLoggingTraceUsec = 0;
 
+  // Amazon DSA is old and uses per bank monitoring in hw emu
+  private:
+    std::string awsDeviceString = "xilinx_aws-vu9p-f1-04261818_dynamic_5_0";
+
+  public:
+    bool isAwsDevice(std::string const &deviceName) const {
+      return (deviceName.find(awsDeviceString) != std::string::npos);
+    }
+    void setHostSlotIndex (int index) {
+      HostSlotIndex = index;
+    }
+
   public:
     std::map<xdp::profile::device::key,xdp::profile::device::data> device_data;
   };

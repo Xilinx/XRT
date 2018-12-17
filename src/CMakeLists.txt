@@ -41,13 +41,55 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
-message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
+# Release OpenCL extension headers
+set(XRT_CL_EXT_SRC
+  include/1_2/CL/cl_ext_xilinx.h
+  include/1_2/CL/cl_ext.h)
+install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
+message("-- XRT CL extension header files")
+foreach (header ${XRT_CL_EXT_SRC})
+  message("-- ${header}")
+endforeach()
 
-set(XRT_NATIVE_BUILD "yes")
-if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
-  set(XRT_NATIVE_BUILD "no")
-endif()
+# Release eula (EA temporary)
+file(GLOB XRT_EULA
+  "license/*.txt"
+  )
+#install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
+install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
+message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
+
+include (CMake/version.cmake)
+
+include (CMake/ccache.cmake)
+
+message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
+message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
+
+add_subdirectory(runtime_src)
+
+#XMA settings START
+set (XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set (XMA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
+set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
+set(XMA_SOVERSION ${XRT_SOVERSION})
+add_subdirectory(xma)
+#XMA settings END
+
+message("-- XRT version: ${XRT_VERSION_STRING}")
+
+include (CMake/cpack.cmake)
+
+include (CMake/lint.cmake)
+
+set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
+
+include (CMake/dkms.cmake)
+include (CMake/dkms-aws.cmake)
+
+include (CMake/icd.cmake)
+
+include (CMake/pkgconfig.cmake)
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   include(CMake/native.cmake)

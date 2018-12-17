@@ -530,158 +530,54 @@ mtx.unlock();
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
 
-//----------xclCopyBO-------------------
-#define xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset) \
-    c_msg.set_src_handle(src_boHandle); \
-    c_msg.set_dst_filename(filename); \
-    c_msg.set_size(size); \
-    c_msg.set_src_offset(src_offset); \
-    c_msg.set_dst_offset(dst_offset);
+//----------xclPerfMonReadCounters AWS------------
 
-#define xclCopyBO_SET_PROTO_RESPONSE() \
-  ack = r_msg.ack();
+#define xclPerfMonReadCounters_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_slotname(slotname); \
 
-#define xclCopyBO_RPC_CALL(func_name,src_boHandle,filename,size,src_offset,dst_offset) \
-  RPC_PROLOGUE(func_name); \
-  xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclCopyBO_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
+#define xclPerfMonReadCounters_RPC_CALL_AWS(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadCounters_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclPerfMonReadCounters_RETURN();
 
-//----------xclImportBO-------------------
-#define xclImportBO_SET_PROTOMESSAGE(filename,offset,size) \
-    c_msg.set_dst_filename(filename); \
-    c_msg.set_offset(offset); \
-    c_msg.set_size(size);
+//----------xclPerfMonGetTraceCount AWS------------
+#define xclPerfMonGetTraceCount_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+  c_msg.set_ack(ack); \
+  c_msg.set_slotname(slotname); \
 
-#define xclImportBO_SET_PROTO_RESPONSE() \
-  ack = r_msg.ack();
+#define xclPerfMonGetTraceCount_RPC_CALL_AWS(func_name,ack,no_of_samples,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonGetTraceCount_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonGetTraceCount_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
-#define xclImportBO_RPC_CALL(func_name,filename,offset,size) \
-  RPC_PROLOGUE(func_name); \
-  xclImportBO_SET_PROTOMESSAGE(filename,offset,size); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclImportBO_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
+//----------xclPerfMonReadTrace_AWS------------
+#define xclPerfMonReadTrace_SET_PROTOMESSAGE_AWS() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_ack(ack); \
+    c_msg.set_slotname(slotname); \
 
-//----------xclCreateQueue-------------------
-#define xclCreateQueue_SET_PROTOMESSAGE(q_ctx,bWrite) \
-    c_msg.set_write(bWrite); \
-    c_msg.set_type(q_ctx->type); \
-    c_msg.set_state(q_ctx->state); \
-    c_msg.set_route(q_ctx->route); \
-    c_msg.set_flow(q_ctx->flow); \
-    c_msg.set_qsize(q_ctx->qsize); \
-    c_msg.set_desc_size(q_ctx->desc_size); \
-    c_msg.set_flags(q_ctx->flags);
-
-#define xclCreateQueue_SET_PROTO_RESPONSE() \
-  q_handle = r_msg.q_handle();
-
-#define xclCreateQueue_RPC_CALL(func_name, q_ctx,bWrite) \
-  RPC_PROLOGUE(func_name); \
-  xclCreateQueue_SET_PROTOMESSAGE(q_ctx, bWrite); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclCreateQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
-
-//----------xclWriteQueue-------------------
-#define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
-    c_msg.set_q_handle(q_handle); \
-    c_msg.set_src((char*)src,size); \
-    c_msg.set_size(size); \
-    c_msg.set_req(mReqCounter);\
-    c_msg.set_nonblocking(nonBlocking);\
-    c_msg.set_eot(eot);
-
-#define xclWriteQueue_SET_PROTO_RESPONSE() \
-  uint64_t written_size = r_msg.written_size();
-
-#define xclWriteQueue_RPC_CALL(func_name,q_handle,src,size) \
-  RPC_PROLOGUE(func_name); \
-  xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclWriteQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
-
-//----------xclReadQueue-------------------
-#define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
-    c_msg.set_q_handle(q_handle); \
-    c_msg.set_dest((char*)dest,size); \
-    c_msg.set_size(size); \
-    c_msg.set_req(mReqCounter);\
-    c_msg.set_nonblocking(nonBlocking);\
-    c_msg.set_eot(eot);
-
-#define xclReadQueue_SET_PROTO_RESPONSE(dest) \
-    read_size = r_msg.size();\
-    memcpy(dest,r_msg.dest().c_str(),read_size);
-
-#define xclReadQueue_RPC_CALL(func_name,q_handle,dest,size) \
-  RPC_PROLOGUE(func_name); \
-  xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclReadQueue_SET_PROTO_RESPONSE(dest); \
-  FREE_BUFFERS();
-
-//----------xclPollCompletion-------------------
-#define xclPollCompletion_SET_PROTOMESSAGE(reqcounter) \
-    c_msg.set_req(reqcounter); \
-
-#define xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap) \
-  std::map<uint64_t,uint64_t>::iterator vaLenMapItr = vaLenMap.begin();\
-  if(r_msg.fullrequest_size() == (int)(vaLenMap.size()))\
-  {\
-    for(int i = 0; i < r_msg.fullrequest_size() ; i++) \
-    { \
-      const xclPollCompletion_response::request &oReq = r_msg.fullrequest(i); \
-      uint64_t read_size = oReq.size();\
-      numBytesProcessed  += read_size; \
-      memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
-      vaLenMapItr++;\
-    } \
-  }\
-
-#define xclPollCompletion_RPC_CALL(func_name,reqcounter,vaLenMap) \
-  RPC_PROLOGUE(func_name); \
-  xclPollCompletion_SET_PROTOMESSAGE(reqcounter); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
-  FREE_BUFFERS();
-
-//----------xclDestroyQueue-------------------
-#define xclDestroyQueue_SET_PROTOMESSAGE(q_handle) \
-    c_msg.set_q_handle(q_handle);
-
-#define xclDestroyQueue_SET_PROTO_RESPONSE() \
-  success = r_msg.success();
-
-#define xclDestroyQueue_RPC_CALL(func_name, q_handle) \
-  RPC_PROLOGUE(func_name); \
-  xclDestroyQueue_SET_PROTOMESSAGE(q_handle); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclDestroyQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
-
-//----------xclSetupInstance-------------------
-#define xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap) \
-    c_msg.set_route(route); \
-    for(auto& it: argFlowIdMap) \
-    { \
-      xclSetupInstance_call_argflowpair* afpair = c_msg.add_setup(); \
-      afpair->set_arg(it.first); \
-      afpair->set_flow((it.second).first);\
-      afpair->set_tag((it.second).second);\
-    }
-
-
-#define xclSetupInstance_SET_PROTO_RESPONSE() \
-  success = r_msg.success();
-
-#define xclSetupInstance_RPC_CALL(func_name, route, argFlowIdMap) \
-  RPC_PROLOGUE(func_name); \
-  xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
-  SERIALIZE_AND_SEND_MSG(func_name) \
-  xclSetupInstance_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
-
+#define xclPerfMonReadTrace_RPC_CALL_AWS(func_name,ack,samplessize,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadTrace_SET_PROTOMESSAGE_AWS(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
