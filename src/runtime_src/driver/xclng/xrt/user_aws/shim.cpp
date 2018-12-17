@@ -177,7 +177,7 @@ namespace awsbwhal {
               if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
                   retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
                   retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
-                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
+                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal
                             << " - Loading in classic mode." << std::endl;
                   retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
               }
@@ -187,14 +187,14 @@ namespace awsbwhal {
                   return -retVal;
               }
               retVal = sleepUntilLoaded( std::string(afi_id) );
-              if (!retVal) {
-                  drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
-                  retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-                  if (retVal) {
-                      std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
-                  } else {
-                      std::cout << "AFI load complete." << std::endl;
-                  }
+          }
+          if (!retVal) {
+              drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
+              retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+              if (retVal) {
+                  std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
+              } else {
+                  std::cout << "AFI load complete." << std::endl;
               }
           }
           return retVal;
