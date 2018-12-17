@@ -177,7 +177,7 @@ namespace awsbwhal {
               if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
                   retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
                   retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
-                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal
+                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
                             << " - Loading in classic mode." << std::endl;
                   retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
               }
