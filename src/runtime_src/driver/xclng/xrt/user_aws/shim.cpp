@@ -187,14 +187,14 @@ namespace awsbwhal {
                   return -retVal;
               }
               retVal = sleepUntilLoaded( std::string(afi_id) );
-              if (!retVal) {
-                  drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
-                  retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-                  if (retVal) {
-                      std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
-                  } else {
-                      std::cout << "AFI load complete." << std::endl;
-                  }
+          }
+          if (!retVal) {
+              drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
+              retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+              if (retVal) {
+                  std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
+              } else {
+                  std::cout << "AFI load complete." << std::endl;
               }
           }
           return retVal;
