@@ -404,8 +404,8 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	}
 	queue_req_pending(queue, io_req);
 
-	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
-        	__func__, dev_name(&sdev->pdev->dev), req,
+	pr_debug("%s, %s req 0x%p,0x%p, hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
+        	__func__, dev_name(&sdev->pdev->dev), io_req, req,
         	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
         	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", len);
 
@@ -419,6 +419,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 failed:
 	if (!kiocb) {
 		drm_gem_object_unreference_unlocked(gem_obj);
+		queue_req_free(queue, io_req);
 	}
 
 	return ret;
@@ -525,8 +526,8 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	}
 	queue_req_pending(queue, io_req);
 
-	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
-        	__func__, dev_name(&sdev->pdev->dev), req,
+	pr_debug("%s, %s req 0x%p,0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
+        	__func__, dev_name(&sdev->pdev->dev), io_req, req,
         	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
         	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", sz);
 
@@ -534,12 +535,15 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 				req);
 	if (ret < 0) {
 		queue_req_free(queue, io_req);
+		io_req = NULL;
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
 	if (!kiocb) {
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
+		if (io_req)
+			queue_req_free(queue, io_req);
 	}
 
 	if (ret < 0)
@@ -712,11 +716,12 @@ static int queue_flush(struct file *file, fl_owner_t id)
 							list);
 
 		spin_unlock_bh(&queue->req_lock);
-		xocl_info(&sdev->pdev->dev, "Queue 0x%lx, cancel req 0x%p",
-			queue->queue, &io_req->req);
+		xocl_info(&sdev->pdev->dev, "Queue 0x%lx, cancel req 0x%p,0x%p",
+			queue->queue, io_req, &io_req->req);
 		queue_req_complete((unsigned long)&io_req->cb, 0, -ECANCELED);
 		spin_lock_bh(&queue->req_lock);
 	}
+	spin_unlock_bh(&queue->req_lock);
 
 	if (queue->req_cache)
 		vfree(queue->req_cache);
