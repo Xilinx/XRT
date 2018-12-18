@@ -440,7 +440,9 @@ device::
 exec_buf(const ExecBufferObjectHandle& boh)
 {
   auto bo = getExecBufferObject(boh);
-  return m_ops->mExecBuf(m_handle,bo->handle);
+  if (m_ops->mExecBuf(m_handle,bo->handle))
+    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
+  return 0;
 }
 
 int
