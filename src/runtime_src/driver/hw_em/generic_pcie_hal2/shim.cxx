@@ -586,6 +586,11 @@ namespace xclhwemhal2 {
         if (mLogStream.is_open() && simMode)
           mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
 
+        struct stat statBuf;
+        if ( stat(sim_file.c_str(), &statBuf) == -1 )
+        {
+          sim_file = "simulate.sh";
+        }
         int r = execl(sim_file.c_str(),sim_file.c_str(),simMode,NULL);
         fclose (stdout);
         if(r == -1){std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1);}
