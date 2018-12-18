@@ -291,7 +291,7 @@ namespace xclhwemhal2 {
     }
 
     std::string sim_path("");
-    std::string sim_file("simulate.sh");
+    std::string sim_file("launch_hw_emu.sh");
 
     // Write and read debug IP layout (for debug & profiling)
     // NOTE: for now, let's do this file based so we can debug
