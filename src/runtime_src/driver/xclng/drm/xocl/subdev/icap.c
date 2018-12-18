@@ -134,6 +134,11 @@ struct icap {
 	char                    *icap_clock_freq_topology;
 	unsigned long		icap_clock_freq_topology_length;
 	char                    *icap_clock_freq_counter;
+	struct mem_topology      *mem_topo;
+	struct ip_layout         *ip_layout;
+	struct debug_ip_layout   *debug_layout;
+	struct connectivity      *connectivity;
+
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -847,6 +852,30 @@ static int icap_write(struct icap *icap, const u32 *word_buf, int size)
 
 	ICAP_ERR(icap, "writing %d dwords timeout", size);
 	return -EIO;
+}
+
+static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind kind)
+{
+	uint64_t size;
+
+	switch(kind){
+		case IP_LAYOUT:
+			size = sizeof_sect(icap->ip_layout, m_ip_data);
+			break;
+		case MEM_TOPOLOGY:
+			size = sizeof_sect(icap->mem_topo, m_mem_data);
+			break;
+		case DEBUG_IP_LAYOUT:
+			size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
+			break;
+		case CONNECTIVITY:
+			size = sizeof_sect(icap->connectivity, m_connection);
+			break;
+		default:
+			break;		
+	}
+
+	return size;
 }
 
 static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
@@ -1677,6 +1706,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		buffer, (void **)&memtopo, &section_size);
 	if (err != 0)
 		goto done;
+
 	if (sizeof_sect(memtopo, m_mem_data) > section_size) {
 		err = -EINVAL;
 		goto done;
@@ -2047,6 +2077,115 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	return err;
 }
 
+
+static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
+	const void __user *u_xclbin, enum axlf_section_kind kind)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct axlf bin_obj;
+	char __user *buffer = (char __user *)u_xclbin;
+	long err = 0;
+	uint64_t section_size = 0, sect_sz = 0;
+	uint64_t copy_buffer_size = 0;
+	struct axlf* copy_buffer = NULL;
+	void **target;
+
+	if (copy_from_user((void *)&bin_obj, u_xclbin, sizeof(struct axlf)))
+		return -EFAULT;
+	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
+		return -EINVAL;
+
+	err = !access_ok(VERIFY_READ, buffer, bin_obj.m_header.m_length);
+	if (err) {
+		err = -EFAULT;
+		goto done;
+	}
+	/*
+	 * Copy headers in xclbin. 
+	 */
+	copy_buffer_size = bin_obj.m_header.m_numSections *
+		sizeof(struct axlf_section_header) + sizeof(struct axlf);
+	ICAP_INFO(icap, "copy-in headers, num sections: %d, size: %llu",
+		bin_obj.m_header.m_numSections, copy_buffer_size);
+	copy_buffer = (struct axlf *)vmalloc(copy_buffer_size);
+	if(!copy_buffer) {
+		ICAP_ERR(icap, "unable to alloc copy buffer for headers");
+		return -ENOMEM;
+	}
+	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
+		err = -EFAULT;
+		goto done;
+	}
+
+	mutex_lock(&icap->icap_lock);
+
+	switch(kind){
+		case IP_LAYOUT:
+		  target = (void **)&icap->ip_layout;
+			break;
+		case MEM_TOPOLOGY:
+			target = (void **)&icap->mem_topo;
+			break;
+		case DEBUG_IP_LAYOUT:
+			target = (void **)&icap->debug_layout;
+			break;
+			break;
+		case CONNECTIVITY:
+			target = (void **)&icap->connectivity;
+			break;
+		default:
+			break;		
+	}
+	vfree(*target);
+	*target = NULL;
+	err = alloc_and_get_axlf_section(icap, copy_buffer, kind,
+		buffer, target, &section_size);
+	if (err != 0)
+		goto done;
+	sect_sz = icap_get_section_size(icap, kind);
+	if (sect_sz > section_size) {
+		err = -EINVAL;
+		goto done;
+	}
+done:
+	if (err) {
+		vfree(*target);
+		*target = NULL;
+	}
+	mutex_unlock(&icap->icap_lock);
+	vfree(copy_buffer);
+	ICAP_INFO(icap, "%s kind %d, err: %ld", __FUNCTION__, kind, err);
+	return err;
+}
+
+void *icap_get_axlf_section_data(struct platform_device *pdev,
+	enum axlf_section_kind kind)
+{
+
+	struct icap *icap = platform_get_drvdata(pdev);
+	void *target;
+
+	mutex_lock(&icap->icap_lock);
+	switch(kind){
+		case IP_LAYOUT:
+			target = icap->ip_layout;
+			break;
+		case MEM_TOPOLOGY:
+			target = icap->mem_topo;
+			break;
+		case DEBUG_IP_LAYOUT:
+			target = icap->debug_layout;
+			break;
+		case CONNECTIVITY:
+			target = icap->connectivity;
+			break;
+		default:
+			break;		
+	}
+	mutex_unlock(&icap->icap_lock);
+	return target;
+}
+
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
 	.reset_axi_gate = platform_reset_axi_gate,
@@ -2058,6 +2197,8 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
+	.parse_axlf_section = icap_parse_bitstream_axlf_section,
+	.get_axlf_section_data = icap_get_axlf_section_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,
@@ -2125,8 +2266,181 @@ static struct attribute *icap_attrs[] = {
 	NULL,
 };
 
+//- Debug IP_layout--
+static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->debug_layout)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->debug_layout) + offset, nread);
+
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+static struct bin_attribute debug_ip_layout_attr = {
+	.attr = {
+		.name = "debug_ip_layout",
+		.mode = 0444
+	},
+	.read = icap_read_debug_ip_layout,
+	.write = NULL,
+	.size = 0
+};
+
+//IP layout
+static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->ip_layout)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->ip_layout, m_ip_data);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->ip_layout) + offset, nread);
+
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+
+static struct bin_attribute ip_layout_attr = {
+	.attr = {
+		.name = "ip_layout",
+		.mode = 0444
+	},
+	.read = icap_read_ip_layout,
+	.write = NULL,
+	.size = 0
+};
+
+//-Connectivity--
+static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->connectivity)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->connectivity, m_connection);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->connectivity) + offset, nread);
+
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+
+static struct bin_attribute connectivity_attr = {
+	.attr = {
+		.name = "connectivity",
+		.mode = 0444
+	},
+	.read = icap_read_connectivity,
+	.write = NULL,
+	.size = 0
+};
+
+
+//-Mem_topology--
+static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if(!icap || !icap->mem_topo)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->mem_topo, m_mem_data);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->mem_topo) + offset, nread);
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+
+
+static struct bin_attribute mem_topology_attr = {
+	.attr = {
+		.name = "mem_topology",
+		.mode = 0444
+	},
+	.read = icap_read_mem_topology,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute *icap_bin_attrs[] = {
+	&debug_ip_layout_attr,
+	&ip_layout_attr,
+	&connectivity_attr,
+	&mem_topology_attr,
+	NULL,
+};
+
 static struct attribute_group icap_attr_group = {
 	.attrs = icap_attrs,
+	.bin_attrs = icap_bin_attrs,
 };
 
 static int icap_remove(struct platform_device *pdev)
@@ -2151,7 +2465,10 @@ static int icap_remove(struct platform_device *pdev)
 
 	ICAP_INFO(icap, "cleaned up successfully");
 	platform_set_drvdata(pdev, NULL);
-
+	vfree(icap->mem_topo);
+	vfree(icap->ip_layout);
+	vfree(icap->debug_layout);
+	vfree(icap->connectivity);
 	kfree(icap);
 	return 0;
 }
