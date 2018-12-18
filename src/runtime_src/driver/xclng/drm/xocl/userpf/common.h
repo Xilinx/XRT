@@ -114,11 +114,16 @@ struct xocl_dev	{
 	struct percpu_ref ref;
 	struct completion cmp;
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+  struct dev_pagemap pgmap;
+#endif
+
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
-	atomic_t                        needs_reset;
+	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -142,11 +147,11 @@ struct xocl_dev	{
 struct client_ctx {
 	struct list_head	link;
 	xuid_t                  xclbin_id;
-	atomic_t                xclbin_locked;
-	atomic_t		trigger;
-	atomic_t                outstanding_execs;
-	atomic_t                abort;
+	unsigned int            xclbin_locked;
+	unsigned int            abort;
 	unsigned int            num_cus;     /* number of resource locked explicitly by client */
+	atomic_t 		trigger;     /* count of poll notification to acknowledge */
+	atomic_t                outstanding_execs;
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */
@@ -163,17 +168,16 @@ struct xocl_mm_wrapper {
 };
 
 /* ioctl functions */
-int xocl_info_ioctl(struct drm_device *dev,
-        void *data, struct drm_file *filp);
-int xocl_execbuf_ioctl(struct drm_device *dev,
-        void *data, struct drm_file *filp);
-int xocl_ctx_ioctl(struct drm_device *dev, void *data,
-                   struct drm_file *filp);
+int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
-                         struct drm_file *filp);
-int xocl_read_axlf_ioctl(struct drm_device *dev,
-                        void *data,
-                        struct drm_file *filp);
+	struct drm_file *filp);
+int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
@@ -182,6 +186,7 @@ void xocl_fini_sysfs(struct device *dev);
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
+int xocl_hot_reset(struct xocl_dev *xdev, bool force);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 int xocl_reset_scheduler(struct pci_dev *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)

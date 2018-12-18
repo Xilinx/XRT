@@ -63,6 +63,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		 fmt, ##args)
+#define MAX_M_COUNT      64
+
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -111,14 +113,21 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
-#define RHEL_P2P_SUPPORT  1
-#else
-#define RHEL_P2P_SUPPORT  0
+
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  1
+#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  1
+#define RHEL_P2P_SUPPORT_76  0
 #endif
 #else
-#define RHEL_P2P_SUPPORT  0
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  0
 #endif
+
+
+#define RHEL_P2P_SUPPORT (RHEL_P2P_SUPPORT_74 | RHEL_P2P_SUPPORT_76)
 
 #define INVALID_SUBDEVICE ~0U
 
@@ -479,9 +488,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET_BEGIN,
-	MAILBOX_REQ_HOT_RESET_END,
-	MAILBOX_REQ_RESET_ERT,
+	MAILBOX_REQ_HOT_RESET,
+	MAILBOX_REQ_FIREWALL,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -529,8 +537,7 @@ struct xocl_mailbox_funcs {
 	end) : -ENODEV)
 
 struct xocl_icap_funcs {
-	int (*freeze_axi_gate)(struct platform_device *pdev);
-	int (*free_axi_gate)(struct platform_device *pdev);
+	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
@@ -544,14 +551,16 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
+	int (*parse_axlf_section)(struct platform_device *pdev,
+		const void __user *arg, enum axlf_section_kind kind);
+	void* (*get_axlf_section_data)(struct platform_device *pdev,
+		enum axlf_section_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
-#define	xocl_icap_freeze_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->freeze_axi_gate(ICAP_DEV(xdev))
-#define	xocl_icap_free_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->free_axi_gate(ICAP_DEV(xdev))
+#define	xocl_icap_reset_axi_gate(xdev)					\
+	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev))
 #define	xocl_icap_reset_bitstream(xdev)					\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev))
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
@@ -568,6 +577,11 @@ struct xocl_icap_funcs {
 	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid)
 #define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid)
+#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)				\
+	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind)
+
+#define	xocl_icap_get_axlf_section_data(xdev, kind)				\
+	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind)
 
 struct xocl_str_dma_funcs  {
 	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
@@ -594,8 +608,6 @@ int xocl_subdev_get_devinfo(uint32_t subdev_id,
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
-struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
-void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
         struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);

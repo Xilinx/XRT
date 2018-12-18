@@ -20,7 +20,6 @@
 #include "../xocl_drv.h"
 
 #define XCLMGMT_RESET_MAX_RETRY		10
-void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
@@ -100,53 +99,6 @@ static int pcie_unmask_surprise_down(struct pci_dev *pdev, u32 orig_mask)
 	}
 
 	return -ENOSYS;
-}
-
-void freezeAXIGate(struct xclmgmt_dev *lro)
-{
-	(void) xocl_icap_freeze_axi_gate(lro);
-}
-
-void freeAXIGate(struct xclmgmt_dev *lro)
-{
-	(void) xocl_icap_free_axi_gate(lro);
-}
-
-/**
- * Prepare the XOCL engine for reset
- * prepare = true will call xdma_offline
- * prepare = false will call xdma online
- */
-void xocl_reset(struct xclmgmt_dev *lro, bool prepare)
-{
-	struct pci_dev *userpf;
-	struct mailbox_req mbreq = { 0 };
-	int err = -EINVAL;
-	size_t resplen = sizeof (err);
-	void (*reset)(struct pci_dev *pdev, bool prepare);
-
-	mbreq.req = prepare ?
-		MAILBOX_REQ_HOT_RESET_BEGIN : MAILBOX_REQ_HOT_RESET_END;
-	(void) xocl_peer_request(lro, &mbreq, &err, &resplen, NULL, NULL);
-	if (!err)
-		return;
-
-	/* Fallback to our hacky way if mailbox is not available. */
-	mgmt_err(lro, "cannot reset peer via mailbox, err=%d", err);
-	userpf = xocl_hold_userdev(lro);
-	if (!userpf) {
-		mgmt_err(lro, "failed holding userpf");
-		return;
-	}
-	reset = symbol_get(xocl_reset_notify);
-	if (reset) {
-		mgmt_err(lro, "calling xocl_reset_notify() directly");
-		reset(userpf, prepare);
-		symbol_put(xocl_reset_notify);
-	} else
-		mgmt_err(lro, "did not find xocl_reset_notify");
-
-	xocl_release_userdev(userpf);
 }
 
 /**
@@ -235,26 +187,10 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	/*
- 	 * Make the xdma offline before issuing hot reset.
-	 * assume all axi access from userpf is stopped
-	 * busy lock is taken to make sure no axi access at this time
-	 */
-	xocl_reset(lro, true);
-
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
 
-	if (!lro->reset_firewall) {
-		/*
-		 * if reset request comes from IOCTL, reset kernel and
-		 * Microblaze.
-		 */
-		freezeAXIGate(lro);
-		msleep(500);
-		freeAXIGate(lro);
-		msleep(500);
-	}
+	xocl_icap_reset_axi_gate(lro);
 
 	/*
 	 * lock pci config space access from userspace,
@@ -288,13 +224,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 	
 	//Also freeze and free AXI gate to reset the OCL region.
-	freezeAXIGate(lro);
-	msleep(500);
-	freeAXIGate(lro);
-	msleep(500);
-
-	// Bring the xdma online
-	xocl_reset(lro, false);
+	xocl_icap_reset_axi_gate(lro);
 
 	/* Workaround for some DSAs. Flush axilite busses */
 	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
@@ -365,14 +295,8 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	u8 hot;
 	struct pci_dev *pci_dev = lro->pci_dev;
 
-	/* Make the user pf offline before issuing reset. */
-	xocl_reset(lro, true);
-
 	//freeze and free AXI gate to reset the OCL region before and after the pcie reset.
-	freezeAXIGate(lro);
-	msleep(500);
-	freeAXIGate(lro);
-	msleep(500);
+	xocl_icap_reset_axi_gate(lro);
 
 	/*
 	 * lock pci config space access from userspace,
@@ -425,17 +349,8 @@ done:
 	xocl_pci_restore_config_all(pci_dev);
 
 	//Also freeze and free AXI gate to reset the OCL region.
-	freezeAXIGate(lro);
-	msleep(500);
-	freeAXIGate(lro);
-	msleep(500);
+	xocl_icap_reset_axi_gate(lro);
 
-	// Bring the user pf online
-	xocl_reset(lro, false);
-
-	// TODO: Figure out a way to reinit DMA engine which is other PF
-	//if (!rc)
-	//	rc = reinit(lro);
 	return rc;
 }
 

@@ -49,7 +49,14 @@ configure_file(
   ${CMAKE_BINARY_DIR}/gen/version.h
 )
 
+configure_file(
+  ${CMAKE_SOURCE_DIR}/CMake/config/version.json.in
+  ${CMAKE_BINARY_DIR}/gen/version.json
+)
+
 install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_INSTALL_DIR}/include)
+install(FILES ${CMAKE_BINARY_DIR}/gen/version.json DESTINATION ${XRT_INSTALL_DIR})
+
 # Copied over from dkms.cmake. TODO: cleanup
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
 install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_DKMS_INSTALL_DIR}/driver/include)

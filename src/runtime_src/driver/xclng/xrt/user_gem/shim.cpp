@@ -662,16 +662,17 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
-    // Call a new IOCTL to just reset the OCL region
-    if (kind == XCL_RESET_FULL) {
-        ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
-        return ret ? -errno : ret;
-    }
-    else if (kind == XCL_RESET_KERNEL) {
+
+    if (kind == XCL_RESET_FULL)
+        ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
+    else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-        return ret ? -errno : ret;
-    }
-    return -EINVAL;
+    else if (kind == XCL_USER_RESET)
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
+    else
+        return -EINVAL;
+
+    return ret ? errno : 0;
 }
 
 /*
@@ -887,7 +888,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 
     std::string err;
     std::vector<char> buf;
-    pcidev::get_dev(mBoardNumber)->user->sysfs_get("", entry, err, buf);
+    pcidev::get_dev(mBoardNumber)->user->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
         std::cout << err << std::endl;
         return -EINVAL;
@@ -1871,6 +1872,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+}
+
+const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+    return xclbin::get_axlf_section(top, kind);
 }
 
 // QDMA streaming APIs

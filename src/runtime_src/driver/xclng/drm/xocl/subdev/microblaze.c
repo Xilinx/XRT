@@ -61,7 +61,7 @@ enum cap_mask {
 };
 
 enum {
-	MB_STATE_INIT,
+	MB_STATE_INIT = 0,
 	MB_STATE_RUN,
 	MB_STATE_RESET,
 };
@@ -115,7 +115,7 @@ static int mb_start(struct xocl_mb *mb);
 static void safe_read32(struct xocl_mb *mb, u32 reg, u32 *val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state != MB_STATE_RESET) {
+	if (mb->enabled && mb->state == MB_STATE_RUN) {
 		*val = READ_REG32(mb, reg);
 	} else {
 		*val = 0;
@@ -126,7 +126,7 @@ static void safe_read32(struct xocl_mb *mb, u32 reg, u32 *val)
 static void safe_write32(struct xocl_mb *mb, u32 reg, u32 val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state != MB_STATE_RESET) {
+	if (mb->enabled && mb->state == MB_STATE_RUN) {
 		WRITE_REG32(mb, val, reg);
 	}
 	mutex_unlock(&mb->mb_lock);

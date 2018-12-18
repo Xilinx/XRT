@@ -127,7 +127,6 @@ struct xclDeviceInfo2 {
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
   unsigned short mNumCDMA;
-  // More properties here
 };
 
 /**
@@ -221,7 +220,8 @@ enum xclVerbosityLevel {
 
 enum xclResetKind {
     XCL_RESET_KERNEL,
-    XCL_RESET_FULL
+    XCL_RESET_FULL,
+    XCL_USER_RESET
 };
 
 struct xclDeviceUsage {
@@ -904,15 +904,14 @@ XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsig
  * preview. These can only be used with DSAs with QDMA engine under the hood.
  */
 
-/**
- * struct xclQueueContext - structure to describe a Queue
- */
-
-enum {
+enum xclStreamContextFlags {
 	/* Enum for xclQueueContext.flags */
 	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
 };
 
+/**
+ * struct xclQueueContext - structure to describe a Queue
+ */
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
     uint32_t	state;	   /* initialized, running */
@@ -1113,6 +1112,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  */
 XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
                                           xclReqCompletion *comps, int* actual_compl, int timeout);
+
+XCL_DRIVER_DLLESPEC const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind);
 
 /* XRT Stream Queue APIs */
 

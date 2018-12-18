@@ -159,7 +159,6 @@ int main(int argc, char *argv[])
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
     size_t blockSize = 0;
-    bool hot = false;
     int c;
     dd::ddArgs_t ddArgs;
 
@@ -191,15 +190,15 @@ int main(int argc, char *argv[])
         return execv( std::string( path + "/xbflash" ).c_str(), argv );
     } /* end of call to xbflash */
 
+    optind++;
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
-        optind++;
         return xcldev::xclValidate(argc, argv);
-    }
-
-    if( std::strcmp( argv[1], "top" ) == 0 ) {
-        optind++;
+    } else if( std::strcmp( argv[1], "top" ) == 0 ) {
         return xcldev::xclTop(argc, argv);
+    } else if( std::strcmp( argv[1], "reset" ) == 0 ) {
+        return xcldev::xclReset(argc, argv);
     }
+    optind--;
 
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
@@ -238,7 +237,7 @@ int main(int argc, char *argv[])
     };
 
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:i:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -487,15 +486,6 @@ int main(int argc, char *argv[])
             blockSize *= 1024; // convert kilo bytes to bytes
             break;
         }
-        case 'h':
-        {
-            if (cmd != xcldev::RESET) {
-                std::cout << "ERROR: '-h' only allowed with 'reset' command\n";
-                return -1;
-            }
-            hot = true;
-            break;
-        }
         default:
             xcldev::printHelp(exe);
             return 1;
@@ -621,10 +611,6 @@ int main(int argc, char *argv[])
     case xcldev::DUMP:
         result = deviceVec[index]->dumpJson(std::cout);
         break;
-    case xcldev::RESET:
-        if (hot) regionIndex = 0xffffffff;
-        result = deviceVec[index]->reset(regionIndex);
-        break;
     case xcldev::RUN:
         result = deviceVec[index]->run(regionIndex, computeIndex);
         break;
@@ -694,7 +680,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
-    std::cout << "  reset   [-d card] [-h | -r region]\n";
+    std::cout << "  reset   [-d card]\n";
     std::cout << "  status  [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
@@ -1177,7 +1163,7 @@ static int getEccMemTags(const pcidev::pci_device *dev,
     std::string errmsg;
     std::vector<char> buf;
 
-    dev->user->sysfs_get("", "mem_topology", errmsg, buf);
+    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
@@ -1193,7 +1179,7 @@ static int getEccMemTags(const pcidev::pci_device *dev,
 
     // Only support DDR4 mem controller for ECC status
     for(int32_t i = 0; i < map->m_count; i++) {
-        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+        if(!map->m_mem_data[i].m_used)
             continue;
         tags.emplace_back(
             reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
@@ -1203,15 +1189,6 @@ static int getEccMemTags(const pcidev::pci_device *dev,
         std::cout << "No supported ECC controller detected!" << std::endl;
         return -ENOENT;
     }
-
-    // See if xclbin contains ECC base addresses for supported in-use DDR type
-    unsigned onoff = 0;
-    dev->mgmt->sysfs_get(tags[0], "ecc_enabled", errmsg, onoff);
-    if (!errmsg.empty()) {
-        std::cout << "No supported ECC controller detected!" << std::endl;
-        return -ENOENT;
-    }
-
     return 0;
 }
 
@@ -1261,6 +1238,8 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
         unsigned status = 0;
         std::string st;
         dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
+        if (!errmsg.empty())
+            continue;
         err = eccStatus2String(status, st);
         if (err)
             return err;
@@ -1298,4 +1277,72 @@ int xcldev::device::resetEccInfo()
     for (auto tag : tags)
         dev->mgmt->sysfs_put(tag, "ecc_reset", errmsg, "1");
     return 0;
+}
+
+int xcldev::device::reset(xclResetKind kind)
+{
+    return xclResetDevice(m_handle, kind);
+}
+
+int xcldev::xclReset(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    bool ocl_only = false;
+    bool force = false;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index]");
+
+    // Both -x and -f are hidden options.
+    while ((c = getopt(argc, argv, "d:hxf")) != -1) {
+        switch (c) {
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            if (index >= pcidev::get_dev_total()) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }
+            break;
+        }
+        case 'h':
+            std::cout << "WARNING: -h option is obsolete." << std::endl;
+            break;
+        case 'x':
+            ocl_only = true;
+            break;
+        case 'f':
+            force = true;
+            break;
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }
+    }
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if ((ocl_only || force) && !root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    int err = 0;
+    if (ocl_only)
+        err = d->reset(XCL_RESET_KERNEL);
+    if (force)
+        err = d->reset(XCL_RESET_FULL);
+    else
+        err = d->reset(XCL_USER_RESET);
+    if (err)
+        std::cout << "ERROR: " << strerror(err) << std::endl;
+    return err;
 }

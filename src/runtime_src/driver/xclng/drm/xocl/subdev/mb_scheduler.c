@@ -202,7 +202,7 @@ struct xocl_sched
         unsigned int               reset;
 
         struct list_head           command_queue;
-        atomic_t                   intc; /* pending interrupt shared with isr */
+        unsigned int               intc; /* pending intr shared with isr, word aligned atomic */
         unsigned int               poll; /* number of cmds to poll */
 };
 
@@ -214,8 +214,8 @@ reset_scheduler(struct xocl_sched *xs)
 	xs->error=0;
 	xs->stop=0;
 	xs->poll=0;
-	xs->reset=0;
-	atomic_set(&xs->intc,0);
+	xs->reset=false;
+	xs->intc=0;
 }
 
 /**
@@ -397,7 +397,7 @@ cmd_set_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 static inline enum ert_cmd_state
 cmd_update_state(struct xocl_cmd *xcmd)
 {
-	if (xcmd->state!=ERT_CMD_STATE_RUNNING && atomic_read(&xcmd->client->abort))
+	if (xcmd->state!=ERT_CMD_STATE_RUNNING && xcmd->client->abort)
 		cmd_set_state(xcmd,ERT_CMD_STATE_ABORT);
 	return xcmd->state;
 }
@@ -660,6 +660,7 @@ reset_exec(struct exec_core* exec)
 
 	exec->num_slots = 16;
 	exec->num_cus = 0;
+	exec->num_cdma = 0;
 	exec->cu_shift_offset = 0;
 	exec->cu_base_addr = 0;
 	exec->polling_mode = 1;
@@ -893,7 +894,7 @@ configure(struct xocl_cmd *xcmd)
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
 	struct ert_configure_cmd *cfg;
-	int i;
+	int cuidx=0;
 
 	if (sched_error_on(exec,opcode(xcmd)!=ERT_CONFIGURE,"expected configure command"))
 		return 1;
@@ -925,23 +926,27 @@ configure(struct xocl_cmd *xcmd)
 	exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
 	exec->num_slot_masks = ((exec->num_slots-1)>>5) + 1;
 
-	for (i=0; i<exec->num_cus; ++i) {
-		exec->cu_addr_map[i] = cfg->data[i];
-		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+	for (cuidx=0; cuidx<exec->num_cus; ++cuidx) {
+		exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",cuidx,exec->cu_addr_map[cuidx]);
 	}
 
-	if (cdma && cfg->cdma) {
+	if (cdma) {
 		struct client_ctx *client  = xcmd->client;
-		exec->num_cdma = 1; /* until verified that address is null terminated TBD */
-		exec->num_cus += exec->num_cdma;
-		mutex_lock(&client->lock);
-		for (; i<exec->num_cus; ++i) {
-			++cfg->num_cus;
-			++cfg->count;
-			exec->cu_addr_map[i] = cdma[0];
-			cfg->data[i] = cdma[0];
-			set_bit(i,client->cu_bitmap); // implicit shared resource
-			SCHED_DEBUGF("++ configure cdma cu(%d) at 0x%x\n",i,exec->cu_addr_map[i]);
+		uint32_t* addr=0;
+		mutex_lock(&client->lock); /* for modification to client cu_bitmap */
+		for (addr=cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
+			if (*addr) {
+				++exec->num_cus;
+				++exec->num_cdma;
+				++cfg->num_cus;
+				++cfg->count;
+				exec->cu_addr_map[cuidx] = *addr;
+				cfg->data[cuidx] = *addr;
+				set_bit(cuidx,client->cu_bitmap); /* cdma is shared */
+				userpf_info(xdev,"configure cdma as cu(%d) at 0x%x\n",cuidx,exec->cu_addr_map[cuidx]);
+				++cuidx;
+			}
 		}
 		mutex_unlock(&client->lock);
 	}
@@ -967,7 +972,7 @@ configure(struct xocl_cmd *xcmd)
 		 ,exec->num_slots
 		 ,cfg->cu_dma ? 1 : 0
 		 ,cfg->cu_isr ? 1 : 0
-		 ,cfg->cdma ? 1 : 0
+		 ,exec->num_cdma
 		 ,exec->num_cus
 		 ,exec->cu_shift_offset
 		 ,exec->cu_base_addr
@@ -1386,24 +1391,6 @@ abort_to_free(struct xocl_cmd *xcmd)
 	SCHED_DEBUG("<- abort_to_free\n");
 }
 
-#if 0
-static void
-abort_cmd(struct xocl_cmd *xcmd)
-{
-	struct xocl_cmd *abort_cmd = get_free_xocl_cmd();
-	abort_cmd->bo=NULL;
-	abort_cmd->exec=xcmd->exec;
-
-	ert_abort_cmd abort;
-	abort.state = 1;
-	abort.idx = xcmd->slot_idx;
-
-	iowrite32
-	SCHED_DEBUG("-> abort_cmd\n");
-	SCHED_DEBUG("<- abort_cmd\n");
-}
-#endif
-
 /**
  * scheduler_queue_cmds() - Queue any pending commands
  *
@@ -1494,9 +1481,9 @@ scheduler_wait_condition(struct xocl_sched *xs)
 		return 0;
 	}
 
-	if (atomic_read(&xs->intc)) {
+	if (xs->intc) {
 		SCHED_DEBUG("scheduler wakes on interrupt\n");
-		atomic_set(&xs->intc,0);
+		xs->intc=0;
 		return 0;
 	}
 
@@ -1877,7 +1864,7 @@ static irqreturn_t exec_isr(int irq, void *arg)
 			atomic_set(&exec->sr3,1);
 
 		/* wake up all scheduler ... currently one only */
-		atomic_set(&global_scheduler0.intc,1);
+		global_scheduler0.intc = 1;
 		wake_up_interruptible(&global_scheduler0.wait_queue);
 	} else {
 		xocl_err(&exec->pdev->dev, "Unhandled isr irq %d, is_ert %d, "
@@ -1904,47 +1891,51 @@ static int
 create_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx	*client;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-
-	DRM_INFO("scheduler client created pid(%d)\n",pid_nr(task_tgid(current)));
+	struct xocl_dev		*xdev = xocl_get_xdev(pdev);
+	int			ret = 0;
 
 	client = devm_kzalloc(&pdev->dev, sizeof (*client), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
 
-	client->pid = task_tgid(current);
-	mutex_init(&client->lock);
-	atomic_set(&client->xclbin_locked,false);
-	atomic_set(&client->trigger, 0);
-	atomic_set(&client->abort, 0);
-	atomic_set(&client->outstanding_execs, 0);
-	client->num_cus = 0;
 	mutex_lock(&xdev->ctx_list_lock);
-	client->xdev = xocl_get_xdev(pdev);
-	list_add_tail(&client->link, &xdev->ctx_list);
 
-	/* kds must be configured on first xdev context even if that context
-	 * does not trigger an xclbin download */
-	if (list_is_singular(&xdev->ctx_list))
-		reset_exec(platform_get_drvdata(pdev));
+	if (!xdev->offline) {
+		client->pid = task_tgid(current);
+		mutex_init(&client->lock);
+		client->xclbin_locked = false;
+		client->abort=false;
+		atomic_set(&client->trigger, 0);
+		atomic_set(&client->outstanding_execs, 0);
+		client->num_cus = 0;
+		client->xdev = xocl_get_xdev(pdev);
+		list_add_tail(&client->link, &xdev->ctx_list);
+		*priv =  client;
+	} else {
+		/* Do not allow new client to come in while being offline. */
+		devm_kfree(&pdev->dev, client);
+		ret = -EBUSY;
+	}
 
 	mutex_unlock(&xdev->ctx_list_lock);
 
-	*priv =  client;
+	DRM_INFO("creating scheduler client for pid(%d), ret: %d\n",
+		pid_nr(task_tgid(current)), ret);
 
-	return 0;
+	return ret;
 }
 
 static void destroy_client(struct platform_device *pdev, void **priv)
 {
-	struct client_ctx 	*client = (struct client_ctx *)(*priv);
-	struct xocl_dev         *xdev = xocl_get_xdev(pdev);
-	unsigned int            outstanding = atomic_read(&client->outstanding_execs);
-	unsigned int            timeout_loops = 20;
-	unsigned int            loops = 0;
+	struct client_ctx *client = (struct client_ctx *)(*priv);
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
+	unsigned int	timeout_loops = 20;
+	unsigned int	loops = 0;
+	int pid = pid_nr(task_tgid(current));
 
 	/* force scheduler to abort execs for this client */
-	atomic_set(&client->abort,1);
+	client->abort=true;
 
 	/* wait for outstanding execs to finish */
 	while (outstanding) {
@@ -1955,20 +1946,22 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		loops = (new==outstanding ? (loops + 1) : 0);
 		if (loops == timeout_loops) {
 			userpf_err(xdev,"Giving up with %d outstanding execs, please reset device with 'xbutil reset -h'\n",outstanding);
-			atomic_set(&xdev->needs_reset,1);
+			xdev->needs_reset=true;
 			/* reset the scheduler loop */
-			global_scheduler0.reset=1;
+			global_scheduler0.reset=true;
 			break;
 		}
 		outstanding = new;
 	}
 
-	DRM_INFO("client exits pid(%d)\n",pid_nr(client->pid));
+	DRM_INFO("client exits pid(%d)\n",pid);
 
 	mutex_lock(&xdev->ctx_list_lock);
 	list_del(&client->link);
 	mutex_unlock(&xdev->ctx_list_lock);
 
+	if (client->xclbin_locked)
+		xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid);
 	mutex_destroy(&client->lock);
 	devm_kfree(&pdev->dev, client);
 	*priv = NULL;
@@ -2050,7 +2043,6 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 	/* cus for start kernel commands only */
 	if (ecmd->opcode!=ERT_START_CU) {
-		userpf_err(xocl_get_xdev(pdev),"validate got unexpected command opcode(%d)\n",ecmd->opcode);
 		return 0; /* ok */
 	}
 
@@ -2129,8 +2121,8 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	ssize_t sz = 0;
 
 	/* minimum required initialization of client */
-	atomic_set(&client.trigger, 0);
-	atomic_set(&client.abort, 0);
+	client.abort=false;
+	atomic_set(&client.trigger,0);
 	atomic_set(&client.outstanding_execs, 0);
 
 	if (!exec->configured) {

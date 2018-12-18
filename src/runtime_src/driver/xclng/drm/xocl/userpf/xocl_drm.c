@@ -198,33 +198,32 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
-	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap, xdev->layout->m_count) : MAX_CUS;
+	unsigned bit = xdev->layout
+		? find_first_bit(client->cu_bitmap,xdev->layout->m_count)
+		: MAX_CUS;
+	int pid = pid_nr(task_tgid(current));
 
 	DRM_ENTER("");
 
-	/* This happens when application exists without formally releasing the contexts on CUs.
-	 * Give up our contexts on CUs and our lock on xclbin.
-	 * Note, that implicitly CUs (such as CDMA) do not add to ip_reference
-	*/
+	/*
+	 * This happens when application exists without formally releasing the
+	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
+	 */
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
 		if (xdev->ip_reference[bit]) {
-			userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
-				    bit);
+			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
+				    &client->xclbin_id, pid,bit);
 			xdev->ip_reference[bit]--;
 		}
-		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
+		bit = find_next_bit(client->cu_bitmap,xdev->layout->m_count,bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (atomic_read(&client->xclbin_locked))
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,pid_nr(task_tgid(current)));
-
-	if (MB_SCHEDULER_DEV(xdev))
-		xocl_exec_destroy_client(xdev, &filp->driver_priv);
+	xocl_exec_destroy_client(xdev, &filp->driver_priv);
 }
 
 static uint xocl_poll(struct file *filp, poll_table *wait)
 {
-	uint result = 0;
 	struct drm_file *priv = filp->private_data;
 	struct drm_device *dev = priv->minor->dev;
 	struct xocl_dev	*xdev = dev->dev_private;
@@ -232,10 +231,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	BUG_ON(!priv->driver_priv);
 
 	DRM_ENTER("");
-	if (MB_SCHEDULER_DEV(xdev))
-		result = xocl_exec_poll_client(xdev, filp, wait,
-					       priv->driver_priv);
-	return result;
+	return xocl_exec_poll_client(xdev, filp, wait,priv->driver_priv);
 }
 
 static const struct drm_ioctl_desc xocl_ioctls[] = {
@@ -270,7 +266,9 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
-		  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations xocl_driver_fops = {
@@ -325,7 +323,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 {
 	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-	int ret = 0;
 
 	if (err != 0)
 		return;
@@ -333,19 +330,11 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_HOT_RESET_BEGIN:
-		xocl_reset_notify(xdev->core.pdev, true);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_HOT_RESET_END:
-		xocl_reset_notify(xdev->core.pdev, false);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_RESET_ERT:
-		ret = xocl_reset_scheduler(xdev->core.pdev);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_FIREWALL:
+		(void) xocl_hot_reset(xdev, true);
 		break;
 	default:
+		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
 	}
 }
@@ -428,7 +417,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	struct drm_device	*ddev = NULL;
 	int			ret = 0;
 
-	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", 
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
 		&mm_drm_driver.major,
 		&mm_drm_driver.minor,
 		&mm_drm_driver.patchlevel);
@@ -473,7 +462,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	mutex_init(&xdev->ctx_list_lock);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 	ddev->dev_private = xdev;
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
