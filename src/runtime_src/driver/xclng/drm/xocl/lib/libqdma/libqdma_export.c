@@ -1232,6 +1232,11 @@ int qdma_queue_start(unsigned long dev_hndl, unsigned long id,
 		return QDMA_ERR_INVALID_DESCQ_STATE;
 	}
 	unlock_descq(descq);
+
+	/* per queue irq_en needs to be in sync with per device setting */
+	descq->conf.irq_en = (descq->xdev->conf.qdma_drv_mode == POLL_MODE) ?
+				0 : 1;
+
 	/** allocate the queue resources*/
 	rv = qdma_descq_alloc_resource(descq);
 	if (rv < 0) {
