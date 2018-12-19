@@ -587,7 +587,7 @@ int main(int argc, char** argv)
     }
     std::printf ("Maximum throughput: %f MB/s\n",max_V);
 
-    if (max_V < 400000) {
+    if (max_V < 40000) {
         std::printf("ERROR: Throughput is less than expected value of 40 GB/sec\n");
         exit(1);
     }
