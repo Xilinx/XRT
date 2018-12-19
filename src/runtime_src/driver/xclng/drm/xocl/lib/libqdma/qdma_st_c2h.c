@@ -356,7 +356,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 	cmpl->f.eot = cmpt[0] & F_C2H_CMPT_ENTRY_F_EOT ? 1 : 0;
 	cmpl->f.desc_used = cmpt[0] & F_C2H_CMPT_ENTRY_F_DESC_USED ? 1 : 0;
 
-	pr_debug("%s, cmpl fmt %d, color %d, err %d, eot %d, desc %d,%llx.\n",
+	pr_debug("%s, fmt %d, colr %d, err %d, eot %d, desc %d,0x%llx.\n",
 		descq->conf.name, cmpl->f.format, cmpl->f.color, cmpl->f.err,
 		cmpl->f.eot, cmpl->f.desc_used,
 		(cmpt[0] >> S_C2H_CMPT_ENTRY_LENGTH) & M_C2H_CMPT_ENTRY_LENGTH);
