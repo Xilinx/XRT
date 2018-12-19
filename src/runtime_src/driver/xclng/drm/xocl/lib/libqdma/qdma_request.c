@@ -204,13 +204,12 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 
 void qdma_request_dump(const char *str, struct qdma_request *req, bool dump_cb)
 {
-	pr_info("%s, req 0x%p %u,%u, ep 0x%llx, tm %u ms, %s,%s,%s,%s,%s,%s,async %d.\n",
+	pr_info("%s, req 0x%p %u,%u, ep 0x%llx, tm %u ms, %s,%s,%s,%s,%s,async %d.\n",
                 str, req, req->offset, req->count, req->ep_addr,
                 req->timeout_ms,
                 req->write ? "W":"R", req->dma_mapped ? "M":"",
                 req->eot ? "EOT":"", req->use_sgt ? "SGT":"SGL",
-                req->eot_rcved ? "EOT RCV":"", req->use_sgt ? "SGT":"SGL",
-		req->fp_done ? 1 : 0);
+                req->eot_rcved ? "EOT RCV":"", req->fp_done ? 1 : 0);
 
 	if (req->use_sgt)
 		sgt_dump(req->sgt);
