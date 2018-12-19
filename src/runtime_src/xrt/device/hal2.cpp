@@ -440,14 +440,19 @@ device::
 exec_buf(const ExecBufferObjectHandle& boh)
 {
   auto bo = getExecBufferObject(boh);
-  return m_ops->mExecBuf(m_handle,bo->handle);
+  if (m_ops->mExecBuf(m_handle,bo->handle))
+    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
+  return 0;
 }
 
 int
 device::
 exec_wait(int timeout_ms) const
 {
-  return m_ops->mExecWait(m_handle,timeout_ms);
+  auto retval = m_ops->mExecWait(m_handle,timeout_ms);
+  if (retval==-1)
+    throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  return retval;
 }
 
 BufferObjectHandle

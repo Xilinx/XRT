@@ -611,10 +611,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	 *    If exec BO are outstanding we return -EBUSY
 	 */
 	if (!uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
-		// Check for submitted exec bos for this device that have not been processed
 		if (atomic_read(&xdev->outstanding_execs)) {
-			err = -EBUSY;
-			goto done;
+			printk(KERN_ERR "Current xclbin is busy, can't change\n");
+			return -EBUSY;
 		}
 	}
 
@@ -623,8 +622,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		printk(KERN_ERR "TimeStamp of ROM did not match Xclbin\n");
-		err = -EINVAL;
-		goto done;
+		return -EINVAL;
 	}
 
 	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
