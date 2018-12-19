@@ -18,3 +18,5 @@ xclbins:
   - {krnl: loopback, name: loopback}
   name: kernel
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]
