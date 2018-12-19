@@ -1987,6 +1987,14 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 	int			counter;
 	uint			ret = 0;
 
+#if 0
+	if (!client->xclbin_locked) {
+		int pid = pid_nr(task_tgid(current));
+		userpf_err(pdev,"exec poll fails for proc(%d); cannot call without xclbin lock\n",pid);
+		return -EFAULT;
+	}
+#endif
+
 	exec = platform_get_drvdata(pdev);
 
 	poll_wait(filp, &exec->poll_wait_queue, wait);
