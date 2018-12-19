@@ -1163,7 +1163,7 @@ static int getEccMemTags(const pcidev::pci_device *dev,
     std::string errmsg;
     std::vector<char> buf;
 
-    dev->user->sysfs_get("", "mem_topology", errmsg, buf);
+    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;

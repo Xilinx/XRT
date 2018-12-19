@@ -63,6 +63,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		 fmt, ##args)
+#define MAX_M_COUNT      64
+
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -549,6 +551,10 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
+	int (*parse_axlf_section)(struct platform_device *pdev,
+		const void __user *arg, enum axlf_section_kind kind);
+	void* (*get_axlf_section_data)(struct platform_device *pdev,
+		enum axlf_section_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -571,6 +577,11 @@ struct xocl_icap_funcs {
 	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid)
 #define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid)
+#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)				\
+	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind)
+
+#define	xocl_icap_get_axlf_section_data(xdev, kind)				\
+	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind)
 
 struct xocl_str_dma_funcs  {
 	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);

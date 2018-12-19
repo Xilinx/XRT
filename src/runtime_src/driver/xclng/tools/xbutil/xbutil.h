@@ -210,7 +210,7 @@ public:
     {
         std::string errmsg;
         std::vector<char> buf;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "ip_layout", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "ip_layout", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
@@ -293,7 +293,7 @@ public:
         ss << "Device Memory Usage\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -341,10 +341,18 @@ public:
     void getMemTopology( const xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
-        std::vector<char> buf;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        std::vector<char> buf, temp_buf;
+        std::vector<std::string> mm_buf;
+        uint64_t memoryUsage, boCount;
+        
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+
         const mem_topology *map = (mem_topology *)buf.data();
-        if(buf.empty())
+        const uint32_t *temp = (uint32_t *)temp_buf.data();
+
+        if(buf.empty() || temp_buf.empty() || mm_buf.empty())
             return;
 
         for(int i = 0; i < map->m_count; i++) {
@@ -353,24 +361,18 @@ public:
                 auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
                 str = search->second;
             }
+            std::stringstream ss(mm_buf[i]);
+            ss >> memoryUsage >> boCount;
+
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
- 
-            /* TODO:
-             * Only 4 entries in mDimmTemp[]. m_count can be greater than 4, so this will
-             * overrun mDimmTemp[]. Fill any further entries with the data type (unsigned short)
-             * max value of 65535. This get's parsed as "N/A" by sensor_tree::get_pretty().
-             */
-            if( i < 4 )
-                ptMem.put( "temp",      m_devinfo.mDimmTemp[i] ); 
-            else
-                ptMem.put( "temp", 65535 ); 
+            ptMem.put( "temp",      temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
-            ptMem.put( "mem_usage", unitConvert(devstat.ddrMemUsed[i]));
-            ptMem.put( "bo_count",  devstat.ddrBOAllocated[i] );
+            ptMem.put( "mem_usage", unitConvert(memoryUsage));
+            ptMem.put( "bo_count",  boCount);
             sensor_tree::add_child( "board.memory.mem", ptMem );
         }
     }
@@ -386,7 +388,7 @@ public:
             << std::setw(32) << "Device Memory Usage" << "\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -488,7 +490,7 @@ public:
 
         ss << std::left << std::setw(48) << "Stream Topology" << "\n";
 
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -716,7 +718,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subvendor", "N/A", true ) << std::dec << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get<long long>( "board.info.ddr_size", -1 )
+        ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 ) << std::endl;
@@ -989,7 +991,7 @@ public:
         std::vector<char> buf;
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
-            "", "mem_topology", errmsg, buf);
+            "icap", "mem_topology", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
