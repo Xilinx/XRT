@@ -776,7 +776,7 @@ enum subdev_id {
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
-			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 		})
 
@@ -812,6 +812,15 @@ enum subdev_id {
 		.intr_bar = 1,						\
 	}
 
+#define	XOCL_BOARD_MGMT_6A8F_DSA52_64					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_6A8F_DSA52,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_6A8F_DSA52),		\
+		.user_bar = 0,						\
+		.intr_bar = 2,						\
+	}
+
 #define	MGMT_RES_XBB_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -833,6 +842,15 @@ enum subdev_id {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+#define	XOCL_BOARD_MGMT_XBB_DSA52_64					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_DSA52,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52),		\
+		.user_bar = 0,						\
+		.intr_bar = 2,						\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
 
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
@@ -969,6 +987,10 @@ enum subdev_id {
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
+	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201830_2",	\
+		&XOCL_BOARD_MGMT_XBB_DSA52_64 },			\
+	{ 0x10EE, 0x6A8F, 0x4353, "xilinx_vcu1525_xdma_201830_2",	\
+		&XOCL_BOARD_MGMT_6A8F_DSA52_64 },			\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_MGMT_XBB_DSA51 }
 
