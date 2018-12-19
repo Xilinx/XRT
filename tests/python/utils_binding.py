@@ -1,7 +1,6 @@
 from ctypes import *
 import sys, getopt, struct
-# import source files
-sys.path.append('../../../src/python/')
+# source files imported from PYTHONPATH
 from xclbin_binding import *
 from xrt_binding import *
 from ert_binding import *
