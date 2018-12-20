@@ -1181,7 +1181,7 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
  * experimental API is added
  */
 
-XCL_DRIVER_DLLESPEC void xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, xclSysfsResult* res);
+XCL_DRIVER_DLLESPEC int xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, void* data);
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

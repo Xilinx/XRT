@@ -415,10 +415,7 @@ typedef struct {
 
 typedef struct {
   char subdev[100];
+  unsigned long size;
 } xclSysfsQuery;
-
-typedef struct {
-  char data[100];
-} xclSysfsResult;
 
 #endif

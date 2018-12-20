@@ -33,6 +33,7 @@
  */
 
 #include "shim.h"
+#include "scan.h"
 //#include "datamover.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
@@ -961,8 +962,15 @@ namespace xocl {
     return size;
   }
 
-} // namespace xocl_gem
+  int XOCLShim::xclReadSysfs(xclSysfsQuery query, void* data) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string err_msg;
+    std::fstream fs = dev->mgmt->sysfs_open("", "debug_ip_layout", err_msg, false, true);
+    fs.read((char*)data, query.size);
+    return 0;
+  }
 
+} // namespace xocl_gem
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
@@ -1073,6 +1081,13 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
                        xclPerfMonEventID id)
 {
   // don't do anything
+}
+
+int xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, void* data) {
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclReadSysfs(query, data);
 }
 
 
