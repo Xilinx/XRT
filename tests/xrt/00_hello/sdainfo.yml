@@ -17,3 +17,5 @@ xclbins:
   - {krnl: dummy, name: dummy}
   name: kernel
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]
