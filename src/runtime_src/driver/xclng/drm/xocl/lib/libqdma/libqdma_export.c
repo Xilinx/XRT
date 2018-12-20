@@ -280,10 +280,13 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		/* any rcv'ed packet not yet read ? */
 		/** read the data from the device */
 		descq_st_c2h_read(descq, req, 1, 1);
-		if (!cb->left) {
+		if (!cb->left || (req->eot && req->eot_rcved)) {
 			list_del(&cb->list);
 			unlock_descq(descq);
-			return req->count;
+			pr_debug("%s: 0x%p done, req len %u, %u,%u.\n",
+				descq->conf.name, req, req->count,
+				cb->offset, cb->left);
+			return (req->count - cb->left);
 		}
 		descq->pend_list_empty = 0;
 		unlock_descq(descq);
