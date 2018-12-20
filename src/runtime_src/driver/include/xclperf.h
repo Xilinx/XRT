@@ -413,4 +413,12 @@ typedef struct {
   xclTraceResults mArray[MAX_TRACE_NUMBER_SAMPLES];
 } xclTraceResultsVector;
 
+typedef struct {
+  char subdev[100];
+} xclSysfsQuery;
+
+typedef struct {
+  char data[100];
+} xclSysfsResult;
+
 #endif
