@@ -1,9 +1,10 @@
-import getopt, sys, struct
 from ctypes import *
+import sys, getopt, struct
 # import source files
 sys.path.append('../../../src/python/')
 from xclbin_binding import *
 from xrt_binding import *
+from ert_binding import *
 
 
 class Options(object):
@@ -19,6 +20,8 @@ class Options(object):
         self.verbose = False
         self.handle = xclDeviceHandle
         self.first_mem = -1
+        self.cu_base_addr = -1
+        self.ert = False
 
     def getOptions(self, argv):
         try:
@@ -44,7 +47,7 @@ class Options(object):
             elif o == "-v":
                 self.verbose = True
             elif o in ("-e", "--ert"):
-                print('ert')
+                self.ert = bool(arg)
             else:
                 assert False, "unhandled option"
 
@@ -55,7 +58,7 @@ class Options(object):
         if self.halLogFile:
             print("Using " + self.halLogFile + " as HAL driver logfile")
         print("HAL driver = " + self.sharedLibrary)
-        print("Host buffer alignment "+str(self.alignment) + " bytes")
+        print("Host buffer alignment " + str(self.alignment) + " bytes")
         print("Compiled kernel = " + self.bitstreamFile)
 
     def printHelp(self):
@@ -83,6 +86,7 @@ def initXRT(opt):
         return -1
 
     opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
+
     if xclGetDeviceInfo2(opt.handle, byref(deviceInfo)):
         print("Error 2")
         return -1
@@ -110,10 +114,13 @@ def initXRT(opt):
         if header != "xclbin2":
             print("Invalid Bitsream")
             sys.exit()
+        f.seek(0)
         blob = f.read()
-        if not xclLoadXclBin(opt.handle, blob):
+
+        if xclLoadXclBin(opt.handle, blob):
             print("Bitsream download failed")
 
+        xclLoadXclBin(opt.handle, blob)
         print("Finished downloading bitstream %s") % opt.bitstreamFile
 
         f.seek(0)
@@ -157,5 +164,3 @@ def initXRT(opt):
                 break
 
     return 0
-
-

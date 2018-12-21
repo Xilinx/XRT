@@ -12,8 +12,9 @@ XRT
 └───src
 │   │
 │   └───python
-│   |   │   xclhal2_binding.py
+│   |   │   xrt_binding.py
 │   |   │   xclbin_binding.py
+│   |   │   ert_binding.py
 │   │
 │   └───runtime_src
 │       │   ......
@@ -22,10 +23,14 @@ XRT
 │   │
 │   └───python
 │   |   │   README.md
+│   |   │   utils_binding.py
 │   |   │
 │   |   └───00_hello
 │   |   │   |   main.py
-│   |   │   |   utils.py
+│   |   │   |   Makefile
+│   │   │
+│   |   └───22_verify
+│   |   │   |   main.py
 │   |   │   |   Makefile
 │   │
 │   └───xrt

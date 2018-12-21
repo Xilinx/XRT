@@ -474,6 +474,14 @@ namespace xclemulation{
 
       info.mDDRBankCount = info.mDDRBankCount + 1;
     }
+    //if no ddr exists, create a default DDR of 16GB
+    if(DDRBankList.size() == 0)
+    {
+      DDRBank bank;
+      bank.ddrSize = 0x400000000; 
+      DDRBankList.push_back(bank);
+      info.mDDRBankCount = info.mDDRBankCount + 1;
+    }
   }
 
   static void populateFeatureRom(boost::property_tree::ptree const& featureRomTree, FeatureRomHeader& fRomHeader)
