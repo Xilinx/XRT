@@ -1295,9 +1295,14 @@ mark_mask_complete(struct exec_core *exec, u32 mask, unsigned int mask_idx)
 	SCHED_DEBUGF("-> mark_mask_complete(0x%x,%d)\n",mask,mask_idx);
 	if (!mask)
 		return;
-	for (bit_idx=0, cmd_idx=mask_idx<<5; bit_idx<32; mask>>=1,++bit_idx,++cmd_idx)
-		if (mask & 0x1)
+
+	for (bit_idx=0, cmd_idx=mask_idx<<5; bit_idx<32; mask>>=1,++bit_idx,++cmd_idx) {
+		/* mask could be -1 when firewall trips, double check
+		 * exec->submitted_cmds[cmd_idx] to make sure it's not NULL
+		 */
+		if ((mask & 0x1) && exec->submitted_cmds[cmd_idx])
 			mark_cmd_complete(exec->submitted_cmds[cmd_idx]);
+	}
 	SCHED_DEBUG("<- mark_mask_complete\n");
 }
 

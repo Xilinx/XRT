@@ -714,9 +714,9 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 	 *   we check the index in m_tag to decide which temperature
 	 *   to get from XMC IP base address
 	 */
-	char *start, *left_parentness, *right_parentness;
+	char *start = NULL, *left_parentness = NULL, *right_parentness = NULL;
 	long idx;
-	int ret = 0, digit_len;
+	int ret = 0, digit_len = 0;
 	char temp[4];
 
 	if(!xmc)
@@ -746,8 +746,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
 		temp[digit_len] = '\0';
 		//convert to signed long, decimal base 
-		kstrtol(temp, 10, &idx);
-		if(idx < 4 && idx >=0)
+		if(kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >=0)
 			safe_read32(xmc, XMC_DIMM_TEMP0_REG+ (3*sizeof(int32_t)) * idx +sizeof(u32)*VOLTAGE_INS, &ret);
 		else{
 			ret = 0;
