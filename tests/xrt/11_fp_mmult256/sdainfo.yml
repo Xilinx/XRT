@@ -18,3 +18,5 @@ xclbins:
   - {krnl: mmult, name: mmult}
   name: kernel
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]
