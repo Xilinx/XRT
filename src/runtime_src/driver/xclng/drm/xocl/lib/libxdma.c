@@ -1450,7 +1450,8 @@ static void unmap_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 	}
 }
 
-static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
+static resource_size_t map_single_bar(struct xdma_dev *xdev,
+	       	struct pci_dev *dev, int idx)
 {
 	resource_size_t bar_start;
 	resource_size_t bar_len;
@@ -1462,10 +1463,15 @@ static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
 
 	xdev->bar[idx] = NULL;
 
-	/* do not map BARs with length 0. Note that start MAY be 0! */
-	if (!bar_len) {
+	/*
+	 * do not map
+	 * BARs with length 0. Note that start MAY be 0!
+	 * P2P bar (size >= 256M)
+	 */
+	pr_info("map bar %d, len %lld\n", idx, bar_len);
+	if (!bar_len || bar_len >= (1 << 28)) {
 		//pr_info("BAR #%d is not present - skipping\n", idx);
-		return 0;
+		return bar_len;
 	}
 
 	/* BAR size exceeds maximum desired mapping? */
@@ -1539,7 +1545,7 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 	BUG_ON(!xdev);
 	BUG_ON(!bar_id_list);
 
-	dbg_init("xdev 0x%p, bars %d, config at %d.\n",
+	pr_info("xdev 0x%p, bars %d, config at %d.\n",
 		xdev, num_bars, config_bar_pos);
 
 	switch (num_bars) {
@@ -1598,7 +1604,7 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 
 	/* iterate through all the BARs */
 	for (i = 0; i < XDMA_BAR_NUM; i++) {
-		int bar_len;
+		resource_size_t bar_len;
 
 		bar_len = map_single_bar(xdev, dev, i);
 		if (bar_len == 0) {

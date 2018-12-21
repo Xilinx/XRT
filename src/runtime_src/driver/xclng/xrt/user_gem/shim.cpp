@@ -687,6 +687,18 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
     return -EINVAL;
 }
 
+int xocl::XOCLShim::p2pEnable(bool enable)
+{
+    drm_xocl_p2p_enable obj;
+    int ret;
+
+    std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
+    obj.enable = enable ? 1 : 0;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
+
+    return ret ? errno : 0;
+}
+
 /*
  * xclLockDevice()
  */
@@ -1704,6 +1716,12 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->resetDevice(kind) : -ENODEV;
+}
+
+int xclP2pEnable(xclDeviceHandle handle, bool enable)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->p2pEnable(enable) : -ENODEV;
 }
 
 /*

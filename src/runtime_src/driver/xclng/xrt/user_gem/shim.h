@@ -182,6 +182,7 @@ public:
     bool isGood() const;
     static XOCLShim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
+    int p2pEnable(bool enable);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);

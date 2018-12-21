@@ -127,7 +127,6 @@ struct xclDeviceInfo2 {
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
   unsigned short mNumCDMA;
-  // More properties here
 };
 
 /**
@@ -287,6 +286,17 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
  * running kernel(s) to finish.
  */
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, xclResetKind kind);
+
+/**
+ * xclP2pEnable() - enable or disable p2p
+ *
+ * @handle:        Device handle
+ * @enable:        0-disable, 1-enable
+ * Return:         0 on success or appropriate error number
+ *
+ * Enable or Disable P2P feature. Warm reboot might be required.
+ */
+XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable);
 
 /**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device

@@ -273,6 +273,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
 		  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_P2P_ENABLE, xocl_p2p_enable_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations xocl_driver_fops = {
@@ -355,7 +357,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 static int xocl_init_non_unified(struct xocl_dev *xdev)
 {
-	int			i, ret = 0;
+	int			i = -1, ret = 0;
 	u32			ddr_count = 0;
 	u64			ddr_size;
 	u64			segment = 0;
@@ -382,6 +384,12 @@ static int xocl_init_non_unified(struct xocl_dev *xdev)
 		ret = -ENOMEM;
 		goto failed;
 	}
+	xdev->mm_p2p_off = vzalloc(ddr_count * sizeof(u64));
+	if (!xdev->mm_p2p_off) {
+		userpf_err(xdev, "alloc p2p_off array failed");
+		ret = -ENOMEM;
+		goto failed;
+	}
 
 	for (i = 0; i < ddr_count; i++) {
 		mem_data = &xdev->topology->m_mem_data[i];
@@ -391,22 +399,23 @@ static int xocl_init_non_unified(struct xocl_dev *xdev)
 			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
 					ddr_count, ddr_size);
 			ret = -ENOMEM;
-			goto failed_at_i;
+			goto failed;
 		}
 		xdev->mm_usage_stat[i] = vzalloc(mm_stat_size);
 		if (!xdev->mm_usage_stat[i]) {
 			userpf_err(xdev, "alloc mem failed, ddr %d, sz %lld",
 					ddr_count, ddr_size);
 			ret = -ENOMEM;
-			goto failed_at_i;
+			goto failed;
 		}
 		drm_mm_init(xdev->mm[i], segment, ddr_size);
+		xdev->mm_p2p_off[i] = segment;
 		segment += ddr_size;
 	}
 
 	return 0;
 
-failed_at_i:
+failed:
 	for (; i >= 0; i--) {
 		mem_data = &xdev->topology->m_mem_data[i];
 		if (xdev->mm[i]) {
@@ -417,11 +426,12 @@ failed_at_i:
 			vfree(xdev->mm_usage_stat[i]);
 	}
 
-failed:
 	if (xdev->mm)
 		vfree(xdev->mm);
 	if (xdev->mm_usage_stat)
 		vfree(xdev->mm_usage_stat);
+	if (xdev->mm_p2p_off)
+		vfree(xdev->mm_p2p_off);
 
 	return ret;
 }
@@ -627,6 +637,8 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 	xdev->mm = NULL;
 	vfree(xdev->mm_usage_stat);
 	xdev->mm_usage_stat = NULL;
+	vfree(xdev->mm_p2p_off);
+	xdev->mm_p2p_off = NULL;
 	vfree(xdev->topology);
 	xdev->topology = NULL;
 }

@@ -148,6 +148,38 @@ static void unmap_bars(struct xclmgmt_dev *lro)
 	}
 }
 
+static int identify_bar(struct xocl_dev_core *core, int bar)
+{
+	void *__iomem bar_addr;
+	resource_size_t bar_len;
+
+	bar_len = pci_resource_len(core->pdev, bar);
+	bar_addr = pci_iomap(core->pdev, bar, bar_len);
+	if (!bar_addr) {
+		xocl_err(&core->pdev->dev, "Could not map BAR #%d",
+				core->bar_idx);
+		return -EIO;
+	}
+
+	/*
+	 * did not find a better way to identify BARS. Currently,
+	 * we have DSAs which rely VBNV name to differenciate them.
+	 * And reading VBNV name needs to bring up Feature ROM.
+	 * So we are not able to specify BARs in devices.h
+	 */
+	if (bar_len < 1024 * 1024 && bar > 0) {
+		core->intr_bar_idx = bar;
+		core->intr_bar_addr = bar_addr;
+		core->intr_bar_size = bar_len;
+	} else if (bar_len < 256 * 1024 * 1024) {
+		core->bar_idx = bar;
+		core->bar_size = bar_len;
+		core->bar_addr = bar_addr;
+	}
+
+	return 0;
+}
+
 /* map_bars() -- map device regions into kernel virtual address space
  *
  * Map the device memory regions into kernel virtual address space after
@@ -156,44 +188,18 @@ static void unmap_bars(struct xclmgmt_dev *lro)
  */
 static int map_bars(struct xclmgmt_dev *lro)
 {
-	struct xocl_board_private *dev_info;
+	struct pci_dev *pdev = lro->core.pdev;
 	resource_size_t bar_len;
-	int	ret = 0;
+	int	i, ret = 0;
 
-	dev_info = &lro->core.priv;
-
-	lro->core.bar_idx = dev_info->user_bar;
-	bar_len = pci_resource_len(lro->core.pdev, lro->core.bar_idx);
-
-	mgmt_info(lro, "default bar: %d, bar len: %lld", lro->core.bar_idx,
-		bar_len);
-
-	lro->core.bar_addr = pci_iomap(lro->core.pdev, lro->core.bar_idx,
-		bar_len);
-	if (!lro->core.bar_addr) {
-		mgmt_err(lro, "Could not map BAR #%d", lro->core.bar_idx);
-		return -EIO;
+	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
+		bar_len = pci_resource_len(pdev, i);
+		if (bar_len > 0) {
+			ret = identify_bar(&lro->core, i);
+			if (ret)
+				goto failed;
+		}
 	}
-
-	lro->core.bar_size = bar_len;
-
-	lro->core.intr_bar_idx = dev_info->intr_bar;
-	bar_len = pci_resource_len(lro->core.pdev, lro->core.intr_bar_idx);
-	if (bar_len == 0)
-		return 0;
-
-	mgmt_info(lro, "intr bar: %d, bar len: %lld", lro->core.intr_bar_idx,
-		bar_len);
-
-	lro->core.intr_bar_addr = pci_iomap(lro->core.pdev,
-		lro->core.intr_bar_idx, bar_len);
-	if (!lro->core.intr_bar_addr) {
-		mgmt_err(lro, "Could not map BAR #%d", lro->core.intr_bar_idx);
-		ret = -EIO;
-		goto failed;
-	}
-
-	lro->core.intr_bar_size = bar_len;
 
 	/* succesfully mapped all required BAR regions */
 	return 0;
