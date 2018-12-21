@@ -856,7 +856,7 @@ static int icap_write(struct icap *icap, const u32 *word_buf, int size)
 
 static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind kind)
 {
-	uint64_t size;
+	uint64_t size = 0;
 
 	switch(kind){
 		case IP_LAYOUT:
@@ -2088,7 +2088,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	uint64_t section_size = 0, sect_sz = 0;
 	uint64_t copy_buffer_size = 0;
 	struct axlf* copy_buffer = NULL;
-	void **target;
+	void **target = NULL;
 
 	if (copy_from_user((void *)&bin_obj, u_xclbin, sizeof(struct axlf)))
 		return -EFAULT;
@@ -2121,7 +2121,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 
 	switch(kind){
 		case IP_LAYOUT:
-		  target = (void **)&icap->ip_layout;
+			target = (void **)&icap->ip_layout;
 			break;
 		case MEM_TOPOLOGY:
 			target = (void **)&icap->mem_topo;
@@ -2129,15 +2129,16 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		case DEBUG_IP_LAYOUT:
 			target = (void **)&icap->debug_layout;
 			break;
-			break;
 		case CONNECTIVITY:
 			target = (void **)&icap->connectivity;
 			break;
 		default:
 			break;		
 	}
-	vfree(*target);
-	*target = NULL;
+	if (target) {
+		vfree(*target);
+		*target = NULL;
+	}
 	err = alloc_and_get_axlf_section(icap, copy_buffer, kind,
 		buffer, target, &section_size);
 	if (err != 0)
@@ -2163,7 +2164,7 @@ void *icap_get_axlf_section_data(struct platform_device *pdev,
 {
 
 	struct icap *icap = platform_get_drvdata(pdev);
-	void *target;
+	void *target = NULL;
 
 	mutex_lock(&icap->icap_lock);
 	switch(kind){
