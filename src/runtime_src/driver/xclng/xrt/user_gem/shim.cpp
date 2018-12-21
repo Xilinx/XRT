@@ -659,6 +659,9 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
  */
 int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 {
+    drm_xocl_info obj;
+    int ret;
+
     std::memset(info, 0, sizeof(xclDeviceInfo2));
     info->mMagic = 0X586C0C6C;
     info->mHALMajorVersion = XCLHAL_MAJOR_VER;
@@ -666,7 +669,16 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
     info->mDMAThreads = 2;
     xclSysfsGetDeviceInfo(info);
-    return 0;
+
+    std::memset(&obj, 0, sizeof(drm_xocl_info));
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO, &obj);
+    if (ret) {
+        return ret;
+    }
+
+    info->mP2pEnabled = obj.p2p_enabled;
+
+    return ret ? errno : 0;
 }
 
 /*
@@ -684,6 +696,18 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
     else
         return -EINVAL;
+
+    return ret ? errno : 0;
+}
+
+int xocl::XOCLShim::p2pEnable(bool enable)
+{
+    drm_xocl_p2p_enable obj;
+    int ret;
+
+    std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
+    obj.enable = enable ? 1 : 0;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
 
     return ret ? errno : 0;
 }
@@ -1705,6 +1729,12 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->resetDevice(kind) : -ENODEV;
+}
+
+int xclP2pEnable(xclDeviceHandle handle, bool enable)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->p2pEnable(enable) : -ENODEV;
 }
 
 /*
