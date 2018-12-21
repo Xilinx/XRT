@@ -25,3 +25,5 @@ xclbins:
   - {krnl: addone, name: addone_7}
   name: kernel
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]
