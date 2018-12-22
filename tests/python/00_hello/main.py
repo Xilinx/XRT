@@ -1,7 +1,5 @@
 import sys
-# import source files
-sys.path.append('../../../src/python/')
-sys.path.append('../')
+sys.path.append('../') # utils_binding.py
 from xrt_binding import *
 from utils_binding import *
 from cffi import FFI

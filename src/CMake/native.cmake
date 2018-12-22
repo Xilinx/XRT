@@ -99,6 +99,10 @@ set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
 #XMA settings END
 
+# Python bindings
+set(PY_INSTALL_DIR "${XRT_INSTALL_DIR}/python")
+add_subdirectory(python)
+
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
