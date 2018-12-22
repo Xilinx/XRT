@@ -37,6 +37,18 @@
  *  More data needed by kernel before receive function can be called
  *  @def XMA_END_OF_FILE
  *  End of data stream
+ *  @def XMA_TRY_AGAIN
+ *  This can be returned by both xma_enc_session_send_frame() and
+ *  xma_enc_session_recv_data(). When returned by xma_enc_session_send_frame(),
+ *  it means that the component is busy and the input is not consumed. The
+ *  user needs to resend the data again in the next call. User needs to call
+ *  xma_enc_session_recv_data() to pull out data, before calling
+ *  xma_enc_session_send_frame again.
+ *  When returned by xma_enc_session_recv_data(), it means that new input data
+ *  is required by the component to return new output, so user needs to call
+ *  xma_enc_session_send_frame().
+ *  A component must not return XMA_TRY_AGAIN for both sending and receiving, as
+ *  this would put the component user into an endless loop.
  *  @def XMA_ERROR
  *  Unspecified error has occured. Check log files for more info.
  *  @def XMA_ERROR_INVALID
@@ -53,6 +65,7 @@
 #define XMA_END_OF_FILE      (2)
 #define XMA_EOS      	     (3)
 #define XMA_FLUSH_AGAIN      (4)
+#define XMA_TRY_AGAIN        (5)
 
 #define XMA_ERROR           (-1)
 #define XMA_ERROR_INVALID   (-2)
