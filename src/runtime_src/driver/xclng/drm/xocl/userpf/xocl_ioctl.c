@@ -48,7 +48,7 @@ xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *clie
 		return 1;
 	}
 
-	if (xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id, pid) < 0) {
+	if (xocl_icap_lock_bitstream(xdev, &client->xclbin_id, pid) < 0) {
 		userpf_err(xdev,"could not lock bitstream for process %d", pid);
 		return 1;
 	}
@@ -62,8 +62,10 @@ static int
 xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
 {
 	int ret = 0;
-	mutex_lock(&client->lock);
+	mutex_lock(&client->lock);         // protect current client
+	mutex_lock(&xdev->ctx_list_lock);  // protect xdev->xclbin_id
 	ret = xocl_client_lock_bitstream_nolock(xdev,client);
+	mutex_unlock(&xdev->ctx_list_lock);
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -577,6 +579,7 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology;
+	int pid = pid_nr(task_tgid(current));
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -599,7 +602,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
-	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->ctx_list_lock so no new contexts can be opened and no live contexts
@@ -617,7 +619,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		}
 	}
 
-	userpf_info(xdev, "%s:%d\n", __FILE__, __LINE__);
 	//Ignore timestamp matching for AWS platform
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
@@ -627,10 +628,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
 	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
 
-	err = xocl_icap_lock_bitstream(xdev, &bin_obj.m_header.uuid,
-		pid_nr(task_tgid(current)));
+	err = xocl_icap_lock_bitstream(xdev, &bin_obj.m_header.uuid,pid);
 	if (err < 0)
-		goto done;
+		return err;
 	err = 0;
 
 	if (uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
@@ -752,8 +752,7 @@ done:
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API or by execbuf
 	 */
-	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
-					  pid_nr(task_tgid(current)));
+	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,pid);
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
@@ -777,7 +776,6 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	 * be a lock on expected xclbin
 	 */
 	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
-	//uuid_copy(&client->xclbin_id, &uuid_null);
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
 }
