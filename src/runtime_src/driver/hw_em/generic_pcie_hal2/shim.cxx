@@ -1103,6 +1103,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
         std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
         systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6);
+        
+        // Copy Simulation Log file
+        std::string sdxEmulatorLogFilePath= binaryDirectory + "/" + "sdx_emulator.log";
+        std::string destPath7 = "'" + std::string(path) + "/" + fileName + "_sdx_emulator.log'";
+        systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7);
 
       }
       i++;
