@@ -14,14 +14,20 @@
  * under the License.
  */
 
-// Copyright 2014 Xilinx, Inc. All rights reserved.
-
 #include "rt_singleton.h"
-#include "xdp/appdebug/appdebug.h"
-#include "xrt/util/config_reader.h"
-#include "xdp/profile/writer/csv_writer.h"
 
-namespace XCL {
+#include "xdp/profile/writer/csv_profile.h"
+#include "xdp/profile/writer/csv_trace.h"
+#include "xdp/profile/writer/unified_csv_profile.h"
+#include "xdp/appdebug/appdebug.h"
+
+// TODO: remove these dependencies
+#include "xrt/util/config_reader.h"
+#include "xdp/profile/plugin/ocl/xocl_plugin.h"
+#include "xdp/profile/plugin/ocl/xocl_profile.h"
+#include "xdp/profile/plugin/ocl/xocl_profile_cb.h"
+
+namespace xdp {
 
   static bool gActive = false;
   static bool gDead = false;
@@ -54,6 +60,12 @@ namespace XCL {
 
     DebugMgr = new RTDebug();
 
+    // Use base plugin as default
+    // NOTE: this needs to be the base class once the owner of XoclPlugin
+    //       is identified in plugins/ocl
+    //Plugin = new XDPPluginI();
+    Plugin = new XoclPlugin();
+
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 
@@ -62,7 +74,7 @@ namespace XCL {
     }
 
     if (applicationProfilingOn()) {
-      XCL::register_xocl_profile_callbacks();
+      xdp::register_xocl_profile_callbacks();
     }
 #ifdef PMD_OCL
     return;
@@ -83,6 +95,17 @@ namespace XCL {
     delete DebugMgr;
   }
 
+  // Turn on/off profiling
+  void RTSingleton::turnOnProfile(RTUtil::e_profile_mode mode) {
+    ProfileFlags |= mode;
+    ProfileMgr->turnOnProfile(mode);
+  }
+
+  void RTSingleton::turnOffProfile(RTUtil::e_profile_mode mode) {
+    ProfileFlags &= ~mode;
+    ProfileMgr->turnOffProfile(mode);
+  }
+
   // Kick off profiling and open writers
   void RTSingleton::startProfiling() {
     if (xrt::config::get_profile() == false)
@@ -93,7 +116,7 @@ namespace XCL {
     FlowMode = (std::getenv("XCL_EMULATION_MODE")) ? HW_EM : DEVICE;
 
     // Turn on application profiling
-    turnOnProfile(RTProfile::PROFILE_APPLICATION);
+    turnOnProfile(RTUtil::PROFILE_APPLICATION);
 
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
@@ -105,18 +128,19 @@ namespace XCL {
     ProfileMgr->setTransferTrace(data_transfer_trace);
     ProfileMgr->setStallTrace(stall_trace);
 
-    turnOnProfile(RTProfile::PROFILE_DEVICE_COUNTERS);
+    turnOnProfile(RTUtil::PROFILE_DEVICE_COUNTERS);
     // HW trace is controlled at HAL layer
-    if ((FlowMode == DEVICE) || xrt::config::get_device_profile() ||
-        (data_transfer_trace.find("off") == std::string::npos)) {
-      turnOnProfile(RTProfile::PROFILE_DEVICE_TRACE);
+    if ((FlowMode == DEVICE) || (data_transfer_trace.find("off") == std::string::npos)) {
+      turnOnProfile(RTUtil::PROFILE_DEVICE_TRACE);
     }
 
+#if 0
     // Issue warning for device_profile setting (not supported after 2018.2)
     if (xrt::config::get_device_profile()) {
       xrt::message::send(xrt::message::severity_level::WARNING,
           "The setting device_profile will be deprecated after 2018.2. Please use data_transfer_trace.");
     }
+#endif
 
     std::string profileFile("");
     std::string profileFile2("");
@@ -124,32 +148,31 @@ namespace XCL {
     std::string timelineFile2("");
 
     if (ProfileMgr->isApplicationProfileOn()) {
-      //always on by default.
-      ProfileMgr->turnOnFile(RTProfile::FILE_SUMMARY);
+      ProfileMgr->turnOnFile(RTUtil::FILE_SUMMARY);
       profileFile = "sdaccel_profile_summary";
       profileFile2 = "sdx_profile_summary";
     }
 
     if (xrt::config::get_timeline_trace()) {
-      ProfileMgr->turnOnFile(RTProfile::FILE_TIMELINE_TRACE);
+      ProfileMgr->turnOnFile(RTUtil::FILE_TIMELINE_TRACE);
       timelineFile = "sdaccel_timeline_trace";
       timelineFile2 = "sdx_timeline_trace";
     }
 
-    // HTML and CSV writers
-    //HTMLWriter* htmlWriter = new HTMLWriter(profileFile, timelineFile, "Xilinx");
-    CSVWriter* csvWriter = new CSVWriter(profileFile, timelineFile, "Xilinx");
+    // CSV writers
+    CSVProfileWriter* csvProfileWriter = new CSVProfileWriter(profileFile, "Xilinx");
+    CSVTraceWriter*   csvTraceWriter   = new CSVTraceWriter(timelineFile, "Xilinx");
 
-    //Writers.push_back(htmlWriter);
-    Writers.push_back(csvWriter);
+    ProfileWriters.push_back(csvProfileWriter);
+    TraceWriters.push_back(csvTraceWriter);
 
-    //ProfileMgr->attach(htmlWriter);
-    ProfileMgr->attach(csvWriter);
+    ProfileMgr->attach(csvProfileWriter);
+    ProfileMgr->attach(csvTraceWriter);
 
     if (std::getenv("SDX_NEW_PROFILE")) {
-      UnifiedCSVWriter* csvWriter2 = new UnifiedCSVWriter(profileFile2, timelineFile2, "Xilinx");
-      Writers.push_back(csvWriter2);
-      ProfileMgr->attach(csvWriter2);
+      UnifiedCSVProfileWriter* csvProfileWriter2 = new UnifiedCSVProfileWriter(profileFile2, "Xilinx");
+      ProfileWriters.push_back(csvProfileWriter2);
+      ProfileMgr->attach(csvProfileWriter2);
     }
 
     // Add functions to callback for profiling kernel/CU scheduling
@@ -164,7 +187,11 @@ namespace XCL {
       ProfileMgr->writeProfileSummary();
 
       // Close writers
-      for (auto& w: Writers) {
+      for (auto& w: ProfileWriters) {
+        ProfileMgr->detach(w);
+        delete w;
+      }
+      for (auto& w: TraceWriters) {
         ProfileMgr->detach(w);
         delete w;
       }
@@ -186,13 +213,12 @@ namespace XCL {
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
       iter++;
     }
-    XOCL_DEBUGF("Trace logged for type %d after %d iterations\n", type, iter);
+    XDP_LOG("Trace logged for type %d after %d iterations\n", type, iter);
   }
 
   unsigned RTSingleton::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) {
     unsigned numSlots = xdp::profile::platform::get_profile_num_slots(Platform.get(),
         deviceName, type);
-    //XOCL_DEBUG(std::cout,"Profiling: type = "type," slots = ",numSlots,"\n");
     return numSlots;
   }
 
@@ -200,7 +226,6 @@ namespace XCL {
                                        unsigned slotnum, std::string& slotName) {
     xdp::profile::platform::get_profile_slot_name(Platform.get(), deviceName,
         type, slotnum, slotName);
-    //XOCL_DEBUG(std::cout,"Profiling: type = "type," slot ",slotnum," name = ",slotName.c_str(),"\n");
   }
 
   unsigned RTSingleton::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) {
@@ -217,8 +242,6 @@ namespace XCL {
     if (slotnum >= XAPM_MAX_NUMBER_SLOTS)
 	  return;
 
-    XOCL_DEBUG(std::cout,"OCL profiling: mode for slot ",slotnum," = ",type.c_str(),"\n");
-
     if (type.find("stream") != std::string::npos || type.find("STREAM") != std::string::npos)
       OclProfileMode[slotnum] = STREAM;
     else if (type.find("pipe") != std::string::npos || type.find("PIPE") != std::string::npos)
@@ -231,6 +254,7 @@ namespace XCL {
       OclProfileMode[slotnum] = NONE;
   }
 
+  // TODO: the next 3 functions should be moved to the plugin
   size_t RTSingleton::getDeviceTimestamp(std::string& deviceName) {
     return xdp::profile::platform::get_device_timestamp(Platform.get(),deviceName);
   }
@@ -253,7 +277,21 @@ namespace XCL {
     else
       str = "System Run";
   }
-};
 
+  // Add to the active devices
+  // Called thru device::load_program in xocl/core/device.cpp
+  // NOTE: this is the entry point into XDP when a new device gets loaded
+  void RTSingleton::addToActiveDevices(const std::string& deviceName)
+  {
+    XDP_LOG("addToActiveDevices: device = %s\n", deviceName.c_str());
 
+    // Store arguments and banks for each CU and its ports
+    Plugin->setArgumentsBank(deviceName);
 
+    // Store name of device to profiler
+    ProfileMgr->addDeviceName(deviceName);
+
+    // TODO: Grab device-level metadata here!!! (e.g., device name, CU/kernel names)
+  }
+
+} // xdp

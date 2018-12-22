@@ -23,7 +23,7 @@
 #include "appdebug.h"
 #include "appdebug_track.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/core/profile_logger.h"
+#include "xdp/profile/core/rt_profile.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
@@ -43,6 +43,7 @@
 
 #include <map>
 #include <sstream>
+#include <fstream>
 #include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace {
@@ -1205,11 +1206,11 @@ clGetDebugCounters() {
     return adv;
   }
 
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1342,11 +1343,11 @@ clGetDebugStreamCounters()
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1554,11 +1555,11 @@ clGetDebugCheckers() {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;

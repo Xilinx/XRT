@@ -15,21 +15,15 @@
  */
 
 /**
- * This file contains the API for adapting the mixed xcl/xocl
- * data structures to the profiling infrastructure.
- *
- * Once xcl has been eliminated, this file should move to xocl/core
- * Temporarily, the file abuses the xocl namespace, but it cannot
- * currently be moved since profile.cpp has xcl dependencies that
- * are strictly forbidden in xocl.
+ * This file contains the profiling callback actions registered to XRT
  */
 
 #include "xocl_profile_cb.h"
-#include "xdp/profile/core/profiler.h"
+#include "profiler.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/core/profile_logger.h"
+#include "xdp/profile/core/rt_profile.h"
 
-namespace XCL {
+namespace xdp {
 
 bool isProfilingOn() {
   //static bool profilingOn = xdp::profile::isApplicationProfilingOn();
@@ -83,15 +77,15 @@ std::string get_event_dependencies_string(xocl::event* currEvent) {
   return sstr.str();
 }
 
-static XCL::RTProfile::e_profile_command_state
+static xdp::RTUtil::e_profile_command_state
 event_status_to_profile_state(cl_int status)
 {
-  static const std::map<cl_int, XCL::RTProfile::e_profile_command_state> tbl
+  static const std::map<cl_int, xdp::RTUtil::e_profile_command_state> tbl
   {
-    {CL_QUEUED,    XCL::RTProfile::QUEUE}
-   ,{CL_SUBMITTED, XCL::RTProfile::SUBMIT}
-   ,{CL_RUNNING,   XCL::RTProfile::START}
-   ,{CL_COMPLETE,  XCL::RTProfile::END}
+    {CL_QUEUED,    xdp::RTUtil::QUEUE}
+   ,{CL_SUBMITTED, xdp::RTUtil::SUBMIT}
+   ,{CL_RUNNING,   xdp::RTUtil::START}
+   ,{CL_COMPLETE,  xdp::RTUtil::END}
   };
 
   auto itr = tbl.find(status);
@@ -99,8 +93,6 @@ event_status_to_profile_state(cl_int status)
     throw std::runtime_error("bad event status '" + std::to_string(status) + "'");
   return (*itr).second;
 }
-
-
 
 /*
  * Lambda generators called from openCL APIs
@@ -133,7 +125,7 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     double timestampMsec = 0.0;
     timestampMsec = (status == CL_COMPLETE) ? (event->time_end()) / 1e6 : timestampMsec;
     timestampMsec = (status == CL_RUNNING) ? (event->time_start()) / 1e6 : timestampMsec;
-    XCL::RTSingleton::Instance()->getProfileManager()->logKernelExecution
+    xdp::RTSingleton::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
        ,programId
        ,reinterpret_cast<uint64_t>(event)
@@ -177,9 +169,9 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,XCL::RTProfile::READ_BUFFER
+       ,xdp::RTUtil::READ_BUFFER
        ,commandState
        ,size
        ,contextId
@@ -225,9 +217,9 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,XCL::RTProfile::READ_BUFFER
+       ,xdp::RTUtil::READ_BUFFER
        ,commandState
        ,size
        ,contextId
@@ -271,9 +263,9 @@ void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t si
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,XCL::RTProfile::WRITE_BUFFER
+       ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
        ,size
        ,contextId
@@ -317,9 +309,9 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,XCL::RTProfile::WRITE_BUFFER
+       ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
        ,size
        ,contextId
@@ -384,9 +376,9 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
-       ,XCL::RTProfile::WRITE_BUFFER
+       ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
        ,totalSize
        ,contextId
@@ -412,16 +404,16 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
 #if 0
     // Report the first START and the last END
     static int numOutstanding = 0;
-    if (commandState == XCL::RTProfile::SUBMIT) {
+    if (commandState == xdp::RTUtil::SUBMIT) {
       numOutstanding = 0;
     }
-    else if (commandState == XCL::RTProfile::START) {
+    else if (commandState == xdp::RTUtil::START) {
    	  numOutstanding++;
       XOCL_DEBUGF("action_migrate: START, outstanding = %d\n", numOutstanding);
    	  //if (numOutstanding != 1)
    	  //  return;
     }
-    else if (commandState == XCL::RTProfile::END) {
+    else if (commandState == xdp::RTUtil::END) {
    	  numOutstanding--;
       XOCL_DEBUGF("action_migrate: END, outstanding = %d\n", numOutstanding);
    	  //if (numOutstanding != 0)
@@ -444,11 +436,11 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
     auto numDevices = event->get_context()->num_devices();
     auto commandQueueId = event->get_command_queue()->get_uid();
     auto threadId = std::this_thread::get_id();
-    XCL::RTProfile::e_profile_command_kind kind = (flags & CL_MIGRATE_MEM_OBJECT_HOST) ?
-      XCL::RTProfile::READ_BUFFER : XCL::RTProfile::WRITE_BUFFER;
+    xdp::RTUtil::e_profile_command_kind kind = (flags & CL_MIGRATE_MEM_OBJECT_HOST) ?
+      xdp::RTUtil::READ_BUFFER : xdp::RTUtil::WRITE_BUFFER;
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    XCL::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
        ,kind
        ,commandState
@@ -465,61 +457,46 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
        ,timestampMsec);
 }
 
-void cb_log_function_start (const char* functionName, long long queueAddress, unsigned int functionID)
+void cb_log_function_start(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
+  xdp::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
 }
 
-void cb_log_function_end (const char* functionName, long long queueAddress, unsigned int functionID)
+void cb_log_function_end(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  XCL::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
+  xdp::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
 }
 
-void cb_log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps)
+void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* deps)
 {
   if (!xrt::config::get_timeline_trace()) {
     return;
   }
 
   for (auto e :  xocl::get_range(deps, deps+num_deps)) {
-    XCL::RTSingleton::Instance()->getProfileManager()->logDependency(XCL::RTProfile::DEPENDENCY_EVENT,
+    xdp::RTSingleton::Instance()->getProfileManager()->logDependency(xdp::RTUtil::DEPENDENCY_EVENT,
                   xocl::xocl(e)->get_suid(), event->get_suid());
   }
 }
 
 void cb_add_to_active_devices(const std::string& device_name)
 {
-  static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
+  static bool profile_on = xdp::RTSingleton::Instance()->applicationProfilingOn();
   if (profile_on)
-    XCL::RTSingleton::Instance()->getProfileManager()->addToActiveDevices(device_name);
+    xdp::RTSingleton::Instance()->addToActiveDevices(device_name);
 }
 
 void
 cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 {
-  static bool profile_on = XCL::RTSingleton::Instance()->applicationProfilingOn();
+  static bool profile_on = xdp::RTSingleton::Instance()->applicationProfilingOn();
   if (profile_on)
-    XCL::RTSingleton::Instance()->getProfileManager()->setKernelClockFreqMHz(device_name, freq);
+    xdp::RTSingleton::Instance()->getProfileManager()->setKernelClockFreqMHz(device_name, freq);
 }
 
-void cb_reset (const xocl::xclbin& xclbin)
+void cb_reset(const xocl::xclbin& xclbin)
 {
-  auto rts = XCL::RTSingleton::Instance();
-
-  // init profilers
-  // NOTE: now performed with debug_ip_layout
-#if 0
-  for (auto& profiler : xclbin.profilers()) {
-    if (profiler.name.find("monitor_kernels") != std::string::npos
-        || profiler.name.find("monitor_stalls") != std::string::npos) {
-      rts->setOclProfileSlots(profiler.slots.size());
-      for (auto& slot : profiler.slots) {
-        rts->getProfileManager()->setSlotComputeUnitName(std::get<0>(slot), std::get<1>(slot));
-        rts->setOclProfileMode(std::get<0>(slot), std::get<2>(slot));
-      }
-    }
-  }
-#endif
+  auto rts = xdp::RTSingleton::Instance();
 
   // init flow mode
   auto xclbin_target = xclbin.target();
@@ -530,23 +507,24 @@ void cb_reset (const xocl::xclbin& xclbin)
     // http://confluence.xilinx.com/display/XIP/DSA+Feature+ROM+Proposal
     if(dsa.find("4ddr") != std::string::npos)
       rts->getProfileManager()->setDeviceTraceClockFreqMHz(300.0);
-    rts->setFlowMode(XCL::RTSingleton::DEVICE);
+    rts->setFlowMode(xdp::RTSingleton::DEVICE);
   } else if (xclbin_target == xocl::xclbin::target_type::csim) {
-    rts->setFlowMode(XCL::RTSingleton::CPU);
+    rts->setFlowMode(xdp::RTSingleton::CPU);
   } else if (xclbin_target == xocl::xclbin::target_type::cosim) {
-    rts->setFlowMode(XCL::RTSingleton::COSIM_EM);
+    rts->setFlowMode(xdp::RTSingleton::COSIM_EM);
   } else if (xclbin_target == xocl::xclbin::target_type::hwem) {
-    rts->setFlowMode(XCL::RTSingleton::HW_EM);
+    rts->setFlowMode(xdp::RTSingleton::HW_EM);
   } else if (xclbin_target == xocl::xclbin::target_type::x86) {
   } else if (xclbin_target == xocl::xclbin::target_type::zynqps7) {
   } else {
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }
 }
+
 void
 cb_init()
 {
-  XCL::RTSingleton::Instance()->getStatus();
+  xdp::RTSingleton::Instance()->getStatus();
 }
 
 void register_xocl_profile_callbacks() {
@@ -572,12 +550,11 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_reset_device_profiling(Profiling::cb_reset_device_profiling);
   xocl::profile::register_cb_end_device_profiling(Profiling::cb_end_device_profiling);
 }
-}
+} // xdp
+
 extern "C"
 void
 initXDPLib()
 {
-  (void)XCL::RTSingleton::Instance();
+  (void)xdp::RTSingleton::Instance();
 }
-
-

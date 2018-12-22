@@ -14,22 +14,29 @@
  * under the License.
  */
 
-#ifndef _XDP_XOCL_PROFILE_CB_H
-#define _XDP_XOCL_PROFILE_CB_H
+#ifndef __XILINX_XDP_WRITER_UTIL_H
+#define __XILINX_XDP_WRITER_UTIL_H
 
-/**
- * This file contains the registered profiling callbacks
- */
-
-#include "xocl_profile.h"
-#include "xocl/api/plugin/xdp/profile.h"
-
-#include <map>
-#include <sstream>
-#include <utility>
+#include <cstdlib>
+#include <cstdio>
 #include <string>
+#include <iostream>
 
 namespace xdp {
-void register_xocl_profile_callbacks();
-}
+
+  class WriterI {
+
+  public:
+	  WriterI() {};
+      ~WriterI() {};
+
+      static const char * getToolVersion() { return "2019.1"; }
+
+      static std::string getCurrentDateTime();
+      static std::string getCurrentTimeMsec();
+      static std::string getCurrentExecutableName();
+  };
+
+} // xdp
+
 #endif

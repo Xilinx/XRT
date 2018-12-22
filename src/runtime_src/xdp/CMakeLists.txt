@@ -66,7 +66,7 @@ target_link_libraries (xdp xrt_core)
 
 install (TARGETS xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xperf.h" DESTINATION ${XRT_INSTALL_DIR}/include)
+install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_DIR}/include)
 
 set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
 install (FILES
