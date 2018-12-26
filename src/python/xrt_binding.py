@@ -173,7 +173,7 @@ def xclOpen(deviceIndex, logFileName, level):
     """
     libc.xclOpen.restype = POINTER(xclDeviceHandle)
     libc.xclOpen.argtypes = [c_uint, c_char_p, c_int]
-    return libc.xclOpen(deviceIndex, logFileName, level)
+    return libc.xclOpen(deviceIndex, logFileName, level.value)
 
 
 def xclClose(handle):
@@ -464,4 +464,3 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     libc.xclReadBO.restype = c_int
     libc.xclReadBO.argtypes = [xclDeviceHandle, c_uint, c_void_p, c_size_t, c_size_t]
     return libc.xclReadBO(handle, boHandle, dst, size, skip)
-

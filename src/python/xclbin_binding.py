@@ -145,5 +145,4 @@ class axlf (Structure):
 def wrap_get_axlf_section(top, kind):
     libc.wrap_get_axlf_section.restype = POINTER(axlf_section_header)
     libc.wrap_get_axlf_section.argtypes = [c_void_p, c_int]
-    return libc.wrap_get_axlf_section(top, kind)
-
+    return libc.wrap_get_axlf_section(top, kind.value)
