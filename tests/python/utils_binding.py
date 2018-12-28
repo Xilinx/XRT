@@ -1,6 +1,28 @@
-from ctypes import *
-import sys, getopt, struct
-# source files imported from PYTHONPATH
+##
+ # Copyright (C) 2018 Xilinx, Inc
+ # Author(s): Ryan Radjabi
+ #            Shivangi Agarwal
+ #            Sonal Santan
+ # Helper routines for Python based XRT tests
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License"). You may
+ # not use this file except in compliance with the License. A copy of the
+ # License is located at
+ #
+ #     http://www.apache.org/licenses/LICENSE-2.0
+ #
+ # Unless required by applicable law or agreed to in writing, software
+ # distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ # License for the specific language governing permissions and limitations
+ # under the License.
+##
+import sys
+import getopt
+import struct
+import ctypes
+import uuid
+# XRT modules imported from PYTHONPATH
 from xclbin_binding import *
 from xrt_binding import *
 from ert_binding import *
@@ -21,6 +43,7 @@ class Options(object):
         self.first_mem = -1
         self.cu_base_addr = -1
         self.ert = False
+        self.xuuid = uuid.uuid4()
 
     def getOptions(self, argv):
         try:
@@ -85,13 +108,11 @@ def initXRT(opt):
 
     opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
 
-    if xclGetDeviceInfo2(opt.handle, byref(deviceInfo)):
+    if xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo)):
         print("Error 2")
         return -1
 
-    print("hello1111")
     if sys.version_info[0] == 3:
-        print("hello2222")
         print("DSA = %s" % deviceInfo.mName)
         print("Index = %d" % opt.index)
         print("PCIe = GEN%d x %d" % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth))
@@ -122,9 +143,9 @@ def initXRT(opt):
         data = bytearray(os.path.getsize(tempFileName))
         f.readinto(data)
         f.close()
-        blob = (c_char * len(data)).from_buffer(data)
-        header = data[0:7];
-        if header != "xclbin2":
+        blob = (ctypes.c_char * len(data)).from_buffer(data)
+        xbinary = axlf.from_buffer(data)
+        if xbinary.m_magic != "xclbin2":
             print("Invalid Bitsream")
             sys.exit()
 
@@ -133,6 +154,8 @@ def initXRT(opt):
 
         xclLoadXclBin(opt.handle, blob)
         print("Finished downloading bitstream %s") % opt.bitstreamFile
+        myuuid = buffer(xbinary.m_header.u2.uuid)[:]
+        opt.xuuid = uuid.UUID(bytes=myuuid)
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.IP_LAYOUT)
         layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset);
@@ -147,14 +170,14 @@ def initXRT(opt):
             if (ip[i].m_type != 1):
                 continue
             opt.cu_base_addr = ip[i].m_base_address
-            print("CU[%d] %s @0x%x") % (i, cast(ip[i].m_name, c_char_p).value, opt.cu_base_addr)
+            print("CU[%d] %s @0x%x") % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr)
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
         topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset);
         mem = (mem_data * topo.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
         for i in range(topo.m_count):
-            print("[%d] %s @0x%x") % (i, cast(mem[i].m_tag, c_char_p).value, mem[i].mem_u2.m_base_address)
+            print("[%d] %s @0x%x") % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address)
             if (mem[i].m_used == 0):
                 continue;
             opt.first_mem = i
