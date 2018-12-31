@@ -1,5 +1,5 @@
 /*
- * FPGA MGR bindings for XRT xocl driver
+ * FPGA Manager bindings for XRT driver
  *
  * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
  *
@@ -16,26 +16,58 @@
  */
 
 #include <linux/fpga/fpga-mgr.h>
+#include <linux/printk.h>
 
 #include "../xocl_drv.h"
 #include "xclbin.h"
 
+struct xfpga_klass {
+	struct xocl_dev *xdev;
+	struct axlf *blob;
+	size_t count;
+};
+
 static int xocl_pr_write_init(struct fpga_manager *mgr,
 			      struct fpga_image_info *info, const char *buf, size_t count)
 {
+	struct xfpga_klass *obj = mgr->priv;
+	const struct axlf *bin = (const struct axlf *)buf;
+	if (count < sizeof(struct axlf))
+	    return -EINVAL;
+
+	vfree(obj->blob);
+	obj->blob = vmalloc(bin->m_header.m_length);
+	if (!obj->blob)
+	    return -ENOMEM;
+
+	memcpy(obj->blob, buf, count);
+	xocl_info(&mgr->dev, "Begin download of xclbin %pUb of length %lld B", &obj->blob->m_header.uuid,
+		  obj->blob->m_header.m_length);
+	obj->count = count;
 	return 0;
 }
 
 static int xocl_pr_write(struct fpga_manager *mgr,
 			 const char *buf, size_t count)
 {
+	struct xfpga_klass *obj = mgr->priv;
+	char *curr = (char *)obj->blob;
+	curr += obj->count;
+	memcpy(curr, buf, count);
+	obj->count += count;
+	xocl_info(&mgr->dev, "Next block of %zu B of xclbin %pUb", count, &obj->blob->m_header.uuid);
 	return 0;
 }
 
 
 static int xocl_pr_write_complete(struct fpga_manager *mgr,
-				 struct fpga_image_info *info)
+				  struct fpga_image_info *info)
 {
+	struct xfpga_klass *obj = mgr->priv;
+	xocl_info(&mgr->dev, "Finish download of xclbin %pUb of size %zu B", &obj->blob->m_header.uuid, obj->count);
+	vfree(obj->blob);
+	obj->blob = NULL;
+	obj->count = 0;
 	return 0;
 }
 
@@ -60,15 +92,23 @@ struct platform_device_id fmgr_id_table[] = {
 
 static int fmgr_probe(struct platform_device *pdev)
 {
-	int ret;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+	int ret = 0;
+	struct xfpga_klass *obj = kzalloc(sizeof(struct xfpga_klass), GFP_KERNEL);
+	if (!obj)
+		return -ENOMEM;
+
+	dev_set_drvdata(&pdev->dev, obj);
+	obj->xdev = xocl_get_xdev(pdev);
 	ret = fpga_mgr_register(&pdev->dev,
-				"Xilinx PCIe FPGA Manager", &xocl_pr_ops, xdev);
+				"Xilinx PCIe FPGA Manager", &xocl_pr_ops, obj);
 	return ret;
 }
 
 static int fmgr_remove(struct platform_device *pdev)
 {
+	struct xfpga_klass *obj = dev_get_drvdata(&pdev->dev);
+	vfree(obj->blob);
+	kfree(obj);
 	fpga_mgr_unregister(&pdev->dev);
 	return 0;
 }
