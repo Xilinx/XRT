@@ -32,7 +32,9 @@ fi
 export XILINX_XRT
 export LD_LIBRARY_PATH=$XILINX_XRT/lib:$LD_LIBRARY_PATH
 export PATH=$XILINX_XRT/bin:$PATH
+export PYTHONPATH=$XILINX_XRT/python:$PYTHONPATH
 
 echo "XILINX_XRT      : $XILINX_XRT"
 echo "PATH            : $PATH"
 echo "LD_LIBRARY_PATH : $LD_LIBRARY_PATH"
+echo "PYTHON_PATH     : $PYTHON_PATH"
