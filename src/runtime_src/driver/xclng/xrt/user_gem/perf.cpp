@@ -965,7 +965,15 @@ namespace xocl {
   int XOCLShim::xclReadSysfs(xclSysfsQuery query, void* data) {
     auto dev = pcidev::get_dev(mBoardNumber);
     std::string err_msg;
-    std::fstream fs = dev->mgmt->sysfs_open("", "debug_ip_layout", err_msg, false, true);
+    if (!err_msg.empty()) {
+      if (mLogStream.is_open()) {
+        mLogStream << "Error message from sysfs reading";
+        mLogStream << err_msg;
+        mLogStream << std::endl;
+      }
+      return -1;
+    }
+    std::fstream fs = dev->user->sysfs_open("", "debug_ip_layout", err_msg, false, true);
     fs.read((char*)data, query.size);
     return 0;
   }
