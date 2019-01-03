@@ -1,8 +1,8 @@
 import sys
+import uuid
 from xrt_binding import * # found in PYTHONPATH
 sys.path.append('../') # utils_binding.py
 from utils_binding import *
-from cffi import FFI
 
 XHELLO_HELLO_CONTROL_ADDR_AP_CTRL = 0x00
 XHELLO_HELLO_CONTROL_ADDR_GIE = 0x04
@@ -25,13 +25,14 @@ XHELLO_HELLO_CONTROL_BITS_ACCESS1_DATA = 64
 
 
 def runKernel(opt):
-    ffi = FFI()  # create the FFI obj
     boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
-    bo1 = xclMapBO(opt.handle, boHandle, True)
-    read_fp = ffi.cast("FILE *", bo1)
+    bo = xclMapBO(opt.handle, boHandle, True)
+    ctypes.memset(bo, 0, opt.DATA_SIZE)
 
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
         return 1
+
+    print("Original string = [%s]\n") % ctypes.cast(bo.contents, ctypes.c_char_p).value
 
     p = xclBOProperties()
     bodevAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle, p)) else -1
@@ -42,13 +43,10 @@ def runKernel(opt):
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
     execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
-    c_f = ffi.cast("FILE *", execData)
 
-    if execData is ffi.NULL:
-        print("execData is NULL")
     print("Construct the exe buf cmd to configure FPGA")
 
-    ecmd = ert_configure_cmd()
+    ecmd = ert_configure_cmd.from_buffer(execData.contents)
     ecmd.m_uert.m_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
     ecmd.m_uert.m_cmd_struct.opcode = 2  # ERT_CONFIGURE
 
@@ -66,8 +64,7 @@ def runKernel(opt):
     ecmd.data[0] = opt.cu_base_addr
     ecmd.m_uert.m_cmd_struct.count = 5 + ecmd.num_cus
 
-    sz = sizeof(ert_configure_cmd)
-    ffi.memmove(c_f, ecmd, sz)
+#    sz = sizeof(ert_configure_cmd)
     print("Send the exec command and configure FPGA (ERT)")
 
     # Send the command.
@@ -82,26 +79,27 @@ def runKernel(opt):
     while xclExecWait(opt.handle, 1000) != 0:
         print(".")
 
+    if (ecmd.m_uert.m_cmd_struct.state != 4):
+        print("configure command failed")
+        return 1
+
     print("Construct the exec command to run the kernel on FPGA")
 
+    xclOpenContext(opt.handle, opt.xuuid, 0, True)
     # construct the exec buffer cmd to start the kernel
-    start_cmd = ert_start_kernel_cmd()
+    start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
     rsz = (XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1) + 1  # regmap array size
-    new_data = ((start_cmd.data._type_) * rsz)()
+    ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
     start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
     start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
     start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
     start_cmd.cu_mask = 0x1
 
+    # Prepare kernel reg map
+    new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
     new_data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0
     new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4] = bodevAddr
     new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF
-
-    ffi.memmove(c_f, start_cmd, 2 * sizeof(c_uint32))
-
-    tmp_buf = ffi.buffer(c_f, 2 * sizeof(c_uint32) + (len(new_data) * sizeof(c_uint32)))
-    data_ptr = ffi.from_buffer(tmp_buf)
-    ffi.memmove(data_ptr + 2 * sizeof(c_uint32), new_data, len(new_data) * sizeof(c_uint32))
 
     if xclExecBuf(opt.handle, execHandle):
         print("Unable to issue xclExecBuf")
@@ -112,19 +110,29 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1) != 0:
+    while xclExecWait(opt.handle, 1000) != 0:
         print(".")
+
+    if (start_cmd.m_uert.m_start_cmd_struct.state != 4):
+        print("configure command failed")
+        return 1
 
     # get the output xclSyncBO
     print("Get the output data from the device")
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
         return 1
 
-    rd_buf = ffi.buffer(read_fp, len("Hello World"))
-    print("RESULT: ")
-    print(rd_buf[:] + "\n")
+    result = ctypes.cast(bo.contents, ctypes.c_char_p).value;
+    print("Result string = [%s]\n") % result
 
-    return 0
+    xclCloseContext(opt.handle, opt.xuuid, 0)
+    xclFreeBO(opt.handle, execHandle)
+    xclFreeBO(opt.handle, boHandle)
+
+    if result != "Hello World\n":
+        return 1
+    else:
+        return 0
 
 
 def main(args):
@@ -133,10 +141,13 @@ def main(args):
 
     try:
         if initXRT(opt):
+            xclClose(opt.handle)
             return 1
         if opt.first_mem < 0:
+            xclClose(opt.handle)
             return 1
         if runKernel(opt):
+            xclClose(opt.handle)
             return 1
 
     except Exception as exp:

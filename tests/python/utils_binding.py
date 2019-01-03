@@ -1,6 +1,28 @@
-from ctypes import *
-import sys, getopt, struct
-# source files imported from PYTHONPATH
+##
+ # Copyright (C) 2018 Xilinx, Inc
+ # Author(s): Ryan Radjabi
+ #            Shivangi Agarwal
+ #            Sonal Santan
+ # Helper routines for Python based XRT tests
+ #
+ # Licensed under the Apache License, Version 2.0 (the "License"). You may
+ # not use this file except in compliance with the License. A copy of the
+ # License is located at
+ #
+ #     http://www.apache.org/licenses/LICENSE-2.0
+ #
+ # Unless required by applicable law or agreed to in writing, software
+ # distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ # License for the specific language governing permissions and limitations
+ # under the License.
+##
+import sys
+import getopt
+import struct
+import ctypes
+import uuid
+# XRT modules imported from PYTHONPATH
 from xclbin_binding import *
 from xrt_binding import *
 from ert_binding import *
@@ -9,10 +31,10 @@ from ert_binding import *
 class Options(object):
     def __init__(self):
         self.DATA_SIZE = 1024
-        self.sharedLibrary = "None"
+        self.sharedLibrary = None
         self.bitstreamFile = None
-        self.halLogFile = ""
-        self.alignment = 128
+        self.halLogFile = None
+        self.alignment = 4096
         self.option_index = 0
         self.index = 0
         self.cu_index = 0
@@ -21,6 +43,7 @@ class Options(object):
         self.first_mem = -1
         self.cu_base_addr = -1
         self.ert = False
+        self.xuuid = uuid.uuid4()
 
     def getOptions(self, argv):
         try:
@@ -56,7 +79,6 @@ class Options(object):
 
         if self.halLogFile:
             print("Using " + self.halLogFile + " as HAL driver logfile")
-        print("HAL driver = " + self.sharedLibrary)
         print("Host buffer alignment " + str(self.alignment) + " bytes")
         print("Compiled kernel = " + self.bitstreamFile)
 
@@ -86,17 +108,26 @@ def initXRT(opt):
 
     opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
 
-    if xclGetDeviceInfo2(opt.handle, byref(deviceInfo)):
+    if xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo)):
         print("Error 2")
         return -1
 
-    print("DSA = %s") % deviceInfo.mName
-    print("Index = %s") % opt.index
-    print("PCIe = GEN%s" + " x %s") % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth)
-    print("OCL Frequency = %s MHz") % deviceInfo.mOCLFrequency[0]
-    print("DDR Bank = %s") % deviceInfo.mDDRBankCount
-    print("Device Temp = %s C") % deviceInfo.mOnChipTemp
-    print("MIG Calibration = %s") % deviceInfo.mMigCalib
+    if sys.version_info[0] == 3:
+        print("DSA = %s" % deviceInfo.mName)
+        print("Index = %d" % opt.index)
+        print("PCIe = GEN%d x %d" % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth))
+        print("OCL Frequency = (%d, %d) MHz" % (deviceInfo.mOCLFrequency[0], deviceInfo.mOCLFrequency[1]))
+        print("DDR Bank = %d" % deviceInfo.mDDRBankCount)
+        print("Device Temp = %d C" % deviceInfo.mOnChipTemp)
+        print("MIG Calibration = %s" % deviceInfo.mMigCalib)
+    else:
+        print("DSA = %s") % deviceInfo.mName
+        print("Index = %s") % opt.index
+        print("PCIe = GEN%s" + " x %s") % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth)
+        print("OCL Frequency = %s MHz") % deviceInfo.mOCLFrequency[0]
+        print("DDR Bank = %d") % deviceInfo.mDDRBankCount
+        print("Device Temp = %d C") % deviceInfo.mOnChipTemp
+        print("MIG Calibration = %s") % deviceInfo.mMigCalib
 
     if not opt.bitstreamFile or not len(opt.bitstreamFile):
         print(opt.bitstreamFile)
@@ -109,57 +140,47 @@ def initXRT(opt):
     tempFileName = opt.bitstreamFile
 
     with open(tempFileName, "rb") as f:
-        header = f.read(7)
-        if header != "xclbin2":
+        data = bytearray(os.path.getsize(tempFileName))
+        f.readinto(data)
+        f.close()
+        blob = (ctypes.c_char * len(data)).from_buffer(data)
+        xbinary = axlf.from_buffer(data)
+        if xbinary.m_magic != "xclbin2":
             print("Invalid Bitsream")
             sys.exit()
-        f.seek(0)
-        blob = f.read()
 
         if xclLoadXclBin(opt.handle, blob):
             print("Bitsream download failed")
 
         xclLoadXclBin(opt.handle, blob)
         print("Finished downloading bitstream %s") % opt.bitstreamFile
+        myuuid = buffer(xbinary.m_header.u2.uuid)[:]
+        opt.xuuid = uuid.UUID(bytes=myuuid)
 
-        f.seek(0)
-        top = f.read()
-        ip = wrap_get_axlf_section(top, AXLF_SECTION_KIND.IP_LAYOUT)
+        head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.IP_LAYOUT)
+        layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset);
 
-        f.seek(ip.contents.m_sectionOffset)
-        count = int(f.read(1).encode("hex"))
-
-        if opt.cu_index > count:
+        if opt.cu_index > layout.m_count:
             print("Can't determine cu base address")
             sys.exit()
 
-        f.seek(ip.contents.m_sectionOffset + sizeof(c_int32) + sizeof(c_int32))
-        # unpack sequence: '=1I1I1Q64s' = 1 uint32 1 uint32 1 uint32 1 uint64 64 char
-        struct_fmt = '=1I1I1Q64s'
-        struct_len = struct.calcsize(struct_fmt)
-        struct_unpack = struct.Struct(struct_fmt).unpack_from
+        ip = (ip_data * layout.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
-        for i in range(count):
-            s = struct_unpack(f.read(struct_len))
-            if s[0] == 1:
-                opt.cu_base_addr = s[2]
-                print("base address %s") % hex(s[2])
+        for i in range(layout.m_count):
+            if (ip[i].m_type != 1):
+                continue
+            opt.cu_base_addr = ip[i].m_base_address
+            print("CU[%d] %s @0x%x") % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr)
 
-        topo = wrap_get_axlf_section(top, AXLF_SECTION_KIND.MEM_TOPOLOGY)
-        f.seek(topo.contents.m_sectionOffset)
-        topo_count = int(f.read(1).encode("hex"))
+        head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
+        topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset);
+        mem = (mem_data * topo.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
-        f.seek(topo.contents.m_sectionOffset + sizeof(c_int32) + sizeof(c_int32))
-        # unpack sequence: '=1b1b6b1Q1Q16s' = 1 byte 1 byte 6 bytes 1 uint64 1 uint64 6 char
-        struct_fmt = '=1b1b6b1Q1Q16s'
-        struct_len = struct.calcsize(struct_fmt)
-        struct_unpack = struct.Struct(struct_fmt).unpack_from
-
-        for i in range(topo_count):
-            s = struct_unpack(f.read(struct_len))
-
-            if s[1] == 1:
-                opt.first_mem = i
-                break
+        for i in range(topo.m_count):
+            print("[%d] %s @0x%x") % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address)
+            if (mem[i].m_used == 0):
+                continue;
+            opt.first_mem = i
+            break
 
     return 0
