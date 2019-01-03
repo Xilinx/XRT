@@ -105,9 +105,6 @@ namespace xdp {
     double getDeviceStartTime(const std::string& deviceName) const;
     double getTotalKernelExecutionTime(const std::string& deviceName) const;
     uint32_t getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const;
-    void getKernelFromComputeUnit(const std::string& cuName, std::string& kernelName) const;
-    void getTraceStringFromComputeUnit(const std::string& deviceName, const std::string& cuName,
-  	    std::string& traceString) const;
 
   public:
     bool getLoggingTrace(int index);

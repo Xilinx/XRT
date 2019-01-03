@@ -49,8 +49,6 @@ namespace xdp {
     mBufferTraceMap.clear();
     mDeviceTraceMap.clear();
     mKernelStartsMap.clear();
-    mComputeUnitKernelNameMap.clear();
-    mComputeUnitKernelTraceMap.clear();
   }
 
   // ***************************************************************************
@@ -69,43 +67,6 @@ namespace xdp {
     }
 
     return deviceTimeStamp;
-  }
-
-  // Get trace string from CU name
-  void TraceLogger::getTraceStringFromComputeUnit(const std::string& deviceName,
-      const std::string& cuName, std::string& traceString) const {
-    auto iter = mComputeUnitKernelTraceMap.find(cuName);
-    if (iter != mComputeUnitKernelTraceMap.end()) {
-      traceString = iter->second;
-    }
-    else {
-      // CR 1003380 - Runtime does not send all CU Names so we create a key
-      std::string kernelName;
-      xdp::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
-      for (const auto &pair : mComputeUnitKernelTraceMap) {
-        auto fullName = pair.second;
-        auto first_index = fullName.find_first_of("|");
-        auto second_index = fullName.find('|', first_index+1);
-        auto third_index = fullName.find('|', second_index+1);
-        auto fourth_index = fullName.find("|", third_index+1);
-        auto fifth_index = fullName.find("|", fourth_index+1);
-        auto sixth_index = fullName.find_last_of("|");
-        std::string currKernelName = fullName.substr(third_index + 1, fourth_index - third_index - 1);
-        if (currKernelName == kernelName) {
-          traceString = fullName.substr(0,fifth_index + 1) + cuName + fullName.substr(sixth_index);
-          return;
-        }
-      }
-      traceString = std::string();
-    }
-  }
-
-  void TraceLogger::getKernelFromComputeUnit(const std::string& cuName, std::string& kernelName) const {
-    auto iter = mComputeUnitKernelNameMap.find(cuName);
-    if (iter != mComputeUnitKernelNameMap.end())
-      kernelName = iter->second;
-    else
-      kernelName = mCurrentKernelName;
   }
 
   // Attach new trace writer
@@ -462,16 +423,11 @@ namespace xdp {
         mProfileCounters->logComputeUnitExecutionEnd(cuName, deviceTimeStamp);
       }
 
-      // Store mapping of CU name to kernel name
-      mComputeUnitKernelNameMap[cu_name] = kernelName;
-
       //New timeline summary data.
       std::string uniqueCUName("KERNEL|");
       (uniqueCUName += newDeviceName) += "|";
       (uniqueCUName += xclbinName) += "|";
       (uniqueCUName += cuName2) += "|";
-      commandString = uniqueCUName + std::to_string(workGroupSize);
-      mComputeUnitKernelTraceMap[cu_name] = commandString;
 
       if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU)
         writeTimelineTrace(timeStamp, uniqueCUName, stageString, eventString, dependString,

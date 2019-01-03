@@ -232,10 +232,6 @@ namespace xdp {
     return xdp::profile::platform::get_profile_slot_properties(Platform.get(), deviceName, type, slotnum);
   }
 
-  void RTSingleton::getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) {
-    xdp::profile::platform::get_profile_kernel_name(Platform.get(), deviceName, cuName, kernelName);
-  }
-
   // Set OCL profile mode based on profile type string
   // NOTE: this corresponds to strings defined in regiongen_new/ipihandler.cxx
   void RTSingleton::setOclProfileMode(unsigned slotnum, std::string type) {

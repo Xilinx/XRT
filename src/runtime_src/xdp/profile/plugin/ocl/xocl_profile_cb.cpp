@@ -125,6 +125,14 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     double timestampMsec = 0.0;
     timestampMsec = (status == CL_COMPLETE) ? (event->time_end()) / 1e6 : timestampMsec;
     timestampMsec = (status == CL_RUNNING) ? (event->time_start()) / 1e6 : timestampMsec;
+    // Create and insert trace string in xdp plugin
+    std::string localSize = std::to_string(localWorkDim[0]) + ":" +
+        std::to_string(localWorkDim[1]) + ":" + std::to_string(localWorkDim[2]);
+    std::string CuInfo = kname + "|" + localSize + "|" + cu_name;
+    std::string uniqueName = "KERNEL|" + deviceName + "|" + xname + "|" + CuInfo + "|";
+    std::string traceString = uniqueName + std::to_string(workGroupSize);
+    xdp::RTSingleton::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
+    // Finally log the execution
     xdp::RTSingleton::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
        ,programId

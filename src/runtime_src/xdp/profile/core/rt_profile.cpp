@@ -246,10 +246,6 @@ namespace xdp {
     return deviceNames;
   }
 
-  void RTProfile::getTraceStringFromComputeUnit(const std::string& deviceName, const std::string& cuName, std::string& traceString) const {
-    mLogger->getTraceStringFromComputeUnit(deviceName, cuName, traceString);
-  }
-
   std::string RTProfile::getProjectName() const
   {
     return mLogger->getCurrentBinaryName();
@@ -291,10 +287,6 @@ namespace xdp {
 
   uint32_t RTProfile::getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const {
     return mProfileCounters->getComputeUnitCalls(deviceName, cuName);
-  }
-
-  void RTProfile::getKernelFromComputeUnit(const std::string& cuName, std::string& kernelName) const {
-    mLogger->getKernelFromComputeUnit(cuName, kernelName);
   }
 
   // ***************************************************************************

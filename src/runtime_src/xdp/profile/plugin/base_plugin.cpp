@@ -27,6 +27,7 @@ namespace xdp {
   //****************
   XDPPluginI::XDPPluginI()
   {
+    mComputeUnitKernelTraceMap.clear();
   }
   
   void XDPPluginI::~XDPPluginI()

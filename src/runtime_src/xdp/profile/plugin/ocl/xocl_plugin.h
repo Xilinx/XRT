@@ -63,6 +63,16 @@ namespace xdp {
       void getDeviceExecutionTimes(RTProfile *profile);
       void getUnusedComputeUnits(RTProfile *profile);
       void getKernelCounts(RTProfile *profile);
+
+    // ***********************************************
+    // Platform Metadata required by profiler.
+    // The plugin can choose to return empty data here.
+    // ***********************************************
+    public:
+      void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) override;
+      void getTraceStringFromComputeUnit(const std::string& deviceName,
+        const std::string& cuName, std::string& traceString) override;
+      void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString) override;
     };
 
 } // xdp

@@ -249,4 +249,48 @@ namespace xdp {
       }
     }
   }
+
+  // ****************************************
+  // Platform Metadata required by profiler
+  // ****************************************
+
+  void XoclPlugin::getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName)
+  {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    profile::platform::get_profile_kernel_name(platform, deviceName, cuName, kernelName);
+  }
+
+  void XoclPlugin::getTraceStringFromComputeUnit(const std::string& deviceName,
+      const std::string& cuName, std::string& traceString)
+  {
+    auto iter = mComputeUnitKernelTraceMap.find(cuName);
+    if (iter != mComputeUnitKernelTraceMap.end()) {
+      traceString = iter->second;
+    }
+    else {
+      // CR 1003380 - Runtime does not send all CU Names so we create a key
+      std::string kernelName;
+      getProfileKernelName(deviceName, cuName, kernelName);
+      for (const auto &pair : mComputeUnitKernelTraceMap) {
+        auto fullName = pair.second;
+        auto first_index = fullName.find_first_of("|");
+        auto second_index = fullName.find('|', first_index+1);
+        auto third_index = fullName.find('|', second_index+1);
+        auto fourth_index = fullName.find("|", third_index+1);
+        auto fifth_index = fullName.find("|", fourth_index+1);
+        auto sixth_index = fullName.find_last_of("|");
+        std::string currKernelName = fullName.substr(third_index + 1, fourth_index - third_index - 1);
+        if (currKernelName == kernelName) {
+          traceString = fullName.substr(0,fifth_index + 1) + cuName + fullName.substr(sixth_index);
+          return;
+        }
+      }
+      traceString = std::string();
+    }
+  }
+
+  void XoclPlugin::setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString)
+  {
+    mComputeUnitKernelTraceMap[cuName] = traceString;
+  }
 } // xdp

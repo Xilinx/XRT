@@ -100,10 +100,6 @@ namespace xdp {
     int getMigrateMemCalls() const { return mMigrateMemCalls;}
     std::string getCurrentBinaryName() const {return mCurrentBinaryName;}
 
-    void getKernelFromComputeUnit(const std::string& cuName, std::string& kernelName) const;
-    void getTraceStringFromComputeUnit(const std::string& deviceName,
-        const std::string& cuName, std::string& traceString) const;
-
   private:
     // helpers
     double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName);
@@ -122,8 +118,6 @@ namespace xdp {
     std::map<uint64_t, BufferTrace*> mBufferTraceMap;
     std::map<uint64_t, DeviceTrace*> mDeviceTraceMap;
     std::map<std::string, std::queue<double>> mKernelStartsMap;
-    std::map<std::string, std::string> mComputeUnitKernelNameMap;
-    std::map<std::string, std::string> mComputeUnitKernelTraceMap;
 
     ProfileCounters* mProfileCounters;
     std::vector<TraceWriterI*> mTraceWriters;

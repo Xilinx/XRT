@@ -306,7 +306,7 @@ namespace xdp {
           //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
         }
         std::string kernelName;
-        rts->getProfileKernelName(deviceName, cuName, kernelName);
+        rts->getPlugin()->getProfileKernelName(deviceName, cuName, kernelName);
 
         if (showKernelCUNames)
           traceName += ("|" + kernelName + "|" + cuName);
@@ -319,7 +319,7 @@ namespace xdp {
 
       if (tr.Type == "Kernel") {
         std::string workGroupSize;
-        rts->getProfileManager()->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
+        rts->getPlugin()->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
         if (traceName.empty()) continue;
         size_t pos = traceName.find_last_of("|");
         workGroupSize = traceName.substr(pos + 1);

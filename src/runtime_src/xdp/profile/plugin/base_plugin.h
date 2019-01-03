@@ -113,6 +113,18 @@ namespace xdp {
       // Key-data map of device data (moved from rt_profile.h)
       // TODO: move this out of the base plugin class
       std::map<xdp::profile::device::key, xdp::profile::device::data> DeviceData;
+
+    // ****************************************
+    // Platform Metadata required by profiler
+    // ****************************************
+    public:
+      virtual void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName);
+      virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
+        const std::string& cuName, std::string& traceString);
+      virtual void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
+
+    protected:
+      std::map<std::string, std::string> mComputeUnitKernelTraceMap;
     };
 
 } // xdp

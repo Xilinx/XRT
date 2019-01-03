@@ -196,7 +196,7 @@ namespace xdp {
     xclCounterResults rolloverCounts = mRolloverCountsMap.at(key);
     for (unsigned int s=0; s < numSlots; ++s) {
       rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
-      rts->getProfileKernelName(deviceName, cuName, kernelName);
+      rts->getPlugin()->getProfileKernelName(deviceName, cuName, kernelName);
       if (!deviceDataExists)
         mDeviceBinaryCuSlotsMap[key].push_back(cuName);
       uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
