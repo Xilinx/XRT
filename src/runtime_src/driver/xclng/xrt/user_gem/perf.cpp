@@ -978,6 +978,9 @@ namespace xocl {
     strncpy(info.device_name, device_name.c_str(), MAX_NAME_LEN);
     strncpy(info.sysfs_name, sysfs_name.c_str(), MAX_NAME_LEN);
     strncpy(info.nifd_name, nifd_name.c_str(), MAX_NAME_LEN);
+    info.device_name[MAX_NAME_LEN-1] = '\0';
+    info.sysfs_name[MAX_NAME_LEN-1] = '\0';
+    info.nifd_name[MAX_NAME_LEN-1] = '\0';
     return 0;
   }
 
