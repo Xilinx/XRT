@@ -414,7 +414,9 @@ typedef struct {
 } xclTraceResultsVector;
 
 typedef struct {
-  char subdev[100];
+  char subdev[256];
+  char entry[256];
+  bool read_all;
   unsigned long size;
 } xclSysfsQuery;
 

@@ -965,16 +965,38 @@ namespace xocl {
   int XOCLShim::xclReadSysfs(xclSysfsQuery query, void* data) {
     auto dev = pcidev::get_dev(mBoardNumber);
     std::string err_msg;
+    std::string subdev = std::string(query.subdev);
+    std::string entry = std::string(query.entry);
+    if (mLogStream.is_open()) {
+      mLogStream << "Reading from: [sysfs root]";
+      mLogStream << subdev << "/" << entry;
+      mLogStream << std::endl;
+    }
+    if (query.read_all && query.size != 0) {
+      if (mLogStream.is_open()) {
+        mLogStream << "Warning message from sysfs reading: ";
+        mLogStream << "read_all is set and size is non-zero, ";
+        mLogStream << "Please make sure query is initialized.";
+        mLogStream << std::endl;
+      }
+      return -1;
+    }
+    std::fstream fs = dev->user->sysfs_open(subdev, entry, err_msg, false, true);
+    unsigned int read_size = query.size;
+    if (query.read_all) {
+      fs.seekg(0, fs.end);
+      read_size = fs.tellg();
+      fs.seekg(0, fs.beg);
+    }
+    fs.read((char*)data, read_size);
     if (!err_msg.empty()) {
       if (mLogStream.is_open()) {
-        mLogStream << "Error message from sysfs reading";
+        mLogStream << "Error message from sysfs reading: ";
         mLogStream << err_msg;
         mLogStream << std::endl;
       }
       return -1;
     }
-    std::fstream fs = dev->user->sysfs_open("", "debug_ip_layout", err_msg, false, true);
-    fs.read((char*)data, query.size);
     return 0;
   }
 
