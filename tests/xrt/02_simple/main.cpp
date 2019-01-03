@@ -25,6 +25,7 @@
 #include <time.h>
 #include <chrono>
 #include <thread>
+#include <uuid/uuid.h>
 
 // driver includes
 #include "ert.h"
@@ -72,8 +73,11 @@ static void printHelp()
 
 
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, uuid_t xclbinId)
 {
+    if(xclOpenContext(handle, xclbinId, 0/*first_mem isn't right*/, true))
+    throw std::runtime_error("Cannot create context");
+
     const size_t DATA_SIZE = count * sizeof(int);
 
     unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); //output s1
@@ -216,6 +220,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             return 1;
         }
 
+    xclCloseContext(handle, xclbinId, 0);
+
     return 0;
 }
 
@@ -288,14 +294,15 @@ while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) 
 	    xclDeviceHandle handle;
     	uint64_t cu_base_addr = 0;
     	int first_mem = -1;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
+        uuid_t xclbinId;
+    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId)) {
 	        return 1;
 	    }
 	    
 	    if (first_mem < 0)
 	        return 1;
         
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem)) {
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, xclbinId)) {
             return 1;
         }
         

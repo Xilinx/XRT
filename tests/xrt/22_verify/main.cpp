@@ -23,6 +23,7 @@
 #include <cstring>
 #include <sys/mman.h>
 #include <time.h>
+#include <uuid/uuid.h>
 
 // driver includes
 #include "ert.h"
@@ -79,8 +80,12 @@ static void printHelp()
 
 
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem, uuid_t xclbinId)
 {
+    if(xclOpenContext(handle, xclbinId, 0/*something from first_mem*/, true))
+    throw std::runtime_error("Cannot create context");
+
+    std::cout << "First mem: " << first_mem << std::endl;
 
     unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_mem);//buf1
     char* bo = (char*)xclMapBO(handle, boHandle, true);
@@ -195,6 +200,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         return 1;
     }
 
+    xclCloseContext(handle, xclbinId, 0);
+
     return 0;
 }
 
@@ -275,14 +282,15 @@ int main(int argc, char** argv)
 	    xclDeviceHandle handle;
     	uint64_t cu_base_addr = 0;
     	int first_mem = -1;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
+        uuid_t xclbinId;
+    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId)) {
 	        return 1;
 	    }
 
 	    if (first_mem < 0)
 	        return 1;
 
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem)) {
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem, xclbinId)) {
             return 1;
         }
 

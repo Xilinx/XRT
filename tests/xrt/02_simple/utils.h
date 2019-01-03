@@ -24,9 +24,15 @@
 
 #include <stdexcept>
 #include <fstream>
+#include <uuid/uuid.h>
+
+void getXclbinId(const axlf* top, uuid_t& xclbinId)
+{
+    uuid_copy(xclbinId, top->m_header.uuid);
+}
 
 static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle& handle, int cu_index,
-	uint64_t& cu_base_addr, int& first_used_mem)
+	uint64_t& cu_base_addr, int& first_used_mem, uuid_t& xclbinId)
 {
     xclDeviceInfo2 deviceInfo;
 
@@ -109,6 +115,7 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
         }
     }
     
+    getXclbinId(top, xclbinId);
 
     delete [] header;
 
