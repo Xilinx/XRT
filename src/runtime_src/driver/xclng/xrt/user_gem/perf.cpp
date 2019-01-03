@@ -33,6 +33,7 @@
  */
 
 #include "shim.h"
+#include "scan.h"
 //#include "datamover.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
@@ -961,6 +962,25 @@ namespace xocl {
     return size;
   }
 
+  int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo& info) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    uint16_t user_instance = dev->user->instance;
+    uint16_t mgmt_instance = dev->mgmt->instance;
+    uint16_t nifd_instance = 0;
+    std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
+    std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
+    std::string sysfs_name = SYSFS_NAME_ROOT + dev->user->sysfs_name;
+    info.device_type = 2;
+    info.device_index = mBoardNumber;
+    info.user_instance = user_instance;
+    info.mgmt_instance = mgmt_instance;
+    info.nifd_instance = nifd_instance;
+    strcpy(info.device_name, device_name.c_str());
+    strcpy(info.sysfs_name, sysfs_name.c_str());
+    strcpy(info.nifd_name, nifd_name.c_str());
+    return 0;
+  }
+
 } // namespace xocl_gem
 
 
@@ -1075,4 +1095,9 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
   // don't do anything
 }
 
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo& info)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
+}
 

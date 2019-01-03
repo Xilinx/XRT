@@ -1171,6 +1171,19 @@ XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xcl
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type,
                                                        xclTraceResultsVector& traceVector);
+
+/**
+ * Experimental APIs for reading debug and profile
+ * 
+ * Warning: These APIs are experimental and can be 
+ * changed or removed at any time. They should only 
+ * be used by debug and profile code.
+ */
+
+XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo& info);
+
+/* End of the Experimental APIs for reading debug and profile */
+
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);

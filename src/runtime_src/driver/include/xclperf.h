@@ -413,4 +413,26 @@ typedef struct {
   xclTraceResults mArray[MAX_TRACE_NUMBER_SAMPLES];
 } xclTraceResultsVector;
 
+#define DRIVER_NAME_ROOT "/dev"
+#define DEVICE_PREFIX "/dri/renderD"
+#define NIFD_PREFIX "/nifd"
+#define SYSFS_NAME_ROOT "/sys/bus/pci/devices/"
+
+/**
+ * \brief data structure for querying device info
+ * 
+ * device_type: 0 for sw_emu, 1 for hw_emu, 2 for xbb, 3 for aws
+ * device_index: the same index number that shim uses
+ */
+typedef struct {
+  unsigned int device_type;
+  unsigned int device_index;
+  unsigned int mgmt_instance;
+  unsigned int user_instance;
+  unsigned int nifd_instance;
+  char device_name[256];
+  char sysfs_name[256];
+  char nifd_name[256];
+} xclDebugProfileDeviceInfo;
+
 #endif
