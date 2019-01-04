@@ -122,7 +122,7 @@ def runKernel(opt):
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
         return 1
 
-    result = bo.contents[:11]
+    result = bo.contents[:len("Hello World")]
     print("Result string = [%s]\n") % result
 
     xclCloseContext(opt.handle, opt.xuuid, 0)
