@@ -990,6 +990,9 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
       return AXI_STREAM_MONITOR;
 
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" )
+      return AXI_STREAM_PROTOCOL_CHECKER;
+
   if ( _sDebugIPType == "UNDEFINED" )
       return UNDEFINED;
 
@@ -1553,6 +1556,7 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case AXI_MONITOR_FIFO_FULL: return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
     case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER: return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _debugIpType);
