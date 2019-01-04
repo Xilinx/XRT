@@ -79,7 +79,6 @@ RH_LIST=(\
      protobuf-static \
      python \
      python-enum \
-     python-cffi \
      redhat-lsb \
      rpm-build \
      strace \
@@ -120,7 +119,6 @@ UB_LIST=(\
      perl \
      python \
      python-enum34 \
-     python-cffi \
      pciutils \
      pkg-config \
      protobuf-compiler \
