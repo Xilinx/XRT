@@ -982,13 +982,6 @@ namespace xocl {
       return -1;
     }
     std::fstream fs = dev->user->sysfs_open(subdev, entry, err_msg, false, true);
-    unsigned int read_size = query.size;
-    if (query.read_all) {
-      fs.seekg(0, fs.end);
-      read_size = fs.tellg();
-      fs.seekg(0, fs.beg);
-    }
-    fs.read((char*)data, read_size);
     if (!err_msg.empty()) {
       if (mLogStream.is_open()) {
         mLogStream << "Error message from sysfs reading: ";
@@ -997,6 +990,13 @@ namespace xocl {
       }
       return -1;
     }
+    unsigned int read_size = query.size;
+    if (query.read_all) {
+      fs.seekg(0, fs.end);
+      read_size = fs.tellg();
+      fs.seekg(0, fs.beg);
+    }
+    fs.read((char*)data, read_size);
     return 0;
   }
 
