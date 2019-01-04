@@ -31,6 +31,7 @@
 #define TYPESIZE                            512
 #define TYPE                                uint16
 #define TYPEISVECTOR                        1
+#define THROUGHPUT_CHK                      16000
 
 const size_t typesize = TYPESIZE;
 const int runmode = RUNMODE;
@@ -587,9 +588,12 @@ int main(int argc, char** argv)
     }
     std::printf ("Maximum throughput: %f MB/s\n",max_V);
 
-    if (max_V < 40000) {
-        std::printf("ERROR: Throughput is less than expected value of 40 GB/sec\n");
+    if (max_V < THROUGHPUT_CHK) {
+        std::printf("ERROR: Throughput is less than expected value of %d GB/sec\n", THROUGHPUT_CHK/1000);
         exit(1);
+    }
+    else {
+        std::printf("TEST PASSED\n");
     }
 
     return EXIT_SUCCESS;
