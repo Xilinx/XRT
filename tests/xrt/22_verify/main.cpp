@@ -23,7 +23,6 @@
 #include <cstring>
 #include <sys/mman.h>
 #include <time.h>
-#include <uuid/uuid.h>
 
 // driver includes
 #include "ert.h"
