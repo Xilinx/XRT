@@ -131,7 +131,7 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     std::string CuInfo = kname + "|" + localSize + "|" + cu_name;
     std::string uniqueName = "KERNEL|" + deviceName + "|" + xname + "|" + CuInfo + "|";
     std::string traceString = uniqueName + std::to_string(workGroupSize);
-    xdp::RTSingleton::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
+    Profiling::Profiler::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
     // Finally log the execution
     xdp::RTSingleton::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)

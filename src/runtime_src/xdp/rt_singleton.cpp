@@ -60,12 +60,6 @@ namespace xdp {
 
     DebugMgr = new RTDebug();
 
-    // Use base plugin as default
-    // NOTE: this needs to be the base class once the owner of XoclPlugin
-    //       is identified in plugins/ocl
-    //Plugin = new XDPPluginI();
-    Plugin = new XoclPlugin();
-
     // share ownership of the global platform
     Platform = xocl::get_shared_platform();
 

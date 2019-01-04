@@ -25,7 +25,6 @@
 #include <chrono>
 
 #include "profiler.h"
-#include "xocl_plugin.h"
 #include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
@@ -51,6 +50,7 @@ namespace Profiling {
   Profiler::Profiler()
   {
     pActive = true;
+    Plugin = new xdp::XoclPlugin();
   }
 
   Profiler::~Profiler()
@@ -74,7 +74,8 @@ namespace Profiling {
   void Profiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto rts = xdp::RTSingleton::Instance();
-
+    // ocl plugin into xdp
+    rts->attachPlugin(Plugin);
     // Start counters
     if (rts->deviceCountersProfilingOn())
       xdp::profile::platform::start_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY);
@@ -122,7 +123,7 @@ namespace Profiling {
       // Gather info for guidance
       // NOTE: this needs to be done here before the device clears its list of CUs
       // See xocl::device::unload_program as called from xocl::program::~program
-      rts->getPlugin()->getGuidanceMetadata( rts->getProfileManager() );
+      Plugin->getGuidanceMetadata( rts->getProfileManager() );
 
       // Record that this was called indirectly by host code
       mEndDeviceProfilingCalled = true;

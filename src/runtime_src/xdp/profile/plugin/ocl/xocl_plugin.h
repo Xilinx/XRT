@@ -72,7 +72,7 @@ namespace xdp {
       void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) override;
       void getTraceStringFromComputeUnit(const std::string& deviceName,
         const std::string& cuName, std::string& traceString) override;
-      void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString) override;
+      void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
     };
 
 } // xdp

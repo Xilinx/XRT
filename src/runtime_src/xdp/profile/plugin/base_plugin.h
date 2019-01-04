@@ -121,7 +121,6 @@ namespace xdp {
       virtual void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName);
       virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
         const std::string& cuName, std::string& traceString);
-      virtual void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;

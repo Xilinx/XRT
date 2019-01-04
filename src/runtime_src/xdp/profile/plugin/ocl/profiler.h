@@ -20,6 +20,7 @@
 #include <CL/opencl.h>
 #include <string>
 #include <chrono>
+#include "xocl_plugin.h"
 
 // Use Profiling::Profiler::Instance() to get to the singleton runtime object
 // Runtime code base can access the singleton and make decisions based on the
@@ -49,6 +50,7 @@ namespace Profiling {
 
   public:
     bool isProfileRunning() {return mProfileRunning;}
+    inline xdp::XoclPlugin* getPlugin() { return Plugin; }
 
   private:
     uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
@@ -58,7 +60,7 @@ namespace Profiling {
     bool mProfileRunning = false;
     bool mEndDeviceProfilingCalled = false;
     static Profiler* mRTInstance;
-
+    xdp::XoclPlugin* Plugin;
   };
 
   /*
