@@ -81,44 +81,22 @@ namespace xdp {
 
   public:
     // Inline functions: platform ID, profile/debug managers, profile flags
-    inline xocl::platform* getcl_platform_id() {return Platform.get(); }
-    inline RTProfile* getProfileManager() {return ProfileMgr; }
+    inline xocl::platform* getcl_platform_id() { return Platform.get(); }
+    inline RTProfile* getProfileManager() { return ProfileMgr; }
     inline RTDebug* getDebugManager() { return DebugMgr; }
     inline const int& getProfileFlag() { return ProfileFlags; }
-
-    inline XDPPluginI* getPlugin() { return Plugin; }
-    // TODO: make this thread safe
+    // Access to plugins from XDP
+    inline XDPPluginI* getPlugin() { assert(Plugin != NULL); return Plugin; }
     inline void attachPlugin(XDPPluginI* plugin) { Plugin = plugin; }
 
   public:
     // Profile settings
     inline bool deviceCountersProfilingOn() { return getProfileFlag() & RTUtil::PROFILE_DEVICE_COUNTERS; }
     inline bool deviceTraceProfilingOn() { return getProfileFlag() & RTUtil::PROFILE_DEVICE_TRACE; }
-    inline bool deviceOclProfilingOn() {
-      return (isOclProfilingOn() && getFlowMode() == HW_EM); }
-    inline bool kernelStreamProfilingOn(unsigned slotnum) {
-      return (deviceTraceProfilingOn() && getOclProfileMode(slotnum) == STREAM && getFlowMode() != CPU);
-    }
-    inline bool kernelPipeProfilingOn(unsigned slotnum) {
-      return (deviceTraceProfilingOn() && getOclProfileMode(slotnum) == PIPE && getFlowMode() != CPU);
-    }
-    inline bool kernelMemoryProfilingOn(unsigned slotnum) {
-      return (deviceTraceProfilingOn() && getOclProfileMode(slotnum) == MEMORY && getFlowMode() != CPU);
-    }
     inline bool applicationProfilingOn() { return getProfileFlag() & RTUtil::PROFILE_APPLICATION; }
-    inline bool profilingOn() { return getProfileFlag() & RTUtil::PROFILE_ALL; }
-
-    inline bool isOclProfilingOn() {return OclProfilingOn;}
-    inline e_ocl_profile_mode getOclProfileMode(unsigned slotnum) {
-      auto iter = OclProfileMode.find(slotnum);
-      if (iter != OclProfileMode.end())
-        return iter->second;
-      return NONE;
-    }
 
     inline void setFlowMode(e_flow_mode mode) {
       FlowMode = mode;
-
       // Turn off device profiling if cpu flow or old emulation flow
       if (mode == CPU || mode == COSIM_EM) {
         turnOffProfile(RTUtil::PROFILE_DEVICE);
@@ -126,6 +104,7 @@ namespace xdp {
     }
     inline e_flow_mode getFlowMode() { return FlowMode; }
     void getFlowModeName(std::string& str);
+    inline bool isHwEmu() { return (getFlowMode() == HW_EM); }
 
   public:
     // Misc. exposed profile functions
@@ -134,10 +113,6 @@ namespace xdp {
     void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
                             unsigned slotnum, std::string& slotName);
     unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum);
-    void setOclProfileMode(unsigned slotnum, std::string type);
-    size_t getDeviceTimestamp(std::string& deviceName);
-    double getReadMaxBandwidthMBps();
-    double getWriteMaxBandwidthMBps();
 
     // Objects released (used by guidance)
     void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
@@ -167,15 +142,11 @@ namespace xdp {
     std::vector<TraceWriterI*> TraceWriters;
 
     e_flow_mode FlowMode = CPU;
-    bool OclProfilingOn = true;
     bool IsObjectsReleased = false;
     int ProfileFlags;
-    std::map<unsigned, e_ocl_profile_mode> OclProfileMode;
 
   };
 
 } // xdp
 
 #endif
-
-

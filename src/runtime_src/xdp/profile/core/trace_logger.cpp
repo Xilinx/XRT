@@ -62,7 +62,7 @@ namespace xdp {
 
     // In HW emulation, use estimated host timestamp based on device clock cycles (in psec from HAL)
     if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
-      size_t dts = xdp::RTSingleton::Instance()->getDeviceTimestamp(deviceName);
+      size_t dts = xdp::RTSingleton::Instance()->getPlugin()->getDeviceTimestamp(deviceName);
       deviceTimeStamp = dts / 1000000.0;
     }
 

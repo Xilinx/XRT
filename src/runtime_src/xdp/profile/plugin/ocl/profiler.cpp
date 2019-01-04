@@ -51,6 +51,10 @@ namespace Profiling {
   {
     pActive = true;
     Plugin = new xdp::XoclPlugin();
+    auto rts = xdp::RTSingleton::Instance();
+    assert(rts);
+    // attach plugin before xdp tries to access it
+    rts->attachPlugin(Plugin);
   }
 
   Profiler::~Profiler()
@@ -74,8 +78,6 @@ namespace Profiling {
   void Profiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto rts = xdp::RTSingleton::Instance();
-    // ocl plugin into xdp
-    rts->attachPlugin(Plugin);
     // Start counters
     if (rts->deviceCountersProfilingOn())
       xdp::profile::platform::start_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY);
@@ -84,7 +86,7 @@ namespace Profiling {
     if (rts->deviceTraceProfilingOn())
       xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, numComputeUnits);
 
-    if (rts->deviceOclProfilingOn())
+    if (rts->isHwEmu())
       xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, numComputeUnits);
 
     mProfileRunning = true;
@@ -111,7 +113,7 @@ namespace Profiling {
 
       // Only called for hw emulation
       // Log accel trace before data trace as that is used for timestamp calculations
-      if (rts->deviceOclProfilingOn()) {
+      if (rts->isHwEmu()) {
         xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, true, true);
         rts->logFinalTrace(XCL_PERF_MON_ACCEL);
         xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_STR, true, true);
@@ -161,7 +163,7 @@ namespace Profiling {
   void Profiler::getDeviceTrace(bool forceReadTrace)
   {
     auto rts = xdp::RTSingleton::Instance();
-    if (!Instance()->isProfileRunning() || (!rts->deviceTraceProfilingOn() && !rts->deviceOclProfilingOn()))
+    if (!Instance()->isProfileRunning() || (!rts->deviceTraceProfilingOn() && !rts->isHwEmu()))
       return;
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
@@ -169,7 +171,7 @@ namespace Profiling {
     if (rts->deviceTraceProfilingOn())
       xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, forceReadTrace);
 
-    if (rts->deviceOclProfilingOn())
+    if (rts->isHwEmu())
       xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, forceReadTrace);
 
     XOCL_DEBUGF("getDeviceTrace: END\n");

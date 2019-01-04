@@ -72,6 +72,9 @@ namespace xdp {
       void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) override;
       void getTraceStringFromComputeUnit(const std::string& deviceName,
         const std::string& cuName, std::string& traceString) override;
+      size_t getDeviceTimestamp(std::string& deviceName) override;
+      double getReadMaxBandwidthMBps() override;
+      double getWriteMaxBandwidthMBps() override;
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
     };
 

@@ -490,8 +490,10 @@ void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* 
 void cb_add_to_active_devices(const std::string& device_name)
 {
   static bool profile_on = xdp::RTSingleton::Instance()->applicationProfilingOn();
-  if (profile_on)
+  if (profile_on) {
     xdp::RTSingleton::Instance()->addToActiveDevices(device_name);
+    Profiling::Profiler::Instance()->getPlugin()->setArgumentsBank(device_name);
+  }
 }
 
 void

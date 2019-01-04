@@ -121,6 +121,9 @@ namespace xdp {
       virtual void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName);
       virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
         const std::string& cuName, std::string& traceString);
+      virtual size_t getDeviceTimestamp(std::string& deviceName);
+      virtual double getReadMaxBandwidthMBps();
+      virtual double getWriteMaxBandwidthMBps();
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;

@@ -293,4 +293,19 @@ namespace xdp {
   {
     mComputeUnitKernelTraceMap[cuName] = traceString;
   }
+
+  size_t XoclPlugin::getDeviceTimestamp(std::string& deviceName) {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    return profile::platform::get_device_timestamp(platform,deviceName);
+  }
+
+  double XoclPlugin::getReadMaxBandwidthMBps() {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    return profile::platform::get_device_max_read(platform);
+  }
+
+  double XoclPlugin::getWriteMaxBandwidthMBps() {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    return profile::platform::get_device_max_write(platform);
+  }
 } // xdp

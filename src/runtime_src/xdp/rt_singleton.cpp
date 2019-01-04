@@ -114,9 +114,6 @@ namespace xdp {
 
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
-    // TEMPORARY - TURN ON DATA TRANSFER TRACE WHEN TIMELINE TRACE IS ON (HW EM ONLY)
-    //if ((FlowMode == HW_EM) && xrt::config::get_timeline_trace())
-    //  data_transfer_trace = "fine";
 
     std::string stall_trace = xrt::config::get_stall_trace();
     ProfileMgr->setTransferTrace(data_transfer_trace);
@@ -127,14 +124,6 @@ namespace xdp {
     if ((FlowMode == DEVICE) || (data_transfer_trace.find("off") == std::string::npos)) {
       turnOnProfile(RTUtil::PROFILE_DEVICE_TRACE);
     }
-
-#if 0
-    // Issue warning for device_profile setting (not supported after 2018.2)
-    if (xrt::config::get_device_profile()) {
-      xrt::message::send(xrt::message::severity_level::WARNING,
-          "The setting device_profile will be deprecated after 2018.2. Please use data_transfer_trace.");
-    }
-#endif
 
     std::string profileFile("");
     std::string profileFile2("");
@@ -226,37 +215,6 @@ namespace xdp {
     return xdp::profile::platform::get_profile_slot_properties(Platform.get(), deviceName, type, slotnum);
   }
 
-  // Set OCL profile mode based on profile type string
-  // NOTE: this corresponds to strings defined in regiongen_new/ipihandler.cxx
-  void RTSingleton::setOclProfileMode(unsigned slotnum, std::string type) {
-    if (slotnum >= XAPM_MAX_NUMBER_SLOTS)
-	  return;
-
-    if (type.find("stream") != std::string::npos || type.find("STREAM") != std::string::npos)
-      OclProfileMode[slotnum] = STREAM;
-    else if (type.find("pipe") != std::string::npos || type.find("PIPE") != std::string::npos)
-      OclProfileMode[slotnum] = PIPE;
-    else if (type.find("memory") != std::string::npos || type.find("MEMORY") != std::string::npos)
-      OclProfileMode[slotnum] = MEMORY;
-    else if (type.find("activity") != std::string::npos || type.find("ACTIVITY") != std::string::npos)
-      OclProfileMode[slotnum] = ACTIVITY;
-    else
-      OclProfileMode[slotnum] = NONE;
-  }
-
-  // TODO: the next 3 functions should be moved to the plugin
-  size_t RTSingleton::getDeviceTimestamp(std::string& deviceName) {
-    return xdp::profile::platform::get_device_timestamp(Platform.get(),deviceName);
-  }
-
-  double RTSingleton::getReadMaxBandwidthMBps() {
-    return xdp::profile::platform::get_device_max_read(Platform.get());
-  }
-
-  double RTSingleton::getWriteMaxBandwidthMBps() {
-    return xdp::profile::platform::get_device_max_write(Platform.get());
-  }
-
   void RTSingleton::getFlowModeName(std::string& str) {
     if (FlowMode == CPU)
       str = "CPU Emulation";
@@ -274,13 +232,8 @@ namespace xdp {
   void RTSingleton::addToActiveDevices(const std::string& deviceName)
   {
     XDP_LOG("addToActiveDevices: device = %s\n", deviceName.c_str());
-
-    // Store arguments and banks for each CU and its ports
-    Plugin->setArgumentsBank(deviceName);
-
     // Store name of device to profiler
     ProfileMgr->addDeviceName(deviceName);
-
     // TODO: Grab device-level metadata here!!! (e.g., device name, CU/kernel names)
   }
 

@@ -306,8 +306,8 @@ namespace xdp {
     double writeMaxBandwidthMBps = 0.0;
     if (xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::CPU
         && xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::COSIM_EM) {
-      readMaxBandwidthMBps = xdp::RTSingleton::Instance()->getReadMaxBandwidthMBps();
-      writeMaxBandwidthMBps = xdp::RTSingleton::Instance()->getWriteMaxBandwidthMBps();
+      readMaxBandwidthMBps = xdp::RTSingleton::Instance()->getPlugin()->getReadMaxBandwidthMBps();
+      writeMaxBandwidthMBps = xdp::RTSingleton::Instance()->getPlugin()->getWriteMaxBandwidthMBps();
     }
 
     mProfileCounters->writeHostTransferSummary(writer, true,  totalReadBytes,  totalReadTimeMsec,  readMaxBandwidthMBps);

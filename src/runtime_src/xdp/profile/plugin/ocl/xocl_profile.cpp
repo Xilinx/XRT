@@ -391,14 +391,14 @@ bool
 isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 {
   return ((xdp::RTSingleton::Instance()->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
-          || (xdp::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
+          || (xdp::RTSingleton::Instance()->isHwEmu() && type == XCL_PERF_MON_ACCEL));
 }
 
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
   return ((xdp::RTSingleton::Instance()->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
-  || (xdp::RTSingleton::Instance()->deviceOclProfilingOn() && type == XCL_PERF_MON_ACCEL));
+  || (xdp::RTSingleton::Instance()->isHwEmu() && type == XCL_PERF_MON_ACCEL));
 }
 
 
