@@ -50,14 +50,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const static struct option long_options[] = {
-    {"hal_driver",      required_argument, 0, 's'},
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"device",          required_argument, 0, 'd'},
-    {"num of elments",  required_argument, 0, 'n'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    {0, 0, 0, 0}
+{"hal_driver",      required_argument, 0, 's'},
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"device",          required_argument, 0, 'd'},
+{"num of elments",  required_argument, 0, 'n'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+{0, 0, 0, 0}
 };
 
 static const char gold[] = "Hello World\n";
@@ -82,10 +82,8 @@ static void printHelp()
 
 static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, size_t n_elements, int first_mem, uuid_t xclbinId)
 {
-    if(xclOpenContext(handle, xclbinId, 0/*something from first_mem*/, true))
-    throw std::runtime_error("Cannot create context");
-
-    std::cout << "First mem: " << first_mem << std::endl;
+    if(xclOpenContext(handle, xclbinId, (first_mem-1), true))
+        throw std::runtime_error("Cannot create context");
 
     unsigned boHandle = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_mem);//buf1
     char* bo = (char*)xclMapBO(handle, boHandle, true);
@@ -93,13 +91,13 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     memset(bo, 0, 1024);
 
     if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_TO_DEVICE, 1024,0))
-      return 1;
+        return 1;
 
     xclBOProperties p;
     uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
     if((bodevAddr == uint64_t (-1)))
-      return 1;
+        return 1;
 
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
@@ -108,33 +106,33 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     std::cout << "Construct the exe buf cmd to configure FPGA" << std::endl;
     //construct the exec buffer cmd to configure.
     {
-      auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
+        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
 
-      std::memset(ecmd, 0, 1024);
-      ecmd->state = ERT_CMD_STATE_NEW;
-      ecmd->opcode = ERT_CONFIGURE;
+        std::memset(ecmd, 0, 1024);
+        ecmd->state = ERT_CMD_STATE_NEW;
+        ecmd->opcode = ERT_CONFIGURE;
 
-      ecmd->slot_size = 1024;
-      ecmd->num_cus = 1;
-      ecmd->cu_shift = 16;
-      ecmd->cu_base_addr = cu_base_addr;
+        ecmd->slot_size = 1024;
+        ecmd->num_cus = 1;
+        ecmd->cu_shift = 16;
+        ecmd->cu_base_addr = cu_base_addr;
 
-      ecmd->ert = ert;
-      if (ert) {
-        ecmd->cu_dma = 1;
-        ecmd->cu_isr = 1;
-      }
+        ecmd->ert = ert;
+        if (ert) {
+            ecmd->cu_dma = 1;
+            ecmd->cu_isr = 1;
+        }
 
-      // CU -> base address mapping
-      ecmd->data[0] = cu_base_addr;
-      ecmd->count = 5 + ecmd->num_cus;
+        // CU -> base address mapping
+        ecmd->data[0] = cu_base_addr;
+        ecmd->count = 5 + ecmd->num_cus;
     }
 
     std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
     //Send the command.
     if(xclExecBuf(handle, execHandle)) {
-      std::cout << "Unable to issue xclExecBuf" << std::endl;
-      return 1;
+        std::cout << "Unable to issue xclExecBuf" << std::endl;
+        return 1;
     }
 
     std::cout << "Wait until the command finish" << std::endl;
@@ -189,7 +187,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     //char* bo1 = (char*)xclMapBO(handle, boHandle, false);
 
 
-     std::cout << "RESULT: " << std::endl;
+    std::cout << "RESULT: " << std::endl;
     for (unsigned i = 0; i < 20; ++i)
         std::cout << bo[i];
     std::cout << std::endl;
@@ -223,54 +221,54 @@ int main(int argc, char** argv)
 
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
     {
-	switch (c)
-	{
-	    case 0:
-		if (long_options[option_index].flag != 0)
-		    break;
-	    case 1:
-		    ert = true;
-    		break;
+        switch (c)
+        {
+        case 0:
+            if (long_options[option_index].flag != 0)
+                break;
+        case 1:
+            ert = true;
+            break;
         case 's':
             sharedLibrary = optarg;
             break;
-	    case 'k':
-	    	bitstreamFile = optarg;
-    		break;
-	    case 'l':
-    		halLogfile = optarg;
-    		break;
-	    case 'a':
-	    	alignment = std::atoi(optarg);
-    		break;
-	    case 'd':
-   	    	index = std::atoi(optarg);
-    		break;
-	    case 'c':
-	    	cu_index = std::atoi(optarg);
-    		break;
-	    case 'h':
-	    	printHelp();
-    		return 0;
-	    case 'v':
-	    	verbose = true;
-		    break;
-	    default:
-    		printHelp();
-		return -1;
-	}
+        case 'k':
+            bitstreamFile = optarg;
+            break;
+        case 'l':
+            halLogfile = optarg;
+            break;
+        case 'a':
+            alignment = std::atoi(optarg);
+            break;
+        case 'd':
+            index = std::atoi(optarg);
+            break;
+        case 'c':
+            cu_index = std::atoi(optarg);
+            break;
+        case 'h':
+            printHelp();
+            return 0;
+        case 'v':
+            verbose = true;
+            break;
+        default:
+            printHelp();
+            return -1;
+        }
     }
 
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
-	    std::cout << "FAILED TEST\n";
-    	std::cout << "No bitstream specified\n";
-    	return -1;
+        std::cout << "FAILED TEST\n";
+        std::cout << "No bitstream specified\n";
+        return -1;
     }
 
     if (halLogfile.size()) {
-	    std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
+        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
     }
 
     std::cout << "HAL driver = " << sharedLibrary << "\n";
@@ -279,20 +277,19 @@ int main(int argc, char** argv)
 
 
     try {
-	    xclDeviceHandle handle;
-    	uint64_t cu_base_addr = 0;
-    	int first_mem = -1;
+        xclDeviceHandle handle;
+        uint64_t cu_base_addr = 0;
+        int first_mem = -1;
         uuid_t xclbinId;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId)) {
-	        return 1;
-	    }
 
-	    if (first_mem < 0)
-	        return 1;
-
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem, xclbinId)) {
+        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
             return 1;
-        }
+
+        if (first_mem < 0)
+            return 1;
+
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose,n_elements, first_mem, xclbinId))
+            return 1;
 
     }
     catch (std::exception const& e)
