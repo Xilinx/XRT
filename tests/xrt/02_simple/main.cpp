@@ -25,7 +25,6 @@
 #include <time.h>
 #include <chrono>
 #include <thread>
-#include <uuid/uuid.h>
 
 // driver includes
 #include "ert.h"
