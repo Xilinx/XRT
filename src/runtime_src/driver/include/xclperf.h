@@ -391,8 +391,8 @@ typedef struct {
 
 /* Performance monitor trace results */
 typedef struct {
-  xclPerfMonEventID EventID;
-  xclPerfMonEventType EventType;
+  enum xclPerfMonEventID EventID;
+  enum xclPerfMonEventType EventType;
   unsigned long long Timestamp;
   unsigned char  Overflow;
   unsigned int TraceID;

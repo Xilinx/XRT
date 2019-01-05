@@ -339,12 +339,16 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 		drm_gem_object_unreference_unlocked(&cb->xobj->base);
 	}
 
+	if (kiocb) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
-        kiocb->ki_complete(kiocb, done_bytes, error);
+		kiocb->ki_complete(kiocb, done_bytes, error);
 #else
-	atomic_set(&kiocb->ki_users, 1);
-	aio_complete(kiocb, done_bytes, error);
+		atomic_set(&kiocb->ki_users, 1);
+		aio_complete(kiocb, done_bytes, error);
 #endif
+	}
+
+	queue_req_free(queue, io_req);
 
 	queue_req_free(queue, io_req);
 
@@ -369,7 +373,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 			"request size %ld, offset %lld",
 			gem_obj->size, len, offset);
 		ret = -EINVAL;
-		goto failed;
+		goto out;
 	}
 
 	drm_gem_object_reference(gem_obj);
@@ -379,7 +383,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	if (!io_req) {
 		xocl_err(&sdev->pdev->dev, "io request list full");
 		ret = -ENOMEM;
-		goto failed;
+		goto out;
 	}
 
 	cb = &io_req->cb;
@@ -404,21 +408,25 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 	}
 	queue_req_pending(queue, io_req);
 
-	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
-        	__func__, dev_name(&sdev->pdev->dev), req,
-        	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
-        	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", len);
+	pr_debug("%s, %s req 0x%p,0x%p, hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, "
+		"ST %s %lu.\n",
+		__func__, dev_name(&sdev->pdev->dev), io_req, req,
+		(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
+		req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", len);
 
 	ret = qdma_request_submit((unsigned long)xdev->dma_handle, queue->queue,
 				req);
 	if (ret < 0) {
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 		queue_req_free(queue, io_req);
+		io_req = NULL;
 	}
 
-failed:
+out:
 	if (!kiocb) {
 		drm_gem_object_unreference_unlocked(gem_obj);
+		if (io_req)
+			queue_req_free(queue, io_req);
 	}
 
 	return ret;
@@ -525,21 +533,25 @@ static ssize_t queue_rw(struct str_device *sdev, struct stream_queue *queue,
 	}
 	queue_req_pending(queue, io_req);
 
-	pr_debug("%s, %s req 0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, ST %s %lu.\n",
-        	__func__, dev_name(&sdev->pdev->dev), req,
-        	(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
-        	req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", sz);
+	pr_debug("%s, %s req 0x%p,0x%p hndl 0x%lx,0x%lx, sgl 0x%p,%u,%u, "
+		"ST %s %lu.\n",
+		__func__, dev_name(&sdev->pdev->dev), io_req, req,
+		(unsigned long)xdev->dma_handle, queue->queue, req->sgt->sgl,
+		req->sgt->orig_nents, req->sgt->nents, write ? "W":"R", sz);
 
 	ret = qdma_request_submit((unsigned long)xdev->dma_handle, queue->queue,
 				req);
 	if (ret < 0) {
 		queue_req_free(queue, io_req);
+		io_req = NULL;
 		xocl_err(&sdev->pdev->dev, "post wr failed ret=%ld", ret);
 	}
 
 	if (!kiocb) {
 		pci_unmap_sg(xdev->core.pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
+		if (io_req)
+			queue_req_free(queue, io_req);
 	}
 
 	if (ret < 0)
@@ -631,7 +643,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
-		
+
 	if (!is_sync_kiocb(kiocb)) {
 		return queue_aio_write(kiocb, io->iov, nr, io->iov_offset);
 	}
@@ -654,7 +666,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
-		
+
 	if (!is_sync_kiocb(kiocb)) {
 		return queue_aio_read(kiocb, io->iov, nr, io->iov_offset);
 	}
@@ -712,11 +724,12 @@ static int queue_flush(struct file *file, fl_owner_t id)
 							list);
 
 		spin_unlock_bh(&queue->req_lock);
-		xocl_info(&sdev->pdev->dev, "Queue 0x%lx, cancel req 0x%p",
-			queue->queue, &io_req->req);
+		xocl_info(&sdev->pdev->dev, "Queue 0x%lx, cancel req 0x%p,0x%p",
+			queue->queue, io_req, &io_req->req);
 		queue_req_complete((unsigned long)&io_req->cb, 0, -ECANCELED);
 		spin_lock_bh(&queue->req_lock);
 	}
+	spin_unlock_bh(&queue->req_lock);
 
 	if (queue->req_cache)
 		vfree(queue->req_cache);
@@ -837,7 +850,7 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	queue->req_cache = vzalloc((qconf->rngsz << 1) *
 					sizeof(struct stream_async_req));
 	if (!queue->req_cache) {
-		xocl_err(&sdev->pdev->dev, "req. cache OOM %u", qconf->rngsz); 
+		xocl_err(&sdev->pdev->dev, "req. cache OOM %u", qconf->rngsz);
 		goto failed;
 	} else {
 		int i;
