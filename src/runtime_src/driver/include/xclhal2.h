@@ -1186,6 +1186,18 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclP
  * experimental API is added
  */
 XCL_DRIVER_DLLESPEC int xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, void* data);
+/* End of the Experimental APIs for sysfs API */
+
+/** 
+ * Experimental APIs for reading debug and profile
+ * 
+ * Warning: These APIs are experimental and can be 
+ * changed or removed at any time. They should only 
+ * be used by debug and profile code.
+ */
+XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo& info);
+/* End of the Experimental APIs for reading debug and profile */
+
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

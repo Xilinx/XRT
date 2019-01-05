@@ -420,4 +420,37 @@ typedef struct {
   unsigned long size;
 } xclSysfsQuery;
 
+#define DRIVER_NAME_ROOT "/dev"
+#define DEVICE_PREFIX "/dri/renderD"
+#define NIFD_PREFIX "/nifd"
+#define SYSFS_NAME_ROOT "/sys/bus/pci/devices/"
+#define MAX_NAME_LEN 256
+
+enum DeviceType {
+  SW_EMU = 0,
+  HW_EMU = 1,
+  XBB = 2,
+  AWS = 3
+};
+
+/**
+ * \brief data structure for querying device info
+ * 
+ * TODO:
+ * all the data for nifd won't be avaiable until nifd
+ * driver is merged and scan.h is changed to recognize
+ * nifd driver.
+ */
+typedef struct {
+  DeviceType device_type;
+  unsigned int device_index;
+  unsigned int mgmt_instance;
+  unsigned int user_instance;
+  unsigned int nifd_instance;
+  char device_name[MAX_NAME_LEN];
+  char sysfs_name[MAX_NAME_LEN];
+  char nifd_name[MAX_NAME_LEN];
+} xclDebugProfileDeviceInfo;
+
+
 #endif
