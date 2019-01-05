@@ -344,7 +344,7 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf;
         uint64_t memoryUsage, boCount;
-        
+
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
         pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
@@ -459,17 +459,6 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
-
-#if 0 // Enable when all platforms with ERT are packaged with new firmware
-        buf.clear();
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "mb_scheduler", "kds_custat", errmsg, buf);
-
-        if (buf.size()) {
-          ss << "\nCompute Unit Usage:" << "\n";
-          ss << buf.data() << "\n";
-        }
-#endif
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
@@ -588,6 +577,37 @@ public:
         lines.push_back(ss.str());
     }
 
+    void m_cu_usage_stringize_dynamics(std::vector<std::string>& lines) const
+    {
+        std::stringstream ss;
+        std::string errmsg;
+        std::vector<char> buf;
+
+#if 0
+        std::vector<ip_data> computeUnits;
+        if( getComputeUnits( computeUnits ) < 0 )
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+#endif
+
+        pcidev::get_dev(m_idx)->user->
+          sysfs_get("mb_scheduler", "kds_custat", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        if (buf.size()) {
+          ss << "\nCompute Unit Usage:" << "\n";
+          ss << buf.data() << "\n";
+        }
+
+        ss << std::setw(80) << std::setfill('#') << std::left << "\n";
+        lines.push_back(ss.str());
+    }
+
+
     int readSensors( void ) const
     {
         sensor_tree::put( "runtime.build.version",   xrt_build_version );
@@ -618,7 +638,7 @@ public:
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
             sensor_tree::put( "board.info.dna", dna);
         }
-        
+
 
         // physical
         sensor_tree::put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
@@ -747,9 +767,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        ) 
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        ) 
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" ) 
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.sys_5v5.voltage" )

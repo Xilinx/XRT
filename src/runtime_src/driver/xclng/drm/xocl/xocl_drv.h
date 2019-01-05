@@ -324,6 +324,7 @@ struct xocl_mb_scheduler_funcs {
 	void (*destroy_client)(struct platform_device *pdev, void **priv);
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
 		poll_table *wait, void *priv);
+	int (*stop)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
 	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
 };
@@ -348,6 +349,10 @@ struct xocl_mb_scheduler_funcs {
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	MB_SCHEDULER_OPS(xdev)->poll_client(MB_SCHEDULER_DEV(xdev), filp, \
 	wait, priv) : 0)
+#define	xocl_exec_stop(xdev)		\
+	(MB_SCHEDULER_DEV(xdev) ? 				\
+	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
+        -ENODEV)
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
