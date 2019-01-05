@@ -962,6 +962,44 @@ namespace xocl {
     return size;
   }
 
+  int XOCLShim::xclReadSysfs(xclSysfsQuery query, void* data) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string err_msg;
+    std::string subdev = std::string(query.subdev);
+    std::string entry = std::string(query.entry);
+    if (mLogStream.is_open()) {
+      mLogStream << "Reading from: [sysfs root]";
+      mLogStream << subdev << "/" << entry;
+      mLogStream << std::endl;
+    }
+    if (query.read_all && query.size != 0) {
+      if (mLogStream.is_open()) {
+        mLogStream << "Warning message from sysfs reading: ";
+        mLogStream << "read_all is set and size is non-zero, ";
+        mLogStream << "Please make sure query is initialized.";
+        mLogStream << std::endl;
+      }
+      return -1;
+    }
+    std::fstream fs = dev->user->sysfs_open(subdev, entry, err_msg, false, true);
+    if (!err_msg.empty()) {
+      if (mLogStream.is_open()) {
+        mLogStream << "Error message from sysfs reading: ";
+        mLogStream << err_msg;
+        mLogStream << std::endl;
+      }
+      return -1;
+    }
+    unsigned int read_size = query.size;
+    if (query.read_all) {
+      fs.seekg(0, fs.end);
+      read_size = fs.tellg();
+      fs.seekg(0, fs.beg);
+    }
+    fs.read((char*)data, read_size);
+    return 0;
+  }
+
   int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo& info) {
     auto dev = pcidev::get_dev(mBoardNumber);
     uint16_t user_instance = dev->user->instance;
@@ -986,6 +1024,8 @@ namespace xocl {
 
 } // namespace xocl_gem
 
+
+} // namespace xocl_gem
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
@@ -1098,9 +1138,17 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
   // don't do anything
 }
 
+int xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, void* data) {
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclReadSysfs(query, data);
+}
+
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo& info)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
+
 

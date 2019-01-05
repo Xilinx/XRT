@@ -234,8 +234,12 @@ public:
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
-    // Experimental APIs
+    // Experimental sysfs API
+    int xclReadSysfs(xclSysfsQuery query, void* data);
+
+    // Experimental debug profile device data API
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo& info);
+
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
