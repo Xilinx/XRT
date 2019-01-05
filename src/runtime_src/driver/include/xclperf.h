@@ -413,13 +413,6 @@ typedef struct {
   xclTraceResults mArray[MAX_TRACE_NUMBER_SAMPLES];
 } xclTraceResultsVector;
 
-typedef struct {
-  char subdev[256];
-  char entry[256];
-  bool read_all;
-  unsigned long size;
-} xclSysfsQuery;
-
 #define DRIVER_NAME_ROOT "/dev"
 #define DEVICE_PREFIX "/dri/renderD"
 #define NIFD_PREFIX "/nifd"

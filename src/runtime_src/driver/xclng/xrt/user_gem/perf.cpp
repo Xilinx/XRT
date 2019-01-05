@@ -962,41 +962,18 @@ namespace xocl {
     return size;
   }
 
-  int XOCLShim::xclReadSysfs(xclSysfsQuery query, void* data) {
+  int XOCLShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size) {
     auto dev = pcidev::get_dev(mBoardNumber);
-    std::string err_msg;
-    std::string subdev = std::string(query.subdev);
-    std::string entry = std::string(query.entry);
+    std::string subdev_str = std::string(subdev);
+    std::string entry_str = std::string(entry);
     if (mLogStream.is_open()) {
-      mLogStream << "Reading from: [sysfs root]";
-      mLogStream << subdev << "/" << entry;
+      mLogStream << "Retrieving [sysfs root]";
+      mLogStream << subdev_str << "/" << entry_str;
       mLogStream << std::endl;
     }
-    if (query.read_all && query.size != 0) {
-      if (mLogStream.is_open()) {
-        mLogStream << "Warning message from sysfs reading: ";
-        mLogStream << "read_all is set and size is non-zero, ";
-        mLogStream << "Please make sure query is initialized.";
-        mLogStream << std::endl;
-      }
-      return -1;
-    }
-    std::fstream fs = dev->user->sysfs_open(subdev, entry, err_msg, false, true);
-    if (!err_msg.empty()) {
-      if (mLogStream.is_open()) {
-        mLogStream << "Error message from sysfs reading: ";
-        mLogStream << err_msg;
-        mLogStream << std::endl;
-      }
-      return -1;
-    }
-    unsigned int read_size = query.size;
-    if (query.read_all) {
-      fs.seekg(0, fs.end);
-      read_size = fs.tellg();
-      fs.seekg(0, fs.beg);
-    }
-    fs.read((char*)data, read_size);
+    std::string sysfsFullPath = dev->user->get_sysfs_path(subdev_str, entry_str);
+    strncpy(sysfsPath, sysfsFullPath.c_str(), size);
+    sysfsPath[size - 1] = '\0';
     return 0;
   }
 
@@ -1021,9 +998,6 @@ namespace xocl {
     info.nifd_name[MAX_NAME_LEN-1] = '\0';
     return 0;
   }
-
-} // namespace xocl_gem
-
 
 } // namespace xocl_gem
 
@@ -1138,11 +1112,12 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
   // don't do anything
 }
 
-int xclReadSysfs(xclDeviceHandle handle, xclSysfsQuery query, void* data) {
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+                      const char* entry, char* sysfsPath, size_t size) {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclReadSysfs(query, data);
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
 }
 
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo& info)

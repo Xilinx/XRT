@@ -235,7 +235,7 @@ public:
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
     // Experimental sysfs API
-    int xclReadSysfs(xclSysfsQuery query, void* data);
+    int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
     // Experimental debug profile device data API
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo& info);
