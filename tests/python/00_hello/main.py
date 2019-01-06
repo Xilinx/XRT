@@ -2,7 +2,6 @@ import sys
 sys.path.append('../') # utils_binding.py
 from xrt_binding import *
 from utils_binding import *
-from cffi import FFI
 
 
 def main(args):
@@ -16,15 +15,13 @@ def main(args):
 
         boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
 
-        ffi = FFI()
         bo1 = xclMapBO(opt.handle, boHandle1, True)
         testVector = "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n"
-        bo1_p = ffi.cast("FILE *", bo1)
+        ctypes.memset(bo1, 0, opt.DATA_SIZE)
 
-        ffi.memmove(bo1_p, testVector, len(testVector))
+        ctypes.memmove(bo1, testVector, len(testVector))
 
-        bo1_buf = ffi.buffer(bo1_p, len(testVector))
-        print("buffer from device: ", bo1_buf[:])
+        print("buffer from device: \n%s") % bo1.contents[:55]
 
         if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
             return 1
@@ -40,10 +37,8 @@ def main(args):
             return 1
 
         bo2 = xclMapBO(opt.handle, boHandle1, False)
-        bo2_p = ffi.cast("FILE *", bo2)
-        bo2_buf = ffi.buffer(bo2_p, len(testVector))
 
-        if bo1_buf[:] != bo2_buf[:]:
+        if bo1.contents[:] != bo2.contents[:]:
             print("FAILED TEST")
             print("Value read back does not match value written")
             return 1
