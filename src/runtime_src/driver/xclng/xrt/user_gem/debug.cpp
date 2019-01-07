@@ -485,7 +485,6 @@ namespace xocl {
 
 } // namespace xocl_gem
 
-
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
