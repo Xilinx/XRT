@@ -20,7 +20,7 @@
 #include <string>
 #include <iosfwd>
 
-namespace xrt { namespace config {
+namespace xrt_core { namespace config {
 
 /**
  * Config (ini) reader for runtime

@@ -25,7 +25,7 @@
 
 namespace {
 
-using severity_level = xrt::message::severity_level;
+using severity_level = xrt_core::message::severity_level;
 
 //--
 class message_dispatch
@@ -170,12 +170,12 @@ console_dispatch::send(severity_level l, const char* msg) {
 
 } //end unnamed namespace
 
-namespace xrt { namespace message {
+namespace xrt_core { namespace message {
 
 void
 send(severity_level l, const char* msg)
 {
-  static const std::string logger =  xrt::config::get_logging();
+  static const std::string logger =  xrt_core::config::get_logging();
   static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
   dispatcher->send(l, msg);
 }

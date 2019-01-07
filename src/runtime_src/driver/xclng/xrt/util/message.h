@@ -19,7 +19,7 @@
 
 #include <string>
 
-namespace xrt { namespace message {
+namespace xrt_core { namespace message {
 
 //modeled based on syslog severity. 
 enum class severity_level : unsigned short 

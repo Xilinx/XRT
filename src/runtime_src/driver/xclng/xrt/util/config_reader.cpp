@@ -15,8 +15,7 @@
  */
 
 #include "config_reader.h"
-#include "debug.h"
-#include "error.h"
+#include "message.h"
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem/path.hpp>
@@ -77,7 +76,7 @@ struct tree
   void
   setenv()
   {
-    if (xrt::config::get_multiprocess())
+    if (xrt_core::config::get_multiprocess())
       ::setenv("XCL_MULTIPROCESS_MODE","1",1);
   }
 
@@ -91,7 +90,7 @@ struct tree
       setenv();
     }
     catch (const std::exception& ex) {
-      xrt::message::send(xrt::message::severity_level::WARNING, ex.what());
+      xrt_core::message::send(xrt_core::message::severity_level::WARNING, ex.what());
     }
   }
 
@@ -116,7 +115,7 @@ static tree s_tree;
 
 }
 
-namespace xrt { namespace config {
+namespace xrt_core { namespace config {
 
 namespace detail {
 
