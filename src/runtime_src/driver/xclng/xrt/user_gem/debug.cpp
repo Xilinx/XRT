@@ -387,7 +387,7 @@ namespace xocl {
 
     // Read all metric counters
     uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, XSAM_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XSAM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
