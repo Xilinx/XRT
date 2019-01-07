@@ -984,17 +984,14 @@ namespace xocl {
     uint16_t nifd_instance = 0;
     std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
     std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
-    std::string sysfs_name = SYSFS_NAME_ROOT + dev->user->sysfs_name;
     info.device_type = DeviceType::XBB;
     info.device_index = mBoardNumber;
     info.user_instance = user_instance;
     info.mgmt_instance = mgmt_instance;
     info.nifd_instance = nifd_instance;
     strncpy(info.device_name, device_name.c_str(), MAX_NAME_LEN);
-    strncpy(info.sysfs_name, sysfs_name.c_str(), MAX_NAME_LEN);
     strncpy(info.nifd_name, nifd_name.c_str(), MAX_NAME_LEN);
     info.device_name[MAX_NAME_LEN-1] = '\0';
-    info.sysfs_name[MAX_NAME_LEN-1] = '\0';
     info.nifd_name[MAX_NAME_LEN-1] = '\0';
     return 0;
   }

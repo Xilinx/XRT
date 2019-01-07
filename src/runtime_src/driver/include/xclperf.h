@@ -441,7 +441,6 @@ typedef struct {
   unsigned int user_instance;
   unsigned int nifd_instance;
   char device_name[MAX_NAME_LEN];
-  char sysfs_name[MAX_NAME_LEN];
   char nifd_name[MAX_NAME_LEN];
 } xclDebugProfileDeviceInfo;
 
