@@ -392,6 +392,7 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
     }
     // Restore formatting
     std::cout.copyfmt(saveFormat);
+
   }
   return 0;
 }
