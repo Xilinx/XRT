@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,33 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#ifndef utils_h
-#define utils_h
+#ifndef XRT_TEST_UTILS_H
+#define XRT_TEST_UTILS_H
 
 #include "xclbin.h"
 #include "xclhal2.h"
+#include "ert.h"
 
 #include <stdexcept>
 #include <fstream>
+#include <thread>
+#include <ctime>
+#include <map>
+#include <chrono>
 
-static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle& handle, int cu_index,
+#include <sys/types.h>
+#include <unistd.h>
+
+static const std::map<ert_cmd_state, std::string> ertCmdCodes = {
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_NEW, "ERT_CMD_STATE_NEW"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_QUEUED, "ERT_CMD_STATE_QUEUED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_RUNNING, "ERT_CMD_STATE_RUNNING"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_COMPLETED, "ERT_CMD_STATE_COMPLETED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ERROR, "ERT_CMD_STATE_ERROR"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"),
+};
+
+static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle handle, int cu_index,
 	uint64_t& cu_base_addr, int& first_used_mem)
 {
     xclDeviceInfo2 deviceInfo;
@@ -108,12 +123,21 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
             break;
         }
     }
-    
+
 
     delete [] header;
 
     return 0;
 }
 
+
+static inline std::ostream& stamp(std::ostream& os) {
+    const auto timenow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::string st(std::ctime(&timenow));
+    st.pop_back();
+//    os << '[' << std::this_thread::get_id() << "] (" << st << "): ";
+    os << '[' << getpid() << "] (" << st << "): ";
+    return os;
+}
 
 #endif

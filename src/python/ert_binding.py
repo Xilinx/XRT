@@ -20,9 +20,8 @@
 
 import os
 import ctypes
-import enum
 
-class ert_cmd_state (enum.Enum):
+class ert_cmd_state ():
     ERT_CMD_STATE_NEW = 1
     ERT_CMD_STATE_QUEUED = 2
     ERT_CMD_STATE_RUNNING = 3
@@ -30,7 +29,7 @@ class ert_cmd_state (enum.Enum):
     ERT_CMD_STATE_ERROR = 5
     ERT_CMD_STATE_ABORT = 6
 
-class ert_cmd_opcode (enum.Enum):
+class ert_cmd_opcode ():
     ERT_START_CU     = 0
     ERT_START_KERNEL = 0
     ERT_CONFIGURE    = 2

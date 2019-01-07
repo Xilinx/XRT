@@ -243,7 +243,7 @@ static int qdma_flq_refill(struct qdma_descq *descq, int idx, int count,
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update_pidx, bool refill)
 {
-	struct xlnx_dma_dev *xdev = descq->xdev; 
+	struct xlnx_dma_dev *xdev = descq->xdev;
 	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	unsigned int pidx = flq->pidx_pend;
 	unsigned int fsgcnt = ring_idx_delta(descq->pidx, pidx, flq->size);
@@ -318,7 +318,7 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 			qdma_sgt_req_done(descq, cb, 0);
 		else if (req->eot && req->eot_rcved)
 			qdma_sgt_req_done(descq, cb, 0);
-		else			
+		else
 			break;
 	}
 
@@ -356,7 +356,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 	cmpl->f.eot = cmpt[0] & F_C2H_CMPT_ENTRY_F_EOT ? 1 : 0;
 	cmpl->f.desc_used = cmpt[0] & F_C2H_CMPT_ENTRY_F_DESC_USED ? 1 : 0;
 
-	pr_debug("%s, cmpl fmt %d, color %d, err %d, eot %d, desc %d,%llx.\n",
+	pr_debug("%s, fmt %d, colr %d, err %d, eot %d, desc %d,0x%llx.\n",
 		descq->conf.name, cmpl->f.format, cmpl->f.color, cmpl->f.err,
 		cmpl->f.eot, cmpl->f.desc_used,
 		(cmpt[0] >> S_C2H_CMPT_ENTRY_LENGTH) & M_C2H_CMPT_ENTRY_LENGTH);

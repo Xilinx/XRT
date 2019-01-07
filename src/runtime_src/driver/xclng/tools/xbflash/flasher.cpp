@@ -62,6 +62,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     {
         type = E_FlasherType::BPI;
     }
+    else if (typeStr.compare("qspi_ps") == 0)
+    {
+        type = E_FlasherType::QSPIPS;
+    }
     else
     {
         std::cout << "Unknown flash type: " << typeStr << std::endl;
@@ -104,6 +108,19 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         else
         {
             retVal = bpi.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
+    case QSPIPS:
+    {
+        XQSPIPS_Flasher xqspi_ps(mIdx, mMgmtMap);
+        if(secondary != nullptr)
+        {
+            std::cout << "ERROR: QSPIPS mode does not support two mcs files." << std::endl;
+        }
+        else
+        {
+            retVal = xqspi_ps.xclUpgradeFirmware(*primary);
         }
         break;
     }
