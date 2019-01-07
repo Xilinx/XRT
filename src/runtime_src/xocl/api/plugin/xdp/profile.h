@@ -44,7 +44,7 @@ using cb_action_ndrange_type = std::function<void (xocl::event* event,cl_int sta
                                                    std::string kname, std::string xname, size_t workGroupSize,
                                                    const size_t* globalWorkDim, const size_t* localWorkDim, unsigned int programId)>;
 using cb_action_read_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
-                                          uint64_t address, const std::string& bank)>;
+                                          uint64_t address, const std::string& bank, size_t user_offset, size_t user_size, bool entire_buffer)>;
 using cb_action_map_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
                                                uint64_t address, const std::string& bank, cl_map_flags map_flags)>;
 using cb_action_write_type = std::function<void (xocl::event* event,cl_int status, cl_mem buffer, size_t size,
@@ -115,7 +115,7 @@ xocl::event::action_profile_type
 action_ndrange(cl_event event,cl_kernel kernel);
 
 xocl::event::action_profile_type
-action_read(cl_mem buffer);
+action_read(cl_mem buffer, size_t offset, size_t size, bool entire_buffer);
 
 xocl::event::action_profile_type
 action_map(cl_mem buffer,cl_map_flags map_flags);
