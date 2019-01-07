@@ -19,7 +19,6 @@
 ##
 import os
 import ctypes
-import enum
 from xclbin_binding import *
 
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
@@ -90,7 +89,7 @@ class xclDeviceInfo2(ctypes.Structure):
     ]
 
 
-class xclMemoryDomains(enum.Enum):
+class xclMemoryDomains():
     XCL_MEM_HOST_RAM = 0
     XCL_MEM_DEVICE_RAM = 1
     XCL_MEM_DEVICE_BRAM = 2
@@ -99,14 +98,14 @@ class xclMemoryDomains(enum.Enum):
     XCL_MEM_DEVICE_REG = 5
 
 
-class xclDDRFlags (enum.Enum):
+class xclDDRFlags ():
     XCL_DEVICE_RAM_BANK0 = 0
     XCL_DEVICE_RAM_BANK1 = 2
     XCL_DEVICE_RAM_BANK2 = 4
     XCL_DEVICE_RAM_BANK3 = 8
 
 
-class xclBOKind (enum.Enum):
+class xclBOKind ():
     XCL_BO_SHARED_VIRTUAL = 0
     XCL_BO_SHARED_PHYSICAL = 1
     XCL_BO_MIRRORED_VIRTUAL = 2
@@ -115,12 +114,12 @@ class xclBOKind (enum.Enum):
     XCL_BO_DEVICE_PREALLOCATED_BRAM = 5
 
 
-class xclBOSyncDirection (enum.Enum):
+class xclBOSyncDirection ():
     XCL_BO_SYNC_BO_TO_DEVICE = 0
     XCL_BO_SYNC_BO_FROM_DEVICE = 1
 
 
-class xclAddressSpace (enum.Enum):
+class xclAddressSpace ():
     XCL_ADDR_SPACE_DEVICE_FLAT = 0     # Absolute address space
     XCL_ADDR_SPACE_DEVICE_RAM = 1      # Address space for the DDR memory
     XCL_ADDR_KERNEL_CTRL = 2           # Address space for the OCL Region control port
@@ -129,14 +128,14 @@ class xclAddressSpace (enum.Enum):
     XCL_ADDR_SPACE_MAX = 8
 
 
-class xclVerbosityLevel (enum.Enum):
+class xclVerbosityLevel ():
     XCL_QUIET = 0
     XCL_INFO = 1
     XCL_WARN = 2
     XCL_ERROR = 3
 
 
-class xclResetKind (enum.Enum):
+class xclResetKind ():
     XCL_RESET_KERNEL = 0
     XCL_RESET_FULL = 1
     XCL_USER_RESET = 2
@@ -192,7 +191,7 @@ def xclOpen(deviceIndex, logFileName, level):
     """
     libc.xclOpen.restype = ctypes.POINTER(xclDeviceHandle)
     libc.xclOpen.argtypes = [ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
-    return libc.xclOpen(deviceIndex, logFileName, level.value)
+    return libc.xclOpen(deviceIndex, logFileName, level)
 
 
 def xclClose(handle):
@@ -399,7 +398,7 @@ def xclAllocBO(handle, size, domain, flags):
     """
     libc.xclAllocBO.restype = ctypes.c_uint
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
-    return libc.xclAllocBO(handle, size, domain.value, flags)
+    return libc.xclAllocBO(handle, size, domain, flags)
 
 def xclFreeBO(handle, boHandle):
     """
@@ -445,7 +444,7 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     """
     libc.xclSyncBO.restype = ctypes.c_uint
     libc.xclSyncBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
-    return libc.xclSyncBO(handle, boHandle, direction.value, size, offset)
+    return libc.xclSyncBO(handle, boHandle, direction, size, offset)
 
 
 def xclGetBOProperties(handle, boHandle, properties):

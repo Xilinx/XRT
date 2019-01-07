@@ -20,12 +20,11 @@
 
 import os
 import ctypes
-import enum
 
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
-class AXLF_SECTION_KIND (enum.Enum):
+class AXLF_SECTION_KIND ():
     BITSTREAM = 0
     CLEARING_BITSTREAM = 1
     EMBEDDED_METADATA = 2
@@ -46,7 +45,7 @@ class AXLF_SECTION_KIND (enum.Enum):
     DNA_CERTIFICATE = 17
 
 
-class XCLBIN_MODE (enum.Enum):
+class XCLBIN_MODE ():
     XCLBIN_FLAT = 1
     XCLBIN_PR = 2
     XCLBIN_TANDEM_STAGE2 = 3
@@ -166,4 +165,4 @@ class axlf (ctypes.Structure):
 def wrap_get_axlf_section(top, kind):
     libc.wrap_get_axlf_section.restype = ctypes.POINTER(axlf_section_header)
     libc.wrap_get_axlf_section.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    return libc.wrap_get_axlf_section(top, kind.value)
+    return libc.wrap_get_axlf_section(top, kind)
