@@ -46,6 +46,7 @@ enum {
 };
 
 #define	FLASH_TYPE_SPI	"spi"
+#define	FLASH_TYPE_QSPIPS	"qspi_ps"
 
 struct xocl_subdev_info {
         uint32_t		id;
@@ -872,6 +873,8 @@ enum subdev_id {
 		.user_bar = 0,						\
 		.intr_bar = 1,						\
 		.mpsoc = true,						\
+		.board_name = "samsung",				\
+		.flash_type = FLASH_TYPE_QSPIPS,			\
 	}
 
 #define	XOCL_BOARD_USER_XDMA_MPSOC					\

@@ -167,12 +167,15 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle > 0) {
             drm_version version;
+            const std::unique_ptr<char[]> name(new char[128]);
+            const std::unique_ptr<char[]> desc(new char[512]);
+            const std::unique_ptr<char[]> date(new char[128]);
             std::memset(&version, 0, sizeof(version));
-            version.name = new char[128];
+            version.name = name.get();
             version.name_len = 128;
-            version.desc = new char[512];
+            version.desc = desc.get();
             version.desc_len = 512;
-            version.date = new char[128];
+            version.date = date.get();
             version.date_len = 128;
 
             int result = ioctl(mUserHandle, DRM_IOCTL_VERSION, &version);
