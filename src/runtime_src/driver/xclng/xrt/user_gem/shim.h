@@ -238,7 +238,7 @@ public:
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
     // Experimental debug profile device data API
-    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo& info);
+    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
 
 
     // Execute and interrupt abstraction
