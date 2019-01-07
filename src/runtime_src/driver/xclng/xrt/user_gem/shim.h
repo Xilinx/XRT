@@ -132,6 +132,7 @@ public:
     size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
     size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
     size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+    size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
 
 
     // Trace
