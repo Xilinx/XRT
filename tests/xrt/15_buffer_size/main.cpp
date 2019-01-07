@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <getopt.h>
 #include <iostream>
@@ -111,8 +109,11 @@ static uint64_t getMemBankSize(xclDeviceHandle &handle,axlf_section_kind kind,ui
 #endif
 
 }
-static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem)
+static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem, unsigned cu_index, uuid_t xclbinId)
 {
+    if (xclOpenContext(handle, xclbinId, cu_index, true))
+        throw std::runtime_error("Cannot create context");
+
     unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
     unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
@@ -178,11 +179,16 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
         //xclFreeBO(deviceHandleList.i,boHandle1);
     }
 
+    xclCloseContext(handle, xclbinId, cu_index);
+
     return 0;
 }
 
-static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem)
+static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned maxSize, int first_mem, unsigned cu_index, uuid_t xclbinId)
 {
+    if (xclOpenContext(handle, xclbinId, cu_index, true))
+        throw std::runtime_error("Cannot create context");
+
     unsigned boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
     unsigned boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
@@ -281,6 +287,7 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize)
         std::cout << "FAILED TEST" <<std::endl;
         return 1;
     }
+
     return 0;
 }
 
@@ -364,7 +371,7 @@ int main(int argc, char** argv)
         }
 
         // Max size is 8 MB
-        if (transferSizeTest1(handle, alignment, test_size, first_mem)  || transferSizeTest2(handle, alignment, 0x400, first_mem)) {
+        if (transferSizeTest1(handle, alignment, test_size, first_mem, cu_index, xclbinId)  || transferSizeTest2(handle, alignment, 0x400, first_mem, cu_index, xclbinId)) {
             std::cout << "transferSizeTest1 or transferSizeTest2\n";
             std::cout << "FAILED TEST\n";
             return 1;

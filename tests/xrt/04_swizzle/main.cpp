@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <getopt.h>
 #include <iostream>
@@ -161,6 +159,9 @@ int main(int argc, char** argv)
         if (first_mem < 0)
             return 1;
 
+        if (xclOpenContext(handle, xclbinId, cu_index, true))
+            throw std::runtime_error("Cannot create context");
+
         unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(int), XCL_BO_DEVICE_RAM, first_mem);
         int* bo = (int*)xclMapBO(handle, boHandle, true);
         memset(bo, 0, DATA_SIZE*sizeof(int));
@@ -286,6 +287,8 @@ int main(int argc, char** argv)
         //Get the output;
         if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE*4, false))
             return 1;
+
+        xclCloseContext(handle, xclbinId, cu_index);
 
         if (std::memcmp(bo, reference, DATA_SIZE*4)) {
             std::cout << "FAILED TEST\n";

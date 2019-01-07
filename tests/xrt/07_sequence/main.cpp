@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <getopt.h>
 #include <iostream>
@@ -100,9 +98,9 @@ const unsigned goldenSequence[16] = {
     '\0'
 };
 
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, uuid_t xclbinId)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, unsigned cu_index, uuid_t xclbinId)
 {
-    if(xclOpenContext(handle, xclbinId, (first_mem-1), true))
+    if(xclOpenContext(handle, xclbinId, cu_index, true))
         throw std::runtime_error("Cannot create context");
 
     unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(unsigned), XCL_BO_DEVICE_RAM, first_mem);
@@ -217,7 +215,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         return 1;
     }
 
-    xclCloseContext(handle, xclbinId, 0);
+    xclCloseContext(handle, xclbinId, cu_index);
 
     return 0;
 }
@@ -306,7 +304,7 @@ int main(int argc, char** argv)
         if (first_mem < 0)
             return 1;
         
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, xclbinId))
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, cu_index, xclbinId))
             return 1;
         
     }

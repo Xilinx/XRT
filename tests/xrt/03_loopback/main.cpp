@@ -162,6 +162,9 @@ int main(int argc, char** argv)
         if (first_mem < 0)
             return 1;
 
+        if (xclOpenContext(handle, xclbinId, cu_index, true))
+            throw std::runtime_error("Cannot create context");
+
         unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
         char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
         memset(bo2, 0, DATA_SIZE);
@@ -275,7 +278,7 @@ int main(int argc, char** argv)
         xclFreeBO(handle,boHandle1);
         xclFreeBO(handle,boHandle2);
         xclFreeBO(handle,execHandle);
-
+        xclCloseContext(handle, xclbinId, cu_index);
     }
     catch (std::exception const& e)
     {

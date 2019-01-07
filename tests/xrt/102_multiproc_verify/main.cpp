@@ -153,9 +153,9 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
     return result;
 }
 
-static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, uuid_t xclbinId)
+static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, unsigned cu_index, uuid_t xclbinId)
 {
-    if (xclOpenContext(handle, xclbinId, 0, true))
+    if (xclOpenContext(handle, xclbinId, cu_index, true))
         throw std::runtime_error("Cannot create context");
 
     //Allocate the exec_bo
@@ -196,7 +196,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     while (xclExecWait(handle,1000) == 0);
     int result = runKernel(handle, cu_base_addr, verbose, n_elements);
     // Release the context
-    xclCloseContext(handle, xclbinId, 0);
+    xclCloseContext(handle, xclbinId, cu_index);
     return result;
 }
 
@@ -285,7 +285,7 @@ int main(int argc, char** argv, char *envp[])
         if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
             return 1;
 
-        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements, xclbinId))
+        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements, cu_index, xclbinId))
             return 1;
 
     }

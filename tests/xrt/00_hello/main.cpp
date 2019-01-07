@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,9 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
 
 #include <getopt.h>
 #include <iostream>
@@ -154,6 +151,9 @@ int main(int argc, char** argv)
         if (first_mem < 0)
             return 1;
 
+        if (xclOpenContext(handle, xclbinId, cu_index, true))
+            throw std::runtime_error("Cannot create context");
+
         unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
         unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
         char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
@@ -191,7 +191,7 @@ int main(int argc, char** argv)
         xclFreeBO(handle,boHandle1);
         xclFreeBO(handle,boHandle2);
         xclFreeBO(handle,execHandle);
-
+        xclCloseContext(handle, xclbinId, cu_index);
     }
     catch (std::exception const& e)
     {
