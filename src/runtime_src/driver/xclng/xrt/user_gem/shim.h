@@ -236,7 +236,6 @@ public:
     size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
     size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
 
-
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t xclPerfMonStopTrace(xclPerfMonType type);
