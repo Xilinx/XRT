@@ -47,7 +47,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", lro->core.priv.user_bar);
+	return sprintf(buf, "%d\n", lro->core.bar_idx);
 }
 static DEVICE_ATTR_RO(userbar);
 

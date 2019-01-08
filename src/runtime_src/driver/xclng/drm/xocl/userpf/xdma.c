@@ -80,94 +80,6 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-static void xocl_dev_percpu_release(struct percpu_ref *ref)
-{
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
-
-	complete(&xdev->cmp);
-}
-
-static void xocl_dev_percpu_exit(void *data)
-{
-	struct percpu_ref *ref = data;
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
-
-	wait_for_completion(&xdev->cmp);
-	percpu_ref_exit(ref);
-}
-
-
-static void xocl_dev_percpu_kill(void *data)
-{
-	struct percpu_ref *ref = data;
-	percpu_ref_kill(ref);
-}
-
-#endif
-
-static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
-{
-	resource_size_t p2p_bar_addr;
-	resource_size_t p2p_bar_len;
-	struct resource res;
-	uint32_t p2p_bar_idx;
-	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	int32_t ret;
-#endif
-
-	p2p_bar_len = xdev->bypass_bar_len;
-	p2p_bar_idx = xdev->bypass_bar_idx;
-
-	p2p_bar_addr = pci_resource_start(pdev, p2p_bar_idx);
-
-	res.start = p2p_bar_addr;
-	res.end   = p2p_bar_addr+p2p_bar_len-1;
-	res.name  = NULL;
-	res.flags = IORESOURCE_MEM;
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-
-	init_completion(&xdev->cmp);
-
-	ret = percpu_ref_init(&xdev->ref, xocl_dev_percpu_release, 0,
-			GFP_KERNEL);
-	if (ret)
-		return ret;
-
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_exit,
-							&xdev->ref);
-	if (ret)
-		return ret;
-#endif
-
-
-/* Ubuntu 16.04 kernel_ver 4.4.0.116*/
-#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res);
-
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res
-						   , &xdev->ref, NULL);
-
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_kill,
-							&xdev->ref);
-	if (ret)
-		return ret;
-#endif
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
-	if(!xdev->bypass_bar_addr)
-		return -ENOMEM;;
-#endif
-
-	return 0;
-}
-
 struct xocl_pci_funcs xdma_pci_ops = {
 	.intr_config = user_intr_config,
 	.intr_register = user_intr_register,
@@ -257,16 +169,10 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 		goto failed_drm_init;
 	}
 
-	if(ocl_dev->bypass_bar_idx >= 0) {
-		/* only bypass_bar_len >= SECTION (256MB) */
-		if (ocl_dev->bypass_bar_len > (1<<PA_SECTION_SHIFT)){
-			xocl_info(&pdev->dev, "Found bypass BAR");
-			ret = xocl_p2p_mem_reserve(pdev, ocl_dev);
-			if (ret) {
-				xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-				goto failed_drm_init;
-			}
-		}
+	ret = xocl_p2p_mem_reserve(ocl_dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
+		goto failed_drm_init;
 	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
@@ -308,6 +214,7 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	xocl_p2p_mem_release(&xd->ocl_dev, true);
 	xocl_subdev_destroy_all(&xd->ocl_dev);
 
 	xocl_fini_sysfs(&pdev->dev);

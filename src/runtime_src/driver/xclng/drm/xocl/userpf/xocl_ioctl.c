@@ -446,13 +446,13 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	struct mem_topology *topo;
 	struct mem_data *mem_data;
 	uint32_t shared;
-	struct xocl_mm_wrapper *wrapper;
+	struct xocl_mm_wrapper *wrapper = NULL;
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
 	uint64_t reserved_end;
 	int err = 0;
-	int i = 0;
+	int i = -1;
 
 	if (XOCL_DSA_IS_MPSOC(xdev)) {
 		/* TODO: This is still hardcoding.. */
@@ -472,8 +472,11 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 	xdev->mm = vzalloc(size);
 	xdev->mm_usage_stat = vzalloc(size);
-	if (!xdev->mm || !xdev->mm_usage_stat)
-		return -ENOMEM;
+	xdev->mm_p2p_off = vzalloc(topo->m_count * sizeof(u64));
+	if (!xdev->mm || !xdev->mm_usage_stat || !xdev->mm_p2p_off) {
+		err = -ENOMEM;
+		goto failed;
+	}
 
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
@@ -524,7 +527,7 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 		if (!xdev->mm[i] || !xdev->mm_usage_stat[i] || !wrapper) {
 			err = -ENOMEM;
-			goto failed_at_i;
+			goto failed;
 		}
 
 		wrapper->start_addr = mem_data->m_base_address;
@@ -538,13 +541,14 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 
 		drm_mm_init(xdev->mm[i], mem_data->m_base_address,
 				ddr_bank_size - reserved1 - reserved2);
+		xdev->mm_p2p_off[i] = ddr_bank_size * i;
 
 		DRM_INFO("drm_mm_init called\n");
 	}
 
 	return 0;
 
-failed_at_i:
+failed:
 	if (wrapper)
 		vfree(wrapper);
 
@@ -555,6 +559,13 @@ failed_at_i:
 		if (xdev->mm_usage_stat[i])
 			vfree(xdev->mm_usage_stat[i]);
 	}
+
+	if (xdev->mm)
+		vfree(xdev->mm);
+	if (xdev->mm_usage_stat)
+		vfree(xdev->mm_usage_stat);
+	if (xdev->mm_p2p_off)
+		vfree(xdev->mm_p2p_off);
 	return err;
 }
 
@@ -782,4 +793,52 @@ void reset_notify_client_ctx(struct xocl_dev *xdev)
 {
 	atomic_set(&xdev->needs_reset,0);
 	wmb();
+}
+
+int xocl_p2p_enable_ioctl(struct drm_device *dev,
+			  void *data,
+			  struct drm_file *filp)
+{
+	struct xocl_dev *xdev = dev->dev_private;
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret, p2p_bar, enable;
+	u32 size;
+
+	enable = ((struct drm_xocl_p2p_enable *)data)->enable;
+
+	p2p_bar = xocl_get_p2p_bar(xdev);
+	if (p2p_bar < 0) {
+		xocl_err(&pdev->dev, "p2p bar is not configurable");
+		return -EACCES;
+	}
+
+	size = xocl_get_ddr_channel_size(xdev) *
+			xocl_get_ddr_channel_count(xdev); /* GB */
+	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
+	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+
+	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
+			(1 << size));
+	xocl_p2p_mem_release(xdev, false);
+
+	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
+	if (ret) {
+		xocl_err(&pdev->dev, "Failed to resize p2p BAR %d", ret);
+		goto failed;
+	}
+
+	xdev->bypass_bar_idx = p2p_bar;
+	xdev->bypass_bar_len = pci_resource_len(pdev, p2p_bar);
+
+	if (enable) {
+		ret = xocl_p2p_mem_reserve(xdev);
+		if (ret) {
+			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
+				      	ret);
+		}
+	}
+
+
+failed:
+	return ret;
 }

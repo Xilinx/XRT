@@ -35,7 +35,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", xdev->core.priv.user_bar);
+	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
 static DEVICE_ATTR_RO(userbar);
@@ -92,6 +92,19 @@ static ssize_t memstat_raw_show(struct device *dev,
 	return xocl_mm_sysfs_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
+
+static ssize_t p2p_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	if (xdev->bypass_bar_addr)
+		return sprintf(buf, "1\n");
+
+	return sprintf(buf, "0\n");
+}
+
+static DEVICE_ATTR_RO(p2p_enable);
 
 /* - End attributes-- */
 
@@ -242,6 +255,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
+	&dev_attr_p2p_enable.attr,
 	NULL,
 };
 
