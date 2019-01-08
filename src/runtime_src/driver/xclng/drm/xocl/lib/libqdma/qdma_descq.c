@@ -1111,9 +1111,60 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 }
 #endif
 
+static void descq_proc_request_cancel(struct qdma_descq *descq)
+{
+	struct qdma_sgt_req_cb *cb, *tmp;
+
+	lock_descq(descq);
+	if (likely(!descq->cancel_cnt))
+		goto unlock;
+
+	if (descq->conf.st && descq->conf.c2h) {
+		list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
+			if (cb->cancel) {
+				struct qdma_request *req =
+						(struct qdma_request *)cb;
+
+				pr_info("%s, req 0x%p needs to be cancelled.\n",
+					descq->conf.name, req);
+				qdma_request_cancel_done(descq, req);
+
+				descq->cancel_cnt--;
+				if (!descq->cancel_cnt)
+					break;
+			}
+		}
+	} else {
+		list_for_each_entry_safe(cb, tmp, &descq->work_list, list) {
+			if (cb->cancel) {
+				struct qdma_request *req =
+						(struct qdma_request *)cb;
+
+				pr_info("%s, req 0x%p needs to be cancelled.\n",
+					descq->conf.name, req);
+
+			       	if (!cb->offset) {
+					qdma_request_cancel_done(descq, req);
+				} else {
+					req_submitted(descq, cb);
+				}
+
+				descq->cancel_cnt--;
+				if (!descq->cancel_cnt)
+					break;
+			}
+		}
+	}
+
+unlock:
+	unlock_descq(descq);
+}
+
 void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
+	descq_proc_request_cancel(descq);
+
 	if (descq->conf.st && descq->conf.c2h) {
 		lock_descq(descq);
 		if (descq->q_state == Q_STATE_ONLINE)
