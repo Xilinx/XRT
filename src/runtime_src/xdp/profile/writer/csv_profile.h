@@ -24,7 +24,7 @@ namespace xdp {
     class CSVProfileWriter: public ProfileWriterI {
 
 	public:
-      CSVProfileWriter(const std::string& summaryFileName, const std::string& platformName);
+      CSVProfileWriter(const std::string& summaryFileName, const std::string& platformName, XDPPluginI* Plugin);
       ~CSVProfileWriter();
 
       virtual void writeSummary(RTProfile* profile);
@@ -50,6 +50,9 @@ namespace xdp {
       std::string SummaryFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
+
+    private:
+      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

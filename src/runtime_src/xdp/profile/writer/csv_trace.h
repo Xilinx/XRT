@@ -24,7 +24,7 @@ namespace xdp {
     class CSVTraceWriter: public TraceWriterI {
 
 	public:
-      CSVTraceWriter(const std::string& traceFileName, const std::string& platformName);
+      CSVTraceWriter(const std::string& traceFileName, const std::string& platformName, XDPPluginI* Plugin);
       ~CSVTraceWriter();
 
 	protected:
@@ -40,6 +40,9 @@ namespace xdp {
       std::string TraceFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
+
+      private:
+      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

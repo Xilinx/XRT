@@ -28,6 +28,7 @@
 #include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xrt/util/config_reader.h"
 
 #include "driver/include/xclperf.h"
 
@@ -35,43 +36,42 @@
 
 namespace Profiling {
 
-  static bool pActive = false;
+  static bool pDead = false;
 
-  bool active()
+  Profiler* Profiler::Instance()
   {
-    return pActive;
-  }
-
-  Profiler* Profiler::Instance() {
+    if (pDead) {
+      std::cout << "Profiler is dead\n";
+      return nullptr;
+    }
     static Profiler singleton;
     return &singleton;
   };
 
   Profiler::Profiler()
+  : ProfileFlags( 0 )
   {
-    pActive = true;
     Plugin = new xdp::XoclPlugin();
-    auto rts = xdp::RTSingleton::Instance();
-    assert(rts);
-    // attach plugin before xdp tries to access it
-    rts->attachPlugin(Plugin);
+    ProfileMgr = new xdp::RTProfile(ProfileFlags, Plugin);
+    startProfiling();
   }
 
   Profiler::~Profiler()
   {
-    pActive = false;
+    pDead = true;
+    setObjectsReleased(mEndDeviceProfilingCalled);
 
-    auto rts = xdp::RTSingleton::Instance();
-    if (rts)
-      rts->setObjectsReleased(mEndDeviceProfilingCalled);
-
-    if (!mEndDeviceProfilingCalled && rts && rts->applicationProfilingOn()) {
+    if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
       xrt::message::send(xrt::message::severity_level::WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
       // Before deleting, do a final read of counters and force flush of trace buffers
       endDeviceProfiling();
     }
+    endProfiling();
+    // Destruct in reverse order of construction
+    delete ProfileMgr;
+    delete Plugin;
   }
 
   // Start device profiling
@@ -79,14 +79,14 @@ namespace Profiling {
   {
     auto rts = xdp::RTSingleton::Instance();
     // Start counters
-    if (rts->deviceCountersProfilingOn())
+    if (deviceCountersProfilingOn())
       xdp::profile::platform::start_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY);
 
     // Start trace
-    if (rts->deviceTraceProfilingOn())
+    if (deviceTraceProfilingOn())
       xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, numComputeUnits);
 
-    if (rts->isHwEmu())
+    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, numComputeUnits);
 
     mProfileRunning = true;
@@ -102,7 +102,7 @@ namespace Profiling {
 
     auto rts = xdp::RTSingleton::Instance();
 
-    if (rts && rts->applicationProfilingOn()) {
+    if (applicationProfilingOn()) {
       // Write end of app event to trace buffer (Zynq only)
       xdp::profile::platform::write_host_event(rts->getcl_platform_id(),
           XCL_PERF_MON_END_EVENT, XCL_PERF_MON_PROGRAM_END);
@@ -113,19 +113,19 @@ namespace Profiling {
 
       // Only called for hw emulation
       // Log accel trace before data trace as that is used for timestamp calculations
-      if (rts->isHwEmu()) {
+      if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
         xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, true, true);
-        rts->logFinalTrace(XCL_PERF_MON_ACCEL);
+        logFinalTrace(XCL_PERF_MON_ACCEL);
         xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_STR, true, true);
-        rts->logFinalTrace(XCL_PERF_MON_STR);
+        logFinalTrace(XCL_PERF_MON_STR);
       }
 
-      rts->logFinalTrace(XCL_PERF_MON_MEMORY);
+      logFinalTrace(XCL_PERF_MON_MEMORY);
 
       // Gather info for guidance
       // NOTE: this needs to be done here before the device clears its list of CUs
       // See xocl::device::unload_program as called from xocl::program::~program
-      Plugin->getGuidanceMetadata( rts->getProfileManager() );
+      Plugin->getGuidanceMetadata( ProfileMgr );
 
       // Record that this was called indirectly by host code
       mEndDeviceProfilingCalled = true;
@@ -148,7 +148,7 @@ namespace Profiling {
   void Profiler::getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters)
   {
     auto rts = xdp::RTSingleton::Instance();
-    if (!Instance()->isProfileRunning() || !rts->deviceCountersProfilingOn())
+    if (!Instance()->isProfileRunning() || !deviceCountersProfilingOn())
       return;
 
     XOCL_DEBUGF("getDeviceCounters: START (firstRead: %d, forceRead: %d)\n", firstReadAfterProgram, forceReadCounters);
@@ -163,18 +163,140 @@ namespace Profiling {
   void Profiler::getDeviceTrace(bool forceReadTrace)
   {
     auto rts = xdp::RTSingleton::Instance();
-    if (!Instance()->isProfileRunning() || (!rts->deviceTraceProfilingOn() && !rts->isHwEmu()))
+    if (!Instance()->isProfileRunning() || (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM)))
       return;
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
 
-    if (rts->deviceTraceProfilingOn())
+    if (deviceTraceProfilingOn())
       xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, forceReadTrace);
 
-    if (rts->isHwEmu())
+    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, forceReadTrace);
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
+  }
+
+  // Turn on/off profiling
+  void Profiler::turnOnProfile(xdp::RTUtil::e_profile_mode mode) {
+    ProfileFlags |= mode;
+    ProfileMgr->turnOnProfile(mode);
+  }
+
+  void Profiler::turnOffProfile(xdp::RTUtil::e_profile_mode mode)
+  {
+    ProfileFlags &= ~mode;
+    ProfileMgr->turnOffProfile(mode);
+  }
+
+    // Kick off profiling and open writers
+  void Profiler::startProfiling() {
+    if (xrt::config::get_profile() == false)
+      return;
+
+    // Turn on application profiling
+    turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
+
+    // Turn on device profiling (as requested)
+    std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
+
+    std::string stall_trace = xrt::config::get_stall_trace();
+    ProfileMgr->setTransferTrace(data_transfer_trace);
+    ProfileMgr->setStallTrace(stall_trace);
+
+    turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
+    // HW trace is controlled at HAL layer
+    bool isEmulationOn = (std::getenv("XCL_EMULATION_MODE")) ? true : false;
+    if (!(isEmulationOn) || (data_transfer_trace.find("off") == std::string::npos)) {
+      turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
+    }
+
+    std::string profileFile("");
+    std::string profileFile2("");
+    std::string timelineFile("");
+    std::string timelineFile2("");
+
+    if (ProfileMgr->isApplicationProfileOn()) {
+      ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
+      profileFile = "sdaccel_profile_summary";
+      profileFile2 = "sdx_profile_summary";
+    }
+
+    if (xrt::config::get_timeline_trace()) {
+      ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
+      timelineFile = "sdaccel_timeline_trace";
+      timelineFile2 = "sdx_timeline_trace";
+    }
+
+    // CSV writers
+    xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin);
+    xdp::CSVTraceWriter*   csvTraceWriter   = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin);
+
+    ProfileWriters.push_back(csvProfileWriter);
+    TraceWriters.push_back(csvTraceWriter);
+
+    ProfileMgr->attach(csvProfileWriter);
+    ProfileMgr->attach(csvTraceWriter);
+
+    if (std::getenv("SDX_NEW_PROFILE")) {
+      xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin);
+      ProfileWriters.push_back(csvProfileWriter2);
+      ProfileMgr->attach(csvProfileWriter2);
+    }
+
+    // Add functions to callback for profiling kernel/CU scheduling
+    xocl::add_command_start_callback(xdp::profile::get_cu_start);
+    xocl::add_command_done_callback(xdp::profile::get_cu_done);
+  }
+
+  // Wrap up profiling by writing files
+  void Profiler::endProfiling()
+  {
+    if (applicationProfilingOn()) {
+      // Write out reports
+      ProfileMgr->writeProfileSummary();
+
+      // Close writers
+      for (auto& w: ProfileWriters) {
+        ProfileMgr->detach(w);
+        delete w;
+      }
+      for (auto& w: TraceWriters) {
+        ProfileMgr->detach(w);
+        delete w;
+      }
+    }
+  }
+
+  // Log final trace for a given profile type
+  // NOTE: this is a bit tricky since trace logging is accessed by multiple
+  // threads. We have to wait since this is the only place where we flush.
+  void Profiler::logFinalTrace(xclPerfMonType type) {
+    const unsigned int wait_msec = 1;
+    const unsigned int max_iter = 100;
+    unsigned int iter = 0;
+    cl_int ret = -1;
+
+    auto rts = xdp::RTSingleton::Instance();
+
+    while (ret == -1 && iter < max_iter) {
+      ret = xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),type, true);
+      if (ret == -1)
+        std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
+      iter++;
+    }
+    XDP_LOG("Trace logged for type %d after %d iterations\n", type, iter);
+  }
+
+  // Add to the active devices
+  // Called thru device::load_program in xocl/core/device.cpp
+  // NOTE: this is the entry point into XDP when a new device gets loaded
+  void Profiler::addToActiveDevices(const std::string& deviceName)
+  {
+    XDP_LOG("addToActiveDevices: device = %s\n", deviceName.c_str());
+    // Store name of device to profiler
+    ProfileMgr->addDeviceName(deviceName);
+    // TODO: Grab device-level metadata here!!! (e.g., device name, CU/kernel names)
   }
 
   /*

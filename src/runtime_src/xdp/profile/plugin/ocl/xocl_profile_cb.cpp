@@ -489,17 +489,19 @@ void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* 
 
 void cb_add_to_active_devices(const std::string& device_name)
 {
-  static bool profile_on = xdp::RTSingleton::Instance()->applicationProfilingOn();
+  auto profiler = Profiling::Profiler::Instance();
+  static bool profile_on = profiler->applicationProfilingOn();
   if (profile_on) {
-    xdp::RTSingleton::Instance()->addToActiveDevices(device_name);
-    Profiling::Profiler::Instance()->getPlugin()->setArgumentsBank(device_name);
+    profiler->addToActiveDevices(device_name);
+    profiler->getPlugin()->setArgumentsBank(device_name);
   }
 }
 
 void
 cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 {
-  static bool profile_on = xdp::RTSingleton::Instance()->applicationProfilingOn();
+  auto profiler = Profiling::Profiler::Instance();
+  static bool profile_on = profiler->applicationProfilingOn();
   if (profile_on)
     xdp::RTSingleton::Instance()->getProfileManager()->setKernelClockFreqMHz(device_name, freq);
 }
@@ -507,6 +509,7 @@ cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 void cb_reset(const xocl::xclbin& xclbin)
 {
   auto rts = xdp::RTSingleton::Instance();
+  auto profiler = Profiling::Profiler::Instance();
 
   // init flow mode
   auto xclbin_target = xclbin.target();
@@ -517,13 +520,16 @@ void cb_reset(const xocl::xclbin& xclbin)
     // http://confluence.xilinx.com/display/XIP/DSA+Feature+ROM+Proposal
     if(dsa.find("4ddr") != std::string::npos)
       rts->getProfileManager()->setDeviceTraceClockFreqMHz(300.0);
-    rts->setFlowMode(xdp::RTSingleton::DEVICE);
+    profiler->getPlugin()->setFlowMode(xdp::RTUtil::DEVICE);
   } else if (xclbin_target == xocl::xclbin::target_type::csim) {
-    rts->setFlowMode(xdp::RTSingleton::CPU);
+    profiler->getPlugin()->setFlowMode(xdp::RTUtil::CPU);
+    // old and unsupported modes
+    profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
   } else if (xclbin_target == xocl::xclbin::target_type::cosim) {
-    rts->setFlowMode(xdp::RTSingleton::COSIM_EM);
+    profiler->getPlugin()->setFlowMode(xdp::RTUtil::COSIM_EM);
+    profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
   } else if (xclbin_target == xocl::xclbin::target_type::hwem) {
-    rts->setFlowMode(xdp::RTSingleton::HW_EM);
+    profiler->getPlugin()->setFlowMode(xdp::RTUtil::HW_EM);
   } else if (xclbin_target == xocl::xclbin::target_type::x86) {
   } else if (xclbin_target == xocl::xclbin::target_type::zynqps7) {
   } else {
@@ -567,4 +573,7 @@ void
 initXDPLib()
 {
   (void)xdp::RTSingleton::Instance();
+  (void)Profiling::Profiler::Instance();
+  if (Profiling::Profiler::Instance()->applicationProfilingOn())
+    xdp::register_xocl_profile_callbacks();
 }

@@ -20,6 +20,7 @@
 #include "rt_util.h"
 #include "xdp/profile/collection/counters.h"
 #include "xdp/profile/collection/results.h"
+#include "xdp/profile/plugin/base_plugin.h"
 
 #include "driver/include/xclperf.h"
 
@@ -43,7 +44,7 @@ namespace xdp {
   // **************************************************************************
   class TraceLogger {
   public:
-    TraceLogger(ProfileCounters* profileCounters);
+    TraceLogger(ProfileCounters* profileCounters, XDPPluginI* Plugin);
     ~TraceLogger();
 
   public:
@@ -121,6 +122,9 @@ namespace xdp {
 
     ProfileCounters* mProfileCounters;
     std::vector<TraceWriterI*> mTraceWriters;
+
+  private:
+      XDPPluginI * mPluginHandle;
   };
 
 } // xdp

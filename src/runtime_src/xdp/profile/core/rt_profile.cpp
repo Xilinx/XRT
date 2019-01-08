@@ -36,21 +36,22 @@ namespace xdp {
   // ***********************
   // Top-Level Profile Class
   // ***********************
-  RTProfile::RTProfile(int& flag)
+  RTProfile::RTProfile(int& flag, XDPPluginI* Plugin)
   : mProfileFlags(flag),
     mFileFlags(0),
     mDeviceTraceOption(RTUtil::DEVICE_TRACE_OFF),
-    mStallTraceOption(RTUtil::STALL_TRACE_OFF)
+    mStallTraceOption(RTUtil::STALL_TRACE_OFF),
+    mPluginHandle(Plugin)
   {
     // Profile counters (to store counter results)
     mProfileCounters = new ProfileCounters();
 
     // Trace parser
-    mTraceParser = new TraceParser();
+    mTraceParser = new TraceParser(mPluginHandle);
 
     // Logger & writer
-    mLogger = new TraceLogger(mProfileCounters);
-    mWriter = new SummaryWriter(mProfileCounters);
+    mLogger = new TraceLogger(mProfileCounters, mPluginHandle);
+    mWriter = new SummaryWriter(mProfileCounters, mPluginHandle);
   }
 
   RTProfile::~RTProfile()
@@ -58,10 +59,10 @@ namespace xdp {
     if (mProfileFlags)
       writeProfileSummary();
 
-    delete mProfileCounters;
-    delete mTraceParser;
-    delete mLogger;
     delete mWriter;
+    delete mLogger;
+    delete mTraceParser;
+    delete mProfileCounters;
   }
 
   // ***************************************************************************
@@ -110,8 +111,8 @@ namespace xdp {
   bool RTProfile::isDeviceProfileOn() const
   {
     // Device profiling is not valid in cpu flow or old emulation flow
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU
-       || xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::COSIM_EM)
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
+       || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM)
       return false;
 
     //return mProfileFlags & RTUtil::PROFILE_DEVICE;

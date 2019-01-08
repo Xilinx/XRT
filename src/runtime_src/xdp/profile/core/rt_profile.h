@@ -19,6 +19,7 @@
 
 #include "rt_util.h"
 #include "driver/include/xclperf.h"
+#include "xdp/profile/plugin/base_plugin.h"
 
 #include <set>
 #include <vector>
@@ -43,7 +44,7 @@ namespace xdp {
   // **************************************************************************
   class RTProfile {
   public:
-    RTProfile(int& flags);
+    RTProfile(int& flags, XDPPluginI* Plugin);
     ~RTProfile();
 
   public:
@@ -182,6 +183,8 @@ namespace xdp {
   //public:
     // moved to plugin/base_plugin.h
     // std::map<xdp::profile::device::key,xdp::profile::device::data> device_data;
+    private:
+      XDPPluginI * mPluginHandle;
   };
 
 } // xdp

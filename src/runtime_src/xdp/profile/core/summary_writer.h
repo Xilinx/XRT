@@ -18,6 +18,7 @@
 #define __XDP_CORE_WRITER_H
 
 #include "driver/include/xclperf.h"
+#include "xdp/profile/plugin/base_plugin.h"
 
 #include <map>
 #include <vector>
@@ -34,7 +35,7 @@ namespace xdp {
   // **************************************************************************
   class SummaryWriter {
   public:
-    SummaryWriter(ProfileCounters* profileCounters);
+    SummaryWriter(ProfileCounters* profileCounters, XDPPluginI* Plugin);
     ~SummaryWriter();
 
   public:
@@ -81,6 +82,9 @@ namespace xdp {
     std::map<std::string, std::vector<std::string>> mDeviceBinaryDataSlotsMap;
     std::map<std::string, std::vector<std::string>> mDeviceBinaryCuSlotsMap;
     std::map<std::string, std::vector<std::string>> mDeviceBinaryStrSlotsMap;
+
+  private:
+      XDPPluginI * mPluginHandle;
   };
 
 } // xdp

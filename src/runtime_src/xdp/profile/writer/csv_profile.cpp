@@ -20,9 +20,12 @@
 
 namespace xdp {
 
-  CSVProfileWriter::CSVProfileWriter(const std::string& summaryFileName, const std::string& platformName) :
+  CSVProfileWriter::CSVProfileWriter( const std::string& summaryFileName,
+                                      const std::string& platformName,
+                                      XDPPluginI* Plugin) :
       SummaryFileName(summaryFileName),
-      PlatformName(platformName)
+      PlatformName(platformName),
+      mPluginHandle(Plugin)
   {
     if (SummaryFileName != "") {
       assert(!Summary_ofs.is_open());
@@ -78,7 +81,7 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "PRC Parameters", PRCSummaryColumnLabels);
     //profile->writeGuidanceMetadataSummary(this);
-    xdp::RTSingleton::Instance()->getPlugin()->writeGuidanceMetadataSummary(this, profile);
+    mPluginHandle->writeGuidanceMetadataSummary(this, profile);
     writeTableFooter(getStream());
   }
 
@@ -110,7 +113,7 @@ namespace xdp {
     ofs << "Target devices: " << profile->getDeviceNames(", ") << "\n";
 
     std::string flowMode;
-    xdp::RTSingleton::Instance()->getFlowModeName(flowMode);
+    xdp::RTUtil::getFlowModeName(mPluginHandle->getFlowMode(), flowMode);
     ofs << "Flow mode: " << flowMode << "\n";
   }
 

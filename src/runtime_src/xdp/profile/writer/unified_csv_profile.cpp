@@ -23,9 +23,11 @@ namespace xdp {
   // Unified CSV Profile Writer
   // **************************
   UnifiedCSVProfileWriter::UnifiedCSVProfileWriter(const std::string& summaryFileName,
-                                                   const std::string& platformName) :
+                                                   const std::string& platformName,
+                                                   XDPPluginI* Plugin) :
       SummaryFileName(summaryFileName),
-      PlatformName(platformName)
+      PlatformName(platformName),
+      mPluginHandle(Plugin)
   {
     if (SummaryFileName != "") {
       assert(!Summary_ofs.is_open());
@@ -62,7 +64,7 @@ namespace xdp {
         "Function", "Number Of Calls", "Total Time (ms)", "Minimum Time (ms)", 
         "Average Time (ms)", "Maximum Time (ms)" };
 
-    std::string table2Caption = (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) ?
+    std::string table2Caption = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) ?
         "Hardware Functions (includes estimated device times)" : "Hardware Functions";
     writeTableHeader(getStream(), table2Caption, HardwareFunctionColumnLabels);
     profile->writeKernelSummary(this);
@@ -73,7 +75,7 @@ namespace xdp {
         "Location", "Accelerator", "Number Of Calls", "Total Time (ms)", "Minimum Time (ms)",
         "Average Time (ms)", "Maximum Time (ms)", "Clock Frequency (MHz)" };
 
-    std::string table3Caption = (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) ?
+    std::string table3Caption = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) ?
         "Hardware Accelerators (includes estimated device times)" : "Hardware Accelerators";
     writeTableHeader(getStream(), table3Caption, HardwareAcceleratorColumnLabels);
     profile->writeAcceleratorSummary(this);
@@ -120,8 +122,8 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "Data Transfer: Host and DDR Memory",
         HostTransferColumnLabels);
-    if (xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::CPU
-        && xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::COSIM_EM) {
+    if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU
+        && mPluginHandle->getFlowMode() != xdp::RTUtil::COSIM_EM) {
       profile->writeHostTransferSummary(this);
     }
     writeTableFooter(getStream());
@@ -150,7 +152,7 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "PRC Parameters", PRCParameterColumnLabels);
     //profile->writeGuidanceMetadataSummary(this);
-    xdp::RTSingleton::Instance()->getPlugin()->writeGuidanceMetadataSummary(this, profile);
+    mPluginHandle->writeGuidanceMetadataSummary(this, profile);
     writeTableFooter(getStream());
   }
 
@@ -182,7 +184,7 @@ namespace xdp {
     ofs << "Target devices: " << profile->getDeviceNames(", ") << "\n";
 
     std::string flowMode;
-    xdp::RTSingleton::Instance()->getFlowModeName(flowMode);
+    xdp::RTUtil::getFlowModeName(mPluginHandle->getFlowMode(), flowMode);
     ofs << "Flow mode: " << flowMode << "\n";
   }
 
@@ -222,9 +224,9 @@ namespace xdp {
     std::string durationStr = std::to_string( trace.getDuration() );
     double rate = (double)(trace.getSize()) / (1000.0 * trace.getDuration());
     std::string rateStr = std::to_string(rate);
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU
-        || xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::COSIM_EM
-        || xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
+    if  (  mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
+        || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM
+        || mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
       durationStr = "N/A";
       rateStr = "N/A";
     }
@@ -313,7 +315,7 @@ namespace xdp {
     std::string aveBWUtilStr = std::to_string(aveBWUtil);
     std::string totalTimeStr = std::to_string(totalTimeMsec);
     std::string aveTimeStr = std::to_string(aveTimeMsec);
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
       transferRateStr = "N/A";
       aveBWUtilStr = "N/A";
       totalTimeStr = "N/A";

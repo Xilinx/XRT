@@ -24,7 +24,7 @@ namespace xdp {
     class UnifiedCSVProfileWriter: public ProfileWriterI {
 
 	public:
-      UnifiedCSVProfileWriter(const std::string& summaryFileName, const std::string& platformFileName);
+      UnifiedCSVProfileWriter(const std::string& summaryFileName, const std::string& platformFileName, XDPPluginI* Plugin);
       ~UnifiedCSVProfileWriter();
 
 	  virtual void writeSummary(RTProfile* profile);
@@ -63,6 +63,9 @@ namespace xdp {
       std::string SummaryFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
+
+    private:
+      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

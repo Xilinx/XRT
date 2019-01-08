@@ -20,6 +20,7 @@
 
 #include <boost/format.hpp>
 #include "../device/trace_parser.h"
+#include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>
 #include <cstdio>
@@ -110,6 +111,9 @@ namespace xdp {
 	protected:
 	    std::ofstream Trace_ofs;
 	    xclCounterResults CountersPrev;
+
+    private:
+      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

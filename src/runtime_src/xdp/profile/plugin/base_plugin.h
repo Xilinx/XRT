@@ -27,6 +27,7 @@
 
 // TODO: remove this dependency (needed for DeviceData)
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
+#include "xdp/profile/core/rt_util.h"
 
 // Use this class to build plugins. All XDP plugins should support
 // these functions for proper reporting.
@@ -100,11 +101,15 @@ namespace xdp {
       virtual void getGuidanceMetadata(RTProfile *profile);
       virtual void writeGuidanceMetadataSummary(ProfileWriterI* writer, RTProfile *profile);
       static void getGuidanceName(e_guidance check, std::string& name);
+      // Objects released
+      void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
+      bool isObjectsReleased() {return IsObjectsReleased;}
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
       GuidanceMap  mComputeUnitCallsMap;
       GuidanceMap2 mKernelCountsMap;
+      bool IsObjectsReleased = false;
 
     // ***************
     // Device metadata
@@ -124,9 +129,12 @@ namespace xdp {
       virtual size_t getDeviceTimestamp(std::string& deviceName);
       virtual double getReadMaxBandwidthMBps();
       virtual double getWriteMaxBandwidthMBps();
+      inline xdp::RTUtil::e_flow_mode getFlowMode() { return FlowMode; }
+      inline void setFlowMode(xdp::RTUtil::e_flow_mode mode) { FlowMode = mode;}
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
+      xdp::RTUtil::e_flow_mode FlowMode = xdp::RTUtil::CPU;
     };
 
 } // xdp

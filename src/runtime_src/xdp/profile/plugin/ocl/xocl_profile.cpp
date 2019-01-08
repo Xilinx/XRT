@@ -15,6 +15,7 @@
  */
 
 #include "xocl_profile.h"
+#include "profiler.h"
 #include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 
@@ -23,9 +24,9 @@ namespace xdp { namespace profile {
 bool
 isApplicationProfilingOn()
 {
-  auto rts = xdp::RTSingleton::Instance();
+  auto profiler = Profiling::Profiler::Instance();
   //XOCL_DEBUGF("isApplicationProfilingOn: rts = %p\n", rts);
-  return (rts == nullptr) ? false : rts->applicationProfilingOn();
+  return (profiler == nullptr) ? false : profiler->applicationProfilingOn();
 }
 
 // Number of CU masks in packet
@@ -390,15 +391,17 @@ get_ddr_bank_count(key k, const std::string& deviceName)
 bool 
 isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 {
-  return ((xdp::RTSingleton::Instance()->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
-          || (xdp::RTSingleton::Instance()->isHwEmu() && type == XCL_PERF_MON_ACCEL));
+  auto profiler = Profiling::Profiler::Instance();
+  return ((profiler->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
+          || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
 
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
-  return ((xdp::RTSingleton::Instance()->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
-  || (xdp::RTSingleton::Instance()->isHwEmu() && type == XCL_PERF_MON_ACCEL));
+  auto profiler = Profiling::Profiler::Instance();
+  return ((profiler->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
+  || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
 
 
@@ -618,7 +621,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
       data->mTraceVector.mLength = 0;
 
       // Only check repeatedly for trace buffer flush if HW emulation
-      if (xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::HW_EM)
+      if (Profiling::Profiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::HW_EM)
         break;
     }
   }
@@ -676,7 +679,7 @@ data*
 get_data(key k) 
 { 
   // TODO: this used to come from RTProfile, now it comes from the plugin. Is this correct?
-  auto plugin = xdp::RTSingleton::Instance()->getPlugin();
+  auto plugin = Profiling::Profiler::Instance()->getPlugin();
   auto& device_data = plugin->DeviceData;
 
   auto itr = device_data.find(k);

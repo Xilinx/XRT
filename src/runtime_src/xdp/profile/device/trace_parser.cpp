@@ -32,10 +32,11 @@
 namespace xdp {
 
   // Constructor
-  TraceParser::TraceParser()
+  TraceParser::TraceParser(XDPPluginI* Plugin)
     : NUM_TRAIN(3),
       PCIE_DELAY_OFFSET_MSEC(0.25),
-      mStartTimeNsec(0)      
+      mStartTimeNsec(0),
+      mPluginHandle(Plugin)
   {
     mTag = 0X586C0C6C;
 
@@ -102,7 +103,7 @@ namespace xdp {
       return;
 
     //uint32_t numSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
-    bool isHwEmu = (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM);
+    bool isHwEmu = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM);
     uint8_t flags = 0;
     uint32_t prevHostTimestamp = 0xFFFFFFFF;
     uint32_t slotID = 0;

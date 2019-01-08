@@ -36,10 +36,11 @@ namespace xdp {
   // ************************
   // XDP Profile TraceLogger Class
   // ************************
-  TraceLogger::TraceLogger(ProfileCounters* profileCounters)
+  TraceLogger::TraceLogger(ProfileCounters* profileCounters, XDPPluginI* Plugin)
   : mMigrateMemCalls(0),
     mCurrentContextId(0),
-    mProfileCounters(profileCounters)
+    mProfileCounters(profileCounters),
+    mPluginHandle(Plugin)
   {
   }
 
@@ -61,8 +62,8 @@ namespace xdp {
     double deviceTimeStamp = hostTimeStamp;
 
     // In HW emulation, use estimated host timestamp based on device clock cycles (in psec from HAL)
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
-      size_t dts = xdp::RTSingleton::Instance()->getPlugin()->getDeviceTimestamp(deviceName);
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
+      size_t dts = mPluginHandle->getDeviceTimestamp(deviceName);
       deviceTimeStamp = dts / 1000000.0;
     }
 
@@ -153,7 +154,7 @@ namespace xdp {
 
   void TraceLogger::logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID)
   {
-    double timeStamp = RTUtil::getTraceTime();
+    double timeStamp = mPluginHandle->getTraceTime();
 
     std::string name(functionName);
     if (name.find("MigrateMem") != std::string::npos)
@@ -185,7 +186,7 @@ namespace xdp {
     if (!mFunctionStartLogged)
       logFunctionCallStart(functionName, queueAddress, functionID);
 
-    double timeStamp = RTUtil::getTraceTime();
+    double timeStamp = mPluginHandle->getTraceTime();
 
     std::string name(functionName);
     if (queueAddress == 0)
@@ -218,7 +219,7 @@ namespace xdp {
       const std::string eventString, const std::string dependString, double timeStampMsec)
   {
     double timeStamp = (timeStampMsec > 0.0) ? timeStampMsec :
-        RTUtil::getTraceTime();
+        mPluginHandle->getTraceTime();
 
     std::string commandString;
     std::string stageString;
@@ -301,7 +302,7 @@ namespace xdp {
       double timeStampMsec)
   {
     double timeStamp = (timeStampMsec > 0.0) ? timeStampMsec :
-   	    RTUtil::getTraceTime();
+      mPluginHandle->getTraceTime();
 
     if (mGetFirstCUTimestamp && (objStage == RTUtil::START)) {
       auto tp = xdp::RTSingleton::Instance()->getProfileManager()->getTraceParser();
@@ -410,7 +411,7 @@ namespace xdp {
       cuName2 = kernelName + "|" + localSize + "|" + cu_name;
       if (objStage == RTUtil::START) {
         XDP_LOG("logKernelExecution: CU START @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
-        if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU) {
+        if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU) {
           mProfileCounters->logComputeUnitExecutionStart(cuName, deviceTimeStamp);
           mProfileCounters->logComputeUnitDeviceStart(newDeviceName, timeStamp);
         }
@@ -418,7 +419,7 @@ namespace xdp {
       else if (objStage == RTUtil::END) {
         XDP_LOG("logKernelExecution: CU END @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
         // This is updated through HAL
-        if (xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::CPU)
+        if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU)
           deviceTimeStamp = 0;
         mProfileCounters->logComputeUnitExecutionEnd(cuName, deviceTimeStamp);
       }
@@ -429,7 +430,7 @@ namespace xdp {
       (uniqueCUName += xclbinName) += "|";
       (uniqueCUName += cuName2) += "|";
 
-      if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU)
+      if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU)
         writeTimelineTrace(timeStamp, uniqueCUName, stageString, eventString, dependString,
                            objId, workGroupSize);
     }
@@ -455,7 +456,7 @@ namespace xdp {
     std::lock_guard < std::mutex > lock(mLogMutex);
     RTUtil::commandKindToString(objKind, commandString);
 
-    double traceTime = RTUtil::getTraceTime();
+    double traceTime = mPluginHandle->getTraceTime();
     writeTimelineTrace(traceTime, commandString, "", eventString, dependString);
   }
 

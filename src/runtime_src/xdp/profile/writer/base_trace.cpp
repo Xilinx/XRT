@@ -306,20 +306,20 @@ namespace xdp {
           //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
         }
         std::string kernelName;
-        rts->getPlugin()->getProfileKernelName(deviceName, cuName, kernelName);
+        mPluginHandle->getProfileKernelName(deviceName, cuName, kernelName);
 
         if (showKernelCUNames)
           traceName += ("|" + kernelName + "|" + cuName);
 
         if (showPortName) {
-          rts->getPlugin()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+          mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
           traceName += ("|" + portName + "|" + memoryName);
         }
       }
 
       if (tr.Type == "Kernel") {
         std::string workGroupSize;
-        rts->getPlugin()->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
+        mPluginHandle->getTraceStringFromComputeUnit(deviceName, cuName, traceName);
         if (traceName.empty()) continue;
         size_t pos = traceName.find_last_of("|");
         workGroupSize = traceName.substr(pos + 1);

@@ -37,7 +37,7 @@ namespace xdp {
   void ProfileWriterI::writeSummary(RTProfile* profile)
   {
     auto rts = xdp::RTSingleton::Instance();
-    auto flowMode = rts->getFlowMode();
+    auto flowMode = mPluginHandle->getFlowMode();
 
     // Sub-header
     writeDocumentSubHeader(getStream(), profile);
@@ -56,7 +56,7 @@ namespace xdp {
         "Kernel", "Number Of Enqueues", "Total Time (ms)",
         "Minimum Time (ms)", "Average Time (ms)", "Maximum Time (ms)" };
 
-    std::string table2Caption = (flowMode == xdp::RTSingleton::HW_EM) ?
+    std::string table2Caption = (flowMode == xdp::RTUtil::HW_EM) ?
         "Kernel Execution (includes estimated device times)" : "Kernel Execution";
     writeTableHeader(getStream(), table2Caption, KernelExecutionSummaryColumnLabels);
     profile->writeKernelSummary(this);
@@ -68,7 +68,7 @@ namespace xdp {
         "Number Of Calls", "Total Time (ms)", "Minimum Time (ms)",
         "Average Time (ms)", "Maximum Time (ms)", "Clock Frequency (MHz)" };
 
-    std::string table3Caption = (flowMode == xdp::RTSingleton::HW_EM) ?
+    std::string table3Caption = (flowMode == xdp::RTUtil::HW_EM) ?
         "Compute Unit Utilization (includes estimated device times)" : "Compute Unit Utilization";
     writeTableHeader(getStream(), table3Caption, ComputeUnitExecutionSummaryColumnLabels);
     profile->writeComputeUnitSummary(this);
@@ -89,7 +89,7 @@ namespace xdp {
     }
 
     if (profile->isDeviceProfileOn() && 
-      (flowMode == xdp::RTSingleton::DEVICE) &&
+      (flowMode == xdp::RTUtil::DEVICE) &&
       (numStallSlots > 0)) {
       std::vector<std::string> KernelStallLabels = {
         "Compute Unit", "Execution Count", "Running Time (ms)", "Intra-Kernel Dataflow Stalls (ms)", 
@@ -109,7 +109,7 @@ namespace xdp {
     };
     writeTableHeader(getStream(), "Data Transfer: Host and Global Memory",
         DataTransferSummaryColumnLabels);
-    if ((flowMode != xdp::RTSingleton::CPU) && (flowMode != xdp::RTSingleton::COSIM_EM)) {
+    if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
       profile->writeHostTransferSummary(this);
     }
     writeTableFooter(getStream());
@@ -128,7 +128,7 @@ namespace xdp {
     writeTableFooter(getStream());
 
     // Table 6.1 : Stream Data Transfers
-    if (profile->isDeviceProfileOn() && (flowMode == xdp::RTSingleton::DEVICE || flowMode == xdp::RTSingleton::HW_EM) && (numStreamSlots > 0)) {
+    if (profile->isDeviceProfileOn() && (flowMode == xdp::RTUtil::DEVICE || flowMode == xdp::RTUtil::HW_EM) && (numStreamSlots > 0)) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
         "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
@@ -221,7 +221,7 @@ namespace xdp {
     std::string aveBWUtilStr = std::to_string(aveBWUtil);
     std::string totalTimeStr = std::to_string(totalTimeMsec);
     std::string aveTimeStr = std::to_string(aveTimeMsec);
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
       transferRateStr = "N/A";
       aveBWUtilStr = "N/A";
       totalTimeStr = "N/A";
@@ -355,9 +355,9 @@ namespace xdp {
     std::string durationStr = std::to_string( trace.getDuration() );
     double rate = (double)(trace.getSize()) / (1000.0 * trace.getDuration());
     std::string rateStr = std::to_string(rate);
-    if (xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::CPU
-        || xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::COSIM_EM
-        || xdp::RTSingleton::Instance()->getFlowMode() == xdp::RTSingleton::HW_EM) {
+    if  (  mPluginHandle->getFlowMode() == xdp::RTUtil::CPU
+        || mPluginHandle->getFlowMode() == xdp::RTUtil::COSIM_EM
+        || mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
       durationStr = "N/A";
       rateStr = "N/A";
     }
@@ -491,7 +491,7 @@ namespace xdp {
     std::string checkName5;
     XDPPluginI::getGuidanceName(XDPPluginI::DDR_BANKS, checkName5);
 
-    auto cuPortVector = xdp::RTSingleton::Instance()->getPlugin()->getCUPortVector();
+    auto cuPortVector = mPluginHandle->getCUPortVector();
     std::map<std::string, int> cuPortsToMemory;
 
     for (auto& cuPort : cuPortVector) {
@@ -533,8 +533,7 @@ namespace xdp {
     // 8. OpenCL objects released
     std::string checkName8;
     XDPPluginI::getGuidanceName(XDPPluginI::OBJECTS_RELEASED, checkName8);
-    bool objectsReleased = xdp::RTSingleton::Instance()->isObjectsReleased();
-    int numReleased = (objectsReleased) ? 1 : 0;
+    int numReleased = (mPluginHandle->isObjectsReleased()) ? 1 : 0;
     writeTableCells(getStream(), checkName8, "all", numReleased);
   }
 

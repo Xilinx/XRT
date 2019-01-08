@@ -25,12 +25,6 @@ namespace xdp {
   // XDP Profile Core Utility Class
   // ******************************
 
-  double RTUtil::getTraceTime()
-  {
-    // Get trace time from XDP plugin
-    return xdp::RTSingleton::Instance()->getPlugin()->getTraceTime();
-  }
-
   void RTUtil::commandKindToString(e_profile_command_kind objKind,
                                    std::string& commandString)
   {
@@ -186,6 +180,18 @@ namespace xdp {
 
     // Function not in reported list so ignore
     return XCL_PERF_MON_IGNORE_EVENT;
+  }
+
+  void RTUtil::getFlowModeName(e_flow_mode flowMode, std::string& str)
+  {
+    if (flowMode == CPU)
+      str = "CPU Emulation";
+    else if (flowMode == COSIM_EM)
+      str = "Co-Sim Emulation";
+    else if (flowMode == HW_EM)
+      str = "Hardware Emulation";
+    else
+      str = "System Run";
   }
 
 } // xdp

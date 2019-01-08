@@ -36,8 +36,9 @@ namespace xdp {
   // ******************************************
   // Top-Level XDP Profile Summary Writer Class
   // ******************************************
-  SummaryWriter::SummaryWriter(ProfileCounters* profileCounters)
-  : mProfileCounters(profileCounters)
+  SummaryWriter::SummaryWriter(ProfileCounters* profileCounters, XDPPluginI* Plugin)
+  : mProfileCounters(profileCounters),
+    mPluginHandle(Plugin)
   {
     // Indeces are the same for HW and emulation
     HostSlotIndex = XPAR_SPM0_HOST_SLOT;
@@ -196,7 +197,7 @@ namespace xdp {
     xclCounterResults rolloverCounts = mRolloverCountsMap.at(key);
     for (unsigned int s=0; s < numSlots; ++s) {
       rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
-      rts->getPlugin()->getProfileKernelName(deviceName, cuName, kernelName);
+      mPluginHandle->getProfileKernelName(deviceName, cuName, kernelName);
       if (!deviceDataExists)
         mDeviceBinaryCuSlotsMap[key].push_back(cuName);
       uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
@@ -304,10 +305,10 @@ namespace xdp {
     // Get maximum throughput rates
     double readMaxBandwidthMBps = 0.0;
     double writeMaxBandwidthMBps = 0.0;
-    if (xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::CPU
-        && xdp::RTSingleton::Instance()->getFlowMode() != xdp::RTSingleton::COSIM_EM) {
-      readMaxBandwidthMBps = xdp::RTSingleton::Instance()->getPlugin()->getReadMaxBandwidthMBps();
-      writeMaxBandwidthMBps = xdp::RTSingleton::Instance()->getPlugin()->getWriteMaxBandwidthMBps();
+    if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU
+        && mPluginHandle->getFlowMode() != xdp::RTUtil::COSIM_EM) {
+      readMaxBandwidthMBps = mPluginHandle->getReadMaxBandwidthMBps();
+      writeMaxBandwidthMBps = mPluginHandle->getWriteMaxBandwidthMBps();
     }
 
     mProfileCounters->writeHostTransferSummary(writer, true,  totalReadBytes,  totalReadTimeMsec,  readMaxBandwidthMBps);
@@ -387,7 +388,7 @@ namespace xdp {
 
         std::string memoryName;
         std::string argNames;
-        xdp::RTSingleton::Instance()->getPlugin()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+        mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
 
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
         uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
@@ -461,7 +462,7 @@ namespace xdp {
 
         std::string memoryName;
         std::string argNames;
-        xdp::RTSingleton::Instance()->getPlugin()->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+        mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
 
         double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
 

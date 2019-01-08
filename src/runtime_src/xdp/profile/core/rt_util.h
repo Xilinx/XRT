@@ -83,12 +83,13 @@ namespace xdp {
       STALL_TRACE_ALL = STALL_TRACE_EXT | STALL_TRACE_INT | STALL_TRACE_STR
     };
 
+    enum e_flow_mode {CPU = 0, COSIM_EM, HW_EM, DEVICE};
+
   public:
     RTUtil();
     ~RTUtil();
 
   public:
-    static double getTraceTime();
     static void commandKindToString(e_profile_command_kind objKind,
         std::string& commandString);
     static void commandStageToString(e_profile_command_state objStage,
@@ -97,6 +98,7 @@ namespace xdp {
     	double timeStamp);
     static xclPerfMonEventID getFunctionEventID(const std::string &functionName,
         long long queueAddress);
+    static void getFlowModeName(e_flow_mode flowMode, std::string& str);
 
   };
 

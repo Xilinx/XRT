@@ -20,9 +20,12 @@
 
 namespace xdp {
 
-  CSVTraceWriter::CSVTraceWriter(const std::string& traceFileName, const std::string& platformName) :
+  CSVTraceWriter::CSVTraceWriter( const std::string& traceFileName,
+                                  const std::string& platformName,
+                                  XDPPluginI* Plugin) :
       TraceFileName(traceFileName),
-      PlatformName(platformName)
+      PlatformName(platformName),
+      mPluginHandle(Plugin)
   {
     if (TraceFileName != "") {
       assert(!Trace_ofs.is_open());
@@ -103,7 +106,7 @@ namespace xdp {
     ofs << "Stall profiling," << stallProfiling << ",\n";
 
     std::string flowMode;
-    rts->getFlowModeName(flowMode);
+    xdp::RTUtil::getFlowModeName(mPluginHandle->getFlowMode(), flowMode);
     ofs << "Target," << flowMode << ",\n";
 
     std::string deviceNames = profile->getDeviceNames("|");

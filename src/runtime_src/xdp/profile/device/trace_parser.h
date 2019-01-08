@@ -28,13 +28,15 @@
 #include "driver/include/xclperf.h"
 #include "../collection/results.h"
 #include "../debug.h"
+#include "xdp/profile/plugin/base_plugin.h"
+#include "xdp/profile/core/rt_util.h"
 
 namespace xdp {
   class DeviceTrace;
 
   class TraceParser {
     public:
-      TraceParser();
+      TraceParser(XDPPluginI* Plugin);
       ~TraceParser();
 
       typedef std::vector<DeviceTrace> TraceResultVector;
@@ -161,6 +163,9 @@ namespace xdp {
       std::queue<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
+
+    private:
+      XDPPluginI* mPluginHandle;
   };
 
 } // xdp
