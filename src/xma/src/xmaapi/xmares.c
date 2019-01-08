@@ -119,6 +119,7 @@ typedef struct XmaShmRes {
 typedef struct XmaResConfig {
     XmaShmRes sys_res;
     pthread_mutex_t lock;
+    bool sys_res_ready;
     pid_t clients[MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS];
     uint32_t ref_cnt;
 } XmaResConfig;
@@ -126,7 +127,6 @@ typedef struct XmaResConfig {
 /**********************************GLOBALS*************************************/
 #ifdef XMA_RES_TEST
 char *XMA_SHM_FILE = "/tmp/xma_shm_db";
-char *XMA_SHM_FILE_SIG = "/tmp/xma_shm_db_ready";
 bool xma_shm_filename_set = 0;
 #endif
 
@@ -426,7 +426,7 @@ int32_t xma_res_kern_handle_get(XmaKernelRes *kern_res)
 static void xma_set_shm_filenames(void)
 {
 #ifdef XMA_RES_TEST
-    char    *userlogin, *fn, *fn_sig;
+    char    *userlogin, *fn;
     size_t  fn_buff_size;
 
     if (xma_shm_filename_set)
@@ -446,17 +446,6 @@ static void xma_set_shm_filenames(void)
     strcat(fn, "_");
     strcat(fn, (const char *)userlogin);
     XMA_SHM_FILE = fn;
-
-    fn_buff_size = strlen((const char *)userlogin);
-    fn_buff_size += strlen((const char *)XMA_SHM_FILE_SIG);
-    fn_buff_size += 3;
-
-    fn_sig = malloc(fn_buff_size);
-    memset(fn_sig, 0, fn_buff_size);
-    strcpy(fn_sig, (const char*)XMA_SHM_FILE_SIG);
-    strcat(fn_sig, "_");
-    strcat(fn_sig, (const char *)userlogin);
-    XMA_SHM_FILE_SIG = fn_sig;
     xma_shm_filename_set = 1;
 #else
     return;
@@ -561,13 +550,9 @@ eexist:
         return NULL;
     }
 
-    while (ret != 1 && !xma_res_xma_init_completed()) {
-        struct stat stat_buf;
-
-        if (stat(shm_filename, &stat_buf))
-            return NULL;
+    /* wait for system to be configured */
+    while (ret != 1 && !xma_res_xma_init_completed(shm_map))
         sched_yield();
-    }
 
     return shm_map;
 }
@@ -575,26 +560,13 @@ eexist:
 void xma_res_mark_xma_ready(XmaResources shm_cfg)
 {
     XmaResConfig *shm_map = (XmaResConfig *)shm_cfg;
-    int fd_sig;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
-    /* File used to signal to other processes that shm is ready */
-    fd_sig = open(XMA_SHM_FILE_SIG, O_CREAT | O_EXCL, 0666);
-    if (fd_sig < 0 && errno == EEXIST) {
-        return;
-    } else if (fd_sig < 0) {
-        xma_res_shm_unmap(shm_map);
-        return;
-    }
-    fchmod(fd_sig, 0644);
+    shm_map->sys_res_ready = true;
 }
 
-bool xma_res_xma_init_completed(void)
+bool xma_res_xma_init_completed(XmaResources shm_cfg)
 {
-    struct stat stat_buf;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
-    return stat(XMA_SHM_FILE_SIG, &stat_buf) == 0 ? true : false;
+    XmaResConfig *shm_map = (XmaResConfig *)shm_cfg;
+    return shm_map->sys_res_ready;
 }
 
 static int xma_init_shm(XmaResConfig *xma_shm,
@@ -610,6 +582,7 @@ static int xma_init_shm(XmaResConfig *xma_shm,
     int scaler_idx = 0;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+    xma_shm->sys_res_ready = false;
     img_cnt = xma_cfg_img_cnt_get();
     dev_cnt = xma_cfg_dev_cnt_get();
     if (img_cnt < 0 || dev_cnt < 0)
@@ -693,10 +666,8 @@ static void xma_shm_close(XmaResConfig *xma_shm, bool rm_shm)
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     munmap((void*)xma_shm, sizeof(XmaResConfig));
 
-    if (rm_shm) {
+    if (rm_shm)
         unlink(XMA_SHM_FILE);
-        unlink(XMA_SHM_FILE_SIG);
-    }
 }
 
 static int xma_verify_process_res(pid_t pid)
@@ -1242,7 +1213,6 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
         if (ret)
             return ret;
 
-        unlink(XMA_SHM_FILE_SIG);
         shm_reinit = true;
     }
 

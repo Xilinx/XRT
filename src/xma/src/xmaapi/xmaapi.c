@@ -70,7 +70,7 @@ int32_t xma_initialize(char *cfgfile)
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     rc = xma_hw_configure(&g_xma_singleton->hwcfg,
                           &g_xma_singleton->systemcfg,
-                          xma_res_xma_init_completed());
+                          xma_res_xma_init_completed(g_xma_singleton->shm_res_cfg));
     if (!rc)
         goto error;
 
