@@ -223,10 +223,12 @@ public:
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                    uint8_t *properties, size_t size);
+                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
+                                    size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
     size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
+    size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
@@ -377,6 +379,12 @@ private:
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
     uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
 
     // QDMA AIO
     aio_context_t mAioContext;
