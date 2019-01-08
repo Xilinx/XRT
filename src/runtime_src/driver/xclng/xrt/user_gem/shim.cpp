@@ -36,6 +36,7 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
+#include "driver/xclng/xrt/util/message.h"
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -322,6 +323,17 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
     }
 
     wordcopy(mem + offset, buffer, length);
+    return 0;
+}
+
+/*
+ * xclLogMsg()
+ */
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+{
+    //This is TODO
+    xrt_core::message::send((xrt_core::message::severity_level)level, format);
+
     return 0;
 }
 
