@@ -329,9 +329,10 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclLogMsgLevel level, const char* msg)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
 {
-    xrt_core::message::send((xrt_core::message::severity_level)level, msg);
+    //This is TODO
+    xrt_core::message::send((xrt_core::message::severity_level)level, format);
 
     return 0;
 }

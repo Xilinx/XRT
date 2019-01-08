@@ -466,12 +466,14 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 /**
  * xclLogMsg() - Send message to log file as per settings in ini file.
  *
+ * @handle:        Device handle
  * @level:         Severity level of the msg
- * @msg:           Msg string to write to log file
+ * @format:        Format of Msg string to write to log file
+ * @...:           All other arguments as per the format
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclLogMsgLevel level, const char* msg);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
