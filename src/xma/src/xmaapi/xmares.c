@@ -137,8 +137,7 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *xma_shm);
 
 static void xma_shm_close(XmaResConfig *xma_shm, bool rm_shm);
 
-static int xma_init_shm(XmaResConfig *xma_shm, XmaSystemCfg *config,
-                        bool shm_locked);
+static int xma_init_shm(XmaResConfig *xma_shm, XmaSystemCfg *config);
 
 static int xma_shm_lock(XmaResConfig *xma_shm);
 
@@ -485,20 +484,21 @@ int32_t xma_res_kern_chan_id_get(XmaKernelRes *kern_res)
 static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
 {
     extern XmaSingleton *g_xma_singleton;
-    int ret, fd;
+    int ret, fd, max_retry;
     XmaResConfig *shm_map;
 
     pthread_mutexattr_t proc_shared_lock;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     /* JPM TODO consider replacing with shm_open() */
-    fd = open(shm_filename, O_RDWR | O_CREAT | O_EXCL, 0666);
+    fd = open(shm_filename, O_RDWR | O_CREAT | O_EXCL, 0200);
     if (fd < 0 && errno == EEXIST)
         goto eexist;
     else if (fd < 0)
         return NULL;
 
-    fchmod(fd, 0666);
+    /* Ensure other processes will fail to open properly until initialzied */
+    fchmod(fd, 0200);
     ret = ftruncate(fd, sizeof(XmaResConfig));
     if (ret)
         return NULL; /*JPM log proper error message */
@@ -508,11 +508,13 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
     pthread_mutexattr_setrobust(&proc_shared_lock, PTHREAD_MUTEX_ROBUST);
     shm_map = (XmaResConfig *)mmap(NULL, sizeof(XmaResConfig),
                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    close(fd);
     pthread_mutex_init(&shm_map->lock, &proc_shared_lock);
-    ret = xma_init_shm(shm_map, config, false);
+    ret = xma_init_shm(shm_map, config);
     if (ret)
         return NULL;
+    /* Permit other processes to open properly as shm is initalized */
+    fchmod(fd, 0666);
+    close(fd);
 
     return shm_map;
 
@@ -523,6 +525,20 @@ eexist:
         xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
                    "Resource database already mapped into this process\n");
         return g_xma_singleton->shm_res_cfg;
+    }
+
+    /* Check to see that read bit has been asserted by process in control of shm */
+    ret = access(shm_filename, R_OK | W_OK);
+    for (max_retry = 5; ret < 0 && max_retry > 0; max_retry--)
+    {
+        ret = access(shm_filename, R_OK);
+        usleep(100);
+    }
+
+    if (ret) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+           "Resource database file not fully initialized and/or corrupt\n");
+        return NULL;
     }
 
     fd = open(shm_filename, O_RDWR, 0666);
@@ -582,7 +598,7 @@ bool xma_res_xma_init_completed(void)
 }
 
 static int xma_init_shm(XmaResConfig *xma_shm,
-                        XmaSystemCfg *config, bool shm_locked)
+                        XmaSystemCfg *config)
 {
     XmaDevice *shm_devices = xma_shm->sys_res.devices;
     XmaImage *shm_images = xma_shm->sys_res.images;
@@ -600,9 +616,6 @@ static int xma_init_shm(XmaResConfig *xma_shm,
         return XMA_ERROR_INVALID;
 
     xma_cfg_dev_ids_get(cfg_dev_ids);
-
-    if (!shm_locked && (0 != xma_shm_lock(xma_shm)))
-        return XMA_ERROR;
 
     memset(&xma_shm->sys_res, 0, sizeof(XmaShmRes));
 
@@ -668,8 +681,6 @@ static int xma_init_shm(XmaResConfig *xma_shm,
         }
     }
     xma_inc_ref_shm(xma_shm);
-    if (!shm_locked)
-        xma_shm_unlock(xma_shm);
 
     return XMA_SUCCESS;
 }
@@ -1197,6 +1208,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
     max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+
     if (xma_shm_lock(xma_shm))
         return XMA_ERROR;
 
@@ -1226,7 +1238,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
     }
 
     if (xma_shm->ref_cnt == 0) {
-        ret = xma_init_shm(xma_shm, config, true);
+        ret = xma_init_shm(xma_shm, config);
         if (ret)
             return ret;
 
