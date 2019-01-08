@@ -850,12 +850,15 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
     extern XmaSingleton *g_xma_singleton;
     int kern_idx, dev_id;
     bool kern_aquired = false;
+    /* First pass will look for kernels already in-use by proc */
+    bool kern_affinity_pass = true;
     size_t kernel_data_size;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     if (!session)
         return XMA_ERROR_INVALID;
 
+kern_alloc_loop:
     for (dev_id = -1; !kern_aquired && (dev_id < MAX_XILINX_DEVICES);)
     {
         XmaDevice *dev;
@@ -876,6 +879,12 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
         {
             int str_cmp1 = -1, str_cmp2 = -1, type_cmp = false;
             int kern_id = dev->kernels[kern_idx].kernel_id;
+
+            /* first attempt to re-use existing kernels; else, use a new kernel */
+            if ((kern_affinity_pass && dev->kernels[kern_idx].client_id != proc_id) ||
+                (!kern_affinity_pass && dev->kernels[kern_idx].client_id == proc_id))
+                continue;
+
             XmaKernel *kernel =
                 &xma_shm->sys_res.images[dev->image_id].kernels[kern_id];
             XmaScalerPlugin *scaler;
@@ -941,13 +950,14 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
 
         if (!kern_aquired) {
             xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
-                       "%s() Unable to locate requested %s kernel type\n",
+                       "%s() Unable to locate requested %s kernel type on device %d\n",
                         __func__,
-                        kern_props->kernel_spec.scal_type ? "scaler" :
-                        kern_props->kernel_spec.enc_type ? "encoder" :
-                        kern_props->kernel_spec.dec_type ? "decoder" :
-                        kern_props->kernel_spec.filter_type ? "filter" :
-                        "kernel"
+                        kern_props->type == xma_res_scaler  ? "scaler" :
+                        kern_props->type == xma_res_encoder ? "encoder" :
+                        kern_props->type == xma_res_decoder ? "decoder" :
+                        kern_props->type == xma_res_filter ? "filter" :
+                        "kernel",
+                        dev_id
                         );
             xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                        "%s() from vendor %s on device %d\n",
@@ -959,17 +969,24 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
             return XMA_ERROR;
         }
     }
+
+    if (!kern_aquired && kern_affinity_pass) {
+        kern_affinity_pass = false; /* open up search to all kernels */
+        goto kern_alloc_loop;
+    }
+
     if (kern_aquired) {
         session->kern_res = (XmaKernelRes)kern_props;
         return XMA_SUCCESS;
     }
 
     xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD, "No available kernels of type '%s' from vendor %s\n",
-               type == xma_res_scaler ? "scaler" :
-               type == xma_res_encoder ? "encoder" :
-               type == xma_res_decoder ? "decoder" :
-               type == xma_res_filter ? "filter" :
+               kern_props->type == xma_res_scaler  ? "scaler" :
+               kern_props->type == xma_res_encoder ? "encoder" :
+               kern_props->type == xma_res_decoder ? "decoder" :
+               kern_props->type == xma_res_filter ? "filter" :
                "kernel", kern_props->vendor);
+
     return XMA_ERROR_NO_KERNEL;
 
 }
