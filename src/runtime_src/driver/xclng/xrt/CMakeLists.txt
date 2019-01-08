@@ -32,6 +32,8 @@ set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_core
   pthread
   rt
+  boost_filesystem
+  boost_system
   )
 
 install(TARGETS xrt_core
@@ -66,12 +68,16 @@ if(${INTERNAL_TESTING})
   target_link_libraries(xrt_aws
   pthread
   rt
+  boost_filesystem
+  boost_system
   )
 else()
   set(AWS_FPGA_MGMT_LIB_DIR ${AWS_FPGA_REPO_DIR}/sdk/userspace/lib)
   target_link_libraries(xrt_aws
   pthread
   rt
+  boost_filesystem
+  boost_system
   ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
 )
 endif()

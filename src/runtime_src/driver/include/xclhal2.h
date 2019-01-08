@@ -208,6 +208,23 @@ enum xclAddressSpace {
     XCL_ADDR_SPACE_MAX = 8
 };
 
+
+/**
+ * Defines log message severity levels for messages sent to log file with xclLogMsg cmd
+ */
+
+enum xclLogMsgLevel {
+    ALERT = 0,
+    CRITICAL = 1,
+    DEBUG = 2,
+    EMERGENCY = 3,
+    ERROR = 4,
+    INFO = 5,
+    INTERNAL = 6,
+    NOTICE = 7,
+    WARNING = 8
+};
+
 /**
  * Defines verbosity levels which are passed to xclOpen during device creation time
  */
@@ -444,6 +461,17 @@ XCL_DRIVER_DLLESPEC int xclRemoveAndScanFPGA();
 XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 
 /* End XRT Device Management APIs */
+
+
+/**
+ * xclLogMsg() - Send message to log file as per settings in ini file.
+ *
+ * @level:         Severity level of the msg
+ * @msg:           Msg string to write to log file
+ *
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclLogMsgLevel level, const char* msg);
 
 /**
  * DOC: XRT Buffer Management APIs
