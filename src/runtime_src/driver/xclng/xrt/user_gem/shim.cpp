@@ -331,28 +331,6 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
  */
 int xocl::XOCLShim::xclLogMsg(xclLogMsgLevel level, const char* msg)
 {
-    /*xrt_core::message::severity_level l;
-    switch (le) {
-        case 0:
-        {
-            // BAR0 on PF0
-            mem = mUserMap;
-            break;
-        }
-        case 0x10000:
-        {
-            // BAR0 on PF1
-            mem = mMgtMap;
-            break;
-        }
-        default:
-        {
-            return -1;
-        }
-    }
-    */
-    //This is TODO: Sarab
-    //xrt_core::message::send(xrt_core::message::severity_level::WARNING, ex.what());
     xrt_core::message::send((xrt_core::message::severity_level)level, msg);
 
     return 0;
