@@ -16,6 +16,8 @@ add_executable(xbflash ${XBFLASH_SRC})
 target_link_libraries(xbflash
   xrt_corestatic
   pthread
+  boost_filesystem
+  boost_system
   )
 
 install (TARGETS xbflash RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

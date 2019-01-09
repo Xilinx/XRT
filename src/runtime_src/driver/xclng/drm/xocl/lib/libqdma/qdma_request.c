@@ -348,9 +348,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 
 	lock_descq(descq);
 	cb->cancel = 1;
-	if (!cb->offset || (descq->conf.st && descq->conf.c2h)) {
-		qdma_request_cancel_done(descq, req);
-	}
+	descq->cancel_cnt++;
 	unlock_descq(descq);
 
 	schedule_work(&descq->work);

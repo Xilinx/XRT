@@ -213,6 +213,7 @@ void xocl_user_qdma_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	xocl_p2p_mem_release(&qd->ocl_dev, true);
 	xocl_subdev_destroy_all(&qd->ocl_dev);
 
 	xocl_fini_sysfs(&pdev->dev);

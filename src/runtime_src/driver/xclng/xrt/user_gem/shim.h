@@ -158,6 +158,7 @@ public:
     XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
+    int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -182,6 +183,7 @@ public:
     bool isGood() const;
     static XOCLShim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
+    int p2pEnable(bool enable);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);

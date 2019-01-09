@@ -197,6 +197,8 @@ int main(int argc, char *argv[])
         return xcldev::xclTop(argc, argv);
     } else if( std::strcmp( argv[1], "reset" ) == 0 ) {
         return xcldev::xclReset(argc, argv);
+    } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
+        return xcldev::xclSetP2p(argc, argv);
     }
     optind--;
 
@@ -690,6 +692,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "  p2p    [-d card] --enable\n";
+    std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -1347,4 +1351,70 @@ int xcldev::xclReset(int argc, char *argv[])
     if (err)
         std::cout << "ERROR: " << strerror(err) << std::endl;
     return err;
+}
+
+int xcldev::device::setP2p(bool enable)
+{
+    return xclP2pEnable(m_handle, enable);
+}
+
+int xcldev::xclSetP2p(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    int p2p_enable = -1;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index] --[enable|disable]");
+    static struct option long_options[] = {
+        {"enable", no_argument, 0, xcldev::P2P_ENABLE},
+        {"disable", no_argument, 0, xcldev::P2P_DISABLE},
+        {0, 0, 0, 0}
+    };
+    int long_index, ret;
+    const char* short_options = "d:"; //don't add numbers
+    const char* exe = argv[ 0 ];
+
+    while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
+        switch (c) {
+        case 'd':
+            ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+	    break;
+	case xcldev::P2P_ENABLE:
+            p2p_enable = 1;
+            break;
+        case xcldev::P2P_DISABLE:
+            p2p_enable = 0;
+            break;
+        default:
+            xcldev::printHelp(exe);
+            return 1;
+        }
+    }
+
+    if (p2p_enable == -1) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    ret = d->setP2p(p2p_enable);
+    if (ret == ENOSPC) {
+        std::cout << "ERROR: Not enough IO MEM space." << std::endl;
+        std::cout << "Please check BIOS settings" << std::endl;
+    } else if (ret == EAGAIN) {
+        std::cout << "ERROR: Need to reconfig pci bridges, please warm reboot" << std::endl;
+    } else if (ret)
+        std::cout << "ERROR: " << strerror(ret) << std::endl;
+
+    return ret;
 }

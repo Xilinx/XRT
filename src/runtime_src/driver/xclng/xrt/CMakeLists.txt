@@ -7,11 +7,13 @@ set(XRT_SRC "")
 
 add_library(xrt_core SHARED ${XRT_SRC}
   $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:util>
   $<TARGET_OBJECTS:user_gem>
   )
 
 add_library(xrt_corestatic STATIC ${XRT_SRC}
   $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:util>
   $<TARGET_OBJECTS:user_gem>
   )
 
@@ -21,6 +23,7 @@ add_compile_options("-fPIC" "-fvisibility=hidden")
 #set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 add_subdirectory(user_common)
+add_subdirectory(util)
 add_subdirectory(user_gem)
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
@@ -29,6 +32,8 @@ set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_core
   pthread
   rt
+  boost_filesystem
+  boost_system
   )
 
 install(TARGETS xrt_core
@@ -41,11 +46,13 @@ if (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
 add_library(xrt_aws SHARED ${XRT_SRC}
   $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:util>
   $<TARGET_OBJECTS:user_aws>
   )
 
 add_library(xrt_awsstatic STATIC ${XRT_SRC}
   $<TARGET_OBJECTS:user_common>
+  $<TARGET_OBJECTS:util>
   $<TARGET_OBJECTS:user_aws>
   )
 
@@ -61,12 +68,16 @@ if(${INTERNAL_TESTING})
   target_link_libraries(xrt_aws
   pthread
   rt
+  boost_filesystem
+  boost_system
   )
 else()
   set(AWS_FPGA_MGMT_LIB_DIR ${AWS_FPGA_REPO_DIR}/sdk/userspace/lib)
   target_link_libraries(xrt_aws
   pthread
   rt
+  boost_filesystem
+  boost_system
   ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
 )
 endif()
