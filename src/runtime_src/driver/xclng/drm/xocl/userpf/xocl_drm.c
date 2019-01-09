@@ -581,6 +581,7 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 	uint64_t addr;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	struct xocl_mm_wrapper *wrapper;
+	struct hlist_node *tmp;
 #endif
 
 	topology = xdev->topology;
@@ -598,7 +599,7 @@ void xocl_cleanup_mem(struct xocl_dev *xdev)
 		userpf_info(xdev, "Taking down DDR : %d", i);
 		addr = topology->m_mem_data[i].m_base_address;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-		hash_for_each_possible(xdev->mm_range, wrapper, node, addr) {
+		hash_for_each_possible_safe(xdev->mm_range, wrapper, tmp, node, addr) {
 			if (wrapper->ddr == i) {
 				hash_del(&wrapper->node);
 				vfree(wrapper);
