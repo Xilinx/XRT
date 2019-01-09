@@ -1176,6 +1176,33 @@ XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enu
 XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
                                                        xclTraceResultsVector& traceVector);
 #endif
+
+/**
+ * Experimental sysfs API
+ * (For debug and profile usage only for now)
+ * The sysfs information is not accessible above hal layer now
+ * However, debug/profile need information from sysfs (for example
+ * debug_ip_layout) to properly initialize xdp code, so this
+ * experimental API is added
+ */
+XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+                                        const char* entry, char* sysfsPath, size_t size);
+
+/** 
+ * Experimental APIs for reading debug and profile
+ * 
+ * Warning: These APIs are experimental and can be 
+ * changed or removed at any time. They should only 
+ * be used by debug and profile code.
+ * 
+ * @param handle the device handle
+ * @param info the xclDebugProfileDeviceInfo 
+ * structure that this API will fill in as 
+ * result
+ */
+XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
+
+
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);

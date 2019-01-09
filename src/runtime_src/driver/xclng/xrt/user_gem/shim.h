@@ -236,6 +236,13 @@ public:
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+    // Experimental sysfs API
+    int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+    // Experimental debug profile device data API
+    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
+
+
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);

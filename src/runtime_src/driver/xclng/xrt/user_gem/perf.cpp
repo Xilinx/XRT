@@ -33,6 +33,7 @@
  */
 
 #include "shim.h"
+#include "scan.h"
 //#include "datamover.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
@@ -961,8 +962,41 @@ namespace xocl {
     return size;
   }
 
-} // namespace xocl_gem
+  int XOCLShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = std::string(subdev);
+    std::string entry_str = std::string(entry);
+    if (mLogStream.is_open()) {
+      mLogStream << "Retrieving [sysfs root]";
+      mLogStream << subdev_str << "/" << entry_str;
+      mLogStream << std::endl;
+    }
+    std::string sysfsFullPath = dev->user->get_sysfs_path(subdev_str, entry_str);
+    strncpy(sysfsPath, sysfsFullPath.c_str(), size);
+    sysfsPath[size - 1] = '\0';
+    return 0;
+  }
 
+  int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    uint16_t user_instance = dev->user->instance;
+    uint16_t mgmt_instance = dev->mgmt->instance;
+    uint16_t nifd_instance = 0;
+    std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
+    std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
+    info->device_type = DeviceType::XBB;
+    info->device_index = mBoardNumber;
+    info->user_instance = user_instance;
+    info->mgmt_instance = mgmt_instance;
+    info->nifd_instance = nifd_instance;
+    strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN);
+    strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN);
+    info->device_name[MAX_NAME_LEN-1] = '\0';
+    info->nifd_name[MAX_NAME_LEN-1] = '\0';
+    return 0;
+  }
+
+} // namespace xocl_gem
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
@@ -1073,6 +1107,20 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
                        xclPerfMonEventID id)
 {
   // don't do anything
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+                      const char* entry, char* sysfsPath, size_t size) {
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 
