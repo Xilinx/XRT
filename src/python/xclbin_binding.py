@@ -1,22 +1,22 @@
-##
- # Copyright (C) 2018 Xilinx, Inc
- # Author(s): Ryan Radjabi
- #            Shivangi Agarwal
- #            Sonal Santan
- # ctypes based Python binding for xclbin.h data structures
- #
- # Licensed under the Apache License, Version 2.0 (the "License"). You may
- # not use this file except in compliance with the License. A copy of the
- # License is located at
- #
- #     http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- # License for the specific language governing permissions and limitations
- # under the License.
-##
+"""
+ Copyright (C) 2018 Xilinx, Inc
+ Author(s): Ryan Radjabi
+            Shivangi Agarwal
+            Sonal Santan
+ ctypes based Python binding for xclbin.h data structures
+
+ Licensed under the Apache License, Version 2.0 (the "License"). You may
+ not use this file except in compliance with the License. A copy of the
+ License is located at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+"""
 
 import os
 import ctypes
@@ -24,7 +24,23 @@ import ctypes
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
-class AXLF_SECTION_KIND ():
+"""
+    AXLF LAYOUT
+    -----------
+
+    -----------------------------------------
+    | Magic                                 |
+    -----------------------------------------
+    | Header                                |
+    -----------------------------------------
+    | One or more section headers           |
+    -----------------------------------------
+    | Matching number of sections with data |
+    -----------------------------------------
+"""
+
+
+class AXLF_SECTION_KIND:
     BITSTREAM = 0
     CLEARING_BITSTREAM = 1
     EMBEDDED_METADATA = 2
@@ -45,7 +61,7 @@ class AXLF_SECTION_KIND ():
     DNA_CERTIFICATE = 17
 
 
-class XCLBIN_MODE ():
+class XCLBIN_MODE:
     XCLBIN_FLAT = 1
     XCLBIN_PR = 2
     XCLBIN_TANDEM_STAGE2 = 3

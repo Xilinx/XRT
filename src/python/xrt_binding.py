@@ -89,7 +89,7 @@ class xclDeviceInfo2(ctypes.Structure):
     ]
 
 
-class xclMemoryDomains():
+class xclMemoryDomains:
     XCL_MEM_HOST_RAM = 0
     XCL_MEM_DEVICE_RAM = 1
     XCL_MEM_DEVICE_BRAM = 2
@@ -98,14 +98,14 @@ class xclMemoryDomains():
     XCL_MEM_DEVICE_REG = 5
 
 
-class xclDDRFlags ():
+class xclDDRFlags:
     XCL_DEVICE_RAM_BANK0 = 0
     XCL_DEVICE_RAM_BANK1 = 2
     XCL_DEVICE_RAM_BANK2 = 4
     XCL_DEVICE_RAM_BANK3 = 8
 
 
-class xclBOKind ():
+class xclBOKind:
     XCL_BO_SHARED_VIRTUAL = 0
     XCL_BO_SHARED_PHYSICAL = 1
     XCL_BO_MIRRORED_VIRTUAL = 2
@@ -114,12 +114,12 @@ class xclBOKind ():
     XCL_BO_DEVICE_PREALLOCATED_BRAM = 5
 
 
-class xclBOSyncDirection ():
+class xclBOSyncDirection:
     XCL_BO_SYNC_BO_TO_DEVICE = 0
     XCL_BO_SYNC_BO_FROM_DEVICE = 1
 
 
-class xclAddressSpace ():
+class xclAddressSpace:
     XCL_ADDR_SPACE_DEVICE_FLAT = 0     # Absolute address space
     XCL_ADDR_SPACE_DEVICE_RAM = 1      # Address space for the DDR memory
     XCL_ADDR_KERNEL_CTRL = 2           # Address space for the OCL Region control port
@@ -128,14 +128,14 @@ class xclAddressSpace ():
     XCL_ADDR_SPACE_MAX = 8
 
 
-class xclVerbosityLevel ():
+class xclVerbosityLevel:
     XCL_QUIET = 0
     XCL_INFO = 1
     XCL_WARN = 2
     XCL_ERROR = 3
 
 
-class xclResetKind ():
+class xclResetKind:
     XCL_RESET_KERNEL = 0
     XCL_RESET_FULL = 1
     XCL_USER_RESET = 2
@@ -386,6 +386,40 @@ def xclUpgradeFirmware2(handle, file1, file2):
     return libc.xclUpgradeFirmware2(handle, file1, file2)
 
 
+def xclUpgradeFirmwareXSpi (handle, fileName, index):
+    """
+    Update the device SPI PROM with new image
+    :param handle:
+    :param fileName:
+    :param index:
+    :return:
+    """
+    libc.xclUpgradeFirmwareXSpi.restype = ctypes.c_int
+    libc.xclUpgradeFirmwareXSpi.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_int]
+    return libc.xclUpgradeFirmwareXSpi(handle, fileName, index)
+
+
+def xclBootFPGA(handle):
+    """
+    Boot the FPGA from PROM
+    :param handle: Device handle
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclBootFPGA.restype = ctypes.c_int
+    libc.xclBootFPGA.argtype = xclDeviceHandle
+    return libc.xclBootFPGA(handle)
+
+
+def xclRemoveAndScanFPGA():
+    """
+    Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
+    writing to /sys/bus/pci/rescan.
+    :return:
+    """
+    libc.xclRemoveAndScanFPGA.restype = ctypes.c_int
+    return libc.xclRemoveAndScanFPGA()
+
+
 def xclAllocBO(handle, size, domain, flags):
     """
     Allocate a BO of requested size with appropriate flags
@@ -400,6 +434,21 @@ def xclAllocBO(handle, size, domain, flags):
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
     return libc.xclAllocBO(handle, size, domain, flags)
 
+
+def xclAllocUserPtrBO(handle, userptr, size, flags):
+    """
+    Allocate a BO using userptr provided by the user
+    :param handle: Device handle
+    :param userptr: Pointer to 4K aligned user memory
+    :param size: Size of buffer
+    :param flags: Specify bank information, etc
+    :return: BO handle
+    """
+    libc.xclAllocUserPtrBO.restype = ctypes.c_uint
+    libc.xclAllocUserPtrBO.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]
+    return libc.xclAllocUserPtrBO(handle, userptr, size, flags)
+
+
 def xclFreeBO(handle, boHandle):
     """
     Free a previously allocated BO
@@ -410,6 +459,37 @@ def xclFreeBO(handle, boHandle):
     libc.xclFreeBO.restype = None
     libc.xclFreeBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     libc.xclFreeBO(handle, boHandle)
+
+
+def xclWriteBO(handle, boHandle, src, size, seek):
+    """
+    Copy-in user data to host backing storage of BO
+    :param handle: Device handle
+    :param boHandle: BO handle
+    :param src: Source data pointer
+    :param size: Size of data to copy
+    :param seek: Offset within the BO
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclWriteBO.restype = ctypes.c_int
+    libc.xclWriteBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+    return libc.xclWriteBO(handle, boHandle, src, size, seek)
+
+
+def xclReadBO(handle, boHandle, dst, size, skip):
+    """
+    Copy-out user data from host backing storage of BO
+    :param handle: Device handle
+    :param boHandle: BO handle
+    :param dst: Destination data pointer
+    :param size: Size of data to copy
+    :param skip: Offset within the BO
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclReadBO.restype = ctypes.c_int
+    libc.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
+    return libc.xclReadBO(handle, boHandle, dst, size, skip)
+
 
 def xclMapBO(handle, boHandle, write):
     """
@@ -427,8 +507,7 @@ def xclMapBO(handle, boHandle, write):
     xclGetBOProperties(handle, boHandle, prop)
     libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_char * prop.size)
     libc.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
-    ptr = libc.xclMapBO(handle, boHandle, write)
-    return ptr
+    return libc.xclMapBO(handle, boHandle, write)
 
 
 def xclSyncBO(handle, boHandle, direction, size, offset):
@@ -447,6 +526,51 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     return libc.xclSyncBO(handle, boHandle, direction, size, offset)
 
 
+def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
+    """
+    Copy device buffer contents to another buffer
+    :param handle: Device handle
+    :param dstBoHandle: Destination BO handle
+    :param srcBoHandle: Source BO handle
+    :param size: Size of data to synchronize
+    :param dst_offset: dst  Offset within the BO
+    :param src_offset: src  Offset within the BO
+    :return: 0 on success or standard errno
+    """
+    libc.xclCopyBO.restype = ctypes.c_int
+    libc.xclCopyBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t,
+                               ctypes.c_uint]
+    libc.xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset)
+
+
+def xclExportBO(handle, boHandle):
+    """
+    Obtain DMA-BUF file descriptor for a BO
+    :param handle: Device handle
+    :param boHandle: BO handle which needs to be exported
+    :return: File handle to the BO or standard errno
+    """
+    libc.xclExportBO.restype = ctypes.c_int
+    libc.xclExportBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
+    return libc.xclExportBO(handle, boHandle)
+
+
+def xclImportBO(handle, fd, flags):
+    """
+    Obtain BO handle for a BO represented by DMA-BUF file descriptor
+    :param handle: Device handle
+    :param fd: File handle to foreign BO owned by another device which needs to be imported
+    :param flags: Unused
+    :return: BO handle of the imported BO
+
+    Import a BO exported by another device.
+    This operation is backed by Linux DMA-BUF framework
+    """
+    libc.xclImportBO.restype = ctypes.c_int
+    libc.xclImportBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint]
+    libc.xclImportBO(handle, fd, flags)
+
+
 def xclGetBOProperties(handle, boHandle, properties):
     """
     Obtain xclBOProperties struct for a BO
@@ -459,6 +583,152 @@ def xclGetBOProperties(handle, boHandle, properties):
     libc.xclGetBOProperties.restype = ctypes.c_int
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
     return libc.xclGetBOProperties(handle, boHandle, properties)
+
+
+def xclAllocDeviceBuffer(handle, size):
+    """
+    Allocate a buffer on the device
+    :param handle: Device handle
+    :param size: Size of buffer
+    :return: Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
+    """
+    libc.xclAllocDeviceBuffer.restype = ctypes.c_uint64
+    libc.xclAllocDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_size_t]
+    return libc.xclAllocDeviceBuffer(handle, size)
+
+
+def xclAllocDeviceBuffer2(handle, size, domain, flags):
+    """
+    Allocate a buffer on the device on a specific DDR
+    :param handle: Device handle
+    :param size: Size of buffer
+    :param domain: Memory domain
+    :param flags: Desired DDR bank as a bitmap.
+    :return: Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
+    """
+    libc.xclAllocDeviceBuffer2.restype = ctypes.c_uint64
+    libc.xclAllocDeviceBuffer2.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
+    return libc.xclAllocDeviceBuffer2(handle, size, domain, flags)
+
+
+def xclFreeDeviceBuffer(handle, buf):
+    """
+    Free a previously buffer on the device
+    :param handle: Device handle
+    :param buf: Physical address of buffer
+    :return:
+    """
+    libc.xclFreeDeviceBuffer.restype = None
+    libc.xclFreeDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclFreeDeviceBuffer(handle, buf)
+
+
+def xclCopyBufferHost2Device(handle, dest, src, size, seek):
+    """
+    Write to device memory
+    :param handle: Device handle
+    :param dest: Physical address in the device
+    :param src: Source buffer pointer
+    :param size: Size of data to synchronize
+    :param seek: Seek within the segment pointed to physical address
+    :return: Size of data moved or standard error number
+    """
+    libc.xclCopyBufferHost2Device.restype = ctypes.c_size_t
+    libc.xclCopyBufferHost2Device.argtypes = [xclDeviceHandle, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
+    return libc.xclCopyBufferHost2Device(handle, dest, src, size, seek)
+
+
+def xclCopyBufferDevice2Host(handle, dest, src, size, skip):
+    """
+    Read from device memory
+    :param handle: Device handle
+    :param dest: Destination buffer pointer
+    :param src: Physical address in the device
+    :param size: Size of data to synchronize
+    :param skip: Skip within the segment pointed to physical address
+    :return: Size of data moved or standard error number
+    """
+    libc.xclCopyBufferDevice2Host.restype = ctypes.c_size_t
+    libc.xclCopyBufferDevice2Host.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t]
+    return libc.xclCopyBufferDevice2Host(handle, dest, src, size, skip)
+
+
+def xclUnmgdPread(handle, flags, buf, size, offeset):
+    """
+    Perform unmanaged device memory read operation
+    :param handle: Device handle
+    :param flags: Unused
+    :param buf: Destination data pointer
+    :param size: Size of data to copy
+    :param offeset: Absolute offset inside device
+    :return: size of bytes read or appropriate error number
+
+    This API may be used to perform DMA operation from absolute location specified. Users
+    may use this if they want to perform their own device memory management -- not using the buffer
+    object (BO) framework defined before.
+    """
+    libc.xclUnmgdPread.restype = ctypes.c_size_t
+    libc.xclUnmgdPread.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint64]
+    return libc.xclUnmgdPread(handle, flags, buf, size, offeset)
+
+
+def xclUnmgdPwrite(handle, flags, buf, size, offset):
+    """
+    Perform unmanaged device memory write operation
+    :param handle: Device handle
+    :param flags: Unused
+    :param buf: Destination data pointer
+    :param size: Size of data to copy
+    :param offeset: Absolute offset inside device
+    :return: size of bytes read or appropriate error number
+
+    This API may be used to perform DMA operation from absolute location specified. Users
+    may use this if they want to perform their own device memory management -- not using the buffer
+    object (BO) framework defined before.
+    """
+    libc.xclUnmgdPwrite.restype = ctypes.c_size_t
+    libc.xclUnmgdPwrite.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint64]
+    return libc.xclUnmgdPwrite(handle, flags, buf, size, offset)
+
+
+def xclWrite(handle, space, offset, hostBuf, size):
+    """
+    Perform register write operation
+    :param handle:  Device handle
+    :param space: Address space
+    :param offset: Offset in the address space
+    :param hostBuf: Source data pointer
+    :param size: Size of data to copy
+    :return: size of bytes written or appropriate error number
+
+    This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
+    the address space. A device may have many address spaces.
+    This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+    execution management please use XRT Compute Unit Execution Management APIs defined below
+    """
+    libc.xclWrite.restype = ctypes.c_size_t
+    libc.xclWrite.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
+    return libc.xclWrite(handle, space, offset, hostBuf, size)
+
+
+def xclRead(handle, space, offset, hostBuf, size):
+    """
+    Perform register write operation
+    :param handle:  Device handle
+    :param space: Address space
+    :param offset: Offset in the address space
+    :param hostBuf: Destination data pointer
+    :param size: Size of data to copy
+    :return: size of bytes written or appropriate error number
+
+    This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
+    the address space. A device may have many address spaces.
+    This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+    execution management please use XRT Compute Unit Execution Management APIs defined below
+    """
+    libc.xclRead.restype = ctypes.c_size_t
+    libc.xclRead.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
+    return libc.xclRead(handle, space, offset, hostBuf, size)
 
 
 def xclExecBuf(handle, cmdBO):
@@ -476,6 +746,25 @@ def xclExecBuf(handle, cmdBO):
     return libc.xclExecBuf(handle, cmdBO)
 
 
+def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
+    """
+    Submit an execution request to the embedded (or software) scheduler
+    :param handle: Device handle
+    :param cmdBO:BO handle containing command packet
+    :param num_bo_in_wait_list: Number of BO handles in wait list
+    :param bo_wait_list: BO handles that must complete execution before cmdBO is started
+    :return:0 or standard error number
+
+    Submit an exec buffer for execution. The BO handles in the wait
+    list must complete execution before cmdBO is started.  The BO
+    handles in the wait list must have beeen submitted prior to this
+    call to xclExecBufWithWaitList.
+    """
+    libc.xclExecBufWithWaitList.restype = ctypes.c_int
+    libc.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, POINTER(ctypes.c_uint)]
+    return libc.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list)
+
+
 def xclExecWait(handle, timeoutMilliSec):
     """
     xclExecWait() - Wait for one or more execution events on the device
@@ -487,11 +776,108 @@ def xclExecWait(handle, timeoutMilliSec):
     call on the driver file handle. The return value has same semantics as poll system call.
     If return value is > 0 caller should check the status of submitted exec buffers
     """
-    libc.xclExecWait.restype = ctypes.c_size_t
+    libc.xclExecWait.restype = ctypes.c_int
     libc.xclExecWait.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclExecWait(handle, timeoutMilliSec)
 
-def xclReadBO(handle, boHandle, dst, size, skip):
-    libc.xclReadBO.restype = ctypes.c_int
-    libc.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
-    return libc.xclReadBO(handle, boHandle, dst, size, skip)
+
+def xclRegisterInterruptNotify(handle, userInterrupt, fd):
+    """
+    register *eventfd* file handle for a MSIX interrupt
+    :param handle: Device handle
+    :param userInterrupt: MSIX interrupt number
+    :param fd: Eventfd handle
+    :return: 0 on success or standard errno
+
+    Support for non managed interrupts (interrupts from custom IPs). fd should be obtained from
+    eventfd system call. Caller should use standard poll/read eventfd framework in order to wait for
+    interrupts. The handles are automatically unregistered on process exit.
+    """
+    libc.xclRegisterInterruptNotify.restype = ctypes.c_int
+    libc.xclRegisterInterruptNotify.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int]
+    return libc.xclRegisterInterruptNotify(handle, userInterrupt, fd)
+
+
+class xclStreamContextFlags:
+    XRT_QUEUE_FLAG_POLLING = (1 << 2)
+
+
+class xclQueueContext(ctypes.Structure):
+    # structure to describe a Queue
+    _fields_ = [
+     ("type", ctypes.c_uint32),
+     ("state", ctypes.c_uint32),
+     ("route", ctypes.c_uint64),
+     ("flow", ctypes.c_uint64),
+     ("qsize", ctypes.c_uint32),
+     ("desc_size", ctypes.c_uint32),
+     ("flags", ctypes.c_uint64)
+    ]
+
+
+def xclCreateWriteQueue(handle, q_ctx, q_hdl):
+    """
+    Create Write Queue
+    :param handle:Device handle
+    :param q_ctx:Queue Context
+    :param q_hdl:Queue handle
+    :return:
+
+    This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
+    successes.
+    This feature will be enabled in a future release.
+    """
+    libc.xclCreateWriteQueue.restype = ctypes.c_int
+    libc.xclCreateWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
+    return libc.xclCreateWriteQueue(handle, q_ctx, q_hdl)
+
+
+def xclCreateReadQueue(handle, q_ctx, q_hdl):
+    """
+    Create Read Queue
+    :param handle:Device handle
+    :param q_ctx:Queue Context
+    :param q_hdl:Queue handle
+    :return:
+
+    This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
+    successes.
+    This feature will be enabled in a future release.
+    """
+    libc.xclCreateReadQueue.restype = ctypes.c_int
+    libc.xclCreateReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
+    return libc.xclCreateReadQueue(handle, q_ctx, q_hdl)
+
+# L941
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
