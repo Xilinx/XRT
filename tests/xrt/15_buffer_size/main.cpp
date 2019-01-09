@@ -234,12 +234,12 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize, int first
     while (totalAllocationSize < totalSize) {
         size_t size = dis(generator);
         unsigned pos = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, first_mem); //buf1
-        if (pos == 0xffffffffffffffffull) {
-            std::cout<< "pos is -1\n";
-            break;
-        }
         xclBOProperties p;
         uint64_t bodevAddr = !xclGetBOProperties(handle, pos, &p) ? p.paddr : -1;
+        if (bodevAddr == -1) {
+            break;
+        }
+
         totalAllocationSize += size;
         if (bodevAddr > maxAddress)
             maxAddress = bodevAddr;
