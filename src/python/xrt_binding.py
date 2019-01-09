@@ -1,22 +1,23 @@
-##
- # Copyright (C) 2018 Xilinx, Inc
- # Author(s): Ryan Radjabi
- #            Shivangi Agarwal
- #            Sonal Santan
- # ctypes based Python binding for XRT
- #
- # Licensed under the Apache License, Version 2.0 (the "License"). You may
- # not use this file except in compliance with the License. A copy of the
- # License is located at
- #
- #     http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- # License for the specific language governing permissions and limitations
- # under the License.
-##
+"""
+ Copyright (C) 2018 Xilinx, Inc
+ Author(s): Ryan Radjabi
+            Shivangi Agarwal
+            Sonal Santan
+ ctypes based Python binding for XRT
+
+ Licensed under the Apache License, Version 2.0 (the "License"). You may
+ not use this file except in compliance with the License. A copy of the
+ License is located at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations
+ under the License.
+"""
+
 import os
 import ctypes
 from xclbin_binding import *
@@ -501,7 +502,7 @@ def xclMapBO(handle, boHandle, write):
     :return: (void pointer) Memory mapped buffer
 
     Map the contents of the buffer object into host memory
-    To unmap the buffer call POSIX unmap() on mapped void * pointer returned from xclMapBO
+    To unmap the buffer call POSIX unmap() on mapped void pointer returned from xclMapBO
     """
     prop = xclBOProperties()
     xclGetBOProperties(handle, boHandle, prop)
@@ -783,7 +784,7 @@ def xclExecWait(handle, timeoutMilliSec):
 
 def xclRegisterInterruptNotify(handle, userInterrupt, fd):
     """
-    register *eventfd* file handle for a MSIX interrupt
+    register *eventfdfile handle for a MSIX interrupt
     :param handle: Device handle
     :param userInterrupt: MSIX interrupt number
     :param fd: Eventfd handle
@@ -848,24 +849,204 @@ def xclCreateReadQueue(handle, q_ctx, q_hdl):
     libc.xclCreateReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
     return libc.xclCreateReadQueue(handle, q_ctx, q_hdl)
 
-# L941
 
 
+def xclAllocQDMABuf(handle, size, buf_hdl):
+    """
+    Allocate DMA buffer
+    :param handle: Device handle
+    :param size: Buffer handle
+    :param buf_hdl: Buffer size
+    :return: buffer pointer
+
+    These functions allocate and free DMA buffers which is used for queue read and write.
+    This feature will be enabled in a future release.
+    """
+    libc.xclAllocQDMABuf.restypes = ctypes.c_void_p
+    libc.xclAllocQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_uint64]
+    return libc.xclAllocQDMABuf(handle, size, buf_hdl)
 
 
+def xclFreeQDMABuf(handle, buf_hdl):
+    """
+    Allocate DMA buffer
+    :param handle: Device handle
+    :param size: Buffer handle
+    :param buf_hdl: Buffer size
+    :return: buffer pointer
+
+    These functions allocate and free DMA buffers which is used for queue read and write.
+    This feature will be enabled in a future release.
+    """
+    libc.xclFreeQDMABuf.restypes = ctypes.c_int
+    libc.xclFreeQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclFreeQDMABuf(handle, buf_hdl)
 
 
+def xclDestroyQueue(handle, q_hdl):
+    """
+    Destroy Queue
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+
+    This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
+    This feature will be enabled in a future release.
+    """
+    libc.xclDestroyQueue.restypes = ctypes.c_int
+    libc.xclDestroyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclDestroyQueue(handle, q_hdl)
 
 
+def xclModifyQueue(handle, q_hdl):
+    """
+    Modify Queue
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+
+    This function modifies Queue context on the fly. Modifying rid implies
+    to program hardware traffic manager to connect Queue to the kernel pipe.
+    """
+    libc.xclModifyQueue.restypes = ctypes.c_int
+    libc.xclModifyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclModifyQueue(handle, q_hdl)
 
 
+def xclStartQueue(handle, q_hdl):
+    """
+    set Queue to running state
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+
+    This function set xclStartQueue to running state. xclStartQueue starts to process Read and Write requests.
+    """
+    libc.xclStartQueue.restypes = ctypes.c_int
+    libc.xclStartQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclStartQueue(handle, q_hdl)
 
 
+def xclStopQueue(handle, q_hdl):
+    """
+    set Queue to init state
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+
+    This function set Queue to init state. all pending read and write requests will be flushed.
+    wr_complete and rd_complete will be called with error wbe for flushed requests.
+    """
+    libc.xclStopQueue.restypes = ctypes.c_int
+    libc.xclStopQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
+    return libc.xclStopQueue(handle, q_hdl)
 
 
+class anonymous_union(ctypes.Union):
+    _fields_ = [
+        ("buf", POINTER(ctypes.c_char)),
+        ("va", ctypes.c_uint64)
+    ]
 
 
+class xclReqBuffer(ctypes.Structure):
+    _anonymous_ = "anonymous_union"
+    _fields_ = [
+        ("anonymous_union", ctypes.c_uint64),
+        ("len", ctypes.c_uint64),
+        ("buf_hdl", ctypes.c_uint64),
+    ]
 
+
+class xclQueueRequestKind:
+    XCL_QUEUE_WRITE = 0
+    XCL_QUEUE_READ = 1
+
+
+class xclQueueRequestFlag:
+    XCL_QUEUE_REQ_EOT = 1 << 0
+    XCL_QUEUE_REQ_CDH = 1 << 1
+    XCL_QUEUE_REQ_NONBLOCKING = 1 << 2
+    XCL_QUEUE_REQ_SILENT = 1 << 3
+
+
+class xclQueueRequest(ctypes.Structure):
+    _fields_ = [
+        ("op_code", ctypes.c_int),
+        ("bufs", POINTER(xclReqBuffer)),
+        ("buf_num", ctypes.c_uint32),
+        ("cdh", POINTER(ctypes.c_char)),
+        ("cdh_len", ctypes.c_uint32),
+        ("flag", ctypes.c_uint32),
+        ("priv_data", ctypes.c_void_p),
+        ("timeout", ctypes.c_uint32)
+    ]
+
+
+class xclDeviceInfo2(ctypes.Structure):
+    _fields_ = [
+        ("resv", ctypes.c_char*64),
+        ("priv_data", ctypes.c_void_p),
+        ("nbytes", ctypes.c_size_t),
+        ("err_code", ctypes.c_int)
+    ]
+
+def xclWriteQueue(handle, q_hdl, wr_req):
+    """
+    write data to queue
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+    :param wr_req: write request
+    :return:
+
+     This function moves data from host memory. Based on the Queue type, data is written as stream or packet.
+     Return: number of bytes been written or error code.
+         stream Queue:
+             There is not any Flag been added to mark the end of buffer.
+             The bytes been written should equal to bytes been requested unless error happens.
+         Packet Queue:
+             There is Flag been added for end of buffer. Thus kernel may recognize that a packet is receviced.
+     This function supports blocking and non-blocking write
+         blocking:
+             return only when the entire buf has been written, or error.
+         non-blocking:
+             return 0 immediatly.
+         EOT:
+             end of transmit signal will be added at last
+         silent: (only used with non-blocking);
+             No event generated after write completes
+    """
+    libc.xclWriteQueue.restype = ctypes.c_ssize_t
+    libc.xclWriteQueue.argtypes = [xclDeviceHandle, POINTER(xclQueueRequest)]
+    return libc.xclWriteQueue(handle, q_hdl, wr_req)
+
+
+def xclReadQueue(handle, q_hdl, wr_req):
+    """
+    write data to queue
+    :param handle: Device handle
+    :param q_hdl: Queue handle
+    :param wr_req: write request
+    :return:
+
+     This function moves data to host memory. Based on the Queue type, data is read as stream or packet.
+     Return: number of bytes been read or error code.
+         stream Queue:
+             read until all the requested bytes is read or error happens.
+         blocking:
+             return only when the requested bytes are read (stream) or the entire packet is read (packet)
+         non-blocking:
+             return 0 immidiately.
+    """
+    libc.xclReadQueue.restype = ctypes.c_ssize_t
+    libc.xclReadQueue.argtypes = [xclDeviceHandle, POINTER(xclQueueRequest)]
+    return libc.xclReadQueue(handle, q_hdl, wr_req)
+
+
+def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout):
+    libc.xclPollCompletion.restype = ctypes.c_int
+    libc.xclPollCompletion.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int, POINTER(xclReqCompletion),
+                                       POINTER(ctypes.c_int), ctypes.c_int]
+    return libc.xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout)
+
+
+# L1131
 
 
 

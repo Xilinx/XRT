@@ -61,6 +61,26 @@ class AXLF_SECTION_KIND:
     DNA_CERTIFICATE = 17
 
 
+class MEM_TYPE:
+    MEM_DDR3 = 0
+    MEM_DDR4 = 1
+    MEM_DRAM = 2
+    MEM_STREAMING = 3
+    MEM_PREALLOCATED_GLOB = 4
+    MEM_ARE = 5
+    MEM_HBM = 6
+    MEM_BRAM = 7
+    MEM_URAM = 8
+
+
+class IP_TYPE:
+    IP_MB = 0
+    IP_KERNEL = 1
+    instance = 2
+    IP_DNASC = 3
+    IP_DDR4_CONTROLLER = 4
+
+
 class XCLBIN_MODE:
     XCLBIN_FLAT = 1
     XCLBIN_PR = 2
@@ -109,6 +129,21 @@ class mem_topology (ctypes.Structure):
     _fields_ = [
         ("m_count", ctypes.c_int32),
         ("m_mem_data", mem_data*1)
+    ]
+
+
+class connection(ctypes.Structure):
+    _fields_ = [
+        ("arg_index", ctypes.c_int32),
+        ("m_ip_layout_index", ctypes.c_int32),
+        ("mem_data_index", ctypes.c_int32)
+    ]
+
+
+class connectivity(ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_int32),
+        ("m_connection", connection*1)
     ]
 
 
@@ -175,6 +210,103 @@ class axlf (ctypes.Structure):
         ("m_uniqueId", ctypes.c_uint64),
         ("m_header", axlf_header),
         ("m_sections", axlf_section_header)
+    ]
+
+
+class xlnx_bitstream(ctypes.Structure):
+    _fields_ = [
+        ("m_freq", ctypes.c_uint8*8),
+        ("bits", ctypes.c_char*1)
+    ]
+
+
+class DEBUG_IP_TYPE:
+    UNDEFINED = 0
+    LAPC = 1
+    ILA = 2
+    AXI_MM_MONITOR = 3
+    AXI_TRACE_FUNNEL = 4
+    AXI_MONITOR_FIFO_LITE = 5
+    AXI_MONITOR_FIFO_FULL = 6
+    ACCEL_MONITOR = 7
+    AXI_STREAM_MONITOR = 8
+
+
+class debug_ip_data(ctypes.Structure):
+    _fields_ = [
+        ("m_type", ctypes.c_uint8),
+        ("m_index", ctypes.c_uint8),
+        ("m_properties", ctypes.c_uint8),
+        ("m_major", ctypes.c_uint8),
+        ("m_minor", ctypes.c_uint8),
+        ("m_reserved", ctypes.c_uint8*3),
+        ("m_base_address", ctypes.c_uint64),
+        ("m_name", ctypes.c_uint8*128)
+    ]
+
+
+class debug_ip_layout(ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_uint16),
+        ("m_debug_ip_data", debug_ip_data*1)
+    ]
+
+
+class CLOCK_TYPE:
+    CT_UNUSED = 0
+    CT_DATA = 1
+    CT_KERNEL = 2
+    CT_SYSTEM = 3
+
+
+class clock_freq(ctypes.Structure):
+    _fields_ = [
+        ("m_freq_Mhz", ctypes.c_int16),
+        ("m_type", ctypes.c_int8),
+        ("m_unused", ctypes.c_uint8*5),
+        ("m_name", ctypes.c_char*128)
+    ]
+
+
+class clock_freq_topology(ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_uint16),
+        ("m_clock_freq", clock_freq*1)
+    ]
+
+
+class MCS_TYPE:
+    MCS_UNKNOWN = 0
+    MCS_PRIMARY = 1
+    MCS_SECONDARY = 2
+
+
+class mcs_chunk(ctypes.Structure):
+    _fields_ = [
+        ("m_type", ctypes.c_uint8),
+        ("m_unused", ctypes.c_uint8*7),
+        ("m_offset", ctypes.c_uint64),
+        ("m_size", ctypes.c_uint64)
+    ]
+
+
+class mcs(ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_int8),
+        ("m_unused", ctypes.c_int8),
+        ("m_chunk", mcs_chunk*1)
+    ]
+
+
+class bmc(ctypes.Structure):
+    _fields_ = [
+        ("m_offset", ctypes.c_uint64),
+        ("m_size", ctypes.c_uint64),
+        ("m_image_name", ctypes.c_char*64),
+        ("m_device_name", ctypes.c_char*64),
+        ("m_version", ctypes.c_char*64),
+        ("m_md5value", ctypes.c_char*33),
+        ("m_padding", ctypes.c_char*7)
     ]
 
 
