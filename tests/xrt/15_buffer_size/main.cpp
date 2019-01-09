@@ -236,7 +236,7 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize, int first
         unsigned pos = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, first_mem); //buf1
         xclBOProperties p;
         uint64_t bodevAddr = !xclGetBOProperties(handle, pos, &p) ? p.paddr : -1;
-        if (bodevAddr == -1) {
+        if (bodevAddr == (uint64_t)(-1)) {
             break;
         }
 
