@@ -43,7 +43,7 @@ using Clock = std::chrono::high_resolution_clock;
 #define AXI_FIREWALL
 
 #define XCL_NO_SENSOR_DEV_LL    ~(0ULL)
-#define XCL_NO_SENSOR_DEV       ~(0UL)
+#define XCL_NO_SENSOR_DEV       ~(0U)
 #define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
@@ -352,7 +352,7 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
 
-        if(buf.empty() || temp_buf.empty() || mm_buf.empty())
+        if(buf.empty() || mm_buf.empty())
             return;
 
         for(int i = 0; i < map->m_count; i++) {
@@ -367,7 +367,7 @@ public:
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      temp[i]);
+            ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
@@ -805,20 +805,22 @@ public:
               int index = 0;
               unsigned bo_count;
               for (auto& subv : v.second) {
-                if( subv.first == "index" )
+                if( subv.first == "index" ) {
                   index = subv.second.get_value<int>();
-                else if( subv.first == "type" )
+                } else if( subv.first == "type" ) {
                   type = subv.second.get_value<std::string>();
-                else if( subv.first == "tag" )
+                } else if( subv.first == "tag" ) {
                   tag = subv.second.get_value<std::string>();
-                else if( subv.first == "temp" )
-                  temp = sensor_tree::pretty<unsigned short>(subv.second.get_value<unsigned short>());
-                else if( subv.first == "bo_count" )
+                } else if( subv.first == "temp" ) {
+                  unsigned int t = subv.second.get_value<unsigned int>();
+                  temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                } else if( subv.first == "bo_count" ) {
                   bo_count = subv.second.get_value<unsigned>();
-                else if( subv.first == "mem_usage" )
+                } else if( subv.first == "mem_usage" ) {
                   mem_usage = subv.second.get_value<std::string>();
-                else if( subv.first == "size" )
+                } else if( subv.first == "size" ) {
                   size = subv.second.get_value<std::string>();
+                }
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
