@@ -37,6 +37,8 @@
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "driver/xclng/xrt/util/message.h"
+#include <cstdio>
+#include <stdarg.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
