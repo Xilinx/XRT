@@ -26,6 +26,7 @@
 #include <string>
 
 #include "driver/include/xclhal2.h"
+#include "driver/include/xclperf.h"
 #include "driver/include/xcl_axi_checker_codes.h"
 #include "../user_common/dmatest.h"
 #include "../user_common/memaccess.h"
@@ -679,6 +680,28 @@ public:
             std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
         }
         parseComputeUnits( computeUnits );
+
+        /**
+         * \note Adding device information for debug and profile
+         */
+        xclDebugProfileDeviceInfo info;
+        int err = xclGetDebugProfileDeviceInfo(m_handle, info);
+        unsigned int device_index = (unsigned int)info.device_index;
+        unsigned int user_instance = (unsigned int)info.user_instance;
+        unsigned int mgmt_instance = (unsigned int)info.mgmt_instance;
+        unsigned int nifd_instance = (unsigned int)info.nifd_instance;
+        std::string device_name = (std::string)info.device_name;
+        std::string sysfs_name = (std::string)info.sysfs_name;
+        std::string nifd_name = (std::string)info.nifd_name;
+        sensor_tree::put( "debug_profile.device_info.error", err);
+        sensor_tree::put( "debug_profile.device_info.device_index", device_index);
+        sensor_tree::put( "debug_profile.device_info.user_instance", user_instance);
+        sensor_tree::put( "debug_profile.device_info.mgmt_instance", mgmt_instance);
+        sensor_tree::put( "debug_profile.device_info.nifd_instance", nifd_instance);
+        sensor_tree::put( "debug_profile.device_info.device_name", device_name);
+        sensor_tree::put( "debug_profile.device_info.sysfs_name", sysfs_name);
+        sensor_tree::put( "debug_profile.device_info.nifd_name", nifd_name);
+        /** End of debug and profile device information */
 
         return 0;
     }
