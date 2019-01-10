@@ -43,7 +43,7 @@ using Clock = std::chrono::high_resolution_clock;
 #define AXI_FIREWALL
 
 #define XCL_NO_SENSOR_DEV_LL    ~(0ULL)
-#define XCL_NO_SENSOR_DEV       ~(0UL)
+#define XCL_NO_SENSOR_DEV       ~(0U)
 #define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
@@ -344,7 +344,7 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf;
         uint64_t memoryUsage, boCount;
-        
+
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
         pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
         pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
@@ -352,7 +352,7 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
 
-        if(buf.empty() || temp_buf.empty() || mm_buf.empty())
+        if(buf.empty() || mm_buf.empty())
             return;
 
         for(int i = 0; i < map->m_count; i++) {
@@ -367,7 +367,7 @@ public:
             boost::property_tree::ptree ptMem;
             ptMem.put( "index",     i );
             ptMem.put( "type",      str );
-            ptMem.put( "temp",      temp[i]);
+            ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
             ptMem.put( "enabled",   map->m_mem_data[i].m_used ? true : false );
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
@@ -459,17 +459,6 @@ public:
             ss << "  Chan[" << i << "].h2c:  " << unitConvert(devstat.h2c[i]) << "\n";
             ss << "  Chan[" << i << "].c2h:  " << unitConvert(devstat.c2h[i]) << "\n";
         }
-
-#if 0 // Enable when all platforms with ERT are packaged with new firmware
-        buf.clear();
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "mb_scheduler", "kds_custat", errmsg, buf);
-
-        if (buf.size()) {
-          ss << "\nCompute Unit Usage:" << "\n";
-          ss << buf.data() << "\n";
-        }
-#endif
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
@@ -588,6 +577,37 @@ public:
         lines.push_back(ss.str());
     }
 
+    void m_cu_usage_stringize_dynamics(std::vector<std::string>& lines) const
+    {
+        std::stringstream ss;
+        std::string errmsg;
+        std::vector<char> buf;
+
+#if 0
+        std::vector<ip_data> computeUnits;
+        if( getComputeUnits( computeUnits ) < 0 )
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
+#endif
+
+        pcidev::get_dev(m_idx)->user->
+          sysfs_get("mb_scheduler", "kds_custat", errmsg, buf);
+
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        if (buf.size()) {
+          ss << "\nCompute Unit Usage:" << "\n";
+          ss << buf.data() << "\n";
+        }
+
+        ss << std::setw(80) << std::setfill('#') << std::left << "\n";
+        lines.push_back(ss.str());
+    }
+
+
     int readSensors( void ) const
     {
         sensor_tree::put( "runtime.build.version",   xrt_build_version );
@@ -618,7 +638,7 @@ public:
             pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
             sensor_tree::put( "board.info.dna", dna);
         }
-        
+
 
         // physical
         sensor_tree::put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
@@ -747,9 +767,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        ) 
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        ) 
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" ) 
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.sys_5v5.voltage" )
@@ -785,20 +805,22 @@ public:
               int index = 0;
               unsigned bo_count;
               for (auto& subv : v.second) {
-                if( subv.first == "index" )
+                if( subv.first == "index" ) {
                   index = subv.second.get_value<int>();
-                else if( subv.first == "type" )
+                } else if( subv.first == "type" ) {
                   type = subv.second.get_value<std::string>();
-                else if( subv.first == "tag" )
+                } else if( subv.first == "tag" ) {
                   tag = subv.second.get_value<std::string>();
-                else if( subv.first == "temp" )
-                  temp = sensor_tree::pretty<unsigned short>(subv.second.get_value<unsigned short>());
-                else if( subv.first == "bo_count" )
+                } else if( subv.first == "temp" ) {
+                  unsigned int t = subv.second.get_value<unsigned int>();
+                  temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                } else if( subv.first == "bo_count" ) {
                   bo_count = subv.second.get_value<unsigned>();
-                else if( subv.first == "mem_usage" )
+                } else if( subv.first == "mem_usage" ) {
                   mem_usage = subv.second.get_value<std::string>();
-                else if( subv.first == "size" )
+                } else if( subv.first == "size" ) {
                   size = subv.second.get_value<std::string>();
+                }
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left

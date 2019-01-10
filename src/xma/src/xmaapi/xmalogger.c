@@ -15,6 +15,8 @@
  * under the License.
  */
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +30,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sched.h>
+#include <errno.h>
 
 #include "lib/xmaapi.h"
 #include "app/xmalogger.h"
@@ -188,7 +191,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     log_level = g_loglevel_tbl[level].lvl_str;
     
     /* Format log message */
-    sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
+    //NOTE: Usage of program_invocation_short_name may hinder portability
+    sprintf(msg_buff, "%s.%03d %d %s %s %s ", log_time, millisec, getpid(), program_invocation_short_name, log_level, log_name);
     hdr_offset = strlen(msg_buff);
     va_start(ap, msg); 
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
