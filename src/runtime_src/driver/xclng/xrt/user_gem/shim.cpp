@@ -37,8 +37,6 @@
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "driver/xclng/xrt/util/message.h"
-#include <cstdio>
-#include <cstdarg>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -338,31 +336,30 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
     int len = std::vsnprintf(nullptr, 0, format, args1);
     va_end(args1);
     
-    {
-        if (len < 0) {
-            goto handle_errors;
-        }
-        len++; //To include null terminator
-
-        std::vector<char> buf(len);
-        va_start(args1, format);
-        len = std::vsnprintf(buf.data(), len, format, args1);
-        va_end(args1);
-
-        if (len < 0) {
-            goto handle_errors;
-        }
-        xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
-
-        return 0;
-    }
-
-    handle_errors:
+    if (len < 0) {
         //illegal arguments
         std::string err_str = "ERROR: Illegal arguments in log format string. ";
         err_str.append(std::string(format));
         xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
         return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    va_start(args1, format);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+    va_end(args1);
+
+    if (len < 0) {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
+
+    return 0;
 }
 
 /*
