@@ -79,27 +79,27 @@ namespace xocl {
     }
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+      mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XSPM_MAX_NUMBER_SLOTS);
     
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
+      mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreammonProperties, XSSPM_MAX_NUMBER_SLOTS);
+      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
     
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = 0x0;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
+    getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
     uint64_t fifoReadBaseAddr = XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
+    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
 
     uint64_t traceFunnelAddr = 0x0;
-    getIPCountAddrNames(AXI_TRACE_FUNNEL, &traceFunnelAddr, nullptr, nullptr, 1);
+    getIPCountAddrNames(AXI_TRACE_FUNNEL, &traceFunnelAddr, nullptr, nullptr, nullptr, nullptr, 1);
     mTraceFunnelAddress = traceFunnelAddr;
 
     // Count accel monitors with stall monitoring turned on
@@ -140,7 +140,8 @@ namespace xocl {
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
   uint32_t XOCLShim::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                         uint8_t *properties, size_t size) {
+                                         uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
+                                         size_t size) {
     debug_ip_layout *map;
     std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/debug_ip_layout";
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
@@ -157,6 +158,8 @@ namespace xocl {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
             if(portNames) portNames[count] = (char*)map->m_debug_ip_data[i].m_name;
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
+            if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
+            if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
             ++count;
           }
         }
@@ -187,7 +190,7 @@ namespace xocl {
     };
 
     uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
     uint32_t temp[XLAPC_STATUS_PER_SLOT];
     aCheckerResults->NumSlots = numSlots;
     snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -240,7 +243,7 @@ namespace xocl {
 
     // Read all metric counters
     uint64_t baseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -303,7 +306,7 @@ namespace xocl {
     uint64_t baseAddress[XSSPM_MAX_NUMBER_SLOTS];
     uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, 
 					    baseAddress, 
-					    nullptr, nullptr, 
+					    nullptr, nullptr, nullptr, nullptr,
 					    XSSPM_MAX_NUMBER_SLOTS);
 
     // Fill up the portions of the return struct that are known by the runtime
@@ -345,7 +348,93 @@ namespace xocl {
     return size;
   } 
 
-} // namespace xocl_gem
+  size_t XOCLShim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
+    size_t size = 0;
+
+    /*
+      Here should read the version number
+      and return immediately if version 
+      is not supported
+    */
+
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id()
+      << ", " << XCL_PERF_MON_MEMORY << ", " << samResult
+      << ", Read device counters..." << std::endl;
+    }
+
+    uint64_t sam_offsets[] = {
+        XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
+        XSAM_ACCEL_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_STALL_INT_OFFSET,
+        XSAM_ACCEL_STALL_STR_OFFSET,
+        XSAM_ACCEL_STALL_EXT_OFFSET,
+        XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
+        XSAM_ACCEL_TOTAL_CU_START_OFFSET
+    };
+
+    uint64_t sam_upper_offsets[] = { 
+        XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+        XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_INT_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_STR_UPPER_OFFSET,
+        XSAM_ACCEL_STALL_EXT_UPPER_OFFSET,
+        XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+        XSAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
+    };
+
+    // Read all metric counters
+    uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
+    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XSAM_MAX_NUMBER_SLOTS);
+
+    uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+
+    samResult->NumSlots = numSlots;
+    snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
+    for (uint32_t s=0; s < numSlots; s++) {
+      uint32_t sampleInterval;
+      // Read sample interval register to latch the sampled metric counters
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                    baseAddress[s] + XSAM_SAMPLE_OFFSET,
+                    &sampleInterval, 4);
+
+      // If applicable, read the upper 32-bits of the 64-bit debug counters
+      if (mPerfmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
+        for (int c = 0 ; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+            baseAddress[s] + sam_upper_offsets[c],
+            &temp[c], 4) ;
+        }
+        samResult->CuExecCount[s]      = ((uint64_t)(temp[0])) << 32;
+        samResult->CuExecCycles[s]     = ((uint64_t)(temp[1])) << 32;
+        samResult->CuStallExtCycles[s] = ((uint64_t)(temp[2])) << 32;
+        samResult->CuStallIntCycles[s] = ((uint64_t)(temp[3])) << 32;
+        samResult->CuStallStrCycles[s] = ((uint64_t)(temp[4])) << 32;
+        samResult->CuMinExecCycles[s]  = ((uint64_t)(temp[5])) << 32;
+        samResult->CuMaxExecCycles[s]  = ((uint64_t)(temp[6])) << 32;
+        samResult->CuStartCount[s]     = ((uint64_t)(temp[7])) << 32;
+      }
+
+      for (int c=0; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
+
+      samResult->CuExecCount[s]      |= temp[0];
+      samResult->CuExecCycles[s]     |= temp[1];
+      samResult->CuStallExtCycles[s] |= temp[2];
+      samResult->CuStallIntCycles[s] |= temp[3];
+      samResult->CuStallStrCycles[s] |= temp[4];
+      samResult->CuMinExecCycles[s]  |= temp[5];
+      samResult->CuMaxExecCycles[s]  |= temp[6];
+      samResult->CuStartCount[s]     |= temp[7];
+    }
+
+    return size;
+  }
+
+} 
+// namespace xocl_gem
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
@@ -357,6 +446,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+    case XCL_DEBUG_READ_TYPE_SAM :
+      return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_SSPM :
     return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     default:

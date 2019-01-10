@@ -72,7 +72,6 @@ public:
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
 
-private:
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
 };
