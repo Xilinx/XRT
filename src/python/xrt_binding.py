@@ -1040,6 +1040,16 @@ def xclReadQueue(handle, q_hdl, wr_req):
 
 
 def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout):
+    """
+    for non-blocking read/write, check if there is any request been completed
+    :param handle: device handle
+    :param min_compl: unblock only when receiving min_compl completions
+    :param max_compl: Max number of completion with one poll
+    :param comps:
+    :param actual_compl:
+    :param timeout: timeout
+    :return:
+    """
     libc.xclPollCompletion.restype = ctypes.c_int
     libc.xclPollCompletion.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int, POINTER(xclReqCompletion),
                                        POINTER(ctypes.c_int), ctypes.c_int]

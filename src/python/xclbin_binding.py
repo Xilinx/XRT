@@ -100,69 +100,6 @@ class axlf_section_header (ctypes.Structure):
     ]
 
 
-class mem_u1 (ctypes.Union):
-    _fields_ = [
-        ("m_size", ctypes.c_int64),
-        ("route_id", ctypes.c_int64)
-    ]
-
-
-class mem_u2 (ctypes.Union):
-    _fields_ = [
-        ("m_base_address", ctypes.c_int64),
-        ("flow_id", ctypes.c_int64)
-    ]
-
-
-class mem_data (ctypes.Structure):
-    _anonymous_ = ("mem_u1", "mem_u2")
-    _fields_ = [
-        ("m_type", ctypes.c_uint8),
-        ("m_used", ctypes.c_uint8),
-        ("mem_u1", mem_u1),
-        ("mem_u2", mem_u2),
-        ("m_tag", ctypes.c_char * 16)
-    ]
-
-
-class mem_topology (ctypes.Structure):
-    _fields_ = [
-        ("m_count", ctypes.c_int32),
-        ("m_mem_data", mem_data*1)
-    ]
-
-
-class connection(ctypes.Structure):
-    _fields_ = [
-        ("arg_index", ctypes.c_int32),
-        ("m_ip_layout_index", ctypes.c_int32),
-        ("mem_data_index", ctypes.c_int32)
-    ]
-
-
-class connectivity(ctypes.Structure):
-    _fields_ = [
-        ("m_count", ctypes.c_int32),
-        ("m_connection", connection*1)
-    ]
-
-
-class ip_data (ctypes.Structure):
-    _fields_ = [
-        ("m_type", ctypes.c_uint32),
-        ("properties", ctypes.c_uint32),
-        ("m_base_address", ctypes.c_uint64),
-        ("m_name", ctypes.c_uint8 * 64)
-    ]
-
-
-class ip_layout (ctypes.Structure):
-    _fields_ = [
-        ("m_count", ctypes.c_int32),
-        ("m_ip_data", ip_data*1)
-    ]
-
-
 class s1 (ctypes.Structure):
     _fields_ = [
         ("m_platformId", ctypes.c_uint64),
@@ -219,6 +156,77 @@ class xlnx_bitstream(ctypes.Structure):
         ("bits", ctypes.c_char*1)
     ]
 
+
+"""   MEMORY TOPOLOGY SECTION   """
+
+class m_u1 (ctypes.Union):
+    _fields_ = [
+        ("m_size", ctypes.c_int64),
+        ("route_id", ctypes.c_int64)
+    ]
+
+
+class mem_u2 (ctypes.Union):
+    _fields_ = [
+        ("m_base_address", ctypes.c_int64),
+        ("flow_id", ctypes.c_int64)
+    ]
+
+
+class mem_data (ctypes.Structure):
+    _anonymous_ = ("mem_u1", "mem_u2")
+    _fields_ = [
+        ("m_type", ctypes.c_uint8),
+        ("m_used", ctypes.c_uint8),
+        ("mem_u1", mem_u1),
+        ("mem_u2", mem_u2),
+        ("m_tag", ctypes.c_char * 16)
+    ]
+
+
+class mem_topology (ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_int32),
+        ("m_mem_data", mem_data*1)
+    ]
+
+
+"""   CONNECTIVITY SECTION   """
+
+class connection(ctypes.Structure):
+    _fields_ = [
+        ("arg_index", ctypes.c_int32),
+        ("m_ip_layout_index", ctypes.c_int32),
+        ("mem_data_index", ctypes.c_int32)
+    ]
+
+
+class connectivity(ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_int32),
+        ("m_connection", connection*1)
+    ]
+
+
+"""   IP_LAYOUT SECTION   """
+
+class ip_data (ctypes.Structure):
+    _fields_ = [
+        ("m_type", ctypes.c_uint32),
+        ("properties", ctypes.c_uint32),
+        ("m_base_address", ctypes.c_uint64),
+        ("m_name", ctypes.c_uint8 * 64)
+    ]
+
+
+class ip_layout (ctypes.Structure):
+    _fields_ = [
+        ("m_count", ctypes.c_int32),
+        ("m_ip_data", ip_data*1)
+    ]
+
+
+""" Debug IP section layout """
 
 class DEBUG_IP_TYPE:
     UNDEFINED = 0
@@ -308,6 +316,12 @@ class bmc(ctypes.Structure):
         ("m_md5value", ctypes.c_char*33),
         ("m_padding", ctypes.c_char*7)
     ]
+
+
+class CHECKSUM_TYPE:
+    CST_UNKNOWN = 0
+    CST_SDBM = 1
+    CST_LAST = 2
 
 
 def wrap_get_axlf_section(top, kind):
