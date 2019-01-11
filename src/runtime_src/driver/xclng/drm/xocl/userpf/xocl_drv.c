@@ -38,6 +38,8 @@
 #define  PCI_REBAR_CTRL_BAR_SHIFT       8           /* shift for BAR size */
 #endif
 
+#define REBAR_FIRST_CAP		4
+
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
 	XOCL_USER_QDMA_PCI_IDS,
@@ -138,7 +140,7 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 #endif
 
 	if (recov_bar_sz) {
-		p2p_bar = xocl_get_p2p_bar(xdev);
+		p2p_bar = xocl_get_p2p_bar(xdev, NULL);
 	        if (p2p_bar < 0) {
 			return;
 		}
@@ -246,10 +248,11 @@ static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 	        return 1ULL << (size + 20);
 }
 
-int xocl_get_p2p_bar(struct xocl_dev *xdev)
+int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
 {
 	struct pci_dev *dev = xdev->core.pdev;
 	int i, pos;
+	u32 cap, ctrl, size;
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
@@ -257,9 +260,24 @@ int xocl_get_p2p_bar(struct xocl_dev *xdev)
 		return -ENOTSUPP;
 	}
 
-	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++)
-		if (pci_resource_len(dev, i) >= (1 << XOCL_PA_SECTION_SHIFT))
+	pos += REBAR_FIRST_CAP;
+	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
+		pci_read_config_dword(dev, pos, &cap);
+		pci_read_config_dword(dev, pos + 4, &ctrl);
+		size = (ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
+			PCI_REBAR_CTRL_BAR_SHIFT;
+		if (xocl_pci_rebar_size_to_bytes(size) >=
+			(1 << XOCL_PA_SECTION_SHIFT) &&
+			cap >= 0x1000) {
+			if (bar_size)
+				*bar_size = xocl_pci_rebar_size_to_bytes(size);
 			return i;
+		}
+		pos += 8;
+	}
+
+	if (bar_size)
+		*bar_size = 0;
 
 	return -1;
 }
@@ -276,10 +294,10 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 	struct resource *res = dev->resource + resno;
 	struct pci_dev *root;
 	struct resource *root_res;
+	u64 bar_size, req_size;
+	unsigned long flags;
 	u16 cmd;
 	int pos, ret = 0;
-	resource_size_t cur_size;
-	unsigned long cur_flags;
 	u32 ctrl, i;
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
@@ -288,14 +306,28 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 		return -ENOTSUPP;
 	}
 
-	for (root = dev; root->bus && root->bus->self; root = root->bus->self);
+	pos += resno * PCI_REBAR_CTRL;
+	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
+
+	bar_size = xocl_pci_rebar_size_to_bytes(
+			(ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
+			PCI_REBAR_CTRL_BAR_SHIFT);
+	req_size = xocl_pci_rebar_size_to_bytes(size);
+
+	xocl_info(&dev->dev, "req_size %lld, bar size %lld\n",
+			req_size, bar_size);
+	if (req_size == bar_size) {
+		xocl_info(&dev->dev, "same size, return success");
+		return -EALREADY;
+	}
+
+	xocl_get_root_dev(dev, root);
 
 	for (i = 0; i < PCI_BRIDGE_RESOURCE_NUM; i++) {
 		root_res = root->subordinate->resource[i];
 		root_res = (root_res) ? root_res->parent : NULL;
 		if (root_res && (root_res->flags & IORESOURCE_MEM)
-			&& resource_size(root_res) >=
-			xocl_pci_rebar_size_to_bytes(size))
+			&& resource_size(root_res) >= req_size)
 			break;
 	}
 
@@ -304,43 +336,26 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 			"Please check BIOS settings. ");
 		return -ENOSPC;
 	}
-
-	cur_size = resource_size(res);
-	cur_flags = res->flags;
-	if (cur_size == xocl_pci_rebar_size_to_bytes(size)) {
-		xocl_info(&dev->dev, "same size, return success");
-		return 0;
-	}
-
 	pci_release_selected_regions(dev, (1 << resno));
 	pci_read_config_word(dev, PCI_COMMAND, &cmd);
 	pci_write_config_word(dev, PCI_COMMAND,
 		cmd & ~PCI_COMMAND_MEMORY);
 
-	if (res->flags && !(res->flags & IORESOURCE_UNSET)) {
-		/* pci_release_resource */
+	flags = res->flags;
+	if (res->parent)
 		release_resource(res);
-		res->end = resource_size(res) - 1;
-		res->start = 0;
-		res->flags |= IORESOURCE_UNSET;
-	}
-	pos += resno * PCI_REBAR_CTRL;
 
-	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
 	ctrl &= ~PCI_REBAR_CTRL_BAR_SIZE;
 	ctrl |= size << PCI_REBAR_CTRL_BAR_SHIFT;
 	pci_write_config_dword(dev, pos + PCI_REBAR_CTRL, ctrl);
 
 
-	res->end = res->start + xocl_pci_rebar_size_to_bytes(size) - 1;
+	res->start = 0;
+	res->end = req_size - 1;
+
 	xocl_info(&dev->dev, "new size %lld", resource_size(res));
 	xocl_reassign_resources(dev, resno);
-	if (res->flags & IORESOURCE_UNSET || res->flags == 0) {
-		xocl_err(&dev->dev, "Please warm reboot");
-		ret = -EAGAIN;
-		res->end = res->start + xocl_pci_rebar_size_to_bytes(size) - 1;
-		res->flags = cur_flags | IORESOURCE_UNSET;
-	}
+	res->flags = flags;
 
 	pci_write_config_word(dev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
 	pci_request_selected_regions(dev, (1 << resno),

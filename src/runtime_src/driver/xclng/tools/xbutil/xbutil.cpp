@@ -1304,9 +1304,9 @@ int xcldev::device::resetEccInfo()
     return 0;
 }
 
-int xcldev::device::setP2p(bool enable)
+int xcldev::device::setP2p(bool enable, bool force)
 {
-    return xclP2pEnable(m_handle, enable);
+    return xclP2pEnable(m_handle, enable, force);
 }
 
 int xcldev::xclSetP2p(int argc, char *argv[])
@@ -1322,8 +1322,9 @@ int xcldev::xclSetP2p(int argc, char *argv[])
         {0, 0, 0, 0}
     };
     int long_index, ret;
-    const char* short_options = "d:"; //don't add numbers
+    const char* short_options = "d:f"; //don't add numbers
     const char* exe = argv[ 0 ];
+    bool force = false;
 
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
         switch (c) {
@@ -1331,6 +1332,9 @@ int xcldev::xclSetP2p(int argc, char *argv[])
             ret = str2index(optarg, index);
             if (ret != 0)
                 return ret;
+	    break;
+	case 'f':
+	    force = true;
 	    break;
 	case xcldev::P2P_ENABLE:
             p2p_enable = 1;
@@ -1358,12 +1362,12 @@ int xcldev::xclSetP2p(int argc, char *argv[])
     if (!d)
         return -EINVAL;
 
-    ret = d->setP2p(p2p_enable);
+    ret = d->setP2p(p2p_enable, force);
     if (ret == ENOSPC) {
-        std::cout << "ERROR: Not enough IO MEM space." << std::endl;
+        std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
-    } else if (ret == EAGAIN) {
-        std::cout << "ERROR: Need to reconfig pci bridges, please warm reboot" << std::endl;
+    } else if (ret == EBUSY) {
+        std::cout << "ERROR: resoure busy, please try warm reboot" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 
