@@ -104,8 +104,11 @@ int qdma_csr_write_rngsz(struct xlnx_dma_dev *xdev, unsigned int *rngsz)
 
 	reg = QDMA_REG_GLBL_RNG_SZ_BASE;
 	for (i = 0; i < QDMA_GLOBAL_CSR_ARRAY_SZ; i++,
-			reg += QDMA_REG_SZ_IN_BYTES)
+			reg += QDMA_REG_SZ_IN_BYTES) {
+		if (rngsz[i] >= (1 << 16))
+			rngsz[i] = (1 << 16) - 1;
 		__write_reg(xdev, reg, rngsz[i]);
+	}
 
 	/**
 	 *  Return Operation Successful
@@ -281,8 +284,11 @@ int qdma_global_csr_set(unsigned long dev_hndl, struct global_csr_conf *csr)
 
 	reg = QDMA_REG_GLBL_RNG_SZ_BASE;
 	for (i = 0; i < QDMA_GLOBAL_CSR_ARRAY_SZ; i++,
-					reg += QDMA_REG_SZ_IN_BYTES)
+					reg += QDMA_REG_SZ_IN_BYTES) {
+		if (csr->ring_sz[i] >= (1 << 16))
+			csr->ring_sz[i] = (1 << 16) - 1;
 		__write_reg(xdev, reg, csr->ring_sz[i]);
+	}
 
 	reg = QDMA_REG_C2H_BUF_SZ_BASE;
 	for (i = 0; i < QDMA_REG_C2H_BUF_SZ_COUNT; i++,
@@ -512,14 +518,21 @@ void hw_set_global_csr(struct xlnx_dma_dev *xdev)
 {
 	int i;
 	unsigned int reg;
+	unsigned int max = 0;
 
 	reg = ((0x03 << QDMA_REG_GLBL_DSC_CFG_MAX_DESC_FETCH_SHIFT) | 0x05);
 	__write_reg(xdev, QDMA_REG_GLBL_DSC_CFG, reg);
 
 	reg = QDMA_REG_GLBL_RNG_SZ_BASE;
 	for (i = 0; i < QDMA_REG_GLBL_RNG_SZ_COUNT; i++,
-			reg += QDMA_REG_SZ_IN_BYTES)
-		__write_reg(xdev, reg, (RNG_SZ_DFLT << i) + 1);
+			reg += QDMA_REG_SZ_IN_BYTES) {
+		unsigned int val = max ? max : (RNG_SZ_DFLT << i) + 1;
+
+		if (val >= (1 << 16))
+			max = val = (RNG_SZ_DFLT << (i - 1)) + 1;
+
+		__write_reg(xdev, reg, val);
+	}
 
 	reg = QDMA_REG_C2H_BUF_SZ_BASE;
 	for (i = 0; i < QDMA_REG_C2H_BUF_SZ_COUNT; i++,
