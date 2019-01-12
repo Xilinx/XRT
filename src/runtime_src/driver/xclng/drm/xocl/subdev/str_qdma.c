@@ -574,8 +574,10 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 		&io_req->req, (unsigned long)xdev->dma_handle, queue->queue,
 		io_req->req.write ? "W":"R", io_req->req.count);
 
-	return qdma_request_cancel((unsigned long)xdev->dma_handle,
-				queue->queue, &io_req->req);
+	qdma_request_cancel((unsigned long)xdev->dma_handle, queue->queue,
+				&io_req->req);
+
+	return -EINPROGRESS;
 }
 
 static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,

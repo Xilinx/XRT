@@ -93,6 +93,10 @@ enum statusmask {
     STATUS_LAPC_MASK = 0x2,
     STATUS_SSPM_MASK = 0x4
 };
+enum p2pcommand {
+    P2P_ENABLE = 0x0,
+    P2P_DISABLE,
+};
 
 static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("flash", FLASH),
@@ -700,6 +704,12 @@ public:
         }
         parseComputeUnits( computeUnits );
 
+	// p2p enable
+	bool p2p_enabled;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+	if(errmsg.empty()) {
+		sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
+	}
         return 0;
     }
 
@@ -743,11 +753,13 @@ public:
              << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
-             << std::setw(32) << "DMA chan(bidir)"
-             << std::setw(16) << "MIG Calibrated" << std::endl;
+             << std::setw(16) << "DMA chan(bidir)"
+             << std::setw(16) << "MIG Calibrated"
+             << std::setw(16) << "P2P Enabled" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
-             << std::setw(32) << sensor_tree::get( "board.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) << std::endl;
+             << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" )
+	     << std::setw(16) << sensor_tree::get<std::string>( "board.info.p2p_enabled", "N/A") << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         // use get_pretty for Temperature and Electrical since the driver may rail unsupported values high
@@ -1258,6 +1270,7 @@ public:
     int printEccInfo(std::ostream& ostr) const;
     int resetEccInfo();
     int reset(xclResetKind kind);
+    int setP2p(bool enable);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1272,6 +1285,7 @@ int xclTop(int argc, char *argv[]);
 int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
+int xclSetP2p(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
