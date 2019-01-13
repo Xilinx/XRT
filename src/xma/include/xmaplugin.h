@@ -157,6 +157,8 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
+ * NOTE: Do not use this API. Instead use below mentioned xma_plg_ebo_kernel* APIs
+ * 
  *  @brief Write kernel register(s)
  *
  *  This function writes the data provided and sets the specified AXI_Lite
@@ -178,6 +180,22 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                void            *dst,
                                size_t           size,
                                size_t           offset) __attribute__ ((deprecated));
+
+
+
+
+/**
+ *  @brief execBO based kernel APIs
+ *  xma_plg_register_write should NOT be used.
+ *  Please use below APIs instead
+ *  xma_plg_ebo_kernel_start
+ *  xma_plg_ebo_kernel_done: Wait for all pending kernel commands to finish
+ *  
+ */
+int32_t xma_plg_ebo_kernel_start(XmaHwSession  s_handle, uint32_t* args, uint32_t args_size);
+int32_t xma_plg_ebo_kernel_done(XmaHwSession  s_handle);//Wait for all pending kernel commands to finish
+
+
 
 /**
  *  @brief Read kernel registers
