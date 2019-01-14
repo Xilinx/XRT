@@ -133,7 +133,7 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     std::string traceString = uniqueName + std::to_string(workGroupSize);
     Profiling::Profiler::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
     // Finally log the execution
-    xdp::RTSingleton::Instance()->getProfileManager()->logKernelExecution
+    Profiling::Profiler::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
        ,programId
        ,reinterpret_cast<uint64_t>(event)
@@ -177,7 +177,7 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::READ_BUFFER
        ,commandState
@@ -225,7 +225,7 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::READ_BUFFER
        ,commandState
@@ -271,7 +271,7 @@ void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t si
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -317,7 +317,7 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -384,7 +384,7 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -448,7 +448,7 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
       xdp::RTUtil::READ_BUFFER : xdp::RTUtil::WRITE_BUFFER;
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDataTransfer
+    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
        ,kind
        ,commandState
@@ -467,12 +467,12 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
 
 void cb_log_function_start(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  xdp::RTSingleton::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
+  Profiling::Profiler::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
 }
 
 void cb_log_function_end(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  xdp::RTSingleton::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
+  Profiling::Profiler::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
 }
 
 void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* deps)
@@ -482,7 +482,7 @@ void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* 
   }
 
   for (auto e :  xocl::get_range(deps, deps+num_deps)) {
-    xdp::RTSingleton::Instance()->getProfileManager()->logDependency(xdp::RTUtil::DEPENDENCY_EVENT,
+    Profiling::Profiler::Instance()->getProfileManager()->logDependency(xdp::RTUtil::DEPENDENCY_EVENT,
                   xocl::xocl(e)->get_suid(), event->get_suid());
   }
 }
@@ -500,15 +500,11 @@ void cb_add_to_active_devices(const std::string& device_name)
 void
 cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 {
-  auto profiler = Profiling::Profiler::Instance();
-  static bool profile_on = profiler->applicationProfilingOn();
-  if (profile_on)
-    xdp::RTSingleton::Instance()->getProfileManager()->setKernelClockFreqMHz(device_name, freq);
+  Profiling::Profiler::Instance()->setKernelClockFreqMHz(device_name, freq);
 }
 
 void cb_reset(const xocl::xclbin& xclbin)
 {
-  auto rts = xdp::RTSingleton::Instance();
   auto profiler = Profiling::Profiler::Instance();
 
   // init flow mode
@@ -519,7 +515,7 @@ void cb_reset(const xocl::xclbin& xclbin)
     // TODO: this is kludgy; replace this with getting info from feature ROM
     // http://confluence.xilinx.com/display/XIP/DSA+Feature+ROM+Proposal
     if(dsa.find("4ddr") != std::string::npos)
-      rts->getProfileManager()->setDeviceTraceClockFreqMHz(300.0);
+      profiler->getProfileManager()->setDeviceTraceClockFreqMHz(300.0);
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::DEVICE);
   } else if (xclbin_target == xocl::xclbin::target_type::csim) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::CPU);

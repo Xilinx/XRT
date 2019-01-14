@@ -94,7 +94,7 @@ void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
 
   XOCL_DEBUGF("get_cu_start: kernel=%s, CU=%s\n", kname.c_str(), cuName.c_str());
 
-  auto rtp = xdp::RTSingleton::Instance()->getProfileManager();
+  auto rtp = Profiling::Profiler::Instance()->getProfileManager();
   rtp->logKernelExecution(objId, programId, eventId, xdp::RTUtil::START, kname, xname, contextId,
                           commandQueueId, deviceName, deviceId, globalWorkDim,
                           workGroupSize, localWorkDim, cuName);
@@ -133,7 +133,7 @@ void get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx)
   //uint64_t startTime = ((uint64_t)packet[offset+1] << 32) + packet[offset];
   //uint64_t endTime = ((uint64_t)packet[offset+3] << 32) + packet[offset+2];
 
-  auto rtp = xdp::RTSingleton::Instance()->getProfileManager();
+  auto rtp = Profiling::Profiler::Instance()->getProfileManager();
   //double startTimeMsec = rtp->getTimestampMsec(startTime);
   //double endTimeMsec = rtp->getTimestampMsec(endTime);
   //double traceTimeMsec = rtp->getTraceTime();
@@ -153,7 +153,7 @@ namespace platform {
 void
 init(key k)
 {
-  auto mgr = xdp::RTSingleton::Instance()->getProfileManager();
+  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
   //mgr->setLoggingTraceUsec(0);
   for (int type=0; type < (int)XCL_PERF_MON_TOTAL_PROFILE; ++type)
     mgr->setLoggingTrace(type, false);
@@ -280,7 +280,7 @@ cl_int
 start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
 {
   auto platform = k;
-  auto mgr = xdp::RTSingleton::Instance()->getProfileManager();
+  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
@@ -308,7 +308,7 @@ cl_int
 log_device_trace(key k, xclPerfMonType type, bool forceRead)
 {
   auto platform = k;
-  auto mgr = xdp::RTSingleton::Instance()->getProfileManager();
+  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
 
   // Make sure we're not overlapping multiple calls to trace
   // NOTE: This can happen when we do the 'final log' called from the singleton deconstructor
@@ -480,7 +480,8 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   auto device = k;
   auto xdevice = device->get_xrt_device();
   auto data = get_data(k);
-  auto profileMgr = xdp::RTSingleton::Instance()->getProfileManager();
+  auto profiler = Profiling::Profiler::Instance();
+  auto profileMgr = profiler->getProfileManager();
 
   // Since clock training is performed in mStartTrace, let's record this time
   data->mLastTraceTrainingTime[type] = std::chrono::steady_clock::now();
@@ -502,7 +503,7 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   // Get/set clock freqs
   double deviceClockMHz = xdevice->getDeviceClock().get();
   if (deviceClockMHz > 0) {
-    profileMgr->setKernelClockFreqMHz(device->get_unique_name(), deviceClockMHz );
+    profiler->setKernelClockFreqMHz(device->get_unique_name(), deviceClockMHz );
     profileMgr->setDeviceClockFreqMHz( deviceClockMHz );
   }
 
@@ -556,11 +557,11 @@ startCounters(key k, xclPerfMonType type)
   // Get/set clock freqs
   double deviceClockMHz = xdevice->getDeviceClock().get();
   if (deviceClockMHz > 0)
-    xdp::RTSingleton::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
+    Profiling::Profiler::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
 
   xdevice->startCounters(type);
   data->mSampleIntervalMsec =
-    xdp::RTSingleton::Instance()->getProfileManager()->getSampleIntervalMsec();
+    Profiling::Profiler::Instance()->getProfileManager()->getSampleIntervalMsec();
   return CL_SUCCESS;
 }
 
@@ -617,7 +618,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
         break;
 
       // log the device trace
-      xdp::RTSingleton::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
+      Profiling::Profiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
       data->mTraceVector.mLength = 0;
 
       // Only check repeatedly for trace buffer flush if HW emulation
@@ -655,7 +656,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     std::string device_name = device->get_unique_name();
     std::string binary_name = device->get_xclbin().project_name();
 
-    xdp::RTSingleton::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
+    Profiling::Profiler::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
                                                                          timeNsec, firstReadAfterProgram);
 
     //update the last time sample

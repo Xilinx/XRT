@@ -36,8 +36,9 @@ namespace xdp {
   // ******************************************
   // Top-Level XDP Profile Summary Writer Class
   // ******************************************
-  SummaryWriter::SummaryWriter(ProfileCounters* profileCounters, XDPPluginI* Plugin)
+  SummaryWriter::SummaryWriter(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin)
   : mProfileCounters(profileCounters),
+    mTraceParserHandle(TraceParserHandle),
     mPluginHandle(Plugin)
   {
     // Indeces are the same for HW and emulation
@@ -82,7 +83,6 @@ namespace xdp {
       xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
     auto rts = xdp::RTSingleton::Instance();
-    auto tp = rts->getProfileManager()->getTraceParser();
 
     // Number of monitor slots
     uint32_t numSlots = 0;
@@ -187,7 +187,7 @@ namespace xdp {
     /*
      * Update Stats Database
      */
-    uint32_t kernelClockMhz = tp->getKernelClockFreqMHz(deviceName);
+    uint32_t kernelClockMhz = mPluginHandle->getKernelClockFreqMHz(deviceName);
     double deviceCyclesMsec = kernelClockMhz * 1000.0 ;
     numSlots = rts->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
     std::string cuName = "";
@@ -265,7 +265,7 @@ namespace xdp {
     double totalReadTimeMsec   = 0.0;
     double totalWriteTimeMsec  = 0.0;
 
-    auto tp = xdp::RTSingleton::Instance()->getProfileManager()->getTraceParser();
+    auto tp = mTraceParserHandle;
 
     // Get total bytes and total time (currently derived from latency)
     // across all devices
@@ -317,7 +317,7 @@ namespace xdp {
 
   void SummaryWriter::writeStallSummary(ProfileWriterI* writer) const
   {
-    auto tp = xdp::RTSingleton::Instance()->getProfileManager()->getTraceParser();
+    auto tp = mTraceParserHandle;
 
     auto iter = mFinalCounterResultsMap.begin();
     double deviceCyclesMsec = (tp->getDeviceClockFreqMHz() * 1000.0);
@@ -415,9 +415,6 @@ namespace xdp {
 
   void SummaryWriter::writeKernelTransferSummary(ProfileWriterI* writer)
   {
-    auto rts = xdp::RTSingleton::Instance();
-    auto tp = rts->getProfileManager()->getTraceParser();
-
     auto iter = mFinalCounterResultsMap.begin();
     for (; iter != mFinalCounterResultsMap.end(); ++iter) {
       std::string key = iter->first;
@@ -446,7 +443,7 @@ namespace xdp {
 
       // Total kernel time = sum of all kernel executions
       //double totalKernelTimeMsec = mProfileCounters->getTotalKernelExecutionTime(deviceName);
-      double maxTransferRateMBps = rts->getProfileManager()->getGlobalMemoryMaxBandwidthMBps();
+      double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 
       unsigned int s = 0;
       if (HostSlotIndex == 0)
@@ -479,10 +476,10 @@ namespace xdp {
         // msec = cycles / (1000 * (Mcycles/sec))
         uint64_t totalReadLatency  = counterResults.ReadLatency[s] + rolloverResults.ReadLatency[s]
                                      + (rolloverCounts.ReadLatency[s] * 4294967296UL);
-        double totalReadTimeMsec   = totalReadLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+        double totalReadTimeMsec   = totalReadLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
         uint64_t totalWriteLatency = counterResults.WriteLatency[s] + rolloverResults.WriteLatency[s]
                                      + (rolloverCounts.WriteLatency[s] * 4294967296UL);
-        double totalWriteTimeMsec  = totalWriteLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+        double totalWriteTimeMsec  = totalWriteLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         XDP_LOG("writeKernelTransferSummary: s=%d, reads=%d, writes=%d, %s time = %f msec\n",
             s, totalReadTranx, totalWriteTranx, cuName.c_str(), totalCUTimeMsec);
@@ -512,9 +509,6 @@ namespace xdp {
 
   void SummaryWriter::writeTopKernelTransferSummary(ProfileWriterI* writer) const
   {
-    auto rts = xdp::RTSingleton::Instance();
-    auto tp = rts->getProfileManager()->getTraceParser();
-
     // Iterate over all devices
     auto iter = mFinalCounterResultsMap.begin();
     for (; iter != mFinalCounterResultsMap.end(); ++iter) {
@@ -542,7 +536,7 @@ namespace xdp {
       uint32_t numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
       uint32_t numHostSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
 
-      double maxTransferRateMBps = rts->getProfileManager()->getGlobalMemoryMaxBandwidthMBps();
+      double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 
       //double totalReadTimeMsec  = mProfileCounters->getTotalKernelExecutionTime(deviceName);
       //double totalWriteTimeMsec = totalReadTimeMsec;
@@ -550,7 +544,7 @@ namespace xdp {
       // Maximum bytes per AXI data transfer
       // NOTE: this assumes the entire global memory bit width with a burst of 256 (max burst length of AXI4)
       //       AXI standard also limits a transfer to 4K total bytes
-      uint32_t maxBytesPerTransfer = (tp->getGlobalMemoryBitWidth() / 8) * 256;
+      uint32_t maxBytesPerTransfer = (mTraceParserHandle->getGlobalMemoryBitWidth() / 8) * 256;
       if (maxBytesPerTransfer > 4096)
         maxBytesPerTransfer = 4096;
 
@@ -645,6 +639,15 @@ namespace xdp {
             maxBytesPerTransfer, maxTransferRateMBps);
       }
     }
+  }
+
+    // Max. achievable bandwidth between kernels and DDR global memory = 60% of 10.7 GBps for PCIe Gen 3
+  // TODO: this should come from benchmarking results
+  double SummaryWriter::getGlobalMemoryMaxBandwidthMBps() const
+  {
+    double maxBandwidthMBps =
+        0.6 * (mTraceParserHandle->getGlobalMemoryBitWidth() / 8) * mTraceParserHandle->getGlobalMemoryClockFreqMHz();
+    return maxBandwidthMBps;
   }
 
   void SummaryWriter::writeDeviceTransferSummary(ProfileWriterI* writer) const

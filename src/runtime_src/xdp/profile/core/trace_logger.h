@@ -21,6 +21,7 @@
 #include "xdp/profile/collection/counters.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/plugin/base_plugin.h"
+#include "xdp/profile/device/trace_parser.h"
 
 #include "driver/include/xclperf.h"
 
@@ -44,7 +45,7 @@ namespace xdp {
   // **************************************************************************
   class TraceLogger {
   public:
-    TraceLogger(ProfileCounters* profileCounters, XDPPluginI* Plugin);
+    TraceLogger(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin);
     ~TraceLogger();
 
   public:
@@ -100,10 +101,14 @@ namespace xdp {
   public:
     int getMigrateMemCalls() const { return mMigrateMemCalls;}
     std::string getCurrentBinaryName() const {return mCurrentBinaryName;}
+    const std::set<std::thread::id>& getThreadIds() {return mThreadIdSet;}
 
   private:
     // helpers
     double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName);
+    void addToThreadIds(const std::thread::id& threadId) {
+      mThreadIdSet.insert(threadId);
+    }
 
   private:
     bool mGetFirstCUTimestamp = true;
@@ -119,11 +124,13 @@ namespace xdp {
     std::map<uint64_t, BufferTrace*> mBufferTraceMap;
     std::map<uint64_t, DeviceTrace*> mDeviceTraceMap;
     std::map<std::string, std::queue<double>> mKernelStartsMap;
+    std::set<std::thread::id> mThreadIdSet;
 
     ProfileCounters* mProfileCounters;
     std::vector<TraceWriterI*> mTraceWriters;
 
   private:
+      TraceParser * mTraceParserHandle;
       XDPPluginI * mPluginHandle;
   };
 

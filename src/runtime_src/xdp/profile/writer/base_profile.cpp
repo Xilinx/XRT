@@ -412,7 +412,7 @@ namespace xdp {
     size_t fourth_index = name.find_last_of("|");
 
     std::string deviceName = name.substr(0, first_index);
-    auto clockFreqMHz = xdp::RTSingleton::Instance()->getProfileManager()->getKernelClockFreqMHz(deviceName);
+    auto clockFreqMHz = mPluginHandle->getKernelClockFreqMHz(deviceName);
 
     writeTableRowStart(getStream());
     writeTableCells(getStream(), deviceName,

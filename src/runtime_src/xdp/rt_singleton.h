@@ -63,7 +63,6 @@ namespace xdp {
   public:
     // Inline functions: platform ID, profile/debug managers, profile flags
     inline xocl::platform* getcl_platform_id() { return Platform.get(); }
-    inline RTProfile* getProfileManager() { return ProfileMgr; }
     inline RTDebug* getDebugManager() { return DebugMgr; }
 
   public:
@@ -79,9 +78,6 @@ namespace xdp {
 
     // Share ownership of the global platform
     std::shared_ptr<xocl::platform> Platform;
-
-    // Run time profiler
-    RTProfile* ProfileMgr = nullptr;
 
     // Debug manager
     RTDebug* DebugMgr = nullptr;

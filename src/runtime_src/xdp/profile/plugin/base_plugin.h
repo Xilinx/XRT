@@ -131,10 +131,25 @@ namespace xdp {
       virtual double getWriteMaxBandwidthMBps();
       inline xdp::RTUtil::e_flow_mode getFlowMode() { return FlowMode; }
       inline void setFlowMode(xdp::RTUtil::e_flow_mode mode) { FlowMode = mode;}
+      inline void setTraceFooterString(std::string traceFooterString) {  mTraceFooterString = traceFooterString; };
+      inline void getTraceFooterString(std::string& trString) { trString = mTraceFooterString; };
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
+      std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
       xdp::RTUtil::e_flow_mode FlowMode = xdp::RTUtil::CPU;
+      std::string mTraceFooterString;
+
+    public:
+      void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz) {
+        mDeviceKernelClockFreqMap[deviceName] = clockRateMHz;
+      }
+      unsigned int getKernelClockFreqMHz(std::string &deviceName) {
+        auto iter = mDeviceKernelClockFreqMap.find(deviceName);
+        if (iter != mDeviceKernelClockFreqMap.end())
+          return iter->second;
+        return 300;
+      }
     };
 
 } // xdp

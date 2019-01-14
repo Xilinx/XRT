@@ -52,12 +52,6 @@ namespace xdp {
         // for most platforms, this is a 300 MHz system clock
         return mTraceClockRateMHz;
       }
-      unsigned int getKernelClockFreqMHz(std::string &deviceName) {
-        auto iter = mDeviceKernelClockFreqMap.find(deviceName);
-    	if (iter != mDeviceKernelClockFreqMap.end())
-    	  return iter->second;
-    	return 300;
-      }
 
       // set functions
       void setStartTimeMsec(double startTimeMsec) {
@@ -65,10 +59,6 @@ namespace xdp {
       }
 
       void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz) {
-    	  XDP_LOG("[rt_device_profile] Setting kernel clock freq to %d MHz for device %s\n",
-    			  clockRateMHz, deviceName.c_str());
-    	  mDeviceKernelClockFreqMap[deviceName] = clockRateMHz;
-
     	  // In 2017.4, trace events are captured at the kernel clock
     	  setTraceClockFreqMHz(clockRateMHz);
       }
@@ -162,7 +152,6 @@ namespace xdp {
       std::queue<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
 
     private:
       XDPPluginI* mPluginHandle;

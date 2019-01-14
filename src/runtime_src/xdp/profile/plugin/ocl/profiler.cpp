@@ -253,6 +253,7 @@ namespace Profiling {
   void Profiler::endProfiling()
   {
     if (applicationProfilingOn()) {
+      setTraceFooterString();
       // Write out reports
       ProfileMgr->writeProfileSummary();
 
@@ -288,6 +289,58 @@ namespace Profiling {
     XDP_LOG("Trace logged for type %d after %d iterations\n", type, iter);
   }
 
+  void Profiler::setTraceFooterString() {
+    auto rts = xdp::RTSingleton::Instance();
+    std::stringstream trs;
+    trs << "Project," << ProfileMgr->getProjectName() << ",\n";
+    std::string stallProfiling = (ProfileMgr->getStallTrace() == xdp::RTUtil::STALL_TRACE_OFF) ? "false" : "true";
+    trs << "Stall profiling," << stallProfiling << ",\n";
+    std::string flowMode;
+    xdp::RTUtil::getFlowModeName(Plugin->getFlowMode(), flowMode);
+    trs << "Target," << flowMode << ",\n";
+    std::string deviceNames = ProfileMgr->getDeviceNames("|");
+    trs << "Platform," << deviceNames << ",\n";
+    for (auto& threadId : ProfileMgr->getThreadIds())
+      trs << "Read/Write Thread," << std::showbase << std::hex << std::uppercase
+	      << threadId << std::endl;
+    //
+    // Platform/device info
+    //
+    auto platform = rts->getcl_platform_id();
+    for (auto device_id : platform->get_device_range()) {
+      std::string deviceName = device_id->get_unique_name();
+      trs << "Device," << deviceName << ",begin\n";
+
+      // DDR Bank addresses
+      // TODO: this assumes start address of 0x0 and evenly divided banks
+      unsigned int ddrBanks = device_id->get_ddr_bank_count();
+      if (ddrBanks == 0) ddrBanks = 1;
+      size_t ddrSize = device_id->get_ddr_size();
+      size_t bankSize = ddrSize / ddrBanks;
+      trs << "DDR Banks,begin\n";
+      for (unsigned int b=0; b < ddrBanks; ++b)
+        trs << "Bank," << std::dec << b << ","
+		    << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
+      trs << "DDR Banks,end\n";
+      trs << "Device," << deviceName << ",end\n";
+    }
+    //
+    // Unused CUs
+    //
+    //auto platform = rts->getcl_platform_id();
+    for (auto device_id : platform->get_device_range()) {
+      std::string deviceName = device_id->get_unique_name();
+
+      for (auto& cu : xocl::xocl(device_id)->get_cus()) {
+        auto cuName = cu->get_name();
+
+        if (ProfileMgr->getComputeUnitCalls(deviceName, cuName) == 0)
+          trs << "UnusedComputeUnit," << cuName << ",\n";
+      }
+    }
+    Plugin->setTraceFooterString(trs.str());
+  }
+
   // Add to the active devices
   // Called thru device::load_program in xocl/core/device.cpp
   // NOTE: this is the entry point into XDP when a new device gets loaded
@@ -297,6 +350,14 @@ namespace Profiling {
     // Store name of device to profiler
     ProfileMgr->addDeviceName(deviceName);
     // TODO: Grab device-level metadata here!!! (e.g., device name, CU/kernel names)
+  }
+
+  void Profiler::setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz)
+  {
+    if (applicationProfilingOn()) {
+      ProfileMgr->setTraceClockFreqMHz(clockRateMHz);
+      Plugin->setKernelClockFreqMHz(deviceName, clockRateMHz);
+    }
   }
 
   /*

@@ -144,7 +144,7 @@ namespace xdp {
 	protected:
       std::ofstream Summary_ofs;
 
-    private:
+    protected:
       XDPPluginI * mPluginHandle;
     };
 

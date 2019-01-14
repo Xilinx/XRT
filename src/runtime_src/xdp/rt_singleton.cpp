@@ -38,7 +38,6 @@ namespace xdp {
   RTSingleton::RTSingleton()
   : Status( CL_SUCCESS ),
     Platform( nullptr ),
-    ProfileMgr( nullptr ),
     DebugMgr( nullptr )
   {
     DebugMgr = new RTDebug();

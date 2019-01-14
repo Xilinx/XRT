@@ -19,6 +19,7 @@
 
 #include "driver/include/xclperf.h"
 #include "xdp/profile/plugin/base_plugin.h"
+#include "xdp/profile/device/trace_parser.h"
 
 #include <map>
 #include <vector>
@@ -35,7 +36,7 @@ namespace xdp {
   // **************************************************************************
   class SummaryWriter {
   public:
-    SummaryWriter(ProfileCounters* profileCounters, XDPPluginI* Plugin);
+    SummaryWriter(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin);
     ~SummaryWriter();
 
   public:
@@ -84,7 +85,11 @@ namespace xdp {
     std::map<std::string, std::vector<std::string>> mDeviceBinaryStrSlotsMap;
 
   private:
-      XDPPluginI * mPluginHandle;
+    TraceParser * mTraceParserHandle;
+    XDPPluginI * mPluginHandle;
+
+  private:
+    double getGlobalMemoryMaxBandwidthMBps() const;
   };
 
 } // xdp

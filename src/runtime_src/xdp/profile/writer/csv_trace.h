@@ -40,9 +40,6 @@ namespace xdp {
       std::string TraceFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
-
-      private:
-      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

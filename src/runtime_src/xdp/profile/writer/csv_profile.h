@@ -50,9 +50,6 @@ namespace xdp {
       std::string SummaryFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
-
-    private:
-      XDPPluginI * mPluginHandle;
     };
 
 } // xdp

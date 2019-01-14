@@ -24,9 +24,9 @@ namespace xdp {
                                   const std::string& platformName,
                                   XDPPluginI* Plugin) :
       TraceFileName(traceFileName),
-      PlatformName(platformName),
-      mPluginHandle(Plugin)
+      PlatformName(platformName)
   {
+    mPluginHandle = Plugin;
     if (TraceFileName != "") {
       assert(!Trace_ofs.is_open());
       TraceFileName += FileExtension;
@@ -89,91 +89,10 @@ namespace xdp {
     if (!ofs.is_open())
       return;
 
-    // TODO: get this info much earlier in flow!!!!!
-    auto rts = xdp::RTSingleton::Instance();
-    auto profile = rts->getProfileManager();
-
+    std::string trString;
     ofs << "Footer,begin\n";
-
-    //
-    // Settings (project name, stalls, target, & platform)
-    //
-    std::string projectName = profile->getProjectName();
-    ofs << "Project," << projectName << ",\n";
-
-    std::string stallProfiling = (profile->getStallTrace() == xdp::RTUtil::STALL_TRACE_OFF) ?
-        "false" : "true";
-    ofs << "Stall profiling," << stallProfiling << ",\n";
-
-    std::string flowMode;
-    xdp::RTUtil::getFlowModeName(mPluginHandle->getFlowMode(), flowMode);
-    ofs << "Target," << flowMode << ",\n";
-
-    std::string deviceNames = profile->getDeviceNames("|");
-    ofs << "Platform," << deviceNames << ",\n";
-
-    for (auto& threadId : profile->getThreadIds())
-      ofs << "Read/Write Thread," << std::showbase << std::hex << std::uppercase
-	      << threadId << std::endl;
-
-    //
-    // Platform/device info
-    //
-    auto platform = rts->getcl_platform_id();
-    for (auto device_id : platform->get_device_range()) {
-      std::string deviceName = device_id->get_unique_name();
-      ofs << "Device," << deviceName << ",begin\n";
-
-      // DDR Bank addresses
-      // TODO: this assumes start address of 0x0 and evenly divided banks
-      unsigned int ddrBanks = device_id->get_ddr_bank_count();
-      if (ddrBanks == 0) ddrBanks = 1;
-      size_t ddrSize = device_id->get_ddr_size();
-      size_t bankSize = ddrSize / ddrBanks;
-      ofs << "DDR Banks,begin\n";
-      for (unsigned int b=0; b < ddrBanks; ++b)
-        ofs << "Bank," << std::dec << b << ","
-		    << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
-      ofs << "DDR Banks,end\n";
-
-#if 0
-      std::string binaryName = "binary_container";
-      auto deviceIter = DeviceBinaryNameMap.find(deviceName);
-      if (deviceIter != DeviceBinaryNameMap.end())
-        binaryName = deviceIter->second;
-      ofs << "BinaryContainer," << binaryName << ",begin\n";
-
-      // Traverse all CUs on current device
-      for (auto& cu : xocl::xocl(device_id)->get_cus()) {
-        std::string cuName = cu->getname();
-        std::string kernelName;
-        profile->getKernelFromComputeUnit(cuName, kernelName);
-
-        ofs << "ComputeUnit," << cuName << "|" << kernelName << ",begin\n";
-        // TODO: add any CU-specific values
-        ofs << "ComputeUnit," << cuName << "|" << kernelName << ",end\n";
-      }
-
-      ofs << "BinaryContainer," << binaryName << ",end\n";
-#endif
-      ofs << "Device," << deviceName << ",end\n";
-    }
-
-    //
-    // Unused CUs
-    //
-    //auto platform = rts->getcl_platform_id();
-    for (auto device_id : platform->get_device_range()) {
-      std::string deviceName = device_id->get_unique_name();
-
-      for (auto& cu : xocl::xocl(device_id)->get_cus()) {
-        auto cuName = cu->get_name();
-
-        if (profile->getComputeUnitCalls(deviceName, cuName) == 0)
-          ofs << "UnusedComputeUnit," << cuName << ",\n";
-      }
-    }
-
+    mPluginHandle->getTraceFooterString(trString);
+    ofs << trString;
     ofs << "Footer,end\n";
 
     writeDocumentFooter(ofs);

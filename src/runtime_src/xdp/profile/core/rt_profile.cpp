@@ -50,8 +50,8 @@ namespace xdp {
     mTraceParser = new TraceParser(mPluginHandle);
 
     // Logger & writer
-    mLogger = new TraceLogger(mProfileCounters, mPluginHandle);
-    mWriter = new SummaryWriter(mProfileCounters, mPluginHandle);
+    mLogger = new TraceLogger(mProfileCounters, mTraceParser, mPluginHandle);
+    mWriter = new SummaryWriter(mProfileCounters, mTraceParser, mPluginHandle);
   }
 
   RTProfile::~RTProfile()
@@ -124,19 +124,10 @@ namespace xdp {
   // ***************************************************************************
 
   // Set kernel clock freq on device
-  void RTProfile::setKernelClockFreqMHz(const std::string &deviceName, unsigned int kernelClockRateMHz) {
+  void RTProfile::setTraceClockFreqMHz(unsigned int kernelClockRateMHz) {
     if (mTraceParser == NULL)
       return;
-
-    mTraceParser->setKernelClockFreqMHz(deviceName, kernelClockRateMHz);
-  }
-
-  // Get kernel clock freq on device
-  unsigned int RTProfile::getKernelClockFreqMHz(std::string &deviceName) {
-	if (mTraceParser == NULL)
-	  return 300;
-
-    return mTraceParser->getKernelClockFreqMHz(deviceName);
+    mTraceParser->setTraceClockFreqMHz(kernelClockRateMHz);
   }
 
   // Set device clock freq
@@ -189,15 +180,6 @@ namespace xdp {
       return 10;
 
     return mTraceParser->getSampleIntervalMsec();
-  }
-
-  // Max. achievable bandwidth between kernels and DDR global memory = 60% of 10.7 GBps for PCIe Gen 3
-  // TODO: this should come from benchmarking results
-  double RTProfile::getGlobalMemoryMaxBandwidthMBps() const
-  {
-    double maxBandwidthMBps =
-        0.6 * (mTraceParser->getGlobalMemoryBitWidth() / 8) * mTraceParser->getGlobalMemoryClockFreqMHz();
-    return maxBandwidthMBps;
   }
 
   // ***************************************************************************
@@ -255,6 +237,11 @@ namespace xdp {
   int RTProfile::getMigrateMemCalls() const
   {
     return mLogger->getMigrateMemCalls();
+  }
+
+  const std::set<std::thread::id>& RTProfile::getThreadIds()
+  {
+    return mLogger->getThreadIds();
   }
 
   // ***************************************************************************

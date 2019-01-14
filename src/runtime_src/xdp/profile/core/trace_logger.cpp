@@ -36,10 +36,11 @@ namespace xdp {
   // ************************
   // XDP Profile TraceLogger Class
   // ************************
-  TraceLogger::TraceLogger(ProfileCounters* profileCounters, XDPPluginI* Plugin)
+  TraceLogger::TraceLogger(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin)
   : mMigrateMemCalls(0),
     mCurrentContextId(0),
     mProfileCounters(profileCounters),
+    mTraceParserHandle(TraceParserHandle),
     mPluginHandle(Plugin)
   {
   }
@@ -270,7 +271,7 @@ namespace xdp {
       mBufferTraceMap.erase(itr);
 
       // Store thread IDs into set
-      xdp::RTSingleton::Instance()->getProfileManager()->addToThreadIds(threadId);
+      addToThreadIds(threadId);
     }
 
     writeTimelineTrace(timeStamp, commandString, stageString, eventString, dependString,
@@ -305,7 +306,7 @@ namespace xdp {
       mPluginHandle->getTraceTime();
 
     if (mGetFirstCUTimestamp && (objStage == RTUtil::START)) {
-      auto tp = xdp::RTSingleton::Instance()->getProfileManager()->getTraceParser();
+      auto tp = mTraceParserHandle;
       tp->setStartTimeMsec(timeStamp);
       mGetFirstCUTimestamp = false;
     }
@@ -466,7 +467,7 @@ namespace xdp {
 
   void TraceLogger::logDeviceTrace(std::string deviceName, std::string binaryName,
       xclPerfMonType type, xclTraceResultsVector& traceVector) {
-    auto tp = xdp::RTSingleton::Instance()->getProfileManager()->getTraceParser();
+    auto tp = mTraceParserHandle;
     if (tp == NULL || traceVector.mLength == 0)
       return;
 

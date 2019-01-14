@@ -54,6 +54,7 @@ namespace Profiling {
   public:
     bool isProfileRunning() {return mProfileRunning;}
     inline xdp::XoclPlugin* getPlugin() { return Plugin; }
+    inline xdp::RTProfile* getProfileManager() { return ProfileMgr; }
 
   private:
     uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
@@ -69,6 +70,8 @@ namespace Profiling {
     xdp::RTProfile* ProfileMgr = nullptr;
     void startProfiling();
     void endProfiling();
+    void logFinalTrace(xclPerfMonType type);
+    void setTraceFooterString();
   /*
    * Imported from RTSingleton
    */
@@ -90,7 +93,8 @@ namespace Profiling {
     // Objects released (used by guidance)
     void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
     bool isObjectsReleased() {return IsObjectsReleased;}
-    void logFinalTrace(xclPerfMonType type);
+    // Misc Profiling calls
+    void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz);
   };
 
   /*

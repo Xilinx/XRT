@@ -79,12 +79,10 @@ namespace xdp {
 
   public:
     // Settings: clock freqs, bit widths, etc.
-    void setKernelClockFreqMHz(const std::string &deviceName, unsigned int kernelClockRateMHz);
+    void setTraceClockFreqMHz(unsigned int kernelClockRateMHz);
     void setDeviceClockFreqMHz(double deviceClockRateMHz);
     void setDeviceTraceClockFreqMHz(double deviceTraceClockRateMHz);
     void setGlobalMemoryBitWidth(uint32_t bitWidth);
-    unsigned int getKernelClockFreqMHz(std::string &deviceName);
-    double getGlobalMemoryMaxBandwidthMBps() const;
     uint32_t getGlobalMemoryBitWidth();
     uint32_t getTraceSamplesThreshold();
     uint32_t getSampleIntervalMsec();
@@ -96,11 +94,7 @@ namespace xdp {
     std::string getDeviceNames(const std::string& sep) const;
     std::string getProjectName() const;
     int getMigrateMemCalls() const;
-
-    void addToThreadIds(const std::thread::id& threadId) {
-      mThreadIdSet.insert(threadId);
-    }
-    const std::set<std::thread::id>& getThreadIds() {return mThreadIdSet;}
+    const std::set<std::thread::id>& getThreadIds();
 
     // Functions required by guidance
     double getDeviceStartTime(const std::string& deviceName) const;
@@ -178,7 +172,6 @@ namespace xdp {
     SummaryWriter* mWriter;
 
     std::vector<std::string> mDeviceNames;
-    std::set<std::thread::id> mThreadIdSet;
 
   //public:
     // moved to plugin/base_plugin.h

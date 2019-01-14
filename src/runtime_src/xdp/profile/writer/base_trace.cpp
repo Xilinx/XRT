@@ -246,7 +246,7 @@ namespace xdp {
 #endif
 
       auto rts = xdp::RTSingleton::Instance();
-      double deviceClockDurationUsec = (1.0 / (rts->getProfileManager()->getKernelClockFreqMHz(deviceName)));
+      double deviceClockDurationUsec = (1.0 / (mPluginHandle->getKernelClockFreqMHz(deviceName)));
 
       std::stringstream startStr;
       startStr << std::setprecision(10) << tr.Start;

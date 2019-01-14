@@ -112,7 +112,7 @@ namespace xdp {
 	    std::ofstream Trace_ofs;
 	    xclCounterResults CountersPrev;
 
-    private:
+    protected:
       XDPPluginI * mPluginHandle;
     };
 

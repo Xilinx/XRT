@@ -26,9 +26,9 @@ namespace xdp {
                                                    const std::string& platformName,
                                                    XDPPluginI* Plugin) :
       SummaryFileName(summaryFileName),
-      PlatformName(platformName),
-      mPluginHandle(Plugin)
+      PlatformName(platformName)
   {
+    mPluginHandle = Plugin;
     if (SummaryFileName != "") {
       assert(!Summary_ofs.is_open());
       SummaryFileName += FileExtension;
