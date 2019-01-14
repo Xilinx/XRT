@@ -502,10 +502,13 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     :param write: (boolean) READ only or READ/WRITE mapping
     :param buf_type: type of memory mapped buffer
     :param buf_size: size of buffer
-    :return: (void pointer) Memory mapped buffer
+    :return: (pointer) Memory mapped buffer
 
     Map the contents of the buffer object into host memory
     To unmap the buffer call POSIX unmap() on mapped void pointer returned from xclMapBO
+
+    Return type void pointer doesn't get correctly binded in ctypes
+    To map the buffer, explicitly specify the type and size of data
     """
     if buf_type is 'char':
         prop = xclBOProperties()
@@ -517,6 +520,9 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
 
     elif buf_type is 'int':
         libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_int * buf_size)
+    else:
+        print("ERROR: This data type is not supported ")
+
     libc.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
     ptr = libc.xclMapBO(handle, boHandle, write)
     return ptr

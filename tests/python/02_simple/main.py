@@ -70,7 +70,7 @@ def runKernel(opt):
 
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # returns mmap()
+    execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # required buffer size = 128
 
     if execData is None:
         print("execData is NULL")
