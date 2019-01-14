@@ -331,9 +331,8 @@ chain(event* ev)
 
 bool
 event::
-chains(const event* ev) const
+chains_nolock(const event* ev) const
 {
-  std::lock_guard<std::mutex> lk(m_mutex);
   return std::find(m_chain.begin(),m_chain.end(),ev)!=m_chain.end();
 }
 
@@ -341,7 +340,7 @@ bool
 event::
 waits_on(const event* ev) const
 {
-  return ev->chains(this);
+  return ev->chains_nolock(this);
 }
 
 bool

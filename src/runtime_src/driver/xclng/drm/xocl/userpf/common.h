@@ -69,6 +69,8 @@
 #endif
 #endif
 
+#define XOCL_PA_SECTION_SHIFT		28
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -93,6 +95,7 @@ struct xocl_dev	{
 	struct drm_mm		       **mm;
 	struct mutex			mm_lock;
 	struct drm_xocl_mm_stat	       **mm_usage_stat;
+	u64				*mm_p2p_off;
 	struct mutex			stat_lock;
 
 	struct mem_topology	       *topology;
@@ -127,8 +130,9 @@ struct xocl_dev	{
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-  DECLARE_HASHTABLE(mm_range, 6);
+	DECLARE_HASHTABLE(mm_range, 6);
 #endif
+	void				*p2p_res_grp;
 };
 
 /**
@@ -177,6 +181,8 @@ int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+                         struct drm_file *filp);
+int xocl_p2p_enable_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 /* sysfs functions */
@@ -187,6 +193,10 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 int xocl_hot_reset(struct xocl_dev *xdev, bool force);
+void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
+int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
+int xocl_get_p2p_bar(struct xocl_dev *xdev);
+int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);

@@ -177,7 +177,7 @@ program::
 get_xclbin(const device* d) const
 {
   // switch to parent device if any
-  d = d->get_root_device();
+  d = d ? d->get_root_device() : nullptr;
   if (d) {
     auto itr = m_binaries.find(d);
     if (itr==m_binaries.end())

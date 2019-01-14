@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <getopt.h>
 #include <iostream>
@@ -48,17 +46,17 @@
 
 static const int DATA_SIZE = 16;
 const static struct option long_options[] = {
-    {"hal_driver",      required_argument, 0, 's'},
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"alignment",       required_argument, 0, 'a'},
-    {"cu_index",        required_argument, 0, 'c'},
-    {"device",          required_argument, 0, 'd'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    // enable embedded runtime
-    {"ert",             no_argument,       0, '1'},
-    {0, 0, 0, 0}
+{"hal_driver",      required_argument, 0, 's'},
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"alignment",       required_argument, 0, 'a'},
+{"cu_index",        required_argument, 0, 'c'},
+{"device",          required_argument, 0, 'd'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+// enable embedded runtime
+{"ert",             no_argument,       0, '1'},
+{0, 0, 0, 0}
 };
 
 static void printHelp()
@@ -100,64 +98,64 @@ const unsigned goldenSequence[16] = {
     '\0'
 };
 
-
-
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, unsigned cu_index, uuid_t xclbinId)
 {
-	
-	unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(unsigned), XCL_BO_DEVICE_RAM, first_mem);
-	unsigned* bo = (unsigned*)xclMapBO(handle, boHandle, true);
+    if(xclOpenContext(handle, xclbinId, cu_index, true))
+        throw std::runtime_error("Cannot create context");
+
+    unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(unsigned), XCL_BO_DEVICE_RAM, first_mem);
+    unsigned* bo = (unsigned*)xclMapBO(handle, boHandle, true);
     
-	memset(bo, 0, DATA_SIZE*sizeof(unsigned));
-	
-	if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE*sizeof(unsigned),0))
-	    return 1;
+    memset(bo, 0, DATA_SIZE*sizeof(unsigned));
 
-	xclBOProperties p;
-	uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
+    if(xclSyncBO(handle, boHandle, XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE*sizeof(unsigned),0))
+        return 1;
 
-	if((bodevAddr == (uint64_t) (-1)))
-	    return 1;
+    xclBOProperties p;
+    uint64_t bodevAddr = !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 
-	//Allocate the exec_bo
-	unsigned execHandle = xclAllocBO(handle, DATA_SIZE*sizeof(unsigned), xclBOKind(0), (1<<31));
-	void* execData = xclMapBO(handle, execHandle, true);
+    if((bodevAddr == (uint64_t) (-1)))
+        return 1;
+
+    //Allocate the exec_bo
+    unsigned execHandle = xclAllocBO(handle, DATA_SIZE*sizeof(unsigned), xclBOKind(0), (1<<31));
+    void* execData = xclMapBO(handle, execHandle, true);
 
     std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
-	//construct the exec buffer cmd to configure.
-	{
-	    auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
+    //construct the exec buffer cmd to configure.
+    {
+        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
 
-	    std::memset(ecmd, 0, DATA_SIZE);
-	    ecmd->state = ERT_CMD_STATE_NEW;
-	    ecmd->opcode = ERT_CONFIGURE;
+        std::memset(ecmd, 0, DATA_SIZE);
+        ecmd->state = ERT_CMD_STATE_NEW;
+        ecmd->opcode = ERT_CONFIGURE;
 
-	    ecmd->slot_size = 1024;
-	    ecmd->num_cus = 1;
-	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+        ecmd->slot_size = 1024;
+        ecmd->num_cus = 1;
+        ecmd->cu_shift = 16;
+        ecmd->cu_base_addr = cu_base_addr;
 
-	    ecmd->ert = ert;
-	    if (ert) {
-		ecmd->cu_dma = 1;
-		ecmd->cu_isr = 1;
-	    }
+        ecmd->ert = ert;
+        if (ert) {
+            ecmd->cu_dma = 1;
+            ecmd->cu_isr = 1;
+        }
 
-            // CU -> base address mapping
-            ecmd->data[0] = cu_base_addr;
-            ecmd->count = 5 + ecmd->num_cus;
-	}
+        // CU -> base address mapping
+        ecmd->data[0] = cu_base_addr;
+        ecmd->count = 5 + ecmd->num_cus;
+    }
 
     std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-	//Send the command.
-	if(xclExecBuf(handle, execHandle)) {
-	    std::cout << "Unable to issue xclExecBuf" << std::endl;
-	    return 1;
-	}
+    //Send the command.
+    if(xclExecBuf(handle, execHandle)) {
+        std::cout << "Unable to issue xclExecBuf" << std::endl;
+        return 1;
+    }
 
     std::cout << "Wait until the command finish" << std::endl;
-	//Wait on the command finish	
-	while (xclExecWait(handle,1000) == 0);
+    //Wait on the command finish
+    while (xclExecWait(handle,1000) == 0);
 
 
     std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
@@ -217,6 +215,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         return 1;
     }
 
+    xclCloseContext(handle, xclbinId, cu_index);
+
     return 0;
 }
 
@@ -237,54 +237,54 @@ int main(int argc, char** argv)
 
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
     {
-	switch (c)
-	{
-	    case 0:
-		if (long_options[option_index].flag != 0)
-		    break;
-	    case 1:
-		    ert = true;
-    		break;
+        switch (c)
+        {
+        case 0:
+            if (long_options[option_index].flag != 0)
+                break;
+        case 1:
+            ert = true;
+            break;
         case 's':
             sharedLibrary = optarg;
             break;
-	    case 'k':
-	    	bitstreamFile = optarg;
-    		break;
-	    case 'l':
-    		halLogfile = optarg;
-    		break;
-	    case 'a':
-	    	alignment = std::atoi(optarg);
-    		break;
-	    case 'd':
-   	    	index = std::atoi(optarg);
-    		break;
-	    case 'c':
-	    	cu_index = std::atoi(optarg);
-    		break;
-	    case 'h':
-	    	printHelp();
-    		return 0;
-	    case 'v':
-	    	verbose = true;
-		    break;
-	    default:
-    		printHelp();
-		return -1;
-	}
+        case 'k':
+            bitstreamFile = optarg;
+            break;
+        case 'l':
+            halLogfile = optarg;
+            break;
+        case 'a':
+            alignment = std::atoi(optarg);
+            break;
+        case 'd':
+            index = std::atoi(optarg);
+            break;
+        case 'c':
+            cu_index = std::atoi(optarg);
+            break;
+        case 'h':
+            printHelp();
+            return 0;
+        case 'v':
+            verbose = true;
+            break;
+        default:
+            printHelp();
+            return -1;
+        }
     }
 
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
-	    std::cout << "FAILED TEST\n";
-    	std::cout << "No bitstream specified\n";
-    	return -1;
+        std::cout << "FAILED TEST\n";
+        std::cout << "No bitstream specified\n";
+        return -1;
     }
 
     if (halLogfile.size()) {
-	    std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
+        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
     }
 
     std::cout << "HAL driver = " << sharedLibrary << "\n";
@@ -293,19 +293,19 @@ int main(int argc, char** argv)
 
 
     try {
-	    xclDeviceHandle handle;
-    	uint64_t cu_base_addr = 0;
-    	int first_mem = -1;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
-	        return 1;
-	    }
-	    
-	    if (first_mem < 0)
-	        return 1;
-        
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem)) {
+        xclDeviceHandle handle;
+        uint64_t cu_base_addr = 0;
+        int first_mem = -1;
+        uuid_t xclbinId;
+
+        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
             return 1;
-        }
+
+        if (first_mem < 0)
+            return 1;
+        
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, cu_index, xclbinId))
+            return 1;
         
     }
     catch (std::exception const& e)

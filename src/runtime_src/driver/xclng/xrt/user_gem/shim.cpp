@@ -36,6 +36,7 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
+#include "driver/xclng/xrt/util/message.h"
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -325,6 +326,17 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
     }
 
     wordcopy(mem + offset, buffer, length);
+    return 0;
+}
+
+/*
+ * xclLogMsg()
+ */
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+{
+    //This is TODO
+    xrt_core::message::send((xrt_core::message::severity_level)level, format);
+
     return 0;
 }
 
@@ -687,6 +699,18 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
     else
         return -EINVAL;
+
+    return ret ? errno : 0;
+}
+
+int xocl::XOCLShim::p2pEnable(bool enable)
+{
+    drm_xocl_p2p_enable obj;
+    int ret;
+
+    std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
+    obj.enable = enable ? 1 : 0;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
 
     return ret ? errno : 0;
 }
@@ -1708,6 +1732,12 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->resetDevice(kind) : -ENODEV;
+}
+
+int xclP2pEnable(xclDeviceHandle handle, bool enable)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->p2pEnable(enable) : -ENODEV;
 }
 
 /*

@@ -12,7 +12,6 @@
 #include <cstdlib>
 #include <sys/mman.h>
 #include <time.h>
-#include <uuid/uuid.h>
 
 // driver includes
 #include "ert.h"
@@ -20,6 +19,9 @@
 // host_src includes
 #include "xclhal2.h"
 #include "xclbin.h"
+
+// lowlevel common include
+#include "utils.h"
 
 #include "xhello_hw.h"
 #include "utils.h"
@@ -37,99 +39,15 @@ static const unsigned CHILDREN = 8;
 int runChildren(int argc, char *argv[], char *envp[], unsigned count);
 
 const static struct option long_options[] = {
-    {"hal_driver",      required_argument, 0, 's'},
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"device",          required_argument, 0, 'd'},
-    {"num of elments",  required_argument, 0, 'n'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    {0, 0, 0, 0}
+{"hal_driver",      required_argument, 0, 's'},
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"device",          required_argument, 0, 'd'},
+{"num of elments",  required_argument, 0, 'n'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+{0, 0, 0, 0}
 };
-
-
-static int myinitXRT(const char*bit, unsigned deviceIndex, const char* halLog,
-                   xclDeviceHandle& handle, int cu_index, uint64_t& cu_base_addr,
-                   uuid_t& xclbinId)
-{
-    xclDeviceInfo2 deviceInfo;
-
-    if(deviceIndex >= xclProbe()) {
-	throw std::runtime_error("Cannot find device index specified");
-	return -1;
-    }
-
-    handle = xclOpen(deviceIndex, halLog, XCL_INFO);
-
-    if (xclGetDeviceInfo2(handle, &deviceInfo)) {
-	throw std::runtime_error("Unable to obtain device information");
-	return -1;
-    }
-
-    std::cout << "DSA = " << deviceInfo.mName << "\n";
-    std::cout << "Index = " << deviceIndex << "\n";
-    std::cout << "PCIe = GEN" << deviceInfo.mPCIeLinkSpeed << " x " << deviceInfo.mPCIeLinkWidth << "\n";
-    std::cout << "OCL Frequency = " << deviceInfo.mOCLFrequency[0] << " MHz" << "\n";
-    std::cout << "DDR Bank = " << deviceInfo.mDDRBankCount << "\n";
-    std::cout << "Device Temp = " << deviceInfo.mOnChipTemp << " C\n";
-    std::cout << "MIG Calibration = " << std::boolalpha << deviceInfo.mMigCalib << std::noboolalpha << "\n";
-
-    cu_base_addr = 0xffffffffffffffff;
-    if (!bit || !std::strlen(bit))
-	return 0;
-
-    if(xclLockDevice(handle)) {
-	throw std::runtime_error("Cannot lock device");
-	return -1;
-    }
-
-    char tempFileName[1024];
-    std::strcpy(tempFileName, bit);
-    std::ifstream stream(bit);
-    stream.seekg(0, stream.end);
-    int size = stream.tellg();
-    stream.seekg(0, stream.beg);
-
-    char *header = new char[size];
-    stream.read(header, size);
-
-    if (std::strncmp(header, "xclbin2", 8)) {
-        throw std::runtime_error("Invalid bitstream");
-    }
-
-    const xclBin *blob = (const xclBin *)header;
-    if (xclLoadXclBin(handle, blob)) {
-        delete [] header;
-        throw std::runtime_error("Bitstream download failed");
-    }
-    std::cout << "Finished downloading bitstream " << bit << std::endl;
-
-    const axlf* top = (const axlf*)header;
-    auto ip = xclbin::get_axlf_section(top, IP_LAYOUT);
-    struct ip_layout* layout =  (ip_layout*) (header + ip->m_sectionOffset);
-
-    if(cu_index > layout->m_count) {
-        delete [] header;
-        throw std::runtime_error("Cant determine cu base address");
-    }
-
-    int cur_index = 0;
-    for (int i =0; i < layout->m_count; ++i) {
-	if(layout->m_ip_data[i].m_type != IP_KERNEL)
-	    continue;
-	if(cur_index++ == cu_index) {
-	    cu_base_addr = layout->m_ip_data[i].m_base_address;
-	    std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
-	}
-    }
-
-    uuid_copy(xclbinId, top->m_header.uuid);
-    delete [] header;
-
-    return 0;
-}
-
-
 
 static const char gold[] = "Hello World\n";
 
@@ -241,10 +159,10 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
     return result;
 }
 
-static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, unsigned n_elements, uuid_t xclbinId)
+static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, unsigned cu_index, uuid_t xclbinId)
 {
-    if (xclOpenContext(handle, xclbinId, 0, true))
-	throw std::runtime_error("Cannot create context");
+    if (xclOpenContext(handle, xclbinId, cu_index, true))
+        throw std::runtime_error("Cannot create context");
 
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
@@ -284,7 +202,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     while (xclExecWait(handle,1000) == 0);
     int result = runKernel(handle, cu_base_addr, verbose, n_elements);
     // Release the context
-    xclCloseContext(handle, xclbinId, 0);
+    xclCloseContext(handle, xclbinId, cu_index);
     return result;
 }
 
@@ -310,8 +228,8 @@ int main(int argc, char** argv, char *envp[])
     //else children code here
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:n:j:vh", long_options, &option_index)) != -1)
     {
-	switch (c)
-	{
+        switch (c)
+        {
         case 0:
             if (long_options[option_index].flag != 0)
                 break;
@@ -336,9 +254,6 @@ int main(int argc, char** argv, char *envp[])
         case 'n':
             n_elements = std::atoi(optarg);
             break;
-        case 'j':
-            child = std::atoi(optarg);
-            break;
         case 'h':
             printHelp();
             return 0;
@@ -348,15 +263,15 @@ int main(int argc, char** argv, char *envp[])
         default:
             printHelp();
             return -1;
-	}
+        }
     }
 
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
         std::cout << "FAILED TEST\n";
-    	std::cout << "No bitstream specified\n";
-    	return -1;
+        std::cout << "No bitstream specified\n";
+        return -1;
     }
 
     if (halLogfile.size()) {
@@ -370,18 +285,16 @@ int main(int argc, char** argv, char *envp[])
 
     try {
         xclDeviceHandle handle;
-        uuid_t xclbinId;
-    	uint64_t cu_base_addr = 0;
+        uint64_t cu_base_addr = 0;
+        int first_mem = -1;
         int first_used_mem;
-    	if(myinitXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index,
-                   cu_base_addr, xclbinId)) {
-            return -1;
-        }
+        uuid_t xclbinId;
 
-        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements, xclbinId)) {
+        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
             return -1;
-        }
 
+        if (runKernelLoop(handle, cu_base_addr, verbose, n_elements, cu_index, xclbinId))
+            return -1;
     }
     catch (std::exception const& e)
     {
