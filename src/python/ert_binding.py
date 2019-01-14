@@ -23,28 +23,26 @@ import ctypes
 ##  START OF ENUMS  ##
 
 class ert_cmd_state:
-    ERT_CMD_STATE_NEW = 1
-    ERT_CMD_STATE_QUEUED = 2
-    ERT_CMD_STATE_RUNNING = 3
+    ERT_CMD_STATE_NEW       = 1
+    ERT_CMD_STATE_QUEUED    = 2
+    ERT_CMD_STATE_RUNNING   = 3
     ERT_CMD_STATE_COMPLETED = 4
-    ERT_CMD_STATE_ERROR = 5
-    ERT_CMD_STATE_ABORT = 6
-
+    ERT_CMD_STATE_ERROR     = 5
+    ERT_CMD_STATE_ABORT     = 6
 
 class ert_cmd_opcode:
-    ERT_START_CU = 0
+    ERT_START_CU     = 0
     ERT_START_KERNEL = 0
-    ERT_CONFIGURE = 2
-    ERT_STOP = 3
-    ERT_ABORT = 4
-    ERT_WRITE = 5
-    ERT_CU_STAT = 6
-
+    ERT_CONFIGURE    = 2
+    ERT_STOP         = 3
+    ERT_ABORT        = 4
+    ERT_WRITE        = 5
+    ERT_CU_STAT      = 6
 
 class ert_cmd_type:
-    ERT_DEFAULT = 0
+    ERT_DEFAULT   = 0
     ERT_KDS_LOCAL = 1
-    ERT_CTRL = 2
+    ERT_CTRL      = 2
 
 ##  END OF ENUMS  ##
 
@@ -79,13 +77,11 @@ class ert_cmd_struct(ctypes.Structure):
         ("type", ctypes.c_uint32, 4)
     ]
 
-
 class uert(ctypes.Union):
     _fields_ = [
         ("m_cmd_struct", ert_cmd_struct),
         ("header", ctypes.c_uint32)
     ]
-
 
 class ert_configure_features(ctypes.Structure):
     # features
@@ -99,7 +95,6 @@ class ert_configure_features(ctypes.Structure):
         ("unusedf", ctypes.c_uint32, 25),
         ("dsa52", ctypes.c_uint32, 1),
     ]
-
 
 class ert_configure_cmd(ctypes.Structure):
     _fields_ = [
@@ -137,13 +132,11 @@ class ert_start_cmd_struct(ctypes.Structure):
         ("type", ctypes.c_uint32, 4)
     ]
 
-
 class u_start_ert(ctypes.Union):
     _fields_ = [
         ("m_start_cmd_struct", ert_start_cmd_struct),
         ("header", ctypes.c_uint32)
     ]
-
 
 class ert_start_kernel_cmd(ctypes.Structure):
     _fields_ = [
@@ -153,7 +146,6 @@ class ert_start_kernel_cmd(ctypes.Structure):
         ("cu_mask", ctypes.c_uint32),
         ("data", ctypes.c_uint32*1)
     ]
-
 
 # struct ert_packet: ERT generic packet format
 #
@@ -172,20 +164,17 @@ class ert_cmd(ctypes.Structure):
         ("type", ctypes.c_uint32, 4)
     ]
 
-
 class u_ert(ctypes.Union):
     _fields_ = [
         ("m_cmd", ert_cmd),
         ("header", ctypes.c_uint32)
     ]
 
-
 class ert_packet(ctypes.Structure):
     _fields_ = [
         ("u_ert", u_ert),
         ("data", ctypes.c_uint32*1)
     ]
-
 
 # struct ert_abort_cmd: ERT abort command format.
 # @idx: The slot index of command to abort
@@ -198,17 +187,13 @@ class ert_cmd_2(ctypes.Structure):
         ("type", ctypes.c_uint32, 4)
     ]
 
-
 class u_ert_2(ctypes.Union):
     _fields_ = [
         ("m_cmd", ert_cmd_2),
         ("header", ctypes.c_uint32)
     ]
 
-
 class ert_abort_cmd(ctypes.Structure):
     _fields_ = [
         ("u_ert", u_ert)
     ]
-
-

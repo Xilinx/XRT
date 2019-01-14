@@ -89,15 +89,13 @@ class xclDeviceInfo2(ctypes.Structure):
      ("mNumCDMA", ctypes.c_ushort)
     ]
 
-
 class xclMemoryDomains:
-    XCL_MEM_HOST_RAM = 0
-    XCL_MEM_DEVICE_RAM = 1
+    XCL_MEM_HOST_RAM    = 0
+    XCL_MEM_DEVICE_RAM  = 1
     XCL_MEM_DEVICE_BRAM = 2
-    XCL_MEM_SVM = 3
-    XCL_MEM_CMA = 4
-    XCL_MEM_DEVICE_REG = 5
-
+    XCL_MEM_SVM         = 3
+    XCL_MEM_CMA         = 4
+    XCL_MEM_DEVICE_REG  = 5
 
 class xclDDRFlags:
     XCL_DEVICE_RAM_BANK0 = 0
@@ -105,42 +103,36 @@ class xclDDRFlags:
     XCL_DEVICE_RAM_BANK2 = 4
     XCL_DEVICE_RAM_BANK3 = 8
 
-
 class xclBOKind:
-    XCL_BO_SHARED_VIRTUAL = 0
-    XCL_BO_SHARED_PHYSICAL = 1
-    XCL_BO_MIRRORED_VIRTUAL = 2
-    XCL_BO_DEVICE_RAM = 3
-    XCL_BO_DEVICE_BRAM = 4
+    XCL_BO_SHARED_VIRTUAL           = 0
+    XCL_BO_SHARED_PHYSICAL          = 1
+    XCL_BO_MIRRORED_VIRTUAL         = 2
+    XCL_BO_DEVICE_RAM               = 3
+    XCL_BO_DEVICE_BRAM              = 4
     XCL_BO_DEVICE_PREALLOCATED_BRAM = 5
 
-
 class xclBOSyncDirection:
-    XCL_BO_SYNC_BO_TO_DEVICE = 0
+    XCL_BO_SYNC_BO_TO_DEVICE   = 0
     XCL_BO_SYNC_BO_FROM_DEVICE = 1
 
-
 class xclAddressSpace:
-    XCL_ADDR_SPACE_DEVICE_FLAT = 0     # Absolute address space
-    XCL_ADDR_SPACE_DEVICE_RAM = 1      # Address space for the DDR memory
-    XCL_ADDR_KERNEL_CTRL = 2           # Address space for the OCL Region control port
+    XCL_ADDR_SPACE_DEVICE_FLAT    = 0  # Absolute address space
+    XCL_ADDR_SPACE_DEVICE_RAM     = 1  # Address space for the DDR memory
+    XCL_ADDR_KERNEL_CTRL          = 2  # Address space for the OCL Region control port
     XCL_ADDR_SPACE_DEVICE_PERFMON = 3  # Address space for the Performance monitors
     XCL_ADDR_SPACE_DEVICE_CHECKER = 5  # Address space for protocol checker
     XCL_ADDR_SPACE_MAX = 8
 
-
 class xclVerbosityLevel:
     XCL_QUIET = 0
-    XCL_INFO = 1
-    XCL_WARN = 2
+    XCL_INFO  = 1
+    XCL_WARN  = 2
     XCL_ERROR = 3
-
 
 class xclResetKind:
     XCL_RESET_KERNEL = 0
-    XCL_RESET_FULL = 1
-    XCL_USER_RESET = 2
-
+    XCL_RESET_FULL   = 1
+    XCL_USER_RESET   = 2
 
 class xclDeviceUsage (ctypes.Structure):
     _fields_ = [
@@ -155,7 +147,6 @@ class xclDeviceUsage (ctypes.Structure):
      ("memSize", ctypes.c_ulonglong*8)
     ]
 
-
 class xclBOProperties (ctypes.Structure):
     _fields_ = [
      ("handle", ctypes.c_uint),
@@ -165,7 +156,6 @@ class xclBOProperties (ctypes.Structure):
      ("domain", ctypes.c_uint),
     ]
 
-
 def xclProbe():
     """
     xclProbe() - Enumerate devices found in the system
@@ -173,13 +163,11 @@ def xclProbe():
     """
     return libc.xclProbe()
 
-
 def xclVersion():
     """
     :return: the version number. 1 => Hal1 ; 2 => Hal2
     """
     return libc.xclVersion()
-
 
 def xclOpen(deviceIndex, logFileName, level):
     """
@@ -194,7 +182,6 @@ def xclOpen(deviceIndex, logFileName, level):
     libc.xclOpen.argtypes = [ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
     return libc.xclOpen(deviceIndex, logFileName, level)
 
-
 def xclClose(handle):
     """
     xclClose(): Close an opened device
@@ -206,7 +193,6 @@ def xclClose(handle):
     libc.xclClose.argtype = xclDeviceHandle
     libc.xclClose(handle)
 
-
 def xclResetDevice(handle, kind):
     """
     xclResetDevice() - Reset a device or its CL
@@ -217,7 +203,6 @@ def xclResetDevice(handle, kind):
     libc.xclResetDevice.restype = ctypes.c_int
     libc.xclResetDevice.argtypes = [xclDeviceHandle, ctypes.c_int]
     libc.xclResetDevice(handle, kind)
-
 
 def xclGetDeviceInfo2 (handle, info):
     """
@@ -232,7 +217,6 @@ def xclGetDeviceInfo2 (handle, info):
     libc.xclGetDeviceInfo2.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return libc.xclGetDeviceInfo2(handle, info)
 
-
 def xclGetUsageInfo (handle, info):
     """
     xclGetUsageInfo() - Obtain usage information from the device
@@ -244,7 +228,6 @@ def xclGetUsageInfo (handle, info):
     libc.xclGetUsageInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return libc.xclGetUsageInfo(handle, info)
 
-
 def xclGetErrorStatus(handle, info):
     """
     xclGetErrorStatus() - Obtain error information from the device
@@ -255,7 +238,6 @@ def xclGetErrorStatus(handle, info):
     libc.xclGetErrorStatus.restype = ctypes.c_int
     libc.xclGetErrorStatus.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return libc.xclGetErrorStatus(handle, info)
-
 
 def xclLoadXclBin(handle, buf):
     """
@@ -273,7 +255,6 @@ def xclLoadXclBin(handle, buf):
     libc.xclLoadXclBin.argtypes = [xclDeviceHandle, ctypes.c_void_p]
     return libc.xclLoadXclBin(handle, buf)
 
-
 def xclGetSectionInfo(handle, info, size, kind, index):
     """
     xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
@@ -290,7 +271,6 @@ def xclGetSectionInfo(handle, info, size, kind, index):
                                        ctypes.c_int, ctypes.c_int]
     return libc.xclGetSectionInfo(handle, info, size, kind, index)
 
-
 def xclReClock2(handle, region, targetFreqMHz):
     """
     xclReClock2() - Configure PR region frequencies
@@ -302,7 +282,6 @@ def xclReClock2(handle, region, targetFreqMHz):
     libc.xclReClock2.restype = ctypes.c_int
     libc.xclReClock2.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint]
     return libc.xclReClock2(handle, region, targetFreqMHz)
-
 
 def xclLockDevice(handle):
     """
@@ -317,7 +296,6 @@ def xclLockDevice(handle):
     libc.xclLockDevice.argtype = xclDeviceHandle
     return libc.xclLockDevice(handle)
 
-
 def xclUnlockDevice(handle):
     """
     xclUnlockDevice() - Release exclusive ownership of the device
@@ -328,7 +306,6 @@ def xclUnlockDevice(handle):
     libc.xclUnlockDevice.restype = ctypes.c_int
     libc.xclUnlockDevice.argtype = xclDeviceHandle
     return libc.xclUnlockDevice(handle)
-
 
 def xclOpenContext(handle, xclbinId, ipIndex, shared):
     """
@@ -348,7 +325,6 @@ def xclOpenContext(handle, xclbinId, ipIndex, shared):
     libc.xclOpenContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint, ctypes.c_bool]
     return libc.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared)
 
-
 def xclCloseContext(handle, xclbinId, ipIndex):
     """
     xclCloseContext() - Close previously opened context
@@ -363,7 +339,6 @@ def xclCloseContext(handle, xclbinId, ipIndex):
     libc.xclCloseContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint]
     return libc.xclCloseContext(handle, xclbinId.bytes, ipIndex)
 
-
 def xclUpgradeFirmware(handle, fileName):
     """
     Update the device BPI PROM with new image
@@ -375,7 +350,6 @@ def xclUpgradeFirmware(handle, fileName):
     libc.xclUpgradeFirmware.argtypes = [xclDeviceHandle, ctypes.c_void_p]
     return libc.xclUpgradeFirmware(handle, fileName)
 
-
 def xclUpgradeFirmware2(handle, file1, file2):
     """
     Update the device BPI PROM with new image with clearing bitstream
@@ -386,7 +360,6 @@ def xclUpgradeFirmware2(handle, file1, file2):
     libc.xclUpgradeFirmware2.restype = ctypes.c_int
     libc.xclUpgradeFirmware2.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_void_p]
     return libc.xclUpgradeFirmware2(handle, file1, file2)
-
 
 def xclUpgradeFirmwareXSpi (handle, fileName, index):
     """
@@ -400,7 +373,6 @@ def xclUpgradeFirmwareXSpi (handle, fileName, index):
     libc.xclUpgradeFirmwareXSpi.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_int]
     return libc.xclUpgradeFirmwareXSpi(handle, fileName, index)
 
-
 def xclBootFPGA(handle):
     """
     Boot the FPGA from PROM
@@ -411,7 +383,6 @@ def xclBootFPGA(handle):
     libc.xclBootFPGA.argtype = xclDeviceHandle
     return libc.xclBootFPGA(handle)
 
-
 def xclRemoveAndScanFPGA():
     """
     Write to /sys/bus/pci/devices/<deviceHandle>/remove and initiate a pci rescan by
@@ -420,7 +391,6 @@ def xclRemoveAndScanFPGA():
     """
     libc.xclRemoveAndScanFPGA.restype = ctypes.c_int
     return libc.xclRemoveAndScanFPGA()
-
 
 def xclAllocBO(handle, size, domain, flags):
     """
@@ -436,7 +406,6 @@ def xclAllocBO(handle, size, domain, flags):
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
     return libc.xclAllocBO(handle, size, domain, flags)
 
-
 def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
     Allocate a BO using userptr provided by the user
@@ -450,7 +419,6 @@ def xclAllocUserPtrBO(handle, userptr, size, flags):
     libc.xclAllocUserPtrBO.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]
     return libc.xclAllocUserPtrBO(handle, userptr, size, flags)
 
-
 def xclFreeBO(handle, boHandle):
     """
     Free a previously allocated BO
@@ -461,7 +429,6 @@ def xclFreeBO(handle, boHandle):
     libc.xclFreeBO.restype = None
     libc.xclFreeBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     libc.xclFreeBO(handle, boHandle)
-
 
 def xclWriteBO(handle, boHandle, src, size, seek):
     """
@@ -477,7 +444,6 @@ def xclWriteBO(handle, boHandle, src, size, seek):
     libc.xclWriteBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
     return libc.xclWriteBO(handle, boHandle, src, size, seek)
 
-
 def xclReadBO(handle, boHandle, dst, size, skip):
     """
     Copy-out user data from host backing storage of BO
@@ -491,7 +457,6 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     libc.xclReadBO.restype = ctypes.c_int
     libc.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
     return libc.xclReadBO(handle, boHandle, dst, size, skip)
-
 
 def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     """
@@ -527,7 +492,6 @@ def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     ptr = libc.xclMapBO(handle, boHandle, write)
     return ptr
 
-
 def xclSyncBO(handle, boHandle, direction, size, offset):
     """
     Synchronize buffer contents in requested direction
@@ -542,7 +506,6 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     libc.xclSyncBO.restype = ctypes.c_uint
     libc.xclSyncBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
     return libc.xclSyncBO(handle, boHandle, direction, size, offset)
-
 
 def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     """
@@ -560,7 +523,6 @@ def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
                                ctypes.c_uint]
     libc.xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset)
 
-
 def xclExportBO(handle, boHandle):
     """
     Obtain DMA-BUF file descriptor for a BO
@@ -571,7 +533,6 @@ def xclExportBO(handle, boHandle):
     libc.xclExportBO.restype = ctypes.c_int
     libc.xclExportBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     return libc.xclExportBO(handle, boHandle)
-
 
 def xclImportBO(handle, fd, flags):
     """
@@ -588,7 +549,6 @@ def xclImportBO(handle, fd, flags):
     libc.xclImportBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint]
     libc.xclImportBO(handle, fd, flags)
 
-
 def xclGetBOProperties(handle, boHandle, properties):
     """
     Obtain xclBOProperties struct for a BO
@@ -602,7 +562,6 @@ def xclGetBOProperties(handle, boHandle, properties):
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
     return libc.xclGetBOProperties(handle, boHandle, properties)
 
-
 def xclAllocDeviceBuffer(handle, size):
     """
     Allocate a buffer on the device
@@ -613,7 +572,6 @@ def xclAllocDeviceBuffer(handle, size):
     libc.xclAllocDeviceBuffer.restype = ctypes.c_uint64
     libc.xclAllocDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_size_t]
     return libc.xclAllocDeviceBuffer(handle, size)
-
 
 def xclAllocDeviceBuffer2(handle, size, domain, flags):
     """
@@ -628,7 +586,6 @@ def xclAllocDeviceBuffer2(handle, size, domain, flags):
     libc.xclAllocDeviceBuffer2.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
     return libc.xclAllocDeviceBuffer2(handle, size, domain, flags)
 
-
 def xclFreeDeviceBuffer(handle, buf):
     """
     Free a previously buffer on the device
@@ -639,7 +596,6 @@ def xclFreeDeviceBuffer(handle, buf):
     libc.xclFreeDeviceBuffer.restype = None
     libc.xclFreeDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclFreeDeviceBuffer(handle, buf)
-
 
 def xclCopyBufferHost2Device(handle, dest, src, size, seek):
     """
@@ -655,7 +611,6 @@ def xclCopyBufferHost2Device(handle, dest, src, size, seek):
     libc.xclCopyBufferHost2Device.argtypes = [xclDeviceHandle, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
     return libc.xclCopyBufferHost2Device(handle, dest, src, size, seek)
 
-
 def xclCopyBufferDevice2Host(handle, dest, src, size, skip):
     """
     Read from device memory
@@ -669,7 +624,6 @@ def xclCopyBufferDevice2Host(handle, dest, src, size, skip):
     libc.xclCopyBufferDevice2Host.restype = ctypes.c_size_t
     libc.xclCopyBufferDevice2Host.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t]
     return libc.xclCopyBufferDevice2Host(handle, dest, src, size, skip)
-
 
 def xclUnmgdPread(handle, flags, buf, size, offeset):
     """
@@ -689,7 +643,6 @@ def xclUnmgdPread(handle, flags, buf, size, offeset):
     libc.xclUnmgdPread.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint64]
     return libc.xclUnmgdPread(handle, flags, buf, size, offeset)
 
-
 def xclUnmgdPwrite(handle, flags, buf, size, offset):
     """
     Perform unmanaged device memory write operation
@@ -707,7 +660,6 @@ def xclUnmgdPwrite(handle, flags, buf, size, offset):
     libc.xclUnmgdPwrite.restype = ctypes.c_size_t
     libc.xclUnmgdPwrite.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint64]
     return libc.xclUnmgdPwrite(handle, flags, buf, size, offset)
-
 
 def xclWrite(handle, space, offset, hostBuf, size):
     """
@@ -728,7 +680,6 @@ def xclWrite(handle, space, offset, hostBuf, size):
     libc.xclWrite.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
     return libc.xclWrite(handle, space, offset, hostBuf, size)
 
-
 def xclRead(handle, space, offset, hostBuf, size):
     """
     Perform register write operation
@@ -748,7 +699,6 @@ def xclRead(handle, space, offset, hostBuf, size):
     libc.xclRead.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
     return libc.xclRead(handle, space, offset, hostBuf, size)
 
-
 def xclExecBuf(handle, cmdBO):
     """
     xclExecBuf() - Submit an execution request to the embedded (or software) scheduler
@@ -762,7 +712,6 @@ def xclExecBuf(handle, cmdBO):
     libc.xclExecBuf.restype = ctypes.c_int
     libc.xclExecBuf.argtypes = [xclDeviceHandle, ctypes.c_uint]
     return libc.xclExecBuf(handle, cmdBO)
-
 
 def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     """
@@ -782,7 +731,6 @@ def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     libc.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint)]
     return libc.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list)
 
-
 def xclExecWait(handle, timeoutMilliSec):
     """
     xclExecWait() - Wait for one or more execution events on the device
@@ -797,7 +745,6 @@ def xclExecWait(handle, timeoutMilliSec):
     libc.xclExecWait.restype = ctypes.c_int
     libc.xclExecWait.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclExecWait(handle, timeoutMilliSec)
-
 
 def xclRegisterInterruptNotify(handle, userInterrupt, fd):
     """
@@ -815,10 +762,8 @@ def xclRegisterInterruptNotify(handle, userInterrupt, fd):
     libc.xclRegisterInterruptNotify.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int]
     return libc.xclRegisterInterruptNotify(handle, userInterrupt, fd)
 
-
 class xclStreamContextFlags:
     XRT_QUEUE_FLAG_POLLING = (1 << 2)
-
 
 class xclQueueContext(ctypes.Structure):
     # structure to describe a Queue
@@ -831,7 +776,6 @@ class xclQueueContext(ctypes.Structure):
      ("desc_size", ctypes.c_uint32),
      ("flags", ctypes.c_uint64)
     ]
-
 
 def xclCreateWriteQueue(handle, q_ctx, q_hdl):
     """
@@ -848,7 +792,6 @@ def xclCreateWriteQueue(handle, q_ctx, q_hdl):
     libc.xclCreateWriteQueue.restype = ctypes.c_int
     libc.xclCreateWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
     return libc.xclCreateWriteQueue(handle, q_ctx, q_hdl)
-
 
 def xclCreateReadQueue(handle, q_ctx, q_hdl):
     """
@@ -867,7 +810,6 @@ def xclCreateReadQueue(handle, q_ctx, q_hdl):
     return libc.xclCreateReadQueue(handle, q_ctx, q_hdl)
 
 
-
 def xclAllocQDMABuf(handle, size, buf_hdl):
     """
     Allocate DMA buffer
@@ -882,7 +824,6 @@ def xclAllocQDMABuf(handle, size, buf_hdl):
     libc.xclAllocQDMABuf.restypes = ctypes.c_void_p
     libc.xclAllocQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_uint64]
     return libc.xclAllocQDMABuf(handle, size, buf_hdl)
-
 
 def xclFreeQDMABuf(handle, buf_hdl):
     """
@@ -899,7 +840,6 @@ def xclFreeQDMABuf(handle, buf_hdl):
     libc.xclFreeQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclFreeQDMABuf(handle, buf_hdl)
 
-
 def xclDestroyQueue(handle, q_hdl):
     """
     Destroy Queue
@@ -912,7 +852,6 @@ def xclDestroyQueue(handle, q_hdl):
     libc.xclDestroyQueue.restypes = ctypes.c_int
     libc.xclDestroyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclDestroyQueue(handle, q_hdl)
-
 
 def xclModifyQueue(handle, q_hdl):
     """
@@ -927,7 +866,6 @@ def xclModifyQueue(handle, q_hdl):
     libc.xclModifyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclModifyQueue(handle, q_hdl)
 
-
 def xclStartQueue(handle, q_hdl):
     """
     set Queue to running state
@@ -939,7 +877,6 @@ def xclStartQueue(handle, q_hdl):
     libc.xclStartQueue.restypes = ctypes.c_int
     libc.xclStartQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclStartQueue(handle, q_hdl)
-
 
 def xclStopQueue(handle, q_hdl):
     """
@@ -954,13 +891,11 @@ def xclStopQueue(handle, q_hdl):
     libc.xclStopQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libc.xclStopQueue(handle, q_hdl)
 
-
 class anonymous_union(ctypes.Union):
     _fields_ = [
         ("buf", ctypes.POINTER(ctypes.c_char)),
         ("va", ctypes.c_uint64)
     ]
-
 
 class xclReqBuffer(ctypes.Structure):
     _fields_ = [
@@ -969,18 +904,15 @@ class xclReqBuffer(ctypes.Structure):
         ("buf_hdl", ctypes.c_uint64),
     ]
 
-
 class xclQueueRequestKind:
     XCL_QUEUE_WRITE = 0
-    XCL_QUEUE_READ = 1
-
+    XCL_QUEUE_READ  = 1
 
 class xclQueueRequestFlag:
-    XCL_QUEUE_REQ_EOT = 1 << 0
-    XCL_QUEUE_REQ_CDH = 1 << 1
+    XCL_QUEUE_REQ_EOT         = 1 << 0
+    XCL_QUEUE_REQ_CDH         = 1 << 1
     XCL_QUEUE_REQ_NONBLOCKING = 1 << 2
-    XCL_QUEUE_REQ_SILENT = 1 << 3
-
+    XCL_QUEUE_REQ_SILENT      = 1 << 3
 
 class xclQueueRequest(ctypes.Structure):
     _fields_ = [
@@ -993,7 +925,6 @@ class xclQueueRequest(ctypes.Structure):
         ("priv_data", ctypes.c_void_p),
         ("timeout", ctypes.c_uint32)
     ]
-
 
 class xclReqCompletion(ctypes.Structure):
     _fields_ = [
@@ -1032,7 +963,6 @@ def xclWriteQueue(handle, q_hdl, wr_req):
     libc.xclWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libc.xclWriteQueue(handle, q_hdl, wr_req)
 
-
 def xclReadQueue(handle, q_hdl, wr_req):
     """
     write data to queue
@@ -1054,7 +984,6 @@ def xclReadQueue(handle, q_hdl, wr_req):
     libc.xclReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libc.xclReadQueue(handle, q_hdl, wr_req)
 
-
 def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout):
     """
     for non-blocking read/write, check if there is any request been completed
@@ -1071,7 +1000,6 @@ def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout
                                        ctypes.POINTER(ctypes.c_int), ctypes.c_int]
     return libc.xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout)
 
-
 def xclWriteHostEvent(handle, type,id):
     """
 
@@ -1084,7 +1012,6 @@ def xclWriteHostEvent(handle, type,id):
     libc.xclWriteHostEvent.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int]
     return libc.xclWriteHostEvent(handle, type, id)
 
-
 def xclGetDeviceTimestamp(handle):
     """
 
@@ -1094,7 +1021,6 @@ def xclGetDeviceTimestamp(handle):
     libc.xclGetDeviceTimestamp.restype = ctypes.c_size_t
     libc.xclGetDeviceTimestamp.argtype = xclDeviceHandle
     return libc.xclGetDeviceTimestamp(handle)
-
 
 def xclGetDeviceClockFreqMHz(handle):
     """
@@ -1106,7 +1032,6 @@ def xclGetDeviceClockFreqMHz(handle):
     libc.xclGetDeviceClockFreqMHz.argtype = xclDeviceHandle
     return libc.xclGetDeviceClockFreqMHz(handle)
 
-
 def xclGetReadMaxBandwidthMBps(handle):
     """
 
@@ -1117,7 +1042,6 @@ def xclGetReadMaxBandwidthMBps(handle):
     libc.xclGetReadMaxBandwidthMBps.argtype = xclDeviceHandle
     return libc.xclGetReadMaxBandwidthMBps(handle)
 
-
 def xclGetWriteMaxBandwidthMBps(handle):
     """
 
@@ -1127,7 +1051,6 @@ def xclGetWriteMaxBandwidthMBps(handle):
     libc.xclGetWriteMaxBandwidthMBps.restype = ctypes.c_double
     libc.xclGetWriteMaxBandwidthMBps.argtype = xclDeviceHandle
     return libc.xclGetWriteMaxBandwidthMBps(handle)
-
 
 def xclSetProfilingNumberSlots(handle, type, numSlots):
     """
@@ -1141,7 +1064,6 @@ def xclSetProfilingNumberSlots(handle, type, numSlots):
     libc.xclSetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
     libc.xclSetProfilingNumberSlots(handle, type, numSlots)
 
-
 def xclGetProfilingNumberSlots(handle, type):
     """
 
@@ -1152,7 +1074,6 @@ def xclGetProfilingNumberSlots(handle, type):
     libc.xclGetProfilingNumberSlots.restype = ctypes.c_uint32
     libc.xclGetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclGetProfilingNumberSlots(handle, type)
-
 
 def xclGetProfilingSlotName(handle, type, slotnum, slotName, length):
     """
@@ -1169,7 +1090,6 @@ def xclGetProfilingSlotName(handle, type, slotnum, slotName, length):
                                              ctypes.POINTER(ctypes.c_char), ctypes.c_uint32]
     return libc.xclGetProfilingSlotName(handle, type, slotnum, slotName, length)
 
-
 def xclGetProfilingSlotProperties(handle, type, slotnum):
     """
 
@@ -1182,7 +1102,6 @@ def xclGetProfilingSlotProperties(handle, type, slotnum):
     libc.xclGetProfilingSlotProperties.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
     return libc.xclGetProfilingSlotProperties(handle, type, slotnum)
 
-
 def xclPerfMonClockTraining(handle, type):
     """
 
@@ -1193,7 +1112,6 @@ def xclPerfMonClockTraining(handle, type):
     libc.xclPerfMonClockTraining.restype = ctypes.c_size_t
     libc.xclPerfMonClockTraining.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclPerfMonClockTraining(handle, type)
-
 
 def xclPerfMonStartCounters(handle, type):
     """
@@ -1206,7 +1124,6 @@ def xclPerfMonStartCounters(handle, type):
     libc.xclPerfMonStartCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclPerfMonStartCounters(handle, type)
 
-
 def xclPerfMonStopCounters(handle, type):
     """
 
@@ -1217,7 +1134,6 @@ def xclPerfMonStopCounters(handle, type):
     libc.xclPerfMonStopCounters.restype = ctypes.c_size_t
     libc.xclPerfMonStopCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclPerfMonStopCounters(handle, type)
-
 
 def xclPerfMonReadCounters(handle, type, counterResults):
     """
@@ -1231,7 +1147,6 @@ def xclPerfMonReadCounters(handle, type, counterResults):
     libc.xclPerfMonReadCounters.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclcounterResults)]  # defined in xclperf.h not implemented in python yet
     return libc.xclPerfMonReadCounters(handle, type, counterResults)
 
-
 def xclDebugReadIPStatus(handle, type, debugResults):
     """
 
@@ -1243,7 +1158,6 @@ def xclDebugReadIPStatus(handle, type, debugResults):
     libc.xclDebugReadIPStatusrestype = ctypes.c_size_t
     libc.xclDebugReadIPStatus.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p]
     return libc.xclDebugReadIPStatus(handle, type, debugResults)
-
 
 def xclPerfMonStartTrace(handle, type, startTrigger):
     """
@@ -1257,7 +1171,6 @@ def xclPerfMonStartTrace(handle, type, startTrigger):
     libc.xclPerfMonStartTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
     return libc.xclPerfMonStartTrace(handle, type, startTrigger)
 
-
 def xclPerfMonStopTrace(handle, type):
     """
 
@@ -1269,7 +1182,6 @@ def xclPerfMonStopTrace(handle, type):
     libc.xclPerfMonStopTrace.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclPerfMonStopTrace(handle, type)
 
-
 def xclPerfMonGetTraceCount(handle, type):
     """
 
@@ -1280,7 +1192,6 @@ def xclPerfMonGetTraceCount(handle, type):
     libc.xclPerfMonGetTraceCount.restype = ctypes.c_size_t
     libc.xclPerfMonGetTraceCount.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libc.xclPerfMonGetTraceCount(handle, type)
-
 
 def xclPerfMonReadTrace(handle, type, traceVector):
     """
@@ -1294,7 +1205,6 @@ def xclPerfMonReadTrace(handle, type, traceVector):
     libc.xclPerfMonReadTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclTraceResultsVector)]  # defined in xclperf.h not implemented in python yet
     return libc.xclPerfMonReadTrace(handle, type, traceVector)
 
-
 def xclMapMgmt(handle):
     """
 
@@ -1304,7 +1214,6 @@ def xclMapMgmt(handle):
     libc.xclMapMgmt.restype = ctypes.POINTER(ctypes.c_char)
     libc.xclMapMgmt.argtype = xclDeviceHandle
     return libc.xclMapMgmt(handle)
-
 
 def xclOpenMgmt(deviceIndex):
     """

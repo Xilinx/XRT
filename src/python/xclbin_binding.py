@@ -60,7 +60,6 @@ class AXLF_SECTION_KIND:
     USER_METADATA = 16
     DNA_CERTIFICATE = 17
 
-
 class MEM_TYPE:
     MEM_DDR3 = 0
     MEM_DDR4 = 1
@@ -72,14 +71,12 @@ class MEM_TYPE:
     MEM_BRAM = 7
     MEM_URAM = 8
 
-
 class IP_TYPE:
     IP_MB = 0
     IP_KERNEL = 1
     instance = 2
     IP_DNASC = 3
     IP_DDR4_CONTROLLER = 4
-
 
 class XCLBIN_MODE:
     XCLBIN_FLAT = 1
@@ -90,7 +87,6 @@ class XCLBIN_MODE:
     XCLBIN_SW_EMU = 6
     XCLBIN_MODE_MAX = 7
 
-
 class axlf_section_header (ctypes.Structure):
     _fields_ = [
         ("m_sectionKind", ctypes.c_uint32),
@@ -99,13 +95,11 @@ class axlf_section_header (ctypes.Structure):
         ("m_sectionSize", ctypes.c_uint64)
     ]
 
-
 class s1 (ctypes.Structure):
     _fields_ = [
         ("m_platformId", ctypes.c_uint64),
         ("m_featureId", ctypes.c_uint64)
     ]
-
 
 class u1 (ctypes.Union):
     _fields_ = [
@@ -113,13 +107,11 @@ class u1 (ctypes.Union):
         ("rom_uuid", ctypes.c_ubyte*16)
     ]
 
-
 class u2 (ctypes.Union):
     _fields_ = [
         ("m_next_axlf", ctypes.c_char*16),
         ("uuid", ctypes.c_ubyte*16)  # uuid_t/xuid_t
     ]
-
 
 class axlf_header (ctypes.Structure):
     _anonymous_ = ("u1","u2")
@@ -138,7 +130,6 @@ class axlf_header (ctypes.Structure):
         ("m_numSections", ctypes.c_uint32)
     ]
 
-
 class axlf (ctypes.Structure):
     _fields_ = [
         ("m_magic", ctypes.c_char*8),
@@ -149,7 +140,6 @@ class axlf (ctypes.Structure):
         ("m_sections", axlf_section_header)
     ]
 
-
 class xlnx_bitstream(ctypes.Structure):
     _fields_ = [
         ("m_freq", ctypes.c_uint8*8),
@@ -159,12 +149,11 @@ class xlnx_bitstream(ctypes.Structure):
 
 """   MEMORY TOPOLOGY SECTION   """
 
-class m_u1 (ctypes.Union):
+class mem_u1 (ctypes.Union):
     _fields_ = [
         ("m_size", ctypes.c_int64),
         ("route_id", ctypes.c_int64)
     ]
-
 
 class mem_u2 (ctypes.Union):
     _fields_ = [
@@ -172,17 +161,15 @@ class mem_u2 (ctypes.Union):
         ("flow_id", ctypes.c_int64)
     ]
 
-
 class mem_data (ctypes.Structure):
     _anonymous_ = ("mem_u1", "mem_u2")
     _fields_ = [
         ("m_type", ctypes.c_uint8),
         ("m_used", ctypes.c_uint8),
-        ("mem_u1", m_u1),
+        ("mem_u1", mem_u1),
         ("mem_u2", mem_u2),
         ("m_tag", ctypes.c_char * 16)
     ]
-
 
 class mem_topology (ctypes.Structure):
     _fields_ = [
@@ -200,7 +187,6 @@ class connection(ctypes.Structure):
         ("mem_data_index", ctypes.c_int32)
     ]
 
-
 class connectivity(ctypes.Structure):
     _fields_ = [
         ("m_count", ctypes.c_int32),
@@ -217,7 +203,6 @@ class ip_data (ctypes.Structure):
         ("m_base_address", ctypes.c_uint64),
         ("m_name", ctypes.c_uint8 * 64)
     ]
-
 
 class ip_layout (ctypes.Structure):
     _fields_ = [
@@ -239,7 +224,6 @@ class DEBUG_IP_TYPE:
     ACCEL_MONITOR = 7
     AXI_STREAM_MONITOR = 8
 
-
 class debug_ip_data(ctypes.Structure):
     _fields_ = [
         ("m_type", ctypes.c_uint8),
@@ -252,20 +236,17 @@ class debug_ip_data(ctypes.Structure):
         ("m_name", ctypes.c_uint8*128)
     ]
 
-
 class debug_ip_layout(ctypes.Structure):
     _fields_ = [
         ("m_count", ctypes.c_uint16),
         ("m_debug_ip_data", debug_ip_data*1)
     ]
 
-
 class CLOCK_TYPE:
     CT_UNUSED = 0
-    CT_DATA = 1
+    CT_DATA   = 1
     CT_KERNEL = 2
     CT_SYSTEM = 3
-
 
 class clock_freq(ctypes.Structure):
     _fields_ = [
@@ -275,19 +256,16 @@ class clock_freq(ctypes.Structure):
         ("m_name", ctypes.c_char*128)
     ]
 
-
 class clock_freq_topology(ctypes.Structure):
     _fields_ = [
         ("m_count", ctypes.c_uint16),
         ("m_clock_freq", clock_freq*1)
     ]
 
-
 class MCS_TYPE:
     MCS_UNKNOWN = 0
     MCS_PRIMARY = 1
     MCS_SECONDARY = 2
-
 
 class mcs_chunk(ctypes.Structure):
     _fields_ = [
@@ -297,14 +275,12 @@ class mcs_chunk(ctypes.Structure):
         ("m_size", ctypes.c_uint64)
     ]
 
-
 class mcs(ctypes.Structure):
     _fields_ = [
         ("m_count", ctypes.c_int8),
         ("m_unused", ctypes.c_int8),
         ("m_chunk", mcs_chunk*1)
     ]
-
 
 class bmc(ctypes.Structure):
     _fields_ = [
@@ -317,12 +293,10 @@ class bmc(ctypes.Structure):
         ("m_padding", ctypes.c_char*7)
     ]
 
-
 class CHECKSUM_TYPE:
     CST_UNKNOWN = 0
-    CST_SDBM = 1
-    CST_LAST = 2
-
+    CST_SDBM    = 1
+    CST_LAST    = 2
 
 def wrap_get_axlf_section(top, kind):
     libc.wrap_get_axlf_section.restype = ctypes.POINTER(axlf_section_header)
