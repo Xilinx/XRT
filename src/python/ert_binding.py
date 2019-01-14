@@ -20,6 +20,7 @@
 
 import ctypes
 
+##  START OF ENUMS  ##
 
 class ert_cmd_state:
     ERT_CMD_STATE_NEW = 1
@@ -40,7 +41,36 @@ class ert_cmd_opcode:
     ERT_CU_STAT = 6
 
 
-class ert_cmd_struct (ctypes.Structure):
+class ert_cmd_type:
+    ERT_DEFAULT = 0
+    ERT_KDS_LOCAL = 1
+    ERT_CTRL = 2
+
+##  END OF ENUMS  ##
+
+# struct ert_configure_cmd: ERT configure command format
+#
+# @state:           [3-0] current state of a command
+# @count:           [22-12] number of words in payload (5 + num_cus)
+# @opcode:          [27-23] 1, opcode for configure
+# @type:            [31-27] 0, type of configure
+#  *
+# @slot_size:       command queue slot size
+# @num_cus:         number of compute units in program
+# @cu_shift:        shift value to convert CU idx to CU addr
+# @cu_base_addr:    base address to add to CU addr for actual physical address
+#
+# @ert:1            enable embedded HW scheduler
+# @polling:1        poll for command completion
+# @cu_dma:1         enable CUDMA custom module for HW scheduler
+# @cu_isr:1         enable CUISR custom module for HW scheduler
+# @cq_int:1         enable interrupt from host to HW scheduler
+# @cdma:1           enable CDMA kernel
+# @unused:25
+# @dsa52:1          reserved for internal use
+#
+# @data:            addresses of @num_cus CUs
+class ert_cmd_struct(ctypes.Structure):
     _fields_ = [
         ("state", ctypes.c_uint32, 4),
         ("unused", ctypes.c_uint32, 8),
@@ -50,14 +80,14 @@ class ert_cmd_struct (ctypes.Structure):
     ]
 
 
-class uert (ctypes.Union):
+class uert(ctypes.Union):
     _fields_ = [
         ("m_cmd_struct", ert_cmd_struct),
         ("header", ctypes.c_uint32)
     ]
 
 
-class ert_configure_features (ctypes.Structure):
+class ert_configure_features(ctypes.Structure):
     # features
     _fields_ = [
         ("ert", ctypes.c_uint32, 1),
@@ -71,7 +101,7 @@ class ert_configure_features (ctypes.Structure):
     ]
 
 
-class ert_configure_cmd (ctypes.Structure):
+class ert_configure_cmd(ctypes.Structure):
     _fields_ = [
         ("m_uert", uert),
         # payload
@@ -83,8 +113,21 @@ class ert_configure_cmd (ctypes.Structure):
         ("data", ctypes.c_uint32*1)
     ]
 
-
-class ert_start_cmd_struct (ctypes.Structure):
+# struct ert_start_kernel_cmd: ERT start kernel command format
+#
+# @state:           [3-0] current state of a command
+# @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
+# @count:           [22-12] number of words in payload (data)
+# @opcode:          [27-23] 0, opcode for start_kernel
+# @type:            [31-27] 0, type of start_kernel
+#
+# @cu_mask:         first mandatory CU mask
+# @data:            count number of words representing command payload
+#
+# The packet payload is comprised of 1 mandatory CU mask plus
+# extra_cu_masks per header field, followed a CU register map of size
+# (count - (1 + extra_cu_masks)) uint32_t words.
+class ert_start_cmd_struct(ctypes.Structure):
     _fields_ = [
         ("state", ctypes.c_uint32, 4),
         ("unused", ctypes.c_uint32, 6),
@@ -95,14 +138,14 @@ class ert_start_cmd_struct (ctypes.Structure):
     ]
 
 
-class u_start_ert (ctypes.Union):
+class u_start_ert(ctypes.Union):
     _fields_ = [
         ("m_start_cmd_struct", ert_start_cmd_struct),
         ("header", ctypes.c_uint32)
     ]
 
 
-class ert_start_kernel_cmd (ctypes.Structure):
+class ert_start_kernel_cmd(ctypes.Structure):
     _fields_ = [
         ("m_uert", u_start_ert),
 
@@ -110,3 +153,62 @@ class ert_start_kernel_cmd (ctypes.Structure):
         ("cu_mask", ctypes.c_uint32),
         ("data", ctypes.c_uint32*1)
     ]
+
+
+# struct ert_packet: ERT generic packet format
+#
+# @state:   [3-0] current state of a command
+# @custom:  [11-4] custom per specific commands
+# @count:   [22-12] number of words in payload (data)
+# @opcode:  [27-23] opcode identifying specific command
+# @type:    [31-28] type of command (currently 0)
+# @data:    count number of words representing packet payload
+class ert_cmd(ctypes.Structure):
+    _fields_ = [
+        ("state", ctypes.c_uint32, 4),
+        ("custom", ctypes.c_uint32, 8),
+        ("count", ctypes.c_uint32, 11),
+        ("opcode", ctypes.c_uint32, 5),
+        ("type", ctypes.c_uint32, 4)
+    ]
+
+
+class u_ert(ctypes.Union):
+    _fields_ = [
+        ("m_cmd", ert_cmd),
+        ("header", ctypes.c_uint32)
+    ]
+
+
+class ert_packet(ctypes.Structure):
+    _fields_ = [
+        ("u_ert", u_ert),
+        ("data", ctypes.c_uint32*1)
+    ]
+
+
+# struct ert_abort_cmd: ERT abort command format.
+# @idx: The slot index of command to abort
+class ert_cmd_2(ctypes.Structure):
+    _fields_ = [
+        ("state", ctypes.c_uint32, 4),
+        ("unused", ctypes.c_uint32, 8),
+        ("idx", ctypes.c_uint32, 11),
+        ("opcode", ctypes.c_uint32, 5),
+        ("type", ctypes.c_uint32, 4)
+    ]
+
+
+class u_ert_2(ctypes.Union):
+    _fields_ = [
+        ("m_cmd", ert_cmd_2),
+        ("header", ctypes.c_uint32)
+    ]
+
+
+class ert_abort_cmd(ctypes.Structure):
+    _fields_ = [
+        ("u_ert", u_ert)
+    ]
+
+

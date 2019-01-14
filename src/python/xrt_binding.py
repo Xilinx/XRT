@@ -285,7 +285,8 @@ def xclGetSectionInfo(handle, info, size, kind, index):
     :return: 0 on success or appropriate error number
     """
     libc.xclGetSectionInfo.restype = ctypes.c_int
-    libc.xclGetSectionInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2), ctypes.POINTER(sizeof(xclDeviceInfo2)),
+    libc.xclGetSectionInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2),
+                                       ctypes.POINTER(ctypes.sizeof(xclDeviceInfo2)),
                                        ctypes.c_int, ctypes.c_int]
     return libc.xclGetSectionInfo(handle, info, size, kind, index)
 
@@ -492,13 +493,15 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     return libc.xclReadBO(handle, boHandle, dst, size, skip)
 
 
-def xclMapBO(handle, boHandle, write):
+def xclMapBO(handle, boHandle, write, buf_type='char', buf_size=1):
     """
     Memory map BO into user's address space
 
     :param handle: (xclDeviceHandle) device handle
     :param boHandle: (unsigned int) BO handle
     :param write: (boolean) READ only or READ/WRITE mapping
+    :param buf_type: type of memory mapped buffer
+    :param buf_size: size of buffer
     :return: (void pointer) Memory mapped buffer
 
     Map the contents of the buffer object into host memory
@@ -770,7 +773,7 @@ def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     call to xclExecBufWithWaitList.
     """
     libc.xclExecBufWithWaitList.restype = ctypes.c_int
-    libc.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, POINTER(ctypes.c_uint)]
+    libc.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint)]
     return libc.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list)
 
 
@@ -948,7 +951,7 @@ def xclStopQueue(handle, q_hdl):
 
 class anonymous_union(ctypes.Union):
     _fields_ = [
-        ("buf", POINTER(ctypes.c_char)),
+        ("buf", ctypes.POINTER(ctypes.c_char)),
         ("va", ctypes.c_uint64)
     ]
 
@@ -977,9 +980,9 @@ class xclQueueRequestFlag:
 class xclQueueRequest(ctypes.Structure):
     _fields_ = [
         ("op_code", ctypes.c_int),
-        ("bufs", POINTER(xclReqBuffer)),
+        ("bufs", ctypes.POINTER(xclReqBuffer)),
         ("buf_num", ctypes.c_uint32),
-        ("cdh", POINTER(ctypes.c_char)),
+        ("cdh", ctypes.POINTER(ctypes.c_char)),
         ("cdh_len", ctypes.c_uint32),
         ("flag", ctypes.c_uint32),
         ("priv_data", ctypes.c_void_p),
@@ -987,7 +990,7 @@ class xclQueueRequest(ctypes.Structure):
     ]
 
 
-class xclDeviceInfo2(ctypes.Structure):
+class xclReqCompletion(ctypes.Structure):
     _fields_ = [
         ("resv", ctypes.c_char*64),
         ("priv_data", ctypes.c_void_p),
@@ -1021,7 +1024,7 @@ def xclWriteQueue(handle, q_hdl, wr_req):
              No event generated after write completes
     """
     libc.xclWriteQueue.restype = ctypes.c_ssize_t
-    libc.xclWriteQueue.argtypes = [xclDeviceHandle, POINTER(xclQueueRequest)]
+    libc.xclWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libc.xclWriteQueue(handle, q_hdl, wr_req)
 
 
@@ -1043,7 +1046,7 @@ def xclReadQueue(handle, q_hdl, wr_req):
              return 0 immidiately.
     """
     libc.xclReadQueue.restype = ctypes.c_ssize_t
-    libc.xclReadQueue.argtypes = [xclDeviceHandle, POINTER(xclQueueRequest)]
+    libc.xclReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libc.xclReadQueue(handle, q_hdl, wr_req)
 
 
@@ -1059,24 +1062,251 @@ def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout
     :return:
     """
     libc.xclPollCompletion.restype = ctypes.c_int
-    libc.xclPollCompletion.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int, POINTER(xclReqCompletion),
-                                       POINTER(ctypes.c_int), ctypes.c_int]
+    libc.xclPollCompletion.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int, ctypes.POINTER(xclReqCompletion),
+                                       ctypes.POINTER(ctypes.c_int), ctypes.c_int]
     return libc.xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout)
 
 
-# L1131
+def xclWriteHostEvent(handle, type,id):
+    """
+
+    :param handle:
+    :param type:
+    :param id:
+    :return:
+    """
+    libc.xclWriteHostEvent.restype = None
+    libc.xclWriteHostEvent.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int]
+    return libc.xclWriteHostEvent(handle, type, id)
 
 
+def xclGetDeviceTimestamp(handle):
+    """
+
+    :param handle:
+    :return:
+    """
+    libc.xclGetDeviceTimestamp.restype = ctypes.c_size_t
+    libc.xclGetDeviceTimestamp.argtype = xclDeviceHandle
+    return libc.xclGetDeviceTimestamp(handle)
 
 
+def xclGetDeviceClockFreqMHz(handle):
+    """
+
+    :param handle:
+    :return:
+    """
+    libc.xclGetDeviceClockFreqMHz.restype = ctypes.c_double
+    libc.xclGetDeviceClockFreqMHz.argtype = xclDeviceHandle
+    return libc.xclGetDeviceClockFreqMHz(handle)
 
 
+def xclGetReadMaxBandwidthMBps(handle):
+    """
+
+    :param handle:
+    :return:
+    """
+    libc.xclGetReadMaxBandwidthMBps.restype = ctypes.c_double
+    libc.xclGetReadMaxBandwidthMBps.argtype = xclDeviceHandle
+    return libc.xclGetReadMaxBandwidthMBps(handle)
 
 
+def xclGetWriteMaxBandwidthMBps(handle):
+    """
+
+    :param handle:
+    :return:
+    """
+    libc.xclGetWriteMaxBandwidthMBps.restype = ctypes.c_double
+    libc.xclGetWriteMaxBandwidthMBps.argtype = xclDeviceHandle
+    return libc.xclGetWriteMaxBandwidthMBps(handle)
 
 
+def xclSetProfilingNumberSlots(handle, type, numSlots):
+    """
+
+    :param handle:
+    :param type:
+    :param numSlots:
+    :return:
+    """
+    libc.xclSetProfilingNumberSlots.restype = None
+    libc.xclSetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
+    libc.xclSetProfilingNumberSlots(handle, type, numSlots)
 
 
+def xclGetProfilingNumberSlots(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclGetProfilingNumberSlots.restype = ctypes.c_uint32
+    libc.xclGetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclGetProfilingNumberSlots(handle, type)
 
 
+def xclGetProfilingSlotName(handle, type, slotnum, slotName, length):
+    """
 
+    :param handle:
+    :param type:
+    :param slotnum:
+    :param slotName:
+    :param length:
+    :return:
+    """
+    libc.xclGetProfilingSlotName.restype = None
+    libc.xclGetProfilingSlotName.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32,
+                                             ctypes.POINTER(ctypes.c_char), ctypes.c_uint32]
+    return libc.xclGetProfilingSlotName(handle, type, slotnum, slotName, length)
+
+
+def xclGetProfilingSlotProperties(handle, type, slotnum):
+    """
+
+    :param handle:
+    :param type:
+    :param slotnum:
+    :return:
+    """
+    libc.xclGetProfilingSlotProperties.restype = ctypes.c_uint32
+    libc.xclGetProfilingSlotProperties.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
+    return libc.xclGetProfilingSlotProperties(handle, type, slotnum)
+
+
+def xclPerfMonClockTraining(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclPerfMonClockTraining.restype = ctypes.c_size_t
+    libc.xclPerfMonClockTraining.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclPerfMonClockTraining(handle, type)
+
+
+def xclPerfMonStartCounters(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclPerfMonStartCounters.restype = ctypes.c_size_t
+    libc.xclPerfMonStartCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclPerfMonStartCounters(handle, type)
+
+
+def xclPerfMonStopCounters(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclPerfMonStopCounters.restype = ctypes.c_size_t
+    libc.xclPerfMonStopCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclPerfMonStopCounters(handle, type)
+
+
+def xclPerfMonReadCounters(handle, type, counterResults):
+    """
+
+    :param handle:
+    :param type:
+    :param counterResults:
+    :return:
+    """
+    libc.xclPerfMonReadCounters.restype = ctypes.c_size_t
+    libc.xclPerfMonReadCounters.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclcounterResults)]  # defined in xclperf.h not implemented in python yet
+    return libc.xclPerfMonReadCounters(handle, type, counterResults)
+
+
+def xclDebugReadIPStatus(handle, type, debugResults):
+    """
+
+    :param handle:
+    :param type:
+    :param debugResults:
+    :return:
+    """
+    libc.xclDebugReadIPStatusrestype = ctypes.c_size_t
+    libc.xclDebugReadIPStatus.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p]
+    return libc.xclDebugReadIPStatus(handle, type, debugResults)
+
+
+def xclPerfMonStartTrace(handle, type, startTrigger):
+    """
+
+    :param handle:
+    :param type:
+    :param startTrigger:
+    :return:
+    """
+    libc.xclPerfMonStartTrace.restype = ctypes.c_size_t
+    libc.xclPerfMonStartTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
+    return libc.xclPerfMonStartTrace(handle, type, startTrigger)
+
+
+def xclPerfMonStopTrace(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclPerfMonStopTrace.restype = ctypes.c_size_t
+    libc.xclPerfMonStopTrace.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclPerfMonStopTrace(handle, type)
+
+
+def xclPerfMonGetTraceCount(handle, type):
+    """
+
+    :param handle:
+    :param type:
+    :return:
+    """
+    libc.xclPerfMonGetTraceCount.restype = ctypes.c_size_t
+    libc.xclPerfMonGetTraceCount.argtypes = [xclDeviceHandle, ctypes.c_int]
+    return libc.xclPerfMonGetTraceCount(handle, type)
+
+
+def xclPerfMonReadTrace(handle, type, traceVector):
+    """
+
+    :param handle:
+    :param type:
+    :param traceVector:
+    :return:
+    """
+    libc.xclPerfMonReadTrace.restype = ctypes.c_size_t
+    libc.xclPerfMonReadTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclTraceResultsVector)]  # defined in xclperf.h not implemented in python yet
+    return libc.xclPerfMonReadTrace(handle, type, traceVector)
+
+
+def xclMapMgmt(handle):
+    """
+
+    :param handle:
+    :return:
+    """
+    libc.xclMapMgmt.restype = ctypes.POINTER(ctypes.c_char)
+    libc.xclMapMgmt.argtype = xclDeviceHandle
+    return libc.xclMapMgmt(handle)
+
+
+def xclOpenMgmt(deviceIndex):
+    """
+
+    :param deviceIndex:
+    :return:
+    """
+    libc.xclOpenMgmt.restype = xclDeviceHandle
+    libc.xclOpenMgmt.argtype = ctypes.c_uint
+    return libc.xclOpenMgmt(deviceIndex)
