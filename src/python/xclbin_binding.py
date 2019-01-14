@@ -41,51 +41,51 @@ libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
 class AXLF_SECTION_KIND:
-    BITSTREAM = 0
-    CLEARING_BITSTREAM = 1
-    EMBEDDED_METADATA = 2
-    FIRMWARE = 3
-    DEBUG_DATA = 4
-    SCHED_FIRMWARE = 5
-    MEM_TOPOLOGY = 6
-    CONNECTIVITY = 7
-    IP_LAYOUT = 8
-    DEBUG_IP_LAYOUT = 9
-    DESIGN_CHECK_POINT = 10
+    BITSTREAM            = 0
+    CLEARING_BITSTREAM   = 1
+    EMBEDDED_METADATA    = 2
+    FIRMWARE             = 3
+    DEBUG_DATA           = 4
+    SCHED_FIRMWARE       = 5
+    MEM_TOPOLOGY         = 6
+    CONNECTIVITY         = 7
+    IP_LAYOUT            = 8
+    DEBUG_IP_LAYOUT      = 9
+    DESIGN_CHECK_POINT  = 10
     CLOCK_FREQ_TOPOLOGY = 11
-    MCS = 12
-    BMC = 13
-    BUILD_METADATA = 14
-    KEYVALUE_METADATA = 15
-    USER_METADATA = 16
-    DNA_CERTIFICATE = 17
+    MCS                 = 12
+    BMC                 = 13
+    BUILD_METADATA      = 14
+    KEYVALUE_METADATA   = 15
+    USER_METADATA       = 16
+    DNA_CERTIFICATE     = 17
 
 class MEM_TYPE:
-    MEM_DDR3 = 0
-    MEM_DDR4 = 1
-    MEM_DRAM = 2
-    MEM_STREAMING = 3
+    MEM_DDR3              = 0
+    MEM_DDR4              = 1
+    MEM_DRAM              = 2
+    MEM_STREAMING         = 3
     MEM_PREALLOCATED_GLOB = 4
-    MEM_ARE = 5
-    MEM_HBM = 6
-    MEM_BRAM = 7
-    MEM_URAM = 8
+    MEM_ARE               = 5
+    MEM_HBM               = 6
+    MEM_BRAM              = 7
+    MEM_URAM              = 8
 
 class IP_TYPE:
-    IP_MB = 0
-    IP_KERNEL = 1
-    instance = 2
-    IP_DNASC = 3
+    IP_MB              = 0
+    IP_KERNEL          = 1
+    instance           = 2
+    IP_DNASC           = 3
     IP_DDR4_CONTROLLER = 4
 
 class XCLBIN_MODE:
-    XCLBIN_FLAT = 1
-    XCLBIN_PR = 2
-    XCLBIN_TANDEM_STAGE2 = 3
+    XCLBIN_FLAT                  = 1
+    XCLBIN_PR                    = 2
+    XCLBIN_TANDEM_STAGE2         = 3
     XCLBIN_TANDEM_STAGE2_WITH_PR = 4
-    XCLBIN_HW_EMU = 5
-    XCLBIN_SW_EMU = 6
-    XCLBIN_MODE_MAX = 7
+    XCLBIN_HW_EMU                = 5
+    XCLBIN_SW_EMU                = 6
+    XCLBIN_MODE_MAX              = 7
 
 class axlf_section_header (ctypes.Structure):
     _fields_ = [
