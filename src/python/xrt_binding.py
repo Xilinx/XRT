@@ -504,11 +504,19 @@ def xclMapBO(handle, boHandle, write):
     Map the contents of the buffer object into host memory
     To unmap the buffer call POSIX unmap() on mapped void pointer returned from xclMapBO
     """
-    prop = xclBOProperties()
-    xclGetBOProperties(handle, boHandle, prop)
-    libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_char * prop.size)
+    if buf_type is 'char':
+        prop = xclBOProperties()
+        xclGetBOProperties(handle, boHandle, prop)
+        libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_char * prop.size)
+
+    elif buf_size is 1 and buf_type is 'int':
+        libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_int)
+
+    elif buf_type is 'int':
+        libc.xclMapBO.restype = ctypes.POINTER(ctypes.c_int * buf_size)
     libc.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
-    return libc.xclMapBO(handle, boHandle, write)
+    ptr = libc.xclMapBO(handle, boHandle, write)
+    return ptr
 
 
 def xclSyncBO(handle, boHandle, direction, size, offset):
