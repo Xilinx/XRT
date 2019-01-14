@@ -178,7 +178,7 @@ class mem_data (ctypes.Structure):
     _fields_ = [
         ("m_type", ctypes.c_uint8),
         ("m_used", ctypes.c_uint8),
-        ("mem_u1", mem_u1),
+        ("mem_u1", m_u1),
         ("mem_u2", mem_u2),
         ("m_tag", ctypes.c_char * 16)
     ]

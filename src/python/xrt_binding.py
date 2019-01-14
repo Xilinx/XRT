@@ -957,9 +957,8 @@ class anonymous_union(ctypes.Union):
 
 
 class xclReqBuffer(ctypes.Structure):
-    _anonymous_ = "anonymous_union"
     _fields_ = [
-        ("anonymous_union", ctypes.c_uint64),
+        ("anonymous_union", anonymous_union),
         ("len", ctypes.c_uint64),
         ("buf_hdl", ctypes.c_uint64),
     ]
