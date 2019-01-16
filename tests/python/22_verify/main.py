@@ -76,7 +76,7 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 1000) == 0:
         print(".")
 
     if ecmd.m_uert.m_cmd_struct.state != 4:
@@ -110,10 +110,10 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 100) == 0:
         print(".")
 
-    if (start_cmd.m_uert.m_start_cmd_struct.state != 4):
+    if start_cmd.m_uert.m_start_cmd_struct.state != 4:
         print("configure command failed")
         return 1
 

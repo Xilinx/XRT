@@ -1,5 +1,4 @@
 import sys
-import numpy as np
 # import source files
 sys.path.append('../../../src/python/')
 from xrt_binding import *
@@ -37,28 +36,24 @@ def runKernel(opt):
     boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
     boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
 
-    bo1 = xclMapBO(opt.handle, boHandle1, True)
-    bo2 = xclMapBO(opt.handle, boHandle2, True)
+    bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
+    bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
 
     ctypes.memset(bo1, 0, opt.DATA_SIZE)
     ctypes.memset(bo2, 0, opt.DATA_SIZE)
 
     # bo1
-    bo1_arr = np.array([0x586C0C6C for _ in range(count)])
-    ctypes.memmove(bo1, bo1_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_longlong)), count*5)
-    print(bo1.contents[:100])
-    # bo2
-    int_arr = np.array([i * i for i in range(count)])
-    bo2_arr = np.array(map(str, int_arr.astype(int)))
+    bo1_arr = [0X586C0C6C for _ in range(count)]
+    arr = (ctypes.c_int * len(bo1_arr))(*bo1_arr)
+    ctypes.memmove(bo1, arr, count*5)
 
-    ctypes.memmove(bo2, bo2_arr.ctypes.data_as(ctypes.POINTER(ctypes.c_longlong)), count*7)
-    print(bo2.contents[:100])
+    #bo2
+    bo2_arr = [i*i for i in range(count)]
+    arr = (ctypes.c_int * len(bo2_arr))(*bo2_arr)
+    ctypes.memmove(bo2, arr, count*5)
 
     # bufReference
-    int_arr_2 = np.array([i * i+i*16 for i in range(count)])
-    str_arr = np.array(map(str, int_arr_2))
-    bufReference = ''.join(str_arr)
-    print(bufReference[:100])
+    bufReference = [i * i+i*16 for i in range(count)]
 
     if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
         return 1
@@ -75,13 +70,12 @@ def runKernel(opt):
 
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
+    execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # required buffer size = 128
 
     if execData is None:
         print("execData is NULL")
-
     print("Construct the exe buf cmd to configure FPGA")
-
+    xclOpenContext(opt.handle, opt.xuuid, 0, True)
     ecmd = ert_configure_cmd.from_buffer(execData.contents)
     ecmd.m_uert.m_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
     ecmd.m_uert.m_cmd_struct.opcode = 2  # ERT_CONFIGURE
@@ -109,21 +103,18 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 1000) == 0:
         print(".")
 
 
     print("Construct the exec command to run the kernel on FPGA")
     print("Due to the 1D OpenCL group size, the kernel must be launched %d times") % count
 
-    xclOpenContext(opt.handle, opt.xuuid, 0, True)
-
-    import pdb; pdb.set_trace()
     # construct the exec buffer cmd to start the kernel
     for id in range(count):
         start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
         rsz = XSIMPLE_CONTROL_ADDR_FOO_DATA/4 + 2  # regmap array size
-        ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz)
+        ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
         start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
         start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
         start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
@@ -134,13 +125,10 @@ def runKernel(opt):
         new_data[XSIMPLE_CONTROL_ADDR_AP_CTRL] = 0x0
         new_data[XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id
         new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4] = bo1devAddr & 0xFFFFFFFF  # output
-        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4] = bo2devAddr & 0xFFFFFFFF  # input
+        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4] = bo2devAddr & 0xFFFFFFFF
+        new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF  # output
+        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF  # input
         new_data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10  # foo
-        #ctypes.memmove(execData, start_cmd, 2 * ctypes.sizeof(ctypes.c_uint32))
-
-        #tmp_buf = ctypes.buffer(execData, 2 * ctypes.sizeof(ctypes.c_uint32) + (len(new_data) * ctypes.sizeof(ctypes.c_uint32)))
-        #data_ptr = ctypes.from_buffer(tmp_buf)
-        #ctypes.memmove(tmp_buf + 2 * ctypes.sizeof(ctypes.c_uint32), new_data, len(new_data) * ctypes.sizeof(ctypes.c_uint32))
 
         if xclExecBuf(opt.handle, execHandle):
             print("Unable to issue xclExecBuf")
@@ -148,15 +136,18 @@ def runKernel(opt):
 
         print("Wait until the command finish")
 
-        while xclExecWait(opt.handle, 1) != 0:
+        while xclExecWait(opt.handle, 100) == 0:
             print("reentering wait... \n")
+
+
+    if start_cmd.m_uert.m_start_cmd_struct.state != 4:
+        print("configure command failed")
+        return 1
 
     # get the output xclSyncBO
     print("Get the output data from the device")
     if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0):
         return 1
-    #rd_buf = ffi.buffer(bo1_fp, count*7)
-    print(bo1.contents[:500])
 
     xclCloseContext(opt.handle, opt.xuuid, 0)
     xclFreeBO(opt.handle, execHandle)
@@ -164,9 +155,7 @@ def runKernel(opt):
     xclFreeBO(opt.handle, boHandle2)
 
     print("RESULT: ")
-    # print(rd_buf[:] + "\n")
-
-    if bufReference[:] != bo1.contents[:]:
+    if bufReference[:count] != bo1[:count]:
         print("FAILED TEST")
         print("Value read back does not match value written")
         sys.exit()
