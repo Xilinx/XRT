@@ -33,6 +33,7 @@ extern "C" {
  * Return:         Buffer Object handler
  *
  * Get host allocated buffer by physical address.
+ * NOTE: This is WIP and do not directly used it.
  */
 XCL_DRIVER_DLLESPEC unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size);
 

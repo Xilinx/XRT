@@ -439,7 +439,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
 
-	zdev->host_mem = 0;
+	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
 	zdev->host_mem_len = 0;
 	/* If reserved memory region are not found, just keep going */
 	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
