@@ -154,6 +154,9 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
     dec_session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+    //For execbo:
+    dec_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    dec_session->base.hw_session.dev_index = hal->dev_index;
 
     dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
 
