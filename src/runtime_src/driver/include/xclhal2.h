@@ -308,12 +308,13 @@ XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, xclResetKind kind
  * xclP2pEnable() - enable or disable p2p
  *
  * @handle:        Device handle
- * @enable:        0-disable, 1-enable
+ * @enable:        false-disable, true-enable
+ * @force:         true-force to reassign bus IO memory
  * Return:         0 on success or appropriate error number
  *
  * Enable or Disable P2P feature. Warm reboot might be required.
  */
-XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable);
+XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
 /**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device

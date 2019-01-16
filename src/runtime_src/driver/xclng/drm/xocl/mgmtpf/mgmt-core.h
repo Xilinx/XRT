@@ -82,6 +82,12 @@ struct xclmgmt_proc_ctx {
 	bool			signaled;
 };
 
+struct xclmgmt_char {
+	struct xclmgmt_dev *lro;
+	struct cdev cdev;
+	struct device *sys_device;
+};
+
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -90,7 +96,7 @@ struct xclmgmt_dev {
 	/* the kernel pci device data structure provided by probe() */
 	struct pci_dev *pci_dev;
 	int instance;
-	struct xclmgmt_char *user_char_dev;
+	struct xclmgmt_char user_char_dev;
 	int axi_gate_frozen;
 	unsigned short ocl_frequency[4];
 
@@ -106,12 +112,6 @@ struct xclmgmt_dev {
 #endif
 	int msix_user_start_vector;
 	bool ready;
-};
-
-struct xclmgmt_char {
-	struct xclmgmt_dev *lro;
-	struct cdev cdev;
-	struct device *sys_device;
 };
 
 extern int health_check;

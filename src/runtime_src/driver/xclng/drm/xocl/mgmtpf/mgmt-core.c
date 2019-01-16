@@ -67,17 +67,16 @@ struct class *xrt_class = NULL;
  */
 static int char_open(struct inode *inode, struct file *file)
 {
-	struct xclmgmt_char *lro_char;
 	struct xclmgmt_dev *lro;
 	struct xclmgmt_proc_ctx ctx;
 	int	ret;
 
 	/* pointer to containing data structure of the character device inode */
-	lro_char = container_of(inode->i_cdev, struct xclmgmt_char, cdev);
+	lro = container_of(inode->i_cdev, struct xclmgmt_dev,
+			user_char_dev.cdev);
 
 	/* create a reference to our char device in the opened file */
-	file->private_data = lro_char;
-	lro = lro_char->lro;
+	file->private_data = lro;
 	BUG_ON(!lro);
 
 	mutex_lock(&lro->busy_mutex);
@@ -100,6 +99,8 @@ static int char_open(struct inode *inode, struct file *file)
 	mgmt_info(lro, "opened file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
 
+	xocl_drv_get(lro);
+
 	return 0;
 }
 
@@ -109,15 +110,13 @@ static int char_open(struct inode *inode, struct file *file)
 static int char_close(struct inode *inode, struct file *file)
 {
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
 	struct xclmgmt_proc_ctx ctx;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-
-	/* fetch device specific data stored earlier during open */
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
+
+	if (xocl_drv_released(lro))
+		goto end;
 
 	ctx.pid = task_tgid(current);
 	ctx.lro = lro;
@@ -126,6 +125,8 @@ static int char_close(struct inode *inode, struct file *file)
 	mgmt_info(lro, "Closing file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
 
+end:
+	xocl_drv_put(lro);
 	return 0;
 }
 
@@ -283,7 +284,6 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int rc;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
 	unsigned long off;
 	unsigned long phys;
 	unsigned long vsize;
@@ -292,9 +292,7 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EACCES;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
@@ -353,26 +351,20 @@ static struct file_operations ctrl_fops = {
  * is coupled to the SG DMA file operations which operate on the data bus. If
  * no engines are specified, the interface is coupled with the control bus.
  */
-static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
+static int create_char(struct xclmgmt_dev *lro)
 {
 	struct xclmgmt_char *lro_char;
 	int rc;
 
-	/* allocate book keeping data structure */
-	lro_char = kzalloc(sizeof(struct xclmgmt_char), GFP_KERNEL);
-	if (!lro_char) {
-		mgmt_err(lro, "Not enough memory");
-		return NULL;
-	}
+	lro_char = &lro->user_char_dev;
 
-	/* dynamically pick a number into cdevno */
-	lro_char->lro = lro;
 	/* couple the control device file operations to the character device */
 	cdev_init(&lro_char->cdev, &ctrl_fops);
 	lro_char->cdev.owner = THIS_MODULE;
 	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
 	rc = cdev_add(&lro_char->cdev, lro_char->cdev.dev, 1);
 	if (rc < 0) {
+		memset(lro_char, 0, sizeof(*lro_char));
 		printk(KERN_INFO "cdev_add() = %d\n", rc);
 		goto fail_add;
 	}
@@ -387,26 +379,22 @@ static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
 		goto fail_device;
 	}
 
-	return lro_char;
+	return 0;
 
 fail_device:
 	cdev_del(&lro_char->cdev);
 fail_add:
-	kfree(lro_char);
-
-	return NULL;
+	return rc;
 }
 
 static int destroy_sg_char(struct xclmgmt_char *lro_char)
 {
 	BUG_ON(!lro_char);
-	BUG_ON(!lro_char->lro);
 	BUG_ON(!xrt_class);
-	BUG_ON(!lro_char->sys_device);
+
 	if (lro_char->sys_device)
 		device_destroy(xrt_class, lro_char->cdev.dev);
 	cdev_del(&lro_char->cdev);
-	kfree(lro_char);
 
 	return 0;
 }
@@ -796,10 +784,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_map;
 
 	lro->instance = XOCL_DEV_ID(pdev);
-	lro->user_char_dev = create_char(lro);
-	if (!lro->user_char_dev) {
+	rc = create_char(lro);
+	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
-		rc = -EINVAL;
 		goto err_cdev;
 	}
 	mutex_init(&lro->busy_mutex);
@@ -816,6 +803,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	xclmgmt_extended_probe(lro);
+
+	xocl_core_init(lro, NULL);
 
 	return 0;
 
@@ -856,10 +845,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
-	if (lro->user_char_dev) {
-		destroy_sg_char(lro->user_char_dev);
-		lro->user_char_dev = 0;
-	}
+	destroy_sg_char(&lro->user_char_dev);
 
 	/* unmap the BARs */
 	unmap_bars(lro);
@@ -868,8 +854,9 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(lro);
 
-	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
+
+	xocl_core_fini(lro);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,
