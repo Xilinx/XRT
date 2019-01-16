@@ -150,7 +150,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	zocl_iommu_unmap_bo(obj->dev, zocl_obj);
 	if (zocl_obj->pages) {
 		if (zocl_bo_userptr(zocl_obj)) {
-			release_pages(zocl_obj->pages, npages, 0);
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
+			release_pages(zocl_obj->pages, npages);
+#else
+			release_pages(pages, nr, 0);
+#endif
 			kvfree(zocl_obj->pages);
 		} else
 			drm_gem_put_pages(obj, zocl_obj->pages, false, false);
