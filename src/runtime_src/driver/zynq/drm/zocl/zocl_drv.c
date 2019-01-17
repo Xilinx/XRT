@@ -181,7 +181,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 #if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 			release_pages(zocl_obj->pages, npages);
 #else
-			release_pages(pages, nr, 0);
+			release_pages(zocl_obj->pages, npages, 0);
 #endif
 			kvfree(zocl_obj->pages);
 		} else
