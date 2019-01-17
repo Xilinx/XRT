@@ -26,6 +26,7 @@
 #include <string>
 
 #include "driver/include/xclhal2.h"
+#include "driver/include/xclperf.h"
 #include "driver/include/xcl_axi_checker_codes.h"
 #include "../user_common/dmatest.h"
 #include "../user_common/memaccess.h"
@@ -704,12 +705,31 @@ public:
         }
         parseComputeUnits( computeUnits );
 
-	// p2p enable
-	bool p2p_enabled;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
-	if(errmsg.empty()) {
-		sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
-	}
+        /**
+         * \note Adding device information for debug and profile
+         * This will put one more section debug_profile into the
+         * json dump that shows all the device information that
+         * debug and profile code in external systems will need
+         * e.g. sdx_server, hardware_sercer, GUI, etc
+         */
+        xclDebugProfileDeviceInfo info;
+        int err = xclGetDebugProfileDeviceInfo(m_handle, &info);
+        sensor_tree::put("debug_profile.device_info.error", err);
+        sensor_tree::put("debug_profile.device_info.device_index", info.device_index);
+        sensor_tree::put("debug_profile.device_info.user_instance", info.user_instance);
+        sensor_tree::put("debug_profile.device_info.mgmt_instance", info.mgmt_instance);
+        sensor_tree::put("debug_profile.device_info.nifd_instance", info.nifd_instance);
+        sensor_tree::put("debug_profile.device_info.device_name", std::string(info.device_name));
+        sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
+        /** End of debug and profile device information */
+
+        // p2p enable
+        bool p2p_enabled;
+              pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+        if(errmsg.empty()) {
+          sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
+        }
+
         return 0;
     }
 
