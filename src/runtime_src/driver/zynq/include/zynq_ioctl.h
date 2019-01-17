@@ -33,13 +33,14 @@
 enum {
 	DRM_ZOCL_CREATE_BO = 0,
 	DRM_ZOCL_USERPTR_BO,
+	DRM_ZOCL_GET_HOST_BO,
 	DRM_ZOCL_MAP_BO,
 	DRM_ZOCL_SYNC_BO,
 	DRM_ZOCL_INFO_BO,
 	DRM_ZOCL_PWRITE_BO,
 	DRM_ZOCL_PREAD_BO,
 	DRM_ZOCL_PCAP_DOWNLOAD,
-  DRM_ZOCL_EXECBUF,
+	DRM_ZOCL_EXECBUF,
 	DRM_ZOCL_READ_AXLF,
 	DRM_ZOCL_NUM_IOCTLS
 };
@@ -49,6 +50,7 @@ enum drm_zocl_sync_bo_dir {
 	DRM_ZOCL_SYNC_BO_FROM_DEVICE
 };
 
+#define DRM_ZOCL_BO_FLAGS_HOST_BO    (0x1 << 26)
 #define DRM_ZOCL_BO_FLAGS_COHERENT   (0x1 << 27)
 #define DRM_ZOCL_BO_FLAGS_CMA        (0x1 << 28)
 #define DRM_ZOCL_BO_FLAGS_SVM        (0x1 << 29)
@@ -98,6 +100,18 @@ struct drm_zocl_info_bo {
 	uint32_t	handle;
 	uint64_t	size;
 	uint64_t	paddr;
+};
+
+/**
+ * struct drm_zocl_host_bo - used for GET_HOST_BO IOCTL
+ * @paddr:	physical address
+ * @size:	Size of BO
+ * @handle:	GEM object handle
+ */
+struct drm_zocl_host_bo {
+	uint64_t	paddr;
+	size_t      size;
+	uint32_t	handle;
 };
 
 /**
@@ -183,6 +197,9 @@ struct drm_zocl_axlf {
 #define DRM_IOCTL_ZOCL_USERPTR_BO      DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_USERPTR_BO,     \
                                        struct drm_zocl_userptr_bo)
+#define DRM_IOCTL_ZOCL_GET_HOST_BO     DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_GET_HOST_BO,     \
+                                       struct drm_zocl_host_bo)
 #define DRM_IOCTL_ZOCL_MAP_BO          DRM_IOWR(DRM_COMMAND_BASE +          \
                                        DRM_ZOCL_MAP_BO, struct drm_zocl_map_bo)
 #define DRM_IOCTL_ZOCL_SYNC_BO         DRM_IOWR(DRM_COMMAND_BASE +          \

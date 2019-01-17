@@ -80,6 +80,8 @@ int zocl_create_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_userptr_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 int zocl_sync_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_map_bo_ioctl(struct drm_device *dev, void *data,
@@ -97,6 +99,7 @@ int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 void zocl_describe(const struct drm_zocl_bo *obj);
 
 void zocl_free_userptr_bo(struct drm_gem_object *obj);
+void zocl_free_host_bo(struct drm_gem_object *obj);
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 #if defined(XCLBIN_DOWNLOAD)

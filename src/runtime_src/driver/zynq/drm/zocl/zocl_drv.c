@@ -26,6 +26,7 @@
 #include <linux/pagemap.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/of_address.h>
 #include "zocl_drv.h"
 #include "sched_exec.h"
 
@@ -106,6 +107,31 @@ static struct platform_device *find_pdev(char *name)
 }
 
 /**
+ * get_reserved_mem_region - Get reserved memory region
+ *
+ * @dev: device struct
+ * @res: resource struct
+ *
+ * Returns 0 is get reserved memory resion successfully.
+ * Returns -EINVAL if not found.
+ */
+static int get_reserved_mem_region(struct device *dev, struct resource *res)
+{
+	struct device_node *np = NULL;
+	int ret;
+
+	np = of_parse_phandle(dev->of_node, "memory-region", 0);
+	if (!np)
+		return -EINVAL;
+
+	ret = of_address_to_resource(np, 0, res);
+	if (ret)
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
  * zocl_gem_create_object - Create drm_zocl_bo object instead of DRM CMA object.
  *
  * @dev: DRM device struct
@@ -133,8 +159,10 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	if (!zdev->domain) {
 		DRM_INFO("Freeing BO\n");
 		zocl_describe(zocl_obj);
-		if (zocl_obj->flags == DRM_ZOCL_BO_FLAGS_USERPTR)
+		if (zocl_obj->flags & DRM_ZOCL_BO_FLAGS_USERPTR)
 			zocl_free_userptr_bo(obj);
+		else if (zocl_obj->flags & DRM_ZOCL_BO_FLAGS_HOST_BO)
+			zocl_free_host_bo(obj);
 		else
 			drm_gem_cma_free_object(obj);
 		return;
@@ -316,6 +344,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_USERPTR_BO, zocl_userptr_bo_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_GET_HOST_BO, zocl_get_hbo_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_MAP_BO, zocl_map_bo_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SYNC_BO, zocl_sync_bo_ioctl,
@@ -389,6 +419,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct drm_zocl_dev	*zdev;
 	struct platform_device *subdev;
 	struct resource *res;
+	struct resource res_mem;
 	void __iomem *map;
 	int ret;
 
@@ -411,6 +442,17 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->regs       = map;
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
+
+	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
+	zdev->host_mem_len = 0;
+	/* If reserved memory region are not found, just keep going */
+	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
+	if (!ret) {
+		DRM_INFO("Reserved memory for host at 0x%llx, size 0x%llx\n",
+			 res_mem.start, resource_size(&res_mem));
+		zdev->host_mem = res_mem.start;
+		zdev->host_mem_len = resource_size(&res_mem);
+	}
 
 	subdev = find_pdev("80180000.ert_hw");
 	if (subdev) {
