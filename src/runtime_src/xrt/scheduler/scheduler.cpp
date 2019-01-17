@@ -40,7 +40,7 @@ is_sw_emulation()
 inline bool
 kds_enabled(bool forceoff=false)
 {
-  static bool enabled = !is_sw_emulation() && xrt::config::get_kds();
+  static bool enabled = !is_sw_emulation() && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws");
   if (forceoff)
     enabled = false;
   return enabled;
@@ -147,7 +147,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
   if (kds_enabled())
     kds::init(device,regmap_size,cu_isr,num_cus,cu_offset,cu_base_addr,cu_addr_map);
   else
-    sws::init(device,regmap_size,num_cus,cu_offset,cu_base_addr,cu_addr_map);
+    sws::init(device,cu_addr_map);
 }
 
 }} // scheduler,xrt

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,550 +15,789 @@
  */
 
 /**
- * XRT software scheduler (when not using MB embedded scheduler)
+ * XRT software scheduler in user space.
  *
- * This is a software model of the firmware for the embedded
- * scheduler.  It is used for DSAs without MB and for emulation.
+ * This is a software model of the kds scheduler.  Primarily
+ * for debug and bring up.
  */
 
 #include "xrt/config.h"
 #include "xrt/util/debug.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"
+#include "driver/include/ert.h"
 #include "command.h"
 #include <limits>
 #include <bitset>
 #include <vector>
 #include <list>
+#include <map>
 #include <mutex>
 #include <condition_variable>
 
 namespace {
 
+static bool
+emulation_mode()
+{
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
+}
+
 ////////////////////////////////////////////////////////////////
 // Convenience types for readability
 ////////////////////////////////////////////////////////////////
-using size_type = uint32_t;
-using addr_type = uint32_t;
-using value_type = uint32_t;
-using command_type = std::shared_ptr<xrt::command>;
+using idx_type    = uint32_t;
+using size_type   = uint32_t;
+using addr_type   = uint32_t;
+using value_type  = uint32_t;
+using cmd_ptr     = std::shared_ptr<xrt::command>;
 
 ////////////////////////////////////////////////////////////////
 // Constants
 ////////////////////////////////////////////////////////////////
-const size_type max_cus = 128;
-using bitmask_type = std::bitset<max_cus>;
+const size_type MAX_CUS = 128;
+using cu_bitset_type = std::bitset<MAX_CUS>;
+
+const size_type no_index = std::numeric_limits<size_type>::max();
+
+const size_type MAX_SLOTS = 128;
 
 // FFA  handling
-const size_type CONTROL_AP_START=1;
-const size_type CONTROL_AP_DONE=2;
-const size_type CONTROL_AP_IDLE=4;
+const value_type AP_START    = 0x1;
+const value_type AP_DONE     = 0x2;
+const value_type AP_IDLE     = 0x4;
+const value_type AP_READY    = 0x8;
+const value_type AP_CONTINUE = 0x10;
 
 ////////////////////////////////////////////////////////////////
-// Command opcodes
-////////////////////////////////////////////////////////////////
-const value_type CMD_START_KERNEL = 0;
-const value_type CMD_CONFIGURE = 1;
-
-////////////////////////////////////////////////////////////////
-// Configuarable constants
-////////////////////////////////////////////////////////////////
-// Actual number of cus
-static size_type num_cus = 0;
-
-// CU base address
-static addr_type cu_base_address = 0x0;
-
-// CU offset (addone is 32k (1<<15), OCL is 4k (1<<12))
-static size_type cu_offset = 12;
-
-// Enable features via  configure_mb
-static value_type cu_trace_enabled = 0;
-
-// Mapping from cu_idx to its base address
-static std::vector<uint32_t> cu_addr_map;
-
-////////////////////////////////////////////////////////////////
-// Helper functions for extracting command header information
-////////////////////////////////////////////////////////////////
-/**
- * Command opcode [27:23]
- */
-inline value_type
-opcode(value_type header_value)
-{
-  return (header_value >> 23) & 0x1F;
-}
-
-/**
- * Command header [22:12] is payload size
- */
-inline size_type
-payload_size(value_type header_value)
-{
-  return (header_value >> 12) & 0x7FF;
-}
-
-/**
- * Command header [11:10] is extra cu masks.
- */
-inline size_type
-cu_masks(value_type header_value)
-{
-  return 1 + ((header_value >> 10) & 0x3);
-}
-
-/**
- * Size of regmap is payload size (n) minus the number of cu_masks
- */
-inline size_type
-regmap_size(value_type header_value)
-{
-  return payload_size(header_value) - cu_masks(header_value);
-}
-
-/**
- * Convert cu idx into cu address
- */
-inline addr_type
-cu_idx_to_addr(size_type cu_idx)
-{
-  return cu_addr_map[cu_idx];
-}
-
-struct slot_info
-{
-  command_type cmd;
-  xrt::device* device = nullptr;
-  bitmask_type cus;
-
-  // Last command header read from slot in command queue
-  // Last 4 bits of header are used for slot status per mb state
-  // new     [0x1]: the command is in new state per host
-  // queued  [0x2]: the command is queued in MB.
-  // running [0x3]: the command is running
-  // free    [0x4]: the command slot is free
-  value_type header_value = 0;
-
-  slot_info(command_type xcmd)
-    : cmd(std::move(xcmd)), device(cmd->get_device()), header_value(cmd->get_header())
-  {}
-
-  unsigned int
-  get_uid() const
-  {
-    return cmd->get_uid();
-  }
-
-  xrt::command::packet_type&
-  get_packet()
-  {
-    return cmd->get_packet();
-  }
-
-  void start(size_type cu)
-  {
-    // update cus to reflect running cu
-    cus.reset();
-    cus.set(cu);
-
-    // If cu tracing is enabled then update command packet cumask
-    // to reflect running cu prior to invoking the command callback
-    if (cu_trace_enabled) {
-      auto& packet = get_packet();
-      auto cumasks = cu_masks(header_value);
-      for (size_type i=0; i<cumasks; ++i) {
-        packet[1+i] = ((cus>>(sizeof(value_type)*8*i)).to_ulong()) & 0xFFFFFFFF;
-      }
-    }
-
-    // Invoke command callback
-    cmd->notify(ERT_CMD_STATE_RUNNING);
-  }
-};
-
 // Command notification is threaded through task queue
 // and notifier.  This allows the scheduler to continue
 // while host callback can be processed in the background
+////////////////////////////////////////////////////////////////
 static xrt::task::queue notify_queue;
 static std::thread notifier;
 static bool threaded_notification = true;
 
-static std::list<slot_info> command_queue;
-
-// Fixed sized map from cu_idx -> slot_info
-static const slot_info* cu_slot_usage[max_cus];
-
-// Bitmask indicating status of CUs. (0) idle, (1) running.
-// Only 'num_cus' lower bits are used
-static bitmask_type cu_status;
-
-// Track runtime of each cu
-static uint64_t cu_total_runtime[max_cus] = {0};
-static uint64_t cu_start_time[max_cus] = {0};
-static uint64_t cu_stop_time[max_cus] = {0};
+////////////////////////////////////////////////////////////////
+// Forward declarations
+////////////////////////////////////////////////////////////////
+class xocl_scheduler;
+class xocl_cmd;
+class exec_core;
 
 
-/**
- * MB configuration
- */
-static void
-setup()
+////////////////////////////////////////////////////////////////
+// exec_core, represents a device execution core
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// class xocl_cmd wraps an xrt command object with additional
+// bookeeping data.
+//
+// @m_cmd: xrt command object
+// @m_ecmd: xrt command packet data
+// @m_kcmd: xrt command packet data cast to start kernel cmd
+// @m_exec: execution core on which this command executes
+// @m_cus: bitset representing the CUs ths cmd can execute on
+// @m_state: current state of this command
+// @slotidx: command queue slot when command is submitted
+// @cuidx: index of CU executing this command
+////////////////////////////////////////////////////////////////
+class xocl_cmd
 {
-  command_queue.clear();
-
-  // Initialize cu_slot_usage
-  for (size_type i=0; i<num_cus; ++i) {
-    cu_slot_usage[i] = nullptr;
-    cu_total_runtime[i] = 0;
-    cu_start_time[i] = 0;
-    cu_stop_time[i] = 0;
-  }
-}
-
-/**
- * Notify host of command completion
- *
- * Notification is threaded so that the scheduler can proceeed while
- * host side does book keeping
- *
- * To turn off threading, simply call cmd->done() directly in function.
- */
-static void
-notify_host(slot_info* slot)
-{
-  // notify host (update host status register)
-  XRT_DEBUGF("notify_host(%d)\n",slot->get_uid());
-
-  if (!threaded_notification) {
-    slot->cmd->notify(ERT_CMD_STATE_COMPLETED);
-    return;
-  }
-
-  // It is vital that cmd is kept alive through reference counting
-  // by being bound to the notify call back argument. This is
-  // because the scheduler itself will remove the command from its
-  // queue once it is complete and threading doesn't ensure notify
-  // is called first.
-  auto notify = [](command_type cmd) {
-    cmd->notify(ERT_CMD_STATE_COMPLETED);
+private:
+  cmd_ptr m_cmd;
+  union {
+    ert_packet* m_ecmd;
+    //ert_df_kernel_cmd* m_kcmd;
+    ert_start_kernel_cmd* m_kcmd;
   };
+  exec_core* m_exec;
+  cu_bitset_type m_cus;
+  ert_cmd_state m_state;
 
-  xrt::task::createF(notify_queue,notify,slot->cmd);
-}
+  size_type m_uid;
 
-/**
- * Configure a CU at argument address
- *
- * Write register map to CU control register at address
- *
- * @param cu_addr
- *  Address of CU control register
- * @param regmap_addr
- *  The address of the register map to copy into the CU control
- *  register
- * @param regmap_size
- *  The size of register map in 32 bit words
- */
-inline void
-configure_cu(slot_info* slot, size_type cu)
-{
-  auto cu_addr = cu_idx_to_addr(cu);
-  auto size = regmap_size(slot->header_value);
+public:
+  size_type slotidx;
+  size_type cuidx;
 
-  XRT_DEBUGF("configuring cu(%d) at addr(0%x)\n",cu,cu_addr);
-
-  // data past header and cu_masks
-  auto regmap = slot->get_packet().data() + 1 + cu_masks(slot->header_value);
-
-  // write register map, starting at base + 0xC
-  // 0x4, 0x8 used for interrupt, which is initialized in setu
-  slot->device->write_register(cu_addr,regmap,size*4);
-
-  // start cu
-  const_cast<uint32_t*>(regmap)[0] = 1;
-  slot->device->write_register(cu_addr,regmap,size*4);
-}
-
-/**
- * Start a cu for command in slot
- *
- * @param slot_idx
- *  Index of command
- * @return
- *  True of a CU was started, false otherwise
- */
-static bool
-start_cu(slot_info* slot)
-{
-  auto cus = slot->cus;
-
-  // Check all CUs against argument cus mask and against cu_status
-  for (size_type cu=0; cu<num_cus; ++cu) {
-    if (cus.test(cu) && !cu_status.test(cu)) {
-      slot->start(cu);           // note that slot is starting on cu
-      configure_cu(slot,cu);
-      cu_status.flip(cu);        // toggle cu status bit, it is now busy
-      cu_slot_usage[cu] = slot;
-      return true;
+  xocl_cmd(exec_core* ec, cmd_ptr cmd)
+    : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec)
+  {
+    static size_type count = 0;
+    m_uid = count++;
+    if (m_ecmd->opcode==ERT_START_KERNEL) {
+      m_cus |= m_kcmd->cu_mask;
+      for (size_type i=0; i<m_kcmd->extra_cu_masks; ++i) {
+        cu_bitset_type mask(m_kcmd->data[i]);
+        m_cus |= (mask<<sizeof(value_type)*8*i);
+      }
     }
   }
-  return false;
-}
 
-/**
- * Check CU status
- *
- * CU to check is indicated by bit position in argument cu_mask.
- *
- * If CU is done, then host status register is updated accordingly
- * and internal cu_status register that tracks running CUs is toggled
- * at corresponding position.
- *
- * @param cu_mask
- *   A bitmask with 1 bit set. Position of bit indicates the CU to check
- * @return
- *   True if CU is done, false otherwise
- */
-static bool
-check_cu(slot_info* slot,bool wait=false)
-{
-  auto device = slot->device;
-  auto& cu_mask = slot->cus;
+  size_type
+  get_uid() const
+  {
+    return m_uid;
+  }
 
-  // find cu idx in mask
-  size_type cu_idx = 0;
-  for (; !cu_mask.test(cu_idx); ++cu_idx);
-  XRT_ASSERT(cu_idx < num_cus,"bad cu idx");
-  XRT_ASSERT(cu_status.test(cu_idx),"cu wasn't started");
-  auto cu_addr = cu_idx_to_addr(cu_idx);
-  value_type ctrlreg = 0;
-
-  do {
-    device->read_register(cu_addr,&ctrlreg,4);
-    if (ctrlreg & (CONTROL_AP_IDLE | CONTROL_AP_DONE)) {
-      cu_status.flip(cu_idx);
-      cu_slot_usage[cu_idx] = nullptr;
-      return true;
+  // Notify host of command completion
+  void
+  notify_host() const
+  {
+    if (!threaded_notification) {
+      m_cmd->notify(ERT_CMD_STATE_COMPLETED);
+      return;
     }
-  } while (wait);
 
-  return false;
-}
+    // It is vital that cmd is kept alive through reference counting
+    // by being bound to the notify call back argument. This is
+    // because the scheduler itself will remove the command from its
+    // queue once it is complete and threading doesn't ensure notify
+    // is called first.
+    auto notify = [](cmd_ptr cmd) {
+      cmd->notify(ERT_CMD_STATE_COMPLETED);
+    };
 
-/**
- * Check if queue is idle except for command in argument slot
- */
-static bool
-check_idle_prereq(slot_info* slot)
+    xrt::task::createF(notify_queue,notify,m_cmd);
+  }
+
+  // @return current state of the command object
+  ert_cmd_state
+  get_state() const
+  {
+    return m_state;
+  }
+
+  // Set the state of the command object
+  //
+  // The function sets the state of the both the xrt command object
+  // and the internal local command state, where latter is used by
+  // scheduler internally.
+  void
+  set_state(ert_cmd_state state)
+  {
+    m_state = state;
+    m_kcmd->state = state;
+  }
+
+  // Set only the internal state of the command object.
+  //
+  // The internal state is used by the scheduler but irrelevant to
+  // the xrt command object itself.
+  void
+  set_int_state(ert_cmd_state state)
+  {
+    m_state = state;
+  }
+
+  // Number of cu masks in this command object.
+  //
+  // No checking to verify that the command object is a
+  // start kernel command.
+  //
+  // @return
+  //  Number of cu masks in this command object
+  size_type
+  cumasks() const
+  {
+    return 1 + m_kcmd->extra_cu_masks;
+  }
+
+
+  // Payload size of this command object
+  //
+  // No checking to verify that the command object is a
+  // start kernel command.
+  //
+  // @return
+  //  Size in number of words in command payload
+  size_type
+  payload_size() const
+  {
+    return m_kcmd->count;
+  }
+
+  // Register map size of this command object
+  //
+  // No checking to verify that the command object is a
+  // start kernel command.
+  //
+  // @return
+  //  Size (number of words) of register map
+  size_type
+  regmap_size() const
+  {
+    return payload_size() - cumasks();
+  }
+
+  // Register map data
+  //
+  // No checking to verify that the command object is a
+  // start kernel command.
+  //
+  // @return
+  //  Pointer to first word in command register map
+  value_type*
+  regmap_data() const
+  {
+    return (m_kcmd->data + m_kcmd->extra_cu_masks);
+  }
+
+  // Check if this command can execute on specified CUa
+  bool
+  has_cu(size_type cu_idx) const
+  {
+    return m_cus.test(cu_idx);
+  }
+
+  // Get the execution core for this command object
+  exec_core*
+  get_exec() const
+  {
+    return m_exec;
+  }
+
+  // Create a command object
+  static std::shared_ptr<xocl_cmd>
+  create(exec_core* ec, cmd_ptr cmd)
+  {
+    return std::make_shared<xocl_cmd>(ec,cmd);
+  }
+};
+
+using xcmd_ptr = std::shared_ptr<xocl_cmd>;
+
+////////////////////////////////////////////////////////////////
+// List of new pending xocl_cmd objects
+//
+// @s_pending_cmds: populated from user space with new commands for buffer objects
+// @s_num_pending: number of pending commands
+//
+// Scheduler copies pending commands to its private queue when necessary
+////////////////////////////////////////////////////////////////
+static std::vector<xcmd_ptr> s_pending_cmds;
+static std::mutex s_pending_mutex;
+static std::atomic<unsigned int> s_num_pending {0};
+
+////////////////////////////////////////////////////////////////
+// class xocl_cu represents a compute unit on a device
+//
+// @running_queue: a fifo representing commands running on this CU
+// @xdev: the xrt device with this CU
+// @idx: index of this CU
+// @addr: base address of this CU
+// @ctrlreg: state of the CU (value of AXI-lite control register)
+// @done_counter: number of command that have completed (<=running_queue.size())
+//
+// The CU supports HLS data flow model where running_queue represents
+// all the commands that have been started on this CU. The CU is polled
+// for AXI-lite status change and when AP_DONE is asserted the done counter
+// is incremented to reflect the number of commands in the fifo that have
+// completed execution.
+//
+// New commands can be pushed to the running_queue when the CU has
+// asserted AP_READY (=> AP_START is low)
+////////////////////////////////////////////////////////////////
+class xocl_cu
 {
-  auto end=command_queue.end();
-  for (auto itr=command_queue.begin(); itr!=end; ++itr) {
-    auto s = &(*itr);
-    if (s==slot)
-      continue;
-    if ((s->header_value & 0xF) != 0x4) {
-      XRT_DEBUGF("slot(%d) is busy\n",s->get_uid());
+private:
+  std::queue<xocl_cmd*> running_queue;
+  xrt::device* xdev = nullptr;
+  size_type idx = 0;
+  value_type addr = 0;
+
+  mutable value_type ctrlreg = 0;
+  mutable size_type done_counter = 0;
+
+  void
+  poll() const
+  {
+    XRT_ASSERT(running_queue.size(),"cu wasn't started");
+    ctrlreg = 0;
+
+    xdev->read_register(addr,&ctrlreg,4);
+    XRT_DEBUGF("sws cu(%d) poll(0x%x)\n",idx,ctrlreg);
+    if (ctrlreg & (AP_DONE | AP_IDLE))  { // AP_IDLE check in sw emulation
+      ++done_counter;
+      XRT_ASSERT(done_counter <= running_queue.size(),"too many dones");
+      // acknowledge done
+      value_type cont = AP_CONTINUE;
+      xdev->write_register(addr,&cont,4);
+    }
+  }
+
+public:
+  xocl_cu(xrt::device* dev, size_type index, value_type baseaddr)
+    : xdev(dev), idx(index), addr(baseaddr)
+  {}
+
+  // Check if CU is ready to start another command
+  //
+  // The CU is ready when AP_START is low
+  //
+  // @return
+  //  True if ready, false otherwise
+  bool
+  ready() const
+  {
+    if (ctrlreg & AP_START) {
+      XRT_DEBUGF("sws ready() is polling cu(%d)\n",idx);
+      poll();
+    }
+
+    return !(ctrlreg & AP_START);
+  }
+
+  // Get the first completed command from the running queue
+  //
+  // @return
+  //   The first command that has completed or nullptr if none
+  xocl_cmd*
+  get_done() const
+  {
+    if (!done_counter) {
+      XRT_DEBUGF("sws get_done() is polling cu(%d)\n",idx);
+      poll();
+    }
+
+    return done_counter
+      ? running_queue.front()
+      : nullptr;
+  }
+
+  // Pop the first completed command off of the running queue
+  void
+  pop_done()
+  {
+    if (!done_counter)
+      return;
+
+    running_queue.pop();
+    --done_counter;
+  }
+
+  // Start the CU with a new command.
+  //
+  // The command is pushed onto the running queue
+  void
+  start(xocl_cmd* xcmd)
+  {
+    XRT_ASSERT(!(ctrlreg & AP_START),"cu not ready");
+    XRT_DEBUGF("configuring cu(%d) at addr(0x%x)\n",idx,addr);
+
+    // data past header and cu_masks
+    auto size = xcmd->regmap_size();
+    auto regmap = xcmd->regmap_data();
+
+    // write register map, starting at base + 0xC
+    // 0x4, 0x8 used for interrupt, which is initialized in setu
+    xdev->write_register(addr,regmap,size*4);
+
+    // start cu
+    ctrlreg |= 0x1;
+    const_cast<uint32_t*>(regmap)[0] = 1;
+    if (emulation_mode())
+      xdev->write_register(addr,regmap,size*4);
+    else
+      xdev->write_register(addr,regmap,4);
+
+    running_queue.push(xcmd);
+#if 0
+    if (running_queue.size()-done_counter > 1)
+      XRT_PRINTF("running_queue size %d\n",running_queue.size());
+#endif
+  }
+};
+
+
+////////////////////////////////////////////////////////////////
+// class exec_core: core data struct for command execution on a device
+//
+// @xdev: the xrt device on which to execute
+// @scheduler: scheduler that manages this execution core
+// @submit_queue: queue holding command that have been submitted by scheduler
+// @slot_status: bitset representing free/busy slots in submit_queue
+// @cu_usage: list of CUs managed by this execution core (device)
+// @num_slots: number of slots in submit queue
+// @num_cus: number of CUs on device
+//
+// The submit queue reflects the hardware command queue such that
+// number of slots is limitted.  Once submit queue is full, the
+// scheduler backs off submitting commands to this execution core. The
+// size limitation is not a requirement for the software scheduler,
+// but makes the behavior closer to actual HW scheduler and shouldn't
+// affect performance.
+//
+// Once a command is started on a CU it is removed from the submit
+// queue.  The command is annotated with the CU on which is has been
+// started, so scheduler will revisit the command and check for its
+// completion.
+////////////////////////////////////////////////////////////////
+class exec_core
+{
+  // device
+  xrt::device* m_xdev = nullptr;
+
+  // scheduler for this device
+  xocl_scheduler* m_scheduler = nullptr;
+
+  // Commands submitted to this device, the queue is slot based
+  // and a slot becomes free when its command is started on a CU
+  xocl_cmd* submit_queue[MAX_SLOTS]; // reflects ERT CQ # slots
+  std::bitset<MAX_SLOTS> slot_status;
+
+  // Compute units on this device
+  std::vector<std::unique_ptr<xocl_cu>> cu_usage;
+
+  size_type num_slots = 0;
+  size_type num_cus = 0;
+
+public:
+  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint32_t>& cu_amap)
+    : m_xdev(xdev), m_scheduler(xs), num_slots(slots), num_cus(cu_amap.size())
+  {
+    cu_usage.reserve(cu_amap.size());
+    for (size_type idx=0; idx<cu_amap.size(); ++idx)
+      cu_usage.push_back(std::make_unique<xocl_cu>(xdev,idx,cu_amap[idx]));
+  }
+
+  // Scheduler mananging this execution core
+  xocl_scheduler*
+  get_scheduler() const
+  {
+    return m_scheduler;
+  }
+
+  // Get a free slot index into submit queue
+  //
+  // @return
+  //  First free idx, no no_index if none available
+  size_type
+  acquire_slot_idx()
+  {
+    // ffz
+    for (size_type idx=0; idx<num_slots; ++idx) {
+      if (!slot_status.test(idx)) {
+        slot_status.set(idx);
+        return idx;
+      }
+    }
+    return no_index;
+  }
+
+  // Release a slot index
+  void
+  release_slot_idx(size_type slot_idx)
+  {
+    assert(slot_status.test(slot_idx));
+    slot_status.reset(slot_idx);
+  }
+
+  // Submit a command to this exec core
+  //
+  // Submit fails if there is no room in submit queue
+  //
+  // @return
+  //   True if submitted successfully, false otherwise
+  bool
+  submit(xocl_cmd* xcmd)
+  {
+    if (slot_status.all())
       return false;
-    }
+
+    auto slot_idx = acquire_slot_idx();
+    if (slot_idx==no_index)
+      return false;
+
+    xcmd->slotidx = slot_idx;
+    submit_queue[slot_idx]=xcmd;
+
+    return true;
   }
 
-  return true;
-}
-
-
-/**
- * Configure MB and peripherals
- *
- * Wait for CONFIGURE_MB in specified slot, then configure as
- * requested.
- *
- * This function is used in two different scenarios:
- *  1. MB reset/startup, in which case the CONFIGURE_MB is guaranteed
- *     to be in a slot at default slot offset (4K), most likely slot 0.
- *  2. During regular scheduler loop, in which case the CONFIGURE_MB
- *     packet is at an arbitrary slot location.   In this scenario, the
- *     function may return (false) without processing the command if
- *     other commands are currently executing; this is to avoid hardware
- *     lockup.
- *
- * @param slot_idx
- *   The slot index with the CONFIGURE_MB command
- * @return
- *   True if CONFIGURE_MB packet was processed, false otherwise
- */
-static bool
-configure(slot_info* slot)
-{
-  // Ignore the CONFIGURE packet if any commands are
-  // currently being processed.  The main scheduler loop
-  // will revisit the CONFIGURE packet again in case 2).
-  if (!check_idle_prereq(slot))
+  // Start a command on first available ready CU
+  //
+  // @return
+  //  True if started successfully, false otherwise
+  bool
+  penguin_start(xocl_cmd* xcmd)
+  {
+    // Find a ready CU
+    for (size_type cuidx=0; cuidx<num_cus; ++cuidx) {
+      auto& cu = cu_usage[cuidx];
+      if (xcmd->has_cu(cuidx) && cu->ready()) {
+        xcmd->cuidx = cuidx;
+        cu->start(xcmd);
+        return true;
+      }
+    }
     return false;
+  }
 
-  XRT_DEBUGF("configure found)\n");
-  XRT_DEBUGF("slot(%d) [new->queued]\n",slot->get_uid());
-  XRT_DEBUGF("slot(%d) [queued->running]\n",slot->get_uid());
+  // Start a command on first available ready CU
+  //
+  // @return
+  //  True if started successfully, false otherwise
+  bool
+  start(xocl_cmd* xcmd)
+  {
+    if (penguin_start(xcmd)) {
+      submit_queue[xcmd->slotidx]=nullptr;
+      release_slot_idx(xcmd->slotidx);
+      return true;
+    }
+    return false;
+  }
 
-  auto& packet = slot->get_packet();
-  num_cus=packet[2];
-  cu_offset=packet[3];
-  cu_base_address=packet[4];
+  // Check if a command has completed execution
+  //
+  // It is precond that command has been started, so the CU that executes
+  // the command is indicated by the cuidx in the command.  Simply check
+  // if the first completed command in the CU is the argument command
+  // and if so pop it off the CU.
+  //
+  // @return
+  //   True if completed, false otherwise
+  bool
+  penguin_query(xocl_cmd* xcmd)
+  {
+    // no point to query a command
+    auto& cu = cu_usage[xcmd->cuidx];
+    if (cu->get_done()==xcmd) {
+      cu->pop_done();
+      return true;
+    }
+    return false;
+  }
 
-  // Features
-  auto features = packet[5];
-  cu_trace_enabled = features & 0x8;
+  // Check if a command has completed execution
+  bool
+  query(xocl_cmd* xcmd)
+  {
+    return penguin_query(xcmd);
+  }
+};
 
-  // (Re)initilize MB
-  setup();
-
-  // notify host
-  notify_host(slot);
-
-  slot->header_value = (slot->header_value & ~0xF) | 0x4; // free
-  XRT_DEBUGF("slot(%d) [running->free]\n",slot->get_uid());
-
-  return true;
-}
-
-/**
- * Process special command.
- *
- * Special commands are not performace critical
- *
- * @return true
- *   If command was processed, false otherwise
- */
-static bool
-process_special_command(slot_info* slot, size_type opcode)
+////////////////////////////////////////////////////////////////
+// class xocl_scheduler: The scheduler data structure
+//
+// @m_command_queue: all the commands managed by scheduler
+//
+// The scheduler babysits all commands launched by user. It
+// transitions the commands from state to state until the command
+// completes.
+//
+// The scheduler runs on its own thread and manages command execution
+// on execution cores.  An execution core is 1-1 with a scheduler, but
+// a scheduler can manage any number of cores.  Because the scheduler
+// is the only client of an exec_core, and exec_core is the only
+// client of xocl_cu, no locking is necessary is any of the data
+// structures.  Exception is the pending command list which is copied
+// to the scheduler command queue, the pending list is populated by
+// user thread, and harvested by scheduler thread.
+////////////////////////////////////////////////////////////////
+class xocl_scheduler
 {
-  if (opcode==CMD_CONFIGURE)
-    return configure(slot);
-  return false;
-}
+  std::mutex                 m_mutex;
+  std::condition_variable    m_work;
 
-static std::mutex s_mutex;
-static std::condition_variable s_work;
-static bool s_stop=false;
-static std::vector<command_type> s_cmds;
+  bool                       m_stop;
+  std::list<xcmd_ptr>        m_command_queue;
 
-/**
- * Main routine executed by embedded scheduler loop
- *
- * For each command slot do
- *  1. If status is free (0x4), then read new command header
- *     Status remains free (0x4), or transitions to new (0x1)
- *  2. If status is new (0x1), then read CUs in command
- *     Status transitions to queued (0x2)
- *  3. If status is queued (0x2), then start command on available CU
- *     Status remains queued if no CUs available, or transitions to running (0x3)
- *  4. If status is running (0x4), then check CU status
- *     Status remains running (0x4) if CU is still running, or
- *     transitions to free if CU is done
- */
-static void
-scheduler_loop()
-{
-  // Basic setup will be changed by configure_mb, but is necessary
-  // for even configure_mb() to work.
-  setup();
-
-  while (1) {
-
-    {
-      std::unique_lock<std::mutex> lk(s_mutex);
-      while (!s_stop && command_queue.empty() && s_cmds.empty())
-        s_work.wait(lk);
-
-      if (s_stop) {
-        if (!command_queue.empty() || !s_cmds.empty())
-          throw std::runtime_error("software scheduler stopping while there are active commands");
-        break;
+  // Copy pending commands into command queue.
+  void
+  queue_cmds()
+  {
+    std::lock_guard<std::mutex> lk(s_pending_mutex);
+    for (auto itr=s_pending_cmds.begin(); itr!=s_pending_cmds.end(); ) {
+      auto xcmd = (*itr);
+      auto exec = xcmd->get_exec();
+      if (exec->get_scheduler()==this) {
+        XRT_DEBUGF("xcmd(%d) [new->queued]\n",xcmd->get_uid());
+        itr = s_pending_cmds.erase(itr);
+        xcmd->set_int_state(ERT_CMD_STATE_QUEUED);
+        m_command_queue.push_back(std::move(xcmd));
       }
+      else {
+        ++itr;
+      }
+    }
+    s_num_pending = s_pending_cmds.size();
+  }
 
-      // copy new commands to pending list
-      std::copy(s_cmds.begin(),s_cmds.end(),std::back_inserter(command_queue));
-      s_cmds.clear();
-    } // lk scope
+  // Transition command to submitted state if possible
+  bool
+  queued_to_submitted(const xcmd_ptr& xcmd)
+  {
+    bool retval = false;
+    auto exec = xcmd->get_exec();
+    if (exec->submit(xcmd.get())) {
+      XRT_DEBUGF("xcmd(%d) [queued->submitted]\n",xcmd->get_uid());
+      xcmd->set_int_state(ERT_CMD_STATE_SUBMITTED);
+      retval = true;
+    }
+    return retval;
+  }
 
-    // iterate commands
-    auto end = command_queue.end();
-    auto nitr = command_queue.begin();
+  // Transition command to running state if possible
+  bool
+  submitted_to_running(const xcmd_ptr& xcmd)
+  {
+    bool retval = false;
+    auto exec = xcmd->get_exec();
+    if (exec->start(xcmd.get())) {
+      XRT_DEBUGF("xcmd(%d) [submitted->running]\n",xcmd->get_uid());
+      xcmd->set_int_state(ERT_CMD_STATE_RUNNING);
+      retval = true;
+    }
+    return retval;
+  }
+
+  // Transition command to complete state if command has completed
+  bool
+  running_to_complete(const xcmd_ptr& xcmd)
+  {
+    bool retval = false;
+    auto exec = xcmd->get_exec();
+    if (exec->query(xcmd.get())) {
+      XRT_DEBUGF("xcmd(%d) [running->complete]\n",xcmd->get_uid());
+      xcmd->set_state(ERT_CMD_STATE_COMPLETED);
+      xcmd->notify_host();
+      retval = true;
+    }
+    return retval;
+  }
+
+  // Free a command
+  bool
+  complete_to_free(const xcmd_ptr& xcmd)
+  {
+    XRT_DEBUGF("xcmd(%d) [complete->free]\n",xcmd->get_uid());
+    return true;
+  }
+
+  // Iterate command queue and baby sit all commands
+  void
+  iterate_cmds()
+  {
+    auto end = m_command_queue.end();
+    auto nitr = m_command_queue.begin();
     for (auto itr=nitr; itr!=end; itr=nitr) {
-      auto slot = &(*itr);
-
-      if ((slot->header_value & 0xF) == 0x1) { // new
-        auto opc = opcode(slot->header_value);
-        if (opc!=CMD_START_KERNEL) { // Non performance critical command
-          process_special_command(slot,opc);
-          continue;
-        }
-
-        // Extract and cache cumask from cmd
-        size_type cumasks = cu_masks(slot->header_value);
-        for (size_type i=0; i<cumasks; ++i) {
-          auto& payload = slot->get_packet();
-          bitmask_type mask(payload[1+i]);
-          slot->cus |= (mask<<sizeof(value_type)*8*i);
-        }
-
-        slot->header_value = (slot->header_value & ~0xF) | 0x2; // queued
-        XRT_DEBUGF("slot(%d) [new->queued]\n",slot->get_uid());
-      }
-
-      if ((slot->header_value & 0xF) == 0x2) { // queued
-        // queued command, start if any of cus is ready
-        if (start_cu(slot)) { // started
-          slot->header_value |= 0x1; // running (0x2->0x3)
-          XRT_DEBUGF("slot(%d) [queued->running]\n",slot->get_uid());
-        }
-      }
-
-      if ((slot->header_value & 0xF) == 0x3) { // running
-        // running command, check its cu status
-        if (check_cu(slot,false)) {
-          notify_host(slot);
-          slot->header_value = (slot->header_value & ~0xF) | 0x4; // free
-          XRT_DEBUGF("slot(%d) [running->free]\n",slot->get_uid());
-        }
-      }
-
-      if ((slot->header_value & 0xF) == 0x4) { // free
-        nitr = command_queue.erase(itr);
-        end = command_queue.end();
+      auto& xcmd = (*itr);
+      if (xcmd->get_state() == ERT_CMD_STATE_QUEUED)
+        queued_to_submitted(xcmd);
+      if (xcmd->get_state() == ERT_CMD_STATE_SUBMITTED)
+        submitted_to_running(xcmd);
+      if (xcmd->get_state() == ERT_CMD_STATE_RUNNING)
+        running_to_complete(xcmd);
+      if (xcmd->get_state() == ERT_CMD_STATE_COMPLETED) {
+        complete_to_free(xcmd);
+        nitr = m_command_queue.erase(itr);
+        end = m_command_queue.end();
         continue;
       }
 
       nitr = ++itr;
-
     }
-  } // while
-}
+  }
 
+  // Wait until something interesting happens
+  void
+  wait()
+  {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    while (!m_stop && !s_num_pending && m_command_queue.empty())
+      m_work.wait(lk);
+
+    if (m_stop) {
+      if (!m_command_queue.empty() || s_num_pending)
+        throw std::runtime_error("software scheduler stopping while there are active commands");
+    }
+  }
+
+
+  // Loop once
+  void
+  loop()
+  {
+    wait();
+    queue_cmds();
+    iterate_cmds();
+  }
+
+public:
+
+  // Wake up the scheduler if it is waiting
+  void
+  notify()
+  {
+    m_work.notify_one();
+  }
+
+  // Run the scheduler until it is stopped
+  void
+  run()
+  {
+    while (!m_stop)
+      loop();
+  }
+
+  // Stop the scheduler
+  void
+  stop()
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    m_stop = true;
+    m_work.notify_one();
+  }
+
+};
+
+////////////////////////////////////////////////////////////////
+// One static scheduler currently on a single thread
+static xocl_scheduler s_global_scheduler;
+static std::thread s_scheduler_thread;
 static bool s_running=false;
-static std::thread s_scheduler;
 
+// Each device has a execution core
+static std::map<const xrt::device*, std::unique_ptr<exec_core>> s_device_exec_core;
+
+// Thread routine for scheduler loop
+static void
+scheduler_loop()
+{
+  s_global_scheduler.run();
+}
 
 } // namespace
 
 namespace xrt { namespace sws {
 
 void
-schedule(const command_type& cmd)
+schedule(const cmd_ptr& cmd)
 {
-  std::lock_guard<std::mutex> lk(s_mutex);
-  s_cmds.push_back(cmd);
-  s_work.notify_one();
+  auto device = cmd->get_device();
+
+  auto& exec = s_device_exec_core[device];
+  auto xcmd = xocl_cmd::create(exec.get(),cmd);
+  auto scheduler = exec->get_scheduler();
+
+  std::lock_guard<std::mutex> lk(s_pending_mutex);
+  s_pending_cmds.push_back(xcmd);
+  ++s_num_pending;
+  scheduler->notify();
 }
 
 void
 start()
 {
   if (s_running)
-    throw std::runtime_error("sws command scheduler is already started");
+    throw std::runtime_error("software command scheduler is already started");
 
-  std::lock_guard<std::mutex> lk(s_mutex);
-  s_scheduler = std::move(xrt::thread(scheduler_loop));
+  s_scheduler_thread = std::move(xrt::thread(scheduler_loop));
   if (threaded_notification)
     notifier = std::move(xrt::thread(xrt::task::worker,std::ref(notify_queue)));
   s_running = true;
@@ -570,13 +809,8 @@ stop()
   if (!s_running)
     return;
 
-  {
-    std::lock_guard<std::mutex> lk(s_mutex);
-    s_stop=true;
-  }
-
-  s_work.notify_one();
-  s_scheduler.join();
+  s_global_scheduler.stop();
+  s_scheduler_thread.join();
 
   if (threaded_notification) {
     // wait for notifier to drain
@@ -592,13 +826,14 @@ stop()
 }
 
 void
-init(xrt::device*, size_t, size_t cus, size_t cuoffset, size_t cubase, const std::vector<uint32_t>& cu_amap)
+init(xrt::device* xdev, const std::vector<uint32_t>& cu_amap)
 {
-  num_cus = cus;
-  cu_base_address = cubase;
-  cu_offset = cuoffset;
-  cu_trace_enabled = xrt::config::get_profile();
-  cu_addr_map = cu_amap;
+  // create execution core for this device
+  auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  s_device_exec_core.erase(xdev);
+  s_device_exec_core.insert
+    (std::make_pair
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,cu_amap)));
 }
 
 }} // sws,xrt
