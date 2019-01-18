@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -149,8 +149,8 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		bo = to_zocl_bo(&cma_obj->base);
 	}
 
-	if (user_flags & DRM_ZOCL_BO_FLAGS_EXECBUF) {
-		bo->flags = DRM_ZOCL_BO_FLAGS_EXECBUF;
+	if (user_flags & XCL_BO_FLAGS_EXECBUF) {
+		bo->flags = XCL_BO_FLAGS_EXECBUF;
 		bo->metadata.state = DRM_ZOCL_EXECBUF_STATE_ABORT;
 	}
 
@@ -168,16 +168,16 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 	size_t bo_size;
 	int ret = 0;
 
-	if ((args->flags & DRM_ZOCL_BO_FLAGS_COHERENT) ||
-			(args->flags & DRM_ZOCL_BO_FLAGS_CMA))
+	if ((args->flags & XCL_BO_FLAGS_COHERENT) ||
+			(args->flags & XCL_BO_FLAGS_CMA))
 		return -EINVAL;
 
-	args->flags |= DRM_ZOCL_BO_FLAGS_SVM;
-	if (!(args->flags & DRM_ZOCL_BO_FLAGS_SVM))
+	args->flags |= XCL_BO_FLAGS_SVM;
+	if (!(args->flags & XCL_BO_FLAGS_SVM))
 		return -EINVAL;
 
 	bo = zocl_create_bo(dev, args->size, args->flags);
-	bo->flags |= DRM_ZOCL_BO_FLAGS_SVM;
+	bo->flags |= XCL_BO_FLAGS_SVM;
 
 	if (IS_ERR(bo)) {
 		DRM_DEBUG("object creation failed\n");
@@ -227,16 +227,19 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_bo *bo;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	/* Remove all flags, except EXECBUF. */
-	args->flags &= DRM_ZOCL_BO_FLAGS_EXECBUF;
+	/* Remove all flags, except EXECBUF and CACHEABLE. */
+	args->flags &= XCL_BO_FLAGS_EXECBUF | XCL_BO_FLAGS_CACHEABLE;
 
 	if (zdev->domain)
 		return zocl_create_svm_bo(dev, data, filp);
 
-	/* This is not good. But force to use COHERENT and CMA flags here. */
+	/* This is not good. But force to use CMA flags here. */
 	/* Remove this only when XRT use the same flags for xocl and zocl */
-	args->flags |= DRM_ZOCL_BO_FLAGS_COHERENT;
-	args->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+	args->flags |= XCL_BO_FLAGS_CMA;
+
+	/* If cacheable is not set, make sure we set COHERENT. */
+	if (!(args->flags & XCL_BO_FLAGS_CACHEABLE))
+		args->flags |= XCL_BO_FLAGS_COHERENT;
 
 	bo = zocl_create_bo(dev, args->size, args->flags);
 	if (IS_ERR(bo)) {
@@ -244,8 +247,11 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return PTR_ERR(bo);
 	}
 
-	bo->flags |= DRM_ZOCL_BO_FLAGS_COHERENT;
-	bo->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+	if (args->flags & XCL_BO_FLAGS_CACHEABLE)
+		bo->flags |= XCL_BO_FLAGS_CACHEABLE;
+	else
+		bo->flags |= XCL_BO_FLAGS_COHERENT;
+	bo->flags |= XCL_BO_FLAGS_CMA;
 
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
@@ -273,7 +279,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (offset_in_page(args->addr))
 		return -EINVAL;
 
-	if (args->flags & DRM_ZOCL_BO_FLAGS_EXECBUF)
+	if (args->flags & XCL_BO_FLAGS_EXECBUF)
 		return -EINVAL;
 
 	bo = zocl_create_userprt_bo(dev, args->size);
@@ -328,7 +334,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
-	bo->flags |= DRM_ZOCL_BO_FLAGS_USERPTR;
+	bo->flags |= XCL_BO_FLAGS_USERPTR;
 
 	zocl_describe(bo);
 	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
@@ -377,13 +383,14 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 		void *data,
 		struct drm_file *filp)
 {
-	const struct drm_zocl_sync_bo *args = data;
-	struct drm_gem_object *gem_obj = zocl_gem_object_lookup(dev, filp,
-			args->handle);
-	void *kaddr;
-	int ret = 0;
+	const struct drm_zocl_sync_bo	*args = data;
+	struct drm_gem_object		*gem_obj;
+	struct drm_gem_cma_object	*cma_obj;
+	struct drm_zocl_bo		*bo;
+	dma_addr_t			bus_addr;
+	int				rc = 0;
 
-
+	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
 		return -EINVAL;
@@ -391,26 +398,43 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 
 	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size) ||
 			((args->offset + args->size) > gem_obj->size)) {
-		ret = -EINVAL;
+		rc = -EINVAL;
 		goto out;
 	}
 
-	kaddr = drm_gem_cma_prime_vmap(gem_obj);
+	bo = to_zocl_bo(gem_obj);
+	if (bo->flags & XCL_BO_FLAGS_COHERENT) {
+		/* The CMA buf is coherent, we don't need to do anything */
+		rc = 0;
+		goto out;
+	}
+
+	cma_obj = to_drm_gem_cma_obj(gem_obj);
+	bus_addr = cma_obj->paddr;
 
 	/* only invalidate the range of addresses requested by the user */
-	kaddr += args->offset;
+	bus_addr += args->offset;
 
-	if (args->dir == DRM_ZOCL_SYNC_BO_TO_DEVICE)
-		flush_kernel_vmap_range(kaddr, args->size);
-	else if (args->dir == DRM_ZOCL_SYNC_BO_FROM_DEVICE)
-		invalidate_kernel_vmap_range(kaddr, args->size);
-	else
-		ret = -EINVAL;
+	/**
+	 * NOTE: We a little bit abuse the dma_sync_single_* API here because
+	 *       it is documented as for the DMA buffer mapped by dma_map_*
+	 *       API. The buffer we are syncing here is mapped through
+	 *       remap_pfn_range(). But so far this is our best choice
+	 *       and it works.
+	 */
+	if (args->dir == DRM_ZOCL_SYNC_BO_TO_DEVICE) {
+		dma_sync_single_for_device(dev->dev, bus_addr, args->size,
+		    DMA_TO_DEVICE);
+	} else if (args->dir == DRM_ZOCL_SYNC_BO_FROM_DEVICE) {
+		dma_sync_single_for_cpu(dev->dev, bus_addr, args->size,
+		    DMA_FROM_DEVICE);
+	} else
+		rc = -EINVAL;
 
 out:
 	drm_gem_object_unreference_unlocked(gem_obj);
 
-	return ret;
+	return rc;
 }
 
 int zocl_info_bo_ioctl(struct drm_device *dev,
@@ -580,8 +604,8 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 
 	bo = to_zocl_bo(&cma_obj->base);
 
-	bo->flags |= DRM_ZOCL_BO_FLAGS_HOST_BO;
-	bo->flags |= DRM_ZOCL_BO_FLAGS_CMA;
+	bo->flags |= XCL_BO_FLAGS_HOST_BO;
+	bo->flags |= XCL_BO_FLAGS_CMA;
 
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
