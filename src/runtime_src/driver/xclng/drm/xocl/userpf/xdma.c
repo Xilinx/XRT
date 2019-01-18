@@ -90,7 +90,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	u32 channel = 0;
 	int ret;
 
-	xd = devm_kzalloc(&pdev->dev, sizeof (*xd), GFP_KERNEL);
+	xd = kzalloc(sizeof(*xd), GFP_KERNEL);
 	if (!xd) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
 		return -ENOMEM;
@@ -166,7 +166,6 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	ret = xocl_p2p_mem_reserve(ocl_dev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-		goto failed_drm_init;
 	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
@@ -179,9 +178,12 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 
 	(void) xocl_icap_unlock_bitstream(xd, NULL, 0);
 
+	xocl_core_init(ocl_dev, NULL);
+
 	return 0;
 
 failed_sysfs_init:
+	xocl_p2p_mem_release(&xd->ocl_dev, false);
 	xocl_drm_fini(&xd->ocl_dev);
 failed_drm_init:
 failed_set_channel:
@@ -193,7 +195,7 @@ failed:
 failed_alloc_minor:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
-	devm_kfree(&pdev->dev, xd);
+	kfree(xd);
 	pci_set_drvdata(pdev, NULL);
 	return ret;
 }
@@ -208,7 +210,7 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 		return;
 	}
 
-	xocl_p2p_mem_release(&xd->ocl_dev, true);
+	xocl_p2p_mem_release(&xd->ocl_dev, false);
 	xocl_subdev_destroy_all(&xd->ocl_dev);
 
 	xocl_fini_sysfs(&pdev->dev);
@@ -219,8 +221,10 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 	mutex_destroy(&xd->ocl_dev.user_msix_table_lock);
 
 	xocl_free_dev_minor(&xd->ocl_dev);
-	devm_kfree(&pdev->dev, xd);
+
 	pci_set_drvdata(pdev, NULL);
+
+	xocl_core_fini(xd);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,

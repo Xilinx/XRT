@@ -723,13 +723,12 @@ public:
         sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
         /** End of debug and profile device information */
 
-        // p2p enable
-        bool p2p_enabled;
-              pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
-        if(errmsg.empty()) {
-          sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
-        }
-
+	// p2p enable
+	int p2p_enabled;
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+	if(errmsg.empty()) {
+		sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
+	}
         return 0;
     }
 
@@ -778,8 +777,21 @@ public:
              << std::setw(16) << "P2P Enabled" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" )
-	     << std::setw(16) << sensor_tree::get<std::string>( "board.info.p2p_enabled", "N/A") << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
+	switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
+	case -1:
+             ostr << std::setw(16) << "N/A" << std::endl;
+	     break;
+	case 0:
+             ostr << std::setw(16) << "false" << std::endl;
+	     break;
+	case 1:
+             ostr << std::setw(16) << "true" << std::endl;
+	     break;
+	case 2:
+             ostr << std::setw(16) << "no iomem" << std::endl;
+	     break;
+	}
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         // use get_pretty for Temperature and Electrical since the driver may rail unsupported values high
@@ -1290,7 +1302,7 @@ public:
     int printEccInfo(std::ostream& ostr) const;
     int resetEccInfo();
     int reset(xclResetKind kind);
-    int setP2p(bool enable);
+    int setP2p(bool enable, bool force);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect

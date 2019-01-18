@@ -217,6 +217,10 @@ struct xocl_dev_core {
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
+
+	struct kref		kref;
+	bool			removed;
+	void (*remove_cb)(xdev_handle_t xdev_hdl);
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -627,6 +631,13 @@ int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg);
 int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz);
 int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
 	int (*cb_func)(struct xocl_context_hash *ctx_hash, void *arg));
+
+void xocl_core_init(xdev_handle_t xdev_hdl,
+	void (*remove_cb)(xdev_handle_t xdev_hdl));
+void xocl_core_fini(xdev_handle_t xdev_hdl);
+bool xocl_drv_released(xdev_handle_t xdev_hdl);
+void xocl_drv_get(xdev_handle_t xdev_hdl);
+void xocl_drv_put(xdev_handle_t xdev_hdl);
 
 /* health thread functions */
 int health_thread_init(struct device *dev, char *thread_name,
