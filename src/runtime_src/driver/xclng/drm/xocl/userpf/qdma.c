@@ -187,6 +187,8 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 
 	(void) xocl_icap_unlock_bitstream(qd, NULL, 0);
 
+	xocl_core_init(ocl_dev, NULL);
+
 	return 0;
 
 failed_sysfs_init:
@@ -234,8 +236,9 @@ void xocl_user_qdma_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(&qd->ocl_dev);
 
-	devm_kfree(&pdev->dev, qd); 
 	pci_set_drvdata(pdev, NULL);
+
+	xocl_core_fini(qd);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,
