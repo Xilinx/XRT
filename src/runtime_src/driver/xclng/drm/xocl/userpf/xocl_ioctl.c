@@ -821,11 +821,11 @@ int xocl_p2p_enable_ioctl(struct drm_device *dev,
 	struct xocl_dev *xdev = dev->dev_private;
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret, p2p_bar, enable;
-	u32 size;
+	u64 size;
 
 	enable = ((struct drm_xocl_p2p_enable *)data)->enable;
 
-	p2p_bar = xocl_get_p2p_bar(xdev);
+	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
 	if (p2p_bar < 0) {
 		xocl_err(&pdev->dev, "p2p bar is not configurable");
 		return -EACCES;

@@ -88,16 +88,14 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	struct xclmgmt_char *lro_char = (struct xclmgmt_char *)filp->private_data;
-	struct xclmgmt_dev *lro;
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)filp->private_data;
 	long result = 0;
 
-	BUG_ON(!lro_char);
-	lro = lro_char->lro;
 	BUG_ON(!lro);
+	WARN_ON(1);
 
-	if (lro_char != lro->user_char_dev)
-		return -ENOTTY;
+	if (xocl_drv_released(lro))
+		return -EINVAL;
 
 	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;

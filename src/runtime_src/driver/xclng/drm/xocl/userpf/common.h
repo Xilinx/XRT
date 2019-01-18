@@ -51,6 +51,9 @@
 #define userpf_dbg(d, args...)                     \
         xocl_dbg(&XDEV(d)->pdev->dev, ##args)
 
+#define xocl_get_root_dev(dev, root)		\
+        for (root = dev; root->bus && root->bus->self; root = root->bus->self)
+
 #define	XOCL_USER_PROC_HASH_SZ		256
 
 #define XOCL_U32_MASK 0xFFFFFFFF
@@ -195,7 +198,7 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 int xocl_hot_reset(struct xocl_dev *xdev, bool force);
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
 int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
-int xocl_get_p2p_bar(struct xocl_dev *xdev);
+int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)

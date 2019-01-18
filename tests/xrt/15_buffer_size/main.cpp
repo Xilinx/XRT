@@ -114,6 +114,8 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
     if (xclOpenContext(handle, xclbinId, cu_index, true))
         throw std::runtime_error("Cannot create context");
 
+    std::cout << "transferSizeTest1 start\n";
+    std::cout << "Allocate two buffers with size: " << maxSize/1024 << " KBytes ...\n";
     unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
     unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
@@ -121,10 +123,9 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
     std::list<uint64_t> deviceHandleList;
     for(unsigned j = 0; j < maxSize/4; j++){
         writeBuffer[j] = std::rand();
-        //readBuffer[j] = 0;
     }
 
-    std::cout << "Running transfer test with various buffer sizes...\n";
+    std::cout << "Running test with various transfer sizes...\n";
 
     size_t size = 1;
     bool flag = true;
@@ -134,20 +135,16 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
             size = maxSize;
             flag = false;
         }
-        std::cout << "Size " << size << " B\n";
-        uint64_t pos = xclAllocDeviceBuffer(handle, size);
-        if (pos == 0xffffffffffffffff) {
-            std::cout << "FAILED TEST\n";
-            std::cout << size << " B alloc failed\n";
-            return 1;
-        }
-        deviceHandleList.push_back(pos);
-
+        
         if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , size,0)) {
             std::cout << "FAILED TEST\n";
             std::cout << size << " B write failed\n";
             return 1;
         }
+        
+        xclBOProperties p;
+        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
+        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
 
         xclBOProperties p;
         uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
@@ -174,6 +171,9 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
         }
     }
 
+    std::cout << "transferSizeTest1 complete. Release buffer objects.\n";
+    xclFreeBO(handle,boHandle1);
+    xclFreeBO(handle,boHandle2);
     for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i)
     {
         //xclFreeBO(deviceHandleList.i,boHandle1);
@@ -189,6 +189,8 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
     if (xclOpenContext(handle, xclbinId, cu_index, true))
         throw std::runtime_error("Cannot create context");
 
+    std::cout << "transferSizeTest2 start\n";
+    std::cout << "Allocate two buffers with size: " << maxSize/1024 << " KBytes ...\n";
     unsigned boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
     unsigned boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
@@ -196,7 +198,6 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
     std::list<uint64_t> deviceHandleList;
     for(unsigned j = 0; j < maxSize/4; j++){
         writeBuffer[j] = std::rand();
-        //readBuffer[j] = 0;
     }
 
 
@@ -205,20 +206,18 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
     for (unsigned i = 1; i < maxSize; i++) {
         size_t size = i;
 
-        std::cout << "Size " << size << " B\n";
-        uint64_t pos = xclAllocDeviceBuffer(handle, size);
-        if (pos == 0xffffffffffffffff) {
-            std::cout << "FAILED TEST\n";
-            std::cout << size << " B alloc failed\n";
-            return 1;
-        }
-        deviceHandleList.push_back(pos);
-
         if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , size,0)) {
             std::cout << "FAILED TEST\n";
             std::cout << size << " B write failed\n";
             return 1;
         }
+        
+        xclBOProperties p;
+        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
+        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
+        
+        if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
+            return 1;
 
         xclBOProperties p;
         uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
@@ -244,11 +243,15 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
             return 1;
         }
     }
+    std::cout << "transferSizeTest2 complete. Release buffer objects.\n";
+    xclFreeBO(handle,boHandle1);
+    xclFreeBO(handle,boHandle2);
     return 0;
 }
 
-static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize)
+static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize, int first_mem)
 {
+    std::cout << "Start bufferSizeTest\n"
     std::list<uint64_t> deviceHandleList;
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -260,12 +263,16 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize)
     // Fill the DDR with random size buffers and measure the utilization
     while (totalAllocationSize < totalSize) {
         size_t size = dis(generator);
-        uint64_t pos = xclAllocDeviceBuffer(handle, size);
-        if (pos == 0xffffffffffffffffull)
+        unsigned pos = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, first_mem); //buf1
+        xclBOProperties p;
+        uint64_t bodevAddr = !xclGetBOProperties(handle, pos, &p) ? p.paddr : -1;
+        if (bodevAddr == (uint64_t)(-1)) {
             break;
+        }
+
         totalAllocationSize += size;
-        if (pos > maxAddress)
-            maxAddress = pos;
+        if (bodevAddr > maxAddress)
+            maxAddress = bodevAddr;
         deviceHandleList.push_back(pos);
     }
     std::cout << "High address = " << std::hex << maxAddress << std::dec << std::endl;
@@ -273,7 +280,7 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize)
     std::cout << "Total count = " << deviceHandleList.size() << std::endl;
     for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i)
     {
-        //proxy.freeDevice(*i);
+        xclFreeBO(handle, *i);
     }
 
     const double utilization = static_cast<double>(totalAllocationSize)/static_cast<double>(totalSize);
@@ -381,7 +388,7 @@ int main(int argc, char** argv)
         // memory pressure due to backing pages on host RAM
         //printf("val = 0x%llx\n", info.mDDRSize/4);
 
-        if (bufferSizeTest(handle, info.mDDRSize / 4)) { //2
+        if (bufferSizeTest(handle, info.mDDRSize / 4, first_mem)) { //2
             std::cout << "FAILED TEST\n";
             return 1;
         }
