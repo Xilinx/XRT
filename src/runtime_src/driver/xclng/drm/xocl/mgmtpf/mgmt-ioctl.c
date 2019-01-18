@@ -67,20 +67,23 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
-	freezeAXIGate(lro);
-	freeAXIGate(lro);
+	xocl_icap_reset_axi_gate(lro);
 	return compute_unit_busy(lro) ? -EBUSY : 0;
 }
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
 	struct xclmgmt_ioc_bitstream_axlf bitstream_obj;
-
+	int ret = 0;
 	if (copy_from_user((void *)&bitstream_obj, arg,
 		sizeof(struct xclmgmt_ioc_bitstream_axlf)))
 		return -EFAULT;
 
-	return xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
+	ret = xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
+	if(ret)
+		return ret;
+	ret = xocl_icap_parse_axlf_section(lro, bitstream_obj.xclbin, MEM_TOPOLOGY);
+	return ret;
 }
 
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -108,11 +111,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -EFAULT;
 
 	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mgmt_err(lro, "Firewall tripped!");
-		mutex_unlock(&lro->busy_mutex);
-		return -EBUSY;
-	}
 
 	switch (cmd) {
 	case XCLMGMT_IOCINFO:

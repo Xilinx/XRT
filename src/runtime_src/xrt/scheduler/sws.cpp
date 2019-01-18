@@ -266,6 +266,8 @@ configure_cu(slot_info* slot, size_type cu)
   auto cu_addr = cu_idx_to_addr(cu);
   auto size = regmap_size(slot->header_value);
 
+  XRT_DEBUGF("configuring cu(%d) at addr(0%x)\n",cu,cu_addr);
+
   // data past header and cu_masks
   auto regmap = slot->get_packet().data() + 1 + cu_masks(slot->header_value);
 

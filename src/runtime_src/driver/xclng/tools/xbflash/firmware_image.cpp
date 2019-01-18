@@ -144,7 +144,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         in.read(bmcbuf.get(), bmcSection->m_sectionSize);
         if (!in.good())
         {
-            std::cout << "Can't read BMC section from "<< filename << std::endl;
+            std::cout << "Can't read SC section from "<< filename << std::endl;
             return;
         }
         const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());
@@ -206,7 +206,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     }
     if (!dsa.bmcVer.empty())
     {
-        stream << ",[BMC=" << dsa.bmcVer << "]";
+        stream << ",[SC=" << dsa.bmcVer << "]";
     }
     return stream;
 }
@@ -258,7 +258,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             if (bmcSection == nullptr)
             {
                 this->setstate(failbit);
-                std::cout << "Can't find BMC section in "<< file << std::endl;
+                std::cout << "Can't find SC section in "<< file << std::endl;
                 return;
             }
             // Load entire BMC section.
@@ -268,7 +268,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             if (!in.good())
             {
                 this->setstate(failbit);
-                std::cout << "Can't read BMC section from "<< file << std::endl;
+                std::cout << "Can't read SC section from "<< file << std::endl;
                 return;
             }
             const struct bmc *bmc = reinterpret_cast<const struct bmc *>(bmcbuf.get());

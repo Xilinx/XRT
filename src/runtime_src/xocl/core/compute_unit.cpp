@@ -51,7 +51,7 @@ namespace xocl {
 
 compute_unit::
 compute_unit(const xclbin::symbol* s, const std::string& n, device* d)
-  : m_symbol(s), m_name(n), m_device(d), m_address(get_base_addr(m_symbol,m_name))
+  : m_symbol(s), m_name(n), m_device(d), m_address(::get_base_addr(m_symbol,m_name))
 {
   static unsigned int count = 0;
   m_uid = count++;

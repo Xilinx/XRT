@@ -216,6 +216,7 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
 
     bool same_dsa = false;
     bool same_bmc = false;
+    bool updated_dsa = false;
     DSAInfo current = flasher.getOnBoardDSA();
     if (!current.name.empty())
     {
@@ -227,19 +228,17 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
     if (same_dsa && same_bmc)
     {
         std::cout << "update not needed" << std::endl;
-        return -EINVAL;
     }
 
     if (!same_bmc)
     {
-        std::cout << "Updating BMC firmware on card[" << boardIdx << "]"
+        std::cout << "Updating SC firmware on card[" << boardIdx << "]"
             << std::endl;
         int ret = flashBMC(flasher, candidate);
         if (ret != 0)
         {
-            std::cout << "Failed to update BMC firmware on card["
+            std::cout << "WARNING: Failed to update SC firmware on card["
                 << boardIdx << "]" << std::endl;
-            return ret;
         }
     }
 
@@ -249,12 +248,17 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
         int ret = flashDSA(flasher, candidate);
         if (ret != 0)
         {
-            std::cout << "Failed to update DSA on card[" << boardIdx << "]"
-                << std::endl;
-            return ret;
+            std::cout << "ERROR: Failed to update DSA on card["
+                << boardIdx << "]" << std::endl;
+        } else {
+            updated_dsa = true;
         }
-        reboot = true;
     }
+
+    reboot = updated_dsa;
+    
+    if (!same_dsa && !updated_dsa)
+	    return -EINVAL;
 
     return 0;
 }
@@ -416,7 +420,7 @@ int main( int argc, char *argv[] )
         {
             ret = flasher.upgradeBMCFirmware(args.bmc.get());
             if (ret == 0)
-                std::cout << "BMC firmware flashed successfully" << std::endl;
+                std::cout << "SC firmware flashed successfully" << std::endl;
         }
         else
         {
@@ -608,7 +612,7 @@ int scanDevices(int argc, char *argv[])
             std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
             std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
             std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-            std::cout << "\tMax power level:\t" << info.mMaxPowerLvl << std::endl;
+            std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
             std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
             std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
             std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;

@@ -310,7 +310,7 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
 void 
 xma_enc_session_statsfile_init(XmaEncoderSession *session)
 {
-    char            *path = "/var/tmp";
+    char            *path = "/var/tmp/xilinx";
     char            *enc_type_str;
     char            *vendor;
     int32_t          dev_id = 0;

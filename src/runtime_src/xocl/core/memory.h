@@ -38,6 +38,7 @@ class memory : public refcount, public _cl_mem
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
   using connidx_type = xclbin::connidx_type;
+  using memidx_type = xclbin::memidx_type;
 
 protected:
   using buffer_object_handle = xrt::device::BufferObjectHandle;
@@ -77,35 +78,39 @@ public:
     return m_ext_flags;
   }
 
-  const memory_extension_flags_type
-  add_ext_flags(memory_extension_flags_type flags)
+  const void
+  set_ext_flags(memory_extension_flags_type flags)
   {
-    return m_ext_flags |= flags;
+    m_ext_flags = flags;
   }
 
-  const connidx_type 
-  get_connidx() const
+  /**
+   * @return
+   *  The memory bank index used by this buffer, or -1 if unassigned.
+   */
+  memidx_type
+  get_memidx() const
   {
-    return m_connidx;
+    return m_memidx;
   }
+
+  memidx_type
+  get_ext_memidx(xclbin xclbin) const;
+
+  /**
+   * Record that this buffer is used as argument to kernel at argidx
+   *
+   * @return
+   *   true if the {kernel,argidx} was not previously recorded,
+   *   false otherwise
+   */
+  bool
+  set_kernel_argidx(const kernel* kernel, unsigned int argidx);
 
   void
-  set_connidx(connidx_type index)
-  {
-    m_connidx = index;
-  }
-
-
-  void
-  add_ext_kernel(const kernel* kernel)
+  set_ext_kernel(const kernel* kernel)
   {
     m_ext_kernel = kernel;
-  }
-
-  const kernel*
-  get_ext_kernel()
-  {
-    return m_ext_kernel;
   }
 
   context*
@@ -134,26 +139,6 @@ public:
     throw std::runtime_error("get_size on bad object");
   }
 
-  /**
-   * Get set of memory indicies where this memory object is allocated
-   *
-   * @param device
-   *   Device to check allocation on
-   * @return bitmask identifying matching memory, or 0 if not
-   *   allocated on device.
-   */
-  virtual memidx_bitmask_type
-  get_memidx(const device* d) const;
-
-  /**
-   * Get memory index of DDR bank where this memory object is allocated
-   * if owning context has one device only.
-   *
-   * @return bitmask identifying matching memory banks, or 0 if not
-   *   allocated on device or there are multiple devices in context.
-   */
-  virtual memidx_bitmask_type
-  get_memidx() const;
 
   /**
    * Get the address and DDR bank where this memory object is allocated
@@ -321,16 +306,6 @@ public:
   get_buffer_object(device* device);
 
   /**
-   * Get or create the device buffer object for kernel and argument
-   *
-   * This function requires that the context in which the buffer is
-   * created has exactly one device.  CUs memory connection must
-   * match for all CUs associated with argument kernel.
-   */
-  buffer_object_handle
-  get_buffer_object(kernel* kernel, unsigned long argidx);
-
-  /**
    * Get the buffer object on argument device or error out if none
    * exists.
    *
@@ -464,6 +439,13 @@ public:
   static void register_destructor_callbacks(memory_callback_type&& aCallback);
 
 private:
+  memidx_type
+  get_memidx_nolock(const device* d) const;
+
+  memidx_type
+  get_ext_memidx_nolock(xclbin xclbin) const;
+
+private:
   unsigned int m_uid = 0;
   ptr<context> m_context;
 
@@ -472,6 +454,13 @@ private:
   // cl_mem_ext_ptr_t data.  move to buffer derived class
   memory_extension_flags_type m_ext_flags {0};
   const kernel* m_ext_kernel {nullptr};
+
+  // Record that this buffer is used as argument to kernel,argidx
+  std::vector<std::pair<const kernel*,unsigned int>> m_karg;
+
+  // Assigned memory bank index for this object.  Affects behavior of
+  // device side buffer allocation.
+  mutable memidx_type m_memidx = -1;
 
   // List of dtor callback functions. On heap to avoid
   // allocation unless needed.

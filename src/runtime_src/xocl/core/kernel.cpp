@@ -17,6 +17,8 @@
 #include "kernel.h"
 #include "program.h"
 #include "context.h"
+#include "device.h"
+#include "compute_unit.h"
 
 #include <sstream>
 #include <iostream>
@@ -25,6 +27,28 @@
 
 
 namespace xocl {
+
+std::string
+kernel::
+connectivity_debug() const
+{
+  std::stringstream str;
+  const char* line = "-------------------------------";
+  str << "+" << line << "+\n";
+  str << "| " << std::left << std::setw(strlen(line)-1) << get_name() << std::right << "|\n";
+  str << "|" << line << "|\n";
+  const char* hdr1 = "argument index | memory index";
+  str << "| " << hdr1 << " |\n";
+  for (auto& arg : get_indexed_argument_range()) {
+    if (auto mem = arg->get_memory_object()) {
+      str << "| " << std::setw(strlen("argument index")) << arg->get_argidx()
+          << " | " << std::setw(strlen("memory index"))
+          << mem->get_memidx() << " |\n";
+    }
+  }
+  str << "+" << line << "+";
+  return str.str();
+}
 
 std::unique_ptr<kernel::argument>
 kernel::argument::
@@ -150,7 +174,7 @@ set(size_t size, const void* cvalue)
 
   m_buf = xocl(mem);
   if (m_argidx < std::numeric_limits<unsigned long>::max())
-    m_buf->get_buffer_object(m_kernel,m_argidx);
+    m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -204,7 +228,7 @@ set(size_t size, const void* cvalue)
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
   m_buf = xocl(mem);
-  m_buf->get_buffer_object(m_kernel,m_argidx);
+  m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -265,7 +289,6 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
   XOCL_DEBUG(std::cout,"xocl::kernel::kernel(",m_uid,")\n");
 
   for (auto& arg : m_symbol.arguments) {
-
     switch (arg.atype) {
     case xclbin::symbol::arg::argtype::printf:
       if (m_printf_args.size())
@@ -322,8 +345,14 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     default:
       throw std::runtime_error("Internal error creating kernel arguments");
     } // switch (arg.atype)
-
   }
+
+  // Collect CUs for all devices
+  auto context = prog->get_context();
+  for (auto device : context->get_device_range())
+    for  (auto& scu : device->get_cus())
+      if (scu->get_symbol_uid()==get_symbol_uid())
+        m_cus.push_back(scu.get());
 }
 
 // TODO: remove and fix compilation of unit tests
@@ -368,6 +397,113 @@ kernel::
 ~kernel()
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::~kernel(",m_uid,")\n");
+}
+
+kernel::memidx_bitmask_type
+kernel::
+get_memidx(const device* device, unsigned int argidx) const
+{
+  std::bitset<128> kcu;
+  for (auto cu : m_cus)
+    kcu.set(cu->get_index());
+
+  memidx_bitmask_type mset;
+  mset.set();
+  for (auto& scu : device->get_cus())
+    if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid())
+      mset &= scu->get_memidx(argidx);
+
+  return mset;
+}
+
+size_t
+kernel::
+validate_cus(unsigned long argidx, int memidx) const
+{
+  XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
+  xclbin::memidx_bitmask_type connections(1<<memidx);
+  auto end = m_cus.end();
+  for (auto itr=m_cus.begin(); itr!=end; ) {
+    auto cu = (*itr);
+    auto cuconn = cu->get_memidx(argidx);
+    if ((cuconn & connections).none()) {
+      XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
+      itr = m_cus.erase(itr);
+      end = m_cus.end();
+    }
+    else
+      ++itr;
+  }
+  XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus remaining CUs ",m_cus.size(),"\n");
+  return m_cus.size();
+}
+
+const compute_unit*
+kernel::
+select_cu(const device* device) const
+{
+  // Select a CU from device that is also available to kernel
+  std::bitset<128> kcu;
+  for (auto cu : m_cus)
+    kcu.set(cu->get_index());
+
+  for (auto& scu : device->get_cus()) {
+    if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid()) {
+      return scu.get();
+    }
+  }
+
+  return nullptr;
+}
+
+const compute_unit*
+kernel::
+select_cu(const memory* buf) const
+{
+  if (m_cus.empty())
+    return nullptr;
+
+  const compute_unit* cu = nullptr;
+
+  // Buffer context maybe different from kernel context (program context)
+  auto ctx = buf->get_context();
+
+  // Kernel is loaded with CUs from program context. If buffer context
+  // is same, then any of kernel's CUs can be used, otherwise we must
+  // limit the CUs to those of the buffer context's devices.
+  if (ctx==get_context())
+    cu = m_cus.front();
+  else if (auto device = ctx->get_single_active_device()) {
+    cu = select_cu(device);
+  }
+
+  XOCL_DEBUGF("xocl::kernel::select_cu for buf(%d) returns cu(%d)\n",buf->get_uid(),cu?cu->get_uid():-1);
+  return cu;
+}
+
+void
+kernel::
+assign_buffer_to_argidx(memory* buf, unsigned long argidx)
+{
+  bool trim = buf->set_kernel_argidx(this,argidx);
+
+  // Do early buffer allocation if context has single active device
+  auto ctx = buf->get_context();
+  auto device = ctx->get_single_active_device();
+  if (device) {
+    auto boh = buf->get_buffer_object(device);
+    if (trim) {
+      auto memidx = buf->get_memidx();
+      assert(memidx>=0);
+      validate_cus(argidx,memidx);
+    }
+  }
+
+  if (m_cus.empty())
+    throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
+                      "kernel '" + get_name() + "' "
+                      + "has no compute units to support required connectivity.\n"
+                      + connectivity_debug());
 }
 
 context*

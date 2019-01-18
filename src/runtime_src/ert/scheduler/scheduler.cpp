@@ -825,7 +825,7 @@ configure_mb(size_type slot_idx)
   notify_host(slot_idx);
 
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-  ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
+  CTRL_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
 
   CTRL_DEBUG("<--configure_mb\n");
   return true;

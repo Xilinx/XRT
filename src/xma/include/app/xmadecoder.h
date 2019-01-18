@@ -232,6 +232,10 @@ extern "C" {
 typedef enum XmaDecoderType
 {
     XMA_H264_DECODER_TYPE = 1, /**< 1 */
+    XMA_HEVC_DECODER_TYPE, /**< 2 */
+    XMA_VP9_DECODER_TYPE, /**< 3 */
+    XMA_AV1_DECODER_TYPE, /**< 4 */
+    XMA_MULTI_DECODER_TYPE, /**< 5 */
 } XmaDecoderType;
 
 /**

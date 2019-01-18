@@ -17,6 +17,7 @@
 #include "shim.h"
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
+#include <errno.h>
 #include <unistd.h>
 
 namespace xclhwemhal2 {
@@ -291,7 +292,7 @@ namespace xclhwemhal2 {
     }
 
     std::string sim_path("");
-    std::string sim_file("simulate.sh");
+    std::string sim_file("launch_hw_emu.sh");
 
     // Write and read debug IP layout (for debug & profiling)
     // NOTE: for now, let's do this file based so we can debug
@@ -586,6 +587,11 @@ namespace xclhwemhal2 {
         if (mLogStream.is_open() && simMode)
           mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
 
+        struct stat statBuf;
+        if ( stat(sim_file.c_str(), &statBuf) == -1 )
+        {
+          sim_file = "simulate.sh";
+        }
         int r = execl(sim_file.c_str(),sim_file.c_str(),simMode,NULL);
         fclose (stdout);
         if(r == -1){std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1);}
@@ -1098,6 +1104,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
         std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
         systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6);
+        
+        // Copy Simulation Log file
+        std::string sdxEmulatorLogFilePath= binaryDirectory + "/" + "sdx_emulator.log";
+        std::string destPath7 = "'" + std::string(path) + "/" + fileName + "_sdx_emulator.log'";
+        systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7);
 
       }
       i++;
@@ -1983,16 +1994,22 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
     return -1;
   }
 
-  int returnVal = -1;
+  int returnVal = 0;
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset, bo->topology);
+    if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
+    {
+      returnVal = EIO;
+    }
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology);
+    if (xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology) != size)
+    {
+      returnVal = EIO;
+    }
   }
   PRINTENDFUNC;
   return returnVal;
@@ -2037,7 +2054,11 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferHost2Device( bo->base, src, size,seek,bo->topology);
+  int returnVal = 0;
+  if (xclCopyBufferHost2Device(bo->base, src, size, seek, bo->topology) != size)
+  {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }
@@ -2057,7 +2078,11 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology);
+  int returnVal = 0;
+  if (xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology) != size)
+  {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }
