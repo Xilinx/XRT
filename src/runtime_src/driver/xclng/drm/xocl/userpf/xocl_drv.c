@@ -134,10 +134,6 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 		devres_remove_group(&pdev->dev, xdev->p2p_res_grp);
 		xdev->p2p_res_grp = NULL;
 	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	devm_remove_action(&(pdev->dev), xocl_dev_percpu_kill, &xdev->ref);
-	devm_remove_action(&(pdev->dev), xocl_dev_percpu_exit, &xdev->ref);
-#endif
 
 	if (recov_bar_sz) {
 		p2p_bar = xocl_get_p2p_bar(xdev, NULL);
@@ -219,11 +215,13 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 
 #endif 
 
-	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
 	if(!xdev->bypass_bar_addr) {
-		ret = -ENOMEM;;
+		ret = -ENOMEM;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
+		percpu_ref_kill(&xdev->ref);
+#endif
+		devres_close_group(&pdev->dev, xdev->p2p_res_grp);
 		goto failed;
 	}
 #endif
@@ -231,9 +229,13 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_kill,
 		&xdev->ref);
-	if (ret)
+	if (ret) {
+		percpu_ref_kill(&xdev->ref);
+		devres_close_group(&pdev->dev, xdev->p2p_res_grp);
 		goto failed;
+	}
 #endif
+	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
 
 	return 0;
 

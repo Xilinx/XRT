@@ -796,6 +796,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Probe will not fail from now on. */
 	xocl_err(&pdev->dev, "minimum initialization done\n");
 
+	xocl_core_init(lro, NULL);
+
 	/* No further initialization for MFG board. */
 	if (minimum_initialization ||
 		(dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
@@ -803,8 +805,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	xclmgmt_extended_probe(lro);
-
-	xocl_core_init(lro, NULL);
 
 	return 0;
 
