@@ -172,7 +172,6 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	ret = xocl_p2p_mem_reserve(ocl_dev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-		goto failed_drm_init;
 	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
@@ -190,6 +189,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	return 0;
 
 failed_sysfs_init:
+	xocl_p2p_mem_release(&xd->ocl_dev, false);
 	xocl_drm_fini(&xd->ocl_dev);
 failed_drm_init:
 failed_set_channel:
