@@ -120,7 +120,7 @@ namespace awsbwhal {
     int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
     {
          const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-         std::string binid_path = devPath + "/xclbinid";
+         std::string binid_path = devPath + "/xclbinuuid";
          struct stat sb;
          if( stat( binid_path.c_str(), &sb ) < 0 ) {
              std::cout << "ERROR: failed to stat " << binid_path << std::endl;
@@ -136,8 +136,8 @@ namespace awsbwhal {
          if( ifs.gcount() > 0 ) {
              std::string tmp_hex_string = fileReadBuf;
              xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
-         } else { // xclbinid exists, but no data read or reported
-             std::cout << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'awssak program'.\n";
+         } else { // xclbinuuid exists, but no data read or reported
+             std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
          }
          delete [] fileReadBuf;
          ifs.close();
