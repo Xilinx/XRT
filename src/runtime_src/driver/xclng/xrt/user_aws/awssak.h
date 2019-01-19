@@ -299,9 +299,9 @@ public:
         }
 #endif // AXI Firewall
 
-        // report xclbinid
+        // report xclbinuuid
         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
-        std::string binid_path = devPath + "/xclbinid";
+        std::string binid_path = devPath + "/xclbinuuid";
         struct stat sb;
         if( stat( binid_path.c_str(), &sb ) < 0 ) {
             std::cout << "ERROR: failed to stat " << binid_path << std::endl;
@@ -316,8 +316,8 @@ public:
         ifs.read( fileReadBuf, sb.st_size );
         if( ifs.gcount() > 0 ) {
             ostr << "\nXclbin ID:  0x" << fileReadBuf;
-        } else { // xclbinid exists, but no data read or reported
-            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'awssak program'.\n";
+        } else { // xclbinuuid exists, but no data read or reported
+            ostr << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
         }
         delete [] fileReadBuf;
         ifs.close();
