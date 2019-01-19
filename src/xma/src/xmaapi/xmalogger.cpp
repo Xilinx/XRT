@@ -262,7 +262,7 @@ void* xma_logger_actor(void *data)
             infile.close();
             if (size > 0) {
                 found_sdaccel_ini_file = true;
-                std::cout << "XMA Logger: Using logger settings from sdaccel.ini instead of yaml file" << std::endl;
+                std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
                 std::cout << "XMA Logger: sdaccel.ini file: " << ini_file2 << std::endl;
             }
         }
@@ -275,7 +275,7 @@ void* xma_logger_actor(void *data)
                 infile.close();
                 if (size > 0) {
                     found_sdaccel_ini_file = true;
-                    std::cout << "XMA Logger: Using logger settings from sdaccel.ini instead of yaml file" << std::endl;
+                    std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
                     std::cout << "XMA Logger: sdaccel.ini file: " << ini_file1 << std::endl;
                 }
             }
