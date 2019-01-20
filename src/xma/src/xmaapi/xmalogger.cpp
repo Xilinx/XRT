@@ -404,13 +404,13 @@ int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size)
 {
     if (xma_msgq_isfull(msgq))
     {
-        XMA_DBG_PRINTF("XMA msgq enqueue: full\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq enqueue: full\n");
         return XMA_MSGQ_FULL;
     }
 
     if (size > msgq->msg_size)
     {
-        XMA_DBG_PRINTF("XMA msgq enqueue: too Large\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq enqueue: too Large\n");
         return XMA_MSGQ_MSG_TOO_LARGE;
     }
     
@@ -427,13 +427,13 @@ int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
 {
     if (xma_msgq_isempty(msgq))
     {
-        XMA_DBG_PRINTF("XMA msgq dequeue: empty\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq dequeue: empty\n");
         return XMA_MSGQ_EMPTY;
     }
 
     if (size < msgq->msg_size)
     {
-        XMA_DBG_PRINTF("XMA msgq dequeue: too small\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq dequeue: too small\n");
         return XMA_MSGQ_MSG_TOO_SMALL;
     }
 
@@ -471,7 +471,7 @@ void xma_actor_destroy(XmaActor *actor)
     char *shutdown = (char*) "shutdown\0";
 
     /* Send shutdown message to Actor */
-    XMA_DBG_PRINTF("XMA sending shutdown message\n");
+    XMA_DBG_PRINTF("%s", "XMA sending shutdown message\n");
     xma_actor_sendmsg(actor, shutdown, strlen(shutdown));
     xma_thread_join(actor->thread);
     xma_msgq_destroy(actor->msg_q);
@@ -492,15 +492,15 @@ int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
             actor->msg_q->back);
     if (xma_msgq_isfull(actor->msg_q))
     {
-        XMA_DBG_PRINTF("Waiting: msgq_isfull\n");
+        XMA_DBG_PRINTF("%s", "Waiting: msgq_isfull\n");
         pthread_cond_wait(&actor->dequeued_cond, &actor->lock);
-        XMA_DBG_PRINTF("Waiting: msgq_isfull done\n");
+        XMA_DBG_PRINTF("%s", "Waiting: msgq_isfull done\n");
     }
     was_empty = xma_msgq_isempty(actor->msg_q);
     rc = xma_msgq_enqueue(actor->msg_q, msg, msg_size);
     if (rc == 0 && was_empty)
     {
-        XMA_DBG_PRINTF("Sending queued_cond for previously empty queue\n");
+        XMA_DBG_PRINTF("%s", "Sending queued_cond for previously empty queue\n");
         pthread_cond_broadcast(&actor->queued_cond);
     }
 
@@ -535,7 +535,7 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
     rc = xma_msgq_dequeue(actor->msg_q, msg, msg_size);
     if (was_full)
     {
-        XMA_DBG_PRINTF("sending dequeued_cond\n");
+        XMA_DBG_PRINTF("%s", "sending dequeued_cond\n");
         pthread_cond_broadcast(&actor->dequeued_cond);
     }
 
