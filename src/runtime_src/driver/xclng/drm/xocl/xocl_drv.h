@@ -666,6 +666,9 @@ void xocl_fini_mb_scheduler(void);
 int __init xocl_init_xvc(void);
 void xocl_fini_xvc(void);
 
+int __init xocl_init_nifd(void);
+void xocl_fini_nifd(void);
+
 int __init xocl_init_firewall(void);
 void xocl_fini_firewall(void);
 
