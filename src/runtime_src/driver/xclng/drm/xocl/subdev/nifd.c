@@ -357,8 +357,7 @@ static int nifd_probe(struct platform_device *pdev)
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
 	nifd->sys_cdev.owner = THIS_MODULE;
-	nifd->instance = XOCL_DEV_ID(core->pdev) |
-		platform_get_device_id(pdev)->driver_data;
+	nifd->instance = XOCL_DEV_ID(core->pdev) | platform_get_device_id(pdev)->driver_data;
 	nifd->sys_cdev.dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
 	err = cdev_add(&nifd->sys_cdev, nifd->sys_cdev.dev, 1);
 	if (err) {
@@ -366,11 +365,13 @@ static int nifd_probe(struct platform_device *pdev)
 		return err;
 	}
 
-	nifd->sys_device = device_create(xrt_class, &pdev->dev,
-					nifd->sys_cdev.dev,
-					NULL, "%s%d",
-					platform_get_device_id(pdev)->name,
-					nifd->instance & MINOR_NAME_MASK);
+	nifd->sys_device = device_create(xrt_class, 
+								&pdev->dev,
+								nifd->sys_cdev.dev,
+								NULL, 
+								"%s%d",
+								platform_get_device_id(pdev)->name,
+								nifd->instance);
 	if (IS_ERR(nifd->sys_device)) {
 		err = PTR_ERR(nifd->sys_device);
 		cdev_del(&nifd->sys_cdev);

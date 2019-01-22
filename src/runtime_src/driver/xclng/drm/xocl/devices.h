@@ -773,6 +773,7 @@ enum subdev_id {
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_NIFD_PRI,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 		})
 
@@ -793,6 +794,7 @@ enum subdev_id {
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_NIFD_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 		})
@@ -831,6 +833,7 @@ enum subdev_id {
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_NIFD_PRI,				\
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
