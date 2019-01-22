@@ -833,7 +833,7 @@ bool xocl::XOCLShim::zeroOutDDR()
     return true;
 }
 
-int xocl::XOCLShim::xclDownLoadXclBin(const xclBin *buffer)
+int xocl::XOCLShim::xclLoadXclBinMgmt(const xclBin *buffer)
 {
     int ret = 0;
     const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
@@ -974,11 +974,6 @@ int xocl::XOCLShim::xclLoadAxlfMgmt(const axlf *buffer)
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
     }
 
-    if (!mLocked) {
-         std::cout << __func__ << " ERROR: Device is not locked" << std::endl;
-        return -EPERM;
-    }
-
     const unsigned cmd = XCLMGMT_IOCICAPDOWNLOAD_AXLF;
     xclmgmt_ioc_bitstream_axlf obj = {const_cast<axlf *>(buffer)};
     int ret = ioctl(mMgtHandle, cmd, &obj);
@@ -1002,18 +997,6 @@ int xocl::XOCLShim::xclLoadAxlfMgmt(const axlf *buffer)
             return -EIO;
         }
     }
-
-    // Note: We have frequently seen that downloading the bitstream causes the CU status
-    // to go bad. This indicates an HLS issue (most probably). It is better to fail here
-    // rather than crashing/erroring out later. This should save a lot of debugging time.
-    //if(!checkCUStatus())
-    //return -EPERM;
-
-#if 0
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    return ret ? -errno : ret;
-#endif
     return ret;
 }
 /*
@@ -1793,11 +1776,11 @@ void xclClose(xclDeviceHandle handle)
     }
 }
 
-int xclDownLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
+int xclLoadXclBinMgmt(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
 
-    return drv ? drv->xclDownLoadXclBin(buffer) : -ENODEV;
+    return drv ? drv->xclLoadXclBinMgmt(buffer) : -ENODEV;
 }
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)

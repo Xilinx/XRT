@@ -357,8 +357,18 @@ XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, struct xclErro
  * handled by the driver.
  */
 XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
-
-XCL_DRIVER_DLLESPEC int xclDownLoadXclBin(xclDeviceHandle handle, const axlf *buffer);
+/**
+ * xclLoadXclBinMgmt() - Download FPGA image (xclbin) to the device via mgmtpf
+ *
+ * @handle:        Device handle
+ * @buffer:        Pointer to device image (xclbin) in memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Download FPGA image (AXLF) to the device. The PR bitstream is encapsulated inside
+ * xclbin as a section. xclbin may also contains other sections which are suitably
+ * handled by the driver.
+ */
+XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const axlf *buffer);
 /**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *

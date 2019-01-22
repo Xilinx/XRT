@@ -557,7 +557,7 @@ public:
         char *buffer = new char[length];
         stream.read(buffer, length);
         const xclBin *header = (const xclBin *)buffer;
-        int result = xclDownLoadXclBin(m_handle, header);
+        int result = xclLoadXclBinMgmt(m_handle, header);
         delete [] buffer;
 
         return result;
