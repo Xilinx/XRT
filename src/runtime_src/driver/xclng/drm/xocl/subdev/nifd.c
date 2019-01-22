@@ -441,8 +441,11 @@ int __init xocl_init_nifd(void)
 	if (err < 0)
 		goto err_register_chrdev;
 
+	printk("NIFD: init => platform_driver_register start");
 	err = platform_driver_register(&nifd_driver);
+	printk("NIFD: init => platform_driver_register return");
 	if (err) {
+		printk("NIFD: init => platform_driver_register err");
 		goto err_driver_reg;
 	}
 	printk("NIFD: init => done");
