@@ -411,9 +411,9 @@ static int nifd_remove(struct platform_device *pdev)
 
 	core = xocl_get_xdev(pdev);
 	if (!core) {
-		printk("NIFD: probe => core is null");
+		printk("NIFD: remove => core is null");
 	} else {
-		printk("NIFD: probe => core is NOT null");
+		printk("NIFD: remove => core is NOT null");
 	}
 
 	nifd = platform_get_drvdata(pdev);
