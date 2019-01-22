@@ -172,7 +172,7 @@ namespace awsbwhal {
           if( int retVal = xclGetXclBinUuidFromSysfs( xclbin_uuid_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_uuid_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_uuid_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
+          if ( (xclbin_uuid_from_sysfs == 0) || (axlfbuffer->m_header.uuid != xclbin_uuid_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
               // force data retention option
               union fpga_mgmt_load_local_image_options opt;
               fpga_mgmt_init_load_local_image_options(&opt);
