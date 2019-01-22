@@ -341,6 +341,8 @@ static int nifd_probe(struct platform_device *pdev)
 	struct xocl_dev_core *core;
 	int err;
 
+	printk("NIFD: probe => start");
+
 	nifd = devm_kzalloc(&pdev->dev, sizeof(*nifd), GFP_KERNEL);
 	if (!nifd)
 		return -ENOMEM;
@@ -389,6 +391,8 @@ static int nifd_probe(struct platform_device *pdev)
 	nifd_pci_props.bar_index       = core->bar_idx;
 	nifd_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
 									pci_resource_start(core->pdev, core->bar_idx);
+
+	printk("NIFD: probe => done");
 
 failed:
 	return err;
@@ -441,12 +445,13 @@ int __init xocl_init_nifd(void)
 	if (err) {
 		goto err_driver_reg;
 	}
+	printk("NIFD: init => done");
 	return 0;
 
 err_driver_reg:
 	unregister_chrdev_region(nifd_dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
-	printk("NIFD: init => done");
+	printk("NIFD: init => err");
 	return err;
 }
 
