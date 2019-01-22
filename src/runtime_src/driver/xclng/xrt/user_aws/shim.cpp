@@ -117,7 +117,7 @@ namespace awsbwhal {
     }
 #endif
 
-    int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
+    int AwsXcl::xclGetXclBinUuidFromSysfs(uuid_t &xclbin_uuid_from_sysfs)
     {
          const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
          std::string binid_path = devPath + "/xclbinuuid";
@@ -135,7 +135,13 @@ namespace awsbwhal {
          ifs.read( fileReadBuf, sb.st_size );
          if( ifs.gcount() > 0 ) {
              std::string tmp_hex_string = fileReadBuf;
-             xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
+             int retVal = uuid_parse( fileReadBuf, xclbin_uuid_from_sysfs );
+             if( !retVal ) {
+                 std::cout << "ERROR: failed to parse uuid from xclbin." << std::endl;
+                 delete [] fileReadBuf;
+                 ifs.close();
+                 return retVal;
+             }
          } else { // xclbinuuid exists, but no data read or reported
              std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
          }
@@ -162,11 +168,11 @@ namespace awsbwhal {
           std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
           fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
 
-          uint64_t xclbin_id_from_sysfs;
-          if( int retVal = xclGetXclBinIdFromSysfs( xclbin_id_from_sysfs ) != 0 )
+          uuid_t xclbin_uuid_from_sysfs;
+          if( int retVal = xclGetXclBinUuidFromSysfs( xclbin_uuid_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
+          if ( (xclbin_uuid_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_uuid_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
               // force data retention option
               union fpga_mgmt_load_local_image_options opt;
               fpga_mgmt_init_load_local_image_options(&opt);

@@ -21,6 +21,7 @@ if(${INTERNAL_TESTING})
     xrt_awsstatic
     pthread
     rt
+    uuid
     )
 else()
   include_directories(${AWS_FPGA_REPO_DIR}/sdk/userspace/include/) # path to fpga_mgmt.h
@@ -30,6 +31,7 @@ else()
     xrt_awsstatic
     pthread
     rt
+    uuid
     ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
     )
 endif()
