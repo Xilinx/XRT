@@ -56,32 +56,6 @@ struct xocl_nifd {
 
 static dev_t nifd_dev;
 
-static struct xil_nifd_properties nifd_pci_props;
-
-#ifdef __REG_DEBUG__
-/* SECTION: Function definitions */
-static inline void __write_register(const char *fn, u32 value, void *base,
-				unsigned int off)
-{
-        pr_info("%s: 0x%p, W reg 0x%lx, 0x%x.\n", fn, base, off, value);
-        iowrite32(value, base + off);
-}
-
-static inline u32 __read_register(const char *fn, void *base, unsigned int off)
-{
-	u32 v = ioread32(base + off);
-
-        pr_info("%s: 0x%p, R reg 0x%lx, 0x%x.\n", fn, base, off, v);
-        return v;
-}
-#define write_register(v,base,off) __write_register(__func__, v, base, off)
-#define read_register(base,off) __read_register(__func__, base, off)
-
-#else
-#define write_register(v,base,off)	iowrite32(v, (base) + (off))
-#define read_register(base,off)		ioread32((base) + (off))
-#endif /* #ifdef __REG_DEBUG__ */
-
 static long nifd_ioctl_helper(struct xocl_nifd *nifd, const void __user *arg)
 {
 	return 0;
