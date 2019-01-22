@@ -140,7 +140,9 @@ bool xclmgmt_check_proc(struct xclmgmt_dev *lro, struct pid *pid);
 
 // mgmt-xvc.c
 long xvc_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
-long nifd_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
+
+int __init xocl_init_nifd(void);
+void xocl_fini_nifd(void);
 
 //mgmt-sysfs.c
 int mgmt_init_sysfs(struct device *dev);
