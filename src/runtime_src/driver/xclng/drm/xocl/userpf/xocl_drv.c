@@ -451,6 +451,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mailbox,
 	xocl_init_icap,
 	xocl_init_xvc,
+	xocl_init_nifd,
 	xocl_init_drv_user_xdma,
 	xocl_init_drv_user_qdma,
 };
@@ -464,6 +465,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_mailbox,
 	xocl_fini_icap,
 	xocl_fini_xvc,
+	xocl_fini_nifd,
 	xocl_fini_drv_user_xdma,
 	xocl_fini_drv_user_qdma,
 };
