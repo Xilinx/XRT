@@ -35,26 +35,12 @@
 #define	MINOR_PRI_HIGH_BIT	0x10000
 #define MINOR_NAME_MASK		0xffffffff
 
-enum nifd_algo_type {
-	NIFD_ALGO_NULL,
-	NIFD_ALGO_CFG,
-	NIFD_ALGO_BAR
-};
-
 struct xil_nifd_ioc {
 	unsigned opcode;
 	unsigned length;
 	unsigned char *tms_buf;
 	unsigned char *tdi_buf;
 	unsigned char *tdo_buf;
-};
-
-struct xil_nifd_properties {
-	unsigned int nifd_algo_type;
-    unsigned int config_vsec_id;
-    unsigned int config_vsec_rev;
-    unsigned int bar_index;
-    unsigned int bar_offset;
 };
 
 #define XDMA_IOCNIFD	     _IOWR(XIL_NIFD_MAGIC, 1, struct xil_nifd_ioc)
@@ -214,14 +200,6 @@ static int nifd_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, nifd);
 	xocl_info(&pdev->dev, "NIFD device instance %d initialized\n",
 		nifd->instance);
-
-	// Update PCIe BAR properties in a global structure
-	nifd_pci_props.nifd_algo_type   = NIFD_ALGO_BAR;
-	nifd_pci_props.config_vsec_id  = 0;
-	nifd_pci_props.config_vsec_rev = 0;
-	nifd_pci_props.bar_index       = core->bar_idx;
-	nifd_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
-									pci_resource_start(core->pdev, core->bar_idx);
 
 	printk("NIFD: probe => done");
 
