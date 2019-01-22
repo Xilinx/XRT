@@ -138,12 +138,6 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static int char_open(struct inode *inode, struct file *file)
 {
-	struct xocl_nifd *nifd = NULL;
-
-	/* pointer to containing structure of the character device inode */
-	nifd = container_of(inode->i_cdev, struct xocl_nifd, sys_cdev);
-	/* create a reference to our char device in the opened file */
-	file->private_data = nifd;
 	return 0;
 }
 
