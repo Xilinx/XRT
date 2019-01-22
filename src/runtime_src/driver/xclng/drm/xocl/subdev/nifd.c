@@ -29,22 +29,6 @@
 
 #include "../xocl_drv.h"
 
-struct xil_nifd_ioc {
-	unsigned opcode;
-	unsigned length;
-	unsigned char *tms_buf;
-	unsigned char *tdi_buf;
-	unsigned char *tdo_buf;
-};
-
-#define COMPLETION_LOOP_MAX	100
-
-#define NIFD_BAR_LENGTH_REG	0x0
-#define NIFD_BAR_TMS_REG		0x4
-#define NIFD_BAR_TDI_REG		0x8
-#define NIFD_BAR_TDO_REG		0xC
-#define NIFD_BAR_CTRL_REG	0x10
-
 #define NIFD_DEV_NAME "nifd" SUBDEV_SUFFIX
 
 struct xocl_nifd {
