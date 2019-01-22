@@ -421,7 +421,8 @@ kernel::
 validate_cus(unsigned long argidx, int memidx) const
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
-  xclbin::memidx_bitmask_type connections(1<<memidx);
+  xclbin::memidx_bitmask_type connections;
+  connections.set(memidx);
   auto end = m_cus.end();
   for (auto itr=m_cus.begin(); itr!=end; ) {
     auto cu = (*itr);
