@@ -29,12 +29,6 @@
 
 #include "../xocl_drv.h"
 
-/* IOCTL interfaces */
-#define XIL_NIFD_MAGIC 0x58564344  // "NIFDD"
-#define	MINOR_PUB_HIGH_BIT	0x00000
-#define	MINOR_PRI_HIGH_BIT	0x10000
-#define MINOR_NAME_MASK		0xffffffff
-
 struct xil_nifd_ioc {
 	unsigned opcode;
 	unsigned length;
@@ -42,9 +36,6 @@ struct xil_nifd_ioc {
 	unsigned char *tdi_buf;
 	unsigned char *tdo_buf;
 };
-
-#define XDMA_IOCNIFD	     _IOWR(XIL_NIFD_MAGIC, 1, struct xil_nifd_ioc)
-#define XDMA_RDNIFD_PROPS _IOR(XIL_NIFD_MAGIC, 2, struct xil_nifd_properties)
 
 #define COMPLETION_LOOP_MAX	100
 
@@ -108,10 +99,10 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd)
 	{
-		case XDMA_IOCNIFD:
+		case 1:
 			status = nifd_ioctl_helper(nifd, (void __user *)arg);
 			break;
-		case XDMA_RDNIFD_PROPS:
+		case 2:
 			status = nifd_read_properties(nifd, (void __user *)arg);
 			break;
 		default:
