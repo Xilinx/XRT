@@ -40,7 +40,7 @@ struct xocl_nifd {
 
 static dev_t nifd_dev;
 
-static long nifd_ioctl_helper(struct xocl_nifd *nifd, const void __user *arg)
+static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
 	return 0;
 }
@@ -58,7 +58,7 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	switch (cmd)
 	{
 		case 1:
-			status = nifd_ioctl_helper(nifd, (void __user *)arg);
+			status = write_nifd_register(nifd, (void __user *)arg);
 			break;
 		case 2:
 			status = nifd_read_properties(nifd, (void __user *)arg);
