@@ -229,10 +229,16 @@ void* xma_logger_actor(void *data)
     std::string curr_dir =  std::string(buf, (len>0) ? len : 0);
     std::string ini_file1 = "";
     if (!curr_dir.empty()) {
-        ini_file1 = curr_dir;
         if (curr_dir.back() != '/') {
-            ini_file1.append("/sdaccel.ini");
+            size_t pos = curr_dir.find_last_of("/");
+            if (pos != std::string::npos) {
+                ini_file1 = curr_dir.substr(0, pos);
+                ini_file1.append("/sdaccel.ini");
+            } else {
+                ini_file1 = "./sdaccel.ini";
+            }
         } else {
+            ini_file1 = curr_dir;
             ini_file1.append("sdaccel.ini");
         }
     }
@@ -253,11 +259,15 @@ void* xma_logger_actor(void *data)
         }
     }
     
+    //std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "ERROR: ini_file1: " << ini_file1 << std::endl;
+    //std::cout << "ERROR: ini_file2: " << ini_file2 << std::endl;
     bool found_sdaccel_ini_file = false;
     std::ifstream infile;
     if (!ini_file2.empty()) {
         infile.open(ini_file2, std::ios::ate);
         if (infile.is_open()) {
+            std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
             size_t size = infile.tellg();
             infile.close();
             if (size > 0) {
@@ -273,6 +283,7 @@ void* xma_logger_actor(void *data)
             if (infile.is_open()) {
                 size_t size = infile.tellg();
                 infile.close();
+                std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
                 if (size > 0) {
                     found_sdaccel_ini_file = true;
                     std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
@@ -285,7 +296,7 @@ void* xma_logger_actor(void *data)
 
 
 
-
+    //std::cout << "ERROR: found ini file: " << std::boolalpha << found_sdaccel_ini_file << std::endl;
     printf("XMA Logger: Logging thread started\n");
     while (1)
     {
