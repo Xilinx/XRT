@@ -420,7 +420,7 @@ static int nifd_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id nifd_id_table[] = {
-	{ XOCL_NIFD_PRI, MINOR_PRI_HIGH_BIT },
+	{ XOCL_NIFD_PRI, 0 },
 	{ },
 };
 
