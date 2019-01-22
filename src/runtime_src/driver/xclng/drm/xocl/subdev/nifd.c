@@ -356,6 +356,11 @@ static int nifd_probe(struct platform_device *pdev)
 	}
 
 	core = xocl_get_xdev(pdev);
+	if (!core) {
+		printk("NIFD: probe => core is null");
+	} else {
+		printk("NIFD: probe => core is NOT null");
+	}
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
 	nifd->sys_cdev.owner = THIS_MODULE;
@@ -402,6 +407,14 @@ failed:
 static int nifd_remove(struct platform_device *pdev)
 {
 	struct xocl_nifd	*nifd;
+	struct xocl_dev_core *core;
+
+	core = xocl_get_xdev(pdev);
+	if (!core) {
+		printk("NIFD: probe => core is null");
+	} else {
+		printk("NIFD: probe => core is NOT null");
+	}
 
 	nifd = platform_get_drvdata(pdev);
 	if (!nifd) {
