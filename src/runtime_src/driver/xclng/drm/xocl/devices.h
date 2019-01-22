@@ -320,10 +320,10 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_NIFD_PRI				\
 	{						\
-		XOCL_SUBDEV_XVC_PRI,			\
-		XOCL_XVC_PRI,				\
-		XOCL_RES_XVC_PRI,			\
-		ARRAY_SIZE(XOCL_RES_XVC_PRI),		\
+		XOCL_SUBDEV_NIFD_PRI,			\
+		XOCL_NIFD_PRI,				\
+		XOCL_RES_NIFD_PRI,			\
+		ARRAY_SIZE(XOCL_RES_NIFD_PRI),		\
 	}
 
 #define	XOCL_RES_XIIC					\
