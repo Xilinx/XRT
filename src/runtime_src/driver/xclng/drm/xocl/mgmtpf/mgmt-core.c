@@ -548,6 +548,76 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_register = xclmgmt_intr_register,
 };
 
+static int xclmgmt_xclbin_download(struct xclmgmt_dev *lro ,void *data)
+{
+	struct mailbox_req *req = (struct mailbox_req *)data;
+
+	/* is magic number*/
+	if(memcmp(req->u.xclbin_reg.data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
+		return -EINVAL;
+
+	return xocl_icap_download_axlf(lro, req->u.xclbin_reg.data);
+}
+
+static int xbmgmt_mb_peer_data_broker(struct xclmgmt_dev *lro)
+{
+	int ret = -EINVAL;
+
+	switch(lro->data_buf.data_type){
+		case TYPE_XCLBIN:
+			ret = xocl_icap_download_axlf(lro, lro->data_buf.data_buf);
+			break;
+		case TYPE_RECLOCK:
+			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling*)lro->data_buf.data_buf);
+			break;
+		default:
+			printk(KERN_ERR "Can't recognize data_type : %u\n", lro->data_buf.data_type);
+		  break;
+	}
+
+	return ret;
+}
+
+
+static int xclmgmt_mb_data_alloc_and_recv(struct xclmgmt_dev *lro ,void *data)
+{
+	int ret = 0;
+	struct mailbox_req *req = (struct mailbox_req *)data;
+	uint32_t data_total_len = req->u.data_buf.data_total_len;
+	uint32_t len = req->u.data_buf.len;
+	uint32_t offset = req->u.data_buf.offset;
+	char *data_ptr = req->u.data_buf.data;
+
+	if(lro->data_buf.data_buf == NULL){
+		printk(KERN_INFO "lro->data_buf.data_buf init ...\n");
+
+		lro->data_buf.data_buf = vmalloc(data_total_len);
+		if(lro->data_buf.data_buf == NULL){
+			printk(KERN_ERR "fail to alloc lro->data_buf.data_buf  ...\n");
+			ret = -ENOMEM;
+			return ret;
+		}
+		lro->data_buf.data_type = req->u.data_buf.data_type;
+		lro->data_buf.priv_data = req->u.data_buf.priv_data;
+	}
+
+	memcpy(lro->data_buf.data_buf+offset, data_ptr, len);
+
+	if(offset+len == data_total_len){
+		printk(KERN_INFO "Get whole data ...\n");
+		ret = xbmgmt_mb_peer_data_broker(lro);
+		vfree(lro->data_buf.data_buf);
+		lro->data_buf.data_buf = NULL;
+	}
+	else if ((offset+len) > data_total_len){
+		vfree(lro->data_buf.data_buf);
+		lro->data_buf.data_buf = NULL;
+		ret = -ENOMEM;
+	}
+
+	return ret;
+}
+
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err)
 {
@@ -558,7 +628,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	if (err != 0)
 		return;
 
-	printk(KERN_INFO "received request (%d) from peer\n", req->req);
+	printk(KERN_INFO "%s received request (%d) from peer\n", __func__, req->req);
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
@@ -574,6 +644,14 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_DOWNLOAD_XCLBIN:
+		ret = xclmgmt_xclbin_download(lro, data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_SEND_DATA:
+		ret = xclmgmt_mb_data_alloc_and_recv(lro, data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
 	default:
 		break;
 	}
@@ -656,7 +734,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct xclmgmt_dev *lro = NULL;
 	struct xocl_board_private *dev_info;
 
-	xocl_info(&pdev->dev, "Driver: %s", XOCL_DRV_CHANGE);
+	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
 
 	rc = pci_enable_device(pdev);
@@ -715,6 +793,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
+	lro->data_buf.data_buf = NULL;
 	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
 		goto err_cdev;

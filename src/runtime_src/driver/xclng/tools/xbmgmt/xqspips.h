@@ -93,4 +93,4 @@ private:
     bool finalTransfer(xqspips_msg_t *msg, uint32_t numMsg);
 };
 
-#endif 
+#endif

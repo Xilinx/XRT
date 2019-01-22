@@ -47,13 +47,13 @@
  * A retry at packet layer can be implement later, if considered as appropriate.
  *
  *
- * Message layer 
+ * Message layer
  *
  * A message is a data buffer of arbitrary length. The driver will break a
  * message into multiple packets and transmit them to the peer, which, in turn,
  * will assemble them into a full message before it's delivered to upper layer
  * for further processing. One message requires at least one packet to be
- * transferred to the peer.  
+ * transferred to the peer.
  *
  * Each message has a unique temporary u64 ID (see communication model below
  * for more detail). The ID shows up in each packet's header. So, at packet
@@ -1550,7 +1550,7 @@ static struct platform_driver mailbox_driver = {
 
 int __init xocl_init_mailbox(void)
 {
-	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE); 
+	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
 	return platform_driver_register(&mailbox_driver);
 }
 

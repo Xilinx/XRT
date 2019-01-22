@@ -352,7 +352,7 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     //    return -1;
     //else
     //    return 0;
-    
+
     initQSpiPS();
 
     uint32_t StatusReg = XQSpiPS_GetStatusReg();
@@ -504,7 +504,7 @@ void XQSPIPS_Flasher::abortQSpiPS()
 {
     uint32_t StatusReg = XQSpiPS_GetStatusReg();
     uint32_t ConfigReg = XQSpiPS_GetConfigReg();
-    
+
     /* Clear and diable interrupts (Ignore DMA register) */
     XQSpiPS_WriteReg(GQSPI_ISR_OFFSET, StatusReg | XQSPIPSU_ISR_WR_TO_CLR_MASK);
     XQSpiPS_WriteReg(GQSPI_IDR_OFFSET, XQSPIPSU_IDR_ALL_MASK);
@@ -554,7 +554,7 @@ void XQSPIPS_Flasher::readRxFifo(xqspips_msg_t *msg, int32_t Size)
             mRxBytes = 0;
         }
     }
-            
+
 }
 
 void XQSPIPS_Flasher::fillTxFifo(xqspips_msg_t *msg, int32_t Size)
@@ -577,7 +577,7 @@ void XQSPIPS_Flasher::fillTxFifo(xqspips_msg_t *msg, int32_t Size)
             Count += mTxBytes;
             mTxBytes = 0;
         }
-        
+
         XQSpiPS_WriteReg(GQSPI_TXD_OFFSET, Data);
 #if defined(_DEBUG)
             printHEX("TX Data:", Data);
@@ -746,7 +746,7 @@ void XQSPIPS_Flasher::sendGenFifoEntryCSDeAssert()
  * @return
  *      - True Success
  *      - Error code
- * 
+ *
  */
 bool XQSPIPS_Flasher::finalTransfer(xqspips_msg_t *msg, uint32_t numMsg)
 {
@@ -937,7 +937,7 @@ bool XQSPIPS_Flasher::getFlashID()
             break;
         default:
             std::cout << "ERROR: Unrecognized sector field! Exiting..." << std::endl;
-            return false;                     
+            return false;
         }
     }
 
@@ -955,13 +955,13 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
     uint8_t writeCmds[5];
     uint32_t realAddr;
     uint32_t Sector;
-    
+
     if(!isFlashReady())
         return false;
 
     if (eraseCmd == 0xff)
         eraseCmd = SEC_ERASE_CMD;
-    
+
     for (Sector = 0; Sector < ((byteCount / SECTOR_SIZE) + 1); Sector++) {
         /* TODO Only support dual Qual SPI mode */
         realAddr = addr / 2;
@@ -1008,7 +1008,7 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
 
     /* TODO Only support dual Qual SPI mode */
     realAddr = addr / 2;
-    
+
     if (readCmd == 0xff)
         readCmd = QUAD_READ_CMD;
 
@@ -1018,7 +1018,7 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
     writeCmds[3] = (uint8_t)((realAddr & 0xFF00) >> 8);
     writeCmds[4] = (uint8_t)(realAddr & 0xFF);
     commandBytes = 5;
-     
+
     msgReadFlash[0].bufPtr = writeCmds;
     msgReadFlash[0].byteCount = commandBytes;
     msgReadFlash[0].busWidth = XQSPIPSU_SELECT_MODE_SPI;
@@ -1039,7 +1039,7 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
     msgReadFlash[msgCnt].busWidth = XQSPIPSU_SELECT_MODE_QUADSPI;
     msgReadFlash[msgCnt].flags = XQSPIPSU_MSG_FLAG_RX | XQSPIPSU_MSG_FLAG_STRIPE;
     msgCnt++;
-    
+
     if (!finalTransfer(msgReadFlash, msgCnt))
         return false;
 
@@ -1061,7 +1061,7 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
 
     /* TODO Only support dual Qual SPI mode */
     realAddr = addr / 2;
-    
+
     if (!setWriteEnable())
         return false;
 
@@ -1089,7 +1089,7 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
     msgWriteFlash[1].byteCount = byteCount;
     msgWriteFlash[1].busWidth = XQSPIPSU_SELECT_MODE_QUADSPI;
     msgWriteFlash[1].flags = XQSPIPSU_MSG_FLAG_TX | XQSPIPSU_MSG_FLAG_STRIPE;
-    
+
     if (!finalTransfer(msgWriteFlash, 2))
         return false;
 

@@ -745,7 +745,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		strncpy(temp, left_parentness+1, digit_len);
 		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
 		temp[digit_len] = '\0';
-		//convert to signed long, decimal base 
+		//convert to signed long, decimal base
 		if(kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >=0)
 			safe_read32(xmc, XMC_DIMM_TEMP0_REG+ (3*sizeof(int32_t)) * idx +sizeof(u32)*VOLTAGE_INS, &ret);
 		else{

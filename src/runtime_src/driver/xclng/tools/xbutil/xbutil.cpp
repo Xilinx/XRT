@@ -44,10 +44,12 @@ int bdf2index(std::string& bdfStr, unsigned& index)
 
     for (unsigned i = 0; i < pcidev::get_dev_total(); i++) {
         auto dev = pcidev::get_dev(i);
-        if (dom == dev->mgmt->domain && b == dev->mgmt->bus &&
-            d == dev->mgmt->dev && (f == 0 || f == 1)) {
-            index = i;
-            return 0;
+        if(dev->user){
+            if (dom == dev->user->domain && b == dev->user->bus &&
+                d == dev->user->dev && (f == 0 || f == 1)) {
+                index = i;
+                return 0;
+            }
         }
     }
 
@@ -120,13 +122,11 @@ void print_pci_info(void)
         bool ready = dev->is_ready;
 
         if (mdev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "user";
             print(udev);
         }
@@ -135,7 +135,6 @@ void print_pci_info(void)
             not_ready++;
         ++i;
     }
-
     if (not_ready != 0) {
         std::cout << "WARNING: " << not_ready
                   << " card(s) marked by '*' are not ready, "
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
         // coverity[TAINTED_STRING] argv will be validated inside xbflash
-        return execv( std::string( path + "/xbflash" ).c_str(), argv );
+        return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
     } /* end of call to xbflash */
 
     optind++;
@@ -550,7 +549,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (unsigned i = 0; i < count; i++) {
+    for (unsigned i = 0; i < total; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
@@ -570,7 +569,7 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        if (index >= count)
+        if (index >= total)
             std::cout << "ERROR: Card index " << index << "is out of range";
         else
             std::cout << "ERROR: Card [" << index << "] is not ready";
@@ -586,7 +585,7 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->boot();
         break;
     case xcldev::CLOCK:
-        result = deviceVec[index]->reclock2(regionIndex, targetFreq);
+        result = deviceVec[index]->reclockUser(regionIndex, targetFreq);
         break;
     case xcldev::FAN:
         result = deviceVec[index]->fan(fanSpeed);
