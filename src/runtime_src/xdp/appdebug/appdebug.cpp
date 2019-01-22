@@ -1223,7 +1223,8 @@ clGetDebugCounters() {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
   }
 
@@ -1364,7 +1365,8 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
   }
 
@@ -1571,7 +1573,8 @@ clGetDebugCheckers() {
     if (device->is_active()) {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
 

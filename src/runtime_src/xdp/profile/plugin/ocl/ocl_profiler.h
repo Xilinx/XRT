@@ -22,6 +22,7 @@
 #include <chrono>
 #include <vector>
 #include "xocl_plugin.h"
+#include "xocl_profile.h"
 #include "xdp/profile/core/rt_util.h"
 #include "xdp/profile/writer/csv_profile.h"
 #include "xdp/profile/writer/csv_trace.h"
@@ -44,57 +45,63 @@ namespace Profiling {
     Profiler();
     ~Profiler();
 
+  // Callback API
   public:
+    void turnOnProfile(xdp::RTUtil::e_profile_mode mode);
+    void turnOffProfile(xdp::RTUtil::e_profile_mode mode);
     void startDeviceProfiling(size_t numComputeUnits);
     void endDeviceProfiling();
     void getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters);
     void getDeviceTrace(bool forceReadTrace);
     void resetDeviceProfilingFlag() {mEndDeviceProfilingCalled = false;}
+    void addToActiveDevices(const std::string& deviceName);
+    void setKernelClockFreqMHz(const std::string &deviceName,
+                               unsigned int clockRateMHz);
 
   public:
-    bool isProfileRunning() {return mProfileRunning;}
     inline xdp::XoclPlugin* getPlugin() { return Plugin; }
     inline xdp::RTProfile* getProfileManager() { return ProfileMgr; }
 
-  private:
-    uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
-                             std::chrono::steady_clock::time_point end);
+  // Device metadata
+  public:
+    std::map<xdp::profile::device::key, xdp::profile::device::data> DeviceData;
 
+  // Profile settings
+  public:
+    inline bool deviceCountersProfilingOn() {
+      return getProfileFlag() & xdp::RTUtil::PROFILE_DEVICE_COUNTERS;
+    }
+    inline bool deviceTraceProfilingOn() {
+      return getProfileFlag() & xdp::RTUtil::PROFILE_DEVICE_TRACE;
+    }
+    inline bool applicationProfilingOn() {
+      return getProfileFlag() & xdp::RTUtil::PROFILE_APPLICATION;
+    }
+    inline bool applicationTraceOn() {
+      return getProfileFlag() & xdp::RTUtil::FILE_TIMELINE_TRACE;
+    }
+  
   private:
-    bool mProfileRunning = false;
-    bool mEndDeviceProfilingCalled = false;
-    static Profiler* mRTInstance;
-    xdp::XoclPlugin* Plugin;
-
-  private:
-    xdp::RTProfile* ProfileMgr = nullptr;
     void startProfiling();
     void endProfiling();
     void logFinalTrace(xclPerfMonType type);
     void setTraceFooterString();
-  /*
-   * Imported from RTSingleton
-   */
-  public:
+    bool isProfileRunning() {return mProfileRunning;}
+    inline const int& getProfileFlag() { return ProfileFlags; }
+    uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
+                             std::chrono::steady_clock::time_point end);
+
+  private:
+    int ProfileFlags;
+    bool mProfileRunning = false;
+    bool mEndDeviceProfilingCalled = false;
     // Report writers
     std::vector<xdp::ProfileWriterI*> ProfileWriters;
     std::vector<xdp::TraceWriterI*> TraceWriters;
-    bool IsObjectsReleased = false;
-    int ProfileFlags;
-    void turnOnProfile(xdp::RTUtil::e_profile_mode mode);
-    void turnOffProfile(xdp::RTUtil::e_profile_mode mode);
-    inline const int& getProfileFlag() { return ProfileFlags; }
+    static Profiler* mRTInstance;
+    xdp::XoclPlugin* Plugin;
+    xdp::RTProfile* ProfileMgr = nullptr;
 
-    // Profile settings
-    inline bool deviceCountersProfilingOn() { return getProfileFlag() & xdp::RTUtil::PROFILE_DEVICE_COUNTERS; }
-    inline bool deviceTraceProfilingOn() { return getProfileFlag() & xdp::RTUtil::PROFILE_DEVICE_TRACE; }
-    inline bool applicationProfilingOn() { return getProfileFlag() & xdp::RTUtil::PROFILE_APPLICATION; }
-    void addToActiveDevices(const std::string& deviceName);
-    // Objects released (used by guidance)
-    void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
-    bool isObjectsReleased() {return IsObjectsReleased;}
-    // Misc Profiling calls
-    void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz);
   };
 
   /*
@@ -109,5 +116,3 @@ namespace Profiling {
 };
 
 #endif
-
-

@@ -6,6 +6,7 @@ include_directories(
 set(XRT_XDP_APPDEBUG_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/appdebug")
 set(XRT_XDP_DEBUG_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/debug")
 set(XRT_XDP_PROFILE_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile")
+set(XRT_XDP_PROFILE_PLUGIN_DIR        "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin")
 set(XRT_XDP_PROFILE_XMA_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/xma")
 set(XRT_XDP_PROFILE_OCL_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/ocl")
 set(XRT_XDP_PROFILE_COLLECTION_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/collection")
@@ -35,8 +36,8 @@ file(GLOB XRT_XDP_PROFILE_FILES
   "${XRT_XDP_PROFILE_CORE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.h"
   "${XRT_XDP_PROFILE_DEVICE_DIR}/*.cpp"
-  "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.h"
-  "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.cpp"
   )
 
 file(GLOB XRT_XDP_FILES
@@ -44,9 +45,15 @@ file(GLOB XRT_XDP_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
   )
 
+  file(GLOB XRT_XDP_PROFILE_OCL_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_XMA_PLUGIN_FILES
-	"${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.h"
-	"${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.cpp"
   )
 #source_group(XRT_XDP_APPDEBUG_FILES FILES ${XRT_XDP_APPDEBUG_FILES})
 #source_group(XRT_XDP_DEBUG_FILES FILES ${XRT_XDP_DEBUG_FILES})
@@ -59,10 +66,11 @@ set(XRT_XDP_ALL_SRC
   ${XRT_XDP_FILES}
   )
 
-add_library(xdpobj OBJECT ${XRT_XDP_ALL_SRC})
-add_library(xdp SHARED ${XRT_XDP_PROFILE_XMA_PLUGIN_FILES})
-add_dependencies(xdp xrt_core)
-target_link_libraries (xdp xrt_core)
+add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
+
+add_library(xdp SHARED ${XRT_XDP_ALL_SRC})
+add_dependencies(xdp xrt_core xilinxopencl)
+target_link_libraries (xdp xrt_core xilinxopencl)
 
 install (TARGETS xdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 

@@ -318,7 +318,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             uint64_t startTime = 0;
             uint64_t hostStartTime = 0;
 
-            unsigned ipInfo = xdp::RTSingleton::Instance()->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+            unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
             bool isRead     = (ipInfo & 0x2) ? true : false;
             if (isStart) {
               if (txEvent) {
@@ -380,7 +380,6 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       } // If Hw Emu
       else {
         // SSPM trace
-        auto rts = xdp::RTSingleton::Instance();
         DeviceTrace streamTrace;
         streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
         if (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM) {
@@ -390,7 +389,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           bool stallEvent =  trace.EventFlags & 0x4;
           bool starveEvent = trace.EventFlags & 0x2;
           bool isStart =     trace.EventFlags & 0x1;
-          unsigned ipInfo = rts->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+          unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
           bool isRead = (ipInfo & 0x2) ? true : false;
           if (isStart) {
             if (txEvent)
@@ -569,7 +568,6 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     // Try to approximate CU Ends from data transnfers
     if(!isHwEmu) {
       std::string cuPortName, cuNameSAM, cuNameSPM;
-      auto rts = xdp::RTSingleton::Instance();
       for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
         if (mAccelMonStartedEvents[i] & XSAM_TRACE_CU_MASK) {
           kernelTrace.SlotNum = i;
@@ -581,9 +579,9 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           kernelTrace.BurstLength = 0;
           kernelTrace.NumBytes = 0;
           uint64_t lastTimeStamp = 0;
-          rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
           for (int j = 0; j < XSPM_MAX_NUMBER_SLOTS; j++) {
-            rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
+            mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
             cuNameSPM = cuPortName.substr(0, cuPortName.find_first_of("/"));
             if (cuNameSAM == cuNameSPM && lastTimeStamp < mPerfMonLastTranx[j])
               lastTimeStamp = mPerfMonLastTranx[j];

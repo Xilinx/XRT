@@ -21,6 +21,7 @@
 #include <CL/opencl.h>
 #include "xdp/debug/rt_debug.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/plugin/ocl/xocl_profile.h"
 
 #include <cstdlib>
 #include <cstdio>
@@ -64,13 +65,6 @@ namespace xdp {
     // Inline functions: platform ID, profile/debug managers, profile flags
     inline xocl::platform* getcl_platform_id() { return Platform.get(); }
     inline RTDebug* getDebugManager() { return DebugMgr; }
-
-  public:
-    // Misc. exposed profile functions
-    unsigned getProfileNumberSlots(xclPerfMonType type, std::string& deviceName);
-    void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
-                            unsigned slotnum, std::string& slotName);
-    unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum);
 
   private:
     // Status of singleton

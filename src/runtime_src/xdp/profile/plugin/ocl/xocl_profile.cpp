@@ -15,7 +15,7 @@
  */
 
 #include "xocl_profile.h"
-#include "profiler.h"
+#include "ocl_profiler.h"
 #include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 
@@ -680,8 +680,8 @@ data*
 get_data(key k) 
 { 
   // TODO: this used to come from RTProfile, now it comes from the plugin. Is this correct?
-  auto plugin = Profiling::Profiler::Instance()->getPlugin();
-  auto& device_data = plugin->DeviceData;
+  auto profiler = Profiling::Profiler::Instance();
+  auto& device_data = profiler->DeviceData;
 
   auto itr = device_data.find(k);
   if (itr==device_data.end()) {

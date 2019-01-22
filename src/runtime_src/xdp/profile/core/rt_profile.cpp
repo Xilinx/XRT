@@ -138,8 +138,8 @@ namespace xdp {
     mTraceParser->setDeviceClockFreqMHz(deviceClockRateMHz);
 
     mProfileCounters->setAllDeviceClockFreqMhz(deviceClockRateMHz);
-    mProfileCounters->setAllDeviceBufferBitWidth( mTraceParser->getGlobalMemoryBitWidth() );
-    mProfileCounters->setAllDeviceKernelBitWidth( mTraceParser->getGlobalMemoryBitWidth() );
+    mProfileCounters->setAllDeviceBufferBitWidth(mTraceParser->getGlobalMemoryBitWidth());
+    mProfileCounters->setAllDeviceKernelBitWidth(mTraceParser->getGlobalMemoryBitWidth());
   }
 
   // Set device trace clock freq

@@ -82,8 +82,6 @@ namespace xdp {
   void SummaryWriter::logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
       xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
-    auto rts = xdp::RTSingleton::Instance();
-
     // Number of monitor slots
     uint32_t numSlots = 0;
     std::string key = deviceName + "|" + binaryName;
@@ -105,11 +103,11 @@ namespace xdp {
       /*
        * Log SPM Counters
        */
-      numSlots = rts->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+      numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
       // Traverse all monitor slots (host and all CU ports)
    	   bool deviceDataExists = (mDeviceBinaryDataSlotsMap.find(key) == mDeviceBinaryDataSlotsMap.end()) ? false : true;
        for (unsigned int s=0; s < numSlots; ++s) {
-        rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
         if (!deviceDataExists)
           mDeviceBinaryDataSlotsMap[key].push_back(slotName);
         uint32_t prevWriteBytes   = mFinalCounterResultsMap[key].WriteBytes[s];
@@ -147,7 +145,7 @@ namespace xdp {
       /*
        * Log SAM Counters
        */
-      numSlots = rts->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+      numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
       for (unsigned int s=0; s < numSlots; ++s) {
         uint32_t prevCuExecCount      = mFinalCounterResultsMap[key].CuExecCount[s];
         uint32_t prevCuExecCycles     = mFinalCounterResultsMap[key].CuExecCycles[s];
@@ -175,10 +173,10 @@ namespace xdp {
       /*
        * Streaming IP Counters are 64 bit and unlikely to roll over
        */
-      numSlots = rts->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+      numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
       deviceDataExists = (mDeviceBinaryStrSlotsMap.find(key) == mDeviceBinaryStrSlotsMap.end()) ? false : true;
       for (unsigned int s=0; s < numSlots; ++s) {
-        rts->getProfileSlotName(XCL_PERF_MON_STR, deviceName, s, slotName);
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, s, slotName);
         if (!deviceDataExists)
           mDeviceBinaryStrSlotsMap[key].push_back(slotName);
       }
@@ -189,14 +187,14 @@ namespace xdp {
      */
     uint32_t kernelClockMhz = mPluginHandle->getKernelClockFreqMHz(deviceName);
     double deviceCyclesMsec = kernelClockMhz * 1000.0 ;
-    numSlots = rts->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+    numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
     std::string cuName = "";
     std::string kernelName ="";
     bool deviceDataExists = (mDeviceBinaryCuSlotsMap.find(key) == mDeviceBinaryCuSlotsMap.end()) ? false : true;
     xclCounterResults rolloverResults = mRolloverCounterResultsMap.at(key);
     xclCounterResults rolloverCounts = mRolloverCountsMap.at(key);
     for (unsigned int s=0; s < numSlots; ++s) {
-      rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
+      mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
       mPluginHandle->getProfileKernelName(deviceName, cuName, kernelName);
       if (!deviceDataExists)
         mDeviceBinaryCuSlotsMap[key].push_back(cuName);
@@ -285,7 +283,7 @@ namespace xdp {
         rolloverCounts = mRolloverCountsMap.at(key);
       else
         memset(&rolloverCounts, 0, sizeof(xclCounterResults));
-      uint32_t  numHostSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
+      uint32_t  numHostSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
       for (uint32_t s=HostSlotIndex; s < HostSlotIndex + numHostSlots; s++) {
         totalReadBytes += counterResults.ReadBytes[s]
                           + (rolloverCounts.ReadBytes[s] * 4294967296UL);
@@ -439,7 +437,7 @@ namespace xdp {
 
       // Number of monitor slots
       uint32_t numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
-      uint32_t numHostSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
+      uint32_t numHostSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
 
       // Total kernel time = sum of all kernel executions
       //double totalKernelTimeMsec = mProfileCounters->getTotalKernelExecutionTime(deviceName);
@@ -534,7 +532,7 @@ namespace xdp {
 
       // Number of monitor slots
       uint32_t numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
-      uint32_t numHostSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
+      uint32_t numHostSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
 
       double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 

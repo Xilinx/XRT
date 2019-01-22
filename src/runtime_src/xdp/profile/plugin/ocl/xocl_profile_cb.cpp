@@ -19,7 +19,7 @@
  */
 
 #include "xocl_profile_cb.h"
-#include "profiler.h"
+#include "ocl_profiler.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 

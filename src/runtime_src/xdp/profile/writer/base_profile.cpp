@@ -84,8 +84,8 @@ namespace xdp {
     auto platform = rts->getcl_platform_id();
     for (auto device_id : platform->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
-      numStallSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STALL, deviceName);
-      numStreamSlots += rts->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+      numStallSlots += mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STALL, deviceName);
+      numStreamSlots += mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
     }
 
     if (profile->isDeviceProfileOn() && 

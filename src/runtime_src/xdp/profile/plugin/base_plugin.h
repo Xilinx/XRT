@@ -25,8 +25,6 @@
 #include <iostream>
 #include <map>
 
-// TODO: remove this dependency (needed for DeviceData)
-#include "xdp/profile/plugin/ocl/xocl_profile.h"
 #include "xdp/profile/core/rt_util.h"
 
 // Use this class to build plugins. All XDP plugins should support
@@ -34,35 +32,34 @@
 
 namespace xdp {
     class RTProfile;
-    class ProfileWriterI;
 
     // Base plugin class
     class XDPPluginI {
 
     public:
       XDPPluginI();
-	  virtual ~XDPPluginI() {};
+    virtual ~XDPPluginI();
 
     // **********
     // Trace time
     // **********
     public:
-	  virtual double getTraceTime();
+    virtual double getTraceTime();
 
-	  // Get timestamp in msec given time in nsec
-	  double getTimestampMsec(uint64_t timeNsec) {
-	    return (timeNsec / 1.0e6);
-	  }
+    // Get timestamp in msec given time in nsec
+    double getTimestampMsec(uint64_t timeNsec) {
+      return (timeNsec / 1.0e6);
+    }
 
     // *************************
     // Accelerator port metadata
     // *************************
     public:
-	  // Set the accelerator port information (i.e., fill the CUPortVector)
+    // Set the accelerator port information (i.e., fill the CUPortVector)
       virtual void setArgumentsBank(const std::string& deviceName);
-	  // Get information for a given accelerator/port pair
+    // Get information for a given accelerator/port pair
       virtual void getArgumentsBank(const std::string& deviceName, const std::string& cuName,
-          const std::string& portName, std::string& argNames,
+                                    const std::string& portName, std::string& argNames,
           std::string& memoryName);
 
     protected:
@@ -99,11 +96,13 @@ namespace xdp {
 
     public:
       virtual void getGuidanceMetadata(RTProfile *profile);
-      virtual void writeGuidanceMetadataSummary(ProfileWriterI* writer, RTProfile *profile);
       static void getGuidanceName(e_guidance check, std::string& name);
       // Objects released
       void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
       bool isObjectsReleased() {return IsObjectsReleased;}
+      inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
+      inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
+      inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
@@ -111,28 +110,28 @@ namespace xdp {
       GuidanceMap2 mKernelCountsMap;
       bool IsObjectsReleased = false;
 
-    // ***************
-    // Device metadata
-    // ***************
-    public:
-      // Key-data map of device data (moved from rt_profile.h)
-      // TODO: move this out of the base plugin class
-      std::map<xdp::profile::device::key, xdp::profile::device::data> DeviceData;
-
     // ****************************************
     // Platform Metadata required by profiler
     // ****************************************
     public:
-      virtual void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName);
+      virtual void getProfileKernelName(const std::string& deviceName,
+                                        const std::string& cuName,
+                                        std::string& kernelName) = 0;
       virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
-        const std::string& cuName, std::string& traceString);
-      virtual size_t getDeviceTimestamp(std::string& deviceName);
-      virtual double getReadMaxBandwidthMBps();
-      virtual double getWriteMaxBandwidthMBps();
-      inline xdp::RTUtil::e_flow_mode getFlowMode() { return FlowMode; }
-      inline void setFlowMode(xdp::RTUtil::e_flow_mode mode) { FlowMode = mode;}
-      inline void setTraceFooterString(std::string traceFooterString) {  mTraceFooterString = traceFooterString; };
-      inline void getTraceFooterString(std::string& trString) { trString = mTraceFooterString; };
+                                                 const std::string& cuName,
+                                                 std::string& traceString) = 0;
+      virtual size_t getDeviceTimestamp(std::string& deviceName) = 0;
+      virtual double getReadMaxBandwidthMBps() = 0 ;
+      virtual double getWriteMaxBandwidthMBps() = 0;
+      // HAL APIS
+      virtual unsigned getProfileNumberSlots(xclPerfMonType type,
+                                             std::string& deviceName) = 0;
+      virtual void getProfileSlotName(xclPerfMonType type,
+                                      std::string& deviceName,
+                                      unsigned slotnum, std::string& slotName) = 0;
+      virtual unsigned getProfileSlotProperties(xclPerfMonType type,
+                                                std::string& deviceName,
+                                                unsigned slotnum) = 0;
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
@@ -141,6 +140,14 @@ namespace xdp {
       std::string mTraceFooterString;
 
     public:
+      inline xdp::RTUtil::e_flow_mode getFlowMode() { return FlowMode; }
+      inline void setFlowMode(xdp::RTUtil::e_flow_mode mode) { FlowMode = mode;}
+      inline void setTraceFooterString(std::string traceFooterString) {
+        mTraceFooterString = traceFooterString;
+      };
+      inline void getTraceFooterString(std::string& trString) {
+        trString = mTraceFooterString;
+      };
       void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz) {
         mDeviceKernelClockFreqMap[deviceName] = clockRateMHz;
       }

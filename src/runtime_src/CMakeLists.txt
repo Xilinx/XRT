@@ -60,6 +60,7 @@ set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(oclxdp
+  xdp
   xilinxopencl
  )
 

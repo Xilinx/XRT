@@ -35,6 +35,8 @@ namespace xdp {
       void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
       void writeDocumentFooter(std::ofstream& ofs) override;
       void writeTimelineFooter(std::ofstream& ofs);
+      // Rest of the cell and row parameters are default in base class
+      const char* cellEnd() override { return ","; } 
 
 	private:
       std::string TraceFileName;

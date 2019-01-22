@@ -15,11 +15,6 @@
  */
 
 #include "base_plugin.h"
-#include "base_profile.h"
-#include "xdp/profile/core/rt_profile.h"
-#include "xdp/rt_singleton.h"
-
-#include <chrono>
 
 namespace xdp {
   //****************
@@ -29,12 +24,9 @@ namespace xdp {
   {
     mComputeUnitKernelTraceMap.clear();
   }
-  
-  void XDPPluginI::~XDPPluginI()
+
+  XDPPluginI::~XDPPluginI()
   {
-    mDeviceExecTimesMap.clear();
-    mComputeUnitCallsMap.clear();
-    mKernelCountsMap.clear();
   }
 
   // **********
@@ -60,7 +52,7 @@ namespace xdp {
   // Get the arguments and memory resource for a given device/CU/port
   void XDPPluginI::getArgumentsBank(const std::string& deviceName, const std::string& cuName,
    	                                const std::string& portName, std::string& argNames,
-   				                    std::string& memoryName)
+   				                          std::string& memoryName)
   {
     argNames = "All";
     memoryName = "DDR";
@@ -69,13 +61,6 @@ namespace xdp {
   void XDPPluginI::getGuidanceMetadata(RTProfile *profile)
   {
     // do nothing
-  }
-
-  // Write out param/value map
-  // NOTE: don't clear after this since it can be called with multiple writers
-  void XDPPluginI::writeGuidanceMetadataSummary(ProfileWriterI* writer, RTProfile *profile)
-  {
-    writer->writeGuidanceMetadataSummary(profile, mDeviceExecTimesMap, mComputeUnitCallsMap, mKernelCountsMap);
   }
 
   // Get name string of guidance

@@ -35,7 +35,7 @@ namespace xdp {
 
     public:
       XoclPlugin();
-	  ~XoclPlugin() {};
+	  ~XoclPlugin();
 
     // **********
     // Trace time
@@ -76,6 +76,10 @@ namespace xdp {
       double getReadMaxBandwidthMBps() override;
       double getWriteMaxBandwidthMBps() override;
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
+      unsigned getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) override;
+      void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
+                            unsigned slotnum, std::string& slotName) override;
+      unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) override;
     };
 
 } // xdp

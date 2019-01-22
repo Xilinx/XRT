@@ -22,7 +22,13 @@
 
 namespace xdp {
 
+  static bool gActive = false;
   static bool gDead = false;
+
+  bool
+  active() {
+    return gActive;
+}
 
   RTSingleton* 
   RTSingleton::Instance() {
@@ -49,33 +55,18 @@ namespace xdp {
       appdebug::register_xocl_appdebug_callbacks();
     }
 
-#ifdef PMD_OCL
-    return;
-#endif
+  #ifdef PMD_OCL
+      return;
+  #endif
+
+  gActive = true;
   };
 
   RTSingleton::~RTSingleton() {
+    gActive = false;
     gDead = true;
     // Destruct in reverse order of construction
     delete DebugMgr;
-  }
-
-  // TODO: Remove these 3 functions once we implement HAL calls in xdp device
-
-  unsigned RTSingleton::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) {
-    unsigned numSlots = xdp::profile::platform::get_profile_num_slots(Platform.get(),
-        deviceName, type);
-    return numSlots;
-  }
-
-  void RTSingleton::getProfileSlotName(xclPerfMonType type, std::string& deviceName,
-                                       unsigned slotnum, std::string& slotName) {
-    xdp::profile::platform::get_profile_slot_name(Platform.get(), deviceName,
-        type, slotnum, slotName);
-  }
-
-  unsigned RTSingleton::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) {
-    return xdp::profile::platform::get_profile_slot_properties(Platform.get(), deviceName, type, slotnum);
   }
 
 } // xdp

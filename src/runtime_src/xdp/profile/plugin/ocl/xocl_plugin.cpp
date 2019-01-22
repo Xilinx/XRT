@@ -27,6 +27,10 @@ namespace xdp {
   {
   }
 
+  XoclPlugin::~XoclPlugin()
+  {
+  }
+
   // **********
   // Trace time
   // **********
@@ -307,5 +311,24 @@ namespace xdp {
   double XoclPlugin::getWriteMaxBandwidthMBps() {
     auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
     return profile::platform::get_device_max_write(platform);
+  }
+
+  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    unsigned numSlots = xdp::profile::platform::get_profile_num_slots(platform,
+        deviceName, type);
+    return numSlots;
+  }
+
+  void XoclPlugin::getProfileSlotName(xclPerfMonType type, std::string& deviceName,
+                                       unsigned slotnum, std::string& slotName) {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    xdp::profile::platform::get_profile_slot_name(platform, deviceName,
+        type, slotnum, slotName);
+  }
+
+  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) {
+    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
+    return xdp::profile::platform::get_profile_slot_properties(platform, deviceName, type, slotnum);
   }
 } // xdp

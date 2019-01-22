@@ -24,7 +24,7 @@
 #include <iomanip>
 #include <chrono>
 
-#include "profiler.h"
+#include "ocl_profiler.h"
 #include "xdp/profile/debug.h"
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
@@ -59,7 +59,7 @@ namespace Profiling {
   Profiler::~Profiler()
   {
     pDead = true;
-    setObjectsReleased(mEndDeviceProfilingCalled);
+    Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
       xrt::message::send(xrt::message::severity_level::WARNING,
@@ -78,16 +78,17 @@ namespace Profiling {
   void Profiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto rts = xdp::RTSingleton::Instance();
+    auto platform = rts->getcl_platform_id();
     // Start counters
     if (deviceCountersProfilingOn())
-      xdp::profile::platform::start_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY);
+      xdp::profile::platform::start_device_counters(platform, XCL_PERF_MON_MEMORY);
 
     // Start trace
     if (deviceTraceProfilingOn())
-      xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, numComputeUnits);
+      xdp::profile::platform::start_device_trace(platform, XCL_PERF_MON_MEMORY, numComputeUnits);
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
-      xdp::profile::platform::start_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, numComputeUnits);
+      xdp::profile::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
     mProfileRunning = true;
   }
@@ -101,22 +102,23 @@ namespace Profiling {
    	  return;
 
     auto rts = xdp::RTSingleton::Instance();
+    auto platform = rts->getcl_platform_id();
 
     if (applicationProfilingOn()) {
       // Write end of app event to trace buffer (Zynq only)
-      xdp::profile::platform::write_host_event(rts->getcl_platform_id(),
+      xdp::profile::platform::write_host_event(platform,
           XCL_PERF_MON_END_EVENT, XCL_PERF_MON_PROGRAM_END);
 
       XOCL_DEBUGF("Final calls to read device counters and trace\n");
 
-      xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, false, true);
+      xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_MEMORY, false, true);
 
       // Only called for hw emulation
       // Log accel trace before data trace as that is used for timestamp calculations
       if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
-        xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, true, true);
+        xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_ACCEL, true, true);
         logFinalTrace(XCL_PERF_MON_ACCEL);
-        xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_STR, true, true);
+        xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_STR, true, true);
         logFinalTrace(XCL_PERF_MON_STR);
       }
 
@@ -148,10 +150,11 @@ namespace Profiling {
   void Profiler::getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters)
   {
     auto rts = xdp::RTSingleton::Instance();
-    if (!Instance()->isProfileRunning() || !deviceCountersProfilingOn())
+    if (!isProfileRunning() || !deviceCountersProfilingOn())
       return;
 
-    XOCL_DEBUGF("getDeviceCounters: START (firstRead: %d, forceRead: %d)\n", firstReadAfterProgram, forceReadCounters);
+    XOCL_DEBUGF("getDeviceCounters: START (firstRead: %d, forceRead: %d)\n",
+                 firstReadAfterProgram, forceReadCounters);
 
     xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY,
                                                 firstReadAfterProgram, forceReadCounters);
@@ -163,16 +166,18 @@ namespace Profiling {
   void Profiler::getDeviceTrace(bool forceReadTrace)
   {
     auto rts = xdp::RTSingleton::Instance();
-    if (!Instance()->isProfileRunning() || (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM)))
+    auto platform = rts->getcl_platform_id();
+    if (!isProfileRunning() || 
+        (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) ))
       return;
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
 
     if (deviceTraceProfilingOn())
-      xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY, forceReadTrace);
+      xdp::profile::platform::log_device_trace(platform, XCL_PERF_MON_MEMORY, forceReadTrace);
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
-      xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),XCL_PERF_MON_ACCEL, forceReadTrace);
+      xdp::profile::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
   }
@@ -194,51 +199,43 @@ namespace Profiling {
     if (xrt::config::get_profile() == false)
       return;
 
-    // Turn on application profiling
-    turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
-
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
-
     std::string stall_trace = xrt::config::get_stall_trace();
-    ProfileMgr->setTransferTrace(data_transfer_trace);
-    ProfileMgr->setStallTrace(stall_trace);
+    bool isEmulationOn = (std::getenv("XCL_EMULATION_MODE")) ? true : false;
 
+    // Turn on application profiling
+    turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
     // HW trace is controlled at HAL layer
-    bool isEmulationOn = (std::getenv("XCL_EMULATION_MODE")) ? true : false;
     if (!(isEmulationOn) || (data_transfer_trace.find("off") == std::string::npos)) {
       turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
     }
 
-    std::string profileFile("");
-    std::string profileFile2("");
-    std::string timelineFile("");
-    std::string timelineFile2("");
+    ProfileMgr->setTransferTrace(data_transfer_trace);
+    ProfileMgr->setStallTrace(stall_trace);
 
-    if (ProfileMgr->isApplicationProfileOn()) {
-      ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
-      profileFile = "sdaccel_profile_summary";
-      profileFile2 = "sdx_profile_summary";
-    }
-
-    if (xrt::config::get_timeline_trace()) {
-      ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
-      timelineFile = "sdaccel_timeline_trace";
-      timelineFile2 = "sdx_timeline_trace";
-    }
-
-    // CSV writers
+    // Enable profile summary if profile is on
+    std::string profileFile("sdaccel_profile_summary");
+    ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
     xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin);
-    xdp::CSVTraceWriter*   csvTraceWriter   = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin);
-
     ProfileWriters.push_back(csvProfileWriter);
-    TraceWriters.push_back(csvTraceWriter);
-
     ProfileMgr->attach(csvProfileWriter);
+
+    // Enable Trace File if profile is on and trace is enabled
+    std::string timelineFile("");
+    if (xrt::config::get_timeline_trace()) {
+      timelineFile = "sdaccel_timeline_trace";
+      ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
+    }
+    xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin);    
+    TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
 
+    // In Testing
     if (std::getenv("SDX_NEW_PROFILE")) {
+      std::string profileFile2("sdx_profile_summary");
+      std::string timelineFile2("sdx_timeline_trace");
       xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin);
       ProfileWriters.push_back(csvProfileWriter2);
       ProfileMgr->attach(csvProfileWriter2);
@@ -252,8 +249,10 @@ namespace Profiling {
   // Wrap up profiling by writing files
   void Profiler::endProfiling()
   {
-    if (applicationProfilingOn()) {
+    if (applicationTraceOn()) {
       setTraceFooterString();
+    }
+    if (applicationProfilingOn()) {
       // Write out reports
       ProfileMgr->writeProfileSummary();
 
