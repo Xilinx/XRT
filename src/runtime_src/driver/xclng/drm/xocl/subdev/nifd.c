@@ -86,18 +86,28 @@ static long read_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 	return 0;
 }
 
+static long stop_controlled_clock(void) {
+	return 0;
+}
+
+static long start_controlled_clock(void __user *arg) {
+	return 0;
+}
+
 static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_nifd *nifd = filp->private_data;
 	long status = 0;
 
+	void __user *data = (void __user *)(arg);
+
 	switch (cmd)
 	{
-		case 1:
-			status = write_nifd_register(nifd, (void __user *)arg);
+		case NIFD_STOP_CONTROLLED_CLOCK:
+			status = stop_controlled_clock();
 			break;
-		case 2:
-			status = read_nifd_register(nifd, (void __user *)arg);
+		case NIFD_START_CONTROLLED_CLOCK:
+			status = start_controlled_clock(data);
 			break;
 		default:
 			status = -ENOIOCTLCMD;
