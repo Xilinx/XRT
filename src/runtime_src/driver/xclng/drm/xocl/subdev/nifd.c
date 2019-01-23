@@ -88,6 +88,7 @@ struct xocl_nifd *nifd_global;
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset);
 static long read_nifd_register(enum NIFD_register_offset reg_offset);
 static long start_controlled_clock_free_running(void);
+static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
 static void start_controlled_clock_stepping(void);
 
@@ -115,6 +116,11 @@ static long start_controlled_clock_free_running(void) {
 	return 0;
 }
 
+static long stop_controlled_clock(void) {
+    write_nifd_register(0x1, NIFD_STOP_APP);
+	return 0;
+}
+
 static void start_controlled_clock_stepping(void) {
     write_nifd_register(0x0, NIFD_START_APP);
 }
@@ -136,11 +142,6 @@ static long start_controlled_clock(void __user *arg) {
     if (mode == 1 || mode == 2)
         return 0;
     return -EINVAL; // Improper input
-}
-
-static long start_controlled_clock(void __user *arg) {
-	write_nifd_register(0x3, NIFD_START_APP);
-	return 0;
 }
 
 static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
