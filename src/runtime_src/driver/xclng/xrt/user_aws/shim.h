@@ -189,7 +189,7 @@ public:
 
 
         // Bitstreams
-        int xclGetXclBinUuidFromSysfs(uuid_t &xclbinid);
+        int xclGetXclBinUuidFromSysfs(uuid_t &xclbinid) const;
         int xclLoadXclBin(const xclBin *buffer);
         int xclLoadAxlf(const axlf *buffer);
         int xclUpgradeFirmware(const char *fileName);

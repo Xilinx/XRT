@@ -117,7 +117,7 @@ namespace awsbwhal {
     }
 #endif
 
-    int AwsXcl::xclGetXclBinUuidFromSysfs(uuid_t &xclbin_uuid_from_sysfs)
+    int AwsXcl::xclGetXclBinUuidFromSysfs(uuid_t &xclbin_uuid_from_sysfs) const
     {
          const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
          std::string binid_path = devPath + "/xclbinuuid";
@@ -172,7 +172,9 @@ namespace awsbwhal {
           if( int retVal = xclGetXclBinUuidFromSysfs( xclbin_uuid_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_uuid_from_sysfs == 0) || (axlfbuffer->m_header.uuid != xclbin_uuid_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
+          if ( (xclbin_uuid_from_sysfs == 0) ||
+               uuid_compare(axlfbuffer->m_header.uuid, xclbin_uuid_from_sysfs) ||
+               checkAndSkipReload(afi_id, &orig_info) ) {
               // force data retention option
               union fpga_mgmt_load_local_image_options opt;
               fpga_mgmt_init_load_local_image_options(&opt);
