@@ -980,7 +980,7 @@ namespace xocl {
   int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
     auto dev = pcidev::get_dev(mBoardNumber);
     uint16_t user_instance = dev->user->instance;
-    uint16_t mgmt_instance = dev->mgmt->instance;
+    uint16_t mgmt_instance = dev->mgmt ? dev->mgmt->instance : 0;
     uint16_t nifd_instance = 0;
     std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
     std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);

@@ -169,7 +169,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
     }
 
     auto dev = pcidev::get_dev(index);
-    pcidev::dump_dev_list();
+   // pcidev::dump_dev_list();
     if(dev->user) {
         // Should only touch user pf when device is ready.
         const std::string devName = "/dev/dri/renderD" +
