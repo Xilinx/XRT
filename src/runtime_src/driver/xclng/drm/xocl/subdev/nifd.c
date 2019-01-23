@@ -45,7 +45,7 @@ static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 	return 0;
 }
 
-static long nifd_read_properties(struct xocl_nifd *nifd, const void __user *arg)
+static long read_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
 	return 0;
 }
@@ -61,7 +61,7 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			status = write_nifd_register(nifd, (void __user *)arg);
 			break;
 		case 2:
-			status = nifd_read_properties(nifd, (void __user *)arg);
+			status = read_nifd_register(nifd, (void __user *)arg);
 			break;
 		default:
 			status = -ENOIOCTLCMD;
