@@ -82,7 +82,7 @@ static dev_t nifd_dev;
 
 struct xocl_nifd *nifd_global;
 
-static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
+static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
 {
 	unsigned int offset_value = (unsigned int)(reg_offset);
     unsigned long long int full_addr = (unsigned long long int)(nifd_global->base_nifd) + offset_value;
@@ -92,7 +92,7 @@ static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 	return 0;
 }
 
-static long read_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
+static long read_nifd_register(enum NIFD_register_offset reg_offset)
 {
 	unsigned int offset_value = (unsigned int)(reg_offset);
     unsigned long long int full_addr = (unsigned long long int)(nifd_global->base_nifd) + offset_value;
