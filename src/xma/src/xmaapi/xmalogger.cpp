@@ -267,7 +267,6 @@ void* xma_logger_actor(void *data)
     if (!ini_file2.empty()) {
         infile.open(ini_file2, std::ios::ate);
         if (infile.is_open()) {
-            std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
             size_t size = infile.tellg();
             infile.close();
             if (size > 0) {
@@ -283,7 +282,6 @@ void* xma_logger_actor(void *data)
             if (infile.is_open()) {
                 size_t size = infile.tellg();
                 infile.close();
-                std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
                 if (size > 0) {
                     found_sdaccel_ini_file = true;
                     std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
