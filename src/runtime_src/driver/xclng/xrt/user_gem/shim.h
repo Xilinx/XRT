@@ -183,7 +183,7 @@ public:
     bool isGood() const;
     static XOCLShim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
-    int p2pEnable(bool enable);
+    int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -225,16 +225,25 @@ public:
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                    uint8_t *properties, size_t size);
+                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
+                                    size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
     size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
+    size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t xclPerfMonStopTrace(xclPerfMonType type);
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+
+    // Experimental sysfs API
+    int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+    // Experimental debug profile device data API
+    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
+
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
@@ -372,6 +381,12 @@ private:
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
     uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
 
     // QDMA AIO
     aio_context_t mAioContext;

@@ -209,7 +209,7 @@ create_bo(const device& device, size_t sz, int bank=-1)
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = device->handle;
   ubo->bo = bank>=0
-    ? xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM,(1<<bank))
+    ? xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM, bank)
     : xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM,0);
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   ubo->size = sz;
@@ -226,7 +226,7 @@ create_bo(const device& device, size_t sz, int bank=-1)
  */  
 MAYBE_UNUSED
 static device
-init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
+init(const std::string& bit, unsigned int deviceIndex, const std::string& log, int& first_used_mem)
 {
   auto delDO = [](device_object* dobj) {
     xclClose(dobj->handle);
@@ -273,6 +273,8 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
   auto top = reinterpret_cast<const axlf*>(header.data());
   auto ip = xclbin::get_axlf_section(top, IP_LAYOUT);
   auto layout = reinterpret_cast<ip_layout*>(header.data() + ip->m_sectionOffset);
+  auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+  auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
 
   // compute cu base addr
   udo->cu_base_addr = std::numeric_limits<uint64_t>::max();
@@ -283,6 +285,13 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
                   udo->cu_base_addr = std::min(udo->cu_base_addr,ip_data.m_base_address);
                 });
 
+  for (int i=0; i<topology->m_count; ++i) {
+    if (topology->m_mem_data[i].m_used) {
+      first_used_mem = i;
+      break;
+    }
+  }
+  
   return device(udo.release(),delDO);
 }
 

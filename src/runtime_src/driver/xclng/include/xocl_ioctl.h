@@ -148,6 +148,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_READ_AXLF,
 	/* Copy buffer to Destination buffer by using DMA */
 	DRM_XOCL_COPY_BO,
+	/* Hot reset request */
+	DRM_XOCL_HOT_RESET,
 	/* Enable P2P */
 	DRM_XOCL_P2P_ENABLE,
 
@@ -523,6 +525,7 @@ struct drm_xocl_p2p_enable {
 					       DRM_XOCL_EXECBUF, struct drm_xocl_execbuf)
 #define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
 					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
+#define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
 #define DRM_IOCTL_XOCL_P2P_ENABLE     DRM_IOWR(DRM_COMMAND_BASE +	\
 						DRM_XOCL_P2P_ENABLE, struct drm_xocl_p2p_enable)
 

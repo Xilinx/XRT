@@ -249,16 +249,16 @@ action_ndrange(cl_event event, cl_kernel kernel)
 }
 
 xocl::event::action_profile_type
-action_read(cl_mem buffer)
+action_read(cl_mem buffer, size_t user_offset, size_t user_size, bool entire_buffer)
 {
   std::string bank;
   uint64_t address;
   get_address_bank(buffer, address, bank);
   auto size = xocl::xocl(buffer)->get_size();
 
-  return [buffer,size,address,bank](xocl::event* event,cl_int status, const std::string&) {
+  return [buffer,size,address,bank,user_offset,user_size,entire_buffer](xocl::event* event,cl_int status, const std::string&) {
     if (cb_action_read)
-      cb_action_read(event, status, buffer, size, address, bank);
+      cb_action_read(event, status, buffer, size, address, bank, entire_buffer, user_size, user_offset);
   };
 }
 

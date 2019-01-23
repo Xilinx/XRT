@@ -177,7 +177,7 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 			}
 			off -= len;
 		}
-		
+
 		pr_info("bad offset %u.\n", req->offset);
 		sgt_dump(sgt);
 		return -EINVAL;
@@ -340,7 +340,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 	struct qdma_descq *descq =
 		qdma_device_get_descq_by_id(xdev, qhndl, NULL, 0, 1);
 	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
-	
+
 	pr_info("%s, %s, cancel req 0x%p.\n",
 		xdev->conf.name, descq->conf.name, req);
 

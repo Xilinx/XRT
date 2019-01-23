@@ -40,7 +40,7 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
     std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     std::string errmsg;
     std::vector<char> buf;
-    pcidev::get_dev(m_idx)->user->sysfs_get("", "debug_ip_layout", errmsg, buf);
+    pcidev::get_dev(m_idx)->user->sysfs_get("icap", "debug_ip_layout", errmsg, buf);
 
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
@@ -284,7 +284,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
     int available_ip [debug_ip_max_type] = {0};
     std::string errmsg;
     std::vector<char> buf;
-    pcidev::get_dev(m_idx)->user->sysfs_get("", "debug_ip_layout", errmsg, buf);
+    pcidev::get_dev(m_idx)->user->sysfs_get("icap", "debug_ip_layout", errmsg, buf);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;

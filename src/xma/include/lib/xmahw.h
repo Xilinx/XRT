@@ -22,6 +22,8 @@
 #include "lib/xmacfg.h"
 #include "lib/xmalimits.h"
 
+#define MAX_EXECBO_POOL_SIZE      16
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,13 +37,6 @@ extern "C" {
  * @{
  */
 
-typedef struct XmaHwSession
-{
-    void    *dev_handle;
-    uint64_t base_address;
-    uint32_t ddr_bank;
-} XmaHwSession;
-
 typedef void   *XmaHwHandle;
 
 typedef struct XmaHwKernel
@@ -51,7 +46,25 @@ typedef struct XmaHwKernel
     int32_t     instance;
     uint64_t    base_address;
     uint32_t    ddr_bank;
+    //For execbo:
+    void*       kernel_cmd_queue;
+    void*       kernel_cmd_completion_queue;
+    uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
+    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];
+    bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
+    uint32_t     reserved[16];
 } XmaHwKernel;
+
+typedef struct XmaHwSession
+{
+    void    *dev_handle;
+    uint64_t base_address;
+    uint32_t ddr_bank;
+    //For execbo:
+    uint32_t         dev_index;
+    XmaHwKernel      kernel_info;
+    uint32_t         reserved[16];
+} XmaHwSession;
 
 typedef struct XmaHwDevice
 {

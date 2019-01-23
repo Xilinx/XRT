@@ -1242,6 +1242,8 @@ bool XSPI_Flasher::prepareXSpi()
     if(TEST_MODE)
         return true;
 
+    //Resetting selected_sector
+    selected_sector = -1;
 
     XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
     XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();

@@ -67,38 +67,20 @@ struct class *xrt_class = NULL;
  */
 static int char_open(struct inode *inode, struct file *file)
 {
-	struct xclmgmt_char *lro_char;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_proc_ctx ctx;
-	int	ret;
 
 	/* pointer to containing data structure of the character device inode */
-	lro_char = container_of(inode->i_cdev, struct xclmgmt_char, cdev);
+	lro = container_of(inode->i_cdev, struct xclmgmt_dev,
+			user_char_dev.cdev);
 
 	/* create a reference to our char device in the opened file */
-	file->private_data = lro_char;
-	lro = lro_char->lro;
+	file->private_data = lro;
 	BUG_ON(!lro);
-
-	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mutex_unlock(&lro->busy_mutex);
-		mgmt_err(lro, "resetting firewall");
-		return -EAGAIN;
-	}
-	mutex_unlock(&lro->busy_mutex);
-
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	ctx.signaled = false;
-	ret = xocl_ctx_add(&lro->ctx_table, &ctx, sizeof (ctx));
-	if (ret && ret != -EEXIST) {
-		mgmt_err(lro, "add proc context failed, ret = %d", ret);
-		return ret;
-	}
 
 	mgmt_info(lro, "opened file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
+
+	xocl_drv_get(lro);
 
 	return 0;
 }
@@ -109,23 +91,18 @@ static int char_open(struct inode *inode, struct file *file)
 static int char_close(struct inode *inode, struct file *file)
 {
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
-	struct xclmgmt_proc_ctx ctx;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-
-	/* fetch device specific data stored earlier during open */
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
 
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	(void) xocl_ctx_remove(&lro->ctx_table, &ctx);
+	if (xocl_drv_released(lro))
+		goto end;
 
 	mgmt_info(lro, "Closing file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
 
+end:
+	xocl_drv_put(lro);
 	return 0;
 }
 
@@ -283,7 +260,6 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int rc;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
 	unsigned long off;
 	unsigned long phys;
 	unsigned long vsize;
@@ -292,9 +268,7 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EACCES;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
@@ -353,26 +327,20 @@ static struct file_operations ctrl_fops = {
  * is coupled to the SG DMA file operations which operate on the data bus. If
  * no engines are specified, the interface is coupled with the control bus.
  */
-static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
+static int create_char(struct xclmgmt_dev *lro)
 {
 	struct xclmgmt_char *lro_char;
 	int rc;
 
-	/* allocate book keeping data structure */
-	lro_char = kzalloc(sizeof(struct xclmgmt_char), GFP_KERNEL);
-	if (!lro_char) {
-		mgmt_err(lro, "Not enough memory");
-		return NULL;
-	}
+	lro_char = &lro->user_char_dev;
 
-	/* dynamically pick a number into cdevno */
-	lro_char->lro = lro;
 	/* couple the control device file operations to the character device */
 	cdev_init(&lro_char->cdev, &ctrl_fops);
 	lro_char->cdev.owner = THIS_MODULE;
 	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
 	rc = cdev_add(&lro_char->cdev, lro_char->cdev.dev, 1);
 	if (rc < 0) {
+		memset(lro_char, 0, sizeof(*lro_char));
 		printk(KERN_INFO "cdev_add() = %d\n", rc);
 		goto fail_add;
 	}
@@ -387,26 +355,22 @@ static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
 		goto fail_device;
 	}
 
-	return lro_char;
+	return 0;
 
 fail_device:
 	cdev_del(&lro_char->cdev);
 fail_add:
-	kfree(lro_char);
-
-	return NULL;
+	return rc;
 }
 
 static int destroy_sg_char(struct xclmgmt_char *lro_char)
 {
 	BUG_ON(!lro_char);
-	BUG_ON(!lro_char->lro);
 	BUG_ON(!xrt_class);
-	BUG_ON(!lro_char->sys_device);
+
 	if (lro_char->sys_device)
 		device_destroy(xrt_class, lro_char->cdev.dev);
 	cdev_del(&lro_char->cdev);
-	kfree(lro_char);
 
 	return 0;
 }
@@ -440,98 +404,56 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
-        if(temp < LOW_TEMP || temp > HI_TEMP) {
-                mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
-                        LOW_TEMP, HI_TEMP, temp);
-        }
+	if(temp < LOW_TEMP || temp > HI_TEMP) {
+		mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
+			LOW_TEMP, HI_TEMP, temp);
+	}
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 {
-        if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
-                mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
-                        LOW_MILLVOLT, HI_MILLVOLT, volt);
-        }
+	if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
+		mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
+			LOW_MILLVOLT, HI_MILLVOLT, volt);
+	}
 }
 
 static void check_sysmon(struct xclmgmt_dev *lro)
 {
-        u32             val;
+	u32 val;
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
-        check_temp_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	check_temp_within_range(lro, val);
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
-        check_volt_within_range(lro, val);
-}
-
-static int kill_process(struct xocl_context_hash *ctx_hash, void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        int     ret = 0;
-
-        if (!ctx->signaled) {
-                ret = kill_pid(ctx->pid, SIGBUS, 1);
-                if (ret != 0)
-                        mgmt_err(ctx->lro, "Killing pid: %d failed. Err: %d",
-                                pid_nr(ctx->pid), ret);
-                ctx->signaled = true;
-        }
-
-        return ret;
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
+	check_volt_within_range(lro, val);
 }
 
 static int health_check_cb(void *data)
 {
-        struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-        int     ret = 0;
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
+	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	bool tripped;
 
-        if (!health_check)
-                return 0;
-        mutex_lock(&lro->busy_mutex);
-        if (!xocl_af_check(lro, NULL)) {
-                check_sysmon(lro);
-        } else {
-                ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
-		/* stop user pf */
-		xocl_reset(lro, true);
-                if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
-			mgmt_info(lro, "Issuing pcie hot reset.");
-                        xclmgmt_reset_pci(lro);
-                }
-		xocl_af_check(lro, NULL);
+	if (!health_check)
+		return 0;
 
-		freezeAXIGate(lro);
-	        msleep(500);
-	        freeAXIGate(lro);
-	        msleep(500);
-		xocl_reset(lro, false);
-        }
-        mutex_unlock(&lro->busy_mutex);
+	mutex_lock(&lro->busy_mutex);
+	tripped = xocl_af_check(lro, NULL);
+	mutex_unlock(&lro->busy_mutex);
 
-        return 0;
-}
+	if (!tripped) {
+		check_sysmon(lro);
+	} else {
+		mgmt_info(lro, "firewall tripped, notify peer");
+		(void) xocl_peer_notify(lro, &mbreq);
+	}
 
-static u32 proc_hash(void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        u32 pid = pid_nr(ctx->pid);
-
-        return (pid % MGMT_PROC_TABLE_HASH_SZ);
-}
-
-static int proc_cmp(void *arg_o, void *arg_n)
-{
-        struct xclmgmt_proc_ctx *ctx_o = arg_o;
-        struct xclmgmt_proc_ctx *ctx_n = arg_n;
-        u32 pid_o = pid_nr(ctx_o->pid);
-        u32 pid_n = pid_nr(ctx_n->pid);
-
-        return (pid_o - pid_n);
+	return 0;
 }
 
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
@@ -649,6 +571,9 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			req->u.req_bit_lock.pid);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
+	case MAILBOX_REQ_HOT_RESET:
+		ret = (int) reset_hot_ioctl(lro);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 	default:
 		break;
 	}
@@ -698,13 +623,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto fail_all_subdev;
-
-	ret = xocl_ctx_init(&pdev->dev, &lro->ctx_table,
-		MGMT_PROC_TABLE_HASH_SZ, proc_hash, proc_cmp);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to create ctx table\n");
-		goto fail_all_subdev;
-	}
 
 	xocl_af_start_health_check(lro, health_check_cb, lro,
 		health_interval * 1000);
@@ -796,10 +714,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_map;
 
 	lro->instance = XOCL_DEV_ID(pdev);
-	lro->user_char_dev = create_char(lro);
-	if (!lro->user_char_dev) {
+	rc = create_char(lro);
+	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
-		rc = -EINVAL;
 		goto err_cdev;
 	}
 	mutex_init(&lro->busy_mutex);
@@ -808,6 +725,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	/* Probe will not fail from now on. */
 	xocl_err(&pdev->dev, "minimum initialization done\n");
+
+	xocl_core_init(lro, NULL);
 
 	/* No further initialization for MFG board. */
 	if (minimum_initialization ||
@@ -851,15 +770,9 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_subdev_destroy_all(lro);
 
-	/* free contexts */
-	xocl_ctx_fini(&pdev->dev, &lro->ctx_table);
-
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
-	if (lro->user_char_dev) {
-		destroy_sg_char(lro->user_char_dev);
-		lro->user_char_dev = 0;
-	}
+	destroy_sg_char(&lro->user_char_dev);
 
 	/* unmap the BARs */
 	unmap_bars(lro);
@@ -868,8 +781,9 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(lro);
 
-	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
+
+	xocl_core_fini(lro);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,

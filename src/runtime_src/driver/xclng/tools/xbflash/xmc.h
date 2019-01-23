@@ -25,8 +25,8 @@
 #include <vector>
 
 // Register offset in mgmt pf BAR 0
-#define XMC_REG_BASE                0x120000
-#define XMC_GPIO_RESET              0x131000
+#define XMC_REG_BASE                        0x120000
+#define XMC_GPIO_RESET                      0x131000
 
 // Register offset in register map of XMC
 #define XMC_REG_OFF_MAGIC                   0x0
@@ -52,7 +52,19 @@
 #define XMC_HOST_MSG_MSP432_FW_LENGTH_ERR   0x04
 #define XMC_HOST_MSG_BRD_INFO_MISSING_ERR   0x05
 
-#define BMC_MODE()    (readReg(XMC_REG_OFF_STATUS) >> 28)
+#define XMC_MODE()      (readReg(XMC_REG_OFF_STATUS) & 0x3)
+#define BMC_MODE()      (readReg(XMC_REG_OFF_STATUS) >> 28)
+
+enum bmc_state {
+        BMC_STATE_UNKNOWN = 0,
+        BMC_STATE_READY,
+        BMC_STATE_BSL_UNSYNC,
+        BMC_STATE_BSL_SYNC
+};
+
+#define XMC_READY       (0x1 << 0)
+#define XMC_STOPPED     (0x1 << 1)
+#define XMC_PAUSED      (0x1 << 2)
 
 enum xmc_packet_op {
     XPO_UNKNOWN = 0,
@@ -109,6 +121,8 @@ private:
     int waitTillIdle();
     unsigned readReg(unsigned RegOffset);
     int writeReg(unsigned RegOffset, unsigned value);
+    bool isXMCReady();
+    bool isBMCReady();
 };
 
 #endif

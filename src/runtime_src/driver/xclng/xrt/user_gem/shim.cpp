@@ -37,6 +37,8 @@
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "driver/xclng/xrt/util/message.h"
+#include <cstdio>
+#include <stdarg.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -168,12 +170,15 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle > 0) {
             drm_version version;
+            const std::unique_ptr<char[]> name(new char[128]);
+            const std::unique_ptr<char[]> desc(new char[512]);
+            const std::unique_ptr<char[]> date(new char[128]);
             std::memset(&version, 0, sizeof(version));
-            version.name = new char[128];
+            version.name = name.get();
             version.name_len = 128;
-            version.desc = new char[512];
+            version.desc = desc.get();
             version.desc_len = 512;
-            version.date = new char[128];
+            version.date = date.get();
             version.date_len = 128;
 
             int result = ioctl(mUserHandle, DRM_IOCTL_VERSION, &version);
@@ -331,8 +336,33 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
  */
 int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
 {
-    //This is TODO
-    xrt_core::message::send((xrt_core::message::severity_level)level, format);
+    va_list args1;
+    va_start(args1, format);
+    int len = std::vsnprintf(nullptr, 0, format, args1);
+    va_end(args1);
+    
+    if (len < 0) {
+        //illegal arguments
+        std::string err_str = "ERROR: Illegal arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    va_start(args1, format);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+    va_end(args1);
+
+    if (len < 0) {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
 
     return 0;
 }
@@ -687,28 +717,56 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
-    // Call a new IOCTL to just reset the OCL region
-    if (kind == XCL_RESET_FULL) {
-        ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
-        return ret ? -errno : ret;
-    }
-    else if (kind == XCL_RESET_KERNEL) {
+
+    if (kind == XCL_RESET_FULL)
+        ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
+    else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-        return ret ? -errno : ret;
-    }
-    return -EINVAL;
+    else if (kind == XCL_USER_RESET)
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
+    else
+        return -EINVAL;
+
+    return ret ? errno : 0;
 }
 
-int xocl::XOCLShim::p2pEnable(bool enable)
+int xocl::XOCLShim::p2pEnable(bool enable, bool force)
 {
     drm_xocl_p2p_enable obj;
-    int ret;
 
     std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
     obj.enable = enable ? 1 : 0;
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
+    ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
+    if (errno == ENOSPC)
+	    return errno;
+    else if (errno == EALREADY && !force)
+	    return 0;
 
-    return ret ? errno : 0;
+    if (force) {
+        /* remove root bus and rescan */
+        const std::string input = "1\n";
+
+        std::string err;
+        pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "root_dev/remove", err, input);
+
+    
+        // initiate rescan "echo 1 > /sys/bus/pci/rescan"
+        const std::string rescan_path = "/sys/bus/pci/rescan";
+        std::ofstream rescanFile(rescan_path);
+        if(!rescanFile.is_open()) {
+            perror(rescan_path.c_str());
+            return errno;
+        }
+        rescanFile << input;
+    }
+
+    int p2p_enable = -1;
+    std::string err;
+    pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "p2p_enable", err, p2p_enable);
+    if (p2p_enable == 2)
+	    return EBUSY;
+
+    return 0;
 }
 
 /*
@@ -924,7 +982,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 
     std::string err;
     std::vector<char> buf;
-    pcidev::get_dev(mBoardNumber)->user->sysfs_get("", entry, err, buf);
+    pcidev::get_dev(mBoardNumber)->user->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
         std::cout << err << std::endl;
         return -EINVAL;
@@ -1730,10 +1788,10 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
     return drv ? drv->resetDevice(kind) : -ENODEV;
 }
 
-int xclP2pEnable(xclDeviceHandle handle, bool enable)
+int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->p2pEnable(enable) : -ENODEV;
+    return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
 /*
@@ -1914,6 +1972,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+}
+
+const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+    return xclbin::get_axlf_section(top, kind);
 }
 
 // QDMA streaming APIs

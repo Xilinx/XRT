@@ -2,7 +2,7 @@
 Xilinx Runtime
 ==============
 
-.. image:: docs/_images/XRT-Layers.svg
+.. image:: src/runtime_src/doc/toc/XRT-Layers.svg
    :align: center
    
 Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel

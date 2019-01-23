@@ -200,6 +200,17 @@ unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
     return info.handle;
 }
 
+unsigned int ZYNQShim::xclGetHostBO(uint64_t paddr, size_t size) {
+  drm_zocl_host_bo info = { paddr, size, 0xffffffff };
+  //std::cout  << "xclGetHostBO paddr " << std::hex << paddr << std::dec << std::endl;
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
+  if (mVerbosity == XCL_INFO) {
+    std::cout  << "xclGetHostBO result = " << result << std::endl;
+    std::cout << "Handle " << info.handle << std::endl;
+  }
+  return info.handle;
+}
+
 void ZYNQShim::xclFreeBO(unsigned int boHandle)
 {
   drm_gem_close closeInfo = {boHandle, 0};
@@ -500,6 +511,15 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
     return -EINVAL;
   return drv->xclAllocUserPtrBO(userptr, size, flags);
   //return 0xffffffff;
+}
+
+unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
+{
+  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetHostBO(paddr, size);
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)

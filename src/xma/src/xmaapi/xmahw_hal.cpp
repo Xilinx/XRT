@@ -30,26 +30,36 @@
 #include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
 
+#include <dlfcn.h>
+#include <iostream>
+#include "ert.h"
+using namespace std;
+const uint64_t mNullBO = 0xffffffff;
+
 #define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
 
 typedef struct XmaHALDevice
 {
     xclDeviceHandle    handle;
     xclDeviceInfo2     info;
+    //For execbo:
+    uint32_t           dev_index;
+    uint8_t            reserved[16];
 } XmaHALDevice;
 
 /* Private helper functions */
-static int get_device_list(XmaHALDevice   *xlnx_devices,
-                           uint32_t       *device_count);
+//static int get_device_list(XmaHALDevice   *xlnx_devices,
+//                           uint32_t       *device_count);
 
 static void set_hw_cfg(uint32_t        device_count,
                        XmaHALDevice   *xlnx_devices,
                        XmaHwCfg       *hwcfg);
 
-static int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *xclbin_mem);
+//static int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *xclbin_mem);
 
 static int get_max_dev_id(XmaSystemCfg *systemcfg);
 
+/*
 int get_device_list(XmaHALDevice   *xlnx_devices,
                     uint32_t       *device_count)
 {
@@ -73,6 +83,7 @@ int get_device_list(XmaHALDevice   *xlnx_devices,
 
     return rc;
 }
+*/
 
 void set_hw_cfg(uint32_t        device_count,
                 XmaHALDevice   *xlnx_devices,
@@ -88,6 +99,7 @@ void set_hw_cfg(uint32_t        device_count,
         strcpy(hwcfg->devices[i].dsa, xlnx_devices[i].info.mName);
         hwhal = (XmaHwHAL*)malloc(sizeof(XmaHwHAL));
         memset(hwhal, 0, sizeof(XmaHwHAL));
+        hwhal->dev_index = xlnx_devices[i].dev_index;//For execbo
         hwhal->dev_handle = xlnx_devices[i].handle;
         hwcfg->devices[i].handle = hwhal;
     }
@@ -132,9 +144,33 @@ int hal_probe(XmaHwCfg *hwcfg)
 
     xma_logmsg("Using HAL layer\n");
 
+    //Changes for execbo
     /* There can be up to 16 Xilinx devices in a platform */
-    if (get_device_list(xlnx_devices, &device_count) != 0)
+    //if (get_device_list(xlnx_devices, &device_count) != 0)
+        //return XMA_ERROR;
+
+    int32_t      rc = 0;
+
+    device_count = xclProbe();
+	if (device_count == 0) {
+	    cout << "ERROR: No Xilinx device found" << endl;
+        xma_logmsg("ERROR: No Xilinx device found\n");
         return XMA_ERROR;
+	}
+    for (uint32_t i = 0; i < device_count; i++)
+    {
+        xlnx_devices[i].handle = xclOpen(i, NULL, XCL_QUIET);
+        xlnx_devices[i].dev_index = i;
+        xma_logmsg("get_device_list xclOpen handle = %p\n",
+            xlnx_devices[i].handle);
+        rc = xclGetDeviceInfo2(xlnx_devices[i].handle, &xlnx_devices[i].info);
+        if (rc != 0)
+        {
+            xma_logmsg("xclGetDeviceInfo2 failed for device id: %d, rc=%d\n",
+                        i, rc);
+            return XMA_ERROR;
+        }
+    }
 
     /* Populate the XmaHwCfg */
     set_hw_cfg(device_count, xlnx_devices, hwcfg);
@@ -239,6 +275,105 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                            systemcfg->imagecfg[i].device_id_map[d]);
                 return false;
             }
+      //For execbo:" Configure KDS
+      int execBO_size = 4096;
+      uint32_t execBO_flags = (1<<31);
+      uint32_t bo_handle = xclAllocBO(hal->dev_handle, execBO_size, XCL_BO_SHARED_VIRTUAL, execBO_flags);
+      if (!bo_handle || bo_handle == mNullBO) {
+        cout << "ERROR: Unable to create bo for ERT/KDS configure" << endl;
+        xma_logmsg("ERROR: Unable to create bo for ERT/KDS configure\n");
+        return false;
+      }
+      char* bo_data = (char*)xclMapBO(hal->dev_handle, bo_handle, true);
+      //memset to zero
+      memset((void*)bo_data, 0x0, execBO_size);
+      ert_configure_cmd* configure_cmd = (ert_configure_cmd*) bo_data;
+      configure_cmd->state = ERT_CMD_STATE_NEW;
+      configure_cmd->count = 5 + info.num_ips;
+      configure_cmd->opcode = ERT_CONFIGURE;
+      configure_cmd->slot_size = execBO_size;
+      configure_cmd->num_cus = info.num_ips;
+      configure_cmd->cu_shift = 16;
+      configure_cmd->ert = true; //Use hardware ERT
+
+      configure_cmd->cu_base_addr = info.ip_layout[0].base_addr;
+      for (uint32_t i_configure = 0; i_configure < info.num_ips; i_configure++) {
+        if (configure_cmd->cu_base_addr > info.ip_layout[i_configure].base_addr) {
+          configure_cmd->cu_base_addr = info.ip_layout[i_configure].base_addr;
+        }
+        configure_cmd->data[i_configure] = info.ip_layout[i_configure].base_addr;
+      }
+
+      if (xclExecBuf(hal->dev_handle, bo_handle) != 0) {
+        cout << "ERROR: Failed to submit ERT/KDS configure cmd" << endl;
+        xma_logmsg("ERROR: Failed to submit ERT/KDS configure cmd\n");
+        return false;
+      }
+
+      while (configure_cmd->state < 4) {
+        if (xclExecWait(hal->dev_handle, 7000) < 0) {//With zero keep waiting. > 0 go and check status..
+            cout << "ERROR: Failed to wait for ERT?KDS configure done" << endl;
+            xma_logmsg("ERROR: Failed to wait for ERT?KDS configure done\n");
+            return false;
+        }
+        cout << "INFO: Waiting for ERT/KDS configure to finish" << endl;
+      }
+      if (configure_cmd->state != 4) {
+            cout << "ERROR: ERT/KDS configure failed" << endl;
+            xma_logmsg("ERROR: ERT/KDS configure failed\n");
+            return false;
+      }
+      //Setup execbo for use with kernel commands
+      for (int32_t k = 0, t = 0;
+           t < MAX_KERNEL_CONFIGS &&
+           k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++) {
+        for (int32_t x = 0;
+             x < systemcfg->imagecfg[i].kernelcfg[k].instances;
+             x++, t++) {
+
+            //cout << "INFO: Setting up execbo. dev_id: " << dec << dev_id << "; kernel# t: " << dec << t << endl;
+            bool found = false;
+            uint32_t cu_bit_mask = 1;
+            for (uint32_t i_ips = 0; i_ips < info.num_ips; i_ips++) {
+                if (info.ip_layout[i_ips].base_addr == hwcfg->devices[dev_id].kernels[t].base_address) {
+                    found = true;
+                    break;
+                }
+                cu_bit_mask = cu_bit_mask << 1;
+            }
+            if (!found) {
+                cout << "ERROR: CU not found. Couldn't create cu_cmd execbo" << endl;
+                xma_logmsg("ERROR: CU not found. Couldn't create cu_cmd execbo\n");
+                return false;
+            }
+            if (cu_bit_mask == 0) {
+                cout << "ERROR: XMA library doesn't support more than 32 CUs" << endl;
+                xma_logmsg("ERROR: XMA library doesn't support more than 32 CUs\n");
+                return false;
+            }
+            for (int i_execbo = 0; i_execbo < MAX_EXECBO_POOL_SIZE; i_execbo++) {
+              //cout << "INFO: Setting up execbo. dev_id: " << dec << dev_id << "; kernel# t: " << dec << t << "; execbo idx: " << dec << i_execbo << endl;
+              bo_handle = xclAllocBO(hal->dev_handle, execBO_size, XCL_BO_SHARED_VIRTUAL, execBO_flags);
+              if (!bo_handle || bo_handle == mNullBO) {
+                cout << "ERROR: Unable to create bo for cu start" << endl;
+                xma_logmsg("ERROR: Unable to create bo for cu start\n");
+                return false;
+              }
+              bo_data = (char*)xclMapBO(hal->dev_handle, bo_handle, true);
+              memset((void*)bo_data, 0x0, execBO_size);
+              hwcfg->devices[dev_id].kernels[t].kernel_execbo_handle[i_execbo] = bo_handle;
+              hwcfg->devices[dev_id].kernels[t].kernel_execbo_data[i_execbo] = bo_data;
+              hwcfg->devices[dev_id].kernels[t].kernel_execbo_inuse[i_execbo] = false;
+              ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
+              cu_start_cmd->state = ERT_CMD_STATE_NEW;
+              cu_start_cmd->opcode = ERT_START_CU;
+              cu_start_cmd->cu_mask = cu_bit_mask;
+            }
+        }
+      }
+
+
+
         }
     }
     return true;

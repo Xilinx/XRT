@@ -896,7 +896,7 @@ kern_alloc_loop:
                 str_cmp2 = strcmp(kernel->function, XMA_CFG_FUNC_NM_DEC);
                 type_cmp = decoder->hwdecoder_type ==
                            kern_props->kernel_spec.dec_type ? true : false;
-                plugin_alloc_chan = NULL;
+                plugin_alloc_chan = decoder->alloc_chan;
                 kernel_data_size = 0;
             } else if (type == xma_res_filter) {
                 filter = &g_xma_singleton->filtercfg[kernel->plugin_handle];

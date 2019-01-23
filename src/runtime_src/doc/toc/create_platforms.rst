@@ -69,3 +69,17 @@ To Create Software Platform, under platform/zcu102/
 The created zcu102 platform will be posted at
 
 - ``platform/zcu102/output/zcu102/export/zcu102``
+
+Make use of Platform
+~~~~~~~~~~~~~~~~~~~~
+
+Here is a simple example of how to make use of the customized platform we built.
+Suppose we have a hello world OpenCL application hello.cl, we can use xocc tool
+to build boot images (including BOOT.BIN) on zcu102
+
+::
+
+    xocc -c -t hw --platform <PATH_TO_PLATFORM>/zcu102.xpfm hello.cl -o hello.xo
+    xocc -l -t hw --platform <PATH_TO_PLATFORM>/zcu102.xpfm hello.xo -o hello.xclbin --sys_config ocl
+
+The boot images will be posted at sd_card directory

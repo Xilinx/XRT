@@ -86,7 +86,7 @@ struct tree
   {
     try {
       read_ini(path,m_tree);
-      
+
       // set env vars to expose sdaccel.ini to hal layer
       setenv();
     }
@@ -119,6 +119,12 @@ static tree s_tree;
 namespace xrt { namespace config {
 
 namespace detail {
+
+const char*
+get_env_value(const char* env)
+{
+  return std::getenv(env);
+}
 
 bool
 get_bool_value(const char* key, bool default_value)
@@ -163,5 +169,3 @@ debug(std::ostream& ostr, const std::string& ini)
 } // detail
 
 }}
-
-

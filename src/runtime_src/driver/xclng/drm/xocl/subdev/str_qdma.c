@@ -35,7 +35,7 @@
 #define	STREAM_SLRID_MASK	0xff
 #define	STREAM_TDEST_MASK	0xffff
 
-#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		5
 #define	STREAM_DEFAULT_C2H_RINGSZ_IDX		5
 #define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
 
@@ -350,6 +350,8 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 
 	queue_req_free(queue, io_req);
 
+	queue_req_free(queue, io_req);
+
 	return 0;
 }
 
@@ -643,7 +645,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
-		
+
 	if (!is_sync_kiocb(kiocb)) {
 		return queue_aio_write(kiocb, io->iov, nr, io->iov_offset);
 	}
@@ -666,7 +668,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 		xocl_err(&sdev->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
-		
+
 	if (!is_sync_kiocb(kiocb)) {
 		return queue_aio_read(kiocb, io->iov, nr, io->iov_offset);
 	}
@@ -850,7 +852,7 @@ static long stream_ioctl_create_queue(struct str_device *sdev,
 	queue->req_cache = vzalloc((qconf->rngsz << 1) *
 					sizeof(struct stream_async_req));
 	if (!queue->req_cache) {
-		xocl_err(&sdev->pdev->dev, "req. cache OOM %u", qconf->rngsz); 
+		xocl_err(&sdev->pdev->dev, "req. cache OOM %u", qconf->rngsz);
 		goto failed;
 	} else {
 		int i;

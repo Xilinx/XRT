@@ -1563,7 +1563,7 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long qhndl, char *buf,
 		if (cb->cancel) {
 			cb->canceled = 1;
 			cb->status = -ECANCELED;
-		} else 
+		} else
 			cb->status = -ENXIO;
 
 		if (req->fp_done) {
@@ -1579,7 +1579,7 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long qhndl, char *buf,
 		if (cb->cancel) {
 			cb->canceled = 1;
 			cb->status = -ECANCELED;
-		} else 
+		} else
 			cb->status = -ENXIO;
 
 		if (req->fp_done) {
@@ -2135,4 +2135,3 @@ module_init(libqdma_mod_init);
 module_exit(libqdma_mod_exit);
 
 #endif /* ifdef __LIBQDMA_MOD__ */
-

@@ -243,7 +243,7 @@ static int qdma_flq_refill(struct qdma_descq *descq, int idx, int count,
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update_pidx, bool refill)
 {
-	struct xlnx_dma_dev *xdev = descq->xdev; 
+	struct xlnx_dma_dev *xdev = descq->xdev;
 	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	unsigned int pidx = flq->pidx_pend;
 	unsigned int fsgcnt = ring_idx_delta(descq->pidx, pidx, flq->size);
@@ -318,7 +318,7 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 			qdma_sgt_req_done(descq, cb, 0);
 		else if (req->eot && req->eot_rcved)
 			qdma_sgt_req_done(descq, cb, 0);
-		else			
+		else
 			break;
 	}
 
