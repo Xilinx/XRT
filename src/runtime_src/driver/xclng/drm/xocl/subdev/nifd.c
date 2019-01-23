@@ -92,9 +92,9 @@ static long start_controlled_clock_free_running(void);
 static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
 static void start_controlled_clock_stepping(void);
-static int nifd_exist_in_feature_rom();
+static int nifd_exist_in_feature_rom(void);
 
-static int nifd_exist_in_feature_rom() {
+static int nifd_exist_in_feature_rom(void) {
 	return 0;
 }
 
