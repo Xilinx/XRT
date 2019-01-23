@@ -1,5 +1,5 @@
 /*
- * A GEM style device manager for PCIe based OpenCL accelerators.
+ * A GEM style device manager for PCIe nifd_based OpenCL accelerators.
  *
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
@@ -30,6 +30,9 @@
 #include "../xocl_drv.h"
 
 #define NIFD_DEV_NAME "nifd" SUBDEV_SUFFIX
+#define SUPPORTED_NIFD_IP_VERSION 1
+#define SUPPORTED_DRIVER_VERSION 1
+#define	MINOR_NAME_MASK	0xffffffff
 
 enum NIFD_register_offset {
 	NIFD_START_APP = 0x0,
@@ -68,7 +71,7 @@ enum NIFD_COMMAND_SEQUENCES
 };
 
 struct xocl_nifd {
-	void *__iomem base;
+	void *__iomem nifd_base;
 	unsigned int instance;
 	struct cdev sys_cdev;
 	struct device *sys_device;
@@ -155,8 +158,8 @@ static int nifd_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	nifd->base = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!nifd->base) {
+	nifd->nifd_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!nifd->nifd_base) {
 		err = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
@@ -222,8 +225,8 @@ static int nifd_remove(struct platform_device *pdev)
 	}
 	device_destroy(xrt_class, nifd->sys_cdev.dev);
 	cdev_del(&nifd->sys_cdev);
-	if (nifd->base)
-		iounmap(nifd->base);
+	if (nifd->nifd_base)
+		iounmap(nifd->nifd_base);
 
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, nifd);
