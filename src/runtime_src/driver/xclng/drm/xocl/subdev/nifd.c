@@ -72,6 +72,7 @@ enum NIFD_COMMAND_SEQUENCES
 
 struct xocl_nifd {
 	void *__iomem nifd_base;
+	void *__iomem icap_base;
 	unsigned int instance;
 	struct cdev sys_cdev;
 	struct device *sys_device;
@@ -164,6 +165,7 @@ static int nifd_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
+	nifd->base_icap = nifd->base_nifd + 0x4000;
 
 	core = xocl_get_xdev(pdev);
 	if (!core) {
