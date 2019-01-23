@@ -87,6 +87,7 @@ struct xocl_nifd *nifd_global;
  */
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset);
 static long read_nifd_register(enum NIFD_register_offset reg_offset);
+static void write_icap_mux_register(unsigned int value);
 static long start_controlled_clock_free_running(void);
 static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
@@ -109,6 +110,10 @@ static long read_nifd_register(enum NIFD_register_offset reg_offset)
     void *ptr = (void *)(full_addr);
 
     return ioread32(ptr);
+}
+
+static void write_icap_mux_register(unsigned int value) {
+    iowrite32(value, nifd_global->base_icap);
 }
 
 static long start_controlled_clock_free_running(void) {
@@ -144,6 +149,18 @@ static long start_controlled_clock(void __user *arg) {
     return -EINVAL; // Improper input
 }
 
+static long switch_icap_to_nifd(void)
+{
+    write_icap_mux_register(0x1);
+    return 0;
+}
+
+static long switch_icap_to_nifd(void)
+{
+    write_icap_mux_register(0x1);
+    return 0;
+}
+
 static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_nifd *nifd = filp->private_data;
@@ -158,6 +175,12 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;
 		case NIFD_START_CONTROLLED_CLOCK:
 			status = start_controlled_clock(data);
+			break;
+		case NIFD_SWITCH_ICAP_TO_NIFD:
+			status = switch_icap_to_nifd();
+			break;
+		case NIFD_SWITCH_ICAP_TO_PR:
+			status = switch_icap_to_pr();
 			break;
 		default:
 			status = -ENOIOCTLCMD;
