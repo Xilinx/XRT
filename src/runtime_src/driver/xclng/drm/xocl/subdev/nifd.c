@@ -89,6 +89,7 @@ static long write_nifd_register(unsigned int value, enum NIFD_register_offset re
 static long read_nifd_register(enum NIFD_register_offset reg_offset);
 static long start_controlled_clock_free_running(void);
 static void restart_controlled_clock(unsigned int previousMode);
+static void start_controlled_clock_stepping(void);
 
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
 {
@@ -112,6 +113,10 @@ static long read_nifd_register(enum NIFD_register_offset reg_offset)
 static long start_controlled_clock_free_running(void) {
 	write_nifd_register(0x1, NIFD_STOP_APP);
 	return 0;
+}
+
+static void start_controlled_clock_stepping(void) {
+    write_nifd_register(0x0, NIFD_START_APP);
 }
 
 static void restart_controlled_clock(unsigned int previousMode) {
