@@ -36,7 +36,8 @@ int32_t xma_initialize(char *cfgfile)
     bool    rc;
 
     if (!cfgfile)
-        cfgfile = XMA_CFG_DEFAULT;
+        if (!(cfgfile = getenv("XMA_CFG_OVERRIDE")))
+            cfgfile = XMA_CFG_DEFAULT;
 
     g_xma_singleton = malloc(sizeof(*g_xma_singleton));
     memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));
