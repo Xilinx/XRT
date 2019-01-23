@@ -82,12 +82,23 @@ static dev_t nifd_dev;
 
 static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
+	unsigned int offset_value = (unsigned int)(reg_offset);
+    unsigned long long int full_addr =
+        (unsigned long long int)(nifd_global->base_nifd) + offset_value;
+    void *ptr = (void *)(full_addr);
+
+    iowrite32(value, ptr);
 	return 0;
 }
 
 static long read_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
-	return 0;
+	unsigned int offset_value = (unsigned int)(reg_offset);
+    unsigned long long int full_addr =
+        (unsigned long long int)(nifd_global->base_nifd) + offset_value;
+    void *ptr = (void *)(full_addr);
+
+    return ioread32(ptr);
 }
 
 static long stop_controlled_clock(void) {
