@@ -80,11 +80,12 @@ struct xocl_nifd {
 
 static dev_t nifd_dev;
 
+struct xocl_nifd *nifd_global;
+
 static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
 	unsigned int offset_value = (unsigned int)(reg_offset);
-    unsigned long long int full_addr =
-        (unsigned long long int)(nifd_global->base_nifd) + offset_value;
+    unsigned long long int full_addr = (unsigned long long int)(nifd_global->base_nifd) + offset_value;
     void *ptr = (void *)(full_addr);
 
     iowrite32(value, ptr);
@@ -94,8 +95,7 @@ static long write_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 static long read_nifd_register(struct xocl_nifd *nifd, const void __user *arg)
 {
 	unsigned int offset_value = (unsigned int)(reg_offset);
-    unsigned long long int full_addr =
-        (unsigned long long int)(nifd_global->base_nifd) + offset_value;
+    unsigned long long int full_addr = (unsigned long long int)(nifd_global->base_nifd) + offset_value;
     void *ptr = (void *)(full_addr);
 
     return ioread32(ptr);
@@ -176,6 +176,7 @@ static int nifd_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
+	nifd_global = nifd;
 	nifd->icap_base = nifd->nifd_base + 0x4000;
 
 	core = xocl_get_xdev(pdev);
