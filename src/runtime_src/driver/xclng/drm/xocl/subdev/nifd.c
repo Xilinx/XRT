@@ -92,6 +92,11 @@ static long start_controlled_clock_free_running(void);
 static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
 static void start_controlled_clock_stepping(void);
+static bool nifd_exist_in_feature_rom();
+
+static bool nifd_exist_in_feature_rom() {
+	return false;
+}
 
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
 {
@@ -191,6 +196,9 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static int char_open(struct inode *inode, struct file *file)
 {
+	if(nifd_exist_in_feature_rom()) {
+		return 0;
+	}
 	return -1;
 }
 
