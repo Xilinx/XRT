@@ -113,7 +113,7 @@ static long read_nifd_register(enum NIFD_register_offset reg_offset)
 }
 
 static void write_icap_mux_register(unsigned int value) {
-    iowrite32(value, nifd_global->base_icap);
+    iowrite32(value, nifd_global->icap_base);
 }
 
 static long start_controlled_clock_free_running(void) {
