@@ -102,10 +102,12 @@ static long read_nifd_register(enum NIFD_register_offset reg_offset)
 }
 
 static long stop_controlled_clock(void) {
+	write_nifd_register(0x1, NIFD_STOP_APP);
 	return 0;
 }
 
 static long start_controlled_clock(void __user *arg) {
+	write_nifd_register(0x3, NIFD_START_APP);
 	return 0;
 }
 
