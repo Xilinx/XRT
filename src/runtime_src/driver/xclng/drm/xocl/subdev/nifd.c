@@ -48,7 +48,7 @@ enum NIFD_register_offset {
 	NIFD_READBACK_DATA_WORD_CNT = 0x34,
 	NIFD_CONFIG_DATA_M2 = 0x38,
 	NIFD_CLEAR_CFG_M2 = 0x3c
-}
+};
 
 enum NIFD_COMMAND_SEQUENCES
 {
