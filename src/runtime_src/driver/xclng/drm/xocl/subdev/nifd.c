@@ -101,9 +101,22 @@ static long read_nifd_register(enum NIFD_register_offset reg_offset)
     return ioread32(ptr);
 }
 
-static long stop_controlled_clock(void) {
+static long start_controlled_clock_free_running(void) {
 	write_nifd_register(0x1, NIFD_STOP_APP);
 	return 0;
+}
+
+static long start_controlled_clock(void __user *arg)
+{
+    unsigned int mode = 0;
+    if (copy_from_user(&mode, arg, sizeof(unsigned int)))
+    {
+        return -EFAULT;
+    }
+    restart_controlled_clock(mode);
+    if (mode == 1 || mode == 2)
+        return 0;
+    return -EINVAL; // Improper input
 }
 
 static long start_controlled_clock(void __user *arg) {
