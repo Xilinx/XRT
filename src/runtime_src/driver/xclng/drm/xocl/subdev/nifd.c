@@ -203,7 +203,6 @@ static int char_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
 /*
  * character device file operations for the NIFD
  */
