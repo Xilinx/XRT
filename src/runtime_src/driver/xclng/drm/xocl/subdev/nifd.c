@@ -155,9 +155,8 @@ static long switch_icap_to_nifd(void)
     return 0;
 }
 
-static long switch_icap_to_nifd(void)
-{
-    write_icap_mux_register(0x1);
+static long switch_icap_to_pr(void) {
+    write_icap_mux_register(0x0);
     return 0;
 }
 
@@ -177,10 +176,10 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			status = start_controlled_clock(data);
 			break;
 		case NIFD_SWITCH_ICAP_TO_NIFD:
-			status = switch_icap_to_nifd();
+			// status = switch_icap_to_nifd();
 			break;
 		case NIFD_SWITCH_ICAP_TO_PR:
-			status = switch_icap_to_pr();
+			// status = switch_icap_to_pr();
 			break;
 		default:
 			status = -ENOIOCTLCMD;
@@ -192,7 +191,7 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static int char_open(struct inode *inode, struct file *file)
 {
-	return 0;
+	return -1;
 }
 
 /*
