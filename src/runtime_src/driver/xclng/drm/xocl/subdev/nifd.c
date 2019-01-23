@@ -82,6 +82,14 @@ static dev_t nifd_dev;
 
 struct xocl_nifd *nifd_global;
 
+/**
+ * helper functions
+ */
+static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset);
+static long read_nifd_register(enum NIFD_register_offset reg_offset);
+static long start_controlled_clock_free_running(void);
+static void restart_controlled_clock(unsigned int previousMode);
+
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
 {
 	unsigned int offset_value = (unsigned int)(reg_offset);
@@ -106,8 +114,14 @@ static long start_controlled_clock_free_running(void) {
 	return 0;
 }
 
-static long start_controlled_clock(void __user *arg)
-{
+static void restart_controlled_clock(unsigned int previousMode) {
+    if (previousMode == 0x1)
+        start_controlled_clock_free_running();
+    else if (previousMode == 0x2)
+        start_controlled_clock_stepping();
+}
+
+static long start_controlled_clock(void __user *arg) {
     unsigned int mode = 0;
     if (copy_from_user(&mode, arg, sizeof(unsigned int)))
     {
