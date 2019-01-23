@@ -165,7 +165,7 @@ static int nifd_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
-	nifd->base_icap = nifd->base_nifd + 0x4000;
+	nifd->icap_base = nifd->nifd_base + 0x4000;
 
 	core = xocl_get_xdev(pdev);
 	if (!core) {
