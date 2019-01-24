@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2019, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -42,6 +42,7 @@
 #include "xclperf.h"
 #include "xcl_app_debug.h"
 #include "xclerr.h"
+#include "xclhal2_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -141,14 +142,6 @@ enum xclMemoryDomains {
     XCL_MEM_SVM =         0x00000003,
     XCL_MEM_CMA =         0x00000004,
     XCL_MEM_DEVICE_REG  = 0x00000005
-};
-
-/* byte-0 lower 4 bits for DDR Flags are one-hot encoded */
-enum xclDDRFlags {
-    XCL_DEVICE_RAM_BANK0 = 0x00000000,
-    XCL_DEVICE_RAM_BANK1 = 0x00000002,
-    XCL_DEVICE_RAM_BANK2 = 0x00000004,
-    XCL_DEVICE_RAM_BANK3 = 0x00000008
 };
 
 /**

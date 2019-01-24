@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -159,9 +159,9 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	if (!zdev->domain) {
 		DRM_INFO("Freeing BO\n");
 		zocl_describe(zocl_obj);
-		if (zocl_obj->flags & DRM_ZOCL_BO_FLAGS_USERPTR)
+		if (zocl_obj->flags & XCL_BO_FLAGS_USERPTR)
 			zocl_free_userptr_bo(obj);
-		else if (zocl_obj->flags & DRM_ZOCL_BO_FLAGS_HOST_BO)
+		else if (zocl_obj->flags & XCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
 		else
 			drm_gem_cma_free_object(obj);
@@ -194,6 +194,62 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	kfree(zocl_obj);
 }
 
+static int
+zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_gem_object *gem_obj;
+	struct drm_zocl_bo *bo;
+	pgprot_t prot;
+	int rc;
+
+	/**
+	 * drm_gem_mmap may modify the vma prot as non-cacheable.
+	 * We need to preserve this field and resume it in case
+	 * the BO is cacheable.
+	 */
+	prot = vma->vm_page_prot;
+
+	rc = drm_gem_mmap(filp, vma);
+	if (rc)
+		return rc;
+
+	gem_obj = vma->vm_private_data;
+	cma_obj = to_drm_gem_cma_obj(gem_obj);
+	bo = to_zocl_bo(gem_obj);
+
+	/**
+	 * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(),
+	 * and set the vm_pgoff (used as a fake buffer offset by DRM)
+	 * to 0 as we want to map the whole buffer.
+	 */
+	vma->vm_flags &= ~VM_PFNMAP;
+	vma->vm_pgoff = 0;
+
+	if (bo->flags & XCL_BO_FLAGS_CACHEABLE) {
+		/**
+		 * Resume the protection field from mmap(). Most likely
+		 * it will be cacheable. If there is a case that mmap()
+		 * protection field explicitly tells us not to map with
+		 * cache enabled, we should comply with it and overwrite
+		 * the cacheable BO property.
+		 */
+		vma->vm_page_prot = prot;
+		rc = remap_pfn_range(vma, vma->vm_start,
+		    cma_obj->paddr >> PAGE_SHIFT,
+		    vma->vm_end - vma->vm_start,
+		    prot);
+
+	} else
+		rc = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
+		    cma_obj->paddr, vma->vm_end - vma->vm_start);
+
+	if (rc)
+		drm_gem_vm_close(vma);
+
+	return rc;
+}
+
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct drm_file *priv = filp->private_data;
@@ -208,7 +264,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 */
 	if (likely(vma->vm_pgoff >= ZOCL_FILE_PAGE_OFFSET)) {
 		if (!zdev->domain)
-			return drm_gem_cma_mmap(filp, vma);
+			return zocl_gem_cma_mmap(filp, vma);
 
 		/* Map user's pages into his VM */
 		rc = drm_gem_mmap(filp, vma);

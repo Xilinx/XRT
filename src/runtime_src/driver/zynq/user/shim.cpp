@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -299,8 +299,15 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
 int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  //no need to sync for MPSOC.
-  return 0;
+  drm_zocl_sync_bo_dir zocl_dir;
+  if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_TO_DEVICE;
+  else if (dir == XCL_BO_SYNC_BO_FROM_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_FROM_DEVICE;
+  else
+      return -EINVAL;
+  drm_zocl_sync_bo syncInfo = { boHandle, zocl_dir, offset, size };
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
 }
 
 #ifndef __HWEM__

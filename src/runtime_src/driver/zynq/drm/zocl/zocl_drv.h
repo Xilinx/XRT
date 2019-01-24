@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -28,6 +28,7 @@
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
 #include "zocl_util.h"
+#include "xclhal2_mem.h"
 
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
@@ -66,13 +67,13 @@ drm_zocl_bo *to_zocl_bo(struct drm_gem_object *bo)
 	static inline bool
 zocl_bo_userptr(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & DRM_ZOCL_BO_FLAGS_USERPTR);
+	return (bo->flags & XCL_BO_FLAGS_USERPTR);
 }
 
 	static inline bool
 zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & DRM_ZOCL_BO_FLAGS_EXECBUF);
+	return (bo->flags & XCL_BO_FLAGS_EXECBUF);
 }
 
 
