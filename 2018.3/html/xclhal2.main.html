@@ -108,6 +108,7 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -244,6 +245,24 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class=
 <p>Reset the device. All running kernels will be killed and buffers in DDR will be
 purged. A device may be reset if a user’s application dies without waiting for
 running kernel(s) to finish.</p>
+<dl class="function">
+<dt id="c.xclP2pEnable">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclP2pEnable</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, bool<em>&nbsp;enable</em>, bool<em>&nbsp;force</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclP2pEnable" title="Permalink to this definition">¶</a></dt>
+<dd><p>enable or disable p2p</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">enable</span></code></dt>
+<dd>false-disable, true-enable</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">force</span></code></dt>
+<dd>true-force to reassign bus IO memory</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
+<p>Enable or Disable P2P feature. Warm reboot might be required.</p>
 <dl class="function">
 <dt id="c.xclGetDeviceInfo2">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclDeviceInfo2 *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDeviceInfo2" title="Permalink to this definition">¶</a></dt>
@@ -434,6 +453,25 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="si
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>This should only be called when there are no other clients. It will cause PCIe bus re-enumeration</p>
+<dl class="function">
+<dt id="c.xclLogMsg">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclLogMsgLevel<em>&nbsp;level</em>, const char *<em>&nbsp;format</em>, ...<span class="sig-paren">)</span><a class="headerlink" href="#c.xclLogMsg" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send message to log file as per settings in ini file.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal"><span class="pre">xclLogMsgLevel</span> <span class="pre">level</span></code></dt>
+<dd>Severity level of the msg</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format</span></code></dt>
+<dd>Format of Msg string to write to log file</dd>
+<dt><code class="docutils literal"><span class="pre">...</span></code></dt>
+<dd>All other arguments as per the format</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
 <p><strong>XRT Buffer Management APIs</strong></p>
 <hr class="docutils" />
 <p>Buffer management APIs are used for managing device memory and migrating buffers

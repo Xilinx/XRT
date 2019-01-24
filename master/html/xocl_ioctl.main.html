@@ -107,6 +107,7 @@
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -685,6 +686,23 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
 <dd>File descriptor created with eventfd system call</dd>
 <dt><code class="docutils literal"><span class="pre">msix</span></code></dt>
 <dd>User interrupt number (0 to 15)</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_xocl_p2p_enable">
+struct <code class="descname">drm_xocl_p2p_enable</code><a class="headerlink" href="#c.drm_xocl_p2p_enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>enable/disable P2P</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_p2p_enable {
+  int enable;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">enable</span></code></dt>
+<dd>0: disable, 1: enable</dd>
 </dl>
 </div>
 

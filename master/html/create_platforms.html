@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
-        <link rel="next" title="PCIe Peer-to-Peer Support" href="p2p.html"/>
+        <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html"/>
         <link rel="prev" title="New DSA Bringup" href="newdsa-bringup.html"/> 
 
   
@@ -114,7 +114,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#make-use-of-platform">Make use of Platform</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -185,24 +184,24 @@
 architecture and application context. We provide a few scripts and
 some basic source files as an example to create a custom MPSoC platform.</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">src/platform/zcu102</span></code></li>
-<li><code class="docutils literal"><span class="pre">src/platform/zcu102_svm</span></code></li>
+<li><code class="docutils literal"><span class="pre">src/platform/zcu102ng</span></code></li>
+<li><code class="docutils literal"><span class="pre">src/platform/zcu102ng_svm</span></code></li>
 </ul>
 <p>Before creating platform, make sure to properly set up environment
 for vivado. It takes same procedures to create platform for
-zcu102 and zcu102_svm. Take zcu102 as an example.</p>
+zcu102ng and zcu102ng_svm. Take zcu102ng as an example.</p>
 <p><em>NOTE</em> The purpose of this page is only for easy to get started.
 If you are interested in details about creating DSA for a platform.
 Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 <div class="section" id="build-hardware-platform">
 <h2>Build Hardware Platform<a class="headerlink" href="#build-hardware-platform" title="Permalink to this headline">¶</a></h2>
-<p>To create Hardware Platform, under platform/zcu102/</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102_dsa.tcl
+<p>To create Hardware Platform, under platform/zcu102ng/</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102ng_dsa.tcl
 </pre></div>
 </div>
 <p>This will generate hardware Device Support Archive
-<code class="docutils literal"><span class="pre">platform/zcu102/zcu102.dsa</span></code> and Hardware Definition File
-<code class="docutils literal"><span class="pre">platform/zcu102/zcu102_vivado/zcu102.hdf</span></code></p>
+<code class="docutils literal"><span class="pre">platform/zcu102ng/zcu102ng.dsa</span></code> and Hardware Definition File
+<code class="docutils literal"><span class="pre">platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf</span></code></p>
 </div>
 <div class="section" id="build-boot-images">
 <span id="id1"></span><h2>Build Boot Images<a class="headerlink" href="#build-boot-images" title="Permalink to this headline">¶</a></h2>
@@ -216,35 +215,35 @@ platform with the Hardware Definition File we created. <a class="reference inter
 <li><code class="docutils literal"><span class="pre">pmufw.elf</span></code></li>
 <li><code class="docutils literal"><span class="pre">u-boot.elf</span></code></li>
 </ul>
-<p>Copy image.ub to <code class="docutils literal"><span class="pre">platform/zcu102/src/a53/ocl/image/</span></code> and copy other elf
-files to <code class="docutils literal"><span class="pre">platform/zcu102/src/boot/</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>cp image.ub platform/zcu102/src/a53/ocl/image/
-mkdir platform/zcu102/src/boot
-cp bl31.elf platform/zcu102/src/boot/
-cp fsbl.elf platform/zcu102/src/boot/
-cp pmufw.elf platform/zcu102/src/boot/
-cp u-boot.elf platform/zcu102/src/boot/
+<p>Copy image.ub to <code class="docutils literal"><span class="pre">platform/zcu102ng/src/a53/xrt/image/</span></code> and copy other elf
+files to <code class="docutils literal"><span class="pre">platform/zcu102ng/src/boot/</span></code></p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>cp image.ub         platform/zcu102ng/src/a53/xrt/image/image.ub
+mkdir platform/zcu102ng/src/boot
+cp bl31.elf         platform/zcu102ng/src/boot/bl31.elf
+cp zynqmp_fsbl.elf  platform/zcu102ng/src/boot/fsbl.elf
+cp pmufw.elf        platform/zcu102ng/src/boot/pmufw.elf
+cp u-boot.elf       platform/zcu102ng/src/boot/u-boot.elf
 </pre></div>
 </div>
 </div>
 <div class="section" id="build-software-platform">
 <h2>Build Software Platform<a class="headerlink" href="#build-software-platform" title="Permalink to this headline">¶</a></h2>
-<p>To Create Software Platform, under platform/zcu102/</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>xsct -sdx ./zcu102_pfm.tcl
+<p>To Create Software Platform, under platform/zcu102ng/</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>xsct -sdx ./zcu102ng_pfm.tcl
 </pre></div>
 </div>
-<p>The created zcu102 platform will be posted at</p>
+<p>The created zcu102ng platform will be posted at</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">platform/zcu102/output/zcu102/export/zcu102</span></code></li>
+<li><code class="docutils literal"><span class="pre">platform/zcu102ng/output/zcu102ng/export/zcu102ng</span></code></li>
 </ul>
 </div>
 <div class="section" id="make-use-of-platform">
 <h2>Make use of Platform<a class="headerlink" href="#make-use-of-platform" title="Permalink to this headline">¶</a></h2>
 <p>Here is a simple example of how to make use of the customized platform we built.
 Suppose we have a hello world OpenCL application hello.cl, we can use xocc tool
-to build boot images (including BOOT.BIN) on zcu102</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>xocc -c -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102.xpfm hello.cl -o hello.xo
-xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102.xpfm hello.xo -o hello.xclbin --sys_config ocl
+to build boot images (including BOOT.BIN) on zcu102 board.</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>xocc -c -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.cl -o hello.xo
+xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hello.xclbin --sys_config xrt
 </pre></div>
 </div>
 <p>The boot images will be posted at sd_card directory</p>
@@ -261,7 +260,7 @@ xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102.xpfm hello.xo -o hello.
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="p2p.html" class="btn btn-neutral float-right" title="PCIe Peer-to-Peer Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="newdsa-bringup.html" class="btn btn-neutral" title="New DSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
