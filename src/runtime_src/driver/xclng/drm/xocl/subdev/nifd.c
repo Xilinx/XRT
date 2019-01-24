@@ -165,6 +165,111 @@ static long switch_icap_to_pr(void) {
     return 0;
 }
 
+static void clear_configuration_memory(unsigned int bank) {
+    switch (bank) {
+    case 1:
+        write_nifd_register(0x1, NIFD_CLEAR_CFG);
+        break;
+    case 2:
+        write_nifd_register(0x1, NIFD_CLEAR_CFG_M2);
+        break;
+    default:
+        // Clear both memories
+        write_nifd_register(0x1, NIFD_CLEAR);
+        break;
+    }
+}
+
+static void perform_readback(unsigned int bank) {
+    unsigned int commandWord;
+    if (bank == 1) {
+        commandWord = 0x0;
+    }
+    else if (bank == 2) {
+        commandWord = 0x1;
+    }
+    else {
+        return;
+    }
+    write_nifd_register(commandWord, NIFD_START_READBACK);
+}
+
+static unsigned int read_nifd_status(void) {
+    return read_nifd_register(NIFD_STATUS);
+}
+
+static void add_readback_data(unsigned int frame, unsigned int offset)
+{
+    frame &= 0x3fffffff;  // Top two bits of frames must be 00
+    offset &= 0x3fffffff; // Set the top two bits to 0 first
+    offset |= 0x80000000; // Top two bits of offsets must be 10
+
+    //printk("NIFD: Frame: %x Offset: %x\n", frame, offset);
+
+    write_nifd_register(frame, NIFD_CONFIG_DATA_M2);
+    write_nifd_register(offset, NIFD_CONFIG_DATA_M2);
+}
+
+static long readback_variable_core(unsigned int *arg)
+{
+    // This function performs the readback operation.  The argument
+    //  input data and the result storage is completely located
+    //  in kernel space.
+
+    unsigned int clock_status;
+    unsigned int num_bits;
+    unsigned int i;
+    unsigned int frame;
+    unsigned int offset;
+    unsigned int next_word = 0;
+    unsigned int readback_status = 0;
+    unsigned int readback_data_word_cnt = 0;
+
+    // Check the current status of the clock and record if it is running
+    clock_status = (read_nifd_status() & 0x3);
+    // If the clock was running in free running mode, we have to
+    //  put it into stepping mode for a little bit in order to get
+    //  this to work.  This is a bug in the hardware that needs to be fixed.
+    if (clock_status == 1)
+    {
+        stop_controlled_clock();
+        start_controlled_clock_stepping();
+    }
+    // Stop the clock no matter what
+    stop_controlled_clock();
+    // Clear Memory-2
+    clear_configuration_memory(2);
+    // Fill up Memory-2 with all the frames and offsets passed in.
+    //  The data is passed in the format of:
+    //  [num_bits][frame][offset][frame][offset]...[space for result]
+    num_bits = *arg;
+    ++arg;
+    for (i = 0; i < num_bits; ++i) {
+        frame = *arg;
+        ++arg;
+        offset = *arg;
+        ++arg;
+        add_readback_data(frame, offset);
+    }
+    perform_readback(2);
+    // I should be reading 32-bit words at a time
+    readback_status = 0;
+    while (readback_status == 0) {
+        readback_status = (read_nifd_status() & 0x8);
+    }
+
+    // The readback is ready, so we need to figure out how many words to read
+    readback_data_word_cnt = read_nifd_register(NIFD_READBACK_DATA_WORD_CNT);
+
+    for (i = 0; i < readback_data_word_cnt; ++i) {
+        next_word = read_nifd_register(NIFD_READBACK_DATA);
+        (*arg) = next_word;
+        ++arg;
+    }
+    restart_controlled_clock(clock_status);
+    return 0;
+}
+
 static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_nifd *nifd = filp->private_data;
