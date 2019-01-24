@@ -1,12 +1,17 @@
 #create design
-create_project zcu102 ./zcu102_vivado -force -part xczu9eg-ffvb1156-2-e
+create_project zcu102ng_svm ./zcu102ng_svm_vivado -force -part xczu9eg-ffvb1156-2-e
 set_property board_part [get_board_parts *:zcu102:* -latest_file_version] [current_project]
-create_bd_design "zcu102"
-make_wrapper -files [get_files ./zcu102_vivado/zcu102.srcs/sources_1/bd/zcu102/zcu102.bd] -top
-add_files -norecurse ./zcu102_vivado/zcu102.srcs/sources_1/bd/zcu102/hdl/zcu102_wrapper.v
+set_property ip_repo_paths  ./ip_repo [current_project]
+update_ip_catalog -rebuild
+create_bd_design "zcu102ng_svm"
+make_wrapper -files [get_files ./zcu102ng_svm_vivado/zcu102ng_svm.srcs/sources_1/bd/zcu102ng_svm/zcu102ng_svm.bd] -top
+add_files -norecurse ./zcu102ng_svm_vivado/zcu102ng_svm.srcs/sources_1/bd/zcu102ng_svm/hdl/zcu102ng_svm_wrapper.v
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e ps_e
 apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1" }  [get_bd_cells ps_e]
-set_property -dict [list CONFIG.PSU__USE__M_AXI_GP0 {0} CONFIG.PSU__USE__M_AXI_GP1 {0} CONFIG.PSU__USE__IRQ1 {1} CONFIG.PSU__HIGH_ADDRESS__ENABLE {1}] [get_bd_cells ps_e]
+# USE HP0 (GP2)
+set_property -dict [list CONFIG.PSU__USE__M_AXI_GP0 {0} CONFIG.PSU__USE__M_AXI_GP1 {0} CONFIG.PSU__USE__S_AXI_GP2 {1} CONFIG.PSU__USE__IRQ1 {1} CONFIG.PSU__HIGH_ADDRESS__ENABLE {1}] [get_bd_cells ps_e]
+# USE HPC0 (GP0)
+#set_property -dict [list CONFIG.PSU__USE__M_AXI_GP0 {0} CONFIG.PSU__USE__M_AXI_GP1 {0} CONFIG.PSU__USE__S_AXI_GP0 {1} CONFIG.PSU__USE__IRQ1 {1} CONFIG.PSU__HIGH_ADDRESS__ENABLE {1}] [get_bd_cells ps_e]
 create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz clk_wiz_0
 set_property -dict [list CONFIG.CLKOUT2_USED {true} CONFIG.CLKOUT3_USED {true} CONFIG.CLKOUT4_USED {true} CONFIG.CLKOUT5_USED {true} CONFIG.CLKOUT6_USED {true} CONFIG.CLKOUT7_USED {true} CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {75} CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {100} CONFIG.CLKOUT3_REQUESTED_OUT_FREQ {150} CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {200} CONFIG.CLKOUT5_REQUESTED_OUT_FREQ {300} CONFIG.CLKOUT6_REQUESTED_OUT_FREQ {400} CONFIG.CLKOUT7_REQUESTED_OUT_FREQ {600} CONFIG.RESET_TYPE {ACTIVE_LOW} CONFIG.MMCM_DIVCLK_DIVIDE {1} CONFIG.MMCM_CLKOUT0_DIVIDE_F {16.000} CONFIG.MMCM_CLKOUT1_DIVIDE {12} CONFIG.MMCM_CLKOUT2_DIVIDE {8} CONFIG.MMCM_CLKOUT3_DIVIDE {6} CONFIG.MMCM_CLKOUT4_DIVIDE {4} CONFIG.MMCM_CLKOUT5_DIVIDE {3} CONFIG.MMCM_CLKOUT6_DIVIDE {2} CONFIG.NUM_OUT_CLKS {7} CONFIG.RESET_PORT {resetn} CONFIG.CLKOUT1_JITTER {122.158} CONFIG.CLKOUT2_JITTER {115.831} CONFIG.CLKOUT2_PHASE_ERROR {87.180} CONFIG.CLKOUT3_JITTER {107.567} CONFIG.CLKOUT3_PHASE_ERROR {87.180} CONFIG.CLKOUT4_JITTER {102.086} CONFIG.CLKOUT4_PHASE_ERROR {87.180} CONFIG.CLKOUT5_JITTER {94.862} CONFIG.CLKOUT5_PHASE_ERROR {87.180} CONFIG.CLKOUT6_JITTER {90.074} CONFIG.CLKOUT6_PHASE_ERROR {87.180} CONFIG.CLKOUT7_JITTER {83.768} CONFIG.CLKOUT7_PHASE_ERROR {87.180}] [get_bd_cells clk_wiz_0]
 
@@ -54,11 +59,42 @@ connect_bd_net [get_bd_pins xlconcat_1/dout] [get_bd_pins ps_e/pl_ps_irq1]
 
 set_property SELECTED_SIM_MODEL tlm_dpi [get_bd_cells /ps_e]
 
+create_bd_cell -type ip -vlnv xilinx.com:user:smmu_adapter   smmu_adapter
+set_property -dict [list CONFIG.C_S_AXI_ADDR_WIDTH {49}] [get_bd_cells smmu_adapter]
+set_property -dict [list CONFIG.C_M_AXI_ADDR_WIDTH {49}] [get_bd_cells smmu_adapter]
+connect_bd_intf_net [get_bd_intf_pins smmu_adapter/m_axi] [get_bd_intf_pins ps_e/S_AXI_HP0_FPD]
+connect_bd_net [get_bd_pins clk_wiz_0/clk_out5] [get_bd_pins smmu_adapter/clk]
+connect_bd_net [get_bd_pins proc_sys_reset_4/interconnect_aresetn] [get_bd_pins smmu_adapter/aresetn]
+
+connect_bd_net [get_bd_pins ps_e/saxihp0_fpd_aclk] [get_bd_pins clk_wiz_0/clk_out5]
+
+create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect hp_0_net
+set_property -dict [list CONFIG.NUM_MI {1}] [get_bd_cells hp_0_net]
+connect_bd_intf_net -boundary_type upper [get_bd_intf_pins hp_0_net/M00_AXI] [get_bd_intf_pins smmu_adapter/s_axi]
+connect_bd_net [get_bd_pins clk_wiz_0/clk_out5] [get_bd_pins hp_0_net/M00_ACLK]
+connect_bd_net [get_bd_pins proc_sys_reset_4/interconnect_aresetn] [get_bd_pins hp_0_net/M00_ARESETN]
+connect_bd_net [get_bd_pins hp_0_net/S00_ARESETN] [get_bd_pins proc_sys_reset_4/interconnect_aresetn]
+connect_bd_net [get_bd_pins hp_0_net/S00_ACLK] [get_bd_pins clk_wiz_0/clk_out5]
+connect_bd_net [get_bd_pins hp_0_net/ARESETN] [get_bd_pins proc_sys_reset_4/interconnect_aresetn]
+connect_bd_net [get_bd_pins hp_0_net/ACLK] [get_bd_pins clk_wiz_0/clk_out5]
+
+create_bd_cell -type ip -vlnv xilinx.com:user:tip_off axi_tip_off_0
+set_property -dict [list CONFIG.C_M_AXI_ADDR_WIDTH {49}] [get_bd_cells axi_tip_off_0]
+connect_bd_intf_net [get_bd_intf_pins axi_tip_off_0/m_axi] -boundary_type upper [get_bd_intf_pins hp_0_net/S00_AXI]
+connect_bd_net [get_bd_pins clk_wiz_0/clk_out5] [get_bd_pins axi_tip_off_0/clk]
+connect_bd_net [get_bd_pins proc_sys_reset_4/interconnect_aresetn] [get_bd_pins axi_tip_off_0/aresetn]
+
+#create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze hp_0_debug
+#apply_bd_automation -rule xilinx.com:bd_rule:microblaze -config {preset "Microcontroller" local_mem "8KB" ecc "None" cache "None" debug_module "Debug Only" axi_periph "Enabled" axi_intc "0" clk "/clk_wiz_0/clk_out5" }  [get_bd_cells hp_0_debug]
+#connect_bd_intf_net [get_bd_intf_pins hp_0_debug/M_AXI_DP] -boundary_type upper [get_bd_intf_pins hp_0_net/S00_AXI]
+
+assign_bd_address 
+
 validate_bd_design
 update_compile_order -fileset sources_1
 
 #create pfm
-set_property PFM_NAME "xilinx.com:zcu102:zcu102:1.0" [get_files ./zcu102_vivado/zcu102.srcs/sources_1/bd/zcu102/zcu102.bd]
+set_property PFM_NAME "xilinx.com:zcu102:zcu102ng_svm:1.0" [get_files ./zcu102ng_svm_vivado/zcu102ng_svm.srcs/sources_1/bd/zcu102ng_svm/zcu102ng_svm.bd]
 set_property PFM.CLOCK { \
 	clk_out1 {id "0" is_default "false" proc_sys_reset "proc_sys_reset_0" } \
 	clk_out2 {id "1" is_default "true" proc_sys_reset "proc_sys_reset_1" } \
@@ -72,12 +108,6 @@ set_property PFM.AXI_PORT { \
 	M_AXI_HPM0_FPD {memport "M_AXI_GP"} \
 	M_AXI_HPM1_FPD {memport "M_AXI_GP"} \
 	M_AXI_HPM0_LPD {memport "M_AXI_GP"} \
-	S_AXI_HPC0_FPD {memport "S_AXI_HPC" sptag "HPC0" memory "ps_e HPC0_DDR_LOW"} \
-	S_AXI_HPC1_FPD {memport "S_AXI_HPC" sptag "HPC1" memory "ps_e HPC1_DDR_LOW"} \
-	S_AXI_HP0_FPD {memport "S_AXI_HP" sptag "HP0" memory "ps_e HP0_DDR_LOW"} \
-	S_AXI_HP1_FPD {memport "S_AXI_HP" sptag "HP1" memory "ps_e HP1_DDR_LOW"} \
-	S_AXI_HP2_FPD {memport "S_AXI_HP" sptag "HP2" memory "ps_e HP2_DDR_LOW"} \
-	S_AXI_HP3_FPD {memport "S_AXI_HP" sptag "HP3" memory "ps_e HP3_DDR_LOW"} \
 	} [get_bd_cells /ps_e]
 set intVar []
 for {set i 0} {$i < 8} {incr i} {
@@ -86,9 +116,13 @@ for {set i 0} {$i < 8} {incr i} {
 set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_0]
 set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_1]
 
-##spit out a DSA
-generate_target all [get_files ./zcu102_vivado/zcu102.srcs/sources_1/bd/zcu102/zcu102.bd]
-write_dsa -force ./zcu102.dsa
+set hpVar []
+for {set i 1} {$i < 16} {incr i} {
+	lappend hpVar S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "HP0" memory "ps_e HP0_DDR_LOW"}
+}
+set_property PFM.AXI_PORT $hpVar [get_bd_cells /hp_0_net]
 
-#generate hdf
-write_hwdef -force  -file ./zcu102_vivado/zcu102.hdf
+##spit out a DSA
+generate_target all [get_files ./zcu102ng_svm_vivado/zcu102ng_svm.srcs/sources_1/bd/zcu102ng_svm/zcu102ng_svm.bd]
+write_dsa -force ./zcu102ng_svm.dsa
+
