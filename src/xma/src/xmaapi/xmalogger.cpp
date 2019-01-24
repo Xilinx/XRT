@@ -15,11 +15,8 @@
  * under the License.
  */
 
-#define _GNU_SOURCE
-
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
@@ -31,10 +28,15 @@
 #include <unistd.h>
 #include <sched.h>
 #include <errno.h>
+#include <cstdlib>
+#include <string>
+#include <fstream>
+#include <iostream>
 
 #include "lib/xmaapi.h"
 #include "app/xmalogger.h"
 #include "lib/xmalogger.h"
+#include <xclhal2.h>
 
 #ifdef XMA_DEBUG
 #define XMA_DBG_PRINTF(format, ...) \
@@ -73,7 +75,7 @@ void xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level)
 {
     // Allocate singleton if it doesn't exist
     if (g_xma_loggercb_singleton == NULL)
-        g_xma_loggercb_singleton = malloc(sizeof(XmaLoggerCbData));
+        g_xma_loggercb_singleton = (XmaLoggerCbData*) malloc(sizeof(XmaLoggerCbData));
 
     g_xma_loggercb_singleton->callback = callback;
     g_xma_loggercb_singleton->level = level;
@@ -205,7 +207,7 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
 
     if (send2callback)
     {
-        buffer = malloc(sizeof(msg_buff));
+        buffer = (char*) malloc(sizeof(msg_buff));
         strcpy(buffer, msg_buff);
         cbdata->callback(buffer);
     }
@@ -224,6 +226,77 @@ void* xma_logger_actor(void *data)
         exit(-1);
     }
 
+    char buf[1024] = {0};
+    auto len = ::readlink("/proc/self/exe", buf, 1024);
+    std::string curr_dir =  std::string(buf, (len>0) ? len : 0);
+    std::string ini_file1 = "";
+    if (!curr_dir.empty()) {
+        if (curr_dir.back() != '/') {
+            size_t pos = curr_dir.find_last_of("/");
+            if (pos != std::string::npos) {
+                ini_file1 = curr_dir.substr(0, pos);
+                ini_file1.append("/sdaccel.ini");
+            } else {
+                ini_file1 = "./sdaccel.ini";
+            }
+        } else {
+            ini_file1 = curr_dir;
+            ini_file1.append("sdaccel.ini");
+        }
+    }
+
+    char* ini_path = std::getenv("SDACCEL_INI_PATH");
+    //char* ini_file = getenv("SDACCEL_INI_PATH");
+    std::string ini_file2 = "";
+    if (ini_path != NULL) {
+        ini_file2 = std::string(ini_path);
+        if (!ini_file2.empty()) {
+            if (ini_file2.find("sdaccel.ini") == std::string::npos) {
+                if (ini_file2.back() != '/') {
+                    ini_file2.append("/sdaccel.ini");
+                } else {
+                    ini_file2.append("sdaccel.ini");
+                }
+            }
+        }
+    }
+    
+    //std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "ERROR: ini_file1: " << ini_file1 << std::endl;
+    //std::cout << "ERROR: ini_file2: " << ini_file2 << std::endl;
+    bool found_sdaccel_ini_file = false;
+    std::ifstream infile;
+    if (!ini_file2.empty()) {
+        infile.open(ini_file2, std::ios::ate);
+        if (infile.is_open()) {
+            size_t size = infile.tellg();
+            infile.close();
+            if (size > 0) {
+                found_sdaccel_ini_file = true;
+                std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
+                std::cout << "XMA Logger: sdaccel.ini file: " << ini_file2 << std::endl;
+            }
+        }
+    }
+    if (!found_sdaccel_ini_file) {
+        if (!ini_file1.empty()) {
+            infile.open(ini_file1, std::ios::ate);
+            if (infile.is_open()) {
+                size_t size = infile.tellg();
+                infile.close();
+                if (size > 0) {
+                    found_sdaccel_ini_file = true;
+                    std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
+                    std::cout << "XMA Logger: sdaccel.ini file: " << ini_file1 << std::endl;
+                }
+            }
+        }
+    }
+
+
+
+
+    //std::cout << "ERROR: found ini file: " << std::boolalpha << found_sdaccel_ini_file << std::endl;
     printf("XMA Logger: Logging thread started\n");
     while (1)
     {
@@ -236,17 +309,26 @@ void* xma_logger_actor(void *data)
                 printf("XMA logger: received shutdown\n");
                 break;
             }
-            if (logger->fd != -1)
-            {
-                rc = write(logger->fd, logmsg, strlen(logmsg));
-                if (rc < 0)
+            
+            if (found_sdaccel_ini_file) {
+                /* Format log message
+                sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
+                */
+                //rc = xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, logmsg);
+                xclLogMsg(NULL, xclLogMsgLevel::INFO, logmsg);
+            } else {
+                if (logger->fd != -1)
                 {
-                    perror("XMA Logger: could not write to file: ");
-                    break;
+                    rc = write(logger->fd, logmsg, strlen(logmsg));
+                    if (rc < 0)
+                    {
+                        perror("XMA Logger: could not write to file: ");
+                        break;
+                    }
                 }
+                if (logger->use_stdout)
+                    printf("%s", logmsg);
             }
-            if (logger->use_stdout)
-                printf("%s", logmsg);
         }
         else
             /* Logger has been shutdown - so return from thread */
@@ -257,13 +339,12 @@ void* xma_logger_actor(void *data)
         close(logger->fd);
 
     return NULL;
-
 }
 
 /* XmaThread APIs */
 XmaThread *xma_thread_create(XmaThreadFunc func, void *data)
 {
-    XmaThread *thread = malloc(sizeof(XmaThread));
+    XmaThread *thread = (XmaThread*) malloc(sizeof(XmaThread));
     thread->thread_func = func;
     thread->data = data;
     thread->is_running = false;
@@ -303,10 +384,10 @@ void xma_thread_join(XmaThread *thread)
 /* XmaMsgQ APIs */
 XmaMsgQ *xma_msgq_create(size_t msg_size, size_t max_msg_entries)
 {
-    XmaMsgQ *msgq = malloc(sizeof(XmaMsgQ));
+    XmaMsgQ *msgq = (XmaMsgQ*) malloc(sizeof(XmaMsgQ));
     msgq->msg_size = msg_size;
     msgq->max_msg_entries = max_msg_entries;
-    msgq->msg_array = malloc(msg_size * max_msg_entries);
+    msgq->msg_array = (uint8_t*) malloc(msg_size * max_msg_entries);
     msgq->num_entries = 0;
     msgq->front = 0;
     msgq->back = 0; 
@@ -322,7 +403,7 @@ void xma_msgq_destroy(XmaMsgQ *msgq)
 
 bool xma_msgq_isfull(XmaMsgQ *msgq)
 {
-    return (msgq->num_entries == msgq->max_msg_entries);
+    return ((uint32_t)msgq->num_entries == (uint32_t)msgq->max_msg_entries);
 }
 
 bool xma_msgq_isempty(XmaMsgQ *msgq)
@@ -334,13 +415,13 @@ int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size)
 {
     if (xma_msgq_isfull(msgq))
     {
-        XMA_DBG_PRINTF("XMA msgq enqueue: full\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq enqueue: full\n");
         return XMA_MSGQ_FULL;
     }
 
     if (size > msgq->msg_size)
     {
-        XMA_DBG_PRINTF("XMA msgq enqueue: too Large\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq enqueue: too Large\n");
         return XMA_MSGQ_MSG_TOO_LARGE;
     }
     
@@ -357,13 +438,13 @@ int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
 {
     if (xma_msgq_isempty(msgq))
     {
-        XMA_DBG_PRINTF("XMA msgq dequeue: empty\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq dequeue: empty\n");
         return XMA_MSGQ_EMPTY;
     }
 
     if (size < msgq->msg_size)
     {
-        XMA_DBG_PRINTF("XMA msgq dequeue: too small\n");
+        XMA_DBG_PRINTF("%s", "XMA msgq dequeue: too small\n");
         return XMA_MSGQ_MSG_TOO_SMALL;
     }
 
@@ -381,7 +462,7 @@ XmaActor *xma_actor_create(XmaThreadFunc    func,
                            size_t           msg_size,
                            size_t           max_msg_entries)
 {
-    XmaActor *actor = malloc(sizeof(XmaActor));
+    XmaActor *actor = (XmaActor*) malloc(sizeof(XmaActor));
     pthread_mutex_init(&actor->lock, NULL);
     pthread_cond_init(&actor->queued_cond, NULL);
     pthread_cond_init(&actor->dequeued_cond, NULL);
@@ -398,10 +479,10 @@ void xma_actor_start(XmaActor *actor)
 
 void xma_actor_destroy(XmaActor *actor)
 {
-    char *shutdown = "shutdown\0";
+    char *shutdown = (char*) "shutdown\0";
 
     /* Send shutdown message to Actor */
-    XMA_DBG_PRINTF("XMA sending shutdown message\n");
+    XMA_DBG_PRINTF("%s", "XMA sending shutdown message\n");
     xma_actor_sendmsg(actor, shutdown, strlen(shutdown));
     xma_thread_join(actor->thread);
     xma_msgq_destroy(actor->msg_q);
@@ -422,15 +503,15 @@ int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
             actor->msg_q->back);
     if (xma_msgq_isfull(actor->msg_q))
     {
-        XMA_DBG_PRINTF("Waiting: msgq_isfull\n");
+        XMA_DBG_PRINTF("%s", "Waiting: msgq_isfull\n");
         pthread_cond_wait(&actor->dequeued_cond, &actor->lock);
-        XMA_DBG_PRINTF("Waiting: msgq_isfull done\n");
+        XMA_DBG_PRINTF("%s", "Waiting: msgq_isfull done\n");
     }
     was_empty = xma_msgq_isempty(actor->msg_q);
     rc = xma_msgq_enqueue(actor->msg_q, msg, msg_size);
     if (rc == 0 && was_empty)
     {
-        XMA_DBG_PRINTF("Sending queued_cond for previously empty queue\n");
+        XMA_DBG_PRINTF("%s", "Sending queued_cond for previously empty queue\n");
         pthread_cond_broadcast(&actor->queued_cond);
     }
 
@@ -465,7 +546,7 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
     rc = xma_msgq_dequeue(actor->msg_q, msg, msg_size);
     if (was_full)
     {
-        XMA_DBG_PRINTF("sending dequeued_cond\n");
+        XMA_DBG_PRINTF("%s", "sending dequeued_cond\n");
         pthread_cond_broadcast(&actor->dequeued_cond);
     }
 

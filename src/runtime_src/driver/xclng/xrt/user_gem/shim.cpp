@@ -334,12 +334,9 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1)
 {
-    va_list args1;
-    va_start(args1, format);
     int len = std::vsnprintf(nullptr, 0, format, args1);
-    va_end(args1);
     
     if (len < 0) {
         //illegal arguments
@@ -351,9 +348,7 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
     len++; //To include null terminator
 
     std::vector<char> buf(len);
-    va_start(args1, format);
     len = std::vsnprintf(buf.data(), len, format, args1);
-    va_end(args1);
 
     if (len < 0) {
         //error processing arguments
@@ -1674,6 +1669,18 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 }
+
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    int ret = xocl::XOCLShim::xclLogMsg(handle, level, format, args);
+    va_end(args);
+
+    return ret;
+}
+
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
