@@ -22,6 +22,8 @@ Warning
 
 Mother board vendors have different implementations of large PCIe BAR support in BIOS. If the host system does not support large IO memory well or if host Linux kernel does not support this feature, the host could stop responding after P2P is enabled. Please note that in some cases a warm reboot may not recover the system. Power cycle is required to recover the system in this scenario. As previosuly noted SDx PCIe platforms turn off P2P after a power cycle.
 
+Some Mother board BIOS setup allows administrator to set IO Memory base address and some does not. Having large or small IO Memory base could possibly cause memory address collision between P2P memory and RAM. The symptom we have seen with having IO memory base set to 56T is that warm reboot hangs forever because Linux kernel crash. Setting IO memory base to 1T is recommended.
+
 This P2P feature is in early access stage. It is tested only on ubuntu 16.04 with standart linux kernel 4.4. The compatibility with other version of linux is still ongoing.
 
 Enable/Disable P2P
