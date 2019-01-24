@@ -41,7 +41,7 @@ void checkErrorStatus(cl_int error, const char* message)
 int main(int argc, char** argv)
 {
 	//OPENCL HOST CODE AREA START
-	oclHardware hardware = getOclHardware(CL_DEVICE_TYPE_ACCELERATOR, "zcu102_svm");
+	oclHardware hardware = getOclHardware(CL_DEVICE_TYPE_ACCELERATOR, "zcu102ng_svm");
 	oclSoftware software;
 
 	const char* xclbinFilename = argv[1];
