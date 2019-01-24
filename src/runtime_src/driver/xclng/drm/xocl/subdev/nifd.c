@@ -270,6 +270,57 @@ static long readback_variable_core(unsigned int *arg)
     return 0;
 }
 
+static long readback_variable(void __user *arg)
+{
+    // Allocate memory in kernel space, copy over all the information
+    //  from user space at once, call the core implemenation,
+    //  and finally write back the result.
+
+    // The information will be passed in this format:
+    //  [numBits][frame][offset][frame][offset]...[space for result]
+    unsigned int num_bits;
+    unsigned int num_words;
+    unsigned int total_data_size;
+    unsigned int *kernel_memory;
+    unsigned int core_result;
+
+    if (copy_from_user(&num_bits, arg, sizeof(unsigned int)))
+        return -EFAULT;
+
+    num_words = num_bits % 32 ? num_bits / 32 + 1 : num_bits / 32;
+
+    total_data_size = (1 + (num_bits * 2) + num_words) * sizeof(unsigned int);
+
+    //total_data_size = (num_bits * 3 + 1) * sizeof(unsigned int) ;
+    kernel_memory = (unsigned int *)(kmalloc(total_data_size, GFP_KERNEL));
+
+    if (!kernel_memory)
+        return -ENOMEM;
+
+    if (copy_from_user(kernel_memory, arg, total_data_size))
+    {
+        kfree(kernel_memory);
+        return -EFAULT;
+    }
+
+    core_result = readback_variable_core(kernel_memory);
+
+    if (core_result)
+    {
+        kfree(kernel_memory);
+        return core_result;
+    }
+
+    if (copy_to_user(arg, kernel_memory, total_data_size))
+    {
+        kfree(kernel_memory);
+        return -EFAULT;
+    }
+
+    kfree(kernel_memory);
+    return 0; // Success
+}
+
 static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_nifd *nifd = filp->private_data;
@@ -286,10 +337,13 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			status = start_controlled_clock(data);
 			break;
 		case NIFD_SWITCH_ICAP_TO_NIFD:
-			// status = switch_icap_to_nifd();
+			status = switch_icap_to_nifd();
 			break;
 		case NIFD_SWITCH_ICAP_TO_PR:
-			// status = switch_icap_to_pr();
+			status = switch_icap_to_pr();
+			break;
+		case NIFD_READBACK_VARIABLE:
+			status = readback_variable(data);
 			break;
 		default:
 			status = -ENOIOCTLCMD;
