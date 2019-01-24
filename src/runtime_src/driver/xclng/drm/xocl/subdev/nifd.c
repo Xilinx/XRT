@@ -95,7 +95,7 @@ static void start_controlled_clock_stepping(void);
 static int nifd_exist_in_feature_rom(void);
 
 static int nifd_exist_in_feature_rom(void) {
-	return 0;
+	return 1;
 }
 
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
