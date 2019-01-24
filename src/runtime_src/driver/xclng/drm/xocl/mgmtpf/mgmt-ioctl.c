@@ -89,7 +89,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	long result = 0;
 
 	BUG_ON(!lro);
-	WARN_ON(1);
 
 	if (xocl_drv_released(lro))
 		return -EINVAL;
