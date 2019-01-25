@@ -152,8 +152,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_HOT_RESET,
 	/* Enable P2P */
 	DRM_XOCL_P2P_ENABLE,
-  /* Reclock through userpf*/
-  DRM_XOCL_RECLOCK,
+	/* Reclock through userpf*/
+	DRM_XOCL_RECLOCK,
 
 	DRM_XOCL_NUM_IOCTLS
 };
