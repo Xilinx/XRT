@@ -2,7 +2,7 @@ args: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert
 copy: [Makefile, utils.hpp, task.hpp]
 devices:
 - [all_pcie]
-flags: -g -std=c++14 -ldl -pthread
+flags: -g -std=c++14 -ldl -pthread -luuid
 flows: [hw_all]
 hdrs: [xaddone_hw_64.h, utils.hpp, task.hpp]
 krnls:

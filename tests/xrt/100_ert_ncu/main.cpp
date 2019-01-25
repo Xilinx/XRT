@@ -14,8 +14,6 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
 #include "utils.hpp"
 #include "task.hpp"
 #include "xaddone_hw_64.h"
