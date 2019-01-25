@@ -89,7 +89,7 @@ struct xclmgmt_char {
 };
 
 struct xclmgmt_data_buf {
-	enum data_type data_type;
+	enum mb_cmd_type cmd_type;
 	uint64_t priv_data;
 	char *data_buf;
 };

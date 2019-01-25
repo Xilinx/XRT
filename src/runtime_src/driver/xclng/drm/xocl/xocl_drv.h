@@ -66,7 +66,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 		 fmt, ##args)
 #define MAX_M_COUNT      64
 
-#define MAX_DATA_SZ 512
+#define MAX_DATA_SZ 128
 
 
 #define xocl_err(dev, fmt, args...)			\
@@ -506,12 +506,10 @@ enum mailbox_request {
 	MAILBOX_REQ_SEND_DATA,
 };
 
-enum data_type {
-	TYPE_DEFAULT = 0,
-	TYPE_XCLBIN,
-	TYPE_RESP,
-	TYPE_TERMINATE,
-	TYPE_RECLOCK,
+enum mb_cmd_type {
+	MB_CMD_DEFAULT = 0,
+	MB_CMD_LOAD_XCLBIN,
+	MB_CMD_RECLOCK,
 };
 struct mailbox_req_bitstream_lock {
 	pid_t pid;
@@ -525,7 +523,7 @@ struct mailbox_data_req {
 };
 
 struct mailbox_data_buf {
-	enum data_type data_type;
+	enum mb_cmd_type cmd_type;
 	uint32_t data_total_len;
 	uint32_t buf_size; // For kernel space to fill up __user buf
 	uint32_t len;

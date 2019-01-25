@@ -1619,7 +1619,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct mailbox_req mb_xclbin_req = { 0 };
 	int msg = 0;
 	size_t resplen = sizeof (msg);
-	uint32_t data_sz, offset;
 	int pid = pid_nr(task_tgid(current));
 
 	if (copy_from_user((void *)&bin_obj, u_xclbin, sizeof(struct axlf)))
@@ -1803,30 +1802,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 		}
 
-	#if 0
-		offset = 0;
-		while(offset<bin_obj.m_header.m_length){
-
-			ICAP_ERR(icap, "%s sz %llu, offset %u", __func__, bin_obj.m_header.m_length, offset);
-			data_sz = min_t(uint32_t, MAX_DATA_SZ, (bin_obj.m_header.m_length-offset));
-
-			mb_xclbin_req.req = MAILBOX_REQ_SEND_DATA;
-			mb_xclbin_req.u.data_buf.data_type = TYPE_XCLBIN;
-			mb_xclbin_req.u.data_buf.data_total_len = bin_obj.m_header.m_length;
-			mb_xclbin_req.u.data_buf.buf_size = sizeof(struct mailbox_req);
-			mb_xclbin_req.u.data_buf.len = data_sz;
-			mb_xclbin_req.u.data_buf.offset = offset;
-
-			//memcpy(&mb_xclbin_req.u.data_buf.priv_data, &bin_obj.m_header.uuid, 8);
-			memcpy(mb_xclbin_req.u.data_buf.data, ((char *)axlf)+offset, data_sz);
-
-			(void) xocl_peer_request(xdev,
-				&mb_xclbin_req, &msg, &resplen, NULL, NULL);
-			if(msg != 0)
-				break;
-			offset += data_sz;
-		}
-	#else
 		//memory share-able
 		mb_xclbin_req.req = MAILBOX_REQ_DOWNLOAD_XCLBIN;
 		mb_xclbin_req.u.xclbin_reg.data = (void *)axlf;
@@ -1834,7 +1809,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		(void) xocl_peer_request(xdev,
 			&mb_xclbin_req, &msg, &resplen, NULL, NULL);
-	#endif
+
 		if(msg != 0){
 			ICAP_ERR(icap, "%s peer failed to download xclbin, operation abort!", __func__);
 			err = -EFAULT;

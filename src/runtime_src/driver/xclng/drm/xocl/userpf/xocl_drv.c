@@ -147,7 +147,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	uint32_t data_sz = sizeof(struct drm_xocl_reclock_info);
 
 	mb_req.req = MAILBOX_REQ_SEND_DATA;
-	mb_req.u.data_buf.data_type = TYPE_RECLOCK;
+	mb_req.u.data_buf.cmd_type = MB_CMD_RECLOCK;
 	mb_req.u.data_buf.data_total_len = sizeof(struct drm_xocl_reclock_info);
 	mb_req.u.data_buf.buf_size = sizeof(struct mailbox_req);
 	mb_req.u.data_buf.len = data_sz;

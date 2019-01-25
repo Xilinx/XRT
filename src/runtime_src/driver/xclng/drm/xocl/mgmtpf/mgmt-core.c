@@ -563,15 +563,15 @@ static int xbmgmt_mb_peer_data_broker(struct xclmgmt_dev *lro)
 {
 	int ret = -EINVAL;
 
-	switch(lro->data_buf.data_type){
-		case TYPE_XCLBIN:
+	switch(lro->data_buf.cmd_type){
+		case MB_CMD_LOAD_XCLBIN:
 			ret = xocl_icap_download_axlf(lro, lro->data_buf.data_buf);
 			break;
-		case TYPE_RECLOCK:
+		case MB_CMD_RECLOCK:
 			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling*)lro->data_buf.data_buf);
 			break;
 		default:
-			printk(KERN_ERR "Can't recognize data_type : %u\n", lro->data_buf.data_type);
+			printk(KERN_ERR "Can't recognize data_type : %u\n", lro->data_buf.cmd_type);
 		  break;
 	}
 
@@ -597,7 +597,7 @@ static int xclmgmt_mb_data_alloc_and_recv(struct xclmgmt_dev *lro ,void *data)
 			ret = -ENOMEM;
 			return ret;
 		}
-		lro->data_buf.data_type = req->u.data_buf.data_type;
+		lro->data_buf.cmd_type = req->u.data_buf.cmd_type;
 		lro->data_buf.priv_data = req->u.data_buf.priv_data;
 	}
 
