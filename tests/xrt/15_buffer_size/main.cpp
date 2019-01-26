@@ -251,7 +251,7 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
 
 static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize, int first_mem)
 {
-    std::cout << "Start bufferSizeTest\n"
+    std::cout << "Start bufferSizeTest\n";
     std::list<uint64_t> deviceHandleList;
     std::random_device rd;
     std::mt19937 gen(rd());
