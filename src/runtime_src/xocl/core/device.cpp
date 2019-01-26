@@ -892,9 +892,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   offset += maxidx/32 + 1; // packet offset past cumasks
 
   // Insert copy command content
-  auto src_boh = xocl::xocl(src_buffer)->get_buffer_object(this);
+  auto src_boh = src_buffer->get_buffer_object(this);
   auto src_addr = xdevice->getDeviceAddr(src_boh) + src_offset;
-  auto dst_boh = xocl::xocl(dst_buffer)->get_buffer_object(this);
+  auto dst_boh = dst_buffer->get_buffer_object(this);
   auto dst_addr = xdevice->getDeviceAddr(dst_boh) + dst_offset;
 
   packet[offset++] = 0; // 0x0 reserved CU AP_CTRL
@@ -910,8 +910,12 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
 
   sk_cmd->count = offset-1; // number of words in payload (excludes header)
-  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma((%p,%p,%d)\n",dst_addr,src_addr,size);
+  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma(%p,%p,%d)\n",dst_addr,src_addr,size);
   xrt::scheduler::schedule(cmd);
+
+  // KDMA fills dst buffer same as migrate_buffer does, hence dst buffer
+  // is resident after KDMA is done even if host does explicitly migrate.
+  dst_buffer->set_resident(this);
 }
 
 void
