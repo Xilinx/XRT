@@ -680,10 +680,10 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
     dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
     dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
-    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, info->mDimmTemp[0]);
-    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, info->mDimmTemp[1]);
-    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, info->mDimmTemp[2]);
-    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, info->mDimmTemp[3]);
+    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, info->mCageTemp[0]);
+    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, info->mCageTemp[1]);
+    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, info->mCageTemp[2]);
+    dev->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, info->mCageTemp[3]);
 
     std::vector<uint64_t> freqs;
     dev->mgmt->sysfs_get("icap", "clock_freqs", errmsg, freqs);
