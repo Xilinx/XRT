@@ -127,7 +127,7 @@ extern "C" {
         BUILD_METADATA,
         KEYVALUE_METADATA,
         USER_METADATA,
-        DNA_CERTIFICATE
+        DNA_CERTIFICATE 
     };
 
     enum MEM_TYPE {
@@ -140,6 +140,7 @@ extern "C" {
         MEM_HBM,
         MEM_BRAM,
         MEM_URAM,
+        MEM_STREAMING_CONNECTION
     };
 
     enum IP_TYPE {
