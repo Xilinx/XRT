@@ -652,6 +652,10 @@ public:
         sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        sensor_tree::put( "board.physical.thermal.cage.temp0",                   m_devinfo.mCageTemp[ 0 ] );
+        sensor_tree::put( "board.physical.thermal.cage.temp1",                   m_devinfo.mCageTemp[ 1 ] );
+        sensor_tree::put( "board.physical.thermal.cage.temp2",                   m_devinfo.mCageTemp[ 2 ] );
+        sensor_tree::put( "board.physical.thermal.cage.temp3",                   m_devinfo.mCageTemp[ 3 ] );
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
         sensor_tree::put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
@@ -803,6 +807,11 @@ public:
         ostr << std::setw(16) << sensor_tree::get<unsigned short>( "board.physical.thermal.fpga_temp", -1 )/1000  // temperature stored in thousandths of degree C
              << std::setw(16) << sensor_tree::get<unsigned short>( "board.physical.thermal.tcrit_temp", -1 )/1000 // temperature stored in thousandths of degree C
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
+        ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp0" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp1" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp2" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp3" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
