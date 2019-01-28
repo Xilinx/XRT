@@ -65,6 +65,10 @@
 #define XMC_SE98_TEMP0_REG          0x140
 #define XMC_SE98_TEMP1_REG          0x14C
 #define XMC_SE98_TEMP2_REG          0x158
+#define XMC_CAGE_TEMP0_REG          0x170
+#define XMC_CAGE_TEMP1_REG          0x17C
+#define XMC_CAGE_TEMP2_REG          0x188
+#define XMC_CAGE_TEMP3_REG          0x194
 #define XMC_SNSR_CHKSUM_REG         0x1A4
 #define XMC_SNSR_FLAGS_REG          0x1A8
 #define XMC_HOST_MSG_OFFSET_REG     0x300
@@ -375,9 +379,6 @@ static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR_RO(xmc_vcc1v2_btm);
 
-
-
-
 static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
@@ -522,6 +523,56 @@ static ssize_t xmc_dimm_temp3_show(struct device *dev, struct device_attribute *
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp3);
+
+
+static ssize_t xmc_cage_temp0_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp0);
+
+static ssize_t xmc_cage_temp1_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp1);
+
+static ssize_t xmc_cage_temp2_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp2);
+
+static ssize_t xmc_cage_temp3_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp3);
+
 
 static ssize_t version_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -793,6 +844,10 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_xmc_se98_temp0.attr,
 	&dev_attr_xmc_se98_temp1.attr,
 	&dev_attr_xmc_se98_temp2.attr,
+	&dev_attr_xmc_cage_temp0.attr,
+	&dev_attr_xmc_cage_temp1.attr,
+	&dev_attr_xmc_cage_temp2.attr,
+	&dev_attr_xmc_cage_temp3.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_power_flag.attr,
