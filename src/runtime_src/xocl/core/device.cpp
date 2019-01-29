@@ -1108,13 +1108,13 @@ load_program(program* program)
       unsigned short target_freqs[4] = {0};
       auto kclocks = m_xclbin.kernel_clocks();
       if (kclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
       for (auto& clock : kclocks) {
-	if (idx == 0) {
-	  std::string device_name = get_unique_name();
-	  profile::set_kernel_clock_freq(device_name, clock.frequency);
-	}
-	target_freqs[idx++] = clock.frequency;
+        if (idx == 0) {
+          std::string device_name = get_unique_name();
+          profile::set_kernel_clock_freq(device_name, clock.frequency);
+        }
+        target_freqs[idx++] = clock.frequency;
       }
 
       // System clocks

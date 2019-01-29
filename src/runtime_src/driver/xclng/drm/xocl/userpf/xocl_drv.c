@@ -136,6 +136,32 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
+
+int xocl_reclock(struct xocl_dev *xdev, void *data)
+{
+	int err = 0;
+	int msg = 0;
+	size_t resplen = sizeof (msg);
+	struct mailbox_req mb_req = { 0 };
+	struct drm_xocl_reclock_info *reclock = (struct drm_xocl_reclock_info *)data;
+	uint32_t data_sz = sizeof(struct drm_xocl_reclock_info);
+
+	mb_req.req = MAILBOX_REQ_SEND_DATA;
+	mb_req.u.data_buf.cmd_type = MB_CMD_RECLOCK;
+	mb_req.u.data_buf.data_total_len = sizeof(struct drm_xocl_reclock_info);
+	mb_req.u.data_buf.buf_size = sizeof(struct mailbox_req);
+	mb_req.u.data_buf.len = data_sz;
+	mb_req.u.data_buf.offset = 0;
+	memcpy(mb_req.u.data_buf.data, ((char *)reclock), data_sz);
+
+	err = xocl_peer_request(xdev,
+		&mb_req, &msg, &resplen, NULL, NULL);
+	if(msg != 0)
+		return -ENODEV;
+
+  return err;
+}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {
@@ -274,7 +300,7 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
 	xdev->bypass_bar_addr = devm_memremap_pages(&(pdev->dev), &xdev->pgmap);
 
-#endif 
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
 	if(!xdev->bypass_bar_addr) {

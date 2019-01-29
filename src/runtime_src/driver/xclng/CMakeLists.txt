@@ -8,7 +8,7 @@ else()
     set(INTERNAL_TESTING 1) 
 endif()
 add_subdirectory(xrt)
-add_subdirectory(tools/xbflash)
 add_subdirectory(tools/xbutil)
+add_subdirectory(tools/xbmgmt)
 add_subdirectory(tools/awssak)
 

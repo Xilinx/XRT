@@ -162,11 +162,22 @@ class device {
     xclErrorStatus m_errinfo;
 
 public:
-    int domain() { return pcidev::get_dev(m_idx)->mgmt->domain; }
-    int bus() { return pcidev::get_dev(m_idx)->mgmt->bus; }
-    int dev() { return pcidev::get_dev(m_idx)->mgmt->dev; }
-    int userFunc() { return pcidev::get_dev(m_idx)->user->func; }
-    int mgmtFunc() { return pcidev::get_dev(m_idx)->mgmt->func; }
+    int domain() {
+        return pcidev::get_dev(m_idx)->user->domain;
+    }
+    int bus() {
+        return pcidev::get_dev(m_idx)->user->bus;
+    }
+    int dev() {
+        return pcidev::get_dev(m_idx)->user->dev;
+    }
+    int userFunc() {
+        return pcidev::get_dev(m_idx)->user->func;
+    }
+    int mgmtFunc() {
+        auto dev = pcidev::get_dev(m_idx);
+        return dev->mgmt ? dev->mgmt->func : -1;
+    }
     device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{} {
         std::string devstr = "device[" + std::to_string(m_idx) + "]";
         m_handle = xclOpen(m_idx, log, XCL_QUIET);
@@ -211,11 +222,19 @@ public:
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
+    int reclockUser(unsigned regionIndex, const unsigned short *freq) {
+        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], 0, 0};
+        return xclReClockUser(m_handle, 0, targetFreqMHz);
+    }
+
     int getComputeUnits(std::vector<ip_data> &computeUnits) const
     {
         std::string errmsg;
         std::vector<char> buf;
-        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "ip_layout", errmsg, buf);
+
+        if(pcidev::get_dev(m_idx)->user)
+            pcidev::get_dev(m_idx)->user->sysfs_get("icap", "ip_layout", errmsg, buf);
+
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
@@ -351,7 +370,8 @@ public:
         uint64_t memoryUsage, boCount;
 
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
-        pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
+        if(pcidev::get_dev(m_idx)->mgmt)
+            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
         pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
@@ -391,7 +411,12 @@ public:
 
         ss << std::left << std::setw(48) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
-
+        auto dev = pcidev::get_dev(m_idx);
+        if(!dev->user){
+            ss << "xocl driver is not loaded, skipped" << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
         pcidev::get_dev(m_idx)->user->sysfs_get(
             "icap", "mem_topology", errmsg, buf);
 
@@ -484,6 +509,12 @@ public:
 
         ss << std::left << std::setw(48) << "Stream Topology" << "\n";
 
+        auto dev = pcidev::get_dev(m_idx);
+        if(!dev->user){
+            ss << "xocl driver is not loaded, skipped" << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
@@ -636,11 +667,13 @@ public:
         sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
         {
             std::string idcode, fpga, dna, errmsg;
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+            if(pcidev::get_dev(m_idx)->mgmt){
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
+            }
             sensor_tree::put( "board.info.idcode", idcode );
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
             sensor_tree::put( "board.info.fpga_name", fpga );
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
             sensor_tree::put( "board.info.dna", dna);
         }
 
@@ -1073,8 +1106,11 @@ public:
         std::string errmsg;
         std::vector<char> buf;
 
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "icap", "mem_topology", errmsg, buf);
+        auto dev = pcidev::get_dev(m_idx);
+        if(dev->user)
+            pcidev::get_dev(m_idx)->user->sysfs_get(
+                "icap", "mem_topology", errmsg, buf);
+
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;

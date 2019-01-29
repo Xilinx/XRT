@@ -590,7 +590,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology;
-	int pid = pid_nr(task_tgid(current));
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -639,30 +638,25 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 
 	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
 
-	err = xocl_icap_lock_bitstream(xdev, &bin_obj.m_header.uuid,pid);
-	if (err < 0)
-		return err;
-	err = 0;
-
 	if (uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
 		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
 		goto done;
 	}
 
-
 	//Copy from user space and proceed.
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = bin_obj.m_header.m_numSections;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(axlf_size);
+	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
 		DRM_ERROR("Unable to create axlf\n");
 		err = -ENOMEM;
 		goto done;
 	}
+
 	printk(KERN_INFO "XOCL: Marker 5\n");
 
-	if (copy_from_user(axlf, axlf_ptr->xclbin, axlf_size)) {
+	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -674,6 +668,11 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
+	err = xocl_icap_download_axlf(xdev, buf);
+	if (err) {
+		DRM_ERROR("%s Fail to download \n", __FUNCTION__);
+		goto done;
+	}
 	/* Populating MEM_TOPOLOGY sections. */
 	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
 	if (size <= 0) {
@@ -751,11 +750,6 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
-	xocl_icap_parse_axlf_section(xdev, buf, IP_LAYOUT);
-	xocl_icap_parse_axlf_section(xdev, buf, MEM_TOPOLOGY);
-	xocl_icap_parse_axlf_section(xdev, buf, CONNECTIVITY);
-	xocl_icap_parse_axlf_section(xdev, buf, DEBUG_IP_LAYOUT);
-
 done:
 	if (size < 0)
 		err = size;
@@ -763,7 +757,6 @@ done:
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API or by execbuf
 	 */
-	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,pid);
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
@@ -860,4 +853,13 @@ int xocl_p2p_enable_ioctl(struct drm_device *dev,
 
 failed:
 	return ret;
+}
+
+int xocl_reclock_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int err = xocl_reclock(dev->dev_private, data);
+
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
+	return err;
 }
