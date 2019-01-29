@@ -15,8 +15,12 @@
  * under the License.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
+#include <iostream>
+#include <fstream>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
