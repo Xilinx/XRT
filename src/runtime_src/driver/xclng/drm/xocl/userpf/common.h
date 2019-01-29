@@ -111,6 +111,11 @@ struct xocl_dev	{
 	/*should be removed after mailbox is supported */
 	u64			        unique_id_last_bitstream;
 	/* remove the previous id after we move to uuid */
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+  struct dev_pagemap pgmap;
+#endif
+
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;

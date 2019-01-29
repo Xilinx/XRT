@@ -103,17 +103,25 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
-#define RHEL_P2P_SUPPORT  1
-#else
-#define RHEL_P2P_SUPPORT  0
+
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  1
+#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  1
+#define RHEL_P2P_SUPPORT_76  0
 #endif
 #else
-#define RHEL_P2P_SUPPORT  0
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  0
 #endif
 
 #define INVALID_SUBDEVICE 		~0U
 #define NUMS_OF_DYNA_IP_ADDR   4
+
+#define RHEL_P2P_SUPPORT (RHEL_P2P_SUPPORT_74 | RHEL_P2P_SUPPORT_76)
+
+#define XOCL_INVALID_MINOR -1
 
 extern struct class *xrt_class;
 

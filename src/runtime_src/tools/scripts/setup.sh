@@ -15,7 +15,7 @@ if [[ $OSDIST == "ubuntu" ]]; then
 fi
 
 if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
-    if [[ $OSREL != "7.4"* ]] &&  [[ $OSREL != "7.5"* ]]; then
+    if [[ $OSREL != "7.4"* ]] &&  [[ $OSREL != "7.5"* ]] && [[ $OSREL != "7.6"* ]]; then
         echo "ERROR: Centos or RHEL release version must be 7.4 or later"
         return 1
     fi
