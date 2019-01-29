@@ -16,7 +16,7 @@
 
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
-#include "xdp/profile/debug.h"
+#include "xdp/profile/config.h"
 
 namespace xdp { namespace xoclp {
 

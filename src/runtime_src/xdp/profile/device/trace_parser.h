@@ -27,7 +27,7 @@
 #include <CL/opencl.h>
 #include "driver/include/xclperf.h"
 #include "../collection/results.h"
-#include "../debug.h"
+#include "../config.h"
 #include "xdp/profile/plugin/base_plugin.h"
 #include "xdp/profile/core/rt_util.h"
 

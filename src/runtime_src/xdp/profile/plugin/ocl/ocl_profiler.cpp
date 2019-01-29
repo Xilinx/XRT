@@ -25,7 +25,7 @@
 #include <chrono>
 
 #include "ocl_profiler.h"
-#include "xdp/profile/debug.h"
+#include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"

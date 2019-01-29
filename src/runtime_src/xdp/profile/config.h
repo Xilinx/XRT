@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xdp_debug_h_
-#define xdp_debug_h_
+#ifndef xdp_config_h_
+#define xdp_config_h_
 
 #include "xocl/core/debug.h"
 #include "xrt/util/debug.h"
@@ -29,5 +29,3 @@
 #endif
 
 #endif
-
-
