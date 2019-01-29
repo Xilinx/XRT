@@ -28,22 +28,18 @@
 #include "xdp/profile/writer/csv_trace.h"
 #include "xdp/profile/writer/unified_csv_profile.h"
 
-// Use Profiling::Profiler::Instance() to get to the singleton runtime object
-// Runtime code base can access the singleton and make decisions based on the
-// contents of the singleton
+namespace xdp {
 
-namespace Profiling {
-
-  class Profiler {
+  class OCLProfiler {
   public:
-    static Profiler* Instance();
+    static OCLProfiler* Instance();
     static bool InstanceExists() {
       return (mRTInstance != nullptr);
     }
 
   public:
-    Profiler();
-    ~Profiler();
+    OCLProfiler();
+    ~OCLProfiler();
 
   // Callback API
   public:
@@ -59,12 +55,13 @@ namespace Profiling {
                                unsigned int clockRateMHz);
 
   public:
-    inline xdp::XoclPlugin* getPlugin() { return Plugin; }
-    inline xdp::RTProfile* getProfileManager() { return ProfileMgr; }
+    inline xdp::XoclPlugin* getPlugin() { return Plugin.get(); }
+    inline xdp::RTProfile* getProfileManager() { return ProfileMgr.get(); }
+    inline xocl::platform* getclPlatformID() { return Platform.get(); }
 
   // Device metadata
   public:
-    std::map<xdp::profile::device::key, xdp::profile::device::data> DeviceData;
+    std::map<xoclp::platform::device::key, xoclp::platform::device::data> DeviceData;
 
   // Profile settings
   public:
@@ -84,6 +81,7 @@ namespace Profiling {
   private:
     void startProfiling();
     void endProfiling();
+    void configureWriters();
     void logFinalTrace(xclPerfMonType type);
     void setTraceFooterString();
     bool isProfileRunning() {return mProfileRunning;}
@@ -92,15 +90,18 @@ namespace Profiling {
                              std::chrono::steady_clock::time_point end);
 
   private:
+    // Flags
     int ProfileFlags;
     bool mProfileRunning = false;
     bool mEndDeviceProfilingCalled = false;
     // Report writers
     std::vector<xdp::ProfileWriterI*> ProfileWriters;
     std::vector<xdp::TraceWriterI*> TraceWriters;
-    static Profiler* mRTInstance;
-    xdp::XoclPlugin* Plugin;
-    xdp::RTProfile* ProfileMgr = nullptr;
+    // Handles
+    static OCLProfiler* mRTInstance;
+    std::shared_ptr<xocl::platform> Platform;
+    std::shared_ptr<XoclPlugin> Plugin;
+    std::unique_ptr<RTProfile> ProfileMgr;
 
   };
 

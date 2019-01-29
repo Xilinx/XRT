@@ -16,7 +16,6 @@
 
 #include "csv_trace.h"
 #include "util.h"
-#include "xdp/rt_singleton.h"
 
 namespace xdp {
 

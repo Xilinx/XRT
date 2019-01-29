@@ -18,6 +18,7 @@
 #define __XDP_XOCL_PLUGIN_H
 
 #include "../base_plugin.h"
+#include "xocl_profile.h"
 #include <boost/format.hpp>
 #include <cstdlib>
 #include <cstdio>
@@ -34,7 +35,7 @@ namespace xdp {
     class XoclPlugin: public XDPPluginI {
 
     public:
-      XoclPlugin();
+      XoclPlugin(xocl::platform* Platform);
 	  ~XoclPlugin();
 
     // **********
@@ -64,6 +65,9 @@ namespace xdp {
       void getUnusedComputeUnits(RTProfile *profile);
       void getKernelCounts(RTProfile *profile);
 
+    private:
+      xocl::platform* mPlatformHandle;
+
     // ***********************************************
     // Platform Metadata required by profiler.
     // The plugin can choose to return empty data here.
@@ -80,6 +84,7 @@ namespace xdp {
       void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
                             unsigned slotnum, std::string& slotName) override;
       unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) override;
+      void sendMessage(const std::string &msg) override;
     };
 
 } // xdp

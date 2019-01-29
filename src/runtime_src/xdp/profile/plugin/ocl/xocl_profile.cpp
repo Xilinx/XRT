@@ -17,17 +17,8 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/debug.h"
-#include "xdp/rt_singleton.h"
 
-namespace xdp { namespace profile {
-
-bool
-isApplicationProfilingOn()
-{
-  auto profiler = Profiling::Profiler::Instance();
-  //XOCL_DEBUGF("isApplicationProfilingOn: rts = %p\n", rts);
-  return (profiler == nullptr) ? false : profiler->applicationProfilingOn();
-}
+namespace xdp { namespace xoclp {
 
 // Number of CU masks in packet
 uint32_t
@@ -94,7 +85,7 @@ void get_cu_start(const xrt::command* cmd, const xocl::execution_context* ctx)
 
   XOCL_DEBUGF("get_cu_start: kernel=%s, CU=%s\n", kname.c_str(), cuName.c_str());
 
-  auto rtp = Profiling::Profiler::Instance()->getProfileManager();
+  auto rtp = OCLProfiler::Instance()->getProfileManager();
   rtp->logKernelExecution(objId, programId, eventId, xdp::RTUtil::START, kname, xname, contextId,
                           commandQueueId, deviceName, deviceId, globalWorkDim,
                           workGroupSize, localWorkDim, cuName);
@@ -133,7 +124,7 @@ void get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx)
   //uint64_t startTime = ((uint64_t)packet[offset+1] << 32) + packet[offset];
   //uint64_t endTime = ((uint64_t)packet[offset+3] << 32) + packet[offset+2];
 
-  auto rtp = Profiling::Profiler::Instance()->getProfileManager();
+  auto rtp = OCLProfiler::Instance()->getProfileManager();
   //double startTimeMsec = rtp->getTimestampMsec(startTime);
   //double endTimeMsec = rtp->getTimestampMsec(endTime);
   //double traceTimeMsec = rtp->getTraceTime();
@@ -153,7 +144,7 @@ namespace platform {
 void
 init(key k)
 {
-  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
+  auto mgr = OCLProfiler::Instance()->getProfileManager();
   //mgr->setLoggingTraceUsec(0);
   for (int type=0; type < (int)XCL_PERF_MON_TOTAL_PROFILE; ++type)
     mgr->setLoggingTrace(type, false);
@@ -166,12 +157,12 @@ get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type)
   for (auto device : platform->get_device_range()) {
     std::string currDeviceName = device->get_unique_name();
     if (currDeviceName.compare(deviceName) == 0)
-      return xdp::profile::device::getProfileNumSlots(device, type);
+      return device::getProfileNumSlots(device, type);
   }
 
   // If not found, return the timestamp of the first device
   auto device = platform->get_device_range()[0];
-  return xdp::profile::device::getProfileNumSlots(device.get(), type);
+  return device::getProfileNumSlots(device.get(), type);
 }
 
 cl_int
@@ -182,12 +173,12 @@ get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
   for (auto device : platform->get_device_range()) {
     std::string currDeviceName = device->get_unique_name();
     if (currDeviceName.compare(deviceName) == 0)
-      return xdp::profile::device::getProfileSlotName(device, type, slotnum, slotName);
+      return device::getProfileSlotName(device, type, slotnum, slotName);
   }
 
   // If not found, return the timestamp of the first device
   auto device = platform->get_device_range()[0];
-  return xdp::profile::device::getProfileSlotName(device.get(), type, slotnum, slotName);
+  return device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
 unsigned
@@ -198,12 +189,12 @@ get_profile_slot_properties(key k, std::string& deviceName, xclPerfMonType type,
   for (auto device : platform->get_device_range()) {
     std::string currDeviceName = device->get_unique_name();
     if (currDeviceName.compare(deviceName) == 0)
-      return xdp::profile::device::getProfileSlotProperties(device, type, slotnum);
+      return device::getProfileSlotProperties(device, type, slotnum);
   }
 
   // If not found, return the timestamp of the first device
   auto device = platform->get_device_range()[0];
-  return xdp::profile::device::getProfileSlotProperties(device.get(), type, slotnum);
+  return device::getProfileSlotProperties(device.get(), type, slotnum);
 }
 
 cl_int
@@ -231,7 +222,7 @@ write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id)
 
   auto platform = k;
   for (auto device : platform->get_device_range())
-    xdp::profile::device::writeHostEvent(device, type, id);
+    device::writeHostEvent(device, type, id);
   return 0;
 }
 
@@ -242,12 +233,12 @@ get_device_timestamp(key k, std::string& deviceName)
   for (auto device : platform->get_device_range()) {
     std::string currDeviceName = device->get_unique_name();
     if (currDeviceName.compare(deviceName) == 0)
-      return xdp::profile::device::getTimestamp(device);
+      return device::getTimestamp(device);
   }
 
   // If not found, return the timestamp of the first device
   auto device = platform->get_device_range()[0];
-  return xdp::profile::device::getTimestamp(device.get());
+  return device::getTimestamp(device.get());
 }
 
 double 
@@ -257,7 +248,7 @@ get_device_max_read(key k)
   // TODO: this is not specific to a device; is that needed?
   double maxRead = 0.0;
   for (auto device : platform->get_device_range()) {
-    double currMaxRead = xdp::profile::device::getMaxRead(device);
+    double currMaxRead = device::getMaxRead(device);
     maxRead = std::max(currMaxRead,maxRead);
   }
   return maxRead;
@@ -270,7 +261,7 @@ get_device_max_write(key k)
   // TODO: this is not specific to a device; is that needed?
   double maxWrite = 0.0;
   for (auto device : platform->get_device_range()) {
-    double currMaxWrite = xdp::profile::device::getMaxWrite(device);
+    double currMaxWrite = device::getMaxWrite(device);
     maxWrite = std::max(currMaxWrite,maxWrite);
   }
   return maxWrite;
@@ -280,11 +271,11 @@ cl_int
 start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
 {
   auto platform = k;
-  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
+  auto mgr = OCLProfiler::Instance()->getProfileManager();
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= xdp::profile::device::startTrace(device,type, numComputeUnits);
+      ret |= device::startTrace(device,type, numComputeUnits);
     }
     mgr->setLoggingTrace(type, false);
   }
@@ -298,7 +289,7 @@ stop_device_trace(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= xdp::profile::device::stopTrace(device,type);
+      ret |= device::stopTrace(device,type);
     }
   }
   return ret;
@@ -308,7 +299,7 @@ cl_int
 log_device_trace(key k, xclPerfMonType type, bool forceRead)
 {
   auto platform = k;
-  auto mgr = Profiling::Profiler::Instance()->getProfileManager();
+  auto mgr = OCLProfiler::Instance()->getProfileManager();
 
   // Make sure we're not overlapping multiple calls to trace
   // NOTE: This can happen when we do the 'final log' called from the singleton deconstructor
@@ -325,7 +316,7 @@ log_device_trace(key k, xclPerfMonType type, bool forceRead)
     mgr->setLoggingTrace(type, true);
     for (auto device : platform->get_device_range()) {
       if (device->is_active())
-        ret |= xdp::profile::device::logTrace(device,type, forceRead);
+        ret |= device::logTrace(device,type, forceRead);
     }
     mgr->setLoggingTrace(type, false);
   }
@@ -339,9 +330,9 @@ start_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= xdp::profile::device::startCounters(device,type);
+      ret |= device::startCounters(device,type);
       // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
-      ret |= xdp::profile::device::startTrace(device,type, 1);
+      ret |= device::startTrace(device,type, 1);
     }
   }
   return ret;
@@ -354,7 +345,7 @@ stop_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= xdp::profile::device::stopCounters(device,type);
+      ret |= device::stopCounters(device,type);
     }
   }
   return ret;
@@ -369,7 +360,7 @@ log_device_counters(key k, xclPerfMonType type, bool firstReadAfterProgram,
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
       if (device->is_active())
-        ret |= xdp::profile::device::logCounters(device,type, firstReadAfterProgram, forceRead);
+        ret |= device::logCounters(device,type, firstReadAfterProgram, forceRead);
     }
   }
   return ret;
@@ -391,7 +382,7 @@ get_ddr_bank_count(key k, const std::string& deviceName)
 bool 
 isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 {
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
   return ((profiler->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
           || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
@@ -399,13 +390,10 @@ isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type)
 {
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
   return ((profiler->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
   || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
-
-
-} // platform
 
 ////////////////////////////////////////////////////////////////
 // Device
@@ -480,12 +468,11 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   auto device = k;
   auto xdevice = device->get_xrt_device();
   auto data = get_data(k);
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
   auto profileMgr = profiler->getProfileManager();
 
   // Since clock training is performed in mStartTrace, let's record this time
   data->mLastTraceTrainingTime[type] = std::chrono::steady_clock::now();
-
   data->mPerformingFlush = false;
   data->mLastTraceNumSamples[type] = 0;
 
@@ -557,11 +544,11 @@ startCounters(key k, xclPerfMonType type)
   // Get/set clock freqs
   double deviceClockMHz = xdevice->getDeviceClock().get();
   if (deviceClockMHz > 0)
-    Profiling::Profiler::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
+    OCLProfiler::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
 
   xdevice->startCounters(type);
   data->mSampleIntervalMsec =
-    Profiling::Profiler::Instance()->getProfileManager()->getSampleIntervalMsec();
+    OCLProfiler::Instance()->getProfileManager()->getSampleIntervalMsec();
   return CL_SUCCESS;
 }
 
@@ -618,11 +605,11 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
         break;
 
       // log the device trace
-      Profiling::Profiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
+      OCLProfiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
       data->mTraceVector.mLength = 0;
 
       // Only check repeatedly for trace buffer flush if HW emulation
-      if (Profiling::Profiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::HW_EM)
+      if (OCLProfiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::HW_EM)
         break;
     }
   }
@@ -656,7 +643,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     std::string device_name = device->get_unique_name();
     std::string binary_name = device->get_xclbin().project_name();
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
+    OCLProfiler::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
                                                                          timeNsec, firstReadAfterProgram);
 
     //update the last time sample
@@ -680,7 +667,7 @@ data*
 get_data(key k) 
 { 
   // TODO: this used to come from RTProfile, now it comes from the plugin. Is this correct?
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
   auto& device_data = profiler->DeviceData;
 
   auto itr = device_data.find(k);
@@ -689,9 +676,8 @@ get_data(key k)
   }
   return &(*itr).second;
 }
-}
 
-} // device
-} // profile,xdp
+  }} // device/platform 
+}} // xoclp/xdp
 
 

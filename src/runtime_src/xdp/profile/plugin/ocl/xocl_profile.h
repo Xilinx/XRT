@@ -40,11 +40,7 @@
 #include <cmath>
 #include <string>
 
-namespace xdp { namespace profile {
-
-bool
-isApplicationProfilingOn();
-
+namespace xdp { namespace xoclp {
 //
 // CU profiling callbacks
 //
@@ -133,9 +129,6 @@ isValidPerfMonTypeTrace(key k, xclPerfMonType type);
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type);
 
-
-} // platform
-
 //
 // Device
 //
@@ -204,6 +197,7 @@ cl_int
 debugReadIPStatus(key k, xclDebugReadType type, void*  aDebugResults);
 
 } // device
+} // platform
 
 }} // profile,xdp
 

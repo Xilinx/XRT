@@ -19,7 +19,6 @@
 #include "trace_logger.h"
 #include "summary_writer.h"
 #include "xdp/profile/debug.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/collection/counters.h"
 #include "xdp/profile/device/trace_parser.h"
@@ -36,8 +35,8 @@ namespace xdp {
   // ***********************
   // Top-Level Profile Class
   // ***********************
-  RTProfile::RTProfile(int& flag, XDPPluginI* Plugin)
-  : mProfileFlags(flag),
+  RTProfile::RTProfile(int& flags, std::shared_ptr<XDPPluginI> Plugin)
+  : mProfileFlags(flags),
     mFileFlags(0),
     mDeviceTraceOption(RTUtil::DEVICE_TRACE_OFF),
     mStallTraceOption(RTUtil::STALL_TRACE_OFF),
@@ -47,11 +46,11 @@ namespace xdp {
     mProfileCounters = new ProfileCounters();
 
     // Trace parser
-    mTraceParser = new TraceParser(mPluginHandle);
+    mTraceParser = new TraceParser(mPluginHandle.get());
 
     // Logger & writer
-    mLogger = new TraceLogger(mProfileCounters, mTraceParser, mPluginHandle);
-    mWriter = new SummaryWriter(mProfileCounters, mTraceParser, mPluginHandle);
+    mLogger = new TraceLogger(mProfileCounters, mTraceParser, mPluginHandle.get());
+    mWriter = new SummaryWriter(mProfileCounters, mTraceParser, mPluginHandle.get());
   }
 
   RTProfile::~RTProfile()
@@ -78,12 +77,12 @@ namespace xdp {
     else if (option.find("fine") != std::string::npos)   mDeviceTraceOption = RTUtil::DEVICE_TRACE_FINE;
     else if (option.find("coarse") != std::string::npos) mDeviceTraceOption = RTUtil::DEVICE_TRACE_COARSE;
     else {
-      xrt::message::send(xrt::message::severity_level::WARNING,
+      mPluginHandle->sendMessage(
         "The data_transfer_trace setting of " + traceStr + " is not recognized. Please use fine|coarse|off.");
     }
 
     if ((mDeviceTraceOption == RTUtil::DEVICE_TRACE_COARSE) && (std::getenv("XCL_EMULATION_MODE"))) {
-      xrt::message::send(xrt::message::severity_level::WARNING,
+      mPluginHandle->sendMessage(
         "The data_transfer_trace setting of " + traceStr + " is not supported in emulation. Fine will be used.");
       mDeviceTraceOption = RTUtil::DEVICE_TRACE_FINE;
     }
@@ -103,7 +102,7 @@ namespace xdp {
     else if (option.find("pipe") != std::string::npos)     mStallTraceOption = RTUtil::STALL_TRACE_STR;
     else if (option.find("all") != std::string::npos)      mStallTraceOption = RTUtil::STALL_TRACE_ALL;
     else {
-      xrt::message::send(xrt::message::severity_level::WARNING,
+      mPluginHandle->sendMessage(
         "The stall_trace setting of " + traceStr + " is not recognized. Please use memory|dataflow|pipe|all|off.");
     }
   }
@@ -207,7 +206,7 @@ namespace xdp {
   }
 
   void RTProfile::writeProfileSummary() {
-    if (!this->isApplicationProfileOn())
+    if (!isApplicationProfileOn())
       return;
 
     mWriter->writeProfileSummary(this);

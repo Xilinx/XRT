@@ -26,37 +26,36 @@
 
 #include "ocl_profiler.h"
 #include "xdp/profile/debug.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xrt/util/config_reader.h"
-
+#include "xrt/util/message.h"
 #include "driver/include/xclperf.h"
 
-#include "xrt/util/message.h"
-
-namespace Profiling {
+namespace xdp {
 
   static bool pDead = false;
 
-  Profiler* Profiler::Instance()
+  OCLProfiler* OCLProfiler::Instance()
   {
     if (pDead) {
-      std::cout << "Profiler is dead\n";
+      std::cout << "OCLProfiler is dead\n";
       return nullptr;
     }
-    static Profiler singleton;
+    static OCLProfiler singleton;
     return &singleton;
   };
 
-  Profiler::Profiler()
+  OCLProfiler::OCLProfiler()
   : ProfileFlags( 0 )
   {
-    Plugin = new xdp::XoclPlugin();
-    ProfileMgr = new xdp::RTProfile(ProfileFlags, Plugin);
+    Platform = xocl::get_shared_platform();
+    Plugin = std::make_shared<XoclPlugin>(getclPlatformID());
+    // Share ownership to ensure correct order of destruction
+    ProfileMgr = std::make_unique<RTProfile>(ProfileFlags, Plugin);
     startProfiling();
   }
 
-  Profiler::~Profiler()
+  OCLProfiler::~OCLProfiler()
   {
     pDead = true;
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
@@ -69,56 +68,50 @@ namespace Profiling {
       endDeviceProfiling();
     }
     endProfiling();
-    // Destruct in reverse order of construction
-    delete ProfileMgr;
-    delete Plugin;
   }
 
   // Start device profiling
-  void Profiler::startDeviceProfiling(size_t numComputeUnits)
+  void OCLProfiler::startDeviceProfiling(size_t numComputeUnits)
   {
-    auto rts = xdp::RTSingleton::Instance();
-    auto platform = rts->getcl_platform_id();
+    auto platform = getclPlatformID();
     // Start counters
     if (deviceCountersProfilingOn())
-      xdp::profile::platform::start_device_counters(platform, XCL_PERF_MON_MEMORY);
+      xoclp::platform::start_device_counters(platform, XCL_PERF_MON_MEMORY);
 
     // Start trace
     if (deviceTraceProfilingOn())
-      xdp::profile::platform::start_device_trace(platform, XCL_PERF_MON_MEMORY, numComputeUnits);
+      xoclp::platform::start_device_trace(platform, XCL_PERF_MON_MEMORY, numComputeUnits);
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
-      xdp::profile::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
+      xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
     mProfileRunning = true;
   }
 
   // End device profiling (for a given program)
   // Perform final read of counters and force flush of trace buffers
-  void Profiler::endDeviceProfiling()
+  void OCLProfiler::endDeviceProfiling()
   {
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
-
-    auto rts = xdp::RTSingleton::Instance();
-    auto platform = rts->getcl_platform_id();
-
+    
+    auto platform = getclPlatformID();
     if (applicationProfilingOn()) {
       // Write end of app event to trace buffer (Zynq only)
-      xdp::profile::platform::write_host_event(platform,
+      xoclp::platform::write_host_event(platform,
           XCL_PERF_MON_END_EVENT, XCL_PERF_MON_PROGRAM_END);
 
       XOCL_DEBUGF("Final calls to read device counters and trace\n");
 
-      xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_MEMORY, false, true);
+      xoclp::platform::log_device_counters(platform, XCL_PERF_MON_MEMORY, false, true);
 
       // Only called for hw emulation
       // Log accel trace before data trace as that is used for timestamp calculations
       if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
-        xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_ACCEL, true, true);
+        xoclp::platform::log_device_counters(platform, XCL_PERF_MON_ACCEL, true, true);
         logFinalTrace(XCL_PERF_MON_ACCEL);
-        xdp::profile::platform::log_device_counters(platform, XCL_PERF_MON_STR, true, true);
+        xoclp::platform::log_device_counters(platform, XCL_PERF_MON_STR, true, true);
         logFinalTrace(XCL_PERF_MON_STR);
       }
 
@@ -127,7 +120,7 @@ namespace Profiling {
       // Gather info for guidance
       // NOTE: this needs to be done here before the device clears its list of CUs
       // See xocl::device::unload_program as called from xocl::program::~program
-      Plugin->getGuidanceMetadata( ProfileMgr );
+      Plugin->getGuidanceMetadata( getProfileManager() );
 
       // Record that this was called indirectly by host code
       mEndDeviceProfilingCalled = true;
@@ -136,7 +129,7 @@ namespace Profiling {
 
   // Get timestamp difference in usec (used for debug)
   uint32_t
-  Profiler::getTimeDiffUsec(std::chrono::steady_clock::time_point start,
+  OCLProfiler::getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                             std::chrono::steady_clock::time_point end)
   {
     using namespace std::chrono;
@@ -147,26 +140,24 @@ namespace Profiling {
   }
 
   // Get device counters
-  void Profiler::getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters)
+  void OCLProfiler::getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters)
   {
-    auto rts = xdp::RTSingleton::Instance();
     if (!isProfileRunning() || !deviceCountersProfilingOn())
       return;
 
     XOCL_DEBUGF("getDeviceCounters: START (firstRead: %d, forceRead: %d)\n",
                  firstReadAfterProgram, forceReadCounters);
 
-    xdp::profile::platform::log_device_counters(rts->getcl_platform_id(),XCL_PERF_MON_MEMORY,
+    xoclp::platform::log_device_counters(getclPlatformID(),XCL_PERF_MON_MEMORY,
                                                 firstReadAfterProgram, forceReadCounters);
 
     XOCL_DEBUGF("getDeviceCounters: END\n");
   }
 
   // Get device trace
-  void Profiler::getDeviceTrace(bool forceReadTrace)
+  void OCLProfiler::getDeviceTrace(bool forceReadTrace)
   {
-    auto rts = xdp::RTSingleton::Instance();
-    auto platform = rts->getcl_platform_id();
+    auto platform = getclPlatformID();
     if (!isProfileRunning() || 
         (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) ))
       return;
@@ -174,28 +165,28 @@ namespace Profiling {
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
 
     if (deviceTraceProfilingOn())
-      xdp::profile::platform::log_device_trace(platform, XCL_PERF_MON_MEMORY, forceReadTrace);
+      xoclp::platform::log_device_trace(platform, XCL_PERF_MON_MEMORY, forceReadTrace);
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
-      xdp::profile::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
+      xoclp::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
   }
 
   // Turn on/off profiling
-  void Profiler::turnOnProfile(xdp::RTUtil::e_profile_mode mode) {
+  void OCLProfiler::turnOnProfile(xdp::RTUtil::e_profile_mode mode) {
     ProfileFlags |= mode;
     ProfileMgr->turnOnProfile(mode);
   }
 
-  void Profiler::turnOffProfile(xdp::RTUtil::e_profile_mode mode)
+  void OCLProfiler::turnOffProfile(xdp::RTUtil::e_profile_mode mode)
   {
     ProfileFlags &= ~mode;
     ProfileMgr->turnOffProfile(mode);
   }
 
     // Kick off profiling and open writers
-  void Profiler::startProfiling() {
+  void OCLProfiler::startProfiling() {
     if (xrt::config::get_profile() == false)
       return;
 
@@ -218,7 +209,7 @@ namespace Profiling {
     // Enable profile summary if profile is on
     std::string profileFile("sdaccel_profile_summary");
     ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
-    xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin);
+    xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin.get());
     ProfileWriters.push_back(csvProfileWriter);
     ProfileMgr->attach(csvProfileWriter);
 
@@ -228,7 +219,7 @@ namespace Profiling {
       timelineFile = "sdaccel_timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
     }
-    xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin);    
+    xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
 
@@ -236,22 +227,20 @@ namespace Profiling {
     if (std::getenv("SDX_NEW_PROFILE")) {
       std::string profileFile2("sdx_profile_summary");
       std::string timelineFile2("sdx_timeline_trace");
-      xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin);
+      xdp::UnifiedCSVProfileWriter* csvProfileWriter2 = new xdp::UnifiedCSVProfileWriter(profileFile2, "Xilinx", Plugin.get());
       ProfileWriters.push_back(csvProfileWriter2);
       ProfileMgr->attach(csvProfileWriter2);
     }
 
     // Add functions to callback for profiling kernel/CU scheduling
-    xocl::add_command_start_callback(xdp::profile::get_cu_start);
-    xocl::add_command_done_callback(xdp::profile::get_cu_done);
+    xocl::add_command_start_callback(xoclp::get_cu_start);
+    xocl::add_command_done_callback(xoclp::get_cu_done);
   }
 
   // Wrap up profiling by writing files
-  void Profiler::endProfiling()
+  void OCLProfiler::endProfiling()
   {
-    if (applicationTraceOn()) {
-      setTraceFooterString();
-    }
+    configureWriters();
     if (applicationProfilingOn()) {
       // Write out reports
       ProfileMgr->writeProfileSummary();
@@ -268,19 +257,48 @@ namespace Profiling {
     }
   }
 
+  void OCLProfiler::configureWriters()
+  {
+    if (applicationTraceOn()) {
+      setTraceFooterString();
+    }
+    // These tables are only enabled if a compatible monitor is present
+    unsigned numStallSlots = 0;
+    unsigned numStreamSlots = 0;
+    if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
+      for (auto device_id : Platform->get_device_range()) {
+        std::string deviceName = device_id->get_unique_name();
+        numStallSlots += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                deviceName,
+                                                                XCL_PERF_MON_STALL);
+        numStreamSlots += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                 deviceName,
+                                                                 XCL_PERF_MON_STR);
+      }
+      for (auto& w: ProfileWriters) {
+        if (Plugin->getFlowMode() == RTUtil::DEVICE && numStallSlots > 0) {
+          w->enableStallTable();
+        }
+        if ((Plugin->getFlowMode() == RTUtil::DEVICE ||
+              Plugin->getFlowMode() == RTUtil::HW_EM) &&
+            numStreamSlots > 0) {
+          w->enableStreamTable();
+        }
+      }
+    }
+  }
+
   // Log final trace for a given profile type
   // NOTE: this is a bit tricky since trace logging is accessed by multiple
   // threads. We have to wait since this is the only place where we flush.
-  void Profiler::logFinalTrace(xclPerfMonType type) {
+  void OCLProfiler::logFinalTrace(xclPerfMonType type) {
     const unsigned int wait_msec = 1;
     const unsigned int max_iter = 100;
     unsigned int iter = 0;
     cl_int ret = -1;
 
-    auto rts = xdp::RTSingleton::Instance();
-
     while (ret == -1 && iter < max_iter) {
-      ret = xdp::profile::platform::log_device_trace(rts->getcl_platform_id(),type, true);
+      ret = xoclp::platform::log_device_trace(getclPlatformID(),type, true);
       if (ret == -1)
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
       iter++;
@@ -288,8 +306,7 @@ namespace Profiling {
     XDP_LOG("Trace logged for type %d after %d iterations\n", type, iter);
   }
 
-  void Profiler::setTraceFooterString() {
-    auto rts = xdp::RTSingleton::Instance();
+  void OCLProfiler::setTraceFooterString() {
     std::stringstream trs;
     trs << "Project," << ProfileMgr->getProjectName() << ",\n";
     std::string stallProfiling = (ProfileMgr->getStallTrace() == xdp::RTUtil::STALL_TRACE_OFF) ? "false" : "true";
@@ -305,7 +322,7 @@ namespace Profiling {
     //
     // Platform/device info
     //
-    auto platform = rts->getcl_platform_id();
+    auto platform = getclPlatformID();
     for (auto device_id : platform->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
       trs << "Device," << deviceName << ",begin\n";
@@ -326,7 +343,6 @@ namespace Profiling {
     //
     // Unused CUs
     //
-    //auto platform = rts->getcl_platform_id();
     for (auto device_id : platform->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
 
@@ -343,7 +359,7 @@ namespace Profiling {
   // Add to the active devices
   // Called thru device::load_program in xocl/core/device.cpp
   // NOTE: this is the entry point into XDP when a new device gets loaded
-  void Profiler::addToActiveDevices(const std::string& deviceName)
+  void OCLProfiler::addToActiveDevices(const std::string& deviceName)
   {
     XDP_LOG("addToActiveDevices: device = %s\n", deviceName.c_str());
     // Store name of device to profiler
@@ -351,7 +367,7 @@ namespace Profiling {
     // TODO: Grab device-level metadata here!!! (e.g., device name, CU/kernel names)
   }
 
-  void Profiler::setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz)
+  void OCLProfiler::setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz)
   {
     if (applicationProfilingOn()) {
       ProfileMgr->setTraceClockFreqMHz(clockRateMHz);
@@ -364,28 +380,28 @@ namespace Profiling {
    */
   void cb_get_device_trace(bool forceReadTrace)
   {
-    Profiling::Profiler::Instance()->getDeviceTrace(forceReadTrace);
+    OCLProfiler::Instance()->getDeviceTrace(forceReadTrace);
   }
 
   void cb_get_device_counters(bool firstReadAfterProgram, bool forceReadCounters)
   {
-    Profiling::Profiler::Instance()->getDeviceCounters(firstReadAfterProgram, firstReadAfterProgram);
+    OCLProfiler::Instance()->getDeviceCounters(firstReadAfterProgram, firstReadAfterProgram);
   }
 
   void cb_start_device_profiling(size_t numComputeUnits)
   {
-    Profiling::Profiler::Instance()->startDeviceProfiling(numComputeUnits);
+    OCLProfiler::Instance()->startDeviceProfiling(numComputeUnits);
   }
 
   void cb_reset_device_profiling()
   {
     // Reset profiling flag
-    Profiling::Profiler::Instance()->resetDeviceProfilingFlag();
+    OCLProfiler::Instance()->resetDeviceProfilingFlag();
   }
 
   void cb_end_device_profiling()
   {
-    Profiling::Profiler::Instance()->endDeviceProfiling();
+    OCLProfiler::Instance()->endDeviceProfiling();
   }
 
 } // Profiling

@@ -26,9 +26,8 @@
 namespace xdp {
 
 bool isProfilingOn() {
-  //static bool profilingOn = xdp::profile::isApplicationProfilingOn();
-  //return profilingOn;
-  return xdp::profile::isApplicationProfilingOn();
+  auto profiler = OCLProfiler::Instance();
+  return (profiler == nullptr) ? false : profiler->applicationProfilingOn();
 }
 
 // Create string to uniquely identify event
@@ -131,9 +130,9 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     std::string CuInfo = kname + "|" + localSize + "|" + cu_name;
     std::string uniqueName = "KERNEL|" + deviceName + "|" + xname + "|" + CuInfo + "|";
     std::string traceString = uniqueName + std::to_string(workGroupSize);
-    Profiling::Profiler::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
+    OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(cu_name, traceString);
     // Finally log the execution
-    Profiling::Profiler::Instance()->getProfileManager()->logKernelExecution
+    OCLProfiler::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
        ,programId
        ,reinterpret_cast<uint64_t>(event)
@@ -177,7 +176,7 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::READ_BUFFER
        ,commandState
@@ -225,7 +224,7 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::READ_BUFFER
        ,commandState
@@ -271,7 +270,7 @@ void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t si
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -317,7 +316,7 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -384,7 +383,7 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
        ,xdp::RTUtil::WRITE_BUFFER
        ,commandState
@@ -448,7 +447,7 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
       xdp::RTUtil::READ_BUFFER : xdp::RTUtil::WRITE_BUFFER;
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
-    Profiling::Profiler::Instance()->getProfileManager()->logDataTransfer
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(mem0)
        ,kind
        ,commandState
@@ -467,12 +466,12 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
 
 void cb_log_function_start(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  Profiling::Profiler::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
+  OCLProfiler::Instance()->getProfileManager()->logFunctionCallStart(functionName, queueAddress, functionID);
 }
 
 void cb_log_function_end(const char* functionName, long long queueAddress, unsigned int functionID)
 {
-  Profiling::Profiler::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
+  OCLProfiler::Instance()->getProfileManager()->logFunctionCallEnd(functionName, queueAddress, functionID);
 }
 
 void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* deps)
@@ -482,14 +481,14 @@ void cb_log_dependencies(xocl::event* event,  cl_uint num_deps, const cl_event* 
   }
 
   for (auto e :  xocl::get_range(deps, deps+num_deps)) {
-    Profiling::Profiler::Instance()->getProfileManager()->logDependency(xdp::RTUtil::DEPENDENCY_EVENT,
+    OCLProfiler::Instance()->getProfileManager()->logDependency(xdp::RTUtil::DEPENDENCY_EVENT,
                   xocl::xocl(e)->get_suid(), event->get_suid());
   }
 }
 
 void cb_add_to_active_devices(const std::string& device_name)
 {
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
   static bool profile_on = profiler->applicationProfilingOn();
   if (profile_on) {
     profiler->addToActiveDevices(device_name);
@@ -500,12 +499,12 @@ void cb_add_to_active_devices(const std::string& device_name)
 void
 cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 {
-  Profiling::Profiler::Instance()->setKernelClockFreqMHz(device_name, freq);
+  OCLProfiler::Instance()->setKernelClockFreqMHz(device_name, freq);
 }
 
 void cb_reset(const xocl::xclbin& xclbin)
 {
-  auto profiler = Profiling::Profiler::Instance();
+  auto profiler = OCLProfiler::Instance();
 
   // init flow mode
   auto xclbin_target = xclbin.target();
@@ -556,11 +555,11 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_reset(cb_reset);
   xocl::profile::register_cb_init(cb_init);
 
-  xocl::profile::register_cb_get_device_trace(Profiling::cb_get_device_trace);
-  xocl::profile::register_cb_get_device_counters(Profiling::cb_get_device_counters);
-  xocl::profile::register_cb_start_device_profiling(Profiling::cb_start_device_profiling);
-  xocl::profile::register_cb_reset_device_profiling(Profiling::cb_reset_device_profiling);
-  xocl::profile::register_cb_end_device_profiling(Profiling::cb_end_device_profiling);
+  xocl::profile::register_cb_get_device_trace(cb_get_device_trace);
+  xocl::profile::register_cb_get_device_counters(cb_get_device_counters);
+  xocl::profile::register_cb_start_device_profiling(cb_start_device_profiling);
+  xocl::profile::register_cb_reset_device_profiling(cb_reset_device_profiling);
+  xocl::profile::register_cb_end_device_profiling(cb_end_device_profiling);
 }
 } // xdp
 
@@ -569,7 +568,7 @@ void
 initXDPLib()
 {
   (void)xdp::RTSingleton::Instance();
-  (void)Profiling::Profiler::Instance();
-  if (Profiling::Profiler::Instance()->applicationProfilingOn())
+  (void)xdp::OCLProfiler::Instance();
+  if (xdp::OCLProfiler::Instance()->applicationProfilingOn())
     xdp::register_xocl_profile_callbacks();
 }

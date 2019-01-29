@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <string>
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <map>
 

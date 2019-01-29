@@ -97,4 +97,9 @@ namespace xdp {
     }
   }
 
+  void XDPPluginI::sendMessage(const std::string &msg)
+  {
+    std::cout << msg;
+  }
+
 } // xdp

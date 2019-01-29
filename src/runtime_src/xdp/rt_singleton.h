@@ -20,7 +20,6 @@
 
 #include <CL/opencl.h>
 #include "xdp/debug/rt_debug.h"
-#include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
 
 #include <cstdlib>

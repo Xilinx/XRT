@@ -27,6 +27,8 @@
 #include <limits>
 #include <cstdint>
 #include <thread>
+#include <iostream>
+#include <memory>
 
 // Separator used for CU port and memory resource (must match HW linker)
 #define PORT_MEM_SEP "-"
@@ -44,30 +46,21 @@ namespace xdp {
   // **************************************************************************
   class RTProfile {
   public:
-    RTProfile(int& flags, XDPPluginI* Plugin);
+    RTProfile(int& flags, std::shared_ptr<XDPPluginI> mPluginHandle);
     ~RTProfile();
 
   public:
+    // Profiling options and settings
     void turnOnProfile(RTUtil::e_profile_mode mode) { mProfileFlags |= mode; }
     void turnOffProfile(RTUtil::e_profile_mode mode) { mProfileFlags &= ~mode; }
-
-  public:
-    void turnOnFile(RTUtil::e_write_file file) {
-      mFileFlags |= file;
-    }
-
-    bool isSummaryFileOn() const { return mFileFlags & RTUtil::FILE_SUMMARY;}
-    bool isTimelineTraceFileOn() const { return mFileFlags & RTUtil::FILE_TIMELINE_TRACE; }
-
-  public:
+    void turnOnFile(RTUtil::e_write_file file) { mFileFlags |= file; }
     int getProfileFlags() { return mProfileFlags; }
     bool isDeviceProfileOn() const;
     bool isApplicationProfileOn() const { return mProfileFlags & RTUtil::PROFILE_APPLICATION; }
-
     void setTransferTrace(const std::string traceStr);
     void setStallTrace(const std::string traceStr);
-    RTUtil::e_device_trace getTransferTrace() {return mDeviceTraceOption;}
-    RTUtil::e_stall_trace getStallTrace() {return mStallTraceOption;}
+    RTUtil::e_device_trace getTransferTrace() { return mDeviceTraceOption; }
+    RTUtil::e_stall_trace getStallTrace() { return mStallTraceOption; }
 
   public:
     // Attach or detach observer writers
@@ -89,13 +82,11 @@ namespace xdp {
 
   public:
     void writeProfileSummary();
-
     void addDeviceName(std::string deviceName) { mDeviceNames.push_back(deviceName); }
     std::string getDeviceNames(const std::string& sep) const;
     std::string getProjectName() const;
     int getMigrateMemCalls() const;
     const std::set<std::thread::id>& getThreadIds();
-
     // Functions required by guidance
     double getDeviceStartTime(const std::string& deviceName) const;
     double getTotalKernelExecutionTime(const std::string& deviceName) const;
@@ -104,7 +95,6 @@ namespace xdp {
   public:
     bool getLoggingTrace(int index);
     void setLoggingTrace(int index, bool value);
-
     TraceParser* getTraceParser() {return mTraceParser; }
 
   public:
@@ -165,19 +155,12 @@ namespace xdp {
     RTUtil::e_device_trace mDeviceTraceOption;
     RTUtil::e_stall_trace mStallTraceOption;
     bool mLoggingTrace[XCL_PERF_MON_TOTAL_PROFILE] = {false};
-
     ProfileCounters* mProfileCounters = nullptr;
     TraceParser* mTraceParser;
     TraceLogger* mLogger;
     SummaryWriter* mWriter;
-
     std::vector<std::string> mDeviceNames;
-
-  //public:
-    // moved to plugin/base_plugin.h
-    // std::map<xdp::profile::device::key,xdp::profile::device::data> device_data;
-    private:
-      XDPPluginI * mPluginHandle;
+    std::shared_ptr<XDPPluginI> mPluginHandle;
   };
 
 } // xdp

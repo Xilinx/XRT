@@ -15,7 +15,6 @@
  */
 
 #include "rt_util.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/collection/results.h"
 
 #include <cassert>

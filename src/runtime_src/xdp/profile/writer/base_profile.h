@@ -20,6 +20,8 @@
 #include <boost/format.hpp>
 #include "xdp/profile/device/trace_parser.h"
 #include "xdp/profile/plugin/base_plugin.h"
+#include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>
 #include <cstdio>
@@ -39,42 +41,45 @@ namespace xdp {
 
     public:
       ProfileWriterI();
-	  virtual ~ProfileWriterI() {};
+      virtual ~ProfileWriterI() {};
 
       // A derived class can choose to write less or more, or write differently
-	  // But a default implementation is provided. This may be preferred to keep
-	  // consistency across all formats of reports
-	  virtual void writeSummary(RTProfile* profile);
+      // But a default implementation is provided. This may be preferred to keep
+      // consistency across all formats of reports
+      virtual void writeSummary(RTProfile* profile);
 
     public:
-	  // Functions for Summary
-	  // Write Kernel Execution Time stats
-	  virtual void writeTimeStats(const std::string& name, const TimeStats& stats);
-	  // Write Read Buffer of Write Buffer transfer stats
-	  virtual void writeBufferStats(const std::string& name, const BufferStats& stats);
-	  // Write Kernel Execution Time Trace
-	  virtual void writeKernel(const KernelTrace& trace);
-	  // Write Read or Write Buffer Time Trace
-	  virtual void writeBuffer(const BufferTrace& trace);
-	  // Write Device Read or Write Data Transfer Time Trace
-	  virtual void writeDeviceTransfer(const DeviceTrace& trace);
-	  // Write compute unit utilization table
-	  virtual void writeComputeUnitSummary(const std::string& name, const TimeStats& stats);
-	  // Write accelerator table
-	  virtual void writeAcceleratorSummary(const std::string& name, const TimeStats& stats);
+      inline void enableStallTable() { mEnStallTable = true; }
+      inline void enableStreamTable() { mEnStreamTable = true; }
+      // Functions for Summary
+      // Write Kernel Execution Time stats
+      virtual void writeTimeStats(const std::string& name, const TimeStats& stats);
+      // Write Read Buffer of Write Buffer transfer stats
+      virtual void writeBufferStats(const std::string& name, const BufferStats& stats);
+      // Write Kernel Execution Time Trace
+      virtual void writeKernel(const KernelTrace& trace);
+      // Write Read or Write Buffer Time Trace
+      virtual void writeBuffer(const BufferTrace& trace);
+      // Write Device Read or Write Data Transfer Time Trace
+      virtual void writeDeviceTransfer(const DeviceTrace& trace);
+      // Write compute unit utilization table
+      virtual void writeComputeUnitSummary(const std::string& name, const TimeStats& stats);
+      // Write accelerator table
+      virtual void writeAcceleratorSummary(const std::string& name, const TimeStats& stats);
 
-	  // Write Read/Write Buffer transfer stats
+      // Write Read/Write Buffer transfer stats
       virtual void writeHostTransferSummary(const std::string& name,
           const BufferStats& stats, uint64_t totalTranx, uint64_t totalBytes,
           double totalTimeMsec, double maxTransferRateMBps);
       // Write Read/Write Kernel transfer stats
-      void writeKernelTransferSummary(const std::string& deviceName,
+      void writeKernelTransferSummary(
+          const std::string& deviceName,
           const std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
-		  const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
-		  double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
-	  void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
-	      double cuStallExt, double cuStallStr, double cuStallInt);
-	  void writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
+          const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
+          double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
+      void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
+          double cuStallExt, double cuStallStr, double cuStallInt);
+      void writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
           uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
           double linkStarve, double linkStall);
       // Write Top Kernel Read and Write transfer stats
@@ -85,24 +90,24 @@ namespace xdp {
           double totalWriteTimeMsec, double totalReadTimeMsec,
           uint32_t maxBytesPerTransfer, double maxTransferRateMBps);
 
-	  // Functions for device counters
-	  void writeDeviceCounters(xclPerfMonType type, xclCounterResults& results,
+      // Functions for device counters
+      void writeDeviceCounters(xclPerfMonType type, xclCounterResults& results,
           double timestamp, uint32_t sampleNum, bool firstReadAfterProgram);
 
-	  // Function for guidance metadata
-	  void writeGuidanceMetadataSummary(RTProfile *profile,
-	      const XDPPluginI::GuidanceMap  &deviceExecTimesMap,
-	      const XDPPluginI::GuidanceMap  &computeUnitCallsMap,
+      // Function for guidance metadata
+      void writeGuidanceMetadataSummary(RTProfile *profile,
+          const XDPPluginI::GuidanceMap  &deviceExecTimesMap,
+          const XDPPluginI::GuidanceMap  &computeUnitCallsMap,
           const XDPPluginI::GuidanceMap2 &kernelCountsMap);
 
-	protected:
-	  // Veraidic args function to take n number of any type of args and
-	  // stream it to a file
-	  // Move it to base class as new writer functionality needs it.
-	  // TODO: Windows doesnt support variadic functions till VS 2013.
-	  template<typename T>
+    protected:
+      // Veraidic args function to take n number of any type of args and
+      // stream it to a file
+      // Move it to base class as new writer functionality needs it.
+      // TODO: Windows doesnt support variadic functions till VS 2013.
+      template<typename T>
       void writeTableCells(std::ofstream& ofs, T value)
-	  {
+      {
         ofs << cellStart();
         ofs << value;
         ofs << cellEnd();
@@ -115,11 +120,11 @@ namespace xdp {
         writeTableCells(ofs, args...);
       }
 
-	protected:
+    protected:
       void openStream(std::ofstream& ofs, const std::string& fileName);
       std::ofstream& getStream() {return Summary_ofs;}
-	    
-	protected:
+        
+    protected:
       // Document is assumed to consist of Document Header, one or more tables and document footer
       // Table has header, rows and footer
       // A Binary writer such as write to Xilinx's WDB format (say WDBWriter class) could be
@@ -128,7 +133,7 @@ namespace xdp {
       virtual void writeDocumentHeader(std::ofstream& ofs, const std::string& docName)  { ofs << docName;}
       virtual void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) {}
       virtual void writeTableHeader(std::ofstream& ofs, const std::string& caption,
-          const std::vector<std::string>& columnLabels) = 0;
+                                    const std::vector<std::string>& columnLabels) = 0;
       virtual void writeTableRowStart(std::ofstream& ofs) { ofs << rowStart(); }
       virtual void writeTableRowEnd(std::ofstream& ofs)   { ofs << rowEnd() << newLine(); }
       virtual void writeTableFooter(std::ofstream& ofs) {}
@@ -141,8 +146,12 @@ namespace xdp {
       virtual const char* rowEnd()  { return ""; }
       virtual const char* newLine()  { return "\n"; }
 
-	protected:
+    protected:
       std::ofstream Summary_ofs;
+
+    protected:
+      bool mEnStallTable = false;
+      bool mEnStreamTable = false;
 
     protected:
       XDPPluginI * mPluginHandle;

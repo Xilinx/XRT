@@ -157,6 +157,10 @@ namespace xdp {
           return iter->second;
         return 300;
       }
+
+      // Lets profiler communicate to application
+      public:
+        virtual void sendMessage(const std::string &msg);
     };
 
 } // xdp

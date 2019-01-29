@@ -17,7 +17,6 @@
 #include "trace_logger.h"
 #include "rt_util.h"
 #include "xdp/profile/debug.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/collection/results.h"
 #include "xdp/profile/collection/counters.h"
 #include "xdp/profile/device/trace_parser.h"

@@ -15,7 +15,6 @@
  */
 
 #include "trace_parser.h"
-#include "xdp/rt_singleton.h"
 
 #include <iostream>
 #include <fstream>
@@ -132,7 +131,7 @@ namespace xdp {
     }
     else {
       if (traceVector.mLength >= 8192)
-        xrt::message::send(xrt::message::severity_level::WARNING,
+        mPluginHandle->sendMessage(
 "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
 Please use 'coarse' option for data transfer trace or turn off Stall profiling");
     }
@@ -589,7 +588,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           if (lastTimeStamp < mAccelMonLastTranx[i])
             lastTimeStamp = mAccelMonLastTranx[i];
           if (lastTimeStamp) {
-            xrt::message::send(xrt::message::severity_level::WARNING,
+            mPluginHandle->sendMessage(
             "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
             kernelTrace.EndTime = lastTimeStamp;
             kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);

@@ -15,8 +15,6 @@
  */
 
 #include "base_profile.h"
-#include "xdp/rt_singleton.h"
-#include "xdp/profile/plugin/base_plugin.h"
 
 namespace xdp {
   //********************
@@ -36,7 +34,6 @@ namespace xdp {
 
   void ProfileWriterI::writeSummary(RTProfile* profile)
   {
-    auto rts = xdp::RTSingleton::Instance();
     auto flowMode = mPluginHandle->getFlowMode();
 
     // Sub-header
@@ -74,23 +71,7 @@ namespace xdp {
     profile->writeComputeUnitSummary(this);
     writeTableFooter(getStream());
 
-    // Table 4: CU Stalls only for HW Runs
-    // NOTE: only display this table if
-    //   * device counter profiling is turned on (default: true)
-    //   * it was run on a board
-    //   * at least one device has stall profiling in the dynamic region
-    unsigned numStallSlots = 0;
-    unsigned numStreamSlots = 0;
-    auto platform = rts->getcl_platform_id();
-    for (auto device_id : platform->get_device_range()) {
-      std::string deviceName = device_id->get_unique_name();
-      numStallSlots += mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STALL, deviceName);
-      numStreamSlots += mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
-    }
-
-    if (profile->isDeviceProfileOn() && 
-      (flowMode == xdp::RTUtil::DEVICE) &&
-      (numStallSlots > 0)) {
+    if (mEnStallTable) {
       std::vector<std::string> KernelStallLabels = {
         "Compute Unit", "Execution Count", "Running Time (ms)", "Intra-Kernel Dataflow Stalls (ms)", 
         "External Memory Stalls (ms)", "Inter-Kernel Pipe Stalls (ms)"
@@ -128,7 +109,7 @@ namespace xdp {
     writeTableFooter(getStream());
 
     // Table 6.1 : Stream Data Transfers
-    if (profile->isDeviceProfileOn() && (flowMode == xdp::RTUtil::DEVICE || flowMode == xdp::RTUtil::HW_EM) && (numStreamSlots > 0)) {
+    if (mEnStallTable) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
         "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"

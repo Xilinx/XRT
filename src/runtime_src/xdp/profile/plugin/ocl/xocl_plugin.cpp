@@ -15,7 +15,6 @@
  */
 
 #include "xocl_plugin.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
 
@@ -23,8 +22,9 @@
 
 namespace xdp {
   // XOCL XDP Plugin constructor
-  XoclPlugin::XoclPlugin()
+  XoclPlugin::XoclPlugin(xocl::platform* Platform)
   {
+    mPlatformHandle = Platform;
   }
 
   XoclPlugin::~XoclPlugin()
@@ -48,11 +48,9 @@ namespace xdp {
   // Find arguments and memory resources for each accel port on given device
   void XoclPlugin::setArgumentsBank(const std::string& deviceName)
   {
-    auto rts = xdp::RTSingleton::Instance();
-    auto platform = rts->getcl_platform_id();
     const std::string numerical("0123456789");
 
-    for (auto device_id : platform->get_device_range()) {
+    for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string currDevice = device_id->get_unique_name();
       XDP_LOG("setArgumentsBank: current device = %s, # CUs = %d\n",
               currDevice.c_str(), device_id->get_num_cus());
@@ -201,10 +199,8 @@ namespace xdp {
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-
-    // Traverse all devices in this platform
-    for (auto device_id : platform->get_device_range()) {
+    // Traverse all devices in platform
+    for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
 
       // Get execution time for this device
@@ -216,10 +212,8 @@ namespace xdp {
 
   void XoclPlugin::getUnusedComputeUnits(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-
-    // Traverse all devices in this platform
-    for (auto device_id : platform->get_device_range()) {
+    // Traverse all devices in platform
+    for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
 
       // Traverse all CUs on current device
@@ -236,10 +230,8 @@ namespace xdp {
 
   void XoclPlugin::getKernelCounts(RTProfile *profile)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-
     // Traverse all devices in this platform
-    for (auto device_id : platform->get_device_range()) {
+    for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
 
       // Traverse all CUs on current device
@@ -260,8 +252,7 @@ namespace xdp {
 
   void XoclPlugin::getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName)
   {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    profile::platform::get_profile_kernel_name(platform, deviceName, cuName, kernelName);
+    xoclp::platform::get_profile_kernel_name(mPlatformHandle, deviceName, cuName, kernelName);
   }
 
   void XoclPlugin::getTraceStringFromComputeUnit(const std::string& deviceName,
@@ -298,37 +289,43 @@ namespace xdp {
     mComputeUnitKernelTraceMap[cuName] = traceString;
   }
 
-  size_t XoclPlugin::getDeviceTimestamp(std::string& deviceName) {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    return profile::platform::get_device_timestamp(platform,deviceName);
+  size_t XoclPlugin::getDeviceTimestamp(std::string& deviceName)
+  {
+    return xoclp::platform::get_device_timestamp(mPlatformHandle,deviceName);
   }
 
-  double XoclPlugin::getReadMaxBandwidthMBps() {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    return profile::platform::get_device_max_read(platform);
+  double XoclPlugin::getReadMaxBandwidthMBps()
+  {
+    return xoclp::platform::get_device_max_read(mPlatformHandle);
   }
 
-  double XoclPlugin::getWriteMaxBandwidthMBps() {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    return profile::platform::get_device_max_write(platform);
+  double XoclPlugin::getWriteMaxBandwidthMBps()
+  {
+    return xoclp::platform::get_device_max_write(mPlatformHandle);
   }
 
-  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    unsigned numSlots = xdp::profile::platform::get_profile_num_slots(platform,
+  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName)
+  {
+    unsigned numSlots = xoclp::platform::get_profile_num_slots(mPlatformHandle,
         deviceName, type);
     return numSlots;
   }
 
   void XoclPlugin::getProfileSlotName(xclPerfMonType type, std::string& deviceName,
-                                       unsigned slotnum, std::string& slotName) {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    xdp::profile::platform::get_profile_slot_name(platform, deviceName,
+                                       unsigned slotnum, std::string& slotName)
+  {
+    xoclp::platform::get_profile_slot_name(mPlatformHandle, deviceName,
         type, slotnum, slotName);
   }
 
-  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) {
-    auto platform = xdp::RTSingleton::Instance()->getcl_platform_id();
-    return xdp::profile::platform::get_profile_slot_properties(platform, deviceName, type, slotnum);
+  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName,
+                                                unsigned slotnum)
+  {
+    return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);
+  }
+
+  void XoclPlugin::sendMessage(const std::string &msg)
+  {
+    xrt::message::send(xrt::message::severity_level::WARNING, msg);
   }
 } // xdp

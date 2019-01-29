@@ -16,7 +16,6 @@
 
 #include "counters.h"
 #include "results.h"
-#include "xdp/rt_singleton.h"
 #include "xdp/profile/debug.h"
 #include "xdp/profile/device/trace_parser.h"
 #include "xdp/profile/writer/base_profile.h"

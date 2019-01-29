@@ -15,7 +15,6 @@
  */
 
 #include "base_trace.h"
-#include "xdp/rt_singleton.h"
 
 namespace xdp {
   //******************
