@@ -148,6 +148,10 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    filter_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    filter_session->base.hw_session.dev_index = hal->dev_index;
+
     // Assume it is the first filter plugin for now
     filter_session->filter_plugin = &g_xma_singleton->filtercfg[filter_handle];
 

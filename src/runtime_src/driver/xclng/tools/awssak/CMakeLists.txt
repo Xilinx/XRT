@@ -23,8 +23,8 @@ if(${INTERNAL_TESTING})
     rt
     )
 else()
-  include_directories(../../../../../../../sdk/userspace/include/) # path to fpga_mgmt.h
-  set(AWS_FPGA_MGMT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../../sdk/userspace/lib)
+  include_directories(${AWS_FPGA_REPO_DIR}/sdk/userspace/include/) # path to fpga_mgmt.h
+  set(AWS_FPGA_MGMT_LIB_DIR ${AWS_FPGA_REPO_DIR}/sdk/userspace/lib)
 
   target_link_libraries(awssak
     xrt_awsstatic

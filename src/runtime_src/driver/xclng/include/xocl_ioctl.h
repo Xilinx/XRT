@@ -148,6 +148,12 @@ enum drm_xocl_ops {
 	DRM_XOCL_READ_AXLF,
 	/* Copy buffer to Destination buffer by using DMA */
 	DRM_XOCL_COPY_BO,
+	/* Hot reset request */
+	DRM_XOCL_HOT_RESET,
+	/* Enable P2P */
+	DRM_XOCL_P2P_ENABLE,
+	/* Reclock through userpf*/
+	DRM_XOCL_RECLOCK,
 
 	DRM_XOCL_NUM_IOCTLS
 };
@@ -171,6 +177,9 @@ enum drm_xocl_sync_bo_dir {
 #define DRM_XOCL_BO_EXECBUF (0x1 << 31)
 
 #define DRM_XOCL_CTX_FLAG_EXCLUSIVE (0x1)
+
+
+#define DRM_XOCL_NUM_SUPPORTED_CLOCKS 4
 /**
  * struct drm_xocl_create_bo - Create buffer object
  * used with DRM_IOCTL_XOCL_CREATE_BO ioctl
@@ -474,6 +483,21 @@ struct drm_xocl_user_intr {
         int msix;
 };
 
+/**
+ * struct drm_xocl_p2p_enable - enable/disable P2P
+ *
+ * @enable:		0: disable, 1: enable
+ */
+struct drm_xocl_p2p_enable {
+	int enable;
+};
+
+
+struct drm_xocl_reclock_info {
+  unsigned region;
+  unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
+};
+
 /*
  * Core ioctls numbers
  */
@@ -512,5 +536,9 @@ struct drm_xocl_user_intr {
 					       DRM_XOCL_EXECBUF, struct drm_xocl_execbuf)
 #define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
 					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
-
+#define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
+#define DRM_IOCTL_XOCL_P2P_ENABLE     DRM_IOWR(DRM_COMMAND_BASE +	\
+						DRM_XOCL_P2P_ENABLE, struct drm_xocl_p2p_enable)
+#define DRM_IOCTL_XOCL_RECLOCK     DRM_IOWR(DRM_COMMAND_BASE + \
+            DRM_XOCL_RECLOCK, struct drm_xocl_reclock_info)
 #endif

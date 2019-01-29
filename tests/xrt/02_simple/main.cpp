@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <getopt.h>
 #include <iostream>
@@ -46,13 +44,13 @@ static const int count = 1024;
 int foo;
 
 const static struct option long_options[] = {
-    {"hal_driver",      required_argument, 0, 's'},
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"device",          required_argument, 0, 'd'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    {0, 0, 0, 0}
+{"hal_driver",      required_argument, 0, 's'},
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"device",          required_argument, 0, 'd'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+{0, 0, 0, 0}
 };
 
 static void printHelp()
@@ -70,16 +68,17 @@ static void printHelp()
     std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
 }
 
-
-
-static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem)
+static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alignment, bool ert, bool verbose, int first_mem, unsigned cu_index, uuid_t xclbinId)
 {
+    if(xclOpenContext(handle, xclbinId, cu_index, true))
+        throw std::runtime_error("Cannot create context");
+
     const size_t DATA_SIZE = count * sizeof(int);
 
     unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); //output s1
     unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); // input s2
     int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
-    int *bo1 = (int*)xclMapBO(handle, boHandle1, true); 
+    int *bo1 = (int*)xclMapBO(handle, boHandle1, true);
     
     int bufReference[count];
 
@@ -111,42 +110,42 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
- 
+
     std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
-	//construct the exec buffer cmd to configure.
-	{
-	    auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
+    //construct the exec buffer cmd to configure.
+    {
+        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
 
-	    std::memset(ecmd, 0, DATA_SIZE);
-	    ecmd->state = ERT_CMD_STATE_NEW;
-	    ecmd->opcode = ERT_CONFIGURE;
+        std::memset(ecmd, 0, DATA_SIZE);
+        ecmd->state = ERT_CMD_STATE_NEW;
+        ecmd->opcode = ERT_CONFIGURE;
 
-	    ecmd->slot_size = 1024;
-	    ecmd->num_cus = 1;
-	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+        ecmd->slot_size = 1024;
+        ecmd->num_cus = 1;
+        ecmd->cu_shift = 16;
+        ecmd->cu_base_addr = cu_base_addr;
 
-	    ecmd->ert = ert;
-	    if (ert) {
-	        ecmd->cu_dma = 1;
-	        ecmd->cu_isr = 1;
-	    }
+        ecmd->ert = ert;
+        if (ert) {
+            ecmd->cu_dma = 1;
+            ecmd->cu_isr = 1;
+        }
 
         // CU -> base address mapping
         ecmd->data[0] = cu_base_addr;
         ecmd->count = 5 + ecmd->num_cus;
-	}
+    }
 
     std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
-	//Send the command.
-	if(xclExecBuf(handle, execHandle)) {
-	    std::cout << "Unable to issue xclExecBuf" << std::endl;
-	    return 1;
-	}
+    //Send the command.
+    if(xclExecBuf(handle, execHandle)) {
+        std::cout << "Unable to issue xclExecBuf" << std::endl;
+        return 1;
+    }
 
     std::cout << "Wait until the command finish" << std::endl;
-	//Wait on the command finish	
-	while (xclExecWait(handle,1000) == 0);
+    //Wait on the command finish
+    while (xclExecWait(handle,1000) == 0);
 
 
     std::cout << "Construct the exec command to run the kernel on FPGA" << std::endl;
@@ -171,7 +170,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             ecmd->data[XSIMPLE_CONTROL_ADDR_S1_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // output
             ecmd->data[XSIMPLE_CONTROL_ADDR_S2_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // input
 #endif
-            ecmd->data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10; //foo 
+            ecmd->data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10; //foo
         }
 
         //Send the "start kernel" command.
@@ -187,7 +186,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             std::cout << "Now wait until the kernel finish" << std::endl;
         }
         */
-    
+
         //Wait on the command finish
         while (xclExecWait(handle,100) == 0) {
             std::cout << "reentering wait...\n";
@@ -199,7 +198,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
     //Get the output;
     std::cout << "Get the output data from the device" << std::endl;
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)) { 
+    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)) {
         return 1;
     }
 
@@ -211,10 +210,12 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     // Validate our results
     //
     if (std::memcmp(bo1, bufReference, DATA_SIZE)) {
-            std::cout << "FAILED TEST\n";
-            std::cout << "Value read back does not match value written\n";
-            return 1;
-        }
+        std::cout << "FAILED TEST\n";
+        std::cout << "Value read back does not match value written\n";
+        return 1;
+    }
+
+    xclCloseContext(handle, xclbinId, cu_index);
 
     return 0;
 }
@@ -236,7 +237,7 @@ int main(int argc, char** argv)
     //int cu = 0;
     //findSharedLibrary(sharedLibrary);
 
-while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) != -1)
+    while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) != -1)
     {
         switch (c)
         {
@@ -266,17 +267,17 @@ while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) 
             return 1;
         }
     }
- 
+
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
-	    std::cout << "FAILED TEST\n";
-    	std::cout << "No bitstream specified\n";
-    	return -1;
+        std::cout << "FAILED TEST\n";
+        std::cout << "No bitstream specified\n";
+        return -1;
     }
 
     if (halLogfile.size()) {
-	    std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
+        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
     }
 
     std::cout << "HAL driver = " << sharedLibrary << "\n";
@@ -285,20 +286,20 @@ while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) 
 
 
     try {
-	    xclDeviceHandle handle;
-    	uint64_t cu_base_addr = 0;
-    	int first_mem = -1;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem)) {
-	        return 1;
-	    }
-	    
-	    if (first_mem < 0)
-	        return 1;
-        
-        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem)) {
+        xclDeviceHandle handle;
+        uint64_t cu_base_addr = 0;
+        int first_mem = -1;
+        uuid_t xclbinId;
+
+        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
             return 1;
-        }
+
+        if (first_mem < 0)
+            return 1;
         
+        if (runKernel(handle, cu_base_addr, alignment, ert, verbose, first_mem, cu_index, xclbinId))
+            return 1;
+
     }
     catch (std::exception const& e)
     {

@@ -59,6 +59,13 @@ else
    setenv PATH $XILINX_XRT/bin:$PATH
 endif
 
+if ( ! $?PYTHONPATH ) then
+    setenv PYTHONPATH $XILINX_XRT/python
+else
+    setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
+endif
+
 echo "XILINX_XRT      : $XILINX_XRT"
 echo "PATH            : $PATH"
 echo "LD_LIBRARY_PATH : $LD_LIBRARY_PATH"
+echo "PYTHONPATH     : $PYTHONPATH"

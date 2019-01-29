@@ -1,4 +1,4 @@
-if( ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
 
@@ -9,6 +9,7 @@ include_directories(
   )
 
 set(OPENCL_SRC "")
+
 
 add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>

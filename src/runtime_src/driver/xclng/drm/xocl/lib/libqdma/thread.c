@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
@@ -131,8 +138,12 @@ int qdma_kthread_start(struct qdma_kthread *thp, char *name, int id)
 
 #ifdef __QDMA_VF__
 	len = snprintf(thp->name, sizeof(thp->name), "%s_vf_%d", name, id);
+	if (len < 0)
+		return -EINVAL;
 #else
 	len = snprintf(thp->name, sizeof(thp->name), "%s%d", name, id);
+	if (len < 0)
+		return -EINVAL;
 #endif
 	thp->id = id;
 
@@ -151,7 +162,7 @@ int qdma_kthread_start(struct qdma_kthread *thp, char *name, int id)
 
 	kthread_bind(thp->task, thp->cpu);
 
-	pr_debug_thread("kthread 0x%p, %s, cpu %u, 0x%p.\n",
+	pr_debug_thread("kthread 0x%p, %s, cpu %u, task 0x%p.\n",
 		thp, thp->name, thp->cpu, thp->task);
 
 	wake_up_process(thp->task);

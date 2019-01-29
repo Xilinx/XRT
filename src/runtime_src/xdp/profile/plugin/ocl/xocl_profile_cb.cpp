@@ -153,7 +153,7 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
 }
 
 void
-cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
+cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank, bool entire_buffer, size_t user_size, size_t user_offset)
 {
     if (!isProfilingOn())
       return;
@@ -175,12 +175,18 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
     auto commandQueueId = event->get_command_queue()->get_uid();
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
+    size_t actual_size = 0;
+    if (entire_buffer) {
+      actual_size = size;
+    } else {
+      actual_size = user_size;
+    }
 
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,xdp::RTUtil::READ_BUFFER
        ,commandState
-       ,size
+       ,actual_size
        ,contextId
        ,numDevices
        ,deviceName

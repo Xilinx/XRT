@@ -72,7 +72,6 @@ public:
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
 
-private:
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
 };
@@ -96,6 +95,7 @@ public:
 void rescan(void);
 size_t get_dev_total(void);
 size_t get_dev_ready(void);
+void dump_dev_list(void);
 const pci_device* get_dev(int index);
 } /* pcidev */
 

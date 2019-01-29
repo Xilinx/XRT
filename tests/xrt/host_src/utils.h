@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,32 +14,55 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#ifndef utils_h
-#define utils_h
+#ifndef XRT_TEST_UTILS_H
+#define XRT_TEST_UTILS_H
 
 #include "xclbin.h"
 #include "xclhal2.h"
+#include "ert.h"
 
 #include <stdexcept>
 #include <fstream>
+#include <uuid/uuid.h>
 
-static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle& handle, int cu_index,
-	uint64_t& cu_base_addr, int& first_used_mem)
+#include <thread>
+#include <ctime>
+#include <map>
+#include <chrono>
+
+#include <sys/types.h>
+#include <unistd.h>
+
+static const std::map<ert_cmd_state, std::string> ertCmdCodes = {
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_NEW, "ERT_CMD_STATE_NEW"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_QUEUED, "ERT_CMD_STATE_QUEUED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_RUNNING, "ERT_CMD_STATE_RUNNING"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_COMPLETED, "ERT_CMD_STATE_COMPLETED"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ERROR, "ERT_CMD_STATE_ERROR"),
+    std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"),
+};
+
+static int initXRT( const char*bit,
+                    unsigned deviceIndex,
+                    const char* halLog,
+                    xclDeviceHandle& handle,
+                    int cu_index,
+                    uint64_t& cu_base_addr,
+                    int& first_used_mem,
+                    uuid_t& xclbinId )
 {
     xclDeviceInfo2 deviceInfo;
 
     if(deviceIndex >= xclProbe()) {
-	throw std::runtime_error("Cannot find device index specified");
-	return -1;
+        throw std::runtime_error("Cannot find device index specified");
+        return -1;
     }
 
     handle = xclOpen(deviceIndex, halLog, XCL_INFO);
 
     if (xclGetDeviceInfo2(handle, &deviceInfo)) {
-	throw std::runtime_error("Unable to obtain device information");
-	return -1;
+        throw std::runtime_error("Unable to obtain device information");
+        return -1;
     }
 
     std::cout << "DSA = " << deviceInfo.mName << "\n";
@@ -52,11 +75,11 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 
     cu_base_addr = 0xffffffffffffffff;
     if (!bit || !std::strlen(bit))
-	return 0;
+        return 0;
 
     if(xclLockDevice(handle)) {
-	throw std::runtime_error("Cannot lock device");
-	return -1;
+        throw std::runtime_error("Cannot lock device");
+        return -1;
     }
 
     char tempFileName[1024];
@@ -91,12 +114,12 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 
     int cur_index = 0;
     for (int i =0; i < layout->m_count; ++i) {
-	if(layout->m_ip_data[i].m_type != IP_KERNEL)
-	    continue;
-	if(cur_index++ == cu_index) {
-	    cu_base_addr = layout->m_ip_data[i].m_base_address;
-	    std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
-	}
+        if(layout->m_ip_data[i].m_type != IP_KERNEL)
+            continue;
+        if(cur_index++ == cu_index) {
+            cu_base_addr = layout->m_ip_data[i].m_base_address;
+            std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
+        }
     }
 
     auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
@@ -109,11 +132,19 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
         }
     }
     
+    uuid_copy(xclbinId, top->m_header.uuid);
 
     delete [] header;
 
     return 0;
 }
 
-
+static inline std::ostream& stamp(std::ostream& os) {
+    const auto timenow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::string st(std::ctime(&timenow));
+    st.pop_back();
+//    os << '[' << std::this_thread::get_id() << "] (" << st << "): ";
+    os << '[' << getpid() << "] (" << st << "): ";
+    return os;
+}
 #endif

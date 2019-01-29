@@ -43,16 +43,27 @@ int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,
 
 void xocl_ctx_fini(struct device *dev, struct xocl_context_hash *ctx_hash)
 {
+	struct xocl_context	*ctx;
+	u32			hash_idx;
+	struct hlist_node	*tmp;
+	unsigned long		flags;
+
 	if (ctx_hash->hash == NULL)
 		return;
 
-	if (ctx_hash->count > 0) {
-		xocl_err(dev, "Context table is not NULL");
-	 	return;
+	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
+	for (hash_idx = 0; hash_idx < ctx_hash->size; hash_idx++) {
+		hlist_for_each_entry_safe(ctx, tmp, &ctx_hash->hash[hash_idx],
+				hlist) {
+			hlist_del(&ctx->hlist);
+			devm_kfree(dev, ctx);
+		}
 	}
 
 	devm_kfree(dev, ctx_hash->hash);
+	ctx_hash->hash = NULL;
 
+	spin_unlock_irqrestore(&ctx_hash->ctx_lock, flags);
 	return;
 }
 
@@ -64,10 +75,10 @@ int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg)
 	bool			found = false;
 	int			ret = 0;
 
-	if (ctx_hash->hash == NULL)
-		return ret;
-
 	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
+	if (ctx_hash->hash == NULL)
+		goto failed;
+
 	hash_idx = ctx_hash->hash_func(arg);
 	BUG_ON(hash_idx >= ctx_hash->size);
 
@@ -98,10 +109,10 @@ int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz)
 	unsigned long	flags;
 	int		ret = 0;
 
-	if (ctx_hash->hash == NULL)
-		return ret;
-
 	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
+	if (ctx_hash->hash == NULL)
+		goto failed;
+
 	hash_idx = ctx_hash->hash_func(arg);
 	BUG_ON(hash_idx >= ctx_hash->size);
 
@@ -147,4 +158,48 @@ int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
 	spin_unlock_irqrestore(&ctx_hash->ctx_lock, flags);
 
 	return ret;
+}
+
+static void xocl_remove_cb(struct kref *kref)
+{
+	struct xocl_dev_core *core;
+
+	core = container_of(kref, struct xocl_dev_core, kref);
+	if (core->remove_cb)
+		core->remove_cb(core);
+
+	kfree(core);
+}
+
+/* functions to deal with driver released and ctx */
+void xocl_core_init(xdev_handle_t xdev_hdl,
+		void (*remove_cb)(xdev_handle_t xdev_hdl))
+{
+	kref_init(&XDEV(xdev_hdl)->kref);
+	kref_get(&XDEV(xdev_hdl)->kref);
+
+	XDEV(xdev_hdl)->remove_cb = remove_cb;
+}
+
+void xocl_core_fini(xdev_handle_t xdev_hdl)
+{
+	XDEV(xdev_hdl)->removed = true;
+	kref_put(&XDEV(xdev_hdl)->kref, xocl_remove_cb);
+}
+
+bool xocl_drv_released(xdev_handle_t xdev_hdl)
+{
+	return XDEV(xdev_hdl)->removed;
+}
+
+void xocl_drv_get(xdev_handle_t xdev_hdl)
+{
+	get_device(&XDEV(xdev_hdl)->pdev->dev);
+	kref_get(&XDEV(xdev_hdl)->kref);
+}
+
+void xocl_drv_put(xdev_handle_t xdev_hdl)
+{
+	kref_put(&XDEV(xdev_hdl)->kref, xocl_remove_cb);
+	put_device(&XDEV(xdev_hdl)->pdev->dev);
 }
