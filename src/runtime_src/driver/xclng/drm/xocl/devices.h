@@ -764,6 +764,23 @@ enum subdev_id {
 		.subdev_num = ARRAY_SIZE(MGMT_RES_QDMA),		\
 	}
 
+#define	MGMT_RES_XBB_QDMA						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_AF_DSA52,				\
+			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+		})
+
+#define	XOCL_BOARD_MGMT_XBB_QDMA					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_QDMA,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_QDMA),		\
+	}
+
 #define	XOCL_BOARD_MGMT_6B0F		XOCL_BOARD_MGMT_6A8F
 
 #define	MGMT_RES_6A8F_DSA52						\
@@ -872,6 +889,7 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4351, MGMT_6A8F) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4352, MGMT_6A8F_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, 0x4360, MGMT_QDMA) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5010, PCI_ANY_ID, MGMT_XBB_QDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\
@@ -926,7 +944,8 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS) }
 
 #define	XOCL_USER_QDMA_PCI_IDS						\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) }
+	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5011, PCI_ANY_ID, USER_QDMA) }
 
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
