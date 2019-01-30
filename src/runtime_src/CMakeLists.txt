@@ -21,7 +21,7 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
 add_library(oclxdp SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdpobj>
   )
-add_dependencies(oclxdp xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
