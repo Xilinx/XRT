@@ -195,12 +195,12 @@ namespace XCL {
     writeTableFooter(getSummaryStream());
 
     // Table 6.1 : Stream Data Transfers
-    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE) && (numStreamSlots > 0)) {
+    if (profile->isDeviceProfileOn() && (flowMode == XCL::RTSingleton::DEVICE || flowMode == XCL::RTSingleton::HW_EM) && (numStreamSlots > 0)) {
     std::vector<std::string> StreamTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Number Of Transfers", "Average Size (KB)",
-		    "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
+        "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
-      writeTableHeader(getSummaryStream(), "Stream Data Transfers", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getSummaryStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getSummaryStream());
     }
@@ -239,12 +239,13 @@ namespace XCL {
     writeTableRowEnd(getSummaryStream());
   }
 
-  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, uint64_t strNumTranx, 
-	  		double avgSize, double avgUtil, double linkStarve, double linkStall)
+  void WriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
+      uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
+      double linkStarve, double linkStall)
   {
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName , cuPortName, strNumTranx, 
-      avgSize, avgUtil, linkStarve, linkStall);
+    writeTableCells(getSummaryStream(), deviceName , cuPortName, argNames,
+        strNumTranx, transferRateMBps, avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getSummaryStream());
   }
 
@@ -267,8 +268,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
@@ -324,8 +325,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalKernelTimeMsec == 0) ? 0.0 :
@@ -341,8 +342,17 @@ namespace XCL {
           aveBWUtil, transferRateMBps, maxTransferRateMBps);
     }
 
+    // Get memory name from CU port name string (if found)
+    std::string cuPortName2 = cuPortName;
+    std::string memoryName2 = memoryName;
+    size_t index = cuPortName.find_last_of(PORT_MEM_SEP);
+    if (index != std::string::npos) {
+      cuPortName2 = cuPortName.substr(0, index);
+      memoryName2 = cuPortName.substr(index+1);
+    }
+
     writeTableRowStart(getSummaryStream());
-    writeTableCells(getSummaryStream(), deviceName, cuPortName, argNames, memoryName,
+    writeTableCells(getSummaryStream(), deviceName, cuPortName2, argNames, memoryName2,
     	transferType, totalTranx, transferRateMBps, aveBWUtil,
         aveBytes/1000.0, 1.0e6*aveTimeMsec);
 
@@ -464,8 +474,8 @@ namespace XCL {
   {
     //"name" is of the form "deviceName|kernelName|globalSize|localSize|cuName"
     size_t first_index = name.find_first_of("|");
-    size_t second_index = name.find('|', first_index+1);
-    size_t third_index = name.find('|', second_index+1);
+    //size_t second_index = name.find('|', first_index+1);
+    //size_t third_index = name.find('|', second_index+1);
     size_t fourth_index = name.find_last_of("|");
 
     std::string deviceName = name.substr(0, first_index);
@@ -496,7 +506,7 @@ namespace XCL {
 
   // Write API function event to trace
   void WriterI::writeTimeline(double time, const std::string& functionName,
-      const std::string& eventName)
+      const std::string& eventName, unsigned int functionID)
   {
     if (!Timeline_ofs.is_open())
       return;
@@ -509,7 +519,7 @@ namespace XCL {
     // TODO: Windows build support
     //    Variadic Template is not supported
     writeTableCells(getTimelineStream(), timeStr.str(), functionName, eventName,
-        "", "", "", "", "", "", "", "");
+        "", "", "", "", "", "", "", "", "", "", std::to_string(functionID));
   #endif
     writeTableRowEnd(getTimelineStream());
   }
@@ -618,7 +628,7 @@ namespace XCL {
     uint32_t numSlots = XPAR_AXI_PERF_MON_0_NUMBER_SLOTS;
     //uint32_t numSlots = results.mNumSlots;
 
-    for (int slot=0; slot < numSlots; slot++) {
+    for (unsigned int slot=0; slot < numSlots; slot++) {
       // Write
   #if 0
       double writeThputMBps = 0.0;
@@ -766,7 +776,10 @@ namespace XCL {
           traceName = "Kernel_Read";
         }
       }
-      else {
+      else if (tr.Kind == DeviceTrace::DEVICE_STREAM) {
+        traceName = tr.Name;
+        showPortName = true;
+      } else {
         showKernelCUNames = false;
         if (tr.Type == "Write")
           traceName = "Host_Write";
@@ -783,10 +796,15 @@ namespace XCL {
           rts->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, tr.SlotNum, cuName);
         }
         else {
-          rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          if (tr.Kind == DeviceTrace::DEVICE_STREAM){
+            rts->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+          }
+          else {
+            rts->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
+          }
           cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
           portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-          std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
+          //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
         }
         std::string kernelName;
         XCL::RTSingleton::Instance()->getProfileKernelName(deviceName, cuName, kernelName);
@@ -887,18 +905,27 @@ namespace XCL {
     std::string checkName5;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::DDR_BANKS, checkName5);
 
-    auto cuPortsToMemory = profile->getCUPortsToMemoryMap();
+    auto cuPortVector = profile->getCUPortVector();
+    std::map<std::string, int> cuPortsToMemory;
+
+    for (auto& cuPort : cuPortVector) {
+      auto memoryName = std::get<3>(cuPort);
+      auto iter = cuPortsToMemory.find(memoryName);
+      int numPorts = (iter == cuPortsToMemory.end()) ? 1 : (iter->second + 1);
+      cuPortsToMemory[memoryName] = numPorts;
+    }
+
     auto memoryIter = cuPortsToMemory.begin();
     for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
       writeTableCells(getSummaryStream(), checkName5, memoryIter->first, memoryIter->second);
       writeTableRowEnd(getSummaryStream());
     }
+    cuPortsToMemory.clear();
 
     // 6. Port data widths
     std::string checkName6;
     ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::PORT_BIT_WIDTH, checkName6);
 
-    auto cuPortVector = profile->getCUPortVector();
     for (auto& cuPort : cuPortVector) {
       auto cu    = std::get<0>(cuPort);
       auto port  = std::get<1>(cuPort);
@@ -916,6 +943,13 @@ namespace XCL {
       writeTableCells(getSummaryStream(), checkName7, kernelCount.first, kernelCount.second);
       writeTableRowEnd(getSummaryStream());
     }
+
+    // 8. OpenCL objects released
+    std::string checkName8;
+    ProfileRuleChecks::getRuleCheckName(ProfileRuleChecks::OBJECTS_RELEASED, checkName8);
+    bool objectsReleased = XCL::RTSingleton::Instance()->isObjectsReleased();
+    int numReleased = (objectsReleased) ? 1 : 0;
+    writeTableCells(getSummaryStream(), checkName8, "all", numReleased);
   }
 
   // ***********
@@ -1233,7 +1267,7 @@ namespace XCL {
       size_t ddrSize = device_id->get_ddr_size();
       size_t bankSize = ddrSize / ddrBanks;
       ofs << "DDR Banks,begin\n";
-      for (int b=0; b < ddrBanks; ++b)
+      for (unsigned int b=0; b < ddrBanks; ++b)
         ofs << "Bank," << std::dec << b << ","
 		    << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
       ofs << "DDR Banks,end\n";
@@ -1559,8 +1593,8 @@ namespace XCL {
     double maxBytes = (double)(stats.getMax());
 #else
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double minBytes = aveBytes;
-    double maxBytes = aveBytes;
+    //double minBytes = aveBytes;
+    //double maxBytes = aveBytes;
 #endif
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :

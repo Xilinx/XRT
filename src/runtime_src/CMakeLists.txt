@@ -1,4 +1,4 @@
-if( ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
 
@@ -9,6 +9,7 @@ include_directories(
   )
 
 set(OPENCL_SRC "")
+
 
 add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
@@ -35,10 +36,18 @@ endif()
 
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
+
+# TODO CL_TARGET_OPENCL_VERSION is not defined..
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_compile_options("-Wall" "-Werror")
+endif()
 add_subdirectory(xdp)
 
-add_compile_options("-Wall" "-Werror")
-add_subdirectory(tools/xclbin)
+# TODO version.h was included.
+# Remove this limitation once we can generate version.h for mpsoc.
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_subdirectory(tools/xclbin)
+endif()
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
@@ -61,6 +70,7 @@ target_link_libraries(xilinxopencl
   dl
   pthread
   crypt
+  uuid
   rt
   )
 

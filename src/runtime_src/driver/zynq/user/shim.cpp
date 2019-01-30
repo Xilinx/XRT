@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -110,7 +110,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
   //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if(mKernelFD) {
-    mKernelControlPtr = (uint32_t*)mmap(0, 0x100000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, 0);
+    mKernelControlPtr = (uint32_t*)mmap(0, 0x800000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, 0);
     if (mKernelControlPtr == MAP_FAILED) {
         printf("Map failed \n");
         close(mKernelFD);
@@ -198,6 +198,17 @@ unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
         std::cout << "Handle " << info.handle << std::endl;
     }
     return info.handle;
+}
+
+unsigned int ZYNQShim::xclGetHostBO(uint64_t paddr, size_t size) {
+  drm_zocl_host_bo info = { paddr, size, 0xffffffff };
+  //std::cout  << "xclGetHostBO paddr " << std::hex << paddr << std::dec << std::endl;
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
+  if (mVerbosity == XCL_INFO) {
+    std::cout  << "xclGetHostBO result = " << result << std::endl;
+    std::cout << "Handle " << info.handle << std::endl;
+  }
+  return info.handle;
 }
 
 void ZYNQShim::xclFreeBO(unsigned int boHandle)
@@ -288,8 +299,15 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
 int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  //no need to sync for MPSOC.
-  return 0;
+  drm_zocl_sync_bo_dir zocl_dir;
+  if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_TO_DEVICE;
+  else if (dir == XCL_BO_SYNC_BO_FROM_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_FROM_DEVICE;
+  else
+      return -EINVAL;
+  drm_zocl_sync_bo syncInfo = { boHandle, zocl_dir, offset, size };
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
 }
 
 #ifndef __HWEM__
@@ -500,6 +518,15 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
     return -EINVAL;
   return drv->xclAllocUserPtrBO(userptr, size, flags);
   //return 0xffffffff;
+}
+
+unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
+{
+  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetHostBO(paddr, size);
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)

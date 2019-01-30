@@ -34,7 +34,7 @@ stream::
 stream::get_stream(device* device)
 {
   m_device = device;
-  return device->get_stream(m_flags, m_attrs, m_ext, &m_handle);
+  return device->get_stream(m_flags, m_attrs, m_ext, &m_handle, m_connidx);
 }
 
 ssize_t 
@@ -59,7 +59,8 @@ int
 stream::
 stream::close()
 {
-  return m_device->close_stream(m_handle);
+  assert(m_connidx!=-1);
+  return m_device->close_stream(m_handle,m_connidx);
 }
 
 

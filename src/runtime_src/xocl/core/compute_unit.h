@@ -25,12 +25,18 @@ namespace xocl {
 class device;
 
 // Compute unit
-// 
-// Ownership of cus is shared between program and device with 
-// latter constructing the compute units as a program is 
+//
+// Ownership of cus is shared between program and device with
+// latter constructing the compute units as a program is
 // loaded.
-class compute_unit 
+class compute_unit
 {
+  // device owns compute units and needs private access to some state
+  // information managed exclusively by the device implementation.
+  friend class device;
+  enum class context_type : unsigned short { shared, exclusive, none };
+public:
+  const size_t max_index = 128;
 public:
   compute_unit(const xclbin::symbol* s, const std::string& n, device* d);
   ~compute_unit();
@@ -45,7 +51,7 @@ public:
    * Address extracted from xclbin
    */
   size_t
-  get_physical_address() const
+  get_base_addr() const
   {
     return m_address;
   }
@@ -72,7 +78,7 @@ public:
   }
 
   /**
-   * Get memory index for indexed kernel argument 
+   * Get memory index for indexed kernel argument
    *
    * @param idx
    *   Argument index
@@ -84,7 +90,7 @@ public:
   /**
    * Get memory indeces intersection of DDR banks for CU args
    *
-   * @return 
+   * @return
    *   Memory indeces identifying intersection of DDR banks for all CU arguments
    */
   xclbin::memidx_bitmask_type
@@ -93,7 +99,7 @@ public:
   /**
    * Get memory indeces union of DDR banks for CU args
    *
-   * @return 
+   * @return
    *   Memory indeces identifying union of DDR banks for all CU arguments
    */
   xclbin::memidx_bitmask_type
@@ -111,14 +117,41 @@ public:
     return m_symbol->uid;
   }
 
+  context_type
+  get_context_type() const
+  {
+    return m_context_type;
+  }
+
+  const device*
+  get_device() const
+  {
+    return m_device;
+  }
 
 private:
+
+  // Used by xocl::device to cache the acquire context for
+  void
+  set_context_type(bool shared) const
+  {
+    m_context_type = shared ? compute_unit::context_type::shared : compute_unit::context_type::exclusive;
+  }
+
+  // Used by xocl::device when context is released for this CU
+  void
+  reset_context_type() const
+  {
+    m_context_type = compute_unit::context_type::none;
+  }
+
   unsigned int m_uid = 0;
   const xclbin::symbol* m_symbol = nullptr;
   std::string m_name;
   device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
+  mutable context_type m_context_type = context_type::none;
 
   // Map CU arg to memory bank indicies. An argument can
   // be connected to multiple memory banks.
@@ -126,11 +159,9 @@ private:
 
   // Intersection of all argument masks
   mutable bool cached = false;
-  mutable xclbin::memidx_bitmask_type m_memidx; 
+  mutable xclbin::memidx_bitmask_type m_memidx;
 };
 
 } // xocl
 
 #endif
-
-

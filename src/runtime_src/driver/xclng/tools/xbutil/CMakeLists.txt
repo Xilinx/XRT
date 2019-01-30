@@ -3,6 +3,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../xrt/user_gem
   ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
+  ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 
 file(GLOB XBUTIL_FILES
@@ -18,6 +19,8 @@ target_link_libraries(xbutil
   xrt_corestatic
   pthread
   rt
+  boost_filesystem
+  boost_system
   ${CURSES_LIBRARIES}
   )
 

@@ -193,3 +193,24 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   }
 }
 
+bool 
+SectionClockFrequencyTopology::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionClockFrequencyTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}

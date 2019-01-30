@@ -46,6 +46,9 @@ typedef void * XmaResources;
 */
 typedef void * XmaKernelRes;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief create and init a decoder kernel request object
@@ -243,7 +246,15 @@ void xma_res_mark_xma_ready(XmaResources shm_cfg);
  * @brief Before attempting hw config, verify that hw init hasn't already
  * completed
  *
+ * @param shm_cfg shared memory pointer
+ *
  * @returns true if init is already complete, false otherwise
 */
-bool xma_res_xma_init_completed(void);
+bool xma_res_xma_init_completed(XmaResources shm_cfg);
+
+/** @} */
+#ifdef __cplusplus
+}
+#endif
+
 #endif

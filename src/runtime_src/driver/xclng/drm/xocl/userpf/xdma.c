@@ -59,10 +59,7 @@ static int user_dev_online(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (xdev->offline) {
-		xdma_device_online(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = false;
-	}
+	xdma_device_online(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device online");
 
 	return 0;
@@ -72,99 +69,8 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (!xdev->offline) {
-		xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = true;
-	}
+	xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device offline");
-	return 0;
-}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-static void xocl_dev_percpu_release(struct percpu_ref *ref)
-{
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
-
-	complete(&xdev->cmp);
-}
-
-static void xocl_dev_percpu_exit(void *data)
-{
-	struct percpu_ref *ref = data;
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
-
-	wait_for_completion(&xdev->cmp);
-	percpu_ref_exit(ref);
-}
-
-
-static void xocl_dev_percpu_kill(void *data)
-{
-	struct percpu_ref *ref = data;
-	percpu_ref_kill(ref);
-}
-
-#endif
-
-static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
-{
-	resource_size_t p2p_bar_addr;
-	resource_size_t p2p_bar_len;
-	struct resource res;
-	uint32_t p2p_bar_idx;
-	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	int32_t ret;
-#endif
-
-	p2p_bar_len = xdev->bypass_bar_len;
-	p2p_bar_idx = xdev->bypass_bar_idx;
-
-	p2p_bar_addr = pci_resource_start(pdev, p2p_bar_idx);
-
-	res.start = p2p_bar_addr;
-	res.end   = p2p_bar_addr+p2p_bar_len-1;
-	res.name  = NULL;
-	res.flags = IORESOURCE_MEM;
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-
-	init_completion(&xdev->cmp);
-
-	ret = percpu_ref_init(&xdev->ref, xocl_dev_percpu_release, 0,
-			GFP_KERNEL);
-	if (ret)
-		return ret;
-
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_exit,
-							&xdev->ref);
-	if (ret)
-		return ret;
-#endif
-
-
-/* Ubuntu 16.04 kernel_ver 4.4.0.116*/
-#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res);
-
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res
-						   , &xdev->ref, NULL);
-
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_kill,
-							&xdev->ref);
-	if (ret)
-		return ret;
-#endif
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
-	if(!xdev->bypass_bar_addr)
-		return -ENOMEM;;
-#endif
-
 	return 0;
 }
 
@@ -184,7 +90,7 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 	u32 channel = 0;
 	int ret;
 
-	xd = devm_kzalloc(&pdev->dev, sizeof (*xd), GFP_KERNEL);
+	xd = kzalloc(sizeof(*xd), GFP_KERNEL);
 	if (!xd) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
 		return -ENOMEM;
@@ -197,6 +103,10 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 
 	ocl_dev->core.pdev = pdev;
 	xocl_fill_dsa_priv(ocl_dev, dev_info);
+
+	ret = xocl_alloc_dev_minor(ocl_dev);
+	if (ret)
+		goto failed_alloc_minor;
 
 	ocl_dev->dma_handle = xdma_device_open(XOCL_XDMA_PCI, pdev,
 		&ocl_dev->max_user_intr, &channel,
@@ -253,17 +163,10 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 		goto failed_drm_init;
 	}
 
-	if(ocl_dev->bypass_bar_idx>=0){
-		/* only bypass_bar_len >= SECTION (256MB) */
-		if (ocl_dev->bypass_bar_len >= (1<<PA_SECTION_SHIFT)){
-			xocl_info(&pdev->dev, "Found bypass BAR");
-			ret = xocl_p2p_mem_reserve(pdev, ocl_dev);
-			if (ret) {
-				xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-				goto failed_drm_init;
-			}
-	  }
-  }
+	ret = xocl_p2p_mem_reserve(ocl_dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
+	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {
@@ -275,9 +178,12 @@ int xocl_user_xdma_probe(struct pci_dev *pdev,
 
 	(void) xocl_icap_unlock_bitstream(xd, NULL, 0);
 
+	xocl_core_init(ocl_dev, NULL);
+
 	return 0;
 
 failed_sysfs_init:
+	xocl_p2p_mem_release(&xd->ocl_dev, false);
 	xocl_drm_fini(&xd->ocl_dev);
 failed_drm_init:
 failed_set_channel:
@@ -285,9 +191,11 @@ failed_set_channel:
 failed_reg_subdevs:
 	xdma_device_close(pdev, ocl_dev->dma_handle);
 failed:
+	xocl_free_dev_minor(ocl_dev);
+failed_alloc_minor:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
-	devm_kfree(&pdev->dev, xd);
+	kfree(xd);
 	pci_set_drvdata(pdev, NULL);
 	return ret;
 }
@@ -302,6 +210,7 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	xocl_p2p_mem_release(&xd->ocl_dev, false);
 	xocl_subdev_destroy_all(&xd->ocl_dev);
 
 	xocl_fini_sysfs(&pdev->dev);
@@ -311,8 +220,11 @@ void xocl_user_xdma_remove(struct pci_dev *pdev)
 		devm_kfree(&pdev->dev, xd->ocl_dev.user_msix_table);
 	mutex_destroy(&xd->ocl_dev.user_msix_table_lock);
 
-	devm_kfree(&pdev->dev, xd);
+	xocl_free_dev_minor(&xd->ocl_dev);
+
 	pci_set_drvdata(pdev, NULL);
+
+	xocl_core_fini(xd);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,

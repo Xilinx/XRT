@@ -242,12 +242,16 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    sc_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    sc_session->base.hw_session.dev_index = hal->dev_index;
+
     // Assume it is the first scaler plugin for now
     sc_session->scaler_plugin = &g_xma_singleton->scalercfg[scal_handle];
 
     // Allocate the private data
     sc_session->base.plugin_data =
-        malloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size);
+        calloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size, sizeof(uint8_t));
 
     // Allocate a connection for each output
     for (i = 0; i < sc_props->num_outputs; i++)

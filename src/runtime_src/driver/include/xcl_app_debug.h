@@ -43,11 +43,12 @@ extern "C" {
 #endif
 
 /************************ SPM Debug Counters ********************************/
-//debug is only interested in 4 metric counters: wb,wt,rb,rt,outstanding,lwa,lwd,lra,lrd
 #define XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
 
+/************************ SAM Debug Counters ********************************/
+#define XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     8
+
 /************************ SSPM Debug Counters ********************************/
-//debug is interested in all of the counter values
 #define XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT    5
 
 /*
@@ -72,21 +73,22 @@ enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM  = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
   XCL_DEBUG_READ_TYPE_SPM  = 2,
-  XCL_DEBUG_READ_TYPE_SSPM = 3
+  XCL_DEBUG_READ_TYPE_SSPM = 3,
+  XCL_DEBUG_READ_TYPE_SAM = 4
 };
 
 /* Debug counter results */
 typedef struct {
-  unsigned int           WriteBytes     [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           WriteTranx     [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           ReadBytes      [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           ReadTranx      [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteBytes     [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteTranx     [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadBytes      [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadTranx      [XSPM_MAX_NUMBER_SLOTS];
 
-  unsigned int           OutStandCnts   [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           LastWriteAddr  [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           LastWriteData  [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           LastReadAddr   [XSPM_MAX_NUMBER_SLOTS];
-  unsigned int           LastReadData   [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int OutStandCnts   [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteAddr  [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteData  [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadAddr   [XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadData   [XSPM_MAX_NUMBER_SLOTS];
   unsigned int           NumSlots;
   char                   DevUserName    [256];
 } xclDebugCountersResults;
@@ -101,6 +103,20 @@ typedef struct {
   unsigned long long int StrStallCycles [XSSPM_MAX_NUMBER_SLOTS] ;
   unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS] ;
 } xclStreamingDebugCountersResults ;
+
+typedef struct {
+  unsigned int           NumSlots ;
+  char                   DevUserName    [256] ;
+
+  unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
+} xclAccelMonitorCounterResults;
 
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,

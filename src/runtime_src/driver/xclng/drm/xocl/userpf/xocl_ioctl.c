@@ -24,25 +24,69 @@
 #include <drm/drm_mm.h>
 #include <linux/eventfd.h>
 #include <linux/uuid.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#include <linux/hashtable.h>
+#endif
+#include "version.h"
 #include "common.h"
 
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
+static int
+xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int pid = pid_nr(task_tgid(current));
+
+	if (client->xclbin_locked)
+		return 0;
+
+	if (!uuid_equal(&xdev->xclbin_id, &client->xclbin_id)) {
+		userpf_err(xdev, "device xclbin does not match context xclbin, "
+			   "cannot obtain lock for process %d", pid);
+		return 1;
+	}
+
+	if (xocl_icap_lock_bitstream(xdev, &client->xclbin_id, pid) < 0) {
+		userpf_err(xdev,"could not lock bitstream for process %d", pid);
+		return 1;
+	}
+
+	client->xclbin_locked=true;
+	userpf_info(xdev, "process %d successfully locked xcblin", pid);
+	return 0;
+}
+
+static int
+xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int ret = 0;
+	mutex_lock(&client->lock);         // protect current client
+	mutex_lock(&xdev->ctx_list_lock);  // protect xdev->xclbin_id
+	ret = xocl_client_lock_bitstream_nolock(xdev,client);
+	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+
 int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_info *obj = data;
 	struct xocl_dev *xdev = dev->dev_private;
 	struct pci_dev *pdev = xdev->core.pdev;
+	u32 major, minor, patch;
 
 	userpf_info(xdev, "INFO IOCTL");
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = pdev->vendor;
 	obj->device = pdev->device;
 	obj->subsystem_vendor = pdev->subsystem_vendor;
 	obj->subsystem_device = pdev->subsystem_device;
-	obj->driver_version = XOCL_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(pdev->devfn);
 
 	return 0;
@@ -60,20 +104,14 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	int numdeps;
 	int ret = 0;
 
-	if (atomic_read(&xdev->needs_reset)) {
-		userpf_err(xdev, "device needs reset, use 'xbsak reset -h'");
+	if (xdev->needs_reset) {
+		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
 
 	if (!MB_SCHEDULER_DEV(xdev)) {
 		userpf_err(xdev, "scheduler subdev does not exist");
 		return -EINVAL;
-	}
-
-	/* If ctx xclbin uuid mismatch or no xclbin uuid then EPERM */
-	if (uuid_is_null(&client->xclbin_id) || !uuid_equal(&xdev->xclbin_id,&client->xclbin_id)) {
-		userpf_err(xdev, "Invalid xclbin for current process");
-		return -EPERM;
 	}
 
 	/* Look up the gem object corresponding to the BO handle.
@@ -97,6 +135,7 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	ret = xocl_exec_validate(xdev, client, xobj);
 	if (ret) {
 		userpf_err(xdev, "Exec buffer validation failed\n");
+		ret = -EINVAL;
 		goto out;
 	}
 
@@ -115,6 +154,14 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 			goto out;
 		}
 		deps[numdeps] = xbo;
+	}
+
+	/* acquire lock on xclbin if necessary */
+	ret = xocl_client_lock_bitstream(xdev,client);
+	if (ret) {
+		userpf_err(xdev, "Failed to lock xclbin\n");
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Add exec buffer to scheduler (kds).  The scheduler manages the
@@ -151,7 +198,9 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
 	int ret = 0;
+	int pid = pid_nr(task_tgid(current));
 
+	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
 	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
@@ -159,22 +208,27 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if (args->cu_index >= xdev->layout->m_count) {
+		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
+			args->cu_index,xdev->layout->m_count);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EINVAL;
+		ret = test_and_clear_bit(args->cu_index,
+					 client->cu_bitmap) ? 0 : -EINVAL;
 		if (ret) // No context was previously allocated for this CU
 			goto out;
 
-		xdev->ip_reference[args->cu_index]--;
-		if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-                        // We jsut gave up the last context, give up the xclbin lock
-			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,
-							 pid_nr(task_tgid(current)));
-		xocl_info(dev->dev, "CTX del(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)),
-			  args->cu_index);
+		// CU unlocked explicitly
+		--xdev->ip_reference[args->cu_index];
+		if (!--client->num_cus) {
+			// We just gave up the last context, unlock the xclbin
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid);
+			client->xclbin_locked=false;
+		}
+		xocl_info(dev->dev,"CTX del(%pUb, %d, %u)",
+			  &xdev->xclbin_id, pid, args->cu_index);
 		goto out;
 	}
 
@@ -184,38 +238,46 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->flags != XOCL_CTX_SHARED)) {
-		userpf_err(xdev, "Only shared contexts are supported in this release");
+		userpf_err(xdev,"Only shared contexts are supported in this release");
 		ret = -EPERM;
 		goto out;
 	}
 
-	if (bitmap_empty(client->cu_bitmap, MAX_CUS))
-		// Process has no other context on any CU ye, hence we need to lock the xclbin
-		// Process uses just one lock for all its contexts
+	if (!client->num_cus && !client->xclbin_locked)
+		// Process has no other context on any CU yet, hence we need to
+		// lock the xclbin A process uses just one lock for all its ctxs
 		acquire_lock = true;
 
 	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
-		userpf_err(xdev, "Context has already been allocated before by this process");
-		// Context was previously allocated for the same CU, cannot allocate again
-		ret = -EPERM;
+		userpf_info(xdev, "CTX already allocated by this process");
+		// Context was previously allocated for the same CU,
+		// cannot allocate again
+		ret = 0;
 		goto out;
 	}
 
-	if (acquire_lock) // This is the first context on any CU for this process, lock the xclbin
-		ret = xocl_icap_lock_bitstream(xdev, &xdev->xclbin_id,
-					       pid_nr(task_tgid(current)));
-
-	if (ret) {
-                // Locking of xclbin failed, give up our context
-		clear_bit(args->cu_index, client->cu_bitmap);
-		goto out;
+	if (acquire_lock) {
+                // This is the first context on any CU for this process,
+		// lock the xclbin
+		ret = xocl_client_lock_bitstream_nolock(xdev, client);
+		if (ret) {
+			// Locking of xclbin failed, give up our context
+			clear_bit(args->cu_index, client->cu_bitmap);
+			goto out;
+		}
+		else {
+			uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+		}
 	}
 
-	xdev->ip_reference[args->cu_index]++;
-	xocl_info(dev->dev, "CTX add(%pUb, %d, %u)", &xdev->xclbin_id, pid_nr(task_tgid(current)), args->cu_index);
+	// Everything is good so far, hence increment the CU reference count
+	++client->num_cus; // explicitly acquired
+	++xdev->ip_reference[args->cu_index];
+	xocl_info(dev->dev, "CTX add(%pUb, %d, %u, %d)",
+		  &xdev->xclbin_id, pid, args->cu_index,acquire_lock);
 out:
-	uuid_copy(&client->xclbin_id, (ret ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
 	return ret;
 }
 
@@ -365,6 +427,9 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/*
+ * Should be called with xdev->ctx_list_lock held
+ */
 static uint live_client_size(struct xocl_dev *xdev)
 {
 	const struct list_head *ptr;
@@ -375,7 +440,6 @@ static uint live_client_size(struct xocl_dev *xdev)
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
-		//if (!bitmap_empty(entry->cu_bitmap, MAX_CUS))
 		count++;
 	}
 	return count;
@@ -385,31 +449,48 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
+	size_t size = 0, wrapper_size = 0;
 	size_t ddr_bank_size;
 	struct mem_topology *topo;
 	struct mem_data *mem_data;
-	int i = 0;
+	uint32_t shared;
+	struct xocl_mm_wrapper *wrapper = NULL;
+	uint64_t reserved1 = 0;
+	uint64_t reserved2 = 0;
+	uint64_t reserved_start;
+	uint64_t reserved_end;
+	int err = 0;
+	int i = -1;
+
+	if (XOCL_DSA_IS_MPSOC(xdev)) {
+		/* TODO: This is still hardcoding.. */
+		reserved1 = 0x80000000;
+		reserved2 = 0x1000000;
+	}
 
 	topo = xdev->topology;
 	length = topo->m_count * sizeof(struct mem_data);
-	mm_size = topo->m_count * sizeof(struct drm_mm);
-	mm_stat_size = topo->m_count * sizeof(struct drm_xocl_mm_stat);
+	size = topo->m_count * sizeof(void *);
+	wrapper_size = sizeof(struct xocl_mm_wrapper);
+	mm_size = sizeof(struct drm_mm);
+	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
 
 	DRM_INFO("XOCL: Topology count = %d, data_length = %ld\n",
 			topo->m_count, length);
 
-	xdev->mm = vmalloc(mm_size);
-	memset(xdev->mm, 0, mm_size);
-	xdev->mm_usage_stat = vmalloc(mm_stat_size);
-	memset(xdev->mm_usage_stat, 0, mm_stat_size);
-	if (!xdev->mm || !xdev->mm_usage_stat)
-		return -ENOMEM;
+	xdev->mm = vzalloc(size);
+	xdev->mm_usage_stat = vzalloc(size);
+	xdev->mm_p2p_off = vzalloc(topo->m_count * sizeof(u64));
+	if (!xdev->mm || !xdev->mm_usage_stat || !xdev->mm_p2p_off) {
+		err = -ENOMEM;
+		goto failed;
+	}
 
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
 
-		DRM_INFO("DDR bank%d Info", i);
+		DRM_INFO("  Mem Index %d", i);
 		DRM_INFO("  Base Address:0x%llx\n", mem_data->m_base_address);
 		DRM_INFO("  Size:0x%lx", ddr_bank_size);
 		DRM_INFO("  Type:%d", mem_data->m_type);
@@ -420,20 +501,80 @@ static int xocl_init_mm(struct xocl_dev *xdev)
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
-		if (mem_data->m_used && mem_data->m_type != MEM_STREAMING) {
-			ddr_bank_size = mem_data->m_size * 1024;
-			DRM_INFO("XOCL: Allocating DDR bank%d", i);
-			DRM_INFO("  base_addr:0x%llx, size:0x%lx\n",
-					mem_data->m_base_address,
-					ddr_bank_size);
-			drm_mm_init(&xdev->mm[i], mem_data->m_base_address,
-					ddr_bank_size);
+		if (!mem_data->m_used)
+			continue;
 
-			DRM_INFO("drm_mm_init called\n");
+		if (mem_data->m_type == MEM_STREAMING)
+			continue;
+
+		ddr_bank_size = mem_data->m_size * 1024;
+		DRM_INFO("XOCL: Allocating DDR bank%d", i);
+		DRM_INFO("  base_addr:0x%llx, total size:0x%lx\n",
+				mem_data->m_base_address,
+				ddr_bank_size);
+
+		if (XOCL_DSA_IS_MPSOC(xdev)) {
+			reserved_end = mem_data->m_base_address + ddr_bank_size;
+			reserved_start = reserved_end - reserved1 - reserved2;
+			DRM_INFO("  reserved region:0x%llx - 0x%llx\n",
+				 reserved_start, reserved_end - 1);
 		}
+
+		shared = xocl_get_shared_ddr(xdev, mem_data);
+		if (shared != 0xffffffff) {
+			DRM_INFO("Found duplicated memory region!\n");
+			xdev->mm[i] = xdev->mm[shared];
+			xdev->mm_usage_stat[i] = xdev->mm_usage_stat[shared];
+			continue;
+		}
+
+		DRM_INFO("Found a new memory region\n");
+		wrapper = vzalloc(wrapper_size);
+		xdev->mm[i] = vzalloc(mm_size);
+		xdev->mm_usage_stat[i] = vzalloc(mm_stat_size);
+
+		if (!xdev->mm[i] || !xdev->mm_usage_stat[i] || !wrapper) {
+			err = -ENOMEM;
+			goto failed;
+		}
+
+		wrapper->start_addr = mem_data->m_base_address;
+		wrapper->size = mem_data->m_size*1024;
+		wrapper->mm = xdev->mm[i];
+		wrapper->mm_usage_stat = xdev->mm_usage_stat[i];
+		wrapper->ddr = i;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+		hash_add(xdev->mm_range, &wrapper->node, wrapper->start_addr);
+#endif
+
+		drm_mm_init(xdev->mm[i], mem_data->m_base_address,
+				ddr_bank_size - reserved1 - reserved2);
+		xdev->mm_p2p_off[i] = ddr_bank_size * i;
+
+		DRM_INFO("drm_mm_init called\n");
 	}
 
 	return 0;
+
+failed:
+	if (wrapper)
+		vfree(wrapper);
+
+	for (; i >= 0; i--) {
+		drm_mm_takedown(xdev->mm[i]);
+		if (xdev->mm[i])
+			vfree(xdev->mm[i]);
+		if (xdev->mm_usage_stat[i])
+			vfree(xdev->mm_usage_stat[i]);
+	}
+
+	if (xdev->mm)
+		vfree(xdev->mm);
+	if (xdev->mm_usage_stat)
+		vfree(xdev->mm_usage_stat);
+	if (xdev->mm_p2p_off)
+		vfree(xdev->mm_p2p_off);
+	return err;
 }
 
 static int
@@ -447,6 +588,8 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	size_t size_of_header;
 	size_t num_of_sections;
 	size_t size;
+	int preserve_mem = 0;
+	struct mem_topology *new_topology;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -459,6 +602,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		return -EFAULT;
 
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
+		return -EINVAL;
+
+	if (xocl_xrt_version_check(xdev, &bin_obj, true))
 		return -EINVAL;
 
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
@@ -477,15 +623,9 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	 *    If exec BO are outstanding we return -EBUSY
 	 */
 	if (!uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
-		// Check for submitted exec bos for this device that have not been processed
 		if (atomic_read(&xdev->outstanding_execs)) {
-			err = -EBUSY;
-			goto done;
-		}
-		// Check if there are other open contexts on this device
-		if (!list_is_singular(&xdev->ctx_list)) {
-			err = -EPERM;
-			goto done;
+			printk(KERN_ERR "Current xclbin is busy, can't change\n");
+			return -EBUSY;
 		}
 	}
 
@@ -493,42 +633,30 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		printk(KERN_ERR "TimeStamp of ROM did not match Xclbin\n");
-		err = -EINVAL;
-		goto done;
+		return -EINVAL;
 	}
 
 	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
 
-	err = xocl_icap_lock_bitstream(xdev, &bin_obj.m_header.uuid,
-		pid_nr(task_tgid(current)));
-	if (err)
-		goto done;
-
-	if(bin_obj.m_uniqueId == xdev->unique_id_last_bitstream) {
+	if (uuid_equal(&xdev->xclbin_id, &bin_obj.m_header.uuid)) {
 		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
 		goto done;
 	}
-
-	//Switching the xclbin, make sure none of the buffers are used.
-	err = xocl_check_topology(xdev);
-	if(err)
-		goto done;
-
-	xocl_cleanup_mem(xdev);
 
 	//Copy from user space and proceed.
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = bin_obj.m_header.m_numSections;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(axlf_size);
+	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
 		DRM_ERROR("Unable to create axlf\n");
 		err = -ENOMEM;
 		goto done;
 	}
+
 	printk(KERN_INFO "XOCL: Marker 5\n");
 
-	if (copy_from_user(axlf, axlf_ptr->xclbin, axlf_size)) {
+	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
 		goto done;
 	}
@@ -539,6 +667,47 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		err = -EFAULT;
 		goto done;
 	}
+
+	err = xocl_icap_download_axlf(xdev, buf);
+	if (err) {
+		DRM_ERROR("%s Fail to download \n", __FUNCTION__);
+		goto done;
+	}
+	/* Populating MEM_TOPOLOGY sections. */
+	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
+	if (size <= 0) {
+		if (size != 0)
+			goto done;
+	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
+	if (xocl_is_aws(xdev) && (xdev->topology != NULL)) {
+		if ( (size == sizeof_sect(xdev->topology, m_mem_data)) &&
+		    !memcmp(new_topology, xdev->topology, size) ) {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
+			preserve_mem = 1;
+		} else {
+			printk(KERN_INFO "XOCL: MEM_TOPOLOGY mismatch, do not preserve mem_topology.\n");
+		}
+	}
+
+	/* Switching the xclbin, make sure none of the buffers are used. */
+	if (!preserve_mem) {
+		err = xocl_check_topology(xdev);
+		if(err)
+			goto done;
+		xocl_cleanup_mem(xdev);
+	}
+	xocl_cleanup_connectivity(xdev);
+
+	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
+	if (!preserve_mem)
+		xdev->topology = new_topology;
+	else
+		vfree(new_topology);
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
@@ -571,32 +740,23 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	/* Populating MEM_TOPOLOGY sections */
-	size = xocl_read_sect(MEM_TOPOLOGY, &xdev->topology, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
+	if (!preserve_mem) {
+		err = xocl_init_mm(xdev);
+		if (err)
 			goto done;
-	} else if (sizeof_sect(xdev->topology, m_mem_data) != size) {
-		err = -EINVAL;
-		goto done;
 	}
 
-	err = xocl_init_mm(xdev);
-	if (err)
-		goto done;
-
 	//Populate with "this" bitstream, so avoid redownload the next time
-	xdev->unique_id_last_bitstream = bin_obj.m_uniqueId;
 	uuid_copy(&xdev->xclbin_id, &bin_obj.m_header.uuid);
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
 	if (size < 0)
 		err = size;
-	if (err != 0) {
-		(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
-			pid_nr(task_tgid(current)));
-	}
+	/*
+	 * Always give up ownership for multi process use case; the real locking
+	 * is done by context creation API or by execbuf
+	 */
 	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
 	vfree(axlf);
 	return err;
@@ -613,6 +773,12 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 
 	mutex_lock(&xdev->ctx_list_lock);
 	err = xocl_read_axlf_helper(xdev, axlf_obj_ptr);
+	/*
+	 * Record that user land configured this context for current device xclbin
+	 * It doesn't mean that the context has a lock on the xclbin, only that
+	 * when a lock is eventually acquired it can be verified to be against to
+	 * be a lock on expected xclbin
+	 */
 	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xdev->xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
@@ -628,6 +794,72 @@ uint get_live_client_size(struct xocl_dev *xdev) {
 
 void reset_notify_client_ctx(struct xocl_dev *xdev)
 {
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	wmb();
+}
+
+int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int err = xocl_hot_reset(dev->dev_private, false);
+
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
+	return err;
+}
+
+int xocl_p2p_enable_ioctl(struct drm_device *dev,
+			  void *data,
+			  struct drm_file *filp)
+{
+	struct xocl_dev *xdev = dev->dev_private;
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret, p2p_bar, enable;
+	u64 size;
+
+	enable = ((struct drm_xocl_p2p_enable *)data)->enable;
+
+	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
+	if (p2p_bar < 0) {
+		xocl_err(&pdev->dev, "p2p bar is not configurable");
+		return -EACCES;
+	}
+
+	size = xocl_get_ddr_channel_size(xdev) *
+			xocl_get_ddr_channel_count(xdev); /* GB */
+	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
+	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+
+	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
+			(1 << size));
+	xocl_p2p_mem_release(xdev, false);
+
+	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
+	if (ret) {
+		xocl_err(&pdev->dev, "Failed to resize p2p BAR %d", ret);
+		goto failed;
+	}
+
+	xdev->bypass_bar_idx = p2p_bar;
+	xdev->bypass_bar_len = pci_resource_len(pdev, p2p_bar);
+
+	if (enable) {
+		ret = xocl_p2p_mem_reserve(xdev);
+		if (ret) {
+			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
+				      	ret);
+		}
+	}
+
+
+failed:
+	return ret;
+}
+
+int xocl_reclock_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int err = xocl_reclock(dev->dev_private, data);
+
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
+	return err;
 }

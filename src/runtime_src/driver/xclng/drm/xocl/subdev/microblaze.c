@@ -61,7 +61,7 @@ enum cap_mask {
 };
 
 enum {
-	MB_STATE_INIT,
+	MB_STATE_INIT = 0,
 	MB_STATE_RUN,
 	MB_STATE_RESET,
 };
@@ -115,7 +115,7 @@ static int mb_start(struct xocl_mb *mb);
 static void safe_read32(struct xocl_mb *mb, u32 reg, u32 *val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state != MB_STATE_RESET) {
+	if (mb->enabled && mb->state == MB_STATE_RUN) {
 		*val = READ_REG32(mb, reg);
 	} else {
 		*val = 0;
@@ -126,7 +126,7 @@ static void safe_read32(struct xocl_mb *mb, u32 reg, u32 *val)
 static void safe_write32(struct xocl_mb *mb, u32 reg, u32 val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state != MB_STATE_RESET) {
+	if (mb->enabled && mb->state == MB_STATE_RUN) {
 		WRITE_REG32(mb, val, reg);
 	}
 	mutex_unlock(&mb->mb_lock);
@@ -496,8 +496,7 @@ static int mb_start(struct xocl_mb *mb)
 		COPY_MGMT(mb, mb->mgmt_binary, mb->mgmt_binary_length);
 	}
 
-	if (!XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(mb->pdev)) &&
-		xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_sched_on(xdev_hdl)) {
 		xocl_info(&mb->pdev->dev, "Copying scheduler image len %d",
 			mb->sche_binary_length);
 		COPY_SCHE(mb, mb->sche_binary, mb->sche_binary_length);
@@ -607,11 +606,19 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	return 0;
 }
 
+//Have a function stub but don't actually do anything when this is called
+static int mb_ignore(struct platform_device *pdev) {
+	return 0;
+}
+
 static struct xocl_mb_funcs mb_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= mb_reset,
+	.stop			= mb_ignore,
 };
+
+
 
 static int mb_remove(struct platform_device *pdev)
 {

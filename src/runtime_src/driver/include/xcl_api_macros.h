@@ -328,6 +328,7 @@ mtx.unlock();
 
 
 //----------xclPerfMonReadCounters------------
+//----------xclPerfMonReadCounters------------
 #define xclPerfMonReadCounters_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
@@ -348,13 +349,43 @@ mtx.unlock();
 
 #define xclPerfMonReadCounters_RETURN()
 
-#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname,accel) \
+#define xclPerfMonReadCounters_RPC_CALL(func_name,wr_byte_count,wr_trans_count,total_wr_latency, \
+                                        rd_byte_count,rd_trans_count,total_rd_latency, \
+                                        sampleIntervalUsec,slotname,accel) \
     RPC_PROLOGUE(func_name); \
     xclPerfMonReadCounters_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
     xclPerfMonReadCounters_RETURN();
+
+//----------xclPerfMonReadCounters(Streaming)------------
+#define xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_slotname(slotname);
+
+#define xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE() \
+    str_num_tranx       = r_msg.str_num_tranx(); \
+    str_data_bytes      = r_msg.str_data_bytes(); \
+    str_busy_cycles     = r_msg.str_busy_cycles(); \
+    str_stall_cycles    = r_msg.str_stall_cycles(); \
+    str_starve_cycles   = r_msg.str_starve_cycles();
+
+
+#define xclPerfMonReadCounters_Streaming_RETURN()
+
+#define xclPerfMonReadCounters_Streaming_RPC_CALL(func_name, str_num_tranx, str_data_bytes, str_busy_cycles, \
+                                        str_stall_cycles, str_starve_cycles, slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclPerfMonReadCounters_Streaming_RETURN();
 
 //----------xclPerfMonGetTraceCount------------
 #define xclPerfMonGetTraceCount_SET_PROTOMESSAGE() \
@@ -397,6 +428,26 @@ mtx.unlock();
     xclPerfMonReadTrace_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
+
+//----------xclPerfMonReadTrace(Streaming)------------
+#define xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE() \
+    if(simulator_started == false) \
+    {\
+      RELEASE_MUTEX();\
+      return 0; \
+    }\
+    c_msg.set_ack(ack); \
+    c_msg.set_slotname(slotname);
+
+#define xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE() \
+    samplessize = r_msg.output_data_size(); \
+
+#define xclPerfMonReadTrace_Streaming_RPC_CALL(func_name,ack,samplessize,slotname) \
+    RPC_PROLOGUE(func_name); \
+    xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE(); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS();
 
 //----------xclWriteHostEvent------------
@@ -538,7 +589,10 @@ mtx.unlock();
 #define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
     c_msg.set_q_handle(q_handle); \
     c_msg.set_src((char*)src,size); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_req(mReqCounter);\
+    c_msg.set_nonblocking(nonBlocking);\
+    c_msg.set_eot(eot);
 
 #define xclWriteQueue_SET_PROTO_RESPONSE() \
   uint64_t written_size = r_msg.written_size();
@@ -554,7 +608,10 @@ mtx.unlock();
 #define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
     c_msg.set_q_handle(q_handle); \
     c_msg.set_dest((char*)dest,size); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_req(mReqCounter);\
+    c_msg.set_nonblocking(nonBlocking);\
+    c_msg.set_eot(eot);
 
 #define xclReadQueue_SET_PROTO_RESPONSE(dest) \
     read_size = r_msg.size();\
@@ -565,6 +622,31 @@ mtx.unlock();
   xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadQueue_SET_PROTO_RESPONSE(dest); \
+  FREE_BUFFERS();
+
+//----------xclPollCompletion-------------------
+#define xclPollCompletion_SET_PROTOMESSAGE(reqcounter) \
+    c_msg.set_req(reqcounter); \
+
+#define xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap) \
+  std::map<uint64_t,uint64_t>::iterator vaLenMapItr = vaLenMap.begin();\
+  if(r_msg.fullrequest_size() == (int)(vaLenMap.size()))\
+  {\
+    for(int i = 0; i < r_msg.fullrequest_size() ; i++) \
+    { \
+      const xclPollCompletion_response::request &oReq = r_msg.fullrequest(i); \
+      uint64_t read_size = oReq.size();\
+      numBytesProcessed  += read_size; \
+      memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
+      vaLenMapItr++;\
+    } \
+  }\
+
+#define xclPollCompletion_RPC_CALL(func_name,reqcounter,vaLenMap) \
+  RPC_PROLOGUE(func_name); \
+  xclPollCompletion_SET_PROTOMESSAGE(reqcounter); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
   FREE_BUFFERS();
 
 //----------xclDestroyQueue-------------------
@@ -579,5 +661,27 @@ mtx.unlock();
   xclDestroyQueue_SET_PROTOMESSAGE(q_handle); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclDestroyQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
+//----------xclSetupInstance-------------------
+#define xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap) \
+    c_msg.set_route(route); \
+    for(auto& it: argFlowIdMap) \
+    { \
+      xclSetupInstance_call_argflowpair* afpair = c_msg.add_setup(); \
+      afpair->set_arg(it.first); \
+      afpair->set_flow((it.second).first);\
+      afpair->set_tag((it.second).second);\
+    }
+
+
+#define xclSetupInstance_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define xclSetupInstance_RPC_CALL(func_name, route, argFlowIdMap) \
+  RPC_PROLOGUE(func_name); \
+  xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclSetupInstance_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
 

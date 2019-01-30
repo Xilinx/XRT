@@ -21,6 +21,7 @@
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
+#include "xrt/util/uuid.h"
 
 #include "driver/include/xclperf.h"
 #include "driver/include/xcl_app_debug.h"
@@ -159,6 +160,12 @@ public:
 
   virtual void
   close() = 0;
+
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx) {}
 
   // Hack to copy hw_em device info to sw_em device info
   // Should not be necessary when we move to sw_emu
@@ -452,22 +459,6 @@ public:
   }
 
   /**
-   * Reset device program
-   *
-   * @param kind
-   *   Type of set
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-  virtual operations_result<int>
-  resetKernel()
-  {
-    return operations_result<int>();
-  }
-
-  /**
    * Re-clock device at specified freq
    *
    * @param freqMHz
@@ -574,6 +565,12 @@ public:
                        char* slotName, uint32_t length)
   {
     return operations_result<void>();
+  }
+
+  virtual operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    return operations_result<uint32_t>();
   }
 
   virtual operations_result<void>

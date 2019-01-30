@@ -11,12 +11,20 @@ if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     find /lib/modules -type f -name xclmgmt.ko -delete
     find /lib/modules -type f -name xocl.ko.kz -delete
     find /lib/modules -type f -name xclmgmt.ko.kz -delete
+    find /lib/modules -type f -name xocl.ko.xz -delete
+    find /lib/modules -type f -name xclmgmt.ko.xz -delete
     depmod -A
 fi
 
 if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     echo "Registering new XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
     dkms add -m xrt -v "@XRT_VERSION_STRING@"
+fi
+
+DRACUT_CONF_PATH=/etc/dracut.conf.d
+if [ -e $DRACUT_CONF_PATH ]; then
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
 fi
 
 if [ -e /lib/modules/`uname -r`/build/include ]; then

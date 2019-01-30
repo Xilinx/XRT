@@ -53,5 +53,10 @@
 #define xclReadQueue_n 25
 #define xclDestroyQueue_n 26
 #define xclImportBO_n 27
+#define xclSetupInstance_n 28
+#define xclPollCompletion_n 29
+
+#define xclPerfMonReadCounters_Streaming_n 30
+#define xclPerfMonReadTrace_Streaming_n 31
 
 #endif

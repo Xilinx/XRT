@@ -44,10 +44,12 @@ int bdf2index(std::string& bdfStr, unsigned& index)
 
     for (unsigned i = 0; i < pcidev::get_dev_total(); i++) {
         auto dev = pcidev::get_dev(i);
-        if (dom == dev->mgmt->domain && b == dev->mgmt->bus &&
-            d == dev->mgmt->dev && (f == 0 || f == 1)) {
-            index = i;
-            return 0;
+        if(dev->user){
+            if (dom == dev->user->domain && b == dev->user->bus &&
+                d == dev->user->dev && (f == 0 || f == 1)) {
+                index = i;
+                return 0;
+            }
         }
     }
 
@@ -79,6 +81,7 @@ int str2index(const char *arg, unsigned& index)
 
     return 0;
 }
+
 
 void print_pci_info(void)
 {
@@ -119,13 +122,11 @@ void print_pci_info(void)
         bool ready = dev->is_ready;
 
         if (mdev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "user";
             print(udev);
         }
@@ -134,12 +135,11 @@ void print_pci_info(void)
             not_ready++;
         ++i;
     }
-
     if (not_ready != 0) {
         std::cout << "WARNING: " << not_ready
-            << " card(s) marked by '*' are not ready, "
-            << "run xbutil flash scan -v to further check the details."
-            << std::endl;
+                  << " card(s) marked by '*' are not ready, "
+                  << "run xbutil flash scan -v to further check the details."
+                  << std::endl;
     }
 }
 
@@ -158,7 +158,6 @@ int main(int argc, char *argv[])
     std::string mcsFile1, mcsFile2;
     std::string xclbin;
     size_t blockSize = 0;
-    bool hot = false;
     int c;
     dd::ddArgs_t ddArgs;
 
@@ -187,17 +186,20 @@ int main(int argc, char *argv[])
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
         // coverity[TAINTED_STRING] argv will be validated inside xbflash
-        return execv( std::string( path + "/xbflash" ).c_str(), argv );
+        return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
     } /* end of call to xbflash */
 
-    if( std::string( argv[ 1 ] ).compare( "top" ) == 0 ) {
-        optind++;
-        return xcldev::xclTop(argc, argv);
-    }
-    if( std::string( argv[ 1 ] ).compare( "validate" ) == 0 ) {
-        optind++;
+    optind++;
+    if( std::strcmp( argv[1], "validate" ) == 0 ) {
         return xcldev::xclValidate(argc, argv);
+    } else if( std::strcmp( argv[1], "top" ) == 0 ) {
+        return xcldev::xclTop(argc, argv);
+    } else if( std::strcmp( argv[1], "reset" ) == 0 ) {
+        return xcldev::xclReset(argc, argv);
+    } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
+        return xcldev::xclSetP2p(argc, argv);
     }
+    optind--;
 
     argv++;
     const auto v = xcldev::commandTable.find(*argv);
@@ -220,18 +222,23 @@ int main(int argc, char *argv[])
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
-	{"read", no_argument, 0, xcldev::MEM_READ},
-	{"write", no_argument, 0, xcldev::MEM_WRITE},
-	{"spm", no_argument, 0, xcldev::STATUS_SPM},
-	{"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-	{"sspm", no_argument, 0, xcldev::STATUS_SSPM},
-	{"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-	{"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED}
+        {"read", no_argument, 0, xcldev::MEM_READ},
+        {"write", no_argument, 0, xcldev::MEM_WRITE},
+        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
+        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"stream", no_argument, 0, xcldev::STREAM},
+        {"query-ecc", no_argument, 0, xcldev::MEM_QUERY_ECC},
+        {"reset-ecc", no_argument, 0, xcldev::MEM_RESET_ECC},
+        {0, 0, 0, 0}
     };
+
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s:"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:i:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -277,20 +284,47 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
             break;
         }
-	case xcldev::STATUS_SSPM : {
-	  if (cmd != xcldev::STATUS) {
-	    std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
-	    return -1 ;
-	  }
-	  ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
-	  break ;
-	}
+        case xcldev::STATUS_SSPM : {
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
+                return -1 ;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            break ;
+        }
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
             return 0;
         }
-            //short options are dealt here
+        case xcldev::STREAM:
+        {
+            if(cmd != xcldev::QUERY) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::MEM_QUERY_ECC : {
+            //--query-ecc
+            if (cmd != xcldev::MEM) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::MEM_QUERY_ECC;
+            break;
+        }
+        case xcldev::MEM_RESET_ECC : {
+            //--reset-ecc
+            if (cmd != xcldev::MEM) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            subcmd = xcldev::MEM_RESET_ECC;
+            break;
+        }
+        //short options are dealt here
         case 'a':{
             if (cmd != xcldev::MEM) {
                 std::cout << "ERROR: '-a' not applicable for this command\n";
@@ -453,15 +487,6 @@ int main(int argc, char *argv[])
             blockSize *= 1024; // convert kilo bytes to bytes
             break;
         }
-        case 'h':
-        {
-            if (cmd != xcldev::RESET) {
-                std::cout << "ERROR: '-h' only allowed with 'reset' command\n";
-                return -1;
-            }
-            hot = true;
-            break;
-        }
         default:
             xcldev::printHelp(exe);
             return 1;
@@ -515,15 +540,16 @@ int main(int argc, char *argv[])
         std::cout << "ERROR: No card found\n";
         return 1;
     }
-    std::cout << "INFO: Found total " << total << " card(s), "
-        << count << " are usable" << std::endl;
+    if (cmd != xcldev::DUMP)
+        std::cout << "INFO: Found total " << total << " card(s), "
+                  << count << " are usable" << std::endl;
 
     if (cmd == xcldev::SCAN) {
         print_pci_info();
         return 0;
     }
 
-    for (unsigned i = 0; i < count; i++) {
+    for (unsigned i = 0; i < total; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
@@ -543,7 +569,7 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        if (index >= count)
+        if (index >= total)
             std::cout << "ERROR: Card index " << index << "is out of range";
         else
             std::cout << "ERROR: Card [" << index << "] is not ready";
@@ -559,7 +585,7 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->boot();
         break;
     case xcldev::CLOCK:
-        result = deviceVec[index]->reclock2(regionIndex, targetFreq);
+        result = deviceVec[index]->reclockUser(regionIndex, targetFreq);
         break;
     case xcldev::FAN:
         result = deviceVec[index]->fan(fanSpeed);
@@ -573,16 +599,18 @@ int main(int argc, char *argv[])
     case xcldev::QUERY:
         try
         {
-            result = deviceVec[index]->dump(std::cout);
+            if(subcmd == xcldev::STREAM) {
+                result = deviceVec[index]->printStreamInfo(std::cout);
+            } else {
+                result = deviceVec[index]->dump(std::cout);
+            }
         }
-        catch (...)
-        {
+        catch (...) {
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
-    case xcldev::RESET:
-        if (hot) regionIndex = 0xffffffff;
-        result = deviceVec[index]->reset(regionIndex);
+    case xcldev::DUMP:
+        result = deviceVec[index]->dumpJson(std::cout);
         break;
     case xcldev::RUN:
         result = deviceVec[index]->run(regionIndex, computeIndex);
@@ -593,9 +621,12 @@ int main(int argc, char *argv[])
     case xcldev::MEM:
         if (subcmd == xcldev::MEM_READ) {
             result = deviceVec[index]->memread(outMemReadFile, startAddr, sizeInBytes);
-        }
-        else if (subcmd == xcldev::MEM_WRITE) {
+        } else if (subcmd == xcldev::MEM_WRITE) {
             result = deviceVec[index]->memwrite(startAddr, sizeInBytes, pattern_byte);
+        } else if(subcmd == xcldev::MEM_QUERY_ECC) {
+            result = deviceVec[index]->printEccInfo(std::cout);
+        } else if(subcmd == xcldev::MEM_RESET_ECC) {
+            result = deviceVec[index]->resetEccInfo();
         }
         break;
     case xcldev::DD:
@@ -616,20 +647,20 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
             result = deviceVec[index]->readSPMCounters();
         }
-	if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-	  result = deviceVec[index]->readSSPMCounters() ;
-	}
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
+            result = deviceVec[index]->readSSPMCounters() ;
+        }
         break;
+
     default:
         std::cout << "ERROR: Not implemented\n";
         result = -1;
     }
 
-    if(result == 0) {
-        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
-    } else {
+    if (result != 0)
         std::cout << "ERROR: xbutil " << v->first  << " failed." << std::endl;
-    }
+    else if (cmd != xcldev::DUMP)
+        std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
 
     return result;
 }
@@ -641,14 +672,17 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Command and option summary:\n";
     std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
+    std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
+    std::cout << "  mem --query-ecc [-d card]\n";
+    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
-    std::cout << "  reset   [-d card] [-h | -r region]\n";
-    std::cout << "  status  [--debug_ip_name]\n";   
+    std::cout << "  reset   [-d card]\n";
+    std::cout << "  status  [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
@@ -657,7 +691,11 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "  p2p    [-d card] --enable\n";
+    std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "\nExamples:\n";
+    std::cout << "Print JSON file to stdout\n";
+    std::cout << "  " << exe << " dump\n";
     std::cout << "List all cards\n";
     std::cout << "  " << exe << " list\n";
     std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
@@ -696,15 +734,14 @@ std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
             std::cout << "ERROR: Card index " << index << " out of range";
             std::cout << std::endl;
         } else {
-            return std::unique_ptr<xcldev::device>
-                (new xcldev::device(index, nullptr));
+            return std::make_unique<xcldev::device>(index,nullptr);
         }
     }
     catch (const std::exception& ex) {
         std::cout << "ERROR: " << ex.what() << std::endl;
     }
 
-    return std::unique_ptr<xcldev::device>(nullptr);
+    return nullptr;
 }
 
 struct topThreadCtrl {
@@ -722,12 +759,28 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     dev->m_mem_usage_bar(devstat, lines);
 
     dev->m_devinfo_stringize_power(devinfo, lines);
-    
+
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
-    for(auto line:lines){
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+
+    dev->m_cu_usage_stringize_dynamics(lines);
+
+    for(auto line:lines) {
             printw("%s\n", line.c_str());
-    } 
+    }
+}
+
+static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devinfo)
+{
+    std::vector<std::string> lines;
+
+    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+
+    for(auto line:lines) {
+        printw("%s\n", line.c_str());
+    }
+
 }
 
 static void topThreadFunc(struct topThreadCtrl *ctrl)
@@ -757,15 +810,49 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     }
 }
 
+static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
+{
+    int i = 0;
+
+    while (!ctrl->quit) {
+        if ((i % ctrl->interval) == 0) {
+            xclDeviceUsage devstat;
+            xclDeviceInfo2 devinfo;
+            int result = ctrl->dev->usageInfo(devstat);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            result = ctrl->dev->deviceInfo(devinfo);
+            if (result) {
+                ctrl->status = result;
+                return;
+            }
+            clear();
+            topPrintStreamUsage(ctrl->dev.get(), devinfo);
+            refresh();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        i++;
+    }
+}
+
+void xclTopHelp()
+{
+    std::cout << "Options: [-d <card>]: device index\n";
+    std::cout << "         [-i <interval>]: refresh interval\n";
+    std::cout << "         [-s]: display stream topology \n";
+}
+
 int xcldev::xclTop(int argc, char *argv[])
 {
     int interval = 1;
     unsigned index = 0;
     int c;
-    const std::string usage("Options: [-d index] [-i <interval>]");
+    bool printStreamOnly = false;
     struct topThreadCtrl ctrl = { 0 };
 
-    while ((c = getopt(argc, argv, "d:i:")) != -1) {
+    while ((c = getopt(argc, argv, "d:i:s")) != -1) {
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
@@ -776,14 +863,17 @@ int xcldev::xclTop(int argc, char *argv[])
                 return ret;
             break;
         }
+        case 's':
+            printStreamOnly = true;
+            break;
         default:
-            std::cerr << usage << std::endl;
+            xclTopHelp();
             return -EINVAL;
         }
     }
 
     if (optind != argc) {
-        std::cerr << usage << std::endl;
+        xclTopHelp();
         return -EINVAL;
     }
 
@@ -799,8 +889,13 @@ int xcldev::xclTop(int argc, char *argv[])
     initscr();
     cbreak();
     noecho();
+    std::thread t;
+    if (printStreamOnly) {
+        t = std::thread(topThreadStreamFunc, &ctrl);
+    } else {
+        t = std::thread(topThreadFunc, &ctrl);
+    }
 
-    std::thread t(topThreadFunc, &ctrl);
 
     // Waiting for and processing control command from stdin
     while (!ctrl.quit) {
@@ -822,8 +917,7 @@ int xcldev::xclTop(int argc, char *argv[])
 const std::string dsaPath("/opt/xilinx/dsa/");
 
 void testCaseProgressReporter(bool *quit)
-{
-    int i = 0;
+{    int i = 0;
     while (!*quit) {
         if (i != 0 && (i % 5 == 0))
             std::cout << "." << std::flush;
@@ -843,6 +937,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    unsetenv("XCL_EMULATION_MODE");
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
@@ -1065,4 +1160,264 @@ int xcldev::xclValidate(int argc, char *argv[])
 
     std::cout << "INFO: All cards validated successfully." << std::endl;
     return 0;
+}
+
+static int getEccMemTags(const pcidev::pci_device *dev,
+    std::vector<std::string>& tags)
+{
+    std::string errmsg;
+    std::vector<char> buf;
+
+    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    const mem_topology *map = (mem_topology *)buf.data();
+
+    if(buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' not found, "
+            << "unable to query ECC info. Has the xclbin been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+
+    // Only support DDR4 mem controller for ECC status
+    for(int32_t i = 0; i < map->m_count; i++) {
+        if(!map->m_mem_data[i].m_used)
+            continue;
+        tags.emplace_back(
+            reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+    }
+
+    if (tags.empty()) {
+        std::cout << "No supported ECC controller detected!" << std::endl;
+        return -ENOENT;
+    }
+    return 0;
+}
+
+static int eccStatus2String(unsigned int status, std::string& str)
+{
+    const int ce_mask = (0x1 << 1);
+    const int ue_mask = (0x1 << 0);
+
+    str.clear();
+
+    // If unknown status bits, can't support.
+    if (status & ~(ce_mask | ue_mask)) {
+        std::cout << "Bad ECC status detected!" << std::endl;
+        return -EINVAL;
+    }
+
+    if (status == 0) {
+        str = "(None)";
+        return 0;
+    }
+
+    if (status & ue_mask)
+        str += "UE ";
+    if (status & ce_mask)
+        str += "CE ";
+    // Remove the trailing space.
+    str.pop_back();
+    return 0;
+}
+
+int xcldev::device::printEccInfo(std::ostream& ostr) const
+{
+    std::string errmsg;
+    std::vector<std::string> tags;
+    auto dev = pcidev::get_dev(m_idx);
+
+    int err = getEccMemTags(dev, tags);
+    if (err)
+        return err;
+
+    // Report ECC status
+    ostr << std::endl;
+    ostr << std::left << std::setw(16) << "Tag" << std::setw(12) << "Errors"
+        << std::setw(12) << "CE Count" << std::setw(20) << "CE FFA"
+        << std::setw(20) << "UE FFA" << std::endl;
+    for (auto tag : tags) {
+        unsigned status = 0;
+        std::string st;
+        dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
+        if (!errmsg.empty())
+            continue;
+        err = eccStatus2String(status, st);
+        if (err)
+            return err;
+
+        unsigned ce_cnt = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
+        uint64_t ce_ffa = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ce_ffa", errmsg, ce_ffa);
+        uint64_t ue_ffa = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ue_ffa", errmsg, ue_ffa);
+        ostr << std::left << std::setw(16) << tag << std::setw(12) << st
+            << std::setw(12) << ce_cnt << "0x" << std::setw(18) << std::hex
+            << ce_ffa << "0x" << std::setw(18) << ue_ffa << std::endl;
+    }
+    ostr << std::endl;
+    return 0;
+}
+
+int xcldev::device::resetEccInfo()
+{
+    std::string errmsg;
+    std::vector<std::string> tags;
+    auto dev = pcidev::get_dev(m_idx);
+
+    if ((getuid() != 0) && (geteuid() != 0)) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    int err = getEccMemTags(dev, tags);
+    if (err)
+        return err;
+
+    std::cout << "Resetting ECC info..." << std::endl;
+    for (auto tag : tags)
+        dev->mgmt->sysfs_put(tag, "ecc_reset", errmsg, "1");
+    return 0;
+}
+
+int xcldev::device::reset(xclResetKind kind)
+{
+    return xclResetDevice(m_handle, kind);
+}
+
+int xcldev::xclReset(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    bool ocl_only = false;
+    bool force = false;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index]");
+
+    // Both -x and -f are hidden options.
+    while ((c = getopt(argc, argv, "d:hxf")) != -1) {
+        switch (c) {
+        case 'd': {
+            int ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+            if (index >= pcidev::get_dev_total()) {
+                std::cout << "ERROR: index " << index << " out of range"
+                    << std::endl;
+                return -EINVAL;
+            }
+            break;
+        }
+        case 'h':
+            std::cout << "WARNING: -h option is obsolete." << std::endl;
+            break;
+        case 'x':
+            ocl_only = true;
+            break;
+        case 'f':
+            force = true;
+            break;
+        default:
+            std::cerr << usage << std::endl;
+            return -EINVAL;
+        }
+    }
+    if (optind != argc) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if ((ocl_only || force) && !root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    int err = 0;
+    if (ocl_only)
+        err = d->reset(XCL_RESET_KERNEL);
+    if (force)
+        err = d->reset(XCL_RESET_FULL);
+    else
+        err = d->reset(XCL_USER_RESET);
+    if (err)
+        std::cout << "ERROR: " << strerror(err) << std::endl;
+    return err;
+}
+
+int xcldev::device::setP2p(bool enable, bool force)
+{
+    return xclP2pEnable(m_handle, enable, force);
+}
+
+int xcldev::xclSetP2p(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    int p2p_enable = -1;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index] --[enable|disable]");
+    static struct option long_options[] = {
+        {"enable", no_argument, 0, xcldev::P2P_ENABLE},
+        {"disable", no_argument, 0, xcldev::P2P_DISABLE},
+        {0, 0, 0, 0}
+    };
+    int long_index, ret;
+    const char* short_options = "d:f"; //don't add numbers
+    const char* exe = argv[ 0 ];
+    bool force = false;
+
+    while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
+        switch (c) {
+        case 'd':
+            ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+	    break;
+	case 'f':
+	    force = true;
+	    break;
+	case xcldev::P2P_ENABLE:
+            p2p_enable = 1;
+            break;
+        case xcldev::P2P_DISABLE:
+            p2p_enable = 0;
+            break;
+        default:
+            xcldev::printHelp(exe);
+            return 1;
+        }
+    }
+
+    if (p2p_enable == -1) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    ret = d->setP2p(p2p_enable, force);
+    if (ret == ENOSPC) {
+        std::cout << "ERROR: Not enough iomem space." << std::endl;
+        std::cout << "Please check BIOS settings" << std::endl;
+    } else if (ret == EBUSY) {
+        std::cout << "ERROR: resoure busy, please try warm reboot" << std::endl;
+    } else if (ret)
+        std::cout << "ERROR: " << strerror(ret) << std::endl;
+
+    return ret;
 }

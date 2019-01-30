@@ -141,11 +141,15 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    session->base.hw_session.dev_index = hal->dev_index;
+
     session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
 
     // Allocate the private data
     session->base.plugin_data =
-        malloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size);
+        calloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
     rc = session->kernel_plugin->init(session);

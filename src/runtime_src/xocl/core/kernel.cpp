@@ -17,8 +17,9 @@
 #include "kernel.h"
 #include "program.h"
 #include "context.h"
+#include "device.h"
+#include "compute_unit.h"
 
-#include "xrt/util/memory.h"
 #include <sstream>
 #include <iostream>
 #include <memory>
@@ -27,31 +28,53 @@
 
 namespace xocl {
 
+std::string
+kernel::
+connectivity_debug() const
+{
+  std::stringstream str;
+  const char* line = "-------------------------------";
+  str << "+" << line << "+\n";
+  str << "| " << std::left << std::setw(strlen(line)-1) << get_name() << std::right << "|\n";
+  str << "|" << line << "|\n";
+  const char* hdr1 = "argument index | memory index";
+  str << "| " << hdr1 << " |\n";
+  for (auto& arg : get_indexed_argument_range()) {
+    if (auto mem = arg->get_memory_object()) {
+      str << "| " << std::setw(strlen("argument index")) << arg->get_argidx()
+          << " | " << std::setw(strlen("memory index"))
+          << mem->get_memidx() << " |\n";
+    }
+  }
+  str << "+" << line << "+";
+  return str.str();
+}
+
 std::unique_ptr<kernel::argument>
 kernel::argument::
 create(arginfo_type arg, kernel* kernel)
 {
   switch (arg->address_qualifier) {
   case 0:
-    return xrt::make_unique<kernel::scalar_argument>(arg,kernel);
+    return std::make_unique<kernel::scalar_argument>(arg,kernel);
     break;
   case 1:
-    return xrt::make_unique<kernel::global_argument>(arg,kernel);
+    return std::make_unique<kernel::global_argument>(arg,kernel);
     break;
   case 2:
-    return xrt::make_unique<kernel::constant_argument>(arg,kernel);
+    return std::make_unique<kernel::constant_argument>(arg,kernel);
     break;
   case 3:
-    return xrt::make_unique<kernel::local_argument>(arg,kernel);
+    return std::make_unique<kernel::local_argument>(arg,kernel);
     break;
   case 4:
     // hack for progvar (064_pipe_num_packets_hw_xilinx_adm-pcie-ku3_2ddr_3_3)
     // do not understand this code at all, but reuse global_argument all that
     // matters is that cu_ffa gets proper xclbin arg properties (size,offset,etc)
     if (arg->atype==xclbin::symbol::arg::argtype::progvar)
-      return xrt::make_unique<kernel::global_argument>(arg,kernel);
+      return std::make_unique<kernel::global_argument>(arg,kernel);
     //Indexed 4 implies stream. Above kludge contd.. : TODO
-    return xrt::make_unique<kernel::stream_argument>(arg,kernel);
+    return std::make_unique<kernel::stream_argument>(arg,kernel);
     break;
   default:
     throw xocl::error(CL_INVALID_BINARY,"invalid address qualifier: "
@@ -84,7 +107,7 @@ std::unique_ptr<kernel::argument>
 kernel::scalar_argument::
 clone()
 {
-  return xrt::make_unique<scalar_argument>(*this);
+  return std::make_unique<scalar_argument>(*this);
 }
 
 size_t
@@ -136,7 +159,7 @@ std::unique_ptr<kernel::argument>
 kernel::global_argument::
 clone()
 {
-  return xrt::make_unique<global_argument>(*this);
+  return std::make_unique<global_argument>(*this);
 }
 
 void
@@ -151,7 +174,7 @@ set(size_t size, const void* cvalue)
 
   m_buf = xocl(mem);
   if (m_argidx < std::numeric_limits<unsigned long>::max())
-    m_buf->get_buffer_object(m_kernel,m_argidx);
+    m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -172,7 +195,7 @@ std::unique_ptr<kernel::argument>
 kernel::local_argument::
 clone()
 {
-  return xrt::make_unique<local_argument>(*this);
+  return std::make_unique<local_argument>(*this);
 }
 
 void
@@ -193,7 +216,7 @@ std::unique_ptr<kernel::argument>
 kernel::constant_argument::
 clone()
 {
-  return xrt::make_unique<constant_argument>(*this);
+  return std::make_unique<constant_argument>(*this);
 }
 
 void
@@ -205,7 +228,7 @@ set(size_t size, const void* cvalue)
   auto value = const_cast<void*>(cvalue);
   auto mem = value ? *static_cast<cl_mem*>(value) : nullptr;
   m_buf = xocl(mem);
-  m_buf->get_buffer_object(m_kernel,m_argidx);
+  m_kernel->assign_buffer_to_argidx(m_buf.get(),m_argidx);
   m_set = true;
 }
 
@@ -213,7 +236,7 @@ std::unique_ptr<kernel::argument>
 kernel::image_argument::
 clone()
 {
-  return xrt::make_unique<image_argument>(*this);
+  return std::make_unique<image_argument>(*this);
 }
 
 void
@@ -227,7 +250,7 @@ std::unique_ptr<kernel::argument>
 kernel::sampler_argument::
 clone()
 {
-  return xrt::make_unique<sampler_argument>(*this);
+  return std::make_unique<sampler_argument>(*this);
 }
 
 void
@@ -241,7 +264,7 @@ std::unique_ptr<kernel::argument>
 kernel::stream_argument::
 clone()
 {
-  return xrt::make_unique<stream_argument>(*this);
+  return std::make_unique<stream_argument>(*this);
 }
 
 void
@@ -266,7 +289,6 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
   XOCL_DEBUG(std::cout,"xocl::kernel::kernel(",m_uid,")\n");
 
   for (auto& arg : m_symbol.arguments) {
-
     switch (arg.atype) {
     case xclbin::symbol::arg::argtype::printf:
       if (m_printf_args.size())
@@ -323,8 +345,14 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     default:
       throw std::runtime_error("Internal error creating kernel arguments");
     } // switch (arg.atype)
-
   }
+
+  // Collect CUs for all devices
+  auto context = prog->get_context();
+  for (auto device : context->get_device_range())
+    for  (auto& scu : device->get_cus())
+      if (scu->get_symbol_uid()==get_symbol_uid())
+        m_cus.push_back(scu.get());
 }
 
 // TODO: remove and fix compilation of unit tests
@@ -369,6 +397,114 @@ kernel::
 ~kernel()
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::~kernel(",m_uid,")\n");
+}
+
+kernel::memidx_bitmask_type
+kernel::
+get_memidx(const device* device, unsigned int argidx) const
+{
+  std::bitset<128> kcu;
+  for (auto cu : m_cus)
+    kcu.set(cu->get_index());
+
+  // Compute the union of all connections for all CUs
+  memidx_bitmask_type mset;
+  for (auto& scu : device->get_cus())
+    if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid())
+      mset |= scu->get_memidx(argidx);
+
+  return mset;
+}
+
+size_t
+kernel::
+validate_cus(unsigned long argidx, int memidx) const
+{
+  XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
+  xclbin::memidx_bitmask_type connections;
+  connections.set(memidx);
+  auto end = m_cus.end();
+  for (auto itr=m_cus.begin(); itr!=end; ) {
+    auto cu = (*itr);
+    auto cuconn = cu->get_memidx(argidx);
+    if ((cuconn & connections).none()) {
+      XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
+      itr = m_cus.erase(itr);
+      end = m_cus.end();
+    }
+    else
+      ++itr;
+  }
+  XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus remaining CUs ",m_cus.size(),"\n");
+  return m_cus.size();
+}
+
+const compute_unit*
+kernel::
+select_cu(const device* device) const
+{
+  // Select a CU from device that is also available to kernel
+  std::bitset<128> kcu;
+  for (auto cu : m_cus)
+    kcu.set(cu->get_index());
+
+  for (auto& scu : device->get_cus()) {
+    if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid()) {
+      return scu.get();
+    }
+  }
+
+  return nullptr;
+}
+
+const compute_unit*
+kernel::
+select_cu(const memory* buf) const
+{
+  if (m_cus.empty())
+    return nullptr;
+
+  const compute_unit* cu = nullptr;
+
+  // Buffer context maybe different from kernel context (program context)
+  auto ctx = buf->get_context();
+
+  // Kernel is loaded with CUs from program context. If buffer context
+  // is same, then any of kernel's CUs can be used, otherwise we must
+  // limit the CUs to those of the buffer context's devices.
+  if (ctx==get_context())
+    cu = m_cus.front();
+  else if (auto device = ctx->get_single_active_device()) {
+    cu = select_cu(device);
+  }
+
+  XOCL_DEBUGF("xocl::kernel::select_cu for buf(%d) returns cu(%d)\n",buf->get_uid(),cu?cu->get_uid():-1);
+  return cu;
+}
+
+void
+kernel::
+assign_buffer_to_argidx(memory* buf, unsigned long argidx)
+{
+  bool trim = buf->set_kernel_argidx(this,argidx);
+
+  // Do early buffer allocation if context has single active device
+  auto ctx = buf->get_context();
+  auto device = ctx->get_single_active_device();
+  if (device) {
+    auto boh = buf->get_buffer_object(device);
+    if (trim) {
+      auto memidx = buf->get_memidx();
+      assert(memidx>=0);
+      validate_cus(argidx,memidx);
+    }
+  }
+
+  if (m_cus.empty())
+    throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
+                      "kernel '" + get_name() + "' "
+                      + "has no compute units to support required connectivity.\n"
+                      + connectivity_debug());
 }
 
 context*

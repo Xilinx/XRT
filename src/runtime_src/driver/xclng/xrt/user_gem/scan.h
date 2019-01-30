@@ -35,7 +35,7 @@ public:
     uint16_t vendor_id = INVALID_ID;
     uint16_t device_id = INVALID_ID;
     uint16_t subsystem_id = INVALID_ID;
-    uint16_t instance = INVALID_ID;
+    uint32_t instance = INVALID_ID;
     std::string sysfs_name; // dir name under /sys/bus/pci/devices
     std::string driver_name = "???";
     std::string driver_version = "???";
@@ -72,7 +72,6 @@ public:
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
 
-private:
     std::string get_sysfs_path(const std::string& subdev,
         const std::string& entry);
 };
@@ -96,6 +95,7 @@ public:
 void rescan(void);
 size_t get_dev_total(void);
 size_t get_dev_ready(void);
+void dump_dev_list(void);
 const pci_device* get_dev(int index);
 } /* pcidev */
 

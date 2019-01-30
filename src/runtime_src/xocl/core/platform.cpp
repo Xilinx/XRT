@@ -19,7 +19,6 @@
 #include "debug.h"
 
 #include "xocl/xclbin/xclbin.h"
-#include "xrt/util/memory.h"
 #include "xrt/scheduler/scheduler.h"
 
 #include <boost/filesystem/operations.hpp>
@@ -210,7 +209,7 @@ public:
 
 platform::
 platform()
-  : m_device_mgr(xrt::make_unique<xrt_device_manager>())
+  : m_device_mgr(std::make_unique<xrt_device_manager>())
 {
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
@@ -223,7 +222,7 @@ platform()
   if (is_emulation_mode()) {
     while (auto hwem_device = m_device_mgr->get_hwem_device()) {
       auto swem_device = m_device_mgr->get_swem_device();
-      auto udev = xrt::make_unique<xocl::device>(this,swem_device,hwem_device);
+      auto udev = std::make_unique<xocl::device>(this,swem_device,hwem_device);
 #ifndef PMD_OCL
       auto dev = udev.release();
       add_device(dev);
@@ -235,7 +234,7 @@ platform()
   //User can target either emulation or board. Not both at the same time.
   if (!is_emulation_mode() && m_device_mgr->has_hw_devices()) {
     while (xrt::device* hw_device = m_device_mgr->get_hw_device()) {
-      auto udev = xrt::make_unique<xocl::device>(this,hw_device,nullptr,nullptr);
+      auto udev = std::make_unique<xocl::device>(this,hw_device,nullptr,nullptr);
       auto dev = udev.release();
       add_device(dev);
       dev->release();

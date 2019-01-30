@@ -162,6 +162,14 @@ public:
     m_hal->close();
   }
 
+  void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
+  { m_hal->acquire_cu_context(uuid,cuidx,shared); }
+
+  void
+  release_cu_context(const uuid& uuid,size_t cuidx)
+  { m_hal->release_cu_context(uuid,cuidx); }
+
   ExecBufferObjectHandle
   allocExecBuffer(size_t sz)
   {
@@ -352,6 +360,12 @@ public:
   unmap(const ExecBufferObjectHandle& bo)
   { m_hal->unmap(bo); }
 
+  /**
+   * Submit exec buffer to device.
+   *
+   * @returns
+   *   0 on success, throws on error.
+   */
   int
   exec_buf(const ExecBufferObjectHandle& bo)
   { return m_hal->exec_buf(bo); }
@@ -492,7 +506,7 @@ public:
   };
 
   int
-  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)    
+  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
   {
     return m_hal->pollStreams(comps, min,max,actual,timeout);
   };
@@ -652,22 +666,6 @@ public:
   }
 
   /**
-   * Reset device program
-   *
-   * @param kind
-   *   Type of set
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-  hal::operations_result<int>
-  resetKernel()
-  {
-    return m_hal->resetKernel();
-  }
-
-  /**
    * Re-clock device at specified freq
    *
    * @param freqMHz
@@ -774,6 +772,12 @@ public:
                        char* slotName, uint32_t length)
   {
     return m_hal->getProfilingSlotName(type, slotnum, slotName, length);
+  }
+
+  hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    return m_hal->getProfilingSlotProperties(type, slotnum);
   }
 
   hal::operations_result<void>
