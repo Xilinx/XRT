@@ -166,6 +166,22 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
             std::to_string(dev->user->instance);
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle > 0) {
+            drm_version version;
+            const std::unique_ptr<char[]> name(new char[128]);
+            const std::unique_ptr<char[]> desc(new char[512]);
+            const std::unique_ptr<char[]> date(new char[128]);
+            std::memset(&version, 0, sizeof(version));
+            version.name = name.get();
+            version.name_len = 128;
+            version.desc = desc.get();
+            version.desc_len = 512;
+            version.date = date.get();
+            version.date_len = 128;
+
+            int result = ioctl(mUserHandle, DRM_IOCTL_VERSION, &version);
+            if (result)
+                return;
+
             // Lets map 4M
             mUserMap = (char *)mmap(0, dev->user->user_bar_size,
                 PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
@@ -590,7 +606,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     dev->mgmt->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
 
     dev->mgmt->sysfs_get("sysmon", "temp", errmsg, info->mOnChipTemp);
-    info->mOnChipTemp /= 1000;
+
     dev->mgmt->sysfs_get("sysmon", "vcc_int", errmsg, info->mVInt);
     dev->mgmt->sysfs_get("sysmon", "vcc_aux", errmsg, info->mVAux);
     dev->mgmt->sysfs_get("sysmon", "vcc_bram", errmsg, info->mVBram);
@@ -662,16 +678,17 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
-    // Call a new IOCTL to just reset the OCL region
-    if (kind == XCL_RESET_FULL) {
-        ret =  ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
-        return ret ? -errno : ret;
-    }
-    else if (kind == XCL_RESET_KERNEL) {
+
+    if (kind == XCL_RESET_FULL)
+        ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
+    else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-        return ret ? -errno : ret;
-    }
-    return -EINVAL;
+    else if (kind == XCL_USER_RESET)
+        ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
+    else
+        return -EINVAL;
+
+    return ret ? errno : 0;
 }
 
 /*
@@ -887,7 +904,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 
     std::string err;
     std::vector<char> buf;
-    pcidev::get_dev(mBoardNumber)->user->sysfs_get("", entry, err, buf);
+    pcidev::get_dev(mBoardNumber)->user->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
         std::cout << err << std::endl;
         return -EINVAL;
@@ -1871,6 +1888,11 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+}
+
+const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+    return xclbin::get_axlf_section(top, kind);
 }
 
 // QDMA streaming APIs

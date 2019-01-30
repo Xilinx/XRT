@@ -476,8 +476,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		return PTR_ERR(xobj);
 	}
 
-	base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 	if(bar_mapped){
+		base_addr_offset = xdev->topology->m_mem_data[0].m_base_address;
 		if((xobj->mm_node->start - base_addr_offset
 			   + xobj->mm_node->size) > xdev->bypass_bar_len){
 			DRM_DEBUG("No enough P2P mem region available\n");

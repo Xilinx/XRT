@@ -108,8 +108,7 @@ launch(command_type cmd)
   // Submit the command
   auto device = cmd->get_device();
   auto exec_bo = cmd->get_exec_bo();
-  if (device->exec_buf(exec_bo))
-    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
+  device->exec_buf(exec_bo);
 
   // thread safe access, since guaranteed to be inserted in init
   auto& submitted_cmds = s_device_cmds[device];
@@ -267,7 +266,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
   // payload size
   epacket->count = 5 + cu_addr_map.size();
 
-  XRT_DEBUG(std::cout,"configure scheduler\n");
+  XRT_DEBUG(std::cout,"configure scheduler(",getpid(),")\n");
   auto exec_bo = configure->get_exec_bo();
   device->exec_buf(exec_bo);
 
@@ -285,7 +284,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
     s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
   }
 
-  XRT_DEBUG(std::cout,"configure complete\n");
+  XRT_DEBUG(std::cout,"configure complete(",getpid(),")\n");
 }
 
 }} // kds,xrt

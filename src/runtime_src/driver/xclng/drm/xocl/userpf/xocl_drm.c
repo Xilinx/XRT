@@ -22,6 +22,7 @@
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
+#include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
 #if RHEL_P2P_SUPPORT
@@ -47,6 +48,8 @@
 #define DRM_ENTER(fmt, args...)
 #define DRM_DBG(fmt, args...)
 #endif
+
+static char driver_date[9];
 
 static void xocl_free_object(struct drm_gem_object *obj)
 {
@@ -197,31 +200,32 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_dev	*xdev = dev->dev_private;
 	struct client_ctx *client = filp->driver_priv;
-	unsigned bit = xdev->layout ? find_first_bit(client->cu_bitmap, xdev->layout->m_count) : MAX_CUS;
+	unsigned bit = xdev->layout
+		? find_first_bit(client->cu_bitmap,xdev->layout->m_count)
+		: MAX_CUS;
+	int pid = pid_nr(task_tgid(current));
 
 	DRM_ENTER("");
 
-	/* This happens when application exists without formally releasing the contexts on CUs.
-	   Give up our contexts on CUs and our lock on xclbin */
+	/*
+	 * This happens when application exists without formally releasing the
+	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
+	 */
 	while (xdev->layout && (bit < xdev->layout->m_count)) {
-		userpf_info(dev->dev_private, "CTX reclaim (%pUb, %d, %u)", &client->xclbin_id, pid_nr(task_tgid(current)),
-			    bit);
-		xdev->ip_reference[bit]--;
-		bit = find_next_bit(client->cu_bitmap, xdev->layout->m_count, bit + 1);
+		if (xdev->ip_reference[bit]) {
+			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
+				    &client->xclbin_id, pid,bit);
+			xdev->ip_reference[bit]--;
+		}
+		bit = find_next_bit(client->cu_bitmap,xdev->layout->m_count,bit + 1);
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
-	if (!uuid_is_null(&client->xclbin_id)) {
-		(void) xocl_icap_unlock_bitstream(xdev, &client->xclbin_id,
-			pid_nr(task_tgid(current)));
-	}
-
-	if (MB_SCHEDULER_DEV(xdev))
-		xocl_exec_destroy_client(xdev, &filp->driver_priv);
+	xocl_exec_destroy_client(xdev, &filp->driver_priv);
 }
 
 static uint xocl_poll(struct file *filp, poll_table *wait)
 {
-	uint result = 0;
 	struct drm_file *priv = filp->private_data;
 	struct drm_device *dev = priv->minor->dev;
 	struct xocl_dev	*xdev = dev->dev_private;
@@ -229,10 +233,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	BUG_ON(!priv->driver_priv);
 
 	DRM_ENTER("");
-	if (MB_SCHEDULER_DEV(xdev))
-		result = xocl_exec_poll_client(xdev, filp, wait,
-					       priv->driver_priv);
-	return result;
+	return xocl_exec_poll_client(xdev, filp, wait,priv->driver_priv);
 }
 
 static const struct drm_ioctl_desc xocl_ioctls[] = {
@@ -267,7 +268,9 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
-		  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations xocl_driver_fops = {
@@ -315,10 +318,7 @@ static struct drm_driver mm_drm_driver = {
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
-	.date				= XOCL_DRIVER_DATE,
-	.major				= XOCL_DRIVER_MAJOR,
-	.minor				= XOCL_DRIVER_MINOR,
-	.patchlevel			= XOCL_DRIVER_PATCHLEVEL,
+	.date				= driver_date,
 };
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -326,7 +326,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 {
 	struct xocl_dev	*xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-	int ret = 0;
 
 	if (err != 0)
 		return;
@@ -334,19 +333,11 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_HOT_RESET_BEGIN:
-		xocl_reset_notify(xdev->core.pdev, true);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_HOT_RESET_END:
-		xocl_reset_notify(xdev->core.pdev, false);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_RESET_ERT:
-		ret = xocl_reset_scheduler(xdev->core.pdev);
-		(void) xocl_peer_response(xdev, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_FIREWALL:
+		(void) xocl_hot_reset(xdev, true);
 		break;
 	default:
+		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
 	}
 }
@@ -427,7 +418,16 @@ failed:
 int xocl_drm_init(struct xocl_dev *xdev)
 {
 	struct drm_device	*ddev = NULL;
+	int			year, mon, day;
 	int			ret = 0;
+
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
+		&mm_drm_driver.major,
+		&mm_drm_driver.minor,
+		&mm_drm_driver.patchlevel);
+	sscanf(xrt_build_version_date, "%d-%d-%d ", &year, &mon, &day);
+	snprintf(driver_date, sizeof(driver_date),
+		"%d%02d%02d", year, mon, day);
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &xdev->core.pdev->dev);
 	if (!ddev) {
@@ -470,7 +470,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 	mutex_init(&xdev->ctx_list_lock);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 	ddev->dev_private = xdev;
-	atomic_set(&xdev->needs_reset,0);
+	xdev->needs_reset=false;
 	atomic_set(&xdev->outstanding_execs, 0);
 	atomic64_set(&xdev->total_execs, 0);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -635,6 +635,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = xdev->topology;
@@ -645,15 +647,20 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		goto out;
 
 	for (i = 0; i < topo->m_count; i++) {
+		if (topo->m_mem_data[i].m_type == MEM_STREAMING)
+			continue;
+
 		if (raw) {
-			if (!stat[i]) {
-				userpf_info(xdev, "raw stat[%d] is NULL", i);
-				continue;
+			memory_usage = 0;
+			bo_count = 0;
+			if (stat[i]) {
+				memory_usage = stat[i]->memory_usage;
+				bo_count = stat[i]->bo_count;
 			}
 
 			count = sprintf(buf, raw_fmt,
-				stat[i]->memory_usage,
-				stat[i]->bo_count);
+				memory_usage,
+				bo_count);
 		} else {
 			count = sprintf(buf, txt_fmt,
 				topo->m_mem_data[i].m_used ?
@@ -661,8 +668,8 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
-				stat[i]->memory_usage / 1024,
-				stat[i]->bo_count);
+				stat[i] ? stat[i]->memory_usage / 1024 : 0,
+				stat[i] ? stat[i]->bo_count : 0);
 		}
 		buf += count;
 		size += count;

@@ -4,11 +4,12 @@ Building and Installing Software Stack
 XRT
 ~~~
 
-XRT requires C++11 compiler. Please install the necessary tools and dependencies
+XRT requires C++14 compiler and a few development libraries bundled with modern Linux
+distribution. Please install the necessary tools and dependencies
 using the provided ``src/runtime_src/tools/scripts/xrtdeps.sh``
 
-On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
-is not applicable to Ubuntu which already has C++11 capable GCC.
+On RHEL/CentOS use devtoolset to switch to C++14 devlopment environment. This step
+is not applicable to Ubuntu which already has C++14 capable GCC.
 
 ::
 
@@ -54,15 +55,13 @@ according to purpose with (the actual package name might differ) ::
 XRT Documentation
 ~~~~~~~~~~~~~~~~~
 
-XRT Documentation can be built automatically using Sphinx doc builder
+XRT Documentation can be built automatically using ``Sphinx`` doc builder
 together with Linux kernel based ``kernel-doc`` utility.
 
 To compile and install the documentation into the ``doc`` directory at
 the top of the repository::
 
-   cd src/runtime_src/doc
-   # For now the CMake can work only locally
-   cmake .
-   make xrt_doc
-   # To look at the generated local documentation with a web browser:
-   xdg-open html/index.html
+   cd build
+   ./build.sh docs
+   # To browse the generated local documentation with a web browser:
+   xdg-open Release/runtime_src/doc/html/index.html

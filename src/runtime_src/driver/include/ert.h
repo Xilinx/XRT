@@ -1,4 +1,4 @@
-/**
+/*
  *  Copyright (C) 2018, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
@@ -36,12 +36,10 @@
  */
 
 /**
- *  Xilinx SDAccel Embedded Runtime definition
- *  Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * DOC: Xilinx SDAccel Embedded Runtime definition
  *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
+ * Header file *ert.h* defines data structures used by Emebdded Runtime (ERT) and
+ * XRT xclExecBuf() API.
  */
 
 #ifndef _ERT_H_

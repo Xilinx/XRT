@@ -58,34 +58,43 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/lib/cdev_sgdma.h
   driver/xclng/drm/xocl/lib/libxdma_api.h
   driver/xclng/drm/xocl/lib/Makefile.in
+  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h
+  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.c
   driver/xclng/drm/xocl/lib/libqdma/libqdma_export.h
   driver/xclng/drm/xocl/lib/libqdma/libqdma_export.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_context.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_context.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_cmpt_queue.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_dev.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_dev.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_queue.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_queue.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_descq.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_descq.h
   driver/xclng/drm/xocl/lib/libqdma/qdma_device.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_device.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_intr.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_intr.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_intr.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_context.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_context.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_sriov.c
-  driver/xclng/drm/xocl/lib/libqdma/thread.c
-  driver/xclng/drm/xocl/lib/libqdma/thread.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_qconf_mgr.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_qconf_mgr.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_request.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_request.c
+  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c
   driver/xclng/drm/xocl/lib/libqdma/qdma_thread.h
+  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.c
+  driver/xclng/drm/xocl/lib/libqdma/thread.h
+  driver/xclng/drm/xocl/lib/libqdma/thread.c
   driver/xclng/drm/xocl/lib/libqdma/version.h
   driver/xclng/drm/xocl/lib/libqdma/xdev.h
   driver/xclng/drm/xocl/lib/libqdma/xdev.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.c
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.c
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_wq.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_wq.h
   driver/xclng/drm/xocl/subdev/feature_rom.c
   driver/xclng/drm/xocl/subdev/mm_xdma.c
   driver/xclng/drm/xocl/subdev/mm_qdma.c

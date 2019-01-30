@@ -18,3 +18,5 @@ xclbins:
   - {krnl: hello, name: hello}
   name: verify
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]

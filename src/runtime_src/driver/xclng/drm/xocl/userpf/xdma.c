@@ -59,10 +59,7 @@ static int user_dev_online(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (xdev->offline) {
-		xdma_device_online(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = false;
-	}
+	xdma_device_online(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device online");
 
 	return 0;
@@ -72,10 +69,7 @@ static int user_dev_offline(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 
-	if (!xdev->offline) {
-		xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
-		xdev->offline = true;
-	}
+	xdma_device_offline(xdev->core.pdev, xdev->dma_handle);
 	xocl_info(&xdev->core.pdev->dev, "Device offline");
 	return 0;
 }
@@ -144,15 +138,29 @@ static int xocl_p2p_mem_reserve(struct pci_dev *pdev, xdev_handle_t xdev_hdl)
 #endif
 
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+	xdev->pgmap.ref = &xdev->ref;
+	memcpy(&xdev->pgmap.res, &res, sizeof(struct resource));
+	xdev->pgmap.altmap_valid = false;
+#endif
+
+
 /* Ubuntu 16.04 kernel_ver 4.4.0.116*/
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res);
+	xdev->bypass_bar_addr = devm_memremap_pages(&(pdev->dev), &res);
 
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	xdev->bypass_bar_addr= devm_memremap_pages(&(pdev->dev), &res
+#elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || RHEL_P2P_SUPPORT_74
+	xdev->bypass_bar_addr = devm_memremap_pages(&(pdev->dev), &res
 						   , &xdev->ref, NULL);
 
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+	xdev->bypass_bar_addr = devm_memremap_pages(&(pdev->dev), &xdev->pgmap);
+
+#endif 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT 
 	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_kill,
 							&xdev->ref);
 	if (ret)

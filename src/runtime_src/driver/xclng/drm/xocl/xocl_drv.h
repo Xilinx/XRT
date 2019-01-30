@@ -63,6 +63,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		 fmt, ##args)
+#define MAX_M_COUNT      64
+
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -70,6 +72,9 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 	dev_info(dev, "%s: "fmt, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
+
+#define	XOCL_DRV_VER_NUM(ma, mi, p)		\
+	((ma) * 1000 + (mi) * 100 + (p))
 
 #define	XOCL_READ_REG32(addr)		\
 	ioread32(addr)
@@ -108,14 +113,21 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,3)
-#define RHEL_P2P_SUPPORT  1
-#else
-#define RHEL_P2P_SUPPORT  0
+
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  1
+#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,6)
+#define RHEL_P2P_SUPPORT_74  1
+#define RHEL_P2P_SUPPORT_76  0
 #endif
 #else
-#define RHEL_P2P_SUPPORT  0
+#define RHEL_P2P_SUPPORT_74  0
+#define RHEL_P2P_SUPPORT_76  0
 #endif
+
+
+#define RHEL_P2P_SUPPORT (RHEL_P2P_SUPPORT_74 | RHEL_P2P_SUPPORT_76)
 
 #define INVALID_SUBDEVICE ~0U
 
@@ -230,7 +242,7 @@ struct xocl_rom_funcs {
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
-	bool (*cdma_on)(struct platform_device *pdev);
+	uint32_t* (*cdma_addr)(struct platform_device *pdev);
 	u16 (*get_ddr_channel_count)(struct platform_device *pdev);
 	u64 (*get_ddr_channel_size)(struct platform_device *pdev);
 	bool (*is_are)(struct platform_device *pdev);
@@ -251,8 +263,8 @@ struct xocl_rom_funcs {
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_mgmt_on(ROM_DEV(xdev)) : false)
 #define	xocl_mb_sched_on(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
-#define	xocl_cdma_on(xdev)		\
-	(ROM_DEV(xdev) ? ROM_OPS(xdev)->cdma_on(ROM_DEV(xdev)) : false)
+#define	xocl_cdma_addr(xdev)		\
+	(ROM_DEV(xdev) ? ROM_OPS(xdev)->cdma_addr(ROM_DEV(xdev)) : 0)
 #define	xocl_get_ddr_channel_count(xdev) \
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->get_ddr_channel_count(ROM_DEV(xdev)) :\
 	0)
@@ -312,6 +324,7 @@ struct xocl_mb_scheduler_funcs {
 	void (*destroy_client)(struct platform_device *pdev, void **priv);
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
 		poll_table *wait, void *priv);
+	int (*stop)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
 	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
 };
@@ -336,6 +349,10 @@ struct xocl_mb_scheduler_funcs {
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	MB_SCHEDULER_OPS(xdev)->poll_client(MB_SCHEDULER_DEV(xdev), filp, \
 	wait, priv) : 0)
+#define	xocl_exec_stop(xdev)		\
+	(MB_SCHEDULER_DEV(xdev) ? 				\
+	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
+        -ENODEV)
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
@@ -476,9 +493,8 @@ enum mailbox_request {
 	MAILBOX_REQ_TEST_READ,
 	MAILBOX_REQ_LOCK_BITSTREAM,
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET_BEGIN,
-	MAILBOX_REQ_HOT_RESET_END,
-	MAILBOX_REQ_RESET_ERT,
+	MAILBOX_REQ_HOT_RESET,
+	MAILBOX_REQ_FIREWALL,
 };
 
 struct mailbox_req_bitstream_lock {
@@ -526,8 +542,7 @@ struct xocl_mailbox_funcs {
 	end) : -ENODEV)
 
 struct xocl_icap_funcs {
-	int (*freeze_axi_gate)(struct platform_device *pdev);
-	int (*free_axi_gate)(struct platform_device *pdev);
+	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
@@ -541,14 +556,16 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
+	int (*parse_axlf_section)(struct platform_device *pdev,
+		const void __user *arg, enum axlf_section_kind kind);
+	void* (*get_axlf_section_data)(struct platform_device *pdev,
+		enum axlf_section_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
-#define	xocl_icap_freeze_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->freeze_axi_gate(ICAP_DEV(xdev))
-#define	xocl_icap_free_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->free_axi_gate(ICAP_DEV(xdev))
+#define	xocl_icap_reset_axi_gate(xdev)					\
+	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev))
 #define	xocl_icap_reset_bitstream(xdev)					\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev))
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
@@ -565,6 +582,11 @@ struct xocl_icap_funcs {
 	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid)
 #define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid)
+#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)				\
+	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind)
+
+#define	xocl_icap_get_axlf_section_data(xdev, kind)				\
+	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind)
 
 struct xocl_str_dma_funcs  {
 	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
@@ -591,8 +613,6 @@ int xocl_subdev_get_devinfo(uint32_t subdev_id,
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
-struct pci_dev *xocl_hold_userdev(xdev_handle_t xdev_hdl);
-void xocl_release_userdev(struct pci_dev *userdev);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
         struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);

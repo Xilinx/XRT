@@ -83,6 +83,9 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     int retries = 5;
     int ret = 0;
 
+    if (!isXMCReady())
+        return -EINVAL;
+
     while (!tiTxtStream.eof() && !endRecordFound && !errorFound) {
         std::string line;
         std::getline(tiTxtStream, line);
@@ -191,17 +194,17 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     // Waiting for BMC to come back online.
     // It should not take more than 10 sec, but wait for 1 min to be safe.
-    std::cout << "INFO: Loading new firmware on BMC" << std::endl;
+    std::cout << "INFO: Loading new firmware on SC" << std::endl;
     for (int i = 0; i < 60; i++) {
-        if (BMC_MODE() == 0x1)
+        if (BMC_MODE() == BMC_STATE_READY)
             break;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         std::cout << "." << std::flush;
     }
     std::cout << std::endl;
-    if (BMC_MODE() != 0x1)
-    {
-        std::cout << "ERROR: Time'd out waiting for BMC to come back online"
+
+    if (!isBMCReady()) {
+        std::cout << "ERROR: Time'd out waiting for SC to come back online"
             << std::endl;
         return -ETIMEDOUT;
     }
@@ -226,6 +229,9 @@ int XMC_Flasher::erase()
 int XMC_Flasher::xclGetBoardInfo(std::map<char, std::vector<char>>& info)
 {
     int ret = 0;
+
+    if (!isXMCReady() || !isBMCReady())
+        return -EINVAL;
 
     mPkt = {0};
     mPkt.hdr.opCode = XPO_BOARD_INFO;
@@ -468,3 +474,24 @@ int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
     return 0;
 }
 
+bool XMC_Flasher::isXMCReady()
+{
+    bool xmcReady = (XMC_MODE() == XMC_READY);
+
+    if (!xmcReady) {
+        std::cout << "ERROR: XMC is not ready: 0x" << std::hex
+            << XMC_MODE() << std::endl;
+    }
+    return xmcReady;
+}
+
+bool XMC_Flasher::isBMCReady()
+{
+    bool bmcReady = (BMC_MODE() == 0x1);
+
+    if (!bmcReady) {
+        std::cout << "ERROR: SC is not ready: 0x" << std::hex
+            << BMC_MODE() << std::endl;
+    }
+    return bmcReady;
+}

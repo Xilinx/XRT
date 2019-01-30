@@ -34,6 +34,7 @@ usage()
 clean=0
 covbuild=0
 ccache=0
+docs=0
 verbose=""
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -70,6 +71,10 @@ while [ $# -gt 0 ]; do
             ;;
         -verbose)
             verbose="VERBOSE=1"
+            shift
+            ;;
+	docs|-docs)
+            docs=1
             shift
             ;;
         *)
@@ -130,6 +135,10 @@ cd Release
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
-#time make xrtpkg
 time make package
+
+if [[ $docs == 1 ]]; then
+    make xrt_docs
+fi
+
 cd $here

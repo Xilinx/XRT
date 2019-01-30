@@ -23,7 +23,7 @@ int health_thread(void *data)
 	struct xocl_health_thread_arg *thread_arg = data;
 
 	while (!kthread_should_stop()) {
-		msleep(thread_arg->interval);
+		msleep_interruptible(thread_arg->interval);
 
 		thread_arg->health_cb(thread_arg->arg);
 	}

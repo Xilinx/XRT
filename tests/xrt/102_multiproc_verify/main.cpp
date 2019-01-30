@@ -9,7 +9,6 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <thread>
 #include <cstdlib>
 #include <sys/mman.h>
 #include <time.h>
@@ -23,20 +22,19 @@
 #include "xclbin.h"
 
 #include "xhello_hw.h"
+#include "utils.h"
 
 /**
- * Runs an OpenCL kernel which writes known 16 integers into a 64 byte buffer. Does not use OpenCL
- * runtime but directly exercises the HAL driver API.
+ * Testcase to demostrate XRT's multiprocess support.
+ * Runs multiple processes each exercising the same shared hello world kernel in loop
  */
 
-#define ARRAY_SIZE 20
-////////////////////////////////////////////////////////////////////////////////
-
-#define LENGTH (20)
+static const unsigned LOOP = 16;
+static const unsigned CHILDREN = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int runChildren(int argc, char *argv[], char *envp[]);
+int runChildren(int argc, char *argv[], char *envp[], unsigned count);
 
 const static struct option long_options[] = {
     {"hal_driver",      required_argument, 0, 's'},
@@ -49,7 +47,8 @@ const static struct option long_options[] = {
     {0, 0, 0, 0}
 };
 
-static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog,
+
+static int myinitXRT(const char*bit, unsigned deviceIndex, const char* halLog,
                    xclDeviceHandle& handle, int cu_index, uint64_t& cu_base_addr,
                    uuid_t& xclbinId)
 {
@@ -157,24 +156,21 @@ class xclBO {
 };
 
 
-static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements)
+static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, unsigned n_elements)
 {
     const int size = 1024;
     std::vector<std::pair<unsigned, void*>> dataBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
     std::vector<std::pair<unsigned, void*>> cmdBO(n_elements, std::pair<unsigned, void*>(0xffffffff, nullptr));
     int result = 0;
-    std::thread::id this_id = std::this_thread::get_id();
 
     try {
         for (auto &bo : dataBO) {
-            bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x0);
+            bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x1);
             bo.second = xclMapBO(handle, bo.first, true);
             std::memset(bo.second, 0, size);
-            result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0);
+            if (xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0))
+                throw std::runtime_error("Data BO sync failure");
         }
-
-        if (result)
-            throw std::runtime_error("data BO failure");
 
         auto dbo = dataBO.begin();
         for (auto &cbo : cmdBO) {
@@ -198,43 +194,54 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             dbo++;
         }
 
-        unsigned n = 0;
         for (auto &cbo : cmdBO) {
-            result += xclExecBuf(handle, cbo.first);
-            std::cout << this_id << '.' << n++ << " submit execute(" << cbo.first << ")" << std::endl;
+            if (xclExecBuf(handle, cbo.first))
+                throw std::runtime_error("Command BO submission failure");
+            stamp(std::cout) << "Submit execute(" << cbo.first << ")" << std::endl;
         }
 
-        if (result)
-            throw std::runtime_error("cmd BO failure");
-
-        for (std::vector<std::pair<unsigned, void*>>::iterator iter = cmdBO.begin(); iter < cmdBO.end(); iter++) {
+        std::vector<std::pair<unsigned, void*>>::iterator iter = cmdBO.begin();
+        unsigned count = 0;
+        while (cmdBO.size() && (count < 30)) {
+            if (iter == cmdBO.end())
+                iter = cmdBO.begin();
             const ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(iter->second);
             switch (ecmd->state) {
             case ERT_CMD_STATE_COMPLETED:
             case ERT_CMD_STATE_ERROR:
             case ERT_CMD_STATE_ABORT:
-                std::cout << this_id << " done execute(" << iter->first << ")" << std::endl;
+                stamp(std::cout) << "Done execute(" << iter->first << ") "
+                                 << ertCmdCodes.find(static_cast<ert_cmd_state>(ecmd->state))->second << std::endl;
                 munmap(iter->second, 4096);
                 xclFreeBO(handle, iter->first);
-                cmdBO.erase(iter);
+                iter = cmdBO.erase(iter);
+            default:
+                iter++;
             }
             xclExecWait(handle, 1000);
+            count++;
         }
 
-        n = 0;
+        if (cmdBO.size())
+            throw std::runtime_error("Could not finish all kernel runs in 30 secs");
+
         for (auto &bo : dataBO) {
-            result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0);
-            result += std::memcmp(bo.second, gold, sizeof(gold));
-            std::cout << this_id << '.' << n++ << " data " << std::endl;
+            if (xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0))
+                throw std::runtime_error("Data BO sync failure");
+            if (std::memcmp(bo.second, gold, sizeof(gold)))
+                throw std::runtime_error("DATA validation failure");
+            munmap(iter->second, size);
+            xclFreeBO(handle, bo.first);
         }
     }
     catch (std::exception &ex) {
-        return result;
+        stamp(std::cout) << "Error: " << ex.what() << std::endl;
+        throw ex;
     }
     return result;
 }
 
-static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, size_t n_elements, uuid_t xclbinId)
+static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, unsigned n_elements, uuid_t xclbinId)
 {
     if (xclOpenContext(handle, xclbinId, 0, true))
 	throw std::runtime_error("Cannot create context");
@@ -267,12 +274,12 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
         ecmd->count = 5 + ecmd->num_cus;
     }
 
-    std::cout << "Send the exec command and configure FPGA (ERT)" << std::endl;
+    stamp(std::cout) << "Send the exec command and configure FPGA (ERT)" << std::endl;
     //Send the command.
     if (xclExecBuf(handle, execHandle))
         throw std::runtime_error("Cannot submit configure command");
 
-    std::cout << "Wait for configure command to finish" << std::endl;
+    stamp(std::cout) << "Wait for configure command to finish" << std::endl;
     //Wait on the command finish
     while (xclExecWait(handle,1000) == 0);
     int result = runKernel(handle, cu_base_addr, verbose, n_elements);
@@ -292,14 +299,13 @@ int main(int argc, char** argv, char *envp[])
     unsigned index = 0;
     unsigned cu_index = 0;
     bool verbose = false;
-    bool ert = false;
-    size_t n_elements = 16;
-    int child = 2;
+    unsigned n_elements = LOOP;
+    unsigned child = CHILDREN;
     int c;
 
     setenv("XCL_MULTIPROCESS_MODE", "1", 1);
     if (std::strlen(argv[0]))
-        return runChildren(argc, argv, envp);
+        return runChildren(argc, argv, envp, child);
 
     //else children code here
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:n:j:vh", long_options, &option_index)) != -1)
@@ -309,9 +315,6 @@ int main(int argc, char** argv, char *envp[])
         case 0:
             if (long_options[option_index].flag != 0)
                 break;
-        case 1:
-            ert = true;
-            break;
         case 's':
             sharedLibrary = optarg;
             break;
@@ -369,23 +372,24 @@ int main(int argc, char** argv, char *envp[])
         xclDeviceHandle handle;
         uuid_t xclbinId;
     	uint64_t cu_base_addr = 0;
-    	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index,
+        int first_used_mem;
+    	if(myinitXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index,
                    cu_base_addr, xclbinId)) {
-            return 1;
+            return -1;
         }
 
         if (runKernelLoop(handle, cu_base_addr, verbose, n_elements, xclbinId)) {
-            return 1;
+            return -1;
         }
 
     }
     catch (std::exception const& e)
     {
-        std::cout << "Exception: " << e.what() << "\n";
-        std::cout << "FAILED TEST\n";
+        stamp(std::cout) << "Exception: " << e.what() << "\n";
+        stamp(std::cout) << "FAILED TEST\n";
         return 1;
     }
 
-    std::cout << "PASSED TEST\n";
+    stamp(std::cout) << "PASSED TEST\n";
     return 0;
 }
