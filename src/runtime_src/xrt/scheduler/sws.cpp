@@ -120,8 +120,8 @@ private:
   size_type m_uid;
 
 public:
-  size_type slotidx;
-  size_type cuidx;
+  size_type slotidx = no_index;
+  size_type cuidx = no_index;
 
   xocl_cmd(exec_core* ec, cmd_ptr cmd)
     : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec)
@@ -446,7 +446,7 @@ class exec_core
 
   // Commands submitted to this device, the queue is slot based
   // and a slot becomes free when its command is started on a CU
-  xocl_cmd* submit_queue[MAX_SLOTS]; // reflects ERT CQ # slots
+  xocl_cmd* submit_queue[MAX_SLOTS] = {nullptr}; // reflects ERT CQ # slots
   std::bitset<MAX_SLOTS> slot_status;
 
   // Compute units on this device
@@ -604,7 +604,7 @@ class xocl_scheduler
   std::mutex                 m_mutex;
   std::condition_variable    m_work;
 
-  bool                       m_stop;
+  bool                       m_stop = false;
   std::list<xcmd_ptr>        m_command_queue;
 
   // Copy pending commands into command queue.
