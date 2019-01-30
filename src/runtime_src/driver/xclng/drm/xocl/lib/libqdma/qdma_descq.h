@@ -64,6 +64,7 @@ struct qdma_descq {
 	enum q_state_t q_state; /** Indicate q state */
 	unsigned int qidx_hw; /** hw qidx associated for this queue */
 	unsigned int intr_work_cpu;
+	unsigned int cancel_cnt;	/* # of qdma_request to be cancelled */
 	struct work_struct work;
 	struct list_head intr_list; /** interrupt list */
 	struct list_head legacy_intr_q_list; /** leagcy interrupt list */

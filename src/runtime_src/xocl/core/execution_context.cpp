@@ -25,6 +25,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <bitset>
 
 namespace {
 
@@ -244,23 +245,31 @@ void
 execution_context::
 add_compute_units(device* device)
 {
+  // Collect kernel's filtered CUs
+  std::bitset<128> kernel_cus;
+  for (auto cu : m_kernel->get_cus())
+    kernel_cus.set(cu->get_index());
+
+  // Targeted device CUs matching kernel CUs
   for (auto& scu : device->get_cus()) {
     auto cu = scu.get();
-    // Check that the kernel symbol is the same between the CU kernel and
-    // this context kernel.  There are test cases where two kernels share
-    // the same name but have different symbol from xclbin.  This will go
-    // away once we ensure that only one kernel per symbol is created in
-    // which case the kernel object address can be used from comparison.
-    if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
+    if (kernel_cus.test(cu->get_index())) {
 
       // Check context creation
       if (!device->acquire_context(cu))
         continue;
 
-      XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
+      XOCL_DEBUGF("execution_context(%d) added cu(%d)\n",m_uid,cu->get_uid());
       m_cus.push_back(cu);
     }
   }
+
+  if (m_cus.empty())
+    throw xrt::error(CL_INVALID_KERNEL,
+                     "kernel '"
+                     + m_kernel->get_name()
+                     + "' has no compute units to execute job '"
+                     + std::to_string(m_uid) + "'\n");
 }
 
 bool

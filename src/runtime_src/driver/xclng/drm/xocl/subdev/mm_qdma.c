@@ -36,6 +36,8 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
+#define MM_DEFAULT_RINGSZ_IDX	5
+
 struct xocl_mm_device {
 	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
@@ -407,6 +409,7 @@ static int set_max_chan(struct platform_device *pdev, u32 count)
 		qconf->fetch_credit=1;
 		qconf->cmpl_stat_en=1;
 		qconf->cmpl_trig_mode=1;
+		qconf->desc_rng_sz_idx = MM_DEFAULT_RINGSZ_IDX;
 
 		qconf->st = 0; /* memory mapped */
 		qconf->c2h = write ? 0 : 1;

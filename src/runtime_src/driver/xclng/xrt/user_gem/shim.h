@@ -158,6 +158,7 @@ public:
     XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
+    static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1);
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -177,11 +178,15 @@ public:
 
     // Bitstream/bin download
     int xclLoadXclBin(const xclBin *buffer);
+    int xclLoadXclBinMgmt(const xclBin *buffer);
     int xclGetErrorStatus(xclErrorStatus *info);
     int xclGetDeviceInfo2(xclDeviceInfo2 *info);
     bool isGood() const;
+    bool isGoodMgmt() const;
     static XOCLShim *handleCheck(void * handle);
+    static XOCLShim *handleCheckMgmt(void * handle);
     int resetDevice(xclResetKind kind);
+    int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -202,7 +207,7 @@ public:
     ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
 
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
-
+    int xclReClockUser(unsigned short region, const unsigned short *targetFreqMHz);
 
     // Performance monitoring
     // Control
@@ -223,7 +228,7 @@ public:
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
+                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                     size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
@@ -235,6 +240,13 @@ public:
     size_t xclPerfMonStopTrace(xclPerfMonType type);
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+
+    // Experimental sysfs API
+    int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+    // Experimental debug profile device data API
+    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
+
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
@@ -260,7 +272,7 @@ public:
 
     // Temporary hack for xbflash use only
     char *xclMapMgmt(void) { return mMgtMap; }
-    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -289,6 +301,7 @@ private:
     }
 
     int xclLoadAxlf(const axlf *buffer);
+    int xclLoadAxlfMgmt(const axlf *buffer);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);

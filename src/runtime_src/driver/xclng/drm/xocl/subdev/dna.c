@@ -21,21 +21,21 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-/* Registers are defined in pg150-ultrascale-memory-ip.pdf: 
- * AXI4-Lite Slave Control/Status Register Map 
+/* Registers are defined in pg150-ultrascale-memory-ip.pdf:
+ * AXI4-Lite Slave Control/Status Register Map
  */
 #define XLNX_DNA_MEMORY_MAP_MAGIC_IS_DEFINED                        (0x3E4D7732)
 #define XLNX_DNA_MAJOR_MINOR_VERSION_REGISTER_OFFSET                0x00          //  RO
 #define XLNX_DNA_REVISION_REGISTER_OFFSET                           0x04          //  RO
-#define XLNX_DNA_CAPABILITY_REGISTER_OFFSET                         0x08          //  RO 
+#define XLNX_DNA_CAPABILITY_REGISTER_OFFSET                         0x08          //  RO
 //#define XLNX_DNA_SCRATCHPAD_REGISTER_OFFSET                         (0x0C)          //  RO (31-1) + RW (0)
 #define XLNX_DNA_STATUS_REGISTER_OFFSET                             0x10            //  RO
 #define XLNX_DNA_FSM_DNA_WORD_WRITE_COUNT_REGISTER_OFFSET           (0x14)          //  RO
 #define XLNX_DNA_FSM_CERTIFICATE_WORD_WRITE_COUNT_REGISTER_OFFSET   (0x18)          //  RO
 #define XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET             (0x20)          //  RO (31-1) + RW (0)
-#define XLNX_DNA_READBACK_REGISTER_2_OFFSET                         0x40            //  RO XLNX_DNA_BOARD_DNA_95_64 
-#define XLNX_DNA_READBACK_REGISTER_1_OFFSET                         0x44            //  RO XLNX_DNA_BOARD_DNA_63_32 
-#define XLNX_DNA_READBACK_REGISTER_0_OFFSET                         0x48            //  RO XLNX_DNA_BOARD_DNA_31_0  
+#define XLNX_DNA_READBACK_REGISTER_2_OFFSET                         0x40            //  RO XLNX_DNA_BOARD_DNA_95_64
+#define XLNX_DNA_READBACK_REGISTER_1_OFFSET                         0x44            //  RO XLNX_DNA_BOARD_DNA_63_32
+#define XLNX_DNA_READBACK_REGISTER_0_OFFSET                         0x48            //  RO XLNX_DNA_BOARD_DNA_31_0
 #define XLNX_DNA_DATA_AXI_ONLY_REGISTER_OFFSET                      (0x80)          //  WO
 #define XLNX_DNA_CERTIFICATE_DATA_AXI_ONLY_REGISTER_OFFSET          (0xC0)          //  WO - 512 bit aligned.
 #define XLNX_DNA_MAX_ADDRESS_WORDS                                  (0xC4)
@@ -181,10 +181,10 @@ static void dna_write_cert(struct platform_device *pdev, const uint32_t *cert, u
 	xocl_info(&pdev->dev, "Start: status %08x", status);
 
 	for(i=0;i<message_words;i+=16){
-		
+
 		retries = 100;
 		sha256done = false;
-		
+
 		while(!sha256done && retries){
 			status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
 			if(!(status>>4 & 0x1)){
@@ -277,7 +277,7 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	xlnx_dna = devm_kzalloc(&pdev->dev, sizeof(*xlnx_dna), GFP_KERNEL);
 	if (!xlnx_dna)
 		return -ENOMEM;
-	
+
 	xlnx_dna->base = devm_kzalloc(&pdev->dev, sizeof(void __iomem *), GFP_KERNEL);
 	if (!xlnx_dna->base)
 		return -ENOMEM;

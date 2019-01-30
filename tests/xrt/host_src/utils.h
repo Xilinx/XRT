@@ -23,6 +23,8 @@
 
 #include <stdexcept>
 #include <fstream>
+#include <uuid/uuid.h>
+
 #include <thread>
 #include <ctime>
 #include <map>
@@ -40,21 +42,27 @@ static const std::map<ert_cmd_state, std::string> ertCmdCodes = {
     std::pair<ert_cmd_state, std::string>(ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"),
 };
 
-static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xclDeviceHandle handle, int cu_index,
-	uint64_t& cu_base_addr, int& first_used_mem)
+static int initXRT( const char*bit,
+                    unsigned deviceIndex,
+                    const char* halLog,
+                    xclDeviceHandle& handle,
+                    int cu_index,
+                    uint64_t& cu_base_addr,
+                    int& first_used_mem,
+                    uuid_t& xclbinId )
 {
     xclDeviceInfo2 deviceInfo;
 
     if(deviceIndex >= xclProbe()) {
-	throw std::runtime_error("Cannot find device index specified");
-	return -1;
+        throw std::runtime_error("Cannot find device index specified");
+        return -1;
     }
 
     handle = xclOpen(deviceIndex, halLog, XCL_INFO);
 
     if (xclGetDeviceInfo2(handle, &deviceInfo)) {
-	throw std::runtime_error("Unable to obtain device information");
-	return -1;
+        throw std::runtime_error("Unable to obtain device information");
+        return -1;
     }
 
     std::cout << "DSA = " << deviceInfo.mName << "\n";
@@ -67,11 +75,11 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 
     cu_base_addr = 0xffffffffffffffff;
     if (!bit || !std::strlen(bit))
-	return 0;
+        return 0;
 
     if(xclLockDevice(handle)) {
-	throw std::runtime_error("Cannot lock device");
-	return -1;
+        throw std::runtime_error("Cannot lock device");
+        return -1;
     }
 
     char tempFileName[1024];
@@ -106,12 +114,12 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
 
     int cur_index = 0;
     for (int i =0; i < layout->m_count; ++i) {
-	if(layout->m_ip_data[i].m_type != IP_KERNEL)
-	    continue;
-	if(cur_index++ == cu_index) {
-	    cu_base_addr = layout->m_ip_data[i].m_base_address;
-	    std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
-	}
+        if(layout->m_ip_data[i].m_type != IP_KERNEL)
+            continue;
+        if(cur_index++ == cu_index) {
+            cu_base_addr = layout->m_ip_data[i].m_base_address;
+            std::cout << "base_address " << std::hex << cu_base_addr << std::dec << std::endl;
+        }
     }
 
     auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
@@ -123,13 +131,13 @@ static int initXRT(const char*bit, unsigned deviceIndex, const char* halLog, xcl
             break;
         }
     }
-
+    
+    uuid_copy(xclbinId, top->m_header.uuid);
 
     delete [] header;
 
     return 0;
 }
-
 
 static inline std::ostream& stamp(std::ostream& os) {
     const auto timenow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -139,5 +147,4 @@ static inline std::ostream& stamp(std::ostream& os) {
     os << '[' << getpid() << "] (" << st << "): ";
     return os;
 }
-
 #endif

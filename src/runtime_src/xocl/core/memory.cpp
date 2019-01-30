@@ -16,6 +16,7 @@
 
 #include "memory.h"
 #include "device.h"
+#include "kernel.h"
 #include "context.h"
 #include "error.h"
 
@@ -90,6 +91,19 @@ memory::
    //appdebug::remove_clmem(this);
 }
 
+bool
+memory::
+set_kernel_argidx(const kernel* kernel, unsigned int argidx)
+{
+  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  auto itr = std::find_if(m_karg.begin(),m_karg.end(),[kernel](auto& value) {return value.first==kernel;});
+  // A buffer can be connected to multiple arguments of same kernel
+  if (itr==m_karg.end() || (*itr).second!=argidx) {
+    m_karg.push_back(std::make_pair(kernel,argidx));
+    return true;
+  }
+  return false;
+}
 
 void
 memory::
@@ -124,62 +138,48 @@ get_buffer_object(device* device)
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   auto itr = m_bomap.find(device);
 
+  if (itr!=m_bomap.end())
+    return (*itr).second;
+
   // Maybe import from XARE device
   if (m_bomap.size() && itr==m_bomap.end() && device->is_xare_device()) {
     auto first = m_bomap.begin(); // import any existing BO
     return (m_bomap[device] = device->import_buffer_object(first->first,first->second));
   }
 
-  // Regular none XARE device, or first BO for this mem object
-  return (itr==m_bomap.end())
-    ? (m_bomap[device] = device->allocate_buffer_object(this))
-    : (*itr).second;
-}
+  // Get memory bank index if assigned, -1 if not assigned, which will trigger
+  // allocation error when default allocation is disabled
+  get_memidx_nolock(device); // computes m_memidx
+  auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
-memory::buffer_object_handle
-memory::
-get_buffer_object(kernel* kernel, unsigned long argidx)
-{
-  // Must be single device context
-  if (auto device=singleContextDevice(get_context())) {
-    // Memory intersection of arg connection across all CUs in current
-    // device for the kernel
-    auto cu_memidx_mask = device->get_cu_memidx(kernel,argidx);
-
-    // Coarse scoped lock.
-    // The boh may not be created by other thread simultanously.
-    std::lock_guard<std::mutex> lk(m_boh_mutex);
-
-    // Is this memory object already allocated on device
-    // get_buffer_object_or_null can't be called because it obtains lock
-    auto itr = m_bomap.find(device);
-    auto boh = (itr==m_bomap.end()) ? nullptr : (*itr).second;
-    if (boh) {
-      // This buffer is already allocated on device, verify that
-      // current bank match that reqired for kernel argument
-      auto memidx_mask = device->get_boh_memidx(boh);
-      if ((cu_memidx_mask & memidx_mask).any())
-        return boh;
-
-      // revisit error code
-      throw std::runtime_error("Buffer is allocated in wrong memory bank\n");
-    }
-    else {
-      // This buffer is not currently allocated on device, allocate
-      // in first available bank for argument
-      for (size_t idx=0; idx<cu_memidx_mask.size(); ++idx) {
-        if (cu_memidx_mask.test(idx)) {
-          try {
-            return (m_bomap[device] = device->allocate_buffer_object(this,idx));
-          }
-          catch (const std::bad_alloc&) {
-          }
-        }
+  // To be deleted when strict bank rules are enforced
+  if (m_memidx==-1) {
+    auto mset = device->get_boh_memidx(boh);
+    for (size_t idx=0; idx<mset.size(); ++idx) {
+      if (mset.test(idx)) {
+        m_memidx=idx;
+        break;
       }
-      throw std::bad_alloc();
     }
   }
-  return nullptr;
+
+  if (m_memidx>=0) {
+    // Lock kernels to compatibile CUs
+    for (auto& karg : m_karg) {
+      auto kernel = karg.first;
+      auto argidx = karg.second;
+      if (!kernel->validate_cus(argidx,m_memidx))
+        throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
+                          "Buffer connected to memory '"
+                          + std::to_string(m_memidx)
+                          + "' cannot be used as argument to kernel '"
+                          + kernel->get_name()
+                          + "' because kernel has no compute units that support required connectivity.\n"
+                          + kernel->connectivity_debug());
+    }
+  }
+
+  return boh;
 }
 
 memory::buffer_object_handle
@@ -218,21 +218,87 @@ try_get_buffer_object_or_error(const device* device) const
   return (*itr).second;
 }
 
-memory::memidx_bitmask_type
+// private
+memory::memidx_type
 memory::
-get_memidx(const device* dev) const
+get_ext_memidx_nolock(xclbin xclbin) const
 {
-  if (auto boh = get_buffer_object_or_null(dev))
-    return dev->get_boh_memidx(boh);
-  return memidx_bitmask_type(0);
+  if (m_memidx>=0)
+    return m_memidx;
+
+  if ((m_flags & CL_MEM_EXT_PTR_XILINX) && !m_ext_kernel) {
+    auto flag = m_ext_flags;
+    if (flag & XCL_MEM_TOPOLOGY)
+      m_memidx = flag & 0xffffff;
+    else {
+      auto bank = __builtin_ctz(flag & 0xffffff);
+      m_memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
+      if (m_memidx==-1)
+        m_memidx = bank;
+    }
+  }
+  return m_memidx;
 }
 
-memory::memidx_bitmask_type
-memory::get_memidx() const
+memory::memidx_type
+memory::
+get_ext_memidx(xclbin xclbin) const
 {
-  if (auto device = singleContextDevice(get_context()))
-    return get_memidx(device);
-  return memidx_bitmask_type(0);
+  std::lock_guard<std::mutex> lk(m_boh_mutex);
+  return get_ext_memidx_nolock(xclbin);
+}
+
+// private
+memory::memidx_type
+memory::
+get_memidx_nolock(const device* dev) const
+{
+  // already initialized
+  if (m_memidx>=0)
+    return m_memidx;
+
+  // subbuffer case must be tested thoroughly
+  if (auto parent = get_sub_buffer_parent()) {
+    m_memidx = parent->get_memidx();
+    if (m_memidx>=0)
+      return m_memidx;
+  }
+
+  // ext assigned
+  m_memidx = get_ext_memidx_nolock(dev->get_xclbin());
+
+  if (m_memidx>=0)
+    return m_memidx;
+
+  // unique CU connectivity
+  m_memidx = dev->get_cu_memidx();
+
+  if (m_memidx>=0)
+    return m_memidx;
+
+  if (m_karg.empty())
+    return -1;
+
+  // kernel,argidx deduced
+  memidx_bitmask_type mset;
+  mset.set();
+  for (auto& karg : m_karg) {
+    auto kernel = karg.first;
+    auto argidx = karg.second;
+    mset &= kernel->get_memidx(dev,argidx);
+  }
+
+  if (mset.none())
+    throw std::runtime_error("No matching memory index");
+
+  for (size_t idx=0; idx<mset.size(); ++idx) {
+    if (mset.test(idx)) {
+      m_memidx = idx;
+      break;
+    }
+  }
+
+  return m_memidx;
 }
 
 void

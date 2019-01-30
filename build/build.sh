@@ -56,7 +56,11 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         coverity|-coverity)
-            covbuild=1
+            covbuild=coverity
+            shift
+            ;;
+        coverity-all|-coverity-all)
+            covbuild=coverity-all
             shift
             ;;
         -covuser)
@@ -107,7 +111,7 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
-if [[ $covbuild == 1 ]]; then
+if [[ "X$covbuild" != "X" ]]; then
     if [[ -z ${covuser+x} ]]; then
         echo -n "Enter coverity user name: "
         read covuser
@@ -119,7 +123,7 @@ if [[ $covbuild == 1 ]]; then
     mkdir -p Coverity
     cd Coverity
     $CMAKE -DCMAKE_BUILD_TYPE=Release ../../src
-    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" $covbuild
     cd $here
     exit 0
 fi

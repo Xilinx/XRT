@@ -19,3 +19,4 @@ set(XRT_IMPL_ALL_SRC
   )
 
 add_library(impl OBJECT ${XRT_IMPL_ALL_SRC})
+set_target_properties(impl PROPERTIES LINKER_LANGUAGE CXX)

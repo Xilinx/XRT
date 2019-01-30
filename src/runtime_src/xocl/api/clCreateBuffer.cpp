@@ -23,6 +23,8 @@
 #include "detail/memory.h"
 #include "detail/context.h"
 
+#include  "api.h"
+
 #include <bitset>
 #include "plugin/xdp/profile.h"
 
@@ -52,6 +54,12 @@ get_xlnx_ext_kernel(cl_mem_flags flags, void* host_ptr)
     : 0;
 }
 
+inline unsigned int
+get_xlnx_ext_argidx(cl_mem_flags flags, void* host_ptr)
+{
+  return get_xlnx_ext_flags(flags,host_ptr);
+}
+
 // Hack to determine if a context is associated with exactly one
 // device.  Additionally, in emulation mode, the device must be
 // active, e.g. loaded through a call to loadBinary.
@@ -66,19 +74,15 @@ get_xlnx_ext_kernel(cl_mem_flags flags, void* host_ptr)
 XRT_UNUSED static xocl::device*
 singleContextDevice(cl_context context, cl_mem_flags flags)
 {
-  auto device = xocl::xocl(context)->get_device_if_one();
+  auto device = xocl::xocl(context)->get_single_active_device();
   if (!device)
     return nullptr;
 
-  if (!device->is_active())
-    return nullptr;
-
-  // check that all CUs in device has same single mem connectivity
   if(flags & CL_MEM_EXT_PTR_XILINX) {
-    //This should be treated as single device context.
-    //MLx use case.
-    //do nothing, proceed to returning the device.
+    // Explicit memory bank assignment should be treated as single device context.
+    // MLx use case. Do nothing, proceed to returning the device.
   } else {
+    // Check that all CUs in device has same single mem connectivity
     xocl::device::memidx_bitmask_type ucon;
     for (auto cu : device->get_cu_range())
       ucon |= cu->get_memidx_union();
@@ -145,13 +149,17 @@ clCreateBuffer(cl_context   context,
   auto buffer = std::make_unique<xocl::buffer>(xocl::xocl(context),flags,size,ubuf);
 
   // set fields in cl_buffer
-  buffer->add_ext_flags(get_xlnx_ext_flags(flags,host_ptr));
-  buffer->add_ext_kernel(xocl::xocl(get_xlnx_ext_kernel(flags,host_ptr)));
+  buffer->set_ext_flags(get_xlnx_ext_flags(flags,host_ptr));
 
-  // allocate device buffer object if context has only one device
-  // and if this is not a progvar (clCreateProgramWithBinary)
-  if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context, flags))
+  if (auto kernel = get_xlnx_ext_kernel(flags,host_ptr)) {
+    auto argidx = get_xlnx_ext_argidx(flags,host_ptr);
+    buffer->set_ext_kernel(xocl::xocl(kernel)); // explicitly set
+    buffer->set_kernel_argidx(xocl::xocl(kernel),argidx);
+    cl_mem mem = buffer.get(); // cast to cl_mem is important before going void*
+    api::clSetKernelArg(kernel,argidx,sizeof(cl_mem),&mem);
+  }
+  else if (!(flags & CL_MEM_PROGVAR)) {
+    if (auto device = singleContextDevice(context,flags))
       buffer->get_buffer_object(device);
   }
 

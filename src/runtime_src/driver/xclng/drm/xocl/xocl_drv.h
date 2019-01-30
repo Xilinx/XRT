@@ -57,6 +57,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define	XOCL_DRV_CHANGE		"$Change$"
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
+#define	ICAP_XCLBIN_V2			"xclbin2"
 
 #define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
@@ -64,6 +65,8 @@ static inline bool uuid_is_null(const xuid_t *uuid)
         snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		 fmt, ##args)
 #define MAX_M_COUNT      64
+
+#define MAX_DATA_SZ 128
 
 
 #define xocl_err(dev, fmt, args...)			\
@@ -217,6 +220,10 @@ struct xocl_dev_core {
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
+
+	struct kref		kref;
+	bool			removed;
+	void (*remove_cb)(xdev_handle_t xdev_hdl);
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -495,19 +502,46 @@ enum mailbox_request {
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
 	MAILBOX_REQ_HOT_RESET,
 	MAILBOX_REQ_FIREWALL,
+	MAILBOX_REQ_DOWNLOAD_XCLBIN,
+	MAILBOX_REQ_SEND_DATA,
 };
 
+enum mb_cmd_type {
+	MB_CMD_DEFAULT = 0,
+	MB_CMD_LOAD_XCLBIN,
+	MB_CMD_RECLOCK,
+};
 struct mailbox_req_bitstream_lock {
 	pid_t pid;
 	xuid_t uuid;
 };
 
+struct mailbox_data_req {
+	void *data;
+	uint64_t data_len;
+	int resp;
+};
+
+struct mailbox_data_buf {
+	enum mb_cmd_type cmd_type;
+	uint32_t data_total_len;
+	uint32_t buf_size; // For kernel space to fill up __user buf
+	uint32_t len;
+	uint32_t offset;
+	uint64_t priv_data;
+	char data[MAX_DATA_SZ];
+};
+
+
 struct mailbox_req {
 	enum mailbox_request req;
 	union {
 		struct mailbox_req_bitstream_lock req_bit_lock;
+		struct mailbox_data_req xclbin_reg;
+		struct mailbox_data_buf data_buf;
 	} u;
 };
+
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err);
@@ -627,6 +661,13 @@ int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg);
 int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz);
 int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
 	int (*cb_func)(struct xocl_context_hash *ctx_hash, void *arg));
+
+void xocl_core_init(xdev_handle_t xdev_hdl,
+	void (*remove_cb)(xdev_handle_t xdev_hdl));
+void xocl_core_fini(xdev_handle_t xdev_hdl);
+bool xocl_drv_released(xdev_handle_t xdev_hdl);
+void xocl_drv_get(xdev_handle_t xdev_hdl);
+void xocl_drv_put(xdev_handle_t xdev_hdl);
 
 /* health thread functions */
 int health_thread_init(struct device *dev, char *thread_name,

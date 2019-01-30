@@ -60,6 +60,7 @@ namespace detail {
  * See xrt/test/util/tconfig.cpp for unit test
  */
 bool          get_bool_value(const char*, bool);
+const char*   get_env_value(const char*);
 std::string   get_string_value(const char*, const std::string&);
 unsigned int  get_uint_value(const char*, unsigned int);
 std::ostream& debug(std::ostream&, const std::string& ini="");
@@ -283,6 +284,12 @@ get_cdma()
 {
   static unsigned int value = detail::get_bool_value("Runtime.cdma",false);
   return value;
+}
+
+inline bool
+get_feature_toggle(const std::string& feature)
+{
+  return detail::get_bool_value(feature.c_str(),false) || detail::get_env_value(feature.c_str());
 }
 
 inline std::string
