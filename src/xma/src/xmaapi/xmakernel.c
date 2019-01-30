@@ -141,6 +141,10 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    session->base.hw_session.dev_index = hal->dev_index;
+
     session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
 
     // Allocate the private data

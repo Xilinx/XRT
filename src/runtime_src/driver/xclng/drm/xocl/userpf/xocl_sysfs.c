@@ -35,7 +35,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", xdev->core.priv.user_bar);
+	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
 static DEVICE_ATTR_RO(userbar);
@@ -93,6 +93,23 @@ static ssize_t memstat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
+static ssize_t p2p_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u64 size;
+
+	if (xdev->bypass_bar_addr)
+		return sprintf(buf, "1\n");
+	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
+			size > (1 << XOCL_PA_SECTION_SHIFT))
+		return sprintf(buf, "2\n");
+
+	return sprintf(buf, "0\n");
+}
+
+static DEVICE_ATTR_RO(p2p_enable);
+
 /* - End attributes-- */
 
 static struct attribute *xocl_attrs[] = {
@@ -102,6 +119,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
+	&dev_attr_p2p_enable.attr,
 	NULL,
 };
 
@@ -113,15 +131,22 @@ static struct attribute_group xocl_attr_group = {
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;
+	struct pci_dev *rdev;
 
 	ret = sysfs_create_group(&dev->kobj, &xocl_attr_group);
 	if (ret)
 		xocl_err(dev, "create xocl attrs failed: %d", ret);
+
+	xocl_get_root_dev(to_pci_dev(dev), rdev);
+	ret = sysfs_create_link(&dev->kobj, &rdev->dev.kobj, "root_dev");
+	if (ret)
+		xocl_err(dev, "create root device link failed: %d", ret);
 
 	return ret;
 }
 
 void xocl_fini_sysfs(struct device *dev)
 {
+	sysfs_remove_link(&dev->kobj, "root_dev");
 	sysfs_remove_group(&dev->kobj, &xocl_attr_group);
 }

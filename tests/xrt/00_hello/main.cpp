@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,9 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
 
 #include <getopt.h>
 #include <iostream>
@@ -45,16 +42,16 @@ static const int DATA_SIZE = 1024;
 
 
 const static struct option long_options[] = {
-    {"bitstream",       required_argument, 0, 'k'},
-    {"hal_logfile",     required_argument, 0, 'l'},
-    {"alignment",       required_argument, 0, 'a'},
-    {"cu_index",        required_argument, 0, 'c'},
-    {"device",          required_argument, 0, 'd'},
-    {"verbose",         no_argument,       0, 'v'},
-    {"help",            no_argument,       0, 'h'},
-    // enable embedded runtime
-    {"ert",             no_argument,       0, '1'},
-    {0, 0, 0, 0}
+{"bitstream",       required_argument, 0, 'k'},
+{"hal_logfile",     required_argument, 0, 'l'},
+{"alignment",       required_argument, 0, 'a'},
+{"cu_index",        required_argument, 0, 'c'},
+{"device",          required_argument, 0, 'd'},
+{"verbose",         no_argument,       0, 'v'},
+{"help",            no_argument,       0, 'h'},
+// enable embedded runtime
+{"ert",             no_argument,       0, '1'},
+{0, 0, 0, 0}
 };
 
 static void printHelp()
@@ -90,112 +87,117 @@ int main(int argc, char** argv)
     int c;
     while ((c = getopt_long(argc, argv, "s:k:l:a:c:d:vh", long_options, &option_index)) != -1)
     {
-	switch (c)
-	{
-	    case 0:
-		if (long_options[option_index].flag != 0)
-		    break;
-	    case 1:
-		//ert = true;
-		break;
-	    case 'k':
-		bitstreamFile = optarg;
-		break;
-	    case 'l':
-		halLogfile = optarg;
-		break;
-	    case 'a':
-		alignment = std::atoi(optarg);
-		break;
-	    case 'd':
-		index = std::atoi(optarg);
-		break;
-	    case 'c':
-		cu_index = std::atoi(optarg);
-		break;
-	    case 'h':
-		printHelp();
-		return 0;
-	    case 'v':
-		verbose = true;
-		break;
-	    default:
-		printHelp();
-		return -1;
-	}
+        switch (c)
+        {
+        case 0:
+            if (long_options[option_index].flag != 0)
+                break;
+        case 1:
+            //ert = true;
+            break;
+        case 'k':
+            bitstreamFile = optarg;
+            break;
+        case 'l':
+            halLogfile = optarg;
+            break;
+        case 'a':
+            alignment = std::atoi(optarg);
+            break;
+        case 'd':
+            index = std::atoi(optarg);
+            break;
+        case 'c':
+            cu_index = std::atoi(optarg);
+            break;
+        case 'h':
+            printHelp();
+            return 0;
+        case 'v':
+            verbose = true;
+            break;
+        default:
+            printHelp();
+            return -1;
+        }
     }
 
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
-	std::cout << "FAILED TEST\n";
-	std::cout << "No bitstream specified\n";
-	return -1;
+        std::cout << "FAILED TEST\n";
+        std::cout << "No bitstream specified\n";
+        return -1;
     }
 
     if (halLogfile.size()) {
-	std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
+        std::cout << "Using " << halLogfile << " as HAL driver logfile\n";
     }
 
     std::cout << "HAL driver = " << sharedLibrary << "\n";
     std::cout << "Host buffer alignment = " << alignment << " bytes\n";
     std::cout << "Compiled kernel = " << bitstreamFile << "\n" << std::endl;
 
-    try 
+    try
     {
-	xclDeviceHandle handle;
-	uint64_t cu_base_addr = 0;
-	int first_mem = -1;
-	if(initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem))
-	    return 1;
+        xclDeviceHandle handle;
+        uint64_t cu_base_addr = 0;
+        int first_mem = -1;
+        uuid_t xclbinId;
 
-	if (first_mem < 0)
-	    return 1;
+        if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
+            return 1;
 
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-    char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
-    memset(bo1, 0, DATA_SIZE);
-    std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
-    std::strcpy(bo1, testVector.c_str());
+        if (first_mem < 0)
+            return 1;
 
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
-        return 1;
+        if (xclOpenContext(handle, xclbinId, cu_index, true))
+            throw std::runtime_error("Cannot create context");
+
+        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+        char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
+        memset(bo1, 0, DATA_SIZE);
+        std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
+        std::strcpy(bo1, testVector.c_str());
+
+        if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
+            return 1;
 
 
-    xclBOProperties p;
-    uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-    uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
+        xclBOProperties p;
+        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
+        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
 
-    if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-        return 1;
+        if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
+            return 1;
 
-	//Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
-    //void* execData = xclMapBO(handle, execHandle, true);
+        //Allocate the exec_bo
+        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+        //void* execData = xclMapBO(handle, execHandle, true);
 
-	//Get the output;
-	if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, false))
-	    return 1;
+        //Get the output;
+        if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , DATA_SIZE, false))
+            return 1;
         char* bo2 = (char*)xclMapBO(handle, boHandle1, false);
 
-       if (std::memcmp(bo2, bo1, DATA_SIZE)) {
-           std::cout << "FAILED TEST\n";
-           std::cout << "Value read back does not match value written\n";
-           return 1;
-          }
-         munmap(bo1, DATA_SIZE);
-         munmap(bo2, DATA_SIZE);
-         xclFreeBO(handle,boHandle1);
-         xclFreeBO(handle,boHandle2);
-         xclFreeBO(handle,execHandle);
-
+        if (std::memcmp(bo2, bo1, DATA_SIZE)) {
+            std::cout << "FAILED TEST\n";
+            std::cout << "Value read back does not match value written\n";
+            return 1;
+        }
+        munmap(bo1, DATA_SIZE);
+        munmap(bo2, DATA_SIZE);
+        xclFreeBO(handle,boHandle1);
+        xclFreeBO(handle,boHandle2);
+        xclFreeBO(handle,execHandle);
+        xclCloseContext(handle, xclbinId, cu_index);
     }
     catch (std::exception const& e)
     {
-	std::cout << "Exception: " << e.what() << "\n";
-	std::cout << "FAILED TEST\n";
-	return 1;
+        std::cout << "Exception: " << e.what() << "\n";
+        std::cout << "FAILED TEST\n";
+        return 1;
     }
 
     std::cout << "PASSED TEST\n";

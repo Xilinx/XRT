@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2019, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -42,6 +42,7 @@
 #include "xclperf.h"
 #include "xcl_app_debug.h"
 #include "xclerr.h"
+#include "xclhal2_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -143,14 +144,6 @@ enum xclMemoryDomains {
     XCL_MEM_DEVICE_REG  = 0x00000005
 };
 
-/* byte-0 lower 4 bits for DDR Flags are one-hot encoded */
-enum xclDDRFlags {
-    XCL_DEVICE_RAM_BANK0 = 0x00000000,
-    XCL_DEVICE_RAM_BANK1 = 0x00000002,
-    XCL_DEVICE_RAM_BANK2 = 0x00000004,
-    XCL_DEVICE_RAM_BANK3 = 0x00000008
-};
-
 /**
  * xclBOKind defines Buffer Object Kind which represents a fragment of device accesible
  * memory and the corresponding backing host memory.
@@ -206,6 +199,23 @@ enum xclAddressSpace {
     XCL_ADDR_SPACE_DEVICE_PERFMON = 3,  // Address space for the Performance monitors
     XCL_ADDR_SPACE_DEVICE_CHECKER = 5,  // Address space for protocol checker
     XCL_ADDR_SPACE_MAX = 8
+};
+
+
+/**
+ * Defines log message severity levels for messages sent to log file with xclLogMsg cmd
+ */
+
+enum xclLogMsgLevel {
+    ALERT = 0,
+    CRITICAL = 1,
+    DEBUG = 2,
+    EMERGENCY = 3,
+    ERROR = 4,
+    INFO = 5,
+    INTERNAL = 6,
+    NOTICE = 7,
+    WARNING = 8
 };
 
 /**
@@ -290,6 +300,18 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
 
 /**
+ * xclP2pEnable() - enable or disable p2p
+ *
+ * @handle:        Device handle
+ * @enable:        false-disable, true-enable
+ * @force:         true-force to reassign bus IO memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Enable or Disable P2P feature. Warm reboot might be required.
+ */
+XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
+
+/**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device
  *
  * @handle:        Device handle
@@ -328,8 +350,18 @@ XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, struct xclErro
  * handled by the driver.
  */
 XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
-
-
+/**
+ * xclLoadXclBinMgmt() - Download FPGA image (xclbin) to the device via mgmtpf
+ *
+ * @handle:        Device handle
+ * @buffer:        Pointer to device image (xclbin) in memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Download FPGA image (AXLF) to the device. The PR bitstream is encapsulated inside
+ * xclbin as a section. xclbin may also contains other sections which are suitably
+ * handled by the driver.
+ */
+XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const axlf *buffer);
 /**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *
@@ -358,6 +390,18 @@ XCL_DRIVER_DLLESPEC int xclGetSectionInfo(xclDeviceHandle handle, void* info,
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclReClock2(xclDeviceHandle handle, unsigned short region,
+                                    const unsigned short *targetFreqMHz);
+
+/**
+ * xclReClockUser() - Configure PR region frequncies via userpf
+ *
+ * @handle:        Device handle
+ * @region:        PR region (always 0)
+ * @targetFreqMHz: Array of target frequencies in order for the Clock Wizards driving
+ *                 the PR region
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclReClockUser(xclDeviceHandle handle, unsigned short region,
                                     const unsigned short *targetFreqMHz);
 
 /**
@@ -445,6 +489,19 @@ XCL_DRIVER_DLLESPEC int xclRemoveAndScanFPGA();
 XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 
 /* End XRT Device Management APIs */
+
+
+/**
+ * xclLogMsg() - Send message to log file as per settings in ini file.
+ *
+ * @handle:        Device handle
+ * @level:         Severity level of the msg
+ * @format:        Format of Msg string to write to log file
+ * @...:           All other arguments as per the format
+ *
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
@@ -1176,9 +1233,36 @@ XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enu
 XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
                                                        xclTraceResultsVector& traceVector);
 #endif
+
+/**
+ * Experimental sysfs API
+ * (For debug and profile usage only for now)
+ * The sysfs information is not accessible above hal layer now
+ * However, debug/profile need information from sysfs (for example
+ * debug_ip_layout) to properly initialize xdp code, so this
+ * experimental API is added
+ */
+XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
+                                        const char* entry, char* sysfsPath, size_t size);
+
+/**
+ * Experimental APIs for reading debug and profile
+ *
+ * Warning: These APIs are experimental and can be
+ * changed or removed at any time. They should only
+ * be used by debug and profile code.
+ *
+ * @param handle the device handle
+ * @param info the xclDebugProfileDeviceInfo
+ * structure that this API will fill in as
+ * result
+ */
+XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
+
+
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
 
 #ifdef __cplusplus
 }

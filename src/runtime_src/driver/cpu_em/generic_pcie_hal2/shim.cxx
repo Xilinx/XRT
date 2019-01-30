@@ -793,6 +793,7 @@ namespace xclcpuemhal2 {
     {
       launchTempProcess();
     }
+    src = (unsigned char*)src + seek;
     dest += seek;
 
     void *handle = this;

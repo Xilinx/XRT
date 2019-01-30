@@ -354,6 +354,18 @@ pcidev::pci_func::pci_func(const std::string& sysfs) : sysfs_name(sysfs)
                 version.end());
             driver_version = version;
         }
+/*
+        if(mgmt){
+            std::string mgmt_drv;
+            std::fstream mgmt_drv_fs = sysfs_open_path(dir + "/driver/module/drivers/pci:xclmgmt", err,
+                false, false);
+            if (fs.is_open()) {
+                std::getline(mgmt_drv_fs, mgmt_drv);
+                mgmt_drv.erase(std::remove(mgmt_drv.begin(), mgmt_drv.end(), '\n'),
+                    mgmt_drv.end());
+                driver_mgmt = mgmt_drv;
+            }
+        }*/
     }
 }
 
@@ -369,7 +381,6 @@ static bool find_mgmtpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
     }
     return false;
 }
-
 static bool find_userpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
     std::string err;
     if(!dev->user)
@@ -390,11 +401,13 @@ static int add_to_device_list(
 {
     int good_dev = 0;
     std::string errmsg;
-    bool userpf_devfs_good, mgmtpf_devfs_good; 
-    
-    for (auto &mdev : mgmt_devices) {
-        for (auto &udev : user_devices) {
-            if (udev == nullptr)
+    bool userpf_devfs_good, mgmtpf_devfs_good;
+
+    for (auto &udev : user_devices) {
+        if (udev == nullptr)
+            continue;
+        for (auto &mdev : mgmt_devices) {
+            if (mdev == nullptr)
                 continue;
             // Found the matching user pf.
             if( (mdev->domain == udev->domain) &&
@@ -413,21 +426,39 @@ static int add_to_device_list(
                         good_dev++;
                     }
                 }
-                else if(!userpf_devfs_good && mgmtpf_devfs_good){
+                else if(!userpf_devfs_good && mgmtpf_devfs_good)
                     devices.push_back(std::move(dev));
+                else if(userpf_devfs_good && !mgmtpf_devfs_good){
+                    std::unique_ptr<pcidev::pci_func> mdev_dummy;
+                    auto new_dev = std::unique_ptr<pcidev::pci_device>(
+                        new pcidev::pci_device(mdev_dummy, dev->user));
+                    devices.insert(devices.begin(), std::move(new_dev));
+                    good_dev++;
                 }
+
                 break;
             }
         }
-        if (mdev != nullptr) { // mgmt pf without matching user pf
-            std::unique_ptr<pcidev::pci_func> udev;
+        if (udev != nullptr) { // mgmt pf without matching user pf
+            std::unique_ptr<pcidev::pci_func> mdev_dummy;
             auto dev = std::unique_ptr<pcidev::pci_device>(
-                new pcidev::pci_device(mdev, udev));
-            mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
-            if(mgmtpf_devfs_good){
-                devices.push_back(std::move(dev));
+                new pcidev::pci_device(mdev_dummy, udev));
+            userpf_devfs_good = find_userpf_devfs(dev);
+            if(userpf_devfs_good){
+                devices.insert(devices.begin(), std::move(dev));
+                good_dev++;
             }
         }
+    }
+    for (auto &mdev : mgmt_devices) {
+        if (mdev == nullptr)
+            continue;
+        std::unique_ptr<pcidev::pci_func> udev;
+        auto dev = std::unique_ptr<pcidev::pci_device>(
+            new pcidev::pci_device(mdev, udev));
+        mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
+        if(mgmtpf_devfs_good)
+            devices.push_back(std::move(dev));
     }
     return good_dev;
 }
@@ -437,7 +468,11 @@ pcidev::pci_device::pci_device(std::unique_ptr<pci_func>& mdev,
     mgmt(std::move(mdev)), user(std::move(udev)), is_mfg(false)
 {
     std::string errmsg;
-
+    if(mgmt == NULL){
+        is_ready = false;
+        is_mfg = false;
+        return;
+    }
     mgmt->sysfs_get("", "ready", errmsg, is_ready);
     if (!errmsg.empty())
         std::cout << errmsg << std::endl;
@@ -506,6 +541,8 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
     (void) closedir(dir);
 
     num_ready = add_to_device_list(mgmt_devices, user_devices, dev_list);
+
+
 }
 
 pci_device_scanner::pci_device_scanner()
@@ -531,4 +568,25 @@ size_t pcidev::get_dev_total()
 const pcidev::pci_device* pcidev::get_dev(int index)
 {
     return pci_device_scanner::get_scanner()->dev_list[index].get();
+}
+
+void pcidev::dump_dev_list(void)
+{
+    //auto dev_list = pci_device_scanner::get_scanner()->dev_list;
+    std::vector<std::string> result;
+
+    for(auto &dev : pci_device_scanner::get_scanner()->dev_list){
+        std::string str = "[ ";
+        if(dev->user)
+            str += "U,";
+        else
+            str += "X,";
+
+        if(dev->mgmt)
+            str += "M ]";
+        else
+            str += "X ]";
+        std::cout << str << " " << std::endl;
+    }
+
 }

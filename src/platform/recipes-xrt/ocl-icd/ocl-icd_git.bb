@@ -2,7 +2,7 @@
 
 # The LICENSE is BSD 2-Clause "Simplified" License see https://github.com/OCL-dev/ocl-icd/blob/master/COPYING
 # This license has also been called the "Simplified BSD License" and the "FreeBSD License". Ref https://opensource.org/licenses/BSD-2-Clause
-LICENSE = "FreeBSD"
+LICENSE = "BSD-2-Clause"
 LIC_FILES_CHKSUM = "file://COPYING;md5=232257bbf7320320725ca9529d3782ab"
 
 SRC_URI = "git://github.com/OCL-dev/ocl-icd.git;protocol=https"
