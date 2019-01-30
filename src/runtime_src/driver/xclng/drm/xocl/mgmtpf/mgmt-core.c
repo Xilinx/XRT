@@ -644,6 +644,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
 	case MAILBOX_REQ_DOWNLOAD_XCLBIN:
 		ret = xclmgmt_xclbin_download(lro, data);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
