@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel HAL userspace driver APIs
+ * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,8 +17,6 @@
 
 #ifndef _XCL_HAL2_H_
 #define _XCL_HAL2_H_
-
-//#include <uuid.h>
 
 #ifdef __cplusplus
 #include <cstdlib>
@@ -44,23 +42,15 @@
 #include "xcl_app_debug.h"
 #include "xclerr.h"
 
-#ifndef _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * DOC: Xilinx Accelerator Hardware Abstraction Library Interface Definitions
+ * DOC: Xilinx Runtime (XRT) Library Interface Definitions
  *
  * Header file *xclhal2.h* defines data structures and function signatures exported by
- * Hardware Abstraction Library (HAL). HAL is part of software stack which is integrated
+ * Xilinx Runtime (XRT) Library. XRT is part of software stack which is integrated
  * into Xilinx reference platform.
  */
 
@@ -68,11 +58,10 @@ extern "C" {
  * typedef xclDeviceHandle - opaque device handle
  *
  * A device handle of xclDeviceHandle kind is obtained by opening a device. Clients pass this
- * device handle to refer to the opened device in all future interaction with HAL.
+ * device handle to refer to the opened device in all future interaction with XRT.
  */
 typedef void * xclDeviceHandle;
 
-//struct xclBin;
 struct axlf;
 
 /**
@@ -138,7 +127,6 @@ struct xclDeviceInfo2 {
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
   unsigned short mNumCDMA;
-  // More properties here
 };
 
 /**
@@ -219,6 +207,23 @@ enum xclAddressSpace {
     XCL_ADDR_SPACE_MAX = 8
 };
 
+
+/**
+ * Defines log message severity levels for messages sent to log file with xclLogMsg cmd
+ */
+
+enum xclLogMsgLevel {
+    ALERT = 0,
+    CRITICAL = 1,
+    DEBUG = 2,
+    EMERGENCY = 3,
+    ERROR = 4,
+    INFO = 5,
+    INTERNAL = 6,
+    NOTICE = 7,
+    WARNING = 8
+};
+
 /**
  * Defines verbosity levels which are passed to xclOpen during device creation time
  */
@@ -256,7 +261,7 @@ struct xclBOProperties {
 };
 
 /**
- * DOC: HAL Device Management APIs
+ * DOC: XRT Device Management APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
@@ -298,6 +303,18 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
  * running kernel(s) to finish.
  */
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, xclResetKind kind);
+
+/**
+ * xclP2pEnable() - enable or disable p2p
+ *
+ * @handle:        Device handle
+ * @enable:        false-disable, true-enable
+ * @force:         true-force to reassign bus IO memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Enable or Disable P2P feature. Warm reboot might be required.
+ */
+XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
 /**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device
@@ -398,7 +415,7 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * @shared:        Shared access or exclusive access
  * Return:         0 on success or appropriate error number
  *
- * The context is necessary before submitting execution jobs using xclExecBO(). Contexts may be
+ * The context is necessary before submitting execution jobs using xclExecBuf(). Contexts may be
  * exclusive or shared. Allocation of exclusive contexts on a compute unit would succeed
  * only if another client has not already setup up a context on that compute unit. Shared
  * contexts can be concurrently allocated by many processes on the same compute units.
@@ -454,10 +471,23 @@ XCL_DRIVER_DLLESPEC int xclRemoveAndScanFPGA();
  */
 XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 
-/* End HAL Device Management APIs */
+/* End XRT Device Management APIs */
+
 
 /**
- * DOC: HAL Buffer Management APIs
+ * xclLogMsg() - Send message to log file as per settings in ini file.
+ *
+ * @handle:        Device handle
+ * @level:         Severity level of the msg
+ * @format:        Format of Msg string to write to log file
+ * @...:           All other arguments as per the format
+ *
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
+
+/**
+ * DOC: XRT Buffer Management APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * Buffer management APIs are used for managing device memory and migrating buffers
@@ -609,7 +639,8 @@ XCL_DRIVER_DLLESPEC unsigned int xclImportBO(xclDeviceHandle handle, int fd, uns
  *
  * This is the prefered method for obtaining BO property information.
  */
-XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties);
+XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle,
+                                           xclBOProperties *properties);
 
 /*
  * xclGetBOSize() - Retrieve size of a BO
@@ -619,7 +650,7 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int 
  * @boHandle:      BO handle
  * Return          size_t size of the BO on success
  *
- * This API will be deprecated in the future. New clients should use xclGetBOProperties instead
+ * This API will be deprecated in the future. New clients should use xclGetBOProperties() instead
  */
 inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -630,7 +661,7 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned 
 /*
  * Get the physical address on the device
  *
- * This function will be deprecated in the future. New clinets should use xclGetBOProperties instead.
+ * This function will be deprecated in the future. New clinets should use xclGetBOProperties() instead.
  *
  * @handle:        Device handle
  * @boHandle:      BO handle
@@ -642,14 +673,14 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
 }
 
-/* End HAL Buffer Management APIs */
+/* End XRT Buffer Management APIs */
 
 /**
- * DOC: HAL Legacy Buffer Management APIs
+ * DOC: XRT Legacy Buffer Management APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * Do *not* develop new features using the following 5 API's. These are for backwards
- * compatibility with classic HAL interface and will be deprecated in future. New clients
+ * compatibility with classic XRT interface and will be deprecated in future. New clients
  * should use BO based APIs defined above
  *
  */
@@ -728,11 +759,11 @@ XCL_DRIVER_DLLESPEC size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint
 XCL_DRIVER_DLLESPEC size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest,
                                                     uint64_t src, size_t size, size_t skip);
 
-/* End HAL Legacy Buffer Management APIs */
+/* End XRT Legacy Buffer Management APIs */
 
 
 /**
- * DOC: HAL Unmanaged DMA APIs
+ * DOC: XRT Unmanaged DMA APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * Unmanaged DMA APIs are for exclusive use by the debuggers and tools. The APIs allow clinets to read/write
@@ -775,10 +806,10 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags
 XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                                            size_t size, uint64_t offset);
 
-/* End HAL Unmanaged DMA APIs */
+/* End XRT Unmanaged DMA APIs */
 
 /*
- * DOC: HAL Register read/write APIs
+ * DOC: XRT Register read/write APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * These functions are used to read and write peripherals sitting on the address map.  OpenCL runtime
@@ -800,7 +831,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  *
  * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
- * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
+ * *This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+ * execution management please use XRT Compute Unit Execution Management APIs defined below*
  */
 
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
@@ -818,12 +850,13 @@ XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, xclAddressSpace spac
  *
  * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
- * This API will be deprecated in future. Please use this API only for IP bringup/debugging.
+ * *This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+ * execution management please use XRT Compute Unit Execution Management APIs defined below*
  */
 XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                    void *hostbuf, size_t size);
 
-/* HAL Register read/write APIs */
+/* XRT Register read/write APIs */
 
 /*
  * TODO:
@@ -838,7 +871,7 @@ XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, xclAddressSpace space
  */
 
 /**
- * DOC: HAL Compute Unit Execution Management APIs
+ * DOC: XRT Compute Unit Execution Management APIs
  *
  * These APIs are under development. These functions will be used to start compute
  * units and wait for them to finish.
@@ -851,9 +884,8 @@ XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, xclAddressSpace space
  * @cmdBO:         BO handle containing command packet
  * Return:         0 or standard error number
  *
- * This API is EXPERIMENTAL in this release. Submit an exec buffer for execution. The exec
- * buffer layout is defined by struct ert_packet which is defined in file *ert.h*. The BO
- * should been allocated with DRM_XOCL_BO_EXECBUF flag.
+ * Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
+ * which is defined in file *ert.h*. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
  */
 XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO);
 
@@ -871,7 +903,8 @@ XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO);
  * handles in the wait list must have beeen submitted prior to this
  * call to xclExecBufWithWaitList.
  */
-XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO,
+                                               size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
 
 /**
  * xclExecWait() - Wait for one or more execution events on the device
@@ -880,7 +913,6 @@ XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned 
  * @timeoutMilliSec:         How long to wait for
  * Return:                   Same code as poll system call
  *
- * This API is EXPERIMENTAL in this release
  * Wait for notification from the hardware. The function essentially calls "poll" system
  * call on the driver file handle. The return value has same semantics as poll system call.
  * If return value is > 0 caller should check the status of submitted exec buffers
@@ -899,64 +931,13 @@ XCL_DRIVER_DLLESPEC int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
  * eventfd system call. Caller should use standard poll/read eventfd framework in order to wait for
  * interrupts. The handles are automatically unregistered on process exit.
  */
-XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd);
+XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
+                                                   int fd);
 
-/* HAL Compute Unit Execution Management APIs */
-
-/**
- * @defgroup perfmon PERFORMANCE MONITORING OPERATIONS
- * ---------------------------------------------------
- *
- * These functions are used to read and write to the performance monitoring infrastructure.
- * OpenCL runtime will be using the BUFFER MANAGEMNT APIs described above to manage OpenCL buffers.
- * It would use these functions to initialize and sample the performance monitoring on the card.
- * Note that the offset is wrt the address space
- */
-
-/* Write host event to device tracing (Zynq only) */
-XCL_DRIVER_DLLESPEC void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
-                                           xclPerfMonEventID id);
-
-XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type,
-                                                            uint32_t numSlots);
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
-                                                 uint32_t slotnum, char* slotName, uint32_t length);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type,
-                                                          xclCounterResults& counterResults);
-
-XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
-                                                                           void* debugResults);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type,
-                                                        uint32_t startTrigger);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type,
-                                                       xclTraceResultsVector& traceVector);
+/* XRT Compute Unit Execution Management APIs */
 
 /*
- * DOC: HAL Stream Queue APIs
+ * DOC: XRT Stream Queue APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~
  * These functions are used for next generation DMA Engine, QDMA. QDMA provide not only memory mapped DMA which
  * moves data between host memory and board memory, but also stream DMA which moves data between host memory and
@@ -967,6 +948,11 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMo
 /**
  * struct xclQueueContext - structure to describe a Queue
  */
+
+enum {
+	/* Enum for xclQueueContext.flags */
+	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
+};
 
 struct xclQueueContext {
     uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
@@ -1151,7 +1137,8 @@ XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl
  *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
  *     non-blocking:
  *         return 0 immediatly.
- *     TODO: EOT
+ *     TODO:
+ *         EOT
  *
  */
 XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr_req);
@@ -1164,14 +1151,69 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
  * @timeout:		timeout
  *
  * return number of requests been completed.
- */ 
-XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual_compl, int timeout); 
+ */
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
+                                          xclReqCompletion *comps, int* actual_compl, int timeout);
 
+/* XRT Stream Queue APIs */
+
+/**
+ * PERFORMANCE MONITORING OPERATIONS
+ * ---------------------------------------------------
+ *
+ * These functions are used to read and write to the performance monitoring infrastructure.
+ * OpenCL runtime will be using the BUFFER MANAGEMNT APIs described above to manage OpenCL buffers.
+ * It would use these functions to initialize and sample the performance monitoring on the card.
+ * Note that the offset is wrt the address space
+ */
+
+/* Write host event to device tracing (Zynq only) */
+XCL_DRIVER_DLLESPEC void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
+                                           xclPerfMonEventID id);
+
+XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type,
+                                                            uint32_t numSlots);
+
+XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
+                                                 uint32_t slotnum, char* slotName, uint32_t length);
+
+XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type,
+                                                 uint32_t slotnum);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type,
+                                                          xclCounterResults& counterResults);
+
+XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
+                                                                           void* debugResults);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type,
+                                                        uint32_t startTrigger);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type,
+                                                       xclTraceResultsVector& traceVector);
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
-
-/** @} */
 
 #ifdef __cplusplus
 }

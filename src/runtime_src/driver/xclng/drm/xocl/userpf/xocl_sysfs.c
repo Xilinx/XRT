@@ -19,15 +19,6 @@
 //Attributes followed by bin_attributes.
 //
 /* -Attributes -- */
-/* -xclbinid-- */
-static ssize_t xclbinid_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%llx\n", xdev->unique_id_last_bitstream);
-}
-
-static DEVICE_ATTR_RO(xclbinid);
 
 /* -xclbinuuid-- (supersedes xclbinid) */
 static ssize_t xclbinuuid_show(struct device *dev,
@@ -44,7 +35,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", xdev->core.priv.user_bar);
+	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
 static DEVICE_ATTR_RO(userbar);
@@ -62,11 +53,26 @@ static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf,
-		"context: %x\noutstanding exec: %x\ntotal exec: %ld\n",
-		get_live_client_size(xdev),
-		atomic_read(&xdev->outstanding_execs),
-		atomic64_read(&xdev->total_execs));
+	int size = sprintf(buf,
+			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
+			   &xdev->xclbin_id,
+			   atomic_read(&xdev->outstanding_execs),
+			   atomic64_read(&xdev->total_execs),
+			   get_live_client_size(xdev));
+	buf += size;
+	if (xdev->layout == NULL)
+		return size;
+#if 0
+	// Enable in 2019.1
+	for (i = 0; i < xdev->layout->m_count; i++) {
+		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
+			continue;
+		size += sprintf(buf, "\t%s:\t%d\n", xdev->layout->m_ip_data[i].m_name,
+				xdev->ip_reference[i]);
+		buf += size;
+	}
+#endif
+	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
 
@@ -86,6 +92,23 @@ static ssize_t memstat_raw_show(struct device *dev,
 	return xocl_mm_sysfs_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
+
+static ssize_t p2p_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u64 size;
+
+	if (xdev->bypass_bar_addr)
+		return sprintf(buf, "1\n");
+	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
+			size > (1 << XOCL_PA_SECTION_SHIFT))
+		return sprintf(buf, "2\n");
+
+	return sprintf(buf, "0\n");
+}
+
+static DEVICE_ATTR_RO(p2p_enable);
 
 /* - End attributes-- */
 
@@ -230,13 +253,13 @@ static struct bin_attribute mem_topology_attr = {
 };
 
 static struct attribute *xocl_attrs[] = {
-	&dev_attr_xclbinid.attr,
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
+	&dev_attr_p2p_enable.attr,
 	NULL,
 };
 
@@ -257,15 +280,22 @@ static struct attribute_group xocl_attr_group = {
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;
+	struct pci_dev *rdev;
 
 	ret = sysfs_create_group(&dev->kobj, &xocl_attr_group);
 	if (ret)
 		xocl_err(dev, "create xocl attrs failed: %d", ret);
+
+	xocl_get_root_dev(to_pci_dev(dev), rdev);
+	ret = sysfs_create_link(&dev->kobj, &rdev->dev.kobj, "root_dev");
+	if (ret)
+		xocl_err(dev, "create root device link failed: %d", ret);
 
 	return ret;
 }
 
 void xocl_fini_sysfs(struct device *dev)
 {
+	sysfs_remove_link(&dev->kobj, "root_dev");
 	sysfs_remove_group(&dev->kobj, &xocl_attr_group);
 }

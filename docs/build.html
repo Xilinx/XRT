@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Building and Installing Software Stack &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Building and Installing Software Stack &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,8 +32,11 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
-        <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
+        <link rel="next" title="Yocto Recipes For Embedded Flow" href="yocto.html"/>
         <link rel="prev" title="System Requirements" href="system_requirements.html"/> 
 
   
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,17 +87,23 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Building and Installing Software Stack</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Building and Installing Software Stack</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xrt">XRT</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#build-the-runtime">Build the runtime</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">Build RPM package on RHEL/CentOS or DEB package on Ubuntu</a></li>
@@ -102,6 +114,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#xrt-documentation">XRT Documentation</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -115,8 +129,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -125,23 +141,40 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Building and Installing Software Stack</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Building and Installing Software Stack</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/build.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/build.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
@@ -151,47 +184,60 @@
 <h1>Building and Installing Software Stack<a class="headerlink" href="#building-and-installing-software-stack" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="xrt">
 <h2>XRT<a class="headerlink" href="#xrt" title="Permalink to this headline">¶</a></h2>
-<p>XRT requires C++11 compiler. Please install the necessary tools and dependencies
+<p>XRT requires C++14 compiler and a few development libraries bundled with modern Linux
+distribution. Please install the necessary tools and dependencies
 using the provided <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code></p>
-<p>On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
-is not applicable to Ubuntu which already has C++11 capable GCC.</p>
-<div class="highlight-none"><div class="highlight"><pre>scl enable devtoolset-6 bash
+<p>On RHEL/CentOS use devtoolset to switch to C++14 devlopment environment. This step
+is not applicable to Ubuntu which already has C++14 capable GCC.</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>scl enable devtoolset-6 bash
 </pre></div>
 </div>
 <div class="section" id="build-the-runtime">
 <h3>Build the runtime<a class="headerlink" href="#build-the-runtime" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-none"><div class="highlight"><pre>cd XRT/build
+<div class="highlight-none"><div class="highlight"><pre><span></span>cd build
 ./build.sh
 </pre></div>
 </div>
-<p><code class="docutils literal"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.</p>
+<p><code class="docutils literal"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.  On RHEL/CentOS, if <code class="docutils literal"><span class="pre">build.sh</span></code> was accidentally run prior to enabling the devtoolset, then it is necessary to clean stale files makefiles by running <code class="docutils literal"><span class="pre">build.sh</span> <span class="pre">clean</span></code> prior to the next build.</p>
 </div>
 <div class="section" id="build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">
 <h3>Build RPM package on RHEL/CentOS or DEB package on Ubuntu<a class="headerlink" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-none"><div class="highlight"><pre>cd XRT/build/Release
+<p>The package is actually automatically built for the <code class="docutils literal"><span class="pre">Release</span></code>
+version but not for the <code class="docutils literal"><span class="pre">Debug</span></code> version:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>cd build/Release
+make package
+cd ../Debug
 make package
 </pre></div>
 </div>
 </div>
 <div class="section" id="install-the-xrt-rpm-package">
 <h3>Install the XRT RPM package<a class="headerlink" href="#install-the-xrt-rpm-package" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-none"><div class="highlight"><pre>yum reinstall ./XRT-2.1.0-Linux.rpm
+<p>Install from inside either the <code class="docutils literal"><span class="pre">Release</span></code> or <code class="docutils literal"><span class="pre">Debug</span></code> directory
+according to purpose with (the actual package name might differ)</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>sudo yum reinstall ./XRT-2.1.0-Linux.rpm
 </pre></div>
 </div>
 </div>
 <div class="section" id="install-the-xrt-deb-package">
 <h3>Install the XRT DEB package<a class="headerlink" href="#install-the-xrt-deb-package" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-none"><div class="highlight"><pre>apt install --reinstall ./XRT-2.1.0-Linux.deb
+<p>Install from inside either the <code class="docutils literal"><span class="pre">Release</span></code> or <code class="docutils literal"><span class="pre">Debug</span></code> directory
+according to purpose with (the actual package name might differ)</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>sudo apt install --reinstall ./xrt_201830.2.1.0_18.10.deb
 </pre></div>
 </div>
 </div>
 </div>
 <div class="section" id="xrt-documentation">
 <h2>XRT Documentation<a class="headerlink" href="#xrt-documentation" title="Permalink to this headline">¶</a></h2>
-<p>XRT Documentation can be built automatically using Sphinx doc builder together with Linux kernel based kernel-doc utility.</p>
-<div class="highlight-none"><div class="highlight"><pre>cd XRT/src/runtime_src/doc/
-make
-firefox html/index.html
+<p>XRT Documentation can be built automatically using <code class="docutils literal"><span class="pre">Sphinx</span></code> doc builder
+together with Linux kernel based <code class="docutils literal"><span class="pre">kernel-doc</span></code> utility.</p>
+<p>To compile and install the documentation into the <code class="docutils literal"><span class="pre">doc</span></code> directory at
+the top of the repository:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>cd build
+./build.sh docs
+# To browse the generated local documentation with a web browser:
+xdg-open Release/runtime_src/doc/html/index.html
 </pre></div>
 </div>
 </div>
@@ -199,15 +245,18 @@ firefox html/index.html
 
 
            </div>
+           <div class="articleComments">
+            
+           </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="yocto.html" class="btn btn-neutral float-right" title="Yocto Recipes For Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="system_requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="system_requirements.html" class="btn btn-neutral" title="System Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -238,10 +287,11 @@ firefox html/index.html
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

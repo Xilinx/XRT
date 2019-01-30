@@ -36,6 +36,9 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
+#include "driver/xclng/xrt/util/message.h"
+#include <cstdio>
+#include <stdarg.h>
 
 #ifdef NDEBUG
 # undef NDEBUG
@@ -166,6 +169,19 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
             std::to_string(dev->user->instance);
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle > 0) {
+            drm_version version;
+            std::memset(&version, 0, sizeof(version));
+            version.name = new char[128];
+            version.name_len = 128;
+            version.desc = new char[512];
+            version.desc_len = 512;
+            version.date = new char[128];
+            version.date_len = 128;
+
+            int result = ioctl(mUserHandle, DRM_IOCTL_VERSION, &version);
+            if (result)
+                return;
+
             // Lets map 4M
             mUserMap = (char *)mmap(0, dev->user->user_bar_size,
                 PROT_READ | PROT_WRITE, MAP_SHARED, mUserHandle, 0);
@@ -219,7 +235,6 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
     memset(&mAioContext, 0, sizeof(mAioContext));
     if (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) != 0) {
         mAioEnabled = false;
-        std::cout << "Failed create AIO context" << std::endl;
     } else {
         mAioEnabled = true;
     }
@@ -310,6 +325,37 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
     }
 
     wordcopy(mem + offset, buffer, length);
+    return 0;
+}
+
+/*
+ * xclLogMsg()
+ */
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1)
+{
+    int len = std::vsnprintf(nullptr, 0, format, args1);
+    
+    if (len < 0) {
+        //illegal arguments
+        std::string err_str = "ERROR: Illegal arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+
+    if (len < 0) {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
+
     return 0;
 }
 
@@ -591,7 +637,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     dev->mgmt->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
 
     dev->mgmt->sysfs_get("sysmon", "temp", errmsg, info->mOnChipTemp);
-    info->mOnChipTemp /= 1000;
+
     dev->mgmt->sysfs_get("sysmon", "vcc_int", errmsg, info->mVInt);
     dev->mgmt->sysfs_get("sysmon", "vcc_aux", errmsg, info->mVAux);
     dev->mgmt->sysfs_get("sysmon", "vcc_bram", errmsg, info->mVBram);
@@ -675,6 +721,45 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
     return -EINVAL;
 }
 
+int xocl::XOCLShim::p2pEnable(bool enable, bool force)
+{
+    drm_xocl_p2p_enable obj;
+
+    std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
+    obj.enable = enable ? 1 : 0;
+    ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
+    if (errno == ENOSPC)
+	    return errno;
+    else if (errno == EALREADY && !force)
+	    return 0;
+
+    if (force) {
+        /* remove root bus and rescan */
+        const std::string input = "1\n";
+
+        std::string err;
+        pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "root_dev/remove", err, input);
+
+    
+        // initiate rescan "echo 1 > /sys/bus/pci/rescan"
+        const std::string rescan_path = "/sys/bus/pci/rescan";
+        std::ofstream rescanFile(rescan_path);
+        if(!rescanFile.is_open()) {
+            perror(rescan_path.c_str());
+            return errno;
+        }
+        rescanFile << input;
+    }
+
+    int p2p_enable = -1;
+    std::string err;
+    pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "p2p_enable", err, p2p_enable);
+    if (p2p_enable == 2)
+	    return EBUSY;
+
+    return 0;
+}
+
 /*
  * xclLockDevice()
  */
@@ -750,8 +835,8 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on card.\n"
-                    << "Please run xbutil flash -a all to flash card."
+                output << "Xclbin does not match DSA on card or xrt version.\n"
+                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
                     mLogStream << output.str();
@@ -1198,7 +1283,7 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
@@ -1213,7 +1298,7 @@ int xocl::XOCLShim::xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool s
 /*
  * xclCloseContext
  */
-int xocl::XOCLShim::xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const
+int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -1245,6 +1330,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
     q_info.write = 1;
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1267,6 +1353,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     q_info.rid = q_ctx->route;
     q_info.flowid = q_ctx->flow;
+    q_info.flags = q_ctx->flags;
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
@@ -1340,22 +1427,35 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
     /* TODO: populate actual and timeout args correctly */
-    struct timespec time;
-    time.tv_nsec = timeout*1000000;
-
+    struct timespec time, *ptime = NULL;
     int num_evt, i;
 
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, &time);
+    *actual = 0;
+    if (!mAioEnabled) {
+        num_evt = -EINVAL;
+        std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+        goto done;
+    }
+    if (timeout > 0) {
+        memset(&time, 0, sizeof(time));
+        time.tv_sec = timeout / 1000;
+        time.tv_nsec = (timeout % 1000) * 1000000;
+        ptime = &time;
+    }
+
+    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
         std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
         goto done;
     }
+    *actual = num_evt;
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
         comps[i].nbytes = ((struct io_event *)comps)[i].res;
         comps[i].err_code = ((struct io_event *)comps)[i].res2;
     }
+    num_evt = 0;
 
 done:
     return num_evt;
@@ -1382,6 +1482,11 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
         if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) {
             struct iocb cb;
             struct iocb *cbs[1];
+
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
 
             if (!(wr->flag & XCL_QUEUE_REQ_EOT) && (wr->bufs[i].len & 0xfff)) {
                 std::cerr << "ERROR: write without EOT has to be multiple of 4k" << std::endl;
@@ -1446,6 +1551,11 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb cb;
             struct iocb *cbs[1];
 
+            if (!mAioEnabled) {
+                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                break;
+            }
+
             memset(&cb, 0, sizeof(cb));
             cb.aio_fildes = (int)q_hdl;
             cb.aio_lio_opcode = IOCB_CMD_PREADV;
@@ -1464,7 +1574,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
         } else {
             rc = readv((int)q_hdl, iov, 2);
             if (rc < 0) {
-                std::cerr << "ERROR: write stream failed: " << rc << std::endl;
+                std::cerr << "ERROR: read stream failed: " << rc << std::endl;
                 break;
             }
         }
@@ -1555,6 +1665,18 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
 }
+
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    int ret = xocl::XOCLShim::xclLogMsg(handle, level, format, args);
+    va_end(args);
+
+    return ret;
+}
+
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
@@ -1667,6 +1789,12 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->resetDevice(kind) : -ENODEV;
+}
+
+int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
 /*

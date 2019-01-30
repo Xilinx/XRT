@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef LIBQDMA_QDMA_DEVICE_H_
@@ -82,6 +89,18 @@ void qdma_device_cleanup(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**
+ * qdma_device_get_descq_by_id() - get the qhndl for descq
+ *
+ * @param[in]	xdev:	pointer to xdev
+ * @param[in]	descq:	pointer to the descq
+ *
+ * @return	qhndl for descq on success
+ * @return	<0 on failure
+ *****************************************************************************/
+long qdma_device_get_id_from_descq(struct xlnx_dma_dev *xdev,
+				   struct qdma_descq *descq);
+/*****************************************************************************/
+/**
  * qdma_device_get_descq_by_id() - get the descq using the qid
  *
  * @param[in]	xdev:	pointer to xdev
@@ -95,6 +114,24 @@ void qdma_device_cleanup(struct xlnx_dma_dev *xdev);
  *****************************************************************************/
 struct qdma_descq *qdma_device_get_descq_by_id(struct xlnx_dma_dev *xdev,
 			unsigned long idx, char *buf, int buflen, int init);
+
+#ifdef DEBUGFS
+/*****************************************************************************/
+/**
+ * qdma_device_get_pair_descq_by_id() - get the descq using the qid
+ *
+ * @param[in]	xdev:	pointer to xdev
+ * @param[in]	idx:	sw qidx
+ * @param[in]	init:	indicates whether to initialize the device or not
+ * @param[in]	buflen:	length of the input buffer
+ * @param[out]	buf:	message buffer
+ *
+ * @return	pointer to descq on success
+ * @return	NULL on failure
+ *****************************************************************************/
+struct qdma_descq *qdma_device_get_pair_descq_by_id(struct xlnx_dma_dev *xdev,
+			unsigned long idx, char *buf, int buflen, int init);
+#endif
 
 /*****************************************************************************/
 /**
@@ -124,14 +161,16 @@ int qdma_device_prep_q_resource(struct xlnx_dma_dev *xdev);
 #ifndef __QDMA_VF__
 /*****************************************************************************/
 /**
- * qdma_csr_read_wbacc() - Read the write back accumulation value
+ * qdma_csr_read_cmpl_status_acc() - Read the completion status
+ * accumulation value
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[out]	wb_acc:		wb_acc value
+ * @param[out]	cs_acc:		cs_acc value
  *
  * @return	none
  *****************************************************************************/
-void qdma_csr_read_wbacc(struct xlnx_dma_dev *xdev, unsigned int *wb_acc);
+void qdma_csr_read_cmpl_status_acc(struct xlnx_dma_dev *xdev,
+		unsigned int *cs_acc);
 
 /*****************************************************************************/
 /**
@@ -177,18 +216,18 @@ void qdma_csr_read_timer_cnt(struct xlnx_dma_dev *xdev, unsigned int *cnt);
  *****************************************************************************/
 void qdma_csr_read_cnt_thresh(struct xlnx_dma_dev *xdev, unsigned int *th);
 #else
-#ifdef ERR_DEBUG
 /*****************************************************************************/
 /**
- * qdma_csr_read_wbacc() - Read the write back accumulation value
+ * device_set_qconf() - set device conf
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[out]	wb_acc:		wb_acc value
+ * @param[in]	qmax:		maximum request qsize for VF instance
  *
- * @return	none
+ * @return  0: success
+ * @return  < 0: failure
  *****************************************************************************/
-void qdma_csr_read_wbacc(struct xlnx_dma_dev *xdev, unsigned int *wb_acc);
-#endif
+int device_set_qconf(struct xlnx_dma_dev *xdev, int qmax, u32 *qbase);
+
 #endif
 
 
@@ -217,7 +256,7 @@ struct qdma_csr_info {
 	u32 bufsz;
 	u32 timer_cnt;
 	u32 cnt_th;
-	u32 wb_acc;
+	u32 cmpl_status_acc;
 };
 
 /*****************************************************************************/
@@ -232,6 +271,6 @@ struct qdma_csr_info {
  * @return      <0: failure
  *****************************************************************************/
 int qdma_csr_read(struct xlnx_dma_dev *xdev, struct qdma_csr_info *csr_info,
-                unsigned int timeout_ms);
+		unsigned int timeout_ms);
 
 #endif /* LIBQDMA_QDMA_DEVICE_H_ */

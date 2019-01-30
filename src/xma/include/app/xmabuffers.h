@@ -156,6 +156,8 @@ typedef struct XmaDataBuffer
     XmaBufferRef    data; /**< description of data buffer*/
     int32_t         alloc_size; /**< allocated size of data buffer */
     int32_t         is_eof; /**< flag to indicate that this buffer is EOF */
+    int32_t         pts; /**< presentation time stamp looping back to application */
+    int32_t         poc; /**< Picture order count for current output frame */
 } XmaDataBuffer;
 
 /**

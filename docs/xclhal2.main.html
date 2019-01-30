@@ -8,9 +8,11 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Hardware Abstraction Library &mdash; Xilinx Runtime 2018.2 documentation</title>
+  <title>Xilinx Runtime (XRT) Core Library &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
+  
+  
   
   
 
@@ -30,7 +32,10 @@
   
 
   
-    <link rel="top" title="Xilinx Runtime 2018.2 documentation" href="index.html"/>
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
         <link rel="next" title="Management Physical Function" href="mgmt-ioctl.main.html"/>
         <link rel="prev" title="Xilinx Runtime (XRT) Architecture" href="index.html"/> 
 
@@ -41,6 +46,7 @@
 
 <body class="wy-body-for-nav" role="document">
 
+   
   <div class="wy-grid-for-nav">
 
     
@@ -60,7 +66,7 @@
             
             
               <div class="version">
-                2018.2
+                2018.3
               </div>
             
           
@@ -81,17 +87,25 @@
           
             
             
-                <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">Hardware Abstraction Library</a></li>
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -105,8 +119,10 @@
 
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
-        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="index.html">Xilinx Runtime</a>
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
       </nav>
 
 
@@ -115,33 +131,50 @@
         <div class="rst-content">
           
 
- 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 <div role="navigation" aria-label="breadcrumbs navigation">
+
   <ul class="wy-breadcrumbs">
-    <li><a href="index.html">Docs</a> &raquo;</li>
-      
-    <li>Hardware Abstraction Library</li>
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Xilinx Runtime (XRT) Core Library</li>
+    
+    
       <li class="wy-breadcrumbs-aside">
         
-          
-            <a href="_sources/xclhal2.main.txt" rel="nofollow"> View page source</a>
+            
+            <a href="_sources/xclhal2.main.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
+    
   </ul>
+
+  
   <hr/>
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="hardware-abstraction-library">
-<h1>Hardware Abstraction Library<a class="headerlink" href="#hardware-abstraction-library" title="Permalink to this headline">¶</a></h1>
-<p><strong>Xilinx Accelerator Hardware Abstraction Library Interface Definitions</strong></p>
+  <div class="section" id="xilinx-runtime-xrt-core-library">
+<h1>Xilinx Runtime (XRT) Core Library<a class="headerlink" href="#xilinx-runtime-xrt-core-library" title="Permalink to this headline">¶</a></h1>
+<p><strong>Xilinx Runtime (XRT) Library Interface Definitions</strong></p>
 <p>Header file <em>xclhal2.h</em> defines data structures and function signatures exported by
-Hardware Abstraction Library (HAL). HAL is part of software stack which is integrated
+Xilinx Runtime (XRT) Library. XRT is part of software stack which is integrated
 into Xilinx reference platform.</p>
 <dl class="type">
 <dt id="c.xclDeviceHandle">
@@ -151,8 +184,8 @@ typedef <code class="descname">xclDeviceHandle</code><a class="headerlink" href=
 
 <p><strong>Description</strong></p>
 <p>A device handle of xclDeviceHandle kind is obtained by opening a device. Clients pass this
-device handle to refer to the opened device in all future interaction with HAL.</p>
-<p><strong>HAL Device Management APIs</strong></p>
+device handle to refer to the opened device in all future interaction with XRT.</p>
+<p><strong>XRT Device Management APIs</strong></p>
 <hr class="docutils" />
 <dl class="function">
 <dt id="c.xclProbe">
@@ -172,7 +205,7 @@ XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xclDeviceHandle" titl
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">deviceIndex</span></code></dt>
-<dd>Slot number of device 0 for first device, 1 for the second device...</dd>
+<dd>Slot number of device 0 for first device, 1 for the second device…</dd>
 <dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">logFileName</span></code></dt>
 <dd>Log file to use for optional logging</dd>
 <dt><code class="docutils literal"><span class="pre">xclVerbosityLevel</span> <span class="pre">level</span></code></dt>
@@ -207,7 +240,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class=
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Reset the device. All running kernels will be killed and buffers in DDR will be
-purged. A device may be reset if a user&#8217;s application dies without waiting for
+purged. A device may be reset if a user’s application dies without waiting for
 running kernel(s) to finish.</p>
 <dl class="function">
 <dt id="c.xclGetDeviceInfo2">
@@ -287,7 +320,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetSectionInfo</code><span cla
 <dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">*</span> <span class="pre">size</span></code></dt>
 <dd>Pointer to preallocated memory which will store the return size.
 kind:           axlf_section_kind for which info is being queried
-index:          The (sub)section index for the &#8220;kind&#8221; type.</dd>
+index:          The (sub)section index for the “kind” type.</dd>
 <dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">axlf_section_kind</span> <span class="pre">kind</span></code></dt>
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">index</span></code></dt>
@@ -346,7 +379,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclUnlockDevice</code><span class
 <p>0 on success or appropriate error number</p>
 <dl class="function">
 <dt id="c.xclOpenContext">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclOpenContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclContextProperties *<em>&nbsp;context</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpenContext" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclOpenContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uuid_t<em>&nbsp;xclbinId</em>, unsigned int<em>&nbsp;ipIndex</em>, bool<em>&nbsp;shared</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpenContext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create shared/exclusive context on compute units</p>
 </dd></dl>
 
@@ -354,15 +387,37 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclOpenContext</code><span class=
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">xclContextProperties</span> <span class="pre">*</span> <span class="pre">context</span></code></dt>
-<dd>context properties object populated by caller</dd>
+<dt><code class="docutils literal"><span class="pre">uuid_t</span> <span class="pre">xclbinId</span></code></dt>
+<dd>UUID of the xclbin image running on the device</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex</span></code></dt>
+<dd>IP/CU index in the IP LAYOUT array</dd>
+<dt><code class="docutils literal"><span class="pre">bool</span> <span class="pre">shared</span></code></dt>
+<dd>Shared access or exclusive access</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
-<p>The context is necessary before submitting execution jobs using <code class="xref c c-func docutils literal"><span class="pre">xclExecBO()</span></code>. Contexts may be
-exclusive or shared. Allocation of exclusive contexts on a set of compute units would succeed
-only if another client has not already setup up a context on those compute units. Shared
+<p>The context is necessary before submitting execution jobs using <a class="reference internal" href="#c.xclExecBuf" title="xclExecBuf"><code class="xref c c-func docutils literal"><span class="pre">xclExecBuf()</span></code></a>. Contexts may be
+exclusive or shared. Allocation of exclusive contexts on a compute unit would succeed
+only if another client has not already setup up a context on that compute unit. Shared
 contexts can be concurrently allocated by many processes on the same compute units.</p>
+<dl class="function">
+<dt id="c.xclCloseContext">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclCloseContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uuid_t<em>&nbsp;xclbinId</em>, unsigned<em>&nbsp;ipIndex</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCloseContext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close previously opened context</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal"><span class="pre">uuid_t</span> <span class="pre">xclbinId</span></code></dt>
+<dd>UUID of the xclbin image running on the device</dd>
+<dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">ipIndex</span></code></dt>
+<dd>IP/CU index in the IP LAYOUT array</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
+<p>Close a previously allocated shared/exclusive context for a compute unit.</p>
 <dl class="function">
 <dt id="c.xclBootFPGA">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclBootFPGA" title="Permalink to this definition">¶</a></dt>
@@ -377,7 +432,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="si
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>This should only be called when there are no other clients. It will cause PCIe bus re-enumeration</p>
-<p><strong>HAL Buffer Management APIs</strong></p>
+<p><strong>XRT Buffer Management APIs</strong></p>
 <hr class="docutils" />
 <p>Buffer management APIs are used for managing device memory and migrating buffers
 between host and device memory</p>
@@ -481,7 +536,7 @@ to skip from the beginning of the BO before copying-out <code class="docutils li
 <dl class="function">
 <dt id="c.xclMapBO">
 XCL_DRIVER_DLLESPEC void * <code class="descname">xclMapBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;boHandle</em>, bool<em>&nbsp;write</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclMapBO" title="Permalink to this definition">¶</a></dt>
-<dd><p>Memory map BO into user&#8217;s address space</p>
+<dd><p>Memory map BO into user’s address space</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -600,10 +655,10 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetBOProperties</code><span cl
 <p><strong>Return</strong></p>
 <p>0 on success</p>
 <p>This is the prefered method for obtaining BO property information.</p>
-<p><strong>HAL Legacy Buffer Management APIs</strong></p>
+<p><strong>XRT Legacy Buffer Management APIs</strong></p>
 <hr class="docutils" />
-<p>Do <em>not</em> develop new features using the following 5 API&#8217;s. These are for backwards
-compatibility with classic HAL interface and will be deprecated in future. New clients
+<p>Do <em>not</em> develop new features using the following 5 API’s. These are for backwards
+compatibility with classic XRT interface and will be deprecated in future. New clients
 should use BO based APIs defined above</p>
 <dl class="function">
 <dt id="c.xclAllocDeviceBuffer">
@@ -708,7 +763,7 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclCopyBufferDevice2Host</code
 <p>Copy contents of previously allocated device memory to host buffer. <code class="docutils literal"><span class="pre">skip</span></code> specifies how many bytes to skip
 from the beginning of the source before copying <code class="docutils literal"><span class="pre">size</span></code> bytes of device buffer. This API will be
 deprecated in future. Use <a class="reference internal" href="#c.xclSyncBO" title="xclSyncBO"><code class="xref c c-func docutils literal"><span class="pre">xclSyncBO()</span></code></a> together with other BO APIs.</p>
-<p><strong>HAL Unmanaged DMA APIs</strong></p>
+<p><strong>XRT Unmanaged DMA APIs</strong></p>
 <hr class="docutils" />
 <p>Unmanaged DMA APIs are for exclusive use by the debuggers and tools. The APIs allow clinets to read/write
 from/to absolute device address. No checks are performed if a buffer was allocated before at the specified
@@ -736,7 +791,7 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclUnmgdPread</code><span cla
 <p><strong>Return</strong></p>
 <p>size of bytes read or appropriate error number</p>
 <p>This API may be used to perform DMA operation from absolute location specified. Users
-may use this if they want to perform their own device memory management &#8211; not using the buffer
+may use this if they want to perform their own device memory management – not using the buffer
 object (BO) framework defined before.</p>
 <dl class="function">
 <dt id="c.xclUnmgdPwrite">
@@ -760,7 +815,7 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclUnmgdPwrite</code><span cl
 <p><strong>Return</strong></p>
 <p>size of bytes written or appropriate error number</p>
 <p>This API may be used to perform DMA operation to an absolute location specified. Users
-may use this if they want to perform their own device memory management &#8211; not using the buffer
+may use this if they want to perform their own device memory management – not using the buffer
 object (BO) framework defined before.</p>
 <dl class="function">
 <dt id="c.xclWrite">
@@ -784,7 +839,9 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="si
 <p><strong>Return</strong></p>
 <p>size of bytes written or appropriate error number</p>
 <p>This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
-the address space. A device may have many address spaces.</p>
+the address space. A device may have many address spaces.
+<em>This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+execution management please use XRT Compute Unit Execution Management APIs defined below</em></p>
 <dl class="function">
 <dt id="c.xclRead">
 XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, void *<em>&nbsp;hostbuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRead" title="Permalink to this definition">¶</a></dt>
@@ -807,8 +864,10 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig
 <p><strong>Return</strong></p>
 <p>size of bytes written or appropriate error number</p>
 <p>This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
-the address space. A device may have many address spaces.</p>
-<p><strong>HAL Compute Unit Execution Management APIs</strong></p>
+the address space. A device may have many address spaces.
+<em>This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+execution management please use XRT Compute Unit Execution Management APIs defined below</em></p>
+<p><strong>XRT Compute Unit Execution Management APIs</strong></p>
 <p>These APIs are under development. These functions will be used to start compute
 units and wait for them to finish.</p>
 <dl class="function">
@@ -826,9 +885,8 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclExecBuf</code><span class="sig
 </dl>
 <p><strong>Return</strong></p>
 <p>0 or standard error number</p>
-<p>This API is EXPERIMENTAL in this release. Submit an exec buffer for execution. The exec
-buffer layout is defined by struct ert_packet which is defined in file <em>ert.h</em>. The BO
-should been allocated with DRM_XOCL_BO_EXECBUF flag.</p>
+<p>Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
+which is defined in file <em>ert.h</em>. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.</p>
 <dl class="function">
 <dt id="c.xclExecBufWithWaitList">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclExecBufWithWaitList</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;cmdBO</em>, size_t<em>&nbsp;num_bo_in_wait_list</em>, unsigned int *<em>&nbsp;bo_wait_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclExecBufWithWaitList" title="Permalink to this definition">¶</a></dt>
@@ -867,8 +925,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclExecWait</code><span class="si
 </dl>
 <p><strong>Return</strong></p>
 <p>Same code as poll system call</p>
-<p>This API is EXPERIMENTAL in this release
-Wait for notification from the hardware. The function essentially calls &#8220;poll&#8221; system
+<p>Wait for notification from the hardware. The function essentially calls “poll” system
 call on the driver file handle. The return value has same semantics as poll system call.
 If return value is &gt; 0 caller should check the status of submitted exec buffers</p>
 <dl class="function">
@@ -898,7 +955,7 @@ struct <code class="descname">xclQueueContext</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclQueueContext {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclQueueContext {
 };
 </pre></div>
 </div>
@@ -920,7 +977,8 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span c
 </dl>
 <p><strong>Description</strong></p>
 <p>This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
-successes.</p>
+successes.
+This feature will be enabled in a future release.</p>
 <dl class="function">
 <dt id="c.xclAllocQDMABuf">
 XCL_DRIVER_DLLESPEC void * <code class="descname">xclAllocQDMABuf</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, uint64_t *<em>&nbsp;buf_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocQDMABuf" title="Permalink to this definition">¶</a></dt>
@@ -938,7 +996,8 @@ XCL_DRIVER_DLLESPEC void * <code class="descname">xclAllocQDMABuf</code><span cl
 </dl>
 <p><strong>Description</strong></p>
 <p>return val: buffer pointer</p>
-<p>These functions allocate and free DMA buffers which is used for queue read and write</p>
+<p>These functions allocate and free DMA buffers which is used for queue read and write.
+This feature will be enabled in a future release.</p>
 <dl class="function">
 <dt id="c.xclDestroyQueue">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclDestroyQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclDestroyQueue" title="Permalink to this definition">¶</a></dt>
@@ -953,7 +1012,8 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclDestroyQueue</code><span class
 <dd>Queue handle</dd>
 </dl>
 <p><strong>Description</strong></p>
-<p>This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.</p>
+<p>This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
+This feature will be enabled in a future release.</p>
 <dl class="function">
 <dt id="c.xclModifyQueue">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclModifyQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclModifyQueue" title="Permalink to this definition">¶</a></dt>
@@ -1004,16 +1064,51 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclStopQueue</code><span class="s
 wr_complete and rd_complete will be called with error wbe for flushed requests.
 TODO: remove this</p>
 <dl class="type">
-<dt id="c.xclWRBuffer">
-struct <code class="descname">xclWRBuffer</code><a class="headerlink" href="#c.xclWRBuffer" title="Permalink to this definition">¶</a></dt>
+<dt id="c.xclReqBuffer">
+struct <code class="descname">xclReqBuffer</code><a class="headerlink" href="#c.xclReqBuffer" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclWRBuffer {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclReqBuffer {
+  union {unnamed_union};
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+</dl>
+<dl class="type">
+<dt id="c.xclQueueRequestKind">
+enum <code class="descname">xclQueueRequestKind</code><a class="headerlink" href="#c.xclQueueRequestKind" title="Permalink to this definition">¶</a></dt>
+<dd><p>request type.</p>
+</dd></dl>
+
+<p><strong>Constants</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_WRITE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_READ</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="type">
+<dt id="c.xclQueueRequestFlag">
+enum <code class="descname">xclQueueRequestFlag</code><a class="headerlink" href="#c.xclQueueRequestFlag" title="Permalink to this definition">¶</a></dt>
+<dd><p>flags associated with the request.</p>
+</dd></dl>
+
+<p><strong>Constants</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_REQ_EOT</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_REQ_CDH</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_REQ_NONBLOCKING</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">XCL_QUEUE_REQ_SILENT</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
 <dl class="type">
 <dt id="c.xclQueueRequest">
 struct <code class="descname">xclQueueRequest</code><a class="headerlink" href="#c.xclQueueRequest" title="Permalink to this definition">¶</a></dt>
@@ -1021,7 +1116,19 @@ struct <code class="descname">xclQueueRequest</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre>struct xclQueueRequest {
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclQueueRequest {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xclReqCompletion">
+struct <code class="descname">xclReqCompletion</code><a class="headerlink" href="#c.xclReqCompletion" title="Permalink to this definition">¶</a></dt>
+<dd><p>read/write completion keep this in sync with cl_streams_poll_req_completions in driver/include/stream.h</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>struct xclReqCompletion {
 };
 </pre></div>
 </div>
@@ -1059,10 +1166,11 @@ The bytes been written should equal to bytes been requested unless error happens
 <dt>blocking:</dt>
 <dd>return only when the entire buf has been written, or error.</dd>
 <dt>non-blocking:</dt>
-<dd>return 0 immediatly. wr_complete is called when DMA is completed.</dd>
-<dt>complete callback:</dt>
-<dd>used only with non-blocking.
-(there should be a way to poll wr complete to avoid too many notifications)</dd>
+<dd>return 0 immediatly.</dd>
+<dt>EOT:</dt>
+<dd>end of transmit signal will be added at last</dd>
+<dt>silent: (only used with non-blocking);</dt>
+<dd>No event generated after write completes</dd>
 </dl>
 </dd>
 </dl>
@@ -1089,40 +1197,74 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclReadQueue</code><span clas
 <dd><dl class="first last docutils">
 <dt>stream Queue:</dt>
 <dd>read until all the requested bytes is read or error happens.</dd>
-<dt>packet Queue:</dt>
-<dd>read until packet boundary arrives.
-any incoming packet beyond requested buffer size will be dropped and rd_complete will be
-called with error code. (will HW be able to do this??)</dd>
-</dl>
-</dd>
-<dt>This function supports blocking, non-blocking and polling</dt>
-<dd><dl class="first last docutils">
 <dt>blocking:</dt>
 <dd>return only when the requested bytes are read (stream) or the entire packet is read (packet)</dd>
 <dt>non-blocking:</dt>
-<dd>return 0 immediatly. rd_complete is called when DMA is completed.</dd>
-<dt>polling: do not need buffer</dt>
-<dd>return number of bytes or packets which is ready. it could call blocking read to get the data
-if there is any.</dd>
-<dt>complete:</dt>
-<dd>used only with non-blocking.
-good place to do polling which will decrease the completion notifciaton.</dd>
+<dd>return 0 immediatly.</dd>
+<dt>TODO:</dt>
+<dd>EOT</dd>
 </dl>
 </dd>
 </dl>
+<dl class="function">
+<dt id="c.xclPollCompletion">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, int<em>&nbsp;min_compl</em>, int<em>&nbsp;max_compl</em>, <a class="reference internal" href="#c.xclReqCompletion" title="xclReqCompletion">xclReqCompletion</a> *<em>&nbsp;comps</em>, int *<em>&nbsp;actual_compl</em>, int<em>&nbsp;timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclPollCompletion" title="Permalink to this definition">¶</a></dt>
+<dd><p>for non-blocking read/write, check if there is any request been completed. <strong>min_compl</strong> unblock only when receiving min_compl completions <strong>max_compl</strong> Max number of completion with one poll</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">min_compl</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">max_compl</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">xclReqCompletion</span> <span class="pre">*</span> <span class="pre">comps</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">actual_compl</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">timeout</span></code></dt>
+<dd>timeout</dd>
+</dl>
+<p><strong>Description</strong></p>
+<p>return number of requests been completed.</p>
+<dl class="function">
+<dt id="c.xclWriteHostEvent">
+XCL_DRIVER_DLLESPEC void <code class="descname">xclWriteHostEvent</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclPerfMonEventType<em>&nbsp;type</em>, xclPerfMonEventID<em>&nbsp;id</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteHostEvent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">xclPerfMonEventType</span> <span class="pre">type</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal"><span class="pre">xclPerfMonEventID</span> <span class="pre">id</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<p><strong>Description</strong></p>
+<hr class="docutils" />
+<p>These functions are used to read and write to the performance monitoring infrastructure.
+OpenCL runtime will be using the BUFFER MANAGEMNT APIs described above to manage OpenCL buffers.
+It would use these functions to initialize and sample the performance monitoring on the card.
+Note that the offset is wrt the address space</p>
 </div>
 
 
+           </div>
+           <div class="articleComments">
+            
            </div>
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-right" title="Management Physical Function" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-right" title="Management Physical Function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Xilinx Runtime (XRT) Architecture" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral" title="Xilinx Runtime (XRT) Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1153,10 +1295,11 @@ good place to do polling which will decrease the completion notifciaton.</dd>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'2018.2',
+            VERSION:'2018.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
         };
     </script>
       <script type="text/javascript" src="_static/jquery.js"></script>

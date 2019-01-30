@@ -8,8 +8,8 @@ file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/xocl_ioct
 file(GLOB XRT_XCLHAL2_H    ${XRT_RUNTIME_SRC_DIR}/driver/include/xclhal2.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
 
-execute_process(COMMAND mkdir -p ${DOC_CORE_DIR})
-execute_process(COMMAND /bin/cp -rf ${XRT_DOC_TOC_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+file(MAKE_DIRECTORY ${DOC_CORE_DIR})
+file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 file(GLOB XRT_DOC_SRC
   ${DOC_TOC_DIR}/*.rst
@@ -52,7 +52,7 @@ else ()
     )
 
   add_custom_target(
-    xrt_doc
+    xrt_docs
     DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND mkdir -p html

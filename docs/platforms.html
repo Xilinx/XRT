@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>XRT Platforms &mdash; Xilinx Runtime 2018.3 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
+        <link rel="next" title="Linux Sys FileSystem Nodes" href="sysfs.html"/>
+        <link rel="prev" title="User Physical Function" href="xocl_ioctl.main.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2018.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Platforms</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pcie-based-platforms">PCIe Based Platforms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mgmt-pf">MGMT PF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#user-pf">USER PF</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#mpsoc-based-embedded-platforms">MPSoC Based Embedded Platforms</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Xilinx Runtime</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>XRT Platforms</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/platforms.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="xrt-platforms">
+<h1>XRT Platforms<a class="headerlink" href="#xrt-platforms" title="Permalink to this headline">¶</a></h1>
+<div align="center" class="align-center"><img alt="_images/XRT-Architecture.svg" src="_images/XRT-Architecture.svg" /></div>
+<p>XRT exports a common stack across PCIe based platforms and MPSoC based platforms.
+From user perspective there is very little porting effort when migrating an
+application from one class of platform to another.</p>
+<div class="section" id="pcie-based-platforms">
+<h2>PCIe Based Platforms<a class="headerlink" href="#pcie-based-platforms" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>VCU1525</li>
+<li>U200</li>
+<li>U250</li>
+<li>U280</li>
+<li>AWS F1</li>
+</ol>
+<p>PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
+The shell (previously known as DSA) has two phsycial functions: mgmt pf and user pf.</p>
+<div class="section" id="mgmt-pf">
+<h3>MGMT PF<a class="headerlink" href="#mgmt-pf" title="Permalink to this headline">¶</a></h3>
+<p>XRT Linux kernel driver <em>xclmgmt</em> binds to mgmt pf. The driver is organized into subdevices and handles
+the following functionality:</p>
+<ol class="arabic simple">
+<li>ICAP programming</li>
+<li>CLock scaling</li>
+<li>Loading firmware container, dsabin (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)</li>
+<li>In-band sensors: Temp, Voltage, Power, etc</li>
+<li>AXI Firewall management</li>
+<li>Access to Flash programmer</li>
+<li>Device reset and rescan</li>
+<li>Hardware mailbox</li>
+<li>Interrupt handling for AXI Firewall and Mailbox</li>
+</ol>
+</div>
+<div class="section" id="user-pf">
+<h3>USER PF<a class="headerlink" href="#user-pf" title="Permalink to this headline">¶</a></h3>
+<p>XRT Linux kernel driver <em>xocl</em> binds to user pf. The driver is organized into subdevices and handles the
+following functionality:</p>
+<ol class="arabic simple">
+<li>Device memory management as abstracted buffer objects</li>
+<li>XDMA MM PCIe DMA engine programming</li>
+<li>QDMA Streaming DMA engine programming</li>
+<li>Multi-process aware context management</li>
+<li>Standardized compute unit execution management (optionally with help of ERT) for client processes</li>
+<li>Interrupt handling for DMA, Compute unit completion and Mailbox</li>
+</ol>
+</div>
+</div>
+<div class="section" id="mpsoc-based-embedded-platforms">
+<h2>MPSoC Based Embedded Platforms<a class="headerlink" href="#mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li>ZCU19</li>
+<li>ZCU102</li>
+<li>ZCU104</li>
+<li>ZCU106</li>
+</ol>
+<p>MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
+driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
+following functionality</p>
+<ol class="arabic simple">
+<li>CMA buffer management</li>
+<li>SMMU programming for SVM platforms</li>
+<li>Standardized compute unit execution management on behalf of client processes</li>
+<li>xclbin download for platforms with Partial Reconfiguration support</li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="sysfs.html" class="btn btn-neutral float-right" title="Linux Sys FileSystem Nodes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral" title="User Physical Function" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2018, Xilinx, Inc.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'2018.3',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -32,23 +32,6 @@
 #include "xclfeatures.h"
 #include "../xocl_drv.h"
 
-
-#define XCLMGMT_DRIVER_MAJOR 2018
-#define XCLMGMT_DRIVER_MINOR 2
-#define XCLMGMT_DRIVER_PATCHLEVEL 2
-
-#define	XCLMGMT_MODULE_VERSION		\
-	__stringify(XCLMGMT_DRIVER_MAJOR) "."		      \
-	__stringify(XCLMGMT_DRIVER_MINOR) "."		      \
-	__stringify(XCLMGMT_DRIVER_PATCHLEVEL)
-
-#define XCLMGMT_DRIVER_VERSION_NUMBER					\
-	((XCLMGMT_DRIVER_MAJOR)*1000 + (XCLMGMT_DRIVER_MINOR)*100 + 	\
-	XCLMGMT_DRIVER_PATCHLEVEL)
-
-#define XCLMGMT_MINOR_BASE (0)
-#define XCLMGMT_MINOR_COUNT (16)
-
 #define DRV_NAME "xclmgmt"
 
 #define	MGMT_READ_REG32(lro, off)	\
@@ -99,6 +82,12 @@ struct xclmgmt_proc_ctx {
 	bool			signaled;
 };
 
+struct xclmgmt_char {
+	struct xclmgmt_dev *lro;
+	struct cdev cdev;
+	struct device *sys_device;
+};
+
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -106,12 +95,10 @@ struct xclmgmt_dev {
 
 	/* the kernel pci device data structure provided by probe() */
 	struct pci_dev *pci_dev;
-	struct pci_dev *user_pci_dev;
 	int instance;
-	struct xclmgmt_char *user_char_dev;
+	struct xclmgmt_char user_char_dev;
 	int axi_gate_frozen;
 	unsigned short ocl_frequency[4];
-	u64 unique_id_last_bitstream;
 
 	struct xocl_context_hash ctx_table;
 
@@ -125,12 +112,6 @@ struct xclmgmt_dev {
 #endif
 	int msix_user_start_vector;
 	bool ready;
-};
-
-struct xclmgmt_char {
-	struct xclmgmt_dev *lro;
-	struct cdev cdev;
-	struct device *sys_device;
 };
 
 extern int health_check;
@@ -181,5 +162,3 @@ int mgmt_start_mb(struct xclmgmt_dev *lro);
 int mgmt_stop_mb(struct xclmgmt_dev *lro);
 
 #endif
-
-

@@ -154,7 +154,10 @@ xma_plg_register_dump(XmaHwSession s_handle,
     for (int32_t i = 0; i < num_words; i++)
     {
         uint32_t value;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         xma_plg_register_read(s_handle, &value, sizeof(value), i*4);
+#pragma GCC diagnostic pop
         printf("0x%08X\t\t0x%08X\n", i*4, value);
     }
 }

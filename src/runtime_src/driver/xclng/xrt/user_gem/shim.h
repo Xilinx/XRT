@@ -158,6 +158,7 @@ public:
     XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
+    static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1);
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -182,6 +183,7 @@ public:
     bool isGood() const;
     static XOCLShim *handleCheck(void * handle);
     int resetDevice(xclResetKind kind);
+    int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -211,6 +213,7 @@ public:
     double xclGetWriteMaxBandwidthMBps();
     void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
     uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+    uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
     void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                             char* slotName, uint32_t length);
     size_t xclPerfMonClockTraining(xclPerfMonType type);
@@ -238,8 +241,8 @@ public:
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
-    int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-    int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
+    int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }

@@ -19,7 +19,6 @@
 #include "context.h"
 #include "error.h"
 
-#include "xrt/util/memory.h"
 
 #include <iostream>
 
@@ -80,6 +79,14 @@ memory::
 
   for (auto& cb: sg_destructor_callbacks)
     cb(this);
+
+  if(m_connidx==-1)
+    return;
+  //Not very clean, having to remove a const cast.
+  const device* dev = get_resident_device();
+  if(dev)
+    const_cast<device*>(dev)->clear_connection(m_connidx);
+
    //appdebug::remove_clmem(this);
 }
 
@@ -246,7 +253,7 @@ memory::
 add_dtor_notify(std::function<void()> fcn)
 {
   if (!m_dtor_notify)
-    m_dtor_notify = xrt::make_unique<std::vector<std::function<void()>>>();
+    m_dtor_notify = std::make_unique<std::vector<std::function<void()>>>();
   m_dtor_notify->emplace_back(std::move(fcn));
 }
 

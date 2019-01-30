@@ -48,11 +48,41 @@ static int user_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 
 static int user_dev_online(xdev_handle_t xdev_hdl)
 {
-	return 0;
+	struct xocl_qdma_dev    *qd;
+	struct xocl_dev			*ocl_dev;
+	struct pci_dev *pdev;
+	int ret;
+
+	pdev = XDEV(xdev_hdl)->pdev;
+        qd = pci_get_drvdata(pdev);
+	ocl_dev = (struct xocl_dev *)qd;
+
+	ret = qdma_device_open(XOCL_QDMA_PCI, &qd->dev_conf,
+		(unsigned long *)(&qd->ocl_dev.dma_handle));
+	if (ret < 0) {
+		xocl_err(&pdev->dev, "QDMA Device Open failed");
+	}
+
+	if (MM_DMA_DEV(ocl_dev)) {
+		/* use 2 channels (queue pairs) */
+		ret = xocl_set_max_channel(ocl_dev, 2);
+		if (ret)
+			xocl_err(&pdev->dev, "Set channel failed");
+	}
+
+
+	return ret;
 } 
 
 static int user_dev_offline(xdev_handle_t xdev_hdl)
 {
+	struct xocl_qdma_dev    *qd;
+	struct pci_dev *pdev;
+
+	pdev = XDEV(xdev_hdl)->pdev;
+        qd = pci_get_drvdata(pdev);
+
+	qdma_device_close(pdev, (unsigned long)qd->ocl_dev.dma_handle);
 	return 0;
 } 
 
@@ -87,18 +117,22 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 	ocl_dev->core.pdev = pdev;
 	xocl_fill_dsa_priv(ocl_dev, dev_info);
 
+	ret = xocl_alloc_dev_minor(ocl_dev);
+	if (ret)
+		goto failed;
+
 	conf = &qd->dev_conf;
 	memset(conf, 0, sizeof(*conf));
-	conf->poll_mode = 1;
 	conf->pdev = pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
-	conf->master_pf =  PCI_FUNC(pdev->devfn);
+	conf->master_pf = 1;
+	conf->qsets_max = 2048;
 
 	ret = qdma_device_open(XOCL_QDMA_PCI, conf,
 		(unsigned long *)(&ocl_dev->dma_handle));
 	if (ret < 0) {
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
-		goto failed;
+		goto failed_open_dev;
 	}
 
 	xocl_info(&pdev->dev, "QDMA open succeed: intr: %d",
@@ -137,6 +171,12 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 		goto failed_drm_init;
 	}
 
+	ret = xocl_p2p_mem_reserve(ocl_dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
+	}
+
+
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to init sysfs");
@@ -147,9 +187,12 @@ static int xocl_user_qdma_probe(struct pci_dev *pdev,
 
 	(void) xocl_icap_unlock_bitstream(qd, NULL, 0);
 
+	xocl_core_init(ocl_dev, NULL);
+
 	return 0;
 
 failed_sysfs_init:
+	xocl_p2p_mem_release(&qd->ocl_dev, false);
 	xocl_drm_fini(&qd->ocl_dev);
 
 failed_drm_init:
@@ -159,6 +202,8 @@ failed_reg_subdevs:
 	pci_iounmap(pdev, ocl_dev->base_addr);
 failed_map_io:
 	qdma_device_close(pdev, (unsigned long)ocl_dev->dma_handle);
+failed_open_dev:
+	xocl_free_dev_minor(ocl_dev);
 failed:
 	if (ocl_dev->user_msix_table)
 		devm_kfree(&pdev->dev, ocl_dev->user_msix_table);
@@ -177,6 +222,7 @@ void xocl_user_qdma_remove(struct pci_dev *pdev)
 		return;
 	}
 
+	xocl_p2p_mem_release(&qd->ocl_dev, false);
 	xocl_subdev_destroy_all(&qd->ocl_dev);
 
 	xocl_fini_sysfs(&pdev->dev);
@@ -188,8 +234,11 @@ void xocl_user_qdma_remove(struct pci_dev *pdev)
 		devm_kfree(&pdev->dev, qd->ocl_dev.user_msix_table);
 	mutex_destroy(&qd->ocl_dev.user_msix_table_lock);
 
-	devm_kfree(&pdev->dev, qd); 
+	xocl_free_dev_minor(&qd->ocl_dev);
+
 	pci_set_drvdata(pdev, NULL);
+
+	xocl_core_fini(qd);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,

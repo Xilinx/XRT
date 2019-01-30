@@ -35,6 +35,7 @@
 
 #include <memory>
 #include <cstring>
+#include <cerrno>
 #include <algorithm>
 #include <thread>
 #include <list>
@@ -265,7 +266,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
   // payload size
   epacket->count = 5 + cu_addr_map.size();
 
-  XRT_DEBUG(std::cout,"configure scheduler\n");
+  XRT_DEBUG(std::cout,"configure scheduler(",getpid(),")\n");
   auto exec_bo = configure->get_exec_bo();
   device->exec_buf(exec_bo);
 
@@ -283,7 +284,7 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
     s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
   }
 
-  XRT_DEBUG(std::cout,"configure complete\n");
+  XRT_DEBUG(std::cout,"configure complete(",getpid(),")\n");
 }
 
 }} // kds,xrt

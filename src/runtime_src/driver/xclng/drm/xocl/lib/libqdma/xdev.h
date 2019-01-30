@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __XDEV_H__
@@ -23,13 +30,50 @@
 #include <linux/pci.h>
 
 #include "libqdma_export.h"
-#include "qdma_mbox.h"
+#include "qdma_qconf_mgr.h"
+#ifdef DEBUGFS
+#include "qdma_debugfs.h"
+#endif
 
+/**
+ * QDMA bars
+ */
+#define QDMA_BAR_NUM			6
 /**
  * QDMA config bar size - 64MB
  */
 #define QDMA_MAX_BAR_LEN_MAPPED		0x4000000
 
+/*
+ *module_param_array:
+ *config_bar=<bus_num(16bits)><pf0_config_bar(4bits)><pf1_config_bar(4bits)>
+ *		<pf2_config_bar(4bits)><pf3_config_bar(4bits)>
+ *config_bar=<bus_num(16bits)><vf_pf0_config_bar(4bits)>
+ *		<vf_pf1_config_bar(4bits)><vf_pf2_config_bar(4bits)>
+ *		<vf_pf3_config_bar(4bits)>
+ *
+ */
+#define BUS_NUM_MASK			0xFFFF0000
+#define BUS_NUM_SHIFT			16
+
+#define PF_DEV_0_MASK			0x0000F000
+#define PF_DEV_0_SHIFT			12
+#define PF_DEV_1_MASK			0x00000F00
+#define PF_DEV_1_SHIFT			8
+#define PF_DEV_2_MASK			0x000000F0
+#define PF_DEV_2_SHIFT			4
+#define PF_DEV_3_MASK			0x0000000F
+#define PF_DEV_3_SHIFT			0
+
+#define VF_PF_IDENTIFIER_MASK	0xF
+#define VF_PF_IDENTIFIER_SHIFT  8
+
+enum qdma_pf_devices {
+	PF_DEVICE_0 = 0,
+	PF_DEVICE_1,
+	PF_DEVICE_2,
+	PF_DEVICE_3
+};
 /**
  * number of bits to describe the DMA transfer descriptor
  */
@@ -77,19 +121,28 @@ typedef irqreturn_t (*f_intr_handler)(int irq_index, int irq, void *dev_id);
  * @brief	interrut coalescing configuration
  */
 struct intr_coal_conf {
-	u16 vec_id;
 	/**< interrupt vector index */
-	u16 intr_rng_num_entries;
+	u16 vec_id;
 	/**< number of entries in interrupt ring per vector */
-	dma_addr_t intr_ring_bus;
-	/**< interrupt ring dma base address */
-	struct qdma_intr_ring *intr_ring_base;
+	u16 intr_rng_num_entries;
 	/**< interrupt ring base address */
-	u8 color;
+	dma_addr_t intr_ring_bus;
+	struct qdma_intr_ring *intr_ring_base;
 	/**< color value indicates the valid entry in the interrupt ring */
-	unsigned int cidx;
+	u8 color;
 	/**< interrupt ring consumer index */
+	unsigned int cidx;
 };
+
+/**
+ * Macros for Hardware Version info
+ */
+#define RTL1_VERSION                      0
+#define RTL2_VERSION                      1
+#define VIVADO_RELEASE_2018_3             0
+#define VIVADO_RELEASE_2018_2             1
+#define EVEREST_SOFT_IP                   0
+#define EVEREST_HARD_IP                   1
 
 /**
  * intr_type_list - interrupt types
@@ -111,23 +164,35 @@ struct intr_vec_map_type {
 	f_intr_handler intr_handler;	/**< interrupt handler */
 };
 
+/**< Interrupt info for MSI-X interrupt vectors per device */
+struct intr_info_t {
+	/**< msix_entry list for all vectors */
+	char msix_name[QDMA_DEV_NAME_MAXLEN + 16];
+	/**< queue list for each interrupt */
+	struct list_head intr_list;
+	/**< number of queues assigned for each interrupt */
+	int intr_list_cnt;
+	/**< interrupt vector map */
+	struct intr_vec_map_type intr_vec_map;
+};
+
 /**
  * @struct - xlnx_dma_dev
  * @brief	Xilinx DMA device details
  */
 struct xlnx_dma_dev {
-	char mod_name[QDMA_DEV_NAME_MAXLEN];
 	/**< Xilinx DMA device name */
-	struct qdma_dev_conf conf;
+	char mod_name[QDMA_DEV_NAME_MAXLEN];
 	/**< DMA device configuration */
-	struct list_head list_head;
+	struct qdma_dev_conf conf;
 	/**< DMA device list */
-	spinlock_t lock;
+	struct list_head list_head;
 	/**< DMA device lock to protects concurrent access */
-	spinlock_t hw_prg_lock;
+	spinlock_t lock;
 	/**< DMA device hardware program lock */
-	unsigned int flags;
+	spinlock_t hw_prg_lock;
 	/**< device flags */
+	unsigned int flags;
 	u8 flr_prsnt:1;
 	/**< flag to indicate the FLR present status */
 	u8 st_mode_en:1;
@@ -136,59 +201,60 @@ struct xlnx_dma_dev {
 	/**< flag to indicate the memory mapped mode enabled status */
 	u8 stm_en:1;
 	/**< flag to indicate the presence of STM */
-	void *vf_info;
 	/**< sriov info */
-	u8 vf_count;
+	void *vf_info;
 	/**< number of virtual functions */
-	u8 func_id;
+	u8 vf_count;
 	/**< function id */
+	u16 func_id;
 #ifdef __QDMA_VF__
-	u8 func_id_parent;
 	/**< parent function id, valid only for virtual function */
+	u8 func_id_parent;
 #else
-	u8 pf_count;
 	/**< number of physical functions */
+	u8 pf_count;
 #endif
-	u8 mm_channel_max;
 	/**< max mm channels */
+	u8 mm_channel_max;
 	u8 stm_rev;
-	void __iomem *regs;
 	/**< PCIe config. bar */
-	void __iomem *stm_regs;
+	void __iomem *regs;
 	/** PCIe Bar for STM config */
+	void __iomem *stm_regs;
 
-	int num_vecs;
 	/**< number of MSI-X interrupt vectors per device */
-	struct msix_entry msix[XDEV_NUM_IRQ_MAX];
-	/**< msix_entry list for all vectors */
-	struct list_head intr_list[XDEV_NUM_IRQ_MAX];
-	/**< queue list for each interrupt */
-	int intr_list_cnt[XDEV_NUM_IRQ_MAX];
-	/**< number of queues assigned for each interrupt */
-	int dvec_start_idx;
+	int num_vecs;
+	/**< msix_entry list for all MSIx vectors associated for device */
+	struct msix_entry *msix;
+	/**< interrupt info list for all MSIx vectors associated for device */
+	struct intr_info_t *dev_intr_info_list;
 	/**< data vector start index */
-	struct intr_vec_map_type intr_vec_map[XDEV_NUM_IRQ_MAX];
-	/**< interrupt vector map */
-	void *dev_priv;
+	int dvec_start_idx;
 	/**< DMA private device to hold the qdma que details */
-	u8 intr_coal_en;
-	/**< flag to indicate the interrupt aggregation enable status */
-	u32 pipe_stm_max_pkt_size;
+	void *dev_priv;
 	/**< dsa configured max pkt size that STM can support */
-	struct intr_coal_conf  *intr_coal_list;
+	u32 pipe_stm_max_pkt_size;
 	/**< list of interrupt coalescing configuration for each vector */
-	unsigned int dev_ulf_extra[0];
-	/**< for upper layer calling function */
-#ifdef ERR_DEBUG
-	spinlock_t err_lock;
-	/**< error lock */
-	u8 err_mon_cancel;
-	/**< flag to indicate the error minitor status */
-	struct delayed_work err_mon;
-	/**< error minitor work handler */
+	struct intr_coal_conf  *intr_coal_list;
+	/**< legacy interrupt vector */
+	int vector_legacy;
+
+#ifdef DEBUGFS
+	/** debugfs device root */
+	struct dentry *dbgfs_dev_root;
+	/** debugfs queue root */
+	struct dentry *dbgfs_queues_root;
+	/* lock for creating qidx directory */
+	spinlock_t qidx_lock;
 #endif
 
-	struct qdma_mbox mbox;
+	/** number of packets processed in pf */
+	unsigned long long total_mm_h2c_pkts;
+	unsigned long long total_mm_c2h_pkts;
+	unsigned long long total_st_h2c_pkts;
+	unsigned long long total_st_c2h_pkts;
+	/**< for upper layer calling function */
+	unsigned int dev_ulf_extra[0];
 };
 
 /*****************************************************************************/

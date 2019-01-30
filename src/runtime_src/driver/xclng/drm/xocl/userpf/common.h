@@ -20,6 +20,9 @@
 #include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
 #include "xocl_drm.h"
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+#include <linux/hashtable.h>
+#endif
 
 #define	XOCL_XDMA_PCI		"xocl_xdma"
 #define	XOCL_QDMA_PCI		"xocl_qdma"
@@ -29,6 +32,8 @@
 #define XOCL_DRIVER_MAJOR       2018
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
+
+#define XOCL_MAX_CONCURRENT_CLIENTS 32
 
 #define XOCL_DRIVER_VERSION                             \
         __stringify(XOCL_DRIVER_MAJOR) "."              \
@@ -45,6 +50,9 @@
         xocl_info(&XDEV(d)->pdev->dev, ##args)
 #define userpf_dbg(d, args...)                     \
         xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+
+#define xocl_get_root_dev(dev, root)		\
+        for (root = dev; root->bus && root->bus->self; root = root->bus->self)
 
 #define	XOCL_USER_PROC_HASH_SZ		256
 
@@ -63,6 +71,8 @@
 #define XOCL_DRM_FREE_MALLOC
 #endif
 #endif
+
+#define XOCL_PA_SECTION_SHIFT		28
 
 struct xocl_dev	{
 	struct xocl_dev_core	core;
@@ -85,9 +95,10 @@ struct xocl_dev	{
 	/* memory management */
 	struct drm_device	       *ddev;
 	/* Memory manager array, one per DDR channel */
-	struct drm_mm		       *mm;
+	struct drm_mm		       **mm;
 	struct mutex			mm_lock;
-	struct drm_xocl_mm_stat	       *mm_usage_stat;
+	struct drm_xocl_mm_stat	       **mm_usage_stat;
+	u64				*mm_p2p_off;
 	struct mutex			stat_lock;
 
 	struct mem_topology	       *topology;
@@ -103,14 +114,15 @@ struct xocl_dev	{
 	struct xocl_health_thread_arg	thread_arg;
 
 	void * __iomem bypass_bar_addr;
+
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 	struct percpu_ref ref;
 	struct completion cmp;
 #endif
-	/*should be removed after mailbox is supported */
-	u64			        unique_id_last_bitstream;
-	/* remove the previous id after we move to uuid */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
+	struct dev_pagemap pgmap;
+#endif
 	xuid_t                          xclbin_id;
 	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
@@ -118,6 +130,10 @@ struct xocl_dev	{
 	atomic_t                        needs_reset;
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
+	DECLARE_HASHTABLE(mm_range, 6);
+#endif
+	void				*p2p_res_grp;
 };
 
 /**
@@ -125,22 +141,35 @@ struct xocl_dev	{
  *
  * @link: Client context is added to list in device
  * @xclbin_id: UUID for xclbin loaded by client, or nullid if no xclbin loaded
+ * @xclbin_locked: Flag to denote that this context locked the xclbin
  * @trigger: Poll wait counter for number of completed exec buffers
  * @outstanding_execs: Counter for number outstanding exec buffers
  * @abort: Flag to indicate that this context has detached from user space (ctrl-c)
+ * @num_cus: Number of resources (CUs) explcitly aquired
  * @lock: Mutex lock for exclusive access
- * @cu_bitmap: CUs reserved by this context
+ * @cu_bitmap: CUs reserved by this context, may contain implicit resources
  */
 struct client_ctx {
 	struct list_head	link;
 	xuid_t                  xclbin_id;
+	atomic_t                xclbin_locked;
 	atomic_t		trigger;
 	atomic_t                outstanding_execs;
 	atomic_t                abort;
+	unsigned int            num_cus;     /* number of resource locked explicitly by client */
 	struct mutex		lock;
 	struct xocl_dev        *xdev;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
+	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */
 	struct pid             *pid;
+};
+
+struct xocl_mm_wrapper {
+  struct drm_mm *mm;
+  struct drm_xocl_mm_stat *mm_usage_stat;
+  uint64_t start_addr;
+  uint64_t size;
+  uint32_t ddr;
+  struct hlist_node node;
 };
 
 /* ioctl functions */
@@ -155,6 +184,8 @@ int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 int xocl_read_axlf_ioctl(struct drm_device *dev,
                         void *data,
                         struct drm_file *filp);
+int xocl_p2p_enable_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
@@ -163,7 +194,12 @@ void xocl_fini_sysfs(struct device *dev);
 ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
+void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
+int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
+int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
+int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
+int xocl_reset_scheduler(struct pci_dev *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);

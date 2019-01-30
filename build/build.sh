@@ -2,8 +2,18 @@
 
 set -e
 
+OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
+CMAKE=cmake
+
+if [[ $OSDIST == "centos" ]]; then
+    CMAKE=cmake3
+    if [[ ! -x "$(command -v $CMAKE)" ]]; then
+        echo "$CMAKE is not installed, please run xrtdeps.sh"
+        exit 1
+    fi
+fi
 
 usage()
 {
@@ -24,6 +34,7 @@ usage()
 clean=0
 covbuild=0
 ccache=0
+docs=0
 verbose=""
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -60,6 +71,10 @@ while [ $# -gt 0 ]; do
             ;;
         -verbose)
             verbose="VERBOSE=1"
+            shift
+            ;;
+	docs|-docs)
+            docs=1
             shift
             ;;
         *)
@@ -103,20 +118,27 @@ if [[ $covbuild == 1 ]]; then
     fi
     mkdir -p Coverity
     cd Coverity
-    cmake -DCMAKE_BUILD_TYPE=Release ../../src
-    make -j $CORE COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    $CMAKE -DCMAKE_BUILD_TYPE=Release ../../src
+    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
     cd $here
     exit 0
 fi
 
 mkdir -p Debug Release
 cd Debug
-time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
 cd $BUILDDIR
 
 cd Release
-time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
 time make package
+
+if [[ $docs == 1 ]]; then
+    make xrt_docs
+fi
+
 cd $here

@@ -228,7 +228,7 @@ namespace XDP {
   private:
     int ProfileFlags;
     int FileFlags; //Which files we want to write out
-    int HostSlotIndex;
+    unsigned int HostSlotIndex;
     e_flow_mode FlowMode;
     std::string CurrentDeviceName;
     std::string CurrentBinaryName;
