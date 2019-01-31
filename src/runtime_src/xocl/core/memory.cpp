@@ -227,14 +227,16 @@ get_ext_memidx_nolock(xclbin xclbin) const
     return m_memidx;
 
   if ((m_flags & CL_MEM_EXT_PTR_XILINX) && !m_ext_kernel) {
-    auto flag = m_ext_flags;
-    if (flag & XCL_MEM_TOPOLOGY)
-      m_memidx = flag & 0xffffff;
-    else {
-      auto bank = __builtin_ctz(flag & 0xffffff);
+    auto memid = m_ext_flags & 0xffff;
+    if (m_ext_flags & XCL_MEM_TOPOLOGY) {
+      m_memidx = memid;
+    } else if (memid != 0) {
+      auto bank = __builtin_ctz(memid);
       m_memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
       if (m_memidx==-1)
         m_memidx = bank;
+    } else {
+        m_memidx = -1;
     }
   }
   return m_memidx;
