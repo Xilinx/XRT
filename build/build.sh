@@ -32,7 +32,7 @@ usage()
 }
 
 clean=0
-covbuild=0
+covbuild=""
 ccache=0
 docs=0
 verbose=""
