@@ -70,6 +70,11 @@ enum NIFD_COMMAND_SEQUENCES
     NIFD_SWITCH_CLOCK_MODE = 12
 };
 
+struct nifd_feature_rom {
+	uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
+	uint64_t m_featureId;       /* 64 bit feature id */
+};
+
 struct xocl_nifd {
 	void *__iomem nifd_base;
 	void *__iomem icap_base;
@@ -81,6 +86,7 @@ struct xocl_nifd {
 static dev_t nifd_dev;
 
 struct xocl_nifd *nifd_global;
+struct xocl_dev_core *core_global;
 
 /**
  * helper functions
@@ -95,6 +101,11 @@ static void start_controlled_clock_stepping(void);
 static int nifd_exist_in_feature_rom(void);
 
 static int nifd_exist_in_feature_rom(void) {
+	struct nifd_feature_rom rom;
+	xocl_get_raw_header(core_global, &rom);
+	printk("NIFD: nifd_exist_in_feature_rom");
+	printk(rom.m_platformId);
+	printk(rom.m_featureId);
 	return 1;
 }
 
@@ -408,6 +419,7 @@ static int nifd_probe(struct platform_device *pdev)
 	} else {
 		printk("NIFD: probe => core is NOT null");
 	}
+	core_global = core;
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
 	nifd->sys_cdev.owner = THIS_MODULE;
