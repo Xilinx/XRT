@@ -192,7 +192,7 @@ namespace XDP {
     double getGlobalMemoryMaxBandwidthMBps() const;
     double getReadMaxBandwidthMBps() const;
     double getWriteMaxBandwidthMBps() const;
-    unsigned long time_ns();
+    uint64_t time_ns();
     double getTimestampMsec(uint64_t timeNsec);
     double getTraceTime();
     double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName);

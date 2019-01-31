@@ -55,10 +55,13 @@ namespace XCL {
     //std::stringstream ss;
     //ss << std::put_time(std::localtime(&time), "%Y-%m-%d %X");
     //return ss.str();
-    struct tm tstruct = *(std::localtime(&time));
-    char buf[80];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %X", &tstruct);
-    return std::string(buf);
+    struct tm *p_tstruct = std::localtime(&time);
+    if(p_tstruct) {
+        char buf[80];
+        strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct);
+        return std::string(buf);
+    }
+    return std::string("0000-00-00 0000");
   }
 
   std::string WriterI::getCurrentTimeMsec()
@@ -80,7 +83,7 @@ namespace XCL {
     const int maxLength = 1024;
     char buf[maxLength];
     ssize_t len;
-    if ((len=readlink("/proc/self/exe", buf, maxLength-1)) != -1) {
+    if (((len=readlink("/proc/self/exe", buf, maxLength-1)) != -1) && (len < maxLength)) {
       buf[len]= '\0';
       execName = buf;
     }
@@ -1095,14 +1098,23 @@ namespace XCL {
     if(SummaryFileName != "") {
       assert(!Summary_ofs.is_open());
       SummaryFileName += FileExtension;
-      openStream(Summary_ofs, SummaryFileName);
+      try {
+        openStream(Summary_ofs, SummaryFileName);
+      } catch(std::runtime_error &err) {
+        std::cout << " ERROR : " << err.what() << " SDAccel Profile Summary." << std::endl;
+      }
       writeDocumentHeader(Summary_ofs, "SDAccel Profile Summary");
     }
 
     if (TimelineFileName != "") {
       assert(!Timeline_ofs.is_open());
       TimelineFileName += FileExtension;
-      openStream(Timeline_ofs, TimelineFileName);
+      try {
+        openStream(Timeline_ofs, TimelineFileName);
+      } catch(std::runtime_error &err) {
+        std::cout << " ERROR : " << err.what() << " SDAccel Timeline Trace." << std::endl;
+      }
+
       writeDocumentHeader(Timeline_ofs, "SDAccel Timeline Trace");
       std::vector<std::string> TimelineTraceColumnLabels = {
           "Time_msec", "Name", "Event", "Address_Port", "Size",
@@ -1229,6 +1241,8 @@ namespace XCL {
     auto rts = XCL::RTSingleton::Instance();
     auto profile = rts->getProfileManager();
 
+    std::ios_base::fmtflags ofsFlags = ofs.flags();
+
     ofs << "Footer,begin\n";
 
     //
@@ -1311,6 +1325,7 @@ namespace XCL {
           ofs << "UnusedComputeUnit," << cuName << ",\n";
       }
     }
+    ofs.flags(ofsFlags);
 
     ofs << "Footer,end\n";
 
