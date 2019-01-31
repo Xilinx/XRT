@@ -28,6 +28,7 @@
 #include <linux/ioctl.h>
 
 #include "../xocl_drv.h"
+#include "xclfeatures.h"
 
 #define NIFD_DEV_NAME "nifd" SUBDEV_SUFFIX
 #define SUPPORTED_NIFD_IP_VERSION 1
@@ -68,11 +69,6 @@ enum NIFD_COMMAND_SEQUENCES
     NIFD_STOP_CONTROLLED_CLOCK = 10,
     NIFD_START_CONTROLLED_CLOCK = 11,
     NIFD_SWITCH_CLOCK_MODE = 12
-};
-
-struct nifd_feature_rom {
-	uint64_t m_platformId;
-	uint64_t m_featureId;
 };
 
 struct xocl_nifd {
@@ -410,9 +406,9 @@ static int nifd_probe(struct platform_device *pdev)
 	} else {
 		printk("NIFD: probe => core is NOT null");
 	}
-	struct nifd_feature_rom rom;
-	// xocl_get_raw_header(core, &rom);
-	printk("NIFD: nifd_exist_in_feature_rom, m_platformId: %lx, m_featureId: %lx", (long)rom.m_platformId, (long)rom.m_featureId);
+	struct FeatureRomHeader rom;
+	xocl_get_raw_header(core, &rom);
+	printk("NIFD: nifd_exist_in_feature_rom, FeatureBitMap: %lx", (long)rom.FeatureBitMap);
 	nifd_valid = false;
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
