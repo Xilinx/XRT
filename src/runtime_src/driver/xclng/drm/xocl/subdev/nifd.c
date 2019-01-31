@@ -410,7 +410,7 @@ static int nifd_probe(struct platform_device *pdev)
 	} else {
 		printk("NIFD: probe => core is NOT null");
 	}
-	// struct nifd_feature_rom rom;
+	struct nifd_feature_rom rom;
 	// xocl_get_raw_header(core, &rom);
 	// printk("NIFD: nifd_exist_in_feature_rom, m_platformId: %lx, m_featureId: %lx", (long)rom.m_platformId, (long)rom.m_featureId);
 	nifd_valid = false;
