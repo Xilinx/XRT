@@ -71,8 +71,8 @@ enum NIFD_COMMAND_SEQUENCES
 };
 
 struct nifd_feature_rom {
-	uint64_t m_platformId;      /* 64 bit platform ID: vendor-device-subvendor-subdev */
-	uint64_t m_featureId;       /* 64 bit feature id */
+	uint64_t m_platformId;
+	uint64_t m_featureId;
 };
 
 struct xocl_nifd {
