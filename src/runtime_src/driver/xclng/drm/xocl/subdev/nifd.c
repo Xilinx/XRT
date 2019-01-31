@@ -87,7 +87,7 @@ static dev_t nifd_dev;
 
 struct xocl_nifd *nifd_global;
 
-bool nifd_valid = false;
+static bool nifd_valid;
 
 /**
  * helper functions
