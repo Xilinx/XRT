@@ -86,7 +86,8 @@ struct xocl_nifd {
 static dev_t nifd_dev;
 
 struct xocl_nifd *nifd_global;
-struct xocl_dev_core *core_global;
+
+bool nifd_valid = false;
 
 /**
  * helper functions
@@ -98,16 +99,6 @@ static long start_controlled_clock_free_running(void);
 static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
 static void start_controlled_clock_stepping(void);
-static int nifd_exist_in_feature_rom(void);
-
-static int nifd_exist_in_feature_rom(void) {
-	struct nifd_feature_rom rom;
-	xocl_get_raw_header(core_global, &rom);
-	printk("NIFD: nifd_exist_in_feature_rom");
-	printk(rom.m_platformId);
-	printk(rom.m_featureId);
-	return 1;
-}
 
 static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
 {
@@ -366,10 +357,10 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static int char_open(struct inode *inode, struct file *file)
 {
-	if(nifd_exist_in_feature_rom()) {
-		return 0;
+	if(!nifd_valid) {
+		return -1;
 	}
-	return -1;
+	return 0;
 }
 
 /*
@@ -419,7 +410,10 @@ static int nifd_probe(struct platform_device *pdev)
 	} else {
 		printk("NIFD: probe => core is NOT null");
 	}
-	core_global = core;
+	struct nifd_feature_rom rom;
+	xocl_get_raw_header(core, &rom);
+	printk("NIFD: nifd_exist_in_feature_rom, m_platformId: %lx, m_featureId: %lx", (long)rom.m_platformId, (long)rom.m_featureId);
+	nifd_valid = false;
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
 	nifd->sys_cdev.owner = THIS_MODULE;
