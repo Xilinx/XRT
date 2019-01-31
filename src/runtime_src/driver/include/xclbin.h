@@ -127,7 +127,8 @@ extern "C" {
         BUILD_METADATA,
         KEYVALUE_METADATA,
         USER_METADATA,
-        DNA_CERTIFICATE 
+        DNA_CERTIFICATE,
+        PDI 
     };
 
     enum MEM_TYPE {
