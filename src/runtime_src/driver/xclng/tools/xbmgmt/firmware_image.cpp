@@ -113,10 +113,15 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         }
 
         // Reread axlf from dsabin file, including all sections headers.
+
+        // Sanity check for number of sections coming from user input file
+        if (a.m_header.m_numSections > 10000)
+            return;
+
         sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
-        std::shared_ptr<char> top(new char[sz]);
+        std::vector<char> top(sz);
         in.seekg(0);
-        in.read(top.get(), sz);
+        in.read(top.data(), sz);
         if (!in.good())
         {
             std::cout << "Can't read axlf and section headers from "<< filename << std::endl;
@@ -124,7 +129,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         }
 
         // Fill out DSA info.
-        const axlf *ap = reinterpret_cast<const axlf *>(top.get());
+        const axlf *ap = reinterpret_cast<const axlf *>(top.data());
         name.assign(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV));
         // Normalize DSA name: v:b:n:a.b -> v_b_n_a_b
         std::replace_if(name.begin(), name.end(),
@@ -198,6 +203,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
+    std::ios_base::fmtflags f(stream.flags());
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {
@@ -208,6 +214,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     {
         stream << ",[SC=" << dsa.bmcVer << "]";
     }
+    stream.flags(f);
     return stream;
 }
 
@@ -239,10 +246,15 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         }
 
         // Reread axlf from dsabin file, including all section headers.
+
+        // Sanity check for number of sections coming from user input file
+        if (a.m_header.m_numSections > 10000)
+            return;
+
         in.seekg(0);
         sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
-        std::shared_ptr<char> top(new char[sz]);
-        in.read(top.get(), sz);
+        std::vector<char> top(sz);
+        in.read(top.data(), sz);
         if (!in.good())
         {
             this->setstate(failbit);
@@ -250,7 +262,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             return;
         }
 
-        const axlf *ap = reinterpret_cast<const axlf *>(top.get());
+        const axlf *ap = reinterpret_cast<const axlf *>(top.data());
         if (type == BMC_FIRMWARE)
         {
             // Obtain BMC section header.
