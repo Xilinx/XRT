@@ -74,21 +74,22 @@ memory::
 {
   XOCL_DEBUG(std::cout,"xocl::memory::~memory(): ",m_uid,"\n");
 
-  if (m_dtor_notify)
-    std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
-                  [](std::function<void()>& fcn) { fcn(); });
+  try {
+    if (m_dtor_notify)
+      std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
+                    [](std::function<void()>& fcn) { fcn(); });
 
-  for (auto& cb: sg_destructor_callbacks)
-    cb(this);
+    for (auto& cb: sg_destructor_callbacks)
+      cb(this);
 
-  if(m_connidx==-1)
-    return;
-  //Not very clean, having to remove a const cast.
-  const device* dev = get_resident_device();
-  if(dev)
-    const_cast<device*>(dev)->clear_connection(m_connidx);
-
-   //appdebug::remove_clmem(this);
+    if(m_connidx==-1)
+      return;
+    //Not very clean, having to remove a const cast.
+    const device* dev = get_resident_device();
+    if(dev)
+      const_cast<device*>(dev)->clear_connection(m_connidx);
+  }
+  catch (...) {}
 }
 
 bool
