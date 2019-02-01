@@ -33,7 +33,7 @@ All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Wher
         $ petalinux-create -t project -n <name> --template zynqMP
 
         # Get HDF file, which is exported by Vivado
-        # It will show a menu to config this project, use below config to avoid password for login.
+        # A menu will show up for configuration, use below config to avoid password for login.
         #       menu -> "Yocto Setting" -> "Enable Debug Tweaks"
         $ petalinux-config -p <name> --get-hw-description=<HDF>
 
