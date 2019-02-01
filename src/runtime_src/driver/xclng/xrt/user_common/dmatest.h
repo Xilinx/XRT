@@ -129,7 +129,8 @@ namespace xcldev {
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, false);
             double timer_stop = timer.stop();
-            double rate = (mBOList.size() * mSize)/0x100000; // MB
+            double rate = mBOList.size() * mSize;
+            rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
             std::cout << "Host -> PCIe -> FPGA write bandwidth = " << rate << " MB/s\n";
@@ -137,7 +138,8 @@ namespace xcldev {
             timer.reset();
             result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
             timer_stop = timer.stop();
-            rate = (mBOList.size() * mSize)/0x100000; // MB
+            rate = mBOList.size() * mSize;
+            rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
             std::cout << "Host <- PCIe <- FPGA read bandwidth = " << rate << " MB/s\n";
