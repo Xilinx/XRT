@@ -31,6 +31,7 @@
 
 namespace {
 
+XOCL_UNUSED
 static std::vector<char>
 read_file(const std::string& filename)
 {
@@ -114,15 +115,18 @@ program::
 {
   XOCL_DEBUG(std::cout,"xocl::program::~program(",m_uid,")\n");
 
-  // Before deleting program, do a final read of counters
-  // and force flush of trace buffers
-  xocl::profile::end_device_profiling();
+  try {
+    // Before deleting program, do a final read of counters
+    // and force flush of trace buffers
+    xocl::profile::end_device_profiling();
 
-  for(auto d : get_device_range())
-    d->unload_program(this);
+    for(auto d : get_device_range())
+      d->unload_program(this);
 
-  m_context->remove_program(this);
-  global::remove(this);
+    m_context->remove_program(this);
+    global::remove(this);
+  }
+  catch (...) {}
 }
 
 void
@@ -249,11 +253,15 @@ build(const std::vector<device*>& devices,const std::string& options)
   if (!conformance)
     throw std::runtime_error("internal error program::build");
 
+  throw std::runtime_error("build program is not safe and no longer supported");
+
+#if 0
   // Copied from xcl_device_sim.cpp
   std::ofstream buffer("_temp.cl");
   buffer << get_source();
   buffer.close();
 
+  // unsafe command injection
   std::string command = xocl::get_install_root();
   command.append("/bin/xocc");
 
@@ -294,6 +302,7 @@ build(const std::vector<device*>& devices,const std::string& options)
 
     clReleaseProgram(new_program);
   }
+#endif
 }
 
 range_lock<program_iterator_type>
