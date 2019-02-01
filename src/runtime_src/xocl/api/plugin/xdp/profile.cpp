@@ -204,15 +204,14 @@ log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps)
 // Attempt to get DDR physical address and bank number
 void get_address_bank(cl_mem buffer, uint64_t &address, std::string &bank)
 {
+  address = 0;
+  bank = "Unknown";
   try {
-    auto xoclMem = xocl::xocl(buffer);
-    xoclMem->try_get_address_bank(address, bank);
+    if (auto xmem=xocl::xocl(buffer))
+      xmem->try_get_address_bank(address, bank);
     return;
   }
   catch (const xocl::error& ex) {
-    // cannot get address/bank
-    address = 0;
-    bank = "Unknown";
   }
 }
 
@@ -242,9 +241,9 @@ action_ndrange(cl_event event, cl_kernel kernel)
   std::string xname = xclbin.project_name();
   std::string kname  = xocl::xocl(kernel)->get_name();
 
-  return [kernel,kname,xname,workGroupSize,globalWorkDim,localWorkDim,programId](xocl::event* event,cl_int status,const std::string& cu_name) {
+  return [kernel,kname,xname,workGroupSize,globalWorkDim,localWorkDim,programId](xocl::event* ev,cl_int status,const std::string& cu_name) {
     if (cb_action_ndrange)
-      cb_action_ndrange(event, status, cu_name, kernel, kname, xname, workGroupSize, globalWorkDim, localWorkDim, programId);
+      cb_action_ndrange(ev, status, cu_name, kernel, kname, xname, workGroupSize, globalWorkDim, localWorkDim, programId);
   };
 }
 
@@ -335,9 +334,9 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
     }
   }
 
-  return [mem0,totalSize,address,bank](xocl::event* event,cl_int status,const std::string&) {
+  return [mem0,totalSize,address,bank](xocl::event* ev,cl_int status,const std::string&) {
     if (cb_action_ndrange_migrate)
-      cb_action_ndrange_migrate(event, status, mem0, totalSize, address, bank);
+      cb_action_ndrange_migrate(ev, status, mem0, totalSize, address, bank);
   };
 }
 
@@ -368,7 +367,7 @@ function_call_logger::
 function_call_logger(const char* function)
   : function_call_logger(function,0)
 {}
-  
+
 function_call_logger::
 function_call_logger(const char* function, long long address)
   : m_name(function), m_address(address)
@@ -461,5 +460,3 @@ void end_device_profiling()
 }
 
 }}
-
-
