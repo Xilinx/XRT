@@ -2,7 +2,7 @@ args: -k kernel.xclbin
 copy: [Makefile, utils.h]
 devices:
 - [all_pcie]
-flags: -g -std=c++0x -ldl
+flags: -g -std=c++0x -ldl -luuid
 flows: [hw_all]
 hdrs: [xloopback_hw_64.h, xloopback_hw.h utils.h]
 krnls:
