@@ -93,7 +93,7 @@ int main_(int argc, char** argv) {
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
-  bool bInfo = false;
+  std::string sInfoFile;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
   bool bForce = false;   
@@ -140,7 +140,7 @@ int main_(int argc, char** argv) {
       ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
 
-      ("info", boost::program_options::bool_switch(&bInfo), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.")
+      ("info", boost::program_options::value<std::string>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
       ("list-names", boost::program_options::bool_switch(&bListNames), "List all possible section names (Stand Alone Option)")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
@@ -404,11 +404,22 @@ int main_(int argc, char** argv) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
   }
 
-  if (bInfo) {
-    xclBin.reportInfo(std::cout, sInputFile, bVerbose);
+  if (!sInfoFile.empty()) {
+    if (sInfoFile == "<console>") {      
+      xclBin.reportInfo(std::cout, sInputFile, bVerbose);
+    } else {
+      std::fstream oInfoFile;
+      oInfoFile.open(sInfoFile, std::ifstream::out | std::ifstream::binary);
+      if (!oInfoFile.is_open()) {
+        std::string errMsg = "ERROR: Unable to open the info file for writing: " + sInfoFile;
+        throw std::runtime_error(errMsg);
+      }
+      xclBin.reportInfo(oInfoFile, sInputFile, bVerbose);
+      oInfoFile.close();
+    }
   }
   
-  QUIET("Exiting");
+  QUIET("Leaving xclbinutil.");
 
   return RC_SUCCESS;
 }
