@@ -238,13 +238,12 @@ namespace XDP {
     return 9600.0;
   }
 
-  unsigned long
-  XDPProfile::time_ns()
+  uint64_t XDPProfile::time_ns()
   {
     static auto zero = std::chrono::high_resolution_clock::now();
     auto now = std::chrono::high_resolution_clock::now();
     auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-    return integral_duration;
+    return static_cast<uint64_t>(integral_duration);
   }
 
   double XDPProfile::getTimestampMsec(uint64_t timeNsec) {
@@ -460,7 +459,7 @@ namespace XDP {
     typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
     duration_ns time_span =
         duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-    uint64_t currentOffset = static_cast<uint64_t>(time_ns());
+    uint64_t currentOffset = time_ns();
     uint64_t currentTime = time_span.count();
     mTrainProgramStart[type] = static_cast<double>(currentTime - currentOffset);
   }
@@ -489,7 +488,7 @@ namespace XDP {
     //uint64_t deviceStartTimestamp = 0;
     //uint64_t hostTimestampNsec = 0;
     uint64_t startTime = 0;
-    double y1, y2, x1, x2;
+    double y1 = 0, y2 = 0, x1 = 0, x2 = 0;
     DeviceTrace kernelTrace;
     TraceResultVector resultVector;
 
