@@ -182,7 +182,7 @@ alloc(size_t sz)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
@@ -201,7 +201,7 @@ alloc(size_t sz)
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -211,7 +211,7 @@ alloc(size_t sz,void* userptr)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -228,7 +228,7 @@ alloc(size_t sz,void* userptr)
   ubo->size = sz;
   ubo->owner = m_handle;
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -239,7 +239,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   const bool mmapRequired = (userptr == nullptr);
   auto delBufferObject = [mmapRequired, this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     if (bo->kind != XCL_BO_DEVICE_PREALLOCATED_BRAM) {
       if (mmapRequired)
         munmap(bo->hostAddr, bo->size);
@@ -281,7 +281,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   ubo->size = sz;
   ubo->owner = m_handle;
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -313,7 +313,7 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   if (reinterpret_cast<uintptr_t>(bo->hostAddr) % alignment || bo->deviceAddr % alignment)
     throw std::bad_alloc();
 
-  XRT_DEBUG(std::cout,"allocated offset buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -501,7 +501,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;

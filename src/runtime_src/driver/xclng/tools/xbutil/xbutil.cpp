@@ -44,10 +44,12 @@ int bdf2index(std::string& bdfStr, unsigned& index)
 
     for (unsigned i = 0; i < pcidev::get_dev_total(); i++) {
         auto dev = pcidev::get_dev(i);
-        if (dom == dev->mgmt->domain && b == dev->mgmt->bus &&
-            d == dev->mgmt->dev && (f == 0 || f == 1)) {
-            index = i;
-            return 0;
+        if(dev->user){
+            if (dom == dev->user->domain && b == dev->user->bus &&
+                d == dev->user->dev && (f == 0 || f == 1)) {
+                index = i;
+                return 0;
+            }
         }
     }
 
@@ -120,13 +122,11 @@ void print_pci_info(void)
         bool ready = dev->is_ready;
 
         if (mdev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
-            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "user";
             print(udev);
         }
@@ -135,7 +135,6 @@ void print_pci_info(void)
             not_ready++;
         ++i;
     }
-
     if (not_ready != 0) {
         std::cout << "WARNING: " << not_ready
                   << " card(s) marked by '*' are not ready, "
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
         // coverity[TAINTED_STRING] argv will be validated inside xbflash
-        return execv( std::string( path + "/xbflash" ).c_str(), argv );
+        return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
     } /* end of call to xbflash */
 
     optind++;
@@ -197,6 +196,8 @@ int main(int argc, char *argv[])
         return xcldev::xclTop(argc, argv);
     } else if( std::strcmp( argv[1], "reset" ) == 0 ) {
         return xcldev::xclReset(argc, argv);
+    } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
+        return xcldev::xclSetP2p(argc, argv);
     }
     optind--;
 
@@ -548,7 +549,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (unsigned i = 0; i < count; i++) {
+    for (unsigned i = 0; i < total; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
@@ -568,7 +569,7 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        if (index >= count)
+        if (index >= total)
             std::cout << "ERROR: Card index " << index << "is out of range";
         else
             std::cout << "ERROR: Card [" << index << "] is not ready";
@@ -584,7 +585,7 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->boot();
         break;
     case xcldev::CLOCK:
-        result = deviceVec[index]->reclock2(regionIndex, targetFreq);
+        result = deviceVec[index]->reclockUser(regionIndex, targetFreq);
         break;
     case xcldev::FAN:
         result = deviceVec[index]->fan(fanSpeed);
@@ -690,6 +691,8 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "  p2p    [-d card] --enable\n";
+    std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -760,6 +763,8 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
     dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+
+    dev->m_cu_usage_stringize_dynamics(lines);
 
     for(auto line:lines) {
             printw("%s\n", line.c_str());
@@ -1345,4 +1350,74 @@ int xcldev::xclReset(int argc, char *argv[])
     if (err)
         std::cout << "ERROR: " << strerror(err) << std::endl;
     return err;
+}
+
+int xcldev::device::setP2p(bool enable, bool force)
+{
+    return xclP2pEnable(m_handle, enable, force);
+}
+
+int xcldev::xclSetP2p(int argc, char *argv[])
+{
+    int c;
+    unsigned index = 0;
+    int p2p_enable = -1;
+    bool root = ((getuid() == 0) || (geteuid() == 0));
+    const std::string usage("Options: [-d index] --[enable|disable]");
+    static struct option long_options[] = {
+        {"enable", no_argument, 0, xcldev::P2P_ENABLE},
+        {"disable", no_argument, 0, xcldev::P2P_DISABLE},
+        {0, 0, 0, 0}
+    };
+    int long_index, ret;
+    const char* short_options = "d:f"; //don't add numbers
+    const char* exe = argv[ 0 ];
+    bool force = false;
+
+    while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
+        switch (c) {
+        case 'd':
+            ret = str2index(optarg, index);
+            if (ret != 0)
+                return ret;
+	    break;
+	case 'f':
+	    force = true;
+	    break;
+	case xcldev::P2P_ENABLE:
+            p2p_enable = 1;
+            break;
+        case xcldev::P2P_DISABLE:
+            p2p_enable = 0;
+            break;
+        default:
+            xcldev::printHelp(exe);
+            return 1;
+        }
+    }
+
+    if (p2p_enable == -1) {
+        std::cerr << usage << std::endl;
+        return -EINVAL;
+    }
+
+    if (!root) {
+        std::cout << "ERROR: root privileges required." << std::endl;
+        return -EPERM;
+    }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    ret = d->setP2p(p2p_enable, force);
+    if (ret == ENOSPC) {
+        std::cout << "ERROR: Not enough iomem space." << std::endl;
+        std::cout << "Please check BIOS settings" << std::endl;
+    } else if (ret == EBUSY) {
+        std::cout << "ERROR: resoure busy, please try warm reboot" << std::endl;
+    } else if (ret)
+        std::cout << "ERROR: " << strerror(ret) << std::endl;
+
+    return ret;
 }

@@ -17,6 +17,7 @@
 #include "shim.h"
 #include <string.h>
 #include <boost/property_tree/xml_parser.hpp>
+#include <errno.h>
 #include <unistd.h>
 
 namespace xclhwemhal2 {
@@ -862,6 +863,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mMemModel->writeDevMem(dest,src,size);
       return size;
     }
+    src = (unsigned char*)src + seek;
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << seek << std::endl;
@@ -1993,16 +1995,22 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
     return -1;
   }
 
-  int returnVal = -1;
+  int returnVal = 0;
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset, bo->topology);
+    if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
+    {
+      returnVal = EIO;
+    }
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology);
+    if (xclCopyBufferDevice2Host(buffer, bo->base, size,offset, bo->topology) != size)
+    {
+      returnVal = EIO;
+    }
   }
   PRINTENDFUNC;
   return returnVal;
@@ -2047,7 +2055,11 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferHost2Device( bo->base, src, size,seek,bo->topology);
+  int returnVal = 0;
+  if (xclCopyBufferHost2Device(bo->base, src, size, seek, bo->topology) != size)
+  {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }
@@ -2067,7 +2079,11 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology);
+  int returnVal = 0;
+  if (xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology) != size)
+  {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }

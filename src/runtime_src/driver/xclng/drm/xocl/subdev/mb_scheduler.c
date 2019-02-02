@@ -75,20 +75,23 @@ static bool queued_to_running(struct xocl_cmd *xcmd);
  * struct exec_core: Core data structure for command execution on a device
  *
  * @ctx_list: Context list populated with device context
+ * @exec_lock: Lock for synchronizing external access
  * @poll_wait_queue: Wait queue for device polling
  * @scheduler: Command queue scheduler
  * @submitted_cmds: Tracking of command submitted for execution on this device
  * @num_slots: Number of command queue slots
  * @num_cus: Number of CUs in loaded program
  * @num_cdma: Number of CDMAs in hardware
- * @cu_shift_offset: CU idx to CU address shift value
- * @cu_base_addr: Base address of CU address space
  * @polling_mode: If set then poll for command completion
  * @cq_interrupt: If set then trigger interrupt to MB on new commands
  * @configured: Flag to indicate that the core data structure has been initialized
+ * @stopped: Flag to indicate that the core data structure cannot be used
+ * @flush: Flag to indicate that commands for this device should be flushed
  * @cu_addr_map: CU idx to CU base address
+ * @cu_usage: Usage count since last reset
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @num_slot_masks: Number of slots status masks used (computed from @num_slots)
+ * @ctrl_busy: Flag to indicate that slot 0 (ctrl commands) is busy
  * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
  * @sr0: If set, then status register [0..31] is pending with completed commands (ERT only).
@@ -98,11 +101,13 @@ static bool queued_to_running(struct xocl_cmd *xcmd);
  * @ops: Scheduler operations vtable
  */
 struct exec_core {
-	struct platform_device    *pdev;
+	struct platform_device     *pdev;
 
-	void __iomem		  *base;
-	u32			  intr_base;
-	u32			  intr_num;
+	struct mutex               exec_lock;
+
+	void __iomem		   *base;
+	u32			   intr_base;
+	u32			   intr_num;
 
 	wait_queue_head_t          poll_wait_queue;
 
@@ -110,14 +115,16 @@ struct exec_core {
 
 	struct xocl_cmd            *submitted_cmds[MAX_SLOTS];
 
+	xuid_t                     xclbin_id;
+
         unsigned int               num_slots;
         unsigned int               num_cus;
         unsigned int               num_cdma;
-        unsigned int               cu_shift_offset;
-        u32                        cu_base_addr;
         unsigned int               polling_mode;
         unsigned int               cq_interrupt;
         unsigned int               configured;
+        unsigned int               stopped;
+	unsigned int               flush;
 
 	u32                        cu_addr_map[MAX_CUS];
 	u32                        cu_usage[MAX_CUS];
@@ -125,6 +132,7 @@ struct exec_core {
         /* Bitmap tracks busy(1)/free(0) slots in cmd_slots*/
         u32                        slot_status[MAX_U32_SLOT_MASKS];
         unsigned int               num_slot_masks; /* ((num_slots-1)>>5)+1 */
+	unsigned int               ctrl_busy;
 
         u32                        cu_status[MAX_U32_CU_MASKS];
         unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
@@ -397,8 +405,14 @@ cmd_set_state(struct xocl_cmd* xcmd, enum ert_cmd_state state)
 static inline enum ert_cmd_state
 cmd_update_state(struct xocl_cmd *xcmd)
 {
-	if (xcmd->state!=ERT_CMD_STATE_RUNNING && xcmd->client->abort)
+	if (xcmd->state!=ERT_CMD_STATE_RUNNING && xcmd->client->abort) {
+		userpf_info(cmd_get_xdev(xcmd),"aborting stale client cmd(%lu)",xcmd->id);
 		cmd_set_state(xcmd,ERT_CMD_STATE_ABORT);
+	}
+	if (xcmd->exec->flush) {
+		userpf_info(cmd_get_xdev(xcmd),"aborting stale exec cmd(%lu)",xcmd->id);
+		cmd_set_state(xcmd,ERT_CMD_STATE_ABORT);
+	}
 	return xcmd->state;
 }
 
@@ -448,18 +462,18 @@ static DEFINE_MUTEX(pending_cmds_mutex);
 static atomic_t num_pending = ATOMIC_INIT(0);
 
 /**
- * get_free_xocl_cmd() - Get a free command object
+ * get_free_cmd() - Get a free command object
  *
  * Get from free/recycled list or allocate a new command if necessary.
  *
  * Return: Free command object
  */
 static struct xocl_cmd*
-get_free_xocl_cmd(struct exec_core *exec, struct client_ctx* client)
+get_free_cmd(struct exec_core *exec, struct client_ctx* client)
 {
 	struct xocl_cmd* cmd;
 	static unsigned long count=0;
-	SCHED_DEBUG("-> get_free_xocl_cmd\n");
+	SCHED_DEBUG("-> get_free_cmd\n");
 	mutex_lock(&free_cmds_mutex);
 	cmd=list_first_entry_or_null(&free_cmds,struct xocl_cmd,list);
 	if (cmd)
@@ -478,96 +492,27 @@ get_free_xocl_cmd(struct exec_core *exec, struct client_ctx* client)
 	cmd->bo=NULL;
 	cmd->packet=NULL;
 	atomic_inc(&client->outstanding_execs);
-	SCHED_DEBUGF("<- get_free_xocl_cmd %lu %p\n",cmd->id,cmd);
+	SCHED_DEBUGF("<- get_free_cmd %lu %p\n",cmd->id,cmd);
 	return cmd;
 }
 
 /**
- * add_xcmd() - Add initialized xcmd object to pending command list
+ * abort_cmd() - abort command object before it becomes pending
  *
- * @xcmd: Command to add
+ * @xcmd: command object to abort
  *
- * Scheduler copies pending commands to its internal command queue.
+ * Command object is added to the freelist
  *
- * Return: 0 on success
+ * Return: 0
  */
 static int
-add_xcmd(struct xocl_cmd *xcmd)
+abort_cmd(struct xocl_cmd* xcmd)
 {
-	struct xocl_dev *xdev = xocl_get_xdev(xcmd->exec->pdev);
-
-	SCHED_DEBUGF("-> add_xcmd(%lu) pid(%d)\n",xcmd->id,pid_nr(task_tgid(current)));
-
-	cmd_set_state(xcmd,ERT_CMD_STATE_NEW);
-	mutex_lock(&pending_cmds_mutex);
-	list_add_tail(&xcmd->list,&pending_cmds);
-	atomic_inc(&num_pending);
-	mutex_unlock(&pending_cmds_mutex);
-
-	/* wake scheduler */
-	atomic_inc(&xdev->outstanding_execs);
-	atomic64_inc(&xdev->total_execs);
-	wake_up_interruptible(&xcmd->xs->wait_queue);
-
-	SCHED_DEBUGF("<- add_xcmd opcode(%d) type(%d) num_pending(%d)\n",opcode(xcmd),type(xcmd),atomic_read(&num_pending));
+	SCHED_DEBUGF("recycle(%lu) %p\n",xcmd->id,xcmd);
+	mutex_lock(&free_cmds_mutex);
+	list_add_tail(&xcmd->list,&free_cmds);
+	mutex_unlock(&free_cmds_mutex);
 	return 0;
-}
-
-
-/**
- * add_cmd() - Add a new buffer object command to pending list
- *
- * @exec: Targeted device
- * @client: Client context
- * @bo: Buffer objects from user space from which new command is created
- * @numdeps: Number of dependencies for this command
- * @deps: List of @numdeps dependencies
- *
- * Scheduler copies pending commands to its internal command queue.
- *
- * Return: 0 on success, 1 on failure
- */
-static int
-add_bo_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* bo, int numdeps, struct drm_xocl_bo **deps)
-{
-	int retval = 0;
-	struct xocl_cmd *xcmd = get_free_xocl_cmd(exec,client);
-
-	SCHED_DEBUGF("-> add_bo_cmd(%lu)\n",xcmd->id);
-	if (!xcmd)
-		return 1;
-
-	xcmd->bo=bo;
-	xcmd->packet = (struct ert_packet*)bo->vmapping;
-
-	/* dependencies are copied here, the anticipated wait_count is number
-	 * of specified dependencies.  The wait_count is adjusted when the
-	 * command is queued in the scheduler based on whether or not a
-	 * dependency is active (managed by scheduler) */
-	memcpy(xcmd->deps,deps,numdeps*sizeof(struct drm_xocl_bo*));
-	xcmd->wait_count = numdeps;
-	xcmd->chain_count = 0;
-
-	retval = add_xcmd(xcmd);
-
-	SCHED_DEBUGF("<- add_bo_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
-	return retval;
-}
-
-static int
-add_ctrl_cmd(struct exec_core *exec, struct client_ctx* client, struct ert_packet* packet)
-{
-	int retval = 0;
-	struct xocl_cmd *xcmd = get_free_xocl_cmd(exec,client);
-
-	SCHED_DEBUGF("-> add_ctrl_cmd(%lu)\n",xcmd->id);
-	if (!xcmd)
-		return 1;
-
-	xcmd->packet = packet;
-	retval = add_xcmd(xcmd);
-	SCHED_DEBUGF("<- add_ctrl_cmd opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
-	return retval;
 }
 
 /**
@@ -608,6 +553,122 @@ delete_cmd_list(void)
 }
 
 /**
+ * add_xcmd() - Add initialized xcmd object to pending command list
+ *
+ * @xcmd: Command to add
+ *
+ * Scheduler copies pending commands to its internal command queue.
+ *
+ * Return: 0 on success
+ */
+static int
+add_xcmd(struct xocl_cmd *xcmd)
+{
+	struct exec_core *exec = xcmd->exec;
+	struct xocl_dev *xdev = xocl_get_xdev(exec->pdev);
+
+	// Prevent stop and reset
+	mutex_lock(&exec->exec_lock);
+
+	SCHED_DEBUGF("-> add_xcmd(%lu) pid(%d)\n",xcmd->id,pid_nr(task_tgid(current)));
+
+	if (exec->stopped || (!exec->configured && opcode(xcmd)!=ERT_CONFIGURE))
+		goto err;
+
+	cmd_set_state(xcmd,ERT_CMD_STATE_NEW);
+	mutex_lock(&pending_cmds_mutex);
+	list_add_tail(&xcmd->list,&pending_cmds);
+	atomic_inc(&num_pending);
+	mutex_unlock(&pending_cmds_mutex);
+
+	/* wake scheduler */
+	atomic_inc(&xdev->outstanding_execs);
+	atomic64_inc(&xdev->total_execs);
+	wake_up_interruptible(&xcmd->xs->wait_queue);
+
+	SCHED_DEBUGF("<- add_xcmd ret(0) opcode(%d) type(%d) num_pending(%d)\n",
+		     opcode(xcmd),type(xcmd),atomic_read(&num_pending));
+	mutex_unlock(&exec->exec_lock);
+	return 0;
+
+err:
+	SCHED_DEBUGF("<- add_xcmd ret(1) opcode(%d) type(%d) num_pending(%d)\n",
+		     opcode(xcmd),type(xcmd),atomic_read(&num_pending));
+	mutex_unlock(&exec->exec_lock);
+	return 1;
+}
+
+
+/**
+ * add_cmd() - Add a new buffer object command to pending list
+ *
+ * @exec: Targeted device
+ * @client: Client context
+ * @bo: Buffer objects from user space from which new command is created
+ * @numdeps: Number of dependencies for this command
+ * @deps: List of @numdeps dependencies
+ *
+ * Scheduler copies pending commands to its internal command queue.
+ *
+ * Return: 0 on success, 1 on failure
+ */
+static int
+add_bo_cmd(struct exec_core *exec, struct client_ctx* client, struct drm_xocl_bo* bo, int numdeps, struct drm_xocl_bo **deps)
+{
+	struct xocl_cmd *xcmd = get_free_cmd(exec,client);
+
+	SCHED_DEBUGF("-> add_bo_cmd(%lu)\n",xcmd->id);
+
+	if (!xcmd)
+		return 1;
+
+	xcmd->bo=bo;
+	xcmd->packet = (struct ert_packet*)bo->vmapping;
+
+	/* dependencies are copied here, the anticipated wait_count is number
+	 * of specified dependencies.  The wait_count is adjusted when the
+	 * command is queued in the scheduler based on whether or not a
+	 * dependency is active (managed by scheduler) */
+	memcpy(xcmd->deps,deps,numdeps*sizeof(struct drm_xocl_bo*));
+	xcmd->wait_count = numdeps;
+	xcmd->chain_count = 0;
+
+	if (add_xcmd(xcmd))
+		goto err;
+
+	SCHED_DEBUGF("<- add_bo_cmd ret(0) opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return 0;
+err:
+	abort_cmd(xcmd);
+	SCHED_DEBUGF("<- add_bo_cmd ret(1) opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return 1;
+}
+
+static int
+add_ctrl_cmd(struct exec_core *exec, struct client_ctx* client, struct ert_packet* packet)
+{
+	struct xocl_cmd *xcmd = get_free_cmd(exec,client);
+
+	SCHED_DEBUGF("-> add_ctrl_cmd(%lu)\n",xcmd->id);
+
+	if (!xcmd)
+		return 1;
+
+	xcmd->packet = packet;
+
+	if (add_xcmd(xcmd))
+		goto err;
+
+	SCHED_DEBUGF("<- add_ctrl_cmd ret(0) opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return 0;
+err:
+	abort_cmd(xcmd);
+	SCHED_DEBUGF("<- add_ctrl_cmd ret(1) opcode(%d) type(%d)\n",opcode(xcmd),type(xcmd));
+	return 1;
+}
+
+
+/**
  * cleanup_exec()
  */
 static void
@@ -622,69 +683,143 @@ cleanup_exec(struct xocl_cmd *xcmd)
 }
 
 /**
- * reset_exec() - Reset the scheduler
+ * exec_is_ert() - Check if running in embedded (ert) mode.
  *
- * @exec: Execution core (device) to reset
+ * Return: %true of ert mode, %false otherwise
+ */
+static inline bool
+exec_is_ert(struct exec_core *exec)
+{
+	return exec->ops == &mb_ops;
+}
+
+/**
+ * Configure scheduler based on current xclbin
+ */
+static void
+exec_cfg(struct exec_core *exec)
+{
+}
+
+/**
+ * exec_stop() - Stop the scheduler from scheduling commands on this core
  *
- * Clear stale command objects associated with execution core.
- * This can occur if the HW for some reason hangs.
+ * @exec:  Execution core (device) to stop
+ *
+ * Block access to current exec_core (device).  This API must be called prior
+ * to performing an AXI reset and downloading of a new xclbin.  Calling this
+ * API flushes the commands running on current device and prevents new
+ * commands from being scheduled on the device.  This effectively prevents any
+ * further commands from running on the device
  */
 SCHED_UNUSED
 static void
-reset_exec(struct exec_core* exec)
+exec_stop(struct exec_core* exec)
 {
-	int i;
-	struct list_head *pos, *next;
+	int idx;
+	struct xocl_dev *xdev = exec_get_xdev(exec);
+	unsigned int outstanding = 0;
+	unsigned int wait_ms = 100;
+	unsigned int retry = 20;  // 2 sec
 
-	userpf_info(exec_get_xdev(exec),"reset_exec(%p)\n",exec);
+	mutex_lock(&exec->exec_lock);
+	userpf_info(xdev,"exec_stop(%p)\n",exec);
+	exec->stopped = true;
+	mutex_unlock(&exec->exec_lock);
 
-	/* clear stale command objects if any */
-	list_for_each_safe(pos, next, &pending_cmds) {
-		struct xocl_cmd *xcmd = list_entry(pos,struct xocl_cmd,list);
-		if (xcmd->exec!=exec)
-			continue;
-		DRM_INFO("deleting stale pending cmd\n");
-		cleanup_exec(xcmd);
-	}
-	list_for_each_safe(pos, next, &global_scheduler0.command_queue) {
-		struct xocl_cmd *xcmd = list_entry(pos,struct xocl_cmd,list);
-		if (xcmd->exec!=exec)
-			continue;
-		DRM_INFO("deleting stale scheduler cmd\n");
-		cleanup_exec(xcmd);
+	// Wait for commands to drain if any
+	outstanding = atomic_read(&xdev->outstanding_execs);
+	while (--retry && outstanding) {
+		userpf_info(xdev,"Waiting for %d outstanding commands to finish",outstanding);
+		msleep(wait_ms);
+		outstanding = atomic_read(&xdev->outstanding_execs);
 	}
 
-	/* reset exec state */
-        for (i=0; i<MAX_SLOTS; ++i)
-		exec->submitted_cmds[i] = NULL;
+	// Last gasp, flush any remaining commands for this device exec core
+	// This is an abnormal case.  All exec clients have been destroyed
+	// prior to exec_stop being called (per contract), this implies that
+	// all regular client commands have been flushed.
+	if (outstanding) {
+		// Wake up the scheduler to force one iteration flushing stale
+		// commands for this device
+		exec->flush = 1;
+		global_scheduler0.intc = 1;
+		wake_up_interruptible(&global_scheduler0.wait_queue);
 
-	exec->num_slots = 16;
+		// Wait a second
+		msleep(1000);
+	}
+
+	outstanding = atomic_read(&xdev->outstanding_execs);
+	if (outstanding)
+		userpf_err(xdev,"unexpected outstanding commands %d after flush",outstanding);
+
+	// Stale commands were flushed, reset submitted command state
+        for (idx=0; idx<MAX_SLOTS; ++idx)
+		exec->submitted_cmds[idx] = NULL;
+
+	memset(exec->slot_status,0,MAX_U32_SLOT_MASKS*sizeof(u32));
+	exec->slot_status[0] = 1; // reserve for ctrl commands
+	exec->ctrl_busy=false;
+}
+
+/**
+ * exec_reset() - Reset the scheduler
+ *
+ * @exec: Execution core (device) to reset
+ *
+ * TODO: Perform scheduler configuration based on current xclbin
+ *       rather than relying of cfg command
+ */
+SCHED_UNUSED
+static void
+exec_reset(struct exec_core* exec)
+{
+	struct xocl_dev *xdev = exec_get_xdev(exec);
+
+	mutex_lock(&exec->exec_lock);
+
+	userpf_info(xdev,"exec_reset(%p)\n",exec);
+
+	// only reconfigure the scheduler on new xclbin
+	if (uuid_equal(&exec->xclbin_id, &xdev->xclbin_id) && exec->configured) {
+		exec->stopped = false;
+		exec->configured = false;  // TODO: remove, but hangs ERT because of in between AXI resets
+		goto out;
+	}
+
+	userpf_info(xdev,"exec_reset resets for new xclbin");
+	memset(exec->cu_usage,0,MAX_CUS*sizeof(u32));
+	uuid_copy(&exec->xclbin_id, &xdev->xclbin_id);
 	exec->num_cus = 0;
 	exec->num_cdma = 0;
-	exec->cu_shift_offset = 0;
-	exec->cu_base_addr = 0;
+	memset(exec->cu_addr_map,0,MAX_CUS*sizeof(u32));
+
+	exec->num_slots = 16;
 	exec->polling_mode = 1;
 	exec->cq_interrupt = 0;
 	exec->configured = false;
+	exec->stopped = false;
+	exec->flush = false;
 	exec->ops = &penguin_ops;
 
-	for (i=0; i<MAX_CUS; ++i) {
-		exec->cu_addr_map[i] = 0;
-		exec->cu_usage[i] = 0;
-	}
-
-	for (i=0; i<MAX_U32_SLOT_MASKS; ++i)
-		exec->slot_status[i] = 0;
+	memset(exec->slot_status,0,MAX_U32_SLOT_MASKS*sizeof(u32));
 	exec->num_slot_masks = 1;
 
-	for (i=0; i<MAX_U32_CU_MASKS; ++i)
-		exec->cu_status[i] = 0;
+	memset(exec->slot_status,0,MAX_U32_CU_MASKS*sizeof(u32));
+	exec->slot_status[0] = 1; // reserve for control command
+	exec->ctrl_busy=false;
 	exec->num_cu_masks = 0;
 
 	atomic_set(&exec->sr0,0);
 	atomic_set(&exec->sr1,0);
 	atomic_set(&exec->sr2,0);
 	atomic_set(&exec->sr3,0);
+
+	exec_cfg(exec);
+
+out:
+	mutex_unlock(&exec->exec_lock);
 }
 
 /**
@@ -707,17 +842,6 @@ reset_all(void)
 		DRM_INFO("deleting stale scheduler cmd\n");
 		cleanup_exec(xcmd);
 	}
-}
-
-/**
- * is_ert() - Check if running in embedded (ert) mode.
- *
- * Return: %true of ert mode, %false otherwise
- */
-static inline bool
-is_ert(struct exec_core *exec)
-{
-	return exec->ops == &mb_ops;
 }
 
 /**
@@ -875,7 +999,6 @@ cu_idx_to_bitmask(struct exec_core *exec, u32 cu_idx)
 	return 1 << (cu_idx - (cu_mask_idx(cu_idx)<<5));
 }
 
-
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -890,6 +1013,7 @@ configure(struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec=xcmd->exec;
 	struct xocl_dev *xdev = exec_get_xdev(exec);
+	struct client_ctx *client  = xcmd->client;
 	bool ert = xocl_mb_sched_on(xdev);
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
@@ -921,9 +1045,7 @@ configure(struct xocl_cmd *xcmd)
 	SCHED_DEBUG("configuring scheduler\n");
 	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
-	exec->cu_shift_offset = cfg->cu_shift;
-	exec->cu_base_addr = cfg->cu_base_addr;
-	exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
+	exec->num_cdma = 0;
 	exec->num_slot_masks = ((exec->num_slots-1)>>5) + 1;
 
 	for (cuidx=0; cuidx<exec->num_cus; ++cuidx) {
@@ -932,7 +1054,6 @@ configure(struct xocl_cmd *xcmd)
 	}
 
 	if (cdma) {
-		struct client_ctx *client  = xcmd->client;
 		uint32_t* addr=0;
 		mutex_lock(&client->lock); /* for modification to client cu_bitmap */
 		for (addr=cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
@@ -951,6 +1072,9 @@ configure(struct xocl_cmd *xcmd)
 		mutex_unlock(&client->lock);
 	}
 
+	// No more CUs added
+	exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
+
 	if (ert && cfg->ert) {
 		SCHED_DEBUG("++ configuring embedded scheduler mode\n");
 		exec->ops = &mb_ops;
@@ -958,8 +1082,6 @@ configure(struct xocl_cmd *xcmd)
 		exec->cq_interrupt = cfg->cq_int;
 		cfg->dsa52 = (dsa>=52) ? 1 : 0;
 		cfg->cdma = cdma ? 1 : 0;
-		/* reserve slot 0 for control commands */
-		exec->slot_status[0] = 1;
 	}
 	else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -967,15 +1089,16 @@ configure(struct xocl_cmd *xcmd)
 		exec->polling_mode = 1;
 	}
 
-	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d), cu_shift(%d), cu_base(0x%x), cu_masks(%d)\n"
-		 ,is_ert(exec)
+	// reserve slot 0 for control commands
+	exec->slot_status[0] = 1;
+
+	DRM_INFO("scheduler config ert(%d) slots(%d), cudma(%d), cuisr(%d), cdma(%d), cus(%d), cu_masks(%d)\n"
+		 ,exec_is_ert(exec)
 		 ,exec->num_slots
 		 ,cfg->cu_dma ? 1 : 0
 		 ,cfg->cu_isr ? 1 : 0
 		 ,exec->num_cdma
 		 ,exec->num_cus
-		 ,exec->cu_shift_offset
-		 ,exec->cu_base_addr
 		 ,exec->num_cu_masks);
 
 	exec->configured=true;
@@ -993,7 +1116,7 @@ post_exec_custat(struct xocl_cmd *xcmd)
 	struct exec_core *exec=xcmd->exec;
 	SCHED_DEBUGF("-> post_exec_custat(%lu)\n",xcmd->id);
 	/* read back from ert if enabled */
-	if (is_ert(exec)) {
+	if (exec_is_ert(exec)) {
 		u32 slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(exec);
 		memcpy_fromio(exec->cu_usage,exec->base + slot_addr + 4,exec->num_cus*sizeof(u32));
 	}
@@ -1069,8 +1192,13 @@ acquire_slot_idx(struct exec_core *exec)
 static int
 acquire_slot(struct xocl_cmd* xcmd)
 {
-	if (type(xcmd)==ERT_CTRL)
+	// slot 0 is reserved for ctrl commands
+	if (type(xcmd)==ERT_CTRL) {
+		if (xcmd->exec->ctrl_busy)
+			return -1;
+		xcmd->exec->ctrl_busy = true;
 		return 0;
+	}
 
 	return acquire_slot_idx(xcmd->exec);
 }
@@ -1103,8 +1231,12 @@ release_slot_idx(struct exec_core *exec, unsigned int slot_idx)
 static void
 release_slot(struct xocl_cmd* xcmd)
 {
-	if (type(xcmd)!=ERT_CTRL)
-		release_slot_idx(xcmd->exec,xcmd->slot_idx);
+	if (type(xcmd)==ERT_CTRL) {
+		xcmd->exec->ctrl_busy = false;
+		return;
+	}
+
+	release_slot_idx(xcmd->exec,xcmd->slot_idx);
 }
 
 /**
@@ -1808,7 +1940,10 @@ penguin_submit(struct xocl_cmd *xcmd)
 
 	/* execution done by submit_cmds, ensure the cmd retired properly */
 	if (opcode(xcmd)==ERT_CONFIGURE || type(xcmd)==ERT_KDS_LOCAL || type(xcmd)==ERT_CTRL) {
-		xcmd->slot_idx = acquire_slot(xcmd);
+		int slot_idx = acquire_slot(xcmd);
+		if (slot_idx < 0)
+			return false;
+		xcmd->slot_idx = slot_idx;
 		SCHED_DEBUGF("<- penguin_submit slot(%d)\n",xcmd->slot_idx);
 		return true;
 	}
@@ -1857,7 +1992,7 @@ static irqreturn_t exec_isr(int irq, void *arg)
 	struct exec_core *exec = (struct exec_core *)arg;
 
 	SCHED_DEBUGF("-> xocl_user_event %d\n",irq);
-	if (is_ert(exec) && !exec->polling_mode) {
+	if (exec_is_ert(exec) && !exec->polling_mode) {
 
 		if (irq==0)
 			atomic_set(&exec->sr0,1);
@@ -1873,7 +2008,7 @@ static irqreturn_t exec_isr(int irq, void *arg)
 		wake_up_interruptible(&global_scheduler0.wait_queue);
 	} else {
 		xocl_err(&exec->pdev->dev, "Unhandled isr irq %d, is_ert %d, "
-			"polling %d", irq, is_ert(exec), exec->polling_mode);
+			"polling %d", irq, exec_is_ert(exec), exec->polling_mode);
 	}
 	SCHED_DEBUGF("<- xocl_user_event\n");
 	return IRQ_HANDLED;
@@ -1934,15 +2069,16 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx *client = (struct client_ctx *)(*priv);
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	//struct exec_core *exec = pdev_get_exec(pdev);
 	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
 	int pid = pid_nr(task_tgid(current));
 
-	/* force scheduler to abort execs for this client */
+	// force scheduler to abort execs for this client
 	client->abort=true;
 
-	/* wait for outstanding execs to finish */
+	// wait for outstanding execs to finish
 	while (outstanding) {
 		unsigned int new;
 		userpf_info(xdev,"waiting for %d outstanding execs to finish",outstanding);
@@ -2016,6 +2152,7 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
  *
  * @pdev: platform device to reset
  *
+ * [Current 2018.3 situation:]
  * This function is currently called from mgmt icap on every AXI is
  * freeze/unfreeze.  It ensures that the device exec_core state is reset to
  * same state as was when scheduler was originally probed for the device.
@@ -2029,13 +2166,39 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
  * assume that 'm' of these processes finishes completely before any remaining
  * (n-m) processes start using the scheduler.  In this case, the n-m clients have
  * already been created, but icap resets AXI because the xclbin has no
- * references.
+ * references (arguably this AXI reset is wrong)
+ *
+ * [Work-in-progress:]
+ * Proper contract:
+ *  Pre-condition: xocl_exec_stop has been called before xocl_exec_reset.
+ *  Pre-condition: new bitstream has been downloaded and AXI has been reset
  */
 static int
 reset(struct platform_device *pdev)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
-	reset_exec(exec);
+	exec_stop(exec);   // remove when upstream explicitly calls stop()
+	exec_reset(exec);
+	return 0;
+}
+
+/**
+ * stop() - Reset device exec data structure
+ *
+ * This API must be called prior to performing an AXI reset and downloading of
+ * a new xclbin.  Calling this API flushes the commands running on current
+ * device and prevents new commands from being scheduled on the device.  This
+ * effectively prevents 'xbutil top' from issuing CU_STAT commands while
+ * programming is performed.
+ *
+ * Pre-condition: xocl_client_release has been called, e.g there are no
+ *                current clients using the bitstream
+ */
+static int
+stop(struct platform_device *pdev)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	exec_stop(exec);
 	return 0;
 }
 
@@ -2099,6 +2262,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
 	.poll_client = poll_client,
+	.stop = stop,
 	.reset = reset,
 	.validate = validate,
 };
@@ -2133,33 +2297,31 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	unsigned int count = 0;
 	ssize_t sz = 0;
 
-	/* minimum required initialization of client */
+	// minimum required initialization of client
 	client.abort=false;
 	atomic_set(&client.trigger,0);
 	atomic_set(&client.outstanding_execs, 0);
 
-	if (!exec->configured) {
-		userpf_info(xdev,"custat scheduler is not configured\n");
-		return 0;
-	}
-
 	packet.opcode=ERT_CU_STAT;
 	packet.type=ERT_CTRL;
 	packet.count=1;  // data[1]
-	add_ctrl_cmd(exec,&client,&packet);
 
-	/* wait for command completion */
-	while ((packet.state != ERT_CMD_STATE_COMPLETED) && count < 20)  {
-		msleep(100); // 100ms
-		++count;
+	if (add_ctrl_cmd(exec,&client,&packet)==0) {
+		int retry = 5;
+		SCHED_DEBUGF("-> custat waiting for command to finish\n");
+		// wait for command completion
+		while (--retry && atomic_read(&client.outstanding_execs))
+			msleep(100);
+		if (retry==0 && atomic_read(&client.outstanding_execs))
+			userpf_info(xdev,"custat unexpected timeout\n");
+		SCHED_DEBUGF("<- custat retry(%d)\n",retry);
 	}
 
-	if (count==20 && (packet.state != ERT_CMD_STATE_COMPLETED))
-		userpf_info(xdev,"custat timeout\n");
-
 	for (count=0; count<exec->num_cus; ++count)
-		sz += sprintf(buf+sz,"CU%d : %d\n",count,exec->cu_usage[count]);
-	buf[sz++]=0;
+		sz += sprintf(buf+sz,"CU[@0x%x] : %d\n",exec->cu_addr_map[count],exec->cu_usage[count]);
+	if (sz)
+		buf[sz++]=0;
+
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);
@@ -2211,6 +2373,7 @@ static int mb_scheduler_probe(struct platform_device *pdev)
  	 * CUs.
 	 */
 	xdev = xocl_get_xdev(pdev);
+	mutex_init(&exec->exec_lock);
 	exec->base = xdev->base_addr;
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -2229,7 +2392,7 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 	}
 
 	init_scheduler_thread();
-	reset_exec(exec);
+	exec_reset(exec);
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MB_SCHEDULER, &sche_ops);
 	platform_set_drvdata(pdev, exec);
@@ -2261,6 +2424,8 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 			NULL, NULL);
 		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
 	}
+	mutex_destroy(&exec->exec_lock);
+
 	user_sysfs_destroy_kds(pdev);
 	devm_kfree(&pdev->dev, exec);
 	platform_set_drvdata(pdev, NULL);

@@ -53,6 +53,8 @@ SectionMemTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
       return "MEM_PREALLOCATED_GLOB";
     case MEM_ARE:
       return "MEM_ARE";
+    case MEM_STREAMING_CONNECTION:
+      return "MEM_STREAMING_CONNECTION";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_memType);
@@ -86,6 +88,9 @@ SectionMemTopology::getMemType(std::string& _sMemType) const {
 
   if (_sMemType == "MEM_ARE")
     return MEM_ARE;
+
+  if (_sMemType == "MEM_STREAMING_CONNECTION")
+    return MEM_STREAMING_CONNECTION;
 
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);
@@ -185,27 +190,8 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
 
     std::string sm_type = ptMemData.get<std::string>("m_type");
     memData.m_type = (uint8_t)getMemType(sm_type);
+
     memData.m_used = ptMemData.get<uint8_t>("m_used");
-
-    boost::optional<std::string> sizeBytes = ptMemData.get_optional<std::string>("m_size");
-
-    if (sizeBytes.is_initialized()) {
-      memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeBytes.get()));
-      if ((memData.m_size % 1024) != 0)
-        throw std::runtime_error(XUtil::format("ERROR: The memory size (%ld) does not align to a 1K (1024 bytes) boundary.", memData.m_size));
-
-      memData.m_size = memData.m_size / (uint64_t)1024;
-    }
-
-    boost::optional<std::string> sizeKB = ptMemData.get_optional<std::string>("m_sizeKB");
-    if (sizeBytes.is_initialized() && sizeKB.is_initialized())
-      throw std::runtime_error(XUtil::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.",
-                                             static_cast<std::string>(sizeBytes.get()),
-                                             static_cast<std::string>(sizeKB.get())));
-
-    if (sizeKB.is_initialized())
-      memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeKB.get()));
-
 
     std::string sm_tag = ptMemData.get<std::string>("m_tag");
     if (sm_tag.length() >= sizeof(mem_data::m_tag)) {
@@ -217,8 +203,33 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     // We already know that there is enough room for this string
     memcpy(memData.m_tag, sm_tag.c_str(), sm_tag.length() + 1);
 
-    std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
-    memData.m_base_address = XUtil::stringToUInt64(sBaseAddress);
+    // No more data to read in for the MEM_STREAMING_CONNECTION type.
+    // Note: This data structure is initialized with zeros.
+    if (memData.m_type != MEM_STREAMING_CONNECTION) {
+
+      boost::optional<std::string> sizeBytes = ptMemData.get_optional<std::string>("m_size");
+
+      if (sizeBytes.is_initialized()) {
+        memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeBytes.get()));
+        if ((memData.m_size % 1024) != 0)
+          throw std::runtime_error(XUtil::format("ERROR: The memory size (%ld) does not align to a 1K (1024 bytes) boundary.", memData.m_size));
+
+        memData.m_size = memData.m_size / (uint64_t)1024;
+      }
+
+      boost::optional<std::string> sizeKB = ptMemData.get_optional<std::string>("m_sizeKB");
+      if (sizeBytes.is_initialized() && sizeKB.is_initialized())
+        throw std::runtime_error(XUtil::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.",
+                                               static_cast<std::string>(sizeBytes.get()),
+                                               static_cast<std::string>(sizeKB.get())));
+
+      if (sizeKB.is_initialized())
+        memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeKB.get()));
+
+
+      std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
+      memData.m_base_address = XUtil::stringToUInt64(sBaseAddress);
+    }
 
     XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_used: %d, m_size: 0x%lx, m_tag: '%s', m_base_address: 0x%lx",
                                count,
