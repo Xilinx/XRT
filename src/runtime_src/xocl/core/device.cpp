@@ -267,7 +267,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count)
+    if(memidx<0 || (memidx+1)>mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];
@@ -892,9 +892,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   offset += maxidx/32 + 1; // packet offset past cumasks
 
   // Insert copy command content
-  auto src_boh = xocl::xocl(src_buffer)->get_buffer_object(this);
+  auto src_boh = src_buffer->get_buffer_object(this);
   auto src_addr = xdevice->getDeviceAddr(src_boh) + src_offset;
-  auto dst_boh = xocl::xocl(dst_buffer)->get_buffer_object(this);
+  auto dst_boh = dst_buffer->get_buffer_object(this);
   auto dst_addr = xdevice->getDeviceAddr(dst_boh) + dst_offset;
 
   packet[offset++] = 0; // 0x0 reserved CU AP_CTRL
@@ -910,8 +910,13 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
 
   sk_cmd->count = offset-1; // number of words in payload (excludes header)
-  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma((%p,%p,%d)\n",dst_addr,src_addr,size);
+  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma(%p,%p,%d)\n",dst_addr,src_addr,size);
+  cmd->start();
   xrt::scheduler::schedule(cmd);
+
+  // KDMA fills dst buffer same as migrate_buffer does, hence dst buffer
+  // is resident after KDMA is done even if host does explicitly migrate.
+  dst_buffer->set_resident(this);
 }
 
 void
@@ -1104,13 +1109,13 @@ load_program(program* program)
       unsigned short target_freqs[4] = {0};
       auto kclocks = m_xclbin.kernel_clocks();
       if (kclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
       for (auto& clock : kclocks) {
-	if (idx == 0) {
-	  std::string device_name = get_unique_name();
-	  profile::set_kernel_clock_freq(device_name, clock.frequency);
-	}
-	target_freqs[idx++] = clock.frequency;
+        if (idx == 0) {
+          std::string device_name = get_unique_name();
+          profile::set_kernel_clock_freq(device_name, clock.frequency);
+        }
+        target_freqs[idx++] = clock.frequency;
       }
 
       // System clocks

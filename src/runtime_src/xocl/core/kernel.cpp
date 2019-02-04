@@ -407,11 +407,11 @@ get_memidx(const device* device, unsigned int argidx) const
   for (auto cu : m_cus)
     kcu.set(cu->get_index());
 
+  // Compute the union of all connections for all CUs
   memidx_bitmask_type mset;
-  mset.set();
   for (auto& scu : device->get_cus())
     if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid())
-      mset &= scu->get_memidx(argidx);
+      mset |= scu->get_memidx(argidx);
 
   return mset;
 }

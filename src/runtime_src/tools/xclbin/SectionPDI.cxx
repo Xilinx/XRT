@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,24 +14,21 @@
  * under the License.
  */
 
-#include "time.h"
-#include <chrono>
+#include "SectionPDI.h"
 
-namespace xrt {
+#include "XclBinUtilities.h"
+namespace XUtil = XclBinUtilities;
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
+// Static Variables / Classes
+SectionPDI::_init SectionPDI::_initializer;
+
+SectionPDI::SectionPDI() {
+  // Empty
 }
 
-} // xocl
+SectionPDI::~SectionPDI() {
+  // Empty
+}
+
 
 

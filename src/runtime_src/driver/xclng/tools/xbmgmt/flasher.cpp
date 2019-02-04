@@ -205,7 +205,7 @@ Flasher::Flasher(unsigned int index) :
         return;
     }
 
-    mHandle = xclOpenMgmt(mIdx);
+    mHandle = xclOpenMgmt(mIdx, NULL, XCL_QUIET);
     if (!mHandle)
     {
         std::cout << "open card failed: " << errno << std::endl;

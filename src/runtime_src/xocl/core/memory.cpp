@@ -74,21 +74,22 @@ memory::
 {
   XOCL_DEBUG(std::cout,"xocl::memory::~memory(): ",m_uid,"\n");
 
-  if (m_dtor_notify)
-    std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
-                  [](std::function<void()>& fcn) { fcn(); });
+  try {
+    if (m_dtor_notify)
+      std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
+                    [](std::function<void()>& fcn) { fcn(); });
 
-  for (auto& cb: sg_destructor_callbacks)
-    cb(this);
+    for (auto& cb: sg_destructor_callbacks)
+      cb(this);
 
-  if(m_connidx==-1)
-    return;
-  //Not very clean, having to remove a const cast.
-  const device* dev = get_resident_device();
-  if(dev)
-    const_cast<device*>(dev)->clear_connection(m_connidx);
-
-   //appdebug::remove_clmem(this);
+    if(m_connidx==-1)
+      return;
+    //Not very clean, having to remove a const cast.
+    const device* dev = get_resident_device();
+    if(dev)
+      const_cast<device*>(dev)->clear_connection(m_connidx);
+  }
+  catch (...) {}
 }
 
 bool
@@ -227,14 +228,16 @@ get_ext_memidx_nolock(xclbin xclbin) const
     return m_memidx;
 
   if ((m_flags & CL_MEM_EXT_PTR_XILINX) && !m_ext_kernel) {
-    auto flag = m_ext_flags;
-    if (flag & XCL_MEM_TOPOLOGY)
-      m_memidx = flag & 0xffffff;
-    else {
-      auto bank = __builtin_ctz(flag & 0xffffff);
+    auto memid = m_ext_flags & 0xffff;
+    if (m_ext_flags & XCL_MEM_TOPOLOGY) {
+      m_memidx = memid;
+    } else if (memid != 0) {
+      auto bank = __builtin_ctz(memid);
       m_memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
       if (m_memidx==-1)
         m_memidx = bank;
+    } else {
+        m_memidx = -1;
     }
   }
   return m_memidx;

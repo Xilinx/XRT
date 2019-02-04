@@ -350,8 +350,18 @@ XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, struct xclErro
  * handled by the driver.
  */
 XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
-
-
+/**
+ * xclLoadXclBinMgmt() - Download FPGA image (xclbin) to the device via mgmtpf
+ *
+ * @handle:        Device handle
+ * @buffer:        Pointer to device image (xclbin) in memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Download FPGA image (AXLF) to the device. The PR bitstream is encapsulated inside
+ * xclbin as a section. xclbin may also contains other sections which are suitably
+ * handled by the driver.
+ */
+XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const axlf *buffer);
 /**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *
@@ -380,6 +390,18 @@ XCL_DRIVER_DLLESPEC int xclGetSectionInfo(xclDeviceHandle handle, void* info,
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclReClock2(xclDeviceHandle handle, unsigned short region,
+                                    const unsigned short *targetFreqMHz);
+
+/**
+ * xclReClockUser() - Configure PR region frequncies via userpf
+ *
+ * @handle:        Device handle
+ * @region:        PR region (always 0)
+ * @targetFreqMHz: Array of target frequencies in order for the Clock Wizards driving
+ *                 the PR region
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclReClockUser(xclDeviceHandle handle, unsigned short region,
                                     const unsigned short *targetFreqMHz);
 
 /**
@@ -1220,19 +1242,19 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclP
  * debug_ip_layout) to properly initialize xdp code, so this
  * experimental API is added
  */
-XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
                                         const char* entry, char* sysfsPath, size_t size);
 
-/** 
+/**
  * Experimental APIs for reading debug and profile
- * 
- * Warning: These APIs are experimental and can be 
- * changed or removed at any time. They should only 
+ *
+ * Warning: These APIs are experimental and can be
+ * changed or removed at any time. They should only
  * be used by debug and profile code.
- * 
+ *
  * @param handle the device handle
- * @param info the xclDebugProfileDeviceInfo 
- * structure that this API will fill in as 
+ * @param info the xclDebugProfileDeviceInfo
+ * structure that this API will fill in as
  * result
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
@@ -1240,7 +1262,7 @@ XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xcl
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
 
 #ifdef __cplusplus
 }

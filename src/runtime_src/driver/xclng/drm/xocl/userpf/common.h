@@ -186,6 +186,8 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
                          struct drm_file *filp);
 int xocl_p2p_enable_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_reclock_ioctl(struct drm_device *dev, void *data,
+  struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
@@ -214,5 +216,5 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
                                           unsigned user_type);
 
 void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
-
+int xocl_reclock(struct xocl_dev *xdev, void *data);
 #endif

@@ -78,7 +78,7 @@ public:
     return m_ext_flags;
   }
 
-  const void
+  void
   set_ext_flags(memory_extension_flags_type flags)
   {
     m_ext_flags = flags;

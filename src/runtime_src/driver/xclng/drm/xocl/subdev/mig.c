@@ -20,8 +20,8 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-/* Registers are defined in pg150-ultrascale-memory-ip.pdf: 
- * AXI4-Lite Slave Control/Status Register Map 
+/* Registers are defined in pg150-ultrascale-memory-ip.pdf:
+ * AXI4-Lite Slave Control/Status Register Map
  */
 
 #define MIG_DEBUG
@@ -121,7 +121,7 @@ static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	return count;
 }
 static DEVICE_ATTR_WO(ecc_inject);
-#endif 
+#endif
 
 
 /* Standard sysfs entry for all dynamic subdevices. */
@@ -183,7 +183,7 @@ static int mig_probe(struct platform_device *pdev)
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
 	if (!mig)
 		return -ENOMEM;
-	
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		xocl_err(&pdev->dev, "resource is NULL");
