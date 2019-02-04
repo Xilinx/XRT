@@ -7,7 +7,7 @@ XRT ChangeLog
 Added
 .....
 
-* xbutil can now generate output in JSON format for easy parsing by other tools. Use ``json dump`` to generate JSON output on stdout.
+* xbutil can now generate output in JSON format for easy parsing by other tools. Use ``xbutil dump`` to generate JSON output on stdout.
 * Initial support for PCIe peer-to-peer transactions has been added. Please consult https://xilinx.github.io/XRT/2018.3/html/p2p.html for details.
 * 64-bit BARs in Alveo shells are natively supported.
 * Initial implementation of XRT logging API, xclLogMsg() for use by XRT clients.
