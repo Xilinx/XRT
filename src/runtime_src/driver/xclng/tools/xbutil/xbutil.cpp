@@ -25,6 +25,7 @@
 
 #include "xbutil.h"
 #include "shim.h"
+#include "../user_common/p2ptest.h"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -1080,6 +1081,24 @@ int xcldev::device::validate(bool quick)
         std::cout << output.substr(st, end - st) << std::endl;
     }
     std::cout << "INFO: DDR bandwidth test PASSED" << std::endl;
+
+    // Perform P2P test
+    std::string errmsg;
+    int p2p_enable;
+    std::vector<char> buf;
+    auto dev = pcidev::get_dev(m_idx);
+    dev->user->sysfs_get("", "p2p_enable", errmsg, p2p_enable);
+    if(p2p_enable == 1){
+        std::cout << "INFO: Starting P2P test" << std::endl;
+        std::string bit = "/opt/xilinx/dsa/" + std::string(m_devinfo.mName) + "/test/bandwidth.xclbin";
+        ret = runp2p(0, bit, false);
+        if (ret != 0) {
+            std::cout << "ERROR: P2P test FAILED" << std::endl;
+            return ret;
+        }
+        std::cout << "INFO: P2P test PASSED" << std::endl;
+    }
+
 
     return 0;
 }
