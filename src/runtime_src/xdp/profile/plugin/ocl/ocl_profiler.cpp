@@ -57,7 +57,6 @@ namespace xdp {
 
   OCLProfiler::~OCLProfiler()
   {
-    pDead = true;
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
@@ -68,6 +67,7 @@ namespace xdp {
       endDeviceProfiling();
     }
     endProfiling();
+    pDead = true;
   }
 
   // Start device profiling
