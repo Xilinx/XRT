@@ -997,6 +997,48 @@ int xcldev::device::runTestCase(const std::string& exe,
 }
 
 /*
+ * p2ptest
+ */
+int p2ptest(int idx)
+{
+    // get DDR bank count from mem_topology if possible
+    std::string errmsg;
+    std::vector<char> buf;
+    //unsigned long long addr = 0x0;
+    uint64_t addr=0;
+
+    auto dev = pcidev::get_dev(idx);
+    if(dev->user)
+        dev->user->sysfs_get(
+            "icap", "mem_topology", errmsg, buf);
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    const mem_topology *map = (mem_topology *)buf.data();
+
+    if(buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' invalid, "
+            << "unable to perform P2P Test. Has the bitstream been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+
+    for(int32_t i = 0; i < map->m_count; i++) {
+
+        if(map->m_mem_data[i].m_used) {
+            addr = map->m_mem_data[i].m_base_address;
+            break;
+            }
+     }
+
+    runp2p(idx, false, addr);
+
+return 0;
+}
+
+/*
  * validate
  */
 int xcldev::device::validate(bool quick)
@@ -1090,14 +1132,15 @@ int xcldev::device::validate(bool quick)
     dev->user->sysfs_get("", "p2p_enable", errmsg, p2p_enable);
     if(p2p_enable == 1){
         std::cout << "INFO: Starting P2P test" << std::endl;
-        std::string bit = "/opt/xilinx/dsa/" + std::string(m_devinfo.mName) + "/test/bandwidth.xclbin";
-        ret = runp2p(0, bit, false);
+        ret = p2ptest(m_idx);
         if (ret != 0) {
             std::cout << "ERROR: P2P test FAILED" << std::endl;
             return ret;
         }
         std::cout << "INFO: P2P test PASSED" << std::endl;
     }
+    else
+        std::cout << "P2P is not enabled";
 
 
     return 0;

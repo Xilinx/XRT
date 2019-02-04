@@ -104,11 +104,11 @@ void read_test(int id)
     cout << endl;
 }
 
-int runp2p(int idx, string bit, bool verbose)
+int runp2p(int idx, bool verbose, uint64_t addr)
 {
     v = verbose;
-    std::string bitstreamFile = bit;
-    int first_used_mem=-1;
+    //std::string bitstreamFile = bit;
+    int first_used_mem=0;
     int deviceIndex = idx;
     xclDeviceInfo2 deviceInfo;
 
@@ -123,40 +123,9 @@ int runp2p(int idx, string bit, bool verbose)
             return -1;
     }
 
-    //load xclbin
-    std::ifstream stream(bitstreamFile);
-    stream.seekg(0, stream.end);
-    int size = stream.tellg();
-    stream.seekg(0, stream.beg);
+    p2pBoAddr_init = addr;
+    p2pBoAddr = addr;
 
-    char *header = new char[size];
-    stream.read(header, size);
-
-    if (strncmp(header, "xclbin2", 8)) {
-        throw std::runtime_error("Invalid bitstream");
-    }
-
-    const xclBin *blob = (const xclBin *)header;
-    if (xclLoadXclBin(handle, blob)) {
-        delete [] header;
-        throw std::runtime_error("Bitstream download failed");
-    }
-
-    const axlf* top = (const axlf*)header;
-    auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-    struct mem_topology* topology = (mem_topology*)(header + topo->m_sectionOffset);
-
-    for (int i=0; i<topology->m_count; ++i) {
-        if (topology->m_mem_data[i].m_used) {
-            first_used_mem = i;
-            p2pBoAddr_init = topology->m_mem_data[i].m_base_address;
-            break;
-        }
-    }
-    delete [] header;
-
-
-    p2pBoAddr = p2pBoAddr_init;
     for (int d = 0; d < 4; d++) {
     unsigned boHandle1 = xclAllocBO(handle, 1024, XCL_BO_DEVICE_RAM, first_used_mem);
     char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
@@ -166,8 +135,7 @@ int runp2p(int idx, string bit, bool verbose)
     write_test(d);
 
     //read and check the result
-    if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , 1024, false))
-        return 1;
+    xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE , 1024, false);
     char* bo2 = (char*)xclMapBO(handle, boHandle1, false);
     if (memcmp(bo2, bo1, 1024))
         matched = false;
