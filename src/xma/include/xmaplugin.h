@@ -176,6 +176,36 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
  * <0 on failure
  *
  */
+int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
+                                    void            *dst,
+                                    size_t           size,
+                                    size_t           offset);
+
+
+void xma_plg_kernel_lock(XmaHwSession s_handle);
+void xma_plg_kernel_unlock(XmaHwSession s_handle);
+void xma_plg_kernel_wait_on_finish(XmaHwSession s_handle);
+void xma_plg_kernel_start(XmaHwSession s_handle);
+int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
+
+/**
+ *  @brief Write kernel register(s)
+ *
+ *  This function writes the data provided and sets the specified AXI_Lite
+ *  register(s) exposed by a kernel. The base offset of 0 is the beginning
+ *  of the kernels AXI_Lite memory map as this function adds the required
+ *  offsets internally for the kernel and PCIe.
+ *
+ *  @param s_handle  The session handle associated with this plugin instance
+ *  @param dst       Destination data pointer
+ *  @param size      Size of data to copy
+ *  @param offset    Offset from the beginning of the kernel AXI_Lite register
+ *                   register map
+ *
+ *  @return          >=0 number of bytes written
+ *  @return          <0 on failure
+ *
+ */
 int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                void            *dst,
                                size_t           size,

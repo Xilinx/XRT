@@ -17,6 +17,7 @@
 #ifndef _XMA_HW_H_
 #define _XMA_HW_H_
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/xmacfg.h"
@@ -37,9 +38,15 @@ extern "C" {
 
 typedef struct XmaHwSession
 {
-    void    *dev_handle;
-    uint64_t base_address;
-    uint32_t ddr_bank;
+    void            *dev_handle;
+    uint64_t         base_address;
+    uint32_t         ddr_bank;
+    uint32_t         reg_map[256];
+    size_t           min_offset;
+    size_t           max_offset;
+    pthread_mutex_t *lock;
+    bool             have_lock;
+    
 } XmaHwSession;
 
 typedef void   *XmaHwHandle;
