@@ -731,6 +731,9 @@ XclBinData::getMemType( std::string &_sMemType ) const
   if ( _sMemType == "MEM_ARE" )
       return MEM_ARE;
 
+  if ( _sMemType == "MEM_STREAMING_CONNECTION" )
+      return MEM_STREAMING_CONNECTION;
+
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);
 }
@@ -1325,6 +1328,7 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
     case MEM_STREAMING: return "MEM_STREAMING";
     case MEM_PREALLOCATED_GLOB: return "MEM_PREALLOCATED_GLOB";
     case MEM_ARE: return "MEM_ARE";
+    case MEM_STREAMING_CONNECTION: return "MEM_STREAMING_CONNECTION";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);

@@ -74,6 +74,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionBuildMetadata.cxx"
   "SectionKeyValueMetadata.cxx"
   "SectionUserMetadata.cxx"
+  "SectionPDI.cxx"
 )
 set(XCLBINUTIL_FILES_SRCS ${XCLBINUTIL_FILES})
 

@@ -1450,7 +1450,8 @@ static void unmap_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 	}
 }
 
-static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
+static resource_size_t map_single_bar(struct xdma_dev *xdev,
+	       	struct pci_dev *dev, int idx)
 {
 	resource_size_t bar_start;
 	resource_size_t bar_len;
@@ -1462,10 +1463,15 @@ static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
 
 	xdev->bar[idx] = NULL;
 
-	/* do not map BARs with length 0. Note that start MAY be 0! */
-	if (!bar_len) {
+	/*
+	 * do not map
+	 * BARs with length 0. Note that start MAY be 0!
+	 * P2P bar (size >= 256M)
+	 */
+	pr_info("map bar %d, len %lld\n", idx, bar_len);
+	if (!bar_len || bar_len >= (1 << 28)) {
 		//pr_info("BAR #%d is not present - skipping\n", idx);
-		return 0;
+		return bar_len;
 	}
 
 	/* BAR size exceeds maximum desired mapping? */
@@ -1539,7 +1545,7 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 	BUG_ON(!xdev);
 	BUG_ON(!bar_id_list);
 
-	dbg_init("xdev 0x%p, bars %d, config at %d.\n",
+	pr_info("xdev 0x%p, bars %d, config at %d.\n",
 		xdev, num_bars, config_bar_pos);
 
 	switch (num_bars) {
@@ -1598,7 +1604,7 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 
 	/* iterate through all the BARs */
 	for (i = 0; i < XDMA_BAR_NUM; i++) {
-		int bar_len;
+		resource_size_t bar_len;
 
 		bar_len = map_single_bar(xdev, dev, i);
 		if (bar_len == 0) {
@@ -3492,8 +3498,10 @@ static void pci_enable_capability(struct pci_dev *pdev, int cap)
 static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 {
 	u16 cap;
+#if 0
 	u32 v;
 	void *__iomem reg;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
 	pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &cap);
@@ -3515,6 +3523,15 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	/* extended tag not enabled */
 	pr_info("0x%p EXT_TAG disabled.\n", pdev);
 
+#if 0
+	/* Confirmed with Karen. This code is needed when ExtTag is disabled.
+	 * Reason to disable below code:
+	 * We observed that the ExtTag was cleared on some system. The SSD-
+	 * FPGA board will not work on that system (DMA failed). The solution
+	 * is that XDMA driver should enable ExtTag in that case.
+	 *
+	 * If ExtTag need to be disabled for your system, please enable this.
+	 */
 	if (xdev->config_bar_idx < 0) {
 		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
 				pdev, xdev);
@@ -3526,6 +3543,10 @@ static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 	v = (v & 0xFF) | (((u32)32) << 8);
 	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
 	return 0;
+#else
+	/* Return 1 will go to enable ExtTag */
+	return 1;
+#endif
 }
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,

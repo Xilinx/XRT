@@ -1,5 +1,5 @@
 CC    = g++
-CFLAGS       = -std=c++11 -fPIC -g -I. -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
+CFLAGS       = -std=c++11 -fPIC -g -I. -I../plugins -I/opt/xilinx/xrt/include -I${XMA_INCLUDE}
 LDFLAGS      = -L/opt/xilinx/xrt/lib -L${XMA_LIBS} -lxmaapi -lxrt_core
 
 SOURCES = $(shell echo *.c)

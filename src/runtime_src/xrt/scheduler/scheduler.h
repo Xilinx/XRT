@@ -20,7 +20,7 @@
 #include "xrt/scheduler/command.h"
 #include <vector>
 
-namespace xrt { 
+namespace xrt {
 
 using command_type = std::shared_ptr<command>;
 
@@ -29,56 +29,26 @@ using command_type = std::shared_ptr<command>;
  */
 namespace sws {
 
-/**
- * Start the scheduler.
- *
- * @throws exception if already started
- */
+void
+schedule(const command_type& cmd);
+
 void
 start();
 
-/**
- * Stop the scheduler if it is running.
- */
 void
 stop();
 
 void
-init(xrt::device* device, size_t slot_size, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
-
-/**
- * Schedule a command for execution
- */
-void 
-schedule(const command_type& cmd);
+init(xrt::device* device, const std::vector<uint32_t>& cu_addr_map);
 
 } // sws
 
 /**
  * Embedded command scheduling
  */
-namespace mbs {
-
-void 
-schedule(const command_type& cmd);
-
-void
-start();
-
-void
-stop();
-
-void
-init(xrt::device* device, size_t slot_size, bool cu_usr,  size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
-
-} // mbs
-
-/**
- * Embedded command scheduling
- */
 namespace kds {
 
-void 
+void
 schedule(const command_type& cmd);
 
 void
@@ -96,7 +66,7 @@ namespace scheduler {
 /**
  * Schedule a command for execution on either sws or mbs
  */
-void 
+void
 schedule(const command_type& cmd);
 
 void

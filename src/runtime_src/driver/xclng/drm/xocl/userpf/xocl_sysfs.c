@@ -35,7 +35,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%d\n", xdev->core.priv.user_bar);
+	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
 static DEVICE_ATTR_RO(userbar);
@@ -54,7 +54,7 @@ static ssize_t kdsstat_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	int size = sprintf(buf,
-			   "xclbin:\t\t\t%pUl\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
+			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
 			   &xdev->xclbin_id,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),
@@ -93,147 +93,24 @@ static ssize_t memstat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
+static ssize_t p2p_enable_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u64 size;
+
+	if (xdev->bypass_bar_addr)
+		return sprintf(buf, "1\n");
+	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
+			size > (1 << XOCL_PA_SECTION_SHIFT))
+		return sprintf(buf, "2\n");
+
+	return sprintf(buf, "0\n");
+}
+
+static DEVICE_ATTR_RO(p2p_enable);
+
 /* - End attributes-- */
-
-/* - Begin bin_attributes -- */
-
-//- Debug IP_layout--
-static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
-{
-	struct xocl_dev *xdev;
-	u32 nread = 0;
-	size_t size = 0;
-
-	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	size = sizeof_sect(xdev->debug_layout, m_debug_ip_data);
-	if (offset >= size)
-		return 0;
-
-	if (count < size - offset)
-		nread = count;
-	else
-		nread = size - offset;
-
-	memcpy(buffer, ((char *)xdev->debug_layout) + offset, nread);
-
-	return nread;
-}
-static struct bin_attribute debug_ip_layout_attr = {
-	.attr = {
-		.name = "debug_ip_layout",
-		.mode = 0444
-	},
-	.read = read_debug_ip_layout,
-	.write = NULL,
-	.size = 0
-};
-
-
-//IP layout
-static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
-{
-	const struct xocl_dev *xdev;
-	u32 nread = 0;
-	size_t size = 0;
-
-	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	size = sizeof_sect(xdev->layout, m_ip_data);
-	if (offset >= size)
-		return 0;
-
-	if (count < size - offset)
-		nread = count;
-	else
-		nread = size - offset;
-
-	memcpy(buffer, ((char *)xdev->layout) + offset, nread);
-
-	return nread;
-}
-
-static struct bin_attribute ip_layout_attr = {
-	.attr = {
-		.name = "ip_layout",
-		.mode = 0444
-	},
-	.read = read_ip_layout,
-	.write = NULL,
-	.size = 0
-};
-
-//-Connectivity--
-static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
-{
-	struct xocl_dev *xdev;
-	u32 nread = 0;
-	size_t size = 0;
-
-	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	size = sizeof_sect(xdev->connectivity, m_connection);
-	if (offset >= size)
-		return 0;
-
-	if (count < size - offset)
-		nread = count;
-	else
-		nread = size - offset;
-
-	memcpy(buffer, ((char *)xdev->connectivity) + offset, nread);
-
-	return nread;
-
-}
-
-static struct bin_attribute connectivity_attr = {
-	.attr = {
-		.name = "connectivity",
-		.mode = 0444
-	},
-	.read = read_connectivity,
-	.write = NULL,
-	.size = 0
-};
-
-//-Mem_topology--
-static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
-{
-	struct xocl_dev *xdev;
-	u32 nread = 0;
-	size_t size = 0;
-
-	xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	size = sizeof_sect(xdev->topology, m_mem_data);
-	if (offset >= size)
-		return 0;
-
-	if (count < size - offset)
-		nread = count;
-	else
-		nread = size - offset;
-
-	memcpy(buffer, ((char *)xdev->topology) + offset, nread);
-
-	return nread;
-}
-
-
-static struct bin_attribute mem_topology_attr = {
-	.attr = {
-		.name = "mem_topology",
-		.mode = 0444
-	},
-	.read = read_mem_topology,
-	.write = NULL,
-	.size = 0
-};
 
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -242,35 +119,34 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
-	NULL,
-};
-
-static struct bin_attribute *xocl_bin_attrs[] = {
-	&debug_ip_layout_attr,
-	&ip_layout_attr,
-	&connectivity_attr,
-	&mem_topology_attr,
+	&dev_attr_p2p_enable.attr,
 	NULL,
 };
 
 static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
-	.bin_attrs = xocl_bin_attrs,
 };
 
 //---
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;
+	struct pci_dev *rdev;
 
 	ret = sysfs_create_group(&dev->kobj, &xocl_attr_group);
 	if (ret)
 		xocl_err(dev, "create xocl attrs failed: %d", ret);
+
+	xocl_get_root_dev(to_pci_dev(dev), rdev);
+	ret = sysfs_create_link(&dev->kobj, &rdev->dev.kobj, "root_dev");
+	if (ret)
+		xocl_err(dev, "create root device link failed: %d", ret);
 
 	return ret;
 }
 
 void xocl_fini_sysfs(struct device *dev)
 {
+	sysfs_remove_link(&dev->kobj, "root_dev");
 	sysfs_remove_group(&dev->kobj, &xocl_attr_group);
 }

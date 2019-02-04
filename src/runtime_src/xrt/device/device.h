@@ -360,6 +360,12 @@ public:
   unmap(const ExecBufferObjectHandle& bo)
   { m_hal->unmap(bo); }
 
+  /**
+   * Submit exec buffer to device.
+   *
+   * @returns
+   *   0 on success, throws on error.
+   */
   int
   exec_buf(const ExecBufferObjectHandle& bo)
   { return m_hal->exec_buf(bo); }

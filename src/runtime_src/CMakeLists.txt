@@ -1,4 +1,4 @@
-if( ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
 
@@ -10,6 +10,7 @@ include_directories(
 
 set(OPENCL_SRC "")
 
+
 add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
   $<TARGET_OBJECTS:xrt>
@@ -20,7 +21,7 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
 add_library(oclxdp SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdpobj>
   )
-add_dependencies(oclxdp xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -36,9 +37,17 @@ endif()
 set_target_properties(xilinxopencl PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC")
 
-add_compile_options("-Wall" "-Werror")
+# TODO CL_TARGET_OPENCL_VERSION is not defined..
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_compile_options("-Wall" "-Werror")
+endif()
 add_subdirectory(xdp)
-add_subdirectory(tools/xclbin)
+
+# TODO version.h was included.
+# Remove this limitation once we can generate version.h for mpsoc.
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_subdirectory(tools/xclbin)
+endif()
 add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
@@ -52,6 +61,7 @@ set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(oclxdp
+  xdp
   xilinxopencl
  )
 

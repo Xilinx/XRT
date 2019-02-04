@@ -32,8 +32,9 @@ usage()
 }
 
 clean=0
-covbuild=0
+covbuild=""
 ccache=0
+docs=0
 verbose=""
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -55,7 +56,11 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         coverity|-coverity)
-            covbuild=1
+            covbuild=coverity
+            shift
+            ;;
+        coverity-all|-coverity-all)
+            covbuild=coverity-all
             shift
             ;;
         -covuser)
@@ -70,6 +75,10 @@ while [ $# -gt 0 ]; do
             ;;
         -verbose)
             verbose="VERBOSE=1"
+            shift
+            ;;
+	docs|-docs)
+            docs=1
             shift
             ;;
         *)
@@ -102,7 +111,7 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
-if [[ $covbuild == 1 ]]; then
+if [[ "X$covbuild" != "X" ]]; then
     if [[ -z ${covuser+x} ]]; then
         echo -n "Enter coverity user name: "
         read covuser
@@ -114,7 +123,7 @@ if [[ $covbuild == 1 ]]; then
     mkdir -p Coverity
     cd Coverity
     $CMAKE -DCMAKE_BUILD_TYPE=Release ../../src
-    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
+    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" $covbuild
     cd $here
     exit 0
 fi
@@ -130,6 +139,10 @@ cd Release
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
-#time make xrtpkg
 time make package
+
+if [[ $docs == 1 ]]; then
+    make xrt_docs
+fi
+
 cd $here

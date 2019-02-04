@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include <errno.h>
 #include <unistd.h>
 namespace xclcpuemhal2 {
 
@@ -549,14 +550,6 @@ namespace xclcpuemhal2 {
           {
             uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo 
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
-            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
-            {
-              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
-              std::pair<uint64_t,std::string> mPair;
-              mPair.first  = flow_id;
-              mPair.second = m_tag;
-              argFlowIdMap[argNum] = mPair;
-            }
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -568,6 +561,14 @@ namespace xclcpuemhal2 {
               
               argFlowIdMap.clear();
               argNum = 0;
+            }
+            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            {
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
+              std::pair<uint64_t,std::string> mPair;
+              mPair.first  = flow_id;
+              mPair.second = m_tag;
+              argFlowIdMap[argNum] = mPair;
             }
             argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
@@ -701,7 +702,7 @@ namespace xclcpuemhal2 {
     }
 
     for (auto i : mDDRMemoryManager) {
-      if (offset < i->size()) {
+      if (offset < i->start() + i->size()) {
         i->free(offset);
       }
     }
@@ -792,6 +793,7 @@ namespace xclcpuemhal2 {
     {
       launchTempProcess();
     }
+    src = (unsigned char*)src + seek;
     dest += seek;
 
     void *handle = this;
@@ -1312,16 +1314,20 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
     return -1;
   }
 
-  int returnVal = -1;
+  int returnVal = 0;
   if(dir == XCL_BO_SYNC_BO_TO_DEVICE)
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferHost2Device(bo->base,buffer, size,offset);
+    if (xclCopyBufferHost2Device(bo->base,buffer, size, offset) != size) {
+      returnVal = EIO;
+    }
   }
   else
   {
     void* buffer =  bo->userptr ? bo->userptr : bo->buf;
-    returnVal = xclCopyBufferDevice2Host(buffer, bo->base, size,offset);
+    if (xclCopyBufferDevice2Host(buffer, bo->base, size, offset) != size) {
+      returnVal = EIO;
+    }
   }
   PRINTENDFUNC;
   return returnVal;
@@ -1366,7 +1372,10 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferHost2Device( bo->base, src, size,seek);
+  int returnVal = 0;
+  if (xclCopyBufferHost2Device(bo->base, src, size, seek) != size) {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }
@@ -1386,7 +1395,10 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferDevice2Host(dst, bo->base, size, skip);
+  int returnVal = 0;
+  if (xclCopyBufferDevice2Host(dst, bo->base, size, skip) != size) {
+    returnVal = EIO;
+  }
   PRINTENDFUNC;
   return returnVal;
 }

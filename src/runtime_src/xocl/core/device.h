@@ -42,6 +42,7 @@ public:
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
   using cmd_type = std::shared_ptr<xrt::command>;
+  using memidx_type = xclbin::memidx_type;
   using connidx_type = xclbin::connidx_type;
 
   /**
@@ -279,7 +280,7 @@ public:
    *   The buffer object that was created.
    */
   xrt::device::BufferObjectHandle
-  allocate_buffer_object(memory* mem, uint64_t memidx);
+  allocate_buffer_object(memory* mem, memidx_type memidx);
 
   /**
    * Special interface to allocate a buffer object undconditionally
@@ -313,8 +314,8 @@ public:
   /**
    * Get indicies of matching memory banks on which mem is allocated
    *
-   * The memory indicies are returned as a bitmask because a given ddr address
-   * can be access through multiple banks
+   * The memory indicies are returned as a bitmask because a given ddr
+   * address can be access through multiple banks
    *
    * @return
    *   Memory indeces identifying bank or -1 if not allocated
@@ -341,7 +342,7 @@ public:
    * @return Memory index for DDR bank if all CUs are uniquely connected
    *  to same DDR bank for all arguments, -1 otherwise
    */
-  int
+  memidx_type
   get_cu_memidx() const;
 
   /**
@@ -660,7 +661,7 @@ public:
    *   @true on success, @false if no program loaded.
    */
   bool
-  acquire_context(compute_unit* cu, bool shared=true) const;
+  acquire_context(const compute_unit* cu, bool shared=true) const;
 
   /**
    * Release a context for a given compute unit on this device
@@ -671,13 +672,14 @@ public:
    *   @true on success, @false if no program loaded.
    */
   bool
-  release_context(compute_unit* cu) const;
+  release_context(const compute_unit* cu) const;
 
+  /**
+   * @return
+   *   Number of CDMA copy kernels available
+   */
   size_t
-  get_num_cdmas() const
-  {
-    return m_xdevice->get_cdma_count();
-  }
+  get_num_cdmas() const;
 
   void clear_connection(connidx_type conn);
 
@@ -728,7 +730,7 @@ private:
    *  Buffer object handle for allocated memory
    */
   xrt::device::BufferObjectHandle
-  alloc(memory* mem, unsigned int bank);
+  alloc(memory* mem, memidx_type memidx);
 
   /**
    * Allocate device side buffer in first available DDR bank
@@ -779,7 +781,7 @@ private:
   compute_unit_vector_type m_computeunits;
 
   // Caching.  Purely implementation detail (-2 => not initialized)
-  mutable int m_cu_memidx = -2;
+  mutable memidx_type m_cu_memidx = -2;
 };
 
 } // xocl

@@ -104,6 +104,11 @@ class xstatusSPMInfo (gdb.Command,infCallUtil):
 		super (xstatusSPMInfo, self).__init__ ("xstatus spm", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
+		try:
+			self.check_app_debug_enabled()
+		except ValueError as e:
+			print (e.message)
+			return
 		obj_spm.invoke(arg, 0)
 xstatusSPMInfo()
 class xstatusSSPMInfo (gdb.Command,infCallUtil):
@@ -112,6 +117,11 @@ class xstatusSSPMInfo (gdb.Command,infCallUtil):
 		super (xstatusSSPMInfo, self).__init__ ("xstatus sspm", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
+		try:
+			self.check_app_debug_enabled()
+		except ValueError as e:
+			print (e.message)
+			return
 		obj_sspm.invoke(arg, 0)
 xstatusSSPMInfo()
 
@@ -121,6 +131,11 @@ class xstatusLAPCInfo (gdb.Command,infCallUtil):
 		super (xstatusLAPCInfo, self).__init__ ("xstatus lapc", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
+		try:
+			self.check_app_debug_enabled()
+		except ValueError as e:
+			print (e.message)
+			return
 		obj_lapc.invoke(arg, 0)
 xstatusLAPCInfo()
 
@@ -130,6 +145,11 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 		super (xstatusAllInfo, self).__init__ ("xstatus all", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
+		try:
+			self.check_app_debug_enabled()
+		except ValueError as e:
+			print (e.message)
+			return
 		obj_spm.invoke(arg, 0)
 		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()
