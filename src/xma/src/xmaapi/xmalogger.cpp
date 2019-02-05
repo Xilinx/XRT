@@ -149,8 +149,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     struct tm      *tm_info;
     struct timeval  tv;
     int32_t         millisec;
-    char            log_time[40];
-    char            log_name[40];
+    char            log_time[40] = {0};
+    char            log_name[40] = {0};
     const char     *log_level;
     int32_t         hdr_offset;
     bool            send2callback = false;
@@ -190,7 +190,7 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     if (name == NULL)
         strncpy(log_name, "XMA-default", sizeof(log_name));
     else
-        strncpy(log_name, name, sizeof(log_name));
+        strncpy(log_name, name, sizeof(log_name)-1);
 
     log_level = g_loglevel_tbl[level].lvl_str;
     
