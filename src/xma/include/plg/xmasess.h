@@ -55,6 +55,56 @@ typedef enum {
 } XmaSessionType;   /**< 5 */
 
 /**
+ * @struct XmaChannel
+ *
+ * This is the output parameter for the alloc_chan_mp function. The
+ * protocol for filling out this parameter is as follows:
+ * A plugin, after evaluating the session data (*pending_sess),
+ * should fill out the fields of this data structure as follows:
+ *
+ * chan_load:
+ * Compute a load factor for the new session.  Channel load should
+ * be a value of between 1-1000 (with 1000 representing a maximal
+ * value indicating that the current kernel is loaded 100%).  Compare
+ * the computed load factor with the curr_kern_load value passed
+ * into the callback.  If the curr_kern_load + your newly computed
+ * load factor > 1000, then the channel request should be rejected
+ * and channel id should = -1;
+ *
+ * chan_id:
+ * If a channel is allocated, fill the chan_id property with the
+ * assigned channel number.
+ *
+ * Example:
+ * Accept a new session as channel 3 utilzing approximately 45.7% of the kernel. 
+ * new_channel->chan_id = 3
+ * new_channel->chan_load = 457
+ *
+ * @note: in all cases wherein a channel request is rejected, the alloc_chan
+ * implementation should return an error code status.
+*/
+typedef struct {
+    int32_t  chan_id; /* assigned channel id */
+    uint16_t chan_load; /* load value (0-1000); % to 3 sig figs */
+} XmaChannel;
+
+/**
+ * Optional plugin callback called when app calls xma_enc_session_create()
+ * Common to all core plugin kernel types (encoder, decoder, filter, scaler)
+ *
+ * Should return the following:
+ * XMA_SUCCESS if a channel has been allocated to this kernel.
+ * XMA_ERROR_NO_CHAN if no additional channels can be allocated to this kernel
+ * XMA_ERROR_NO_CHAN_CAP if the channel exceeds available capacity of available
+ *  channel
+*/
+typedef int32_t (*xma_plg_alloc_chan)(XmaSession *pending_sess,
+                                      uint16_t    curr_kern_load,
+                                      int32_t    *chan_ids,
+                                      uint8_t     chan_ids_cnt,
+                                      XmaChannel *new_channel);
+
+/**
  * @struct XmaSession
  * Base class for all other session types
 */
@@ -79,7 +129,7 @@ typedef struct XmaSession {
     close. */
     void          *plugin_data;
     /** Private stats data attached to a specific session. This field is
-    allocated and managed by XMA for each session type. */ 
+    allocated and managed by XMA for each session type. */
     void          *stats;
 } XmaSession;
 

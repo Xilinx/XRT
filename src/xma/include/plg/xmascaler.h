@@ -71,9 +71,7 @@ typedef struct XmaScalerPlugin
     /** callback to perform cleanup when client terminates session */
     int32_t         (*close)(XmaScalerSession *sc_session);
     /** allocate a kernel channel; only required if kernel supports channels */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+    xma_plg_alloc_chan alloc_chan;
 } XmaScalerPlugin;
 
 /**

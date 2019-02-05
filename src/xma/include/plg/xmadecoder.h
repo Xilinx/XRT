@@ -77,6 +77,9 @@ typedef struct XmaDecoderPlugin
                                   XmaFrame           *frame);
     /** Callback invoked to clean up device buffers when app has terminated session */
     int32_t         (*close)(XmaDecoderSession *session);
+
+    /** Optional callback called when app calls xma_dec_session_create() */
+    xma_plg_alloc_chan alloc_chan;
 } XmaDecoderPlugin;
 
 /**

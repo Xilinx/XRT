@@ -96,9 +96,14 @@ typedef struct XmaEncoderPlugin
     /** Callback called when application calls xma_enc_session_destroy() */
     int32_t         (*close)(XmaEncoderSession *session);
     /** Optional callback called when app calls xma_enc_session_create() */
+    /*
     int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+                                  uint16_t    curr_kern_load,
+                                  int32_t    *chan_ids,
+                                  uint8_t     length,
+                                  XmaChannel *new_channel);
+    */
+    xma_plg_alloc_chan alloc_chan;
     /** Callback called if this encoder supports zerocopy */
     uint64_t        (*get_dev_input_paddr)(XmaEncoderSession *enc_session);
 } XmaEncoderPlugin;

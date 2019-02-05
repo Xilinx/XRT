@@ -67,9 +67,7 @@ typedef struct XmaFilterPlugin
     /** Callback called when application calls xma_filter_session_destroy() */
     int32_t         (*close)(XmaFilterSession *session);
     /** Optional callback called when app calls xma_filter_session_create() */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+    xma_plg_alloc_chan alloc_chan;
 } XmaFilterPlugin;
 
 /**
