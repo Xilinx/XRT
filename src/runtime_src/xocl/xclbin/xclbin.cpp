@@ -1317,6 +1317,14 @@ xclbin::
 
 xclbin&
 xclbin::
+operator=(const xclbin&& rhs)
+{
+  m_impl=std::move(rhs.m_impl);
+  return *this;
+}
+
+xclbin&
+xclbin::
 operator=(const xclbin& rhs)
 {
   m_impl=rhs.m_impl;

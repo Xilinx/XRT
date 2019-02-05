@@ -404,8 +404,8 @@ int main_(int argc, char** argv) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
   }
 
-  if (sInfoFile != "<not_used>") {
-    if (sInfoFile.empty()) {      
+  if (!sInfoFile.empty()) {
+    if (sInfoFile == "<console>") {      
       xclBin.reportInfo(std::cout, sInputFile, bVerbose);
     } else {
       std::fstream oInfoFile;

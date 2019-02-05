@@ -124,7 +124,7 @@ public:
   size_type cuidx = no_index;
 
   xocl_cmd(exec_core* ec, cmd_ptr cmd)
-    : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec)
+    : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec), m_state(ERT_CMD_STATE_NEW)
   {
     static size_type count = 0;
     m_uid = count++;

@@ -139,8 +139,7 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
     throw error(CL_INVALID_HOST_PTR,"bad host_ptr of mem use flags");
 
   if (auto ext_flags = get_xlnx_ext_flags(flags,host_ptr)) {
-    return;
-    if (get_xlnx_ext_kernel(ext_flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
+    if (!get_xlnx_ext_kernel(ext_flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
       auto ddr_bank_mask = XCL_MEM_DDR_BANK0 | XCL_MEM_DDR_BANK1 | XCL_MEM_DDR_BANK2 | XCL_MEM_DDR_BANK3;
       // Test that only one bank flag is set
       if (std::bitset<12>(ext_flags & ddr_bank_mask).count() > 1)
