@@ -190,7 +190,8 @@
 
 #define XAPM_MAX_NUMBER_SLOTS             8
 // Max slots = floor(max slots on trace funnel / 2) = floor(63 / 2) = 31
-#define XSPM_MAX_NUMBER_SLOTS             31
+// NOTE: SPM max slots += 3 to support XDMA/KDMA/P2P monitors on some 2018.3 platforms
+#define XSPM_MAX_NUMBER_SLOTS             34
 #define XSAM_MAX_NUMBER_SLOTS             31
 #define XSSPM_MAX_NUMBER_SLOTS            31
 #define XAPM_METRIC_COUNTERS_PER_SLOT     8

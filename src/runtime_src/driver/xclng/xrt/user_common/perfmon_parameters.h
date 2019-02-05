@@ -25,9 +25,11 @@
 #ifndef _PERFMON_PARAMETERS_H_
 #define _PERFMON_PARAMETERS_H_
 
-//#define PERFMON0_OFFSET                 0x100000
-//#define PERFMON1_OFFSET                 0x120000
-//#define PERFMON2_OFFSET                 0x010000
+/********************* KDMA/XDMA/P2P Monitors *********************************/
+
+#define XDMA_MONITOR_BASE               0x00270000
+#define P2P_MONITOR_BASE                0x00280000
+#define KDMA_MONITOR_BASE               0x00290000
 
 /************************ AXI Stream FIFOs ************************************/
 

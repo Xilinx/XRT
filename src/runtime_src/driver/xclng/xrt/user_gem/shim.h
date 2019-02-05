@@ -369,6 +369,9 @@ private:
     uint32_t bin2dec(const char * str, int start, int number);
     std::string dec2bin(uint32_t n);
     std::string dec2bin(uint32_t n, unsigned bits);
+    bool hasKDMAMonitor();
+    bool hasXDMAMonitor();
+    bool hasP2PMonitor();
 
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;

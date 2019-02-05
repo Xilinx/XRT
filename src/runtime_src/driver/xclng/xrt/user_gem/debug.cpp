@@ -66,6 +66,40 @@ namespace xocl {
   // Helper functions
   // ****************
 
+  bool XOCLShim::hasKDMAMonitor()
+  {
+    if (mLogStream.is_open())
+      mLogStream << "hasKDMAMonitor: device name = " << mDeviceInfo.mName << std::endl;
+
+    if (strcmp(mDeviceInfo.mName, "xilinx_u200_xdma_201830_2") == 0)
+      return true;
+    if (strcmp(mDeviceInfo.mName, "xilinx_vcu1525_xdma_201830_2") == 0)
+      return true;
+    return false;
+  }
+
+  bool XOCLShim::hasXDMAMonitor()
+  {
+    if (strcmp(mDeviceInfo.mName, "xilinx_u200_xdma_201830_2") == 0)
+      return true;
+    if (strcmp(mDeviceInfo.mName, "xilinx_u250_xdma_201830_2") == 0)
+      return true;
+    if (strcmp(mDeviceInfo.mName, "xilinx_vcu1525_xdma_201830_2") == 0)
+      return true;
+    return false;
+  }
+
+  bool XOCLShim::hasP2PMonitor()
+  {
+    if (strcmp(mDeviceInfo.mName, "xilinx_u200_xdma_201830_2") == 0)
+      return true;
+    if (strcmp(mDeviceInfo.mName, "xilinx_u250_xdma_201830_2") == 0)
+      return true;
+    if (strcmp(mDeviceInfo.mName, "xilinx_vcu1525_xdma_201830_2") == 0)
+      return true;
+    return false;
+  }
+
   void XOCLShim::readDebugIpLayout()
   {
     if (mIsDebugIpLayoutRead)
@@ -166,6 +200,34 @@ namespace xocl {
       }
       ifs.close();
     }
+
+    // Include monitors inserted on some platform shells
+    // NOTE: properties = (64b << 3) + (host << 2) + (counters << 1) + trace
+    if (type == AXI_MM_MONITOR) {
+      properties[count] = 0xE;
+      majorVersions[count] = 1;
+      minorVersions[count] = 0;
+
+      // KDMA
+      if (hasKDMAMonitor()) {
+        baseAddress[count] = KDMA_MONITOR_BASE;
+        portNames[count] = "KDMA";
+        ++count;
+      }
+      // XDMA
+      if (hasXDMAMonitor()) {
+        baseAddress[count] = XDMA_MONITOR_BASE;
+        portNames[count] = "XDMA";
+        ++count;
+      }
+      // P2P
+      if (hasP2PMonitor()) {
+        baseAddress[count] = P2P_MONITOR_BASE;
+        portNames[count] = "P2P";
+        ++count;
+      }
+    }
+
     return count;
   }
 
