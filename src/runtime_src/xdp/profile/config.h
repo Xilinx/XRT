@@ -14,24 +14,18 @@
  * under the License.
  */
 
-#include "time.h"
-#include <chrono>
+#ifndef xdp_config_h_
+#define xdp_config_h_
 
-namespace xrt {
+#include "xocl/core/debug.h"
+#include "xrt/util/debug.h"
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
-}
+#ifdef XDP_VERBOSE
+# define XDP_DEBUG(...) xrt::debug(__VA_ARGS__)
+# define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
+#else
+# define XDP_DEBUG(...)
+# define XDP_LOG(...)
+#endif
 
-} // xocl
-
-
+#endif

@@ -23,11 +23,12 @@
 #include "appdebug.h"
 #include "appdebug_track.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/rt_profile.h"
+#include "xdp/profile/core/rt_profile.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 #include "xocl/core/context.h"
 #include "xocl/core/compute_unit.h"
 #include "xocl/core/execution_context.h"
@@ -42,6 +43,7 @@
 
 #include <map>
 #include <sstream>
+#include <fstream>
 #include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace {
@@ -1204,11 +1206,11 @@ clGetDebugCounters() {
     return adv;
   }
 
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1221,7 +1223,8 @@ clGetDebugCounters() {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
   }
 
@@ -1341,11 +1344,11 @@ clGetDebugStreamCounters()
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1362,7 +1365,8 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
   }
 
@@ -1553,11 +1557,11 @@ clGetDebugCheckers() {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1569,7 +1573,8 @@ clGetDebugCheckers() {
     if (device->is_active()) {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
 

@@ -14,24 +14,29 @@
  * under the License.
  */
 
-#include "time.h"
-#include <chrono>
+#ifndef __XILINX_XDP_WRITER_UTIL_H
+#define __XILINX_XDP_WRITER_UTIL_H
 
-namespace xrt {
+#include <cstdlib>
+#include <cstdio>
+#include <string>
+#include <iostream>
 
-/**
- * @return
- *   nanoseconds since first call
- */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
-}
+namespace xdp {
 
-} // xocl
+  class WriterI {
 
+  public:
+	  WriterI() {};
+      ~WriterI() {};
 
+      static const char * getToolVersion() { return "2019.1"; }
+
+      static std::string getCurrentDateTime();
+      static std::string getCurrentTimeMsec();
+      static std::string getCurrentExecutableName();
+  };
+
+} // xdp
+
+#endif

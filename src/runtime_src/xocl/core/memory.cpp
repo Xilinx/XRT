@@ -108,12 +108,14 @@ set_kernel_argidx(const kernel* kernel, unsigned int argidx)
 
 void
 memory::
-update_buffer_object_map(device* device, buffer_object_handle boh)
+update_buffer_object_map(const device* device, buffer_object_handle boh)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   if (m_bomap.size() == 0) {
+    update_memidx_nolock(device,boh);
     m_bomap[device] = std::move(boh);
-  } else {
+  }
+  else {
     throw std::runtime_error("memory::update_buffer_object_map: bomap should be empty. This is a new cl_mem object.");
   }
 }
@@ -222,7 +224,7 @@ try_get_buffer_object_or_error(const device* device) const
 // private
 memory::memidx_type
 memory::
-get_ext_memidx_nolock(xclbin xclbin) const
+get_ext_memidx_nolock(const xclbin& xclbin) const
 {
   if (m_memidx>=0)
     return m_memidx;
@@ -245,10 +247,24 @@ get_ext_memidx_nolock(xclbin xclbin) const
 
 memory::memidx_type
 memory::
-get_ext_memidx(xclbin xclbin) const
+get_ext_memidx(const xclbin& xclbin) const
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   return get_ext_memidx_nolock(xclbin);
+}
+
+memory::memidx_type
+memory::
+update_memidx_nolock(const device* device, const buffer_object_handle& boh)
+{
+  auto mset = device->get_boh_memidx(boh);
+  for (size_t idx=0; idx<mset.size(); ++idx) {
+    if (mset.test(idx)) {
+      m_memidx=idx;
+      break;
+    }
+  }
+  return m_memidx;
 }
 
 // private

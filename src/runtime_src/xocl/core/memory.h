@@ -95,7 +95,7 @@ public:
   }
 
   memidx_type
-  get_ext_memidx(xclbin xclbin) const;
+  get_ext_memidx(const xclbin& xclbin) const;
 
   /**
    * Record that this buffer is used as argument to kernel at argidx
@@ -287,7 +287,7 @@ public:
    *   true or throws runtime error
    */
   virtual void
-  update_buffer_object_map(device* device, buffer_object_handle boh);
+  update_buffer_object_map(const device* device, buffer_object_handle boh);
 
 
   /**
@@ -443,7 +443,10 @@ private:
   get_memidx_nolock(const device* d) const;
 
   memidx_type
-  get_ext_memidx_nolock(xclbin xclbin) const;
+  get_ext_memidx_nolock(const xclbin& xclbin) const;
+
+  memidx_type
+  update_memidx_nolock(const device* device, const buffer_object_handle& boh);
 
 private:
   unsigned int m_uid = 0;
