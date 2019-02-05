@@ -14,24 +14,22 @@
  * under the License.
  */
 
-#include "time.h"
-#include <chrono>
-
-namespace xrt {
+#ifndef _XDP_XOCL_PROFILE_CB_H
+#define _XDP_XOCL_PROFILE_CB_H
 
 /**
- * @return
- *   nanoseconds since first call
+ * This file contains the registered profiling callbacks
  */
-unsigned long
-time_ns()
-{
-  static auto zero = std::chrono::high_resolution_clock::now();
-  auto now = std::chrono::high_resolution_clock::now();
-  auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return static_cast<unsigned long>(integral_duration);
+
+#include "xocl_profile.h"
+#include "xocl/api/plugin/xdp/profile.h"
+
+#include <map>
+#include <sstream>
+#include <utility>
+#include <string>
+
+namespace xdp {
+void register_xocl_profile_callbacks();
 }
-
-} // xocl
-
-
+#endif

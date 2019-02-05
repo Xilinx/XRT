@@ -897,7 +897,7 @@ public:
             if( v.first == "mem" ) {
               std::string mem_usage, tag, size, type, temp;
               int index = 0;
-              unsigned bo_count;
+              unsigned bo_count = 0;
               for (auto& subv : v.second) {
                 if( subv.first == "index" ) {
                   index = subv.second.get_value<int>();
@@ -1036,9 +1036,8 @@ public:
         stream.read(buffer, length);
         const xclBin *header = (const xclBin *)buffer;
         int result = xclLockDevice(m_handle);
-        if (result)
-            return result;
-        result = xclLoadXclBin(m_handle, header);
+        if (result == 0)
+		result = xclLoadXclBin(m_handle, header);
         delete [] buffer;
         (void) xclUnlockDevice(m_handle);
 
@@ -1189,6 +1188,7 @@ public:
     }
 
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
+        std::ios_base::fmtflags f(std::cout.flags());
         if (strstr(m_devinfo.mName, "-xare")) {//This is ARE device
           if (aStartAddr > m_devinfo.mDDRSize) {
               std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1199,6 +1199,8 @@ public:
                            " is over ARE" << std::endl;
           }
         }
+        std::cout.flags(f);
+
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).read(
             aFilename, aStartAddr, aSize);
@@ -1218,6 +1220,7 @@ public:
     }
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
+        std::ios_base::fmtflags f(std::cout.flags());
         if (strstr(m_devinfo.mName, "-xare")) {//This is ARE device
             if (aStartAddr > m_devinfo.mDDRSize) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1228,6 +1231,7 @@ public:
                              " is over ARE" << std::endl;
             }
         }
+        std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).write(
             aStartAddr, aSize, aPattern);
@@ -1235,6 +1239,7 @@ public:
 
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
+        std::ios_base::fmtflags f(std::cout.flags());
         if( strstr( m_devinfo.mName, "-xare" ) ) { //This is ARE device
             if( aStartAddr > m_devinfo.mDDRSize ) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1245,6 +1250,7 @@ public:
                              " is over ARE" << std::endl;
             }
         }
+        std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).write(
             aStartAddr, aSize, srcBuf);
