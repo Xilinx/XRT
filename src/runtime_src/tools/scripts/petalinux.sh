@@ -3,9 +3,11 @@
 
 # This script is used to build the XRT Embedded Platform PetaLinux Image
 #
-# petalinux.sh <PATH_TO_VIVADO> <PETALINUX_LOCATION> <PETALINUX_NAME> <XRT_REPO_DIR>
+# petalinux.sh <PATH_TO_VIVADO> <PATH_TO_XSCT> <PETALINUX_LOCATION> <PETALINUX_NAME> <XRT_REPO_DIR>
 #
 # PetaLinux output is put into directory $PWD/$PETALINUX_NAME
+#
+# *** The generated platform will be in $PWD/platform/
 #
 
 APPNAME="XRT EMBEDDED PETALINUX"
@@ -25,9 +27,15 @@ if [ ! -f $PATH_TO_VIVADO ]; then
   exit 1
 fi
 
-PETALINUX_LOCATION=$2
+PATH_TO_XSCT=$2
+if [ ! -f $PATH_TO_XSCT ]; then
+  echo "ERROR: Failed to find xsct (it is missing): ${PATH_TO_XSCT}"
+  exit 1
+fi
 
-PETALINUX_NAME=$3
+PETALINUX_LOCATION=$3
+
+PETALINUX_NAME=$4
 # Allow incremental builds
 #if [ -d $PETALINUX_NAME ]; then
 #  echo "ERROR: PetaLinux project already exists, please remove and rerun:"
@@ -35,7 +43,7 @@ PETALINUX_NAME=$3
 #  exit 1
 #fi
 
-XRT_REPO_DIR=$4
+XRT_REPO_DIR=$5
 
 ORIGINAL_DIR=$PWD
 
@@ -143,7 +151,6 @@ petalinux-build
 
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
-set -x
 cp ./${PETALINUX_NAME}/images/linux/image.ub ${XRT_REPO_DIR}/src/platform/zcu102ng/src/a53/xrt/image/image.ub
 mkdir -p ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot
 cp ./${PETALINUX_NAME}/images/linux/bl31.elf ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot/bl31.elf
@@ -153,12 +160,10 @@ cp ./${PETALINUX_NAME}/images/linux/u-boot.elf ${XRT_REPO_DIR}/src/platform/zcu1
 # NOTE: Renames
 cp ./${PETALINUX_NAME}/images/linux/zynqmp_fsbl.elf ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot/fsbl.elf
 
-set +x
-
 cd ${XRT_REPO_DIR}/src/platform/zcu102ng/ 
 echo " * Building Platform (from: $PWD)"
-echo "xsct -sdx ./zcu102ng_pfm.tcl"
-xsct -sdx ./zcu102ng_pfm.tcl
+echo "${PATH_TO_XSCT} -sdx ./zcu102ng_pfm.tcl"
+${PATH_TO_XSCT} -sdx ./zcu102ng_pfm.tcl
 
 # Copy platform directory to ORIGINAL_DIR/platform
 echo " * Copy Platform to $ORIGINAL_DIR/platform"
@@ -166,6 +171,7 @@ mkdir -p $ORIGINAL_DIR/platform
 cp -r ./output/zcu102ng/export/zcu102ng $ORIGINAL_DIR/platform
 
 # Prepare Sysroot directory
+echo " * Prepare Sysroot $ORIGINAL_DIR/platform/zcu102ng/sw/xrt/sysroot"
 mkdir -p $ORIGINAL_DIR/platform/zcu102ng/sw/xrt/sysroot
 cd $ORIGINAL_DIR/platform/zcu102ng/sw/xrt/sysroot
 tar zxf $ORIGINAL_DIR/${PETALINUX_NAME}/images/linux/rootfs.tar.gz 
