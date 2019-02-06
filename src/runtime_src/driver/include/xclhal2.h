@@ -520,6 +520,7 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, 
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
+#define	NULLBO	((unsigned int)-1)
 XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
        	enum xclBOKind domain, unsigned flags);
 

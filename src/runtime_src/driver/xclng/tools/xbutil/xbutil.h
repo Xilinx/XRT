@@ -97,6 +97,7 @@ enum statusmask {
 enum p2pcommand {
     P2P_ENABLE = 0x0,
     P2P_DISABLE,
+    P2P_VALIDATE,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -1362,6 +1363,7 @@ public:
     int resetEccInfo();
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int testP2p();
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1376,7 +1378,7 @@ int xclTop(int argc, char *argv[]);
 int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
-int xclSetP2p(int argc, char *argv[]);
+int xclP2p(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */
