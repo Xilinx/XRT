@@ -1742,6 +1742,7 @@ static int findMgmtDeviceID(int user_slot)
 
 unsigned xclProbe()
 {
+    std::cout << "test plugin" << std::endl;
     return pcidev::get_dev_ready();
 }
 
