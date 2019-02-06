@@ -40,6 +40,8 @@
 #include <cstdio>
 #include <stdarg.h>
 
+#include "plugin/xdp/profile.h"
+
 #ifdef NDEBUG
 # undef NDEBUG
 # include<cassert>
@@ -1742,7 +1744,7 @@ static int findMgmtDeviceID(int user_slot)
 
 unsigned xclProbe()
 {
-    std::cout << "test plugin" << std::endl;
+    XDP_LOG_API_CALL
     return pcidev::get_dev_ready();
 }
 
