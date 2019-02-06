@@ -9,6 +9,7 @@ void register_cb_open (cb_open_type && cb) {
 }
 
 hal_api_call_logger::hal_api_call_logger() {
+    std::cout << "hal_api_call_logger is being called" << std::endl;
     return;
 }
 
