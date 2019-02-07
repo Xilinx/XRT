@@ -2,6 +2,7 @@
 #define XDP_HAL_PLUGIN_H_
 
 #include <functional>
+#include <iostream>
 
 using cb_open_type = std::function<void(void)>;
 
@@ -14,5 +15,9 @@ struct hal_api_call_logger
 };
 
 #define XDP_LOG_API_CALL hal_api_call_logger hal_plugin_object();
+
+void test() {
+    std::cout << "test" << std::endl;
+}
 
 #endif

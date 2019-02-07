@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "plugin/xdp/profile.h"
 
 cb_open_type cb_open;
