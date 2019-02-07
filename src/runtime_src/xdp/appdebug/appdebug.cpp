@@ -1262,7 +1262,12 @@ clGetDebugCounters() {
   spm_view->DevUserName = debugResults.DevUserName;
   spm_view->SysfsPath = sysfs_open_path;
 
+  std::cout << "DEBUGGING: constructing new spm debug view adv" << std::endl;
+
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
+
+  std::cout << "DEBUGGING: clGetDebugCounters ends" << std::endl;
+
   return adv;
 }
 
