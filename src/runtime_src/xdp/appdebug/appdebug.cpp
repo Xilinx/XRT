@@ -1201,7 +1201,7 @@ isEmulationMode()
 
 app_debug_view<spm_debug_view>*
 clGetDebugCounters() {
-  std::cout << "DEBUGGING: clGetDebugCounters starts" << std::endl;
+  std::cout << "DEBUGGING: spm clGetDebugCounters starts" << std::endl;
   cl_int ret = CL_SUCCESS;
   xclDebugCountersResults debugResults = {0};
 
@@ -1262,11 +1262,11 @@ clGetDebugCounters() {
   spm_view->DevUserName = debugResults.DevUserName;
   spm_view->SysfsPath = sysfs_open_path;
 
-  std::cout << "DEBUGGING: constructing new spm debug view adv" << std::endl;
+  std::cout << "DEBUGGING: constructing new spm debug view adv, sysfs path: " << sysfs_open_path << std::endl;
 
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
 
-  std::cout << "DEBUGGING: clGetDebugCounters ends" << std::endl;
+  std::cout << "DEBUGGING: spm clGetDebugCounters ends" << std::endl;
 
   return adv;
 }
