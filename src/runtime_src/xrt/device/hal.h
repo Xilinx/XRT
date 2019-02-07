@@ -603,6 +603,12 @@ public:
     return operations_result<size_t>();
   }
 
+  virtual operations_result<size_t>
+  getSysfsPath(std::string subdev, std::string entry, char* path, int size)
+  {
+    return operations_result<size_t>();
+  }
+
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
 };

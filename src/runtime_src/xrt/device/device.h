@@ -810,6 +810,12 @@ public:
     return m_hal->stopTrace(type);
   }
 
+  hal::operations_result<size_t>
+  getSysfsPath(std::string& subdev, std::string& entry, char* path, int size)
+  {
+    return m_hal->getSysfsPath(subdev, entry, path, size);
+  }
+
   /**
    * Explicitly schedule an arbitrary function on the device's
    * task queue.

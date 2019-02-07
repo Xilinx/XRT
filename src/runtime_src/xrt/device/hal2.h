@@ -574,6 +574,14 @@ public:
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
   }
+
+  virtual hal::operations_result<size_t>
+  getSysfsPath(std::string subdev, std::string entry, char* path, int size)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<size_t>();
+    return m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path, size);
+  }
 };
 
 }} // hal2,xrt
