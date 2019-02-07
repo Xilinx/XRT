@@ -116,10 +116,11 @@ include (CMake/dkms-aws.cmake)
 
 include (CMake/icd.cmake)
 
+include (CMake/changelog.cmake)
+
 include (CMake/pkgconfig.cmake)
 
 include (CMake/coverity.cmake)
 
 set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)
-
