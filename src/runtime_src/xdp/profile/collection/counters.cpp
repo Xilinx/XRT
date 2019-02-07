@@ -470,24 +470,36 @@ namespace xdp {
   }
 
   // Write host data transfer stats
-  void ProfileCounters::writeHostTransferSummary(ProfileWriterI* writer, bool isRead,
-      uint64_t totalBytes, double totalTimeMsec, double maxTransferRateMBps) const
+  void ProfileCounters::writeHostTransferSummary(ProfileWriterI* writer, std::string& deviceName,
+      RTUtil::e_host_monitor monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
+      double totalTimeMsec, double maxTransferRateMBps) const
   {
+    if (monitorType == RTUtil::HOST_MON_DYNAMIC) {
 #ifdef BUFFER_STAT_PER_CONTEXT
-    if (isRead) {
-      for (auto readIter : BufferReadStat)
-        writeBufferStat(writer, "READ", readIter.second, maxTransferRateMBps);
-    }
-    else {
-      for (auto writeIter : BufferWriteStat)
-        writeBufferStat(writer, "WRITE", writeIter.second, maxTransferRateMBps);
-    }
+      if (isRead) {
+        for (auto readIter : BufferReadStat)
+          writeBufferStat(writer, "READ", readIter.second, maxTransferRateMBps);
+      }
+      else {
+        for (auto writeIter : BufferWriteStat)
+          writeBufferStat(writer, "WRITE", writeIter.second, maxTransferRateMBps);
+      }
 #else
-    if (isRead)
-      writeBufferStat(writer, "READ", BufferReadStat, maxTransferRateMBps);
-    else
-      writeBufferStat(writer, "WRITE", BufferWriteStat, maxTransferRateMBps);
+      if (isRead)
+        writeBufferStat(writer, "READ", BufferReadStat, maxTransferRateMBps);
+      else
+        writeBufferStat(writer, "WRITE", BufferWriteStat, maxTransferRateMBps);
 #endif
+      return;
+    }
+
+    // Now write results from other host monitors (i.e., KDMA/XDMA/P2P)
+    std::string monitorName;
+    RTUtil::hostMonitorToString(monitorType, monitorName);
+    std::string transferType = (isRead) ? "READ" : "WRITE";
+
+    writer->writeHostInternalTransferSummary(deviceName, monitorName, transferType,
+    	totalBytes, totalTranx, totalTimeMsec);
   }
 
   void ProfileCounters::writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,

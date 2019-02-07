@@ -39,7 +39,7 @@
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/include/xclperf.h"
-#include "../user_common/perfmon_parameters.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -178,6 +178,9 @@ namespace xocl {
       return mAccelProfilingNumberSlots;
     if (type == XCL_PERF_MON_STALL)
       return mStallProfilingNumberSlots;
+    if (type == XCL_PERF_MON_STR)
+      return mStreamProfilingNumberSlots;
+
     if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
       for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
@@ -185,14 +188,26 @@ namespace xocl {
       }
       return count;
     }
-    if (type == XCL_PERF_MON_STR)
-      return mStreamProfilingNumberSlots;
+    if (type == XCL_PERF_MON_HOST_INT) {
+      uint32_t count = 0;
+      for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
+        if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {
+          std::string slotName = mPerfMonSlotName[i];
+          if (slotName.find("HOST") == std::string::npos)
+            count++;
+        }
+      }
+      return count;
+    }
+
     return 0;
   }
 
-    uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+  uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+    if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+      return static_cast<uint32_t>(mPerfmonProperties[slotnum]);
     if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
-      return  static_cast <uint32_t> (mStreammonProperties[slotnum]);
+      return static_cast<uint32_t>(mStreammonProperties[slotnum]);
     return 0;
   }
 

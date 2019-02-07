@@ -255,12 +255,13 @@
 
 /* Performance monitor type or location */
 enum xclPerfMonType {
-	XCL_PERF_MON_MEMORY = 0,
-	XCL_PERF_MON_HOST   = 1,
-	XCL_PERF_MON_ACCEL  = 2,
-	XCL_PERF_MON_STALL  = 3,
-	XCL_PERF_MON_STR = 4,
-	XCL_PERF_MON_TOTAL_PROFILE = 5
+	XCL_PERF_MON_MEMORY   = 0,
+	XCL_PERF_MON_HOST     = 1,
+	XCL_PERF_MON_HOST_INT = 2,
+	XCL_PERF_MON_ACCEL    = 3,
+	XCL_PERF_MON_STALL    = 4,
+	XCL_PERF_MON_STR      = 5,
+	XCL_PERF_MON_TOTAL_PROFILE = 6
 };
 
 /* Performance monitor start event */

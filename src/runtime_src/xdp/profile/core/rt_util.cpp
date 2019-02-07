@@ -86,6 +86,28 @@ namespace xdp {
     }
   }
 
+  void RTUtil::hostMonitorToString(e_host_monitor hostMonitor,
+                                   std::string& hostString)
+  {
+    switch (hostMonitor) {
+    case HOST_MON_DYNAMIC:
+      hostString = "HOST";
+      break;
+    case HOST_MON_KDMA:
+      hostString = "KDMA";
+      break;
+    case HOST_MON_XDMA:
+      hostString = "XDMA";
+      break;
+    case HOST_MON_P2P:
+      hostString = "P2P";
+      break;
+    default:
+      assert(0);
+      break;
+    }
+  }
+
   void RTUtil::setTimeStamp(e_profile_command_state objStage,
                             TimeTrace* traceObject, double timeStamp)
   {
