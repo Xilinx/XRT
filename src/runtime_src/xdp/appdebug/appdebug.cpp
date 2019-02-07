@@ -1257,8 +1257,6 @@ clGetDebugCounters() {
 
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
 
-  std::cout << "DEBUGGING: spm clGetDebugCounters ends, sysfs path: " << sysfs_open_path << std::endl;
-
   return adv;
 }
 
