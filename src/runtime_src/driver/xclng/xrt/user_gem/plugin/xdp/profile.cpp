@@ -1,4 +1,6 @@
 #include <dlfcn.h>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include "plugin/xdp/profile.h"
 
 namespace xocl {
