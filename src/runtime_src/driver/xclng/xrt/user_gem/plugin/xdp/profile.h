@@ -10,11 +10,11 @@ void register_cb_open(cb_open_type && cb);
 
 struct hal_api_call_logger
 {
-  hal_api_call_logger();
+  hal_api_call_logger(int x);
   ~hal_api_call_logger();
 };
 
-#define XDP_LOG_API_CALL hal_api_call_logger hal_plugin_object();
+#define XDP_LOG_API_CALL(x) hal_api_call_logger hal_plugin_object(x);
 
 void test_plugin();
 

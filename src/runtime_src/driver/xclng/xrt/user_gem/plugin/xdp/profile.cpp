@@ -6,7 +6,7 @@ void register_cb_open (cb_open_type && cb) {
   cb_open = std::move(cb);
 }
 
-hal_api_call_logger::hal_api_call_logger() {
+hal_api_call_logger::hal_api_call_logger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
     return;
 }
