@@ -14,7 +14,3 @@ HalCallLogger::HalCallLogger(int x) {
 HalCallLogger::~HalCallLogger() {
     return;
 }
-
-void test_plugin() {
-    std::cout << "test" << std::endl;
-}

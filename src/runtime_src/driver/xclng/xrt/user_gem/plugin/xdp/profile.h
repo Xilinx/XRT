@@ -16,6 +16,4 @@ class HalCallLogger
 
 #define XDP_LOG_API_CALL(x) HalCallLogger hal_plugin_object(x);
 
-void test_plugin();
-
 #endif
