@@ -15,6 +15,34 @@ void register_cb_open (cb_open_type && cb) {
   cb_open = std::move(cb);
 }
 
+static boost::filesystem::path&
+dllExt()
+{
+  static boost::filesystem::path sDllExt(".so");
+  return sDllExt;
+}
+
+inline bool
+isDLL(const bfs::path& path)
+{
+  return (bfs::exists(path)
+          && bfs::is_regular_file(path)
+          && path.extension()==dllExt());
+}
+
+static void
+directoryOrError(const bfs::path& path)
+{
+  if (!bfs::is_directory(path))
+    throw std::runtime_error("No such directory '" + path.string() + "'");
+}
+
+static const char*
+emptyOrValue(const char* cstr)
+{
+  return cstr ? cstr : "";
+}
+
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));

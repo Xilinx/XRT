@@ -17,6 +17,10 @@ add_library(xrt_corestatic STATIC ${XRT_SRC}
   $<TARGET_OBJECTS:user_gem>
   )
 
+target_link_libraries(xrt_corestatic
+  dl
+)
+
 # Core XRT
 set_target_properties(xrt_core PROPERTIES LINKER_LANGUAGE CXX)
 add_compile_options("-fPIC" "-fvisibility=hidden")
