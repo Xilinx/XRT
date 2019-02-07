@@ -36,6 +36,7 @@ set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_core
   pthread
   rt
+  dl
   boost_filesystem
   boost_system
   )

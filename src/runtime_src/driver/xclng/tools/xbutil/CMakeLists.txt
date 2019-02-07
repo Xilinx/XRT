@@ -19,6 +19,7 @@ target_link_libraries(xbutil
   xrt_corestatic
   pthread
   rt
+  dl
   boost_filesystem
   boost_system
   ${CURSES_LIBRARIES}
