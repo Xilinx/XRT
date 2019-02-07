@@ -14,3 +14,7 @@ hal_api_call_logger::hal_api_call_logger() {
 hal_api_call_logger::~hal_api_call_logger() {
     return;
 }
+
+void test_plugin() {
+    std::cout << "test" << std::endl;
+}
