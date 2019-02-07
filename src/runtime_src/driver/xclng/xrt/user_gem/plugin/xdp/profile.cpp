@@ -1,5 +1,9 @@
 #include "plugin/xdp/profile.h"
 
+namespace xocl {
+
+namespace xdp {
+
 cb_open_type cb_open;
 
 void register_cb_open (cb_open_type && cb) {
@@ -14,3 +18,8 @@ HalCallLogger::HalCallLogger(int x) {
 HalCallLogger::~HalCallLogger() {
     return;
 }
+
+} //  xdp
+
+} //  xocl
+

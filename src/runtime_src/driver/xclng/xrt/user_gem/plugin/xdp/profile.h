@@ -4,6 +4,10 @@
 #include <functional>
 #include <iostream>
 
+namespace xocl {
+
+namespace xdp {
+
 using cb_open_type = std::function<void(void)>;
 
 void register_cb_open(cb_open_type && cb);
@@ -14,6 +18,10 @@ class HalCallLogger
   ~HalCallLogger();
 };
 
-#define XDP_LOG_API_CALL(x) HalCallLogger hal_plugin_object(x);
+} //  xdp
+
+} //  xocl
+
+#define XDP_LOG_API_CALL(x) xocl::xdp::HalCallLogger hal_plugin_object(x);
 
 #endif
