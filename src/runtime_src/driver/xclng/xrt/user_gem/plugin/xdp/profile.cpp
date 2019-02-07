@@ -1,3 +1,4 @@
+#include <dlfcn.h>
 #include "plugin/xdp/profile.h"
 
 namespace xocl {
