@@ -666,8 +666,14 @@ static void xma_shm_close(XmaResConfig *xma_shm, bool rm_shm)
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     munmap((void*)xma_shm, sizeof(XmaResConfig));
 
+    /* JPM eliminate need to remove shared memory as there is
+     * a possible race condition as we cannot ensure this
+     * operation is protected from concurrent access by another
+     * process wishing to open the existing XMA_SHM_FILE
+     * prior to this unlink operation completing.
     if (rm_shm)
         unlink(XMA_SHM_FILE);
+    */
 }
 
 static int xma_verify_process_res(pid_t pid)
