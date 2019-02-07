@@ -1201,7 +1201,6 @@ isEmulationMode()
 
 app_debug_view<spm_debug_view>*
 clGetDebugCounters() {
-  std::cout << "DEBUGGING: spm clGetDebugCounters starts" << std::endl;
   cl_int ret = CL_SUCCESS;
   xclDebugCountersResults debugResults = {0};
 
@@ -1220,8 +1219,6 @@ clGetDebugCounters() {
     return adv;
   }
 
-  std::cout << "DEBUGGING: getting ocl platform id" << std::endl;
-
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugResults,0, sizeof(xclDebugCountersResults));
@@ -1239,14 +1236,10 @@ clGetDebugCounters() {
   }
   std::string sysfs_open_path(raw_sysfs_path);
 
-  std::cout << "DEBUGGING: sysfs path retrieved" << std::endl;
-
   if (ret) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
     return adv;
   }
-
-  std::cout << "DEBUGGING: constructing spm debug view" << std::endl;
 
   auto spm_view = new spm_debug_view ();
   std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteBytes);
@@ -1262,11 +1255,9 @@ clGetDebugCounters() {
   spm_view->DevUserName = debugResults.DevUserName;
   spm_view->SysfsPath = sysfs_open_path;
 
-  std::cout << "DEBUGGING: constructing new spm debug view adv, sysfs path: " << sysfs_open_path << std::endl;
-
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
 
-  std::cout << "DEBUGGING: spm clGetDebugCounters ends" << std::endl;
+  std::cout << "DEBUGGING: spm clGetDebugCounters ends, sysfs path: " << sysfs_open_path << std::endl;
 
   return adv;
 }
