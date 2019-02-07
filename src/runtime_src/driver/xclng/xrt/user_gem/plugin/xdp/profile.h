@@ -16,8 +16,6 @@ struct hal_api_call_logger
 
 #define XDP_LOG_API_CALL hal_api_call_logger hal_plugin_object();
 
-void test_plugin() {
-    std::cout << "test" << std::endl;
-}
+void test_plugin();
 
 #endif
