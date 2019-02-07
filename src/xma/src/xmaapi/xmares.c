@@ -1130,12 +1130,28 @@ static int xma_shm_lock(XmaResConfig *xma_shm)
     extern XmaSingleton *g_xma_singleton;
     int ret;
 
-    if (g_xma_singleton->shm_freed || !xma_shm)
+    xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+    if (g_xma_singleton->shm_freed || !xma_shm) {
+        xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
+            "%s() shm db in an invalid state\n", __func__);
         return XMA_ERROR_INVALID;
+    }
 
     ret = pthread_mutex_lock(&xma_shm->lock);
     if (ret == EOWNERDEAD) {
-        pthread_mutex_consistent(&xma_shm->lock);
+        xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
+            "XMA shm db mutex owner is dead.\n");
+        xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
+            "Trying to make mutex consistent.\n");
+        ret = pthread_mutex_consistent(&xma_shm->lock);
+        if (ret != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+                "Error trying to make shm db mutex consistent.\n");
+            xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+                "Error code = %d.\n", ret);
+            return XMA_ERROR;
+        }
+
         return XMA_SUCCESS;
     }
     return ret;
@@ -1143,8 +1159,12 @@ static int xma_shm_lock(XmaResConfig *xma_shm)
 
 static int xma_shm_unlock(XmaResConfig *xma_shm)
 {
-    if (!xma_shm)
+    xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+    if (!xma_shm) {
+        xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
+            "%s() shm db in an invalid state\n", __func__);
         return XMA_ERROR_INVALID;
+    }
     return pthread_mutex_unlock(&xma_shm->lock);
 }
 
