@@ -495,6 +495,7 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
     pthread_mutexattr_init(&proc_shared_lock);
     pthread_mutexattr_setpshared(&proc_shared_lock, PTHREAD_PROCESS_SHARED);
     pthread_mutexattr_setrobust(&proc_shared_lock, PTHREAD_MUTEX_ROBUST);
+    pthread_mutexattr_setprotocol(&proc_shared_lock, PTHREAD_PRIO_INHERIT);
     shm_map = (XmaResConfig *)mmap(NULL, sizeof(XmaResConfig),
                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     pthread_mutex_init(&shm_map->lock, &proc_shared_lock);
