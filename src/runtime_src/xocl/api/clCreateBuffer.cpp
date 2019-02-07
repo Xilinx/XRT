@@ -57,7 +57,7 @@ get_xlnx_ext_kernel(cl_mem_flags flags, void* host_ptr)
 inline unsigned int
 get_xlnx_ext_argidx(cl_mem_flags flags, void* host_ptr)
 {
-  return get_xlnx_ext_flags(flags,host_ptr);
+  return get_xlnx_ext_flags(flags,host_ptr) & 0xffffff;
 }
 
 // Hack to determine if a context is associated with exactly one
@@ -78,7 +78,7 @@ singleContextDevice(cl_context context, cl_mem_flags flags, const void *host_ptr
 
   if (flags & CL_MEM_EXT_PTR_XILINX) {
     auto xflags = get_xlnx_ext_flags(flags, host_ptr);
-    if (!(xflags & XCL_MEM_TOPOLOGY) || !(xflags & 0xffff))
+    if (!(xflags & XCL_MEM_TOPOLOGY) && !(xflags & 0xffffff))
       return nullptr;
     // Explicit memory bank assignment should be treated as single device context.
     // MLx use case. Do nothing, proceed to returning the device.
