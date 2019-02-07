@@ -1201,6 +1201,7 @@ isEmulationMode()
 
 app_debug_view<spm_debug_view>*
 clGetDebugCounters() {
+  std::cout << "clGetDebugCounters starts" << std::endl;
   cl_int ret = CL_SUCCESS;
   xclDebugCountersResults debugResults = {0};
 
