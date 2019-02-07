@@ -3,6 +3,8 @@
 #include <boost/filesystem/path.hpp>
 #include "plugin/xdp/profile.h"
 
+namespace bfs = boost::filesystem;
+
 namespace xocl {
 
 namespace xdp {
