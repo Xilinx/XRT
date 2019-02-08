@@ -7,7 +7,7 @@ namespace bfs = boost::filesystem;
 
 bool HalCallLogger::loaded = false;
 
-cb_probe_type cb_test_probe;
+// cb_probe_type cb_test_probe;
 
 void sanity_check_cb() {
     std::cout << "sanity_check_cb" << std::endl;
@@ -16,19 +16,19 @@ void sanity_check_cb() {
 void register_cb_probe(cb_probe_type cb) {
   std::cout << "registering cb_test_probe" << std::endl;
   std::cout << "checking cb_test_probe before register" << std::endl;
-  std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-  if (cb_test_probe) {
-    cb_test_probe();
+  std::cout << "value of cb_test_probe: " << (bool)HalCallLogger::cb_test_probe << std::endl;
+  if (HalCallLogger::cb_test_probe) {
+    HalCallLogger::cb_test_probe();
   } else {
     std::cout << "cb_test_probe is not registered" << std::endl;
   }
   std::cout << "checking cb" << std::endl;
   cb();
-  cb_test_probe = sanity_check_cb;
+  HalCallLogger::cb_test_probe = sanity_check_cb;
   std::cout << "checking cb_test_probe after register" << std::endl;
-  std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-  if (cb_test_probe) {
-    cb_test_probe();
+  std::cout << "value of cb_test_probe: " << (bool)HalCallLogger::cb_test_probe << std::endl;
+  if (HalCallLogger::cb_test_probe) {
+    HalCallLogger::cb_test_probe();
   } else {
     std::cout << "cb_test_probe is not registered" << std::endl;
   }
@@ -66,8 +66,8 @@ HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
     std::cout << "checking cb_test_probe in HalCallLogger" << std::endl;
     std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-    if (cb_test_probe) {
-        cb_test_probe();
+    if (HalCallLogger::cb_test_probe) {
+        HalCallLogger::cb_test_probe();
     } else {
         std::cout << "cb_test_probe is not registered" << std::endl;
     }
@@ -104,7 +104,7 @@ void load_xdp_plugin_library() {
     initFunc();
 
     std::cout << "checking cb_test_probe after initFunc" << std::endl;
-    std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
+    std::cout << "value of cb_test_probe: " << (bool)HalCallLogger::cb_test_probe << std::endl;
 
     HalCallLogger::loaded = true;
 }
