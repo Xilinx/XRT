@@ -13,7 +13,6 @@ public:
   HalCallLogger(int x);
   ~HalCallLogger();
   static bool loaded;
-  static cb_probe_type cb_test_probe;
 };
 
 void load_xdp_plugin_library();
