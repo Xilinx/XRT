@@ -9,6 +9,7 @@ void open_cb_func() {
 }
 
 void register_cb_funcs() {
+    std::cout << "register_cb_funcs called" << std::endl;
     register_cb_open(open_cb_func);
     return;
 }
