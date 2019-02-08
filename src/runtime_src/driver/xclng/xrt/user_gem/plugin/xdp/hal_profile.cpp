@@ -35,6 +35,7 @@ void register_cb_probe(cb_probe_type cb) {
     std::cout << "cb_test_probe is not registered" << std::endl;
   }
   test = 250;
+  std::cout << "test int address: 0x" << std::hex << &test << std::dec << std::endl;
 }
 
 static boost::filesystem::path&
@@ -75,6 +76,7 @@ HalCallLogger::HalCallLogger(int x) {
         std::cout << "cb_test_probe is not registered" << std::endl;
     }
     std::cout << "hal_api_call_logger the value of test: " << test << std::endl;
+    std::cout << "test int address: 0x" << std::hex << &test << std::dec << std::endl;
     return;
 }
 
