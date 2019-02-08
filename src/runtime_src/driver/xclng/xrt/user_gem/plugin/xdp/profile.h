@@ -4,7 +4,7 @@
 #include <functional>
 #include <iostream>
 
-using cb_probe_type = std::function<void(void)>;
+using cb_probe_type = std::function<void()>;
 
 void register_cb_probe(cb_probe_type cb);
 
