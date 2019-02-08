@@ -4,9 +4,9 @@
 #include <functional>
 #include <iostream>
 
-using cb_open_type = std::function<void(void)>;
+using cb_probe_type = std::function<void(void)>;
 
-void register_cb_open(cb_open_type cb);
+void register_cb_probe(cb_probe_type cb)
 
 class HalCallLogger {
 public:
