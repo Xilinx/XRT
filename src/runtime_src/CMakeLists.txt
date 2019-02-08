@@ -23,9 +23,7 @@ add_library(oclxdp SHARED ${OPENCL_SRC}
   )
 add_dependencies(oclxdp xdp xilinxopencl)
 
-add_library(xdp_hal_plugin SHARED ${OPENCL_SRC}
-  $<TARGET_OBJECTS:xdp_hal_plugin_obj>
-  )
+add_library(xdp_hal_plugin SHARED $<TARGET_OBJECTS:xdp_hal_plugin_obj>)
 add_dependencies(xdp_hal_plugin xdp xrt_core xrt_corestatic)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
