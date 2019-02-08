@@ -24,7 +24,7 @@ void register_cb_probe(cb_probe_type cb) {
   }
   std::cout << "checking cb" << std::endl;
   cb();
-  cb_test_probe = cb;
+  cb_test_probe = sanity_check_cb;
   std::cout << "checking cb_test_probe after register" << std::endl;
   std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
   if (cb_test_probe) {
@@ -100,8 +100,6 @@ void load_xdp_plugin_library() {
     auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
     if (!initFunc)
         throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
-
-    cb_test_probe = sanity_check_cb;
 
     initFunc();
 
