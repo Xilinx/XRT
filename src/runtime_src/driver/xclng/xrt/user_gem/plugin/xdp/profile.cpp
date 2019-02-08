@@ -58,6 +58,7 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
+    cb_test_probe();
     if (cb_test_probe != nullptr) {
         cb_test_probe();
     } else {
