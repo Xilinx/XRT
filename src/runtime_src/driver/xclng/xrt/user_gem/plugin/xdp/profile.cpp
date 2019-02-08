@@ -11,9 +11,21 @@ cb_open_type cb_open;
 
 void register_cb_open(cb_open_type cb) {
   std::cout << "registering cb_open" << std::endl;
-  std::cout << "checking cb_open" << std::endl;
+  std::cout << "checking cb_open before register" << std::endl;
+  if (cb_open) {
+    cb_open();
+  } else {
+    std::cout << "cb_open is not registered" << std::endl;
+  }
+  std::cout << "checking cb" << std::endl;
   cb();
+  std::cout << "checking cb_open after register" << std::endl;
   cb_open = cb;
+  if (cb_open) {
+    cb_open();
+  } else {
+    std::cout << "cb_open is not registered" << std::endl;
+  }
 }
 
 static boost::filesystem::path&
