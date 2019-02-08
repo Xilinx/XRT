@@ -6,7 +6,9 @@
 
 using cb_open_type = std::function<void(void)>;
 
-void register_cb_open(cb_open_type&& cb);
+void register_cb_open (cb_open_type&& cb) {
+  cb_open = std::move(cb);
+}
 
 class HalCallLogger {
 public:
