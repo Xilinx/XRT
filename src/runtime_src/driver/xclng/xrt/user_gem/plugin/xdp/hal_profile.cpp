@@ -1,7 +1,7 @@
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/hal_profile.h"
 
 namespace bfs = boost::filesystem;
 
