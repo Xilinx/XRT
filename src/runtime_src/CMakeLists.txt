@@ -70,6 +70,11 @@ target_link_libraries(oclxdp
   xilinxopencl
  )
 
+ target_link_libraries(xdp_hal_plugin
+ xdp
+ xrt_core
+)
+
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
