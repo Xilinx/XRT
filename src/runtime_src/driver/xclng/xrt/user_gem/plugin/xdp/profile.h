@@ -6,6 +6,8 @@
 
 using cb_open_type = std::function<void(void)>;
 
+void register_cb_open(cb_open_type&& cb);
+
 class HalCallLogger {
 public:
   HalCallLogger(int x);
