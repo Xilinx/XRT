@@ -9,6 +9,10 @@ bool HalCallLogger::loaded = false;
 
 cb_probe_type cb_test_probe;
 
+void sanity_check_cb() {
+    std::cout << "sanity_check_cb" << std::endl;
+}
+
 void register_cb_probe(cb_probe_type cb) {
   std::cout << "registering cb_test_probe" << std::endl;
   std::cout << "checking cb_test_probe before register" << std::endl;
@@ -96,6 +100,8 @@ void load_xdp_plugin_library() {
     auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
     if (!initFunc)
         throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
+
+    cb_test_probe = sanity_check_cb;
 
     initFunc();
 
