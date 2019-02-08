@@ -98,6 +98,10 @@ void load_xdp_plugin_library() {
         throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
 
     initFunc();
+
+    std::cout << "checking cb_test_probe after initFunc" << std::endl;
+    std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
+
     HalCallLogger::loaded = true;
 }
 
