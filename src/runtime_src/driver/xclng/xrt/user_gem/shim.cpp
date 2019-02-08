@@ -40,7 +40,7 @@
 #include <cstdio>
 #include <stdarg.h>
 
-#include "plugin/xdp/profile.h"
+#include "plugin/xdp/hal_profile.h"
 
 #ifdef NDEBUG
 # undef NDEBUG
