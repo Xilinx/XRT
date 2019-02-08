@@ -12,6 +12,7 @@ cb_probe_type cb_test_probe = nullptr;
 void register_cb_probe(cb_probe_type cb) {
   std::cout << "registering cb_test_probe" << std::endl;
   std::cout << "checking cb_test_probe before register" << std::endl;
+  std::cout << "value of cb_test_probe" << (bool)cb_test_probe << std::endl;
   if (cb_test_probe) {
     cb_test_probe();
   } else {
@@ -19,8 +20,9 @@ void register_cb_probe(cb_probe_type cb) {
   }
   std::cout << "checking cb" << std::endl;
   cb();
-  std::cout << "checking cb_test_probe after register" << std::endl;
   cb_test_probe = cb;
+  std::cout << "checking cb_test_probe after register" << std::endl;
+  std::cout << "value of cb_test_probe" << (bool)cb_test_probe << std::endl;
   if (cb_test_probe) {
     cb_test_probe();
   } else {
@@ -58,8 +60,9 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    cb_test_probe();
-    if (cb_test_probe != nullptr) {
+    std::cout << "checking cb_test_probe in HalCallLogger" << std::endl;
+    std::cout << "value of cb_test_probe" << (bool)cb_test_probe << std::endl;
+    if (cb_test_probe) {
         cb_test_probe();
     } else {
         std::cout << "cb_test_probe is not registered" << std::endl;
