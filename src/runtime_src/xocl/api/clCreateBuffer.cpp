@@ -30,36 +30,6 @@
 
 namespace {
 
-inline void*
-get_host_ptr(cl_mem_flags flags, void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
-    : host_ptr;
-}
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-inline cl_kernel
-get_xlnx_ext_kernel(cl_mem_flags flags, void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->kernel
-    : 0;
-}
-
-inline unsigned int
-get_xlnx_ext_argidx(cl_mem_flags flags, void* host_ptr)
-{
-  return get_xlnx_ext_flags(flags,host_ptr);
-}
-
 // Hack to determine if a context is associated with exactly one
 // device and memory bank can be determined for memory allocation.
 // Additionally, in emulation mode, the device must be active, e.g.
@@ -77,8 +47,8 @@ singleContextDevice(cl_context context, cl_mem_flags flags, const void *host_ptr
     return nullptr;
 
   if (flags & CL_MEM_EXT_PTR_XILINX) {
-    auto xflags = get_xlnx_ext_flags(flags, host_ptr);
-    if (!(xflags & XCL_MEM_TOPOLOGY) || !(xflags & 0xffff))
+    auto xflags = xocl::get_xlnx_ext_flags(flags, host_ptr);
+    if (!(xflags & XCL_MEM_TOPOLOGY) && !(xflags & 0xffffff))
       return nullptr;
     // Explicit memory bank assignment should be treated as single device context.
     // MLx use case. Do nothing, proceed to returning the device.
