@@ -24,7 +24,7 @@ add_library(oclxdp SHARED ${OPENCL_SRC}
 add_dependencies(oclxdp xdp xilinxopencl)
 
 add_library(xdp_hal_plugin SHARED $<TARGET_OBJECTS:xdp_hal_plugin_obj>)
-add_dependencies(xdp_hal_plugin xdp xrt_core xrt_corestatic)
+add_dependencies(xdp_hal_plugin xrt_corestatic xrt_core xdp)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -68,11 +68,7 @@ target_link_libraries(oclxdp
   xilinxopencl
  )
 
-target_link_libraries(xdp_hal_plugin
- xdp
- xrt_core
- xrt_corestatic
-)
+target_link_libraries(xdp_hal_plugin xrt_corestatic xrt_core xdp)
 
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
