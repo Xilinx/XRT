@@ -14,10 +14,8 @@ void register_cb_funcs() {
     return;
 }
 
-extern "C" {
 void init_xdp_hal_plugin() {
     std::cout << "init_xdp_hal_plugin called" << std::endl;
     register_cb_funcs();
     return;
-}
 }
