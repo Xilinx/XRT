@@ -84,7 +84,7 @@ target_link_libraries(xilinxopencl
   crypt
   uuid
   rt
-  )
+)
 
 install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
