@@ -273,8 +273,6 @@ struct mailbox {
 	struct workqueue_struct	*mbx_listen_wq;
 	struct work_struct	mbx_listen_worker;
 
-	bool			mbx_sysfs_ready;
-
 	/*
 	 * For testing basic intr and mailbox comm functionality via sysfs.
 	 * No locking protection, use with care.
@@ -1088,43 +1086,16 @@ static ssize_t mailbox_store(struct device *dev,
 /* Msg test i/f. */
 static DEVICE_ATTR_RW(mailbox);
 
-static int mailbox_init_sysfs(struct mailbox *mbx)
-{
-	struct device *dev = &mbx->mbx_pdev->dev;
-	int err;
+static struct attribute *mailbox_attrs[] = {
+	&dev_attr_mailbox.attr,
+	&dev_attr_mailbox_ctl.attr,
+	&dev_attr_mailbox_pkt.attr,
+	NULL,
+};
 
-	err = device_create_file(dev, &dev_attr_mailbox);
-	if (err)
-		return err;
-
-	err = device_create_file(dev, &dev_attr_mailbox_ctl);
-	if (err) {
-		device_remove_file(dev, &dev_attr_mailbox);
-		return err;
-	}
-
-	err = device_create_file(dev, &dev_attr_mailbox_pkt);
-	if (err) {
-		device_remove_file(dev, &dev_attr_mailbox);
-		device_remove_file(dev, &dev_attr_mailbox_ctl);
-		return err;
-	}
-
-	mbx->mbx_sysfs_ready = true;
-	return 0;
-}
-
-static void mailbox_fini_sysfs(struct mailbox *mbx)
-{
-	struct device *dev = &mbx->mbx_pdev->dev;
-
-	if (!mbx->mbx_sysfs_ready)
-		return;
-
-	device_remove_file(dev, &dev_attr_mailbox_pkt);
-	device_remove_file(dev, &dev_attr_mailbox_ctl);
-	device_remove_file(dev, &dev_attr_mailbox);
-}
+static const struct attribute_group mailbox_attrgroup = {
+	.attrs = mailbox_attrs,
+};
 
 static void dft_req_msg_cb(void *arg, void *data, size_t len, u64 id, int err)
 {
@@ -1447,7 +1418,7 @@ static int mailbox_remove(struct platform_device *pdev)
 
 	mailbox_disable_intr_mode(mbx);
 
-	mailbox_fini_sysfs(mbx);
+	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
 	chan_fini(&mbx->mbx_rx);
 	chan_fini(&mbx->mbx_tx);
@@ -1510,7 +1481,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
 	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
 
-	if ((ret = mailbox_init_sysfs(mbx)) != 0) {
+	if ((ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup) != 0)) {
 		MBX_ERR(mbx, "failed to init sysfs");
 		goto failed;
 	}
