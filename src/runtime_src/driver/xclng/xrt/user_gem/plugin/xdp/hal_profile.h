@@ -6,6 +6,8 @@
 
 using cb_probe_type = std::function<void()>;
 
+extern cb_probe_type cb_test_probe;
+
 void register_cb_probe(cb_probe_type cb);
 
 class HalCallLogger {

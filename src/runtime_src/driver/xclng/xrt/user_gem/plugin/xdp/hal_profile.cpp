@@ -5,7 +5,7 @@
 
 namespace bfs = boost::filesystem;
 
-cb_probe_type cb_test_probe;
+cb_probe_type cb_test_probe = nullptr;
 
 int test = 10;
 
