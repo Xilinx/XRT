@@ -9,9 +9,9 @@ bool HalCallLogger::loaded = false;
 
 cb_open_type cb_open;
 
-void register_cb_open(cb_open_type&& cb) {
+void register_cb_open(cb_open_type cb) {
   std::cout << "registering cb_open" << std::endl;
-  cb_open = std::move(cb);
+  cb_open = cb;
 }
 
 static boost::filesystem::path&
