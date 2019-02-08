@@ -3,8 +3,8 @@
 #include "xdp_hal_plugin.h"
 #include "driver/xclng/xrt/user_gem/plugin/xdp/profile.h"
 
-void open_cb_func() {
-    std::cout << "the open callback is called" << std::endl;
+void probe_cb_func() {
+    std::cout << "the probe callback is called" << std::endl;
     return;
 }
 

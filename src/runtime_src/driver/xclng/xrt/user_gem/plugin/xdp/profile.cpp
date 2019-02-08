@@ -7,24 +7,24 @@ namespace bfs = boost::filesystem;
 
 bool HalCallLogger::loaded = false;
 
-cb_open_type cb_open;
+cb_open_type cb_test_probe;
 
 void register_cb_open(cb_open_type cb) {
-  std::cout << "registering cb_open" << std::endl;
-  std::cout << "checking cb_open before register" << std::endl;
-  if (cb_open) {
-    cb_open();
+  std::cout << "registering cb_test_probe" << std::endl;
+  std::cout << "checking cb_test_probe before register" << std::endl;
+  if (cb_test_probe) {
+    cb_test_probe();
   } else {
-    std::cout << "cb_open is not registered" << std::endl;
+    std::cout << "cb_test_probe is not registered" << std::endl;
   }
   std::cout << "checking cb" << std::endl;
   cb();
-  std::cout << "checking cb_open after register" << std::endl;
-  cb_open = cb;
-  if (cb_open) {
-    cb_open();
+  std::cout << "checking cb_test_probe after register" << std::endl;
+  cb_test_probe = cb;
+  if (cb_test_probe) {
+    cb_test_probe();
   } else {
-    std::cout << "cb_open is not registered" << std::endl;
+    std::cout << "cb_test_probe is not registered" << std::endl;
   }
 }
 
@@ -58,10 +58,10 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    if (cb_open) {
-        cb_open();
+    if (cb_test_probe) {
+        cb_test_probe();
     } else {
-        std::cout << "cb_open is not registered" << std::endl;
+        std::cout << "cb_test_probe is not registered" << std::endl;
     }
     return;
 }
