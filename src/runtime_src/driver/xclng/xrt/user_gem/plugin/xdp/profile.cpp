@@ -7,7 +7,7 @@ namespace bfs = boost::filesystem;
 
 bool HalCallLogger::loaded = false;
 
-cb_probe_type cb_test_probe;
+cb_probe_type cb_test_probe = nullptr;
 
 void register_cb_probe(cb_probe_type cb) {
   std::cout << "registering cb_test_probe" << std::endl;
@@ -58,7 +58,7 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    if (cb_test_probe) {
+    if (cb_test_probe != nullptr) {
         cb_test_probe();
     } else {
         std::cout << "cb_test_probe is not registered" << std::endl;
