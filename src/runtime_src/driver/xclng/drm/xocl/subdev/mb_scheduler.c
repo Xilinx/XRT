@@ -71,6 +71,23 @@ struct xocl_sched;
 
 static bool queued_to_running(struct xocl_cmd *xcmd);
 
+static void xocl_bitmap_to_arr32(u32 *buf, const unsigned long *bitmap,
+	unsigned int nbits)
+{
+	unsigned int i, halfwords;
+
+	halfwords = DIV_ROUND_UP(nbits, 32);
+	for (i = 0; i < halfwords; i++) {
+		buf[i] = (u32) (bitmap[i/2] & UINT_MAX);
+		if (++i < halfwords)
+			buf[i] = (u32) (bitmap[i/2] >> 32);
+	}
+
+	/* Clear tail bits in last element of array beyond nbits. */
+	if (nbits % BITS_PER_LONG)
+		buf[halfwords - 1] &= (u32) (UINT_MAX >> ((-nbits) & 31));
+}
+
 /**
  * struct exec_core: Core data structure for command execution on a device
  *
@@ -2233,11 +2250,8 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 	/* Check CUs in cmd BO against CUs in context */
 	cumasks = 1 + scmd->extra_cu_masks;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,16,0)
-	bitmap_to_arr32(ctx_cus,client->cu_bitmap,cumasks*32);
-#else
-	bitmap_to_u32array(ctx_cus,cumasks,client->cu_bitmap,MAX_CUS);
-#endif
+	xocl_bitmap_to_arr32(ctx_cus,client->cu_bitmap,cumasks*32);
+
 	for (i=0; i<cumasks; ++i) {
 		uint32_t cmd_cus = ecmd->data[i];
                 /* cmd_cus must be subset of ctx_cus */
