@@ -5,6 +5,8 @@ extern "C" {
 
 void init_xdp_hal_plugin();
 
+void register_cb_funcs();
+
 }
 
 #endif
