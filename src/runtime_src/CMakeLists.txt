@@ -27,7 +27,6 @@ add_library(xdp_hal_plugin SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdp_hal_plugin_obj>
   )
 add_dependencies(xdp_hal_plugin xdp xrt_core)
-target_link_libraries(xdp_hal_plugin xdp xrt_core)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
