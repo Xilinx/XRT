@@ -11,6 +11,8 @@ cb_open_type cb_open;
 
 void register_cb_open(cb_open_type cb) {
   std::cout << "registering cb_open" << std::endl;
+  std::cout << "checking cb_open" << std::endl;
+  cb();
   cb_open = cb;
 }
 
