@@ -7,7 +7,7 @@ namespace bfs = boost::filesystem;
 
 bool HalCallLogger::loaded = false;
 
-cb_probe_type cb_test_probe = nullptr;
+cb_probe_type cb_test_probe;
 
 void register_cb_probe(cb_probe_type cb) {
   std::cout << "registering cb_test_probe" << std::endl;
