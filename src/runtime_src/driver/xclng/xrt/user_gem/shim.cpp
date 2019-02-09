@@ -1745,7 +1745,7 @@ static int findMgmtDeviceID(int user_slot)
 unsigned xclProbe()
 {
     std::cout << "ready to call the callback macro" << std::endl;
-    load_xdp_plugin_library();
+    xdphal::load_xdp_plugin_library();
     XDP_LOG_API_CALL(5)
     return pcidev::get_dev_ready();
 }
