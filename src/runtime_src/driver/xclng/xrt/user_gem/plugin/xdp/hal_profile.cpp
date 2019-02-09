@@ -5,6 +5,8 @@
 
 namespace bfs = boost::filesystem;
 
+namespace xdphal {
+
 cb_probe_type cb_test_probe = nullptr;
 
 int test = 10;
@@ -82,6 +84,8 @@ HalCallLogger::HalCallLogger(int x) {
 
 HalCallLogger::~HalCallLogger() {
     return;
+}
+
 }
 
 void load_xdp_plugin_library() {

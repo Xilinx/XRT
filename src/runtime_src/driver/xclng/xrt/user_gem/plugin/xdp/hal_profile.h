@@ -4,6 +4,8 @@
 #include <functional>
 #include <iostream>
 
+namespace xdphal {
+
 using cb_probe_type = std::function<void()>;
 
 extern cb_probe_type cb_test_probe;
@@ -20,6 +22,8 @@ public:
 };
 
 void load_xdp_plugin_library();
+
+}
 
 #define XDP_LOG_API_CALL(x) HalCallLogger hal_plugin_object(x);
 
