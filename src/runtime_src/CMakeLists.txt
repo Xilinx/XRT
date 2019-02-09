@@ -66,8 +66,8 @@ target_link_libraries(oclxdp
  )
 
 add_library(xdp_hal_plugin SHARED ${XRT_SRC} $<TARGET_OBJECTS:xdp_hal_plugin_obj>)
-add_dependencies(xdp_hal_plugin xrt_core xdp)
-target_link_libraries(xdp_hal_plugin xrt_core xdp)
+add_dependencies(xdp_hal_plugin xrt_corestatic xdp)
+target_link_libraries(xdp_hal_plugin xrt_corestatic xdp)
 
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
