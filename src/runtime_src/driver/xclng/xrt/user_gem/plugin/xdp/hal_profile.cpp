@@ -75,13 +75,6 @@ void load_xdp_plugin_library() {
     if (!handle)
         throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
 
-    typedef void (* xdpInitType)();
-
-    const std::string s = "init_xdp_hal_plugin";
-    auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
-    if (!initFunc)
-        throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
-
     const std::string probe_cb_func_name = "probe_cb_func";
     typedef void (* cb_probe_load_type)();
     cb_probe = cb_probe_type((cb_probe_load_type)dlsym(handle, probe_cb_func_name.c_str()));
