@@ -7,7 +7,7 @@ namespace bfs = boost::filesystem;
 
 namespace xdphal {
 
-cb_probe_type cb_test_probe = nullptr;
+cb_probe_type cb_probe = nullptr;
 
 int test = 10;
 
@@ -43,12 +43,12 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    std::cout << "checking cb_test_probe in HalCallLogger" << std::endl;
-    std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-    if (cb_test_probe) {
-        cb_test_probe();
+    std::cout << "checking cb_probe in HalCallLogger" << std::endl;
+    std::cout << "value of cb_probe: " << (bool)cb_probe << std::endl;
+    if (cb_probe) {
+        cb_probe();
     } else {
-        std::cout << "cb_test_probe is not registered" << std::endl;
+        std::cout << "cb_probe is not registered" << std::endl;
     }
     std::cout << "hal_api_call_logger the value of test: " << test << std::endl;
     std::cout << "test int address: 0x" << std::hex << &test << std::dec << std::endl;
@@ -83,14 +83,14 @@ void load_xdp_plugin_library() {
         throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
 
     const std::string probe_cb_func_name = "probe_cb_func";
-    typedef void (* probe_cb_func_ctype)();
-    cb_test_probe = cb_probe_type((probe_cb_func_ctype)dlsym(handle, probe_cb_func_name.c_str()));
+    typedef void (* cb_probe_load_type)();
+    cb_probe = cb_probe_type((cb_probe_load_type)dlsym(handle, probe_cb_func_name.c_str()));
     
-    std::cout << "testing cb_test_probe the new way" << std::endl;
-    cb_test_probe();
+    std::cout << "testing cb_probe the new way" << std::endl;
+    cb_probe();
 
-    std::cout << "checking cb_test_probe after initFunc" << std::endl;
-    std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
+    std::cout << "checking cb_probe after initFunc" << std::endl;
+    std::cout << "value of cb_probe: " << (bool)cb_probe << std::endl;
 
     HalCallLogger::loaded = true;
 }
