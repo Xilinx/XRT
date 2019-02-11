@@ -116,7 +116,7 @@ void load_xdp_plugin_library() {
     std::cout << "testing cb_test_probe the new way" << std::endl;
     cb_test_probe();
 
-    initFunc();
+    // initFunc();
 
     std::cout << "checking cb_test_probe after initFunc" << std::endl;
     std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
