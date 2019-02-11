@@ -43,8 +43,6 @@
 const char *get_afi_from_axlf(const axlf *buffer)
 {
     const axlf_section_header *bit_header = xclbin::get_axlf_section(buffer, BITSTREAM);
-    if (!bit_header)
-        return nullptr;
     const char *afid = reinterpret_cast<const char *>(buffer);
     afid += bit_header->m_sectionOffset;
     if (bit_header->m_sectionSize > AFI_ID_STR_MAX)

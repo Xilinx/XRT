@@ -538,13 +538,11 @@ namespace xcldev {
           if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
             //error
             std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR at offset 0x" << std::hex << phy << std::dec << "\n";
-            free(buf);
             return -1;
           }
           count -= incr;
         }
 
-        free(buf);
         if (count != 0) {
           std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
           return -1;
