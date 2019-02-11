@@ -109,6 +109,10 @@ void load_xdp_plugin_library() {
     if (!initFunc)
         throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
 
+    const std::string probe_cb_func_name = "probe_cb_func";
+    typedef void (* probe_cb_func_ctype)();
+    auto cb_test_probe = cb_probe_type((probe_cb_func_ctype)dlsym(handle, probe_cb_func_name.c_str()));
+
     initFunc();
 
     std::cout << "checking cb_test_probe after initFunc" << std::endl;
