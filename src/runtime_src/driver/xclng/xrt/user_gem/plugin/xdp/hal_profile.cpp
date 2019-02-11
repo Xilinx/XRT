@@ -56,6 +56,7 @@ HalCallLogger::HalCallLogger(int x) {
 }
 
 HalCallLogger::~HalCallLogger() {
+    std::cout << "hal_api_call_logger destructor is being called" << std::endl;
     return;
 }
 
