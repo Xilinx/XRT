@@ -358,7 +358,7 @@ public:
         for(unsigned i = 0; i < numDDR; i++ ) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-            if(!map->m_mem_data[i].m_size)
+            if(!map->m_mem_data[i].m_used)
                 continue;
             uint64_t memoryUsage, boCount;
             std::stringstream mem_usage(mm_buf[i]);
@@ -473,7 +473,7 @@ public:
         for(unsigned i = 0; i < numDDR; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-            if (!map->m_mem_data[i].m_size)
+            if (!map->m_mem_data[i].m_used)
                 continue;
             ss << " [" << i << "] " <<
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
