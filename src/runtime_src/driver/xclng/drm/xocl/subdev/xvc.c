@@ -340,7 +340,7 @@ static int xvc_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct xocl_dev_core *core;
 	int err;
-
+	printk("XVC: probe => start");
 	xvc = devm_kzalloc(&pdev->dev, sizeof(*xvc), GFP_KERNEL);
 	if (!xvc)
 		return -ENOMEM;
@@ -388,6 +388,8 @@ static int xvc_probe(struct platform_device *pdev)
 	xvc_pci_props.bar_index       = core->bar_idx;
 	xvc_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
 									pci_resource_start(core->pdev, core->bar_idx);
+	
+	printk("XVC: probe => done");
 
 failed:
 	return err;
@@ -433,6 +435,7 @@ int __init xocl_init_xvc(void)
 {
 	int err = 0;
 
+	printk("XVC: init => start");
 	err = alloc_chrdev_region(&xvc_dev, 0, XOCL_MAX_DEVICES, XVC_DEV_NAME);
 	if (err < 0)
 		goto err_register_chrdev;
@@ -441,11 +444,13 @@ int __init xocl_init_xvc(void)
 	if (err) {
 		goto err_driver_reg;
 	}
+	printk("XVC: init => done");
 	return 0;
 
 err_driver_reg:
 	unregister_chrdev_region(xvc_dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
+printk("XVC: init => err");
 	return err;
 }
 
