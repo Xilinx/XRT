@@ -13,33 +13,6 @@ int test = 10;
 
 bool HalCallLogger::loaded = false;
 
-void sanity_check_cb() {
-    std::cout << "sanity_check_cb" << std::endl;
-}
-
-void register_cb_probe(cb_probe_type cb) {
-  std::cout << "registering cb_test_probe" << std::endl;
-  std::cout << "checking cb_test_probe before register" << std::endl;
-  std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-  if (cb_test_probe) {
-    cb_test_probe();
-  } else {
-    std::cout << "cb_test_probe is not registered" << std::endl;
-  }
-  std::cout << "checking cb" << std::endl;
-  cb();
-  cb_test_probe = sanity_check_cb;
-  std::cout << "checking cb_test_probe after register" << std::endl;
-  std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;
-  if (cb_test_probe) {
-    cb_test_probe();
-  } else {
-    std::cout << "cb_test_probe is not registered" << std::endl;
-  }
-  test = 250;
-  std::cout << "test int address: 0x" << std::hex << &test << std::dec << std::endl;
-}
-
 static boost::filesystem::path&
 dllExt()
 {
@@ -115,8 +88,6 @@ void load_xdp_plugin_library() {
     
     std::cout << "testing cb_test_probe the new way" << std::endl;
     cb_test_probe();
-
-    // initFunc();
 
     std::cout << "checking cb_test_probe after initFunc" << std::endl;
     std::cout << "value of cb_test_probe: " << (bool)cb_test_probe << std::endl;

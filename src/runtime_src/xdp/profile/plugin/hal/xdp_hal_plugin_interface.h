@@ -3,8 +3,6 @@
 
 extern "C" {
 
-void init_xdp_hal_plugin();
-
 void probe_cb_func();
 
 }
