@@ -111,7 +111,7 @@ void load_xdp_plugin_library() {
 
     const std::string probe_cb_func_name = "probe_cb_func";
     typedef void (* probe_cb_func_ctype)();
-    auto cb_test_probe = cb_probe_type((probe_cb_func_ctype)dlsym(handle, probe_cb_func_name.c_str()));
+    cb_test_probe = cb_probe_type((probe_cb_func_ctype)dlsym(handle, probe_cb_func_name.c_str()));
     
     std::cout << "testing cb_test_probe the new way" << std::endl;
     cb_test_probe();
