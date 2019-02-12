@@ -71,7 +71,6 @@ void load_xdp_plugin_library() {
         throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
 
     const std::string probe_cb_func_name = "probe_cb_func";
-    typedef void (* cb_probe_load_type)();
     cb_probe = cb_probe_type(reinterpret_cast<cb_probe_load_type>(dlsym(handle, probe_cb_func_name.c_str())));
 
     HalCallLogger::loaded = true;

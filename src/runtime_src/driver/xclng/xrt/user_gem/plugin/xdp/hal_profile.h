@@ -8,6 +8,8 @@ namespace xdphal {
 
 using cb_probe_type = std::function<void()>;
 
+typedef void (* cb_probe_load_type)();
+
 extern cb_probe_type cb_test_probe;
 
 extern int test;
@@ -23,8 +25,14 @@ public:
 
 void load_xdp_plugin_library();
 
-}
+} //  xdphal
 
-#define XDP_LOG_API_CALL() xdphal::HalCallLogger hal_plugin_object();
+
+/**
+ * The declaration of the macros
+ * to be inserted into the shim 
+ * implementations
+ */
+#define XDP_LOG_PROBE_CALL() xdphal::HalCallLogger hal_plugin_object();
 
 #endif
