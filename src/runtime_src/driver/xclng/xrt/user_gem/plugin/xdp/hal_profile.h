@@ -25,6 +25,6 @@ void load_xdp_plugin_library();
 
 }
 
-#define XDP_LOG_API_CALL(x) xdphal::HalCallLogger hal_plugin_object(x);
+#define XDP_LOG_API_CALL() xdphal::HalCallLogger hal_plugin_object();
 
 #endif
