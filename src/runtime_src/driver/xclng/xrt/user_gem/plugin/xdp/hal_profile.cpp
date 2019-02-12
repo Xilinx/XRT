@@ -64,7 +64,7 @@ void load_xdp_plugin_library() {
 
     const std::string probe_cb_func_name = "probe_cb_func";
     // cb_probe = cb_probe_func_type(reinterpret_cast<cb_probe_load_func_type>(dlsym(handle, probe_cb_func_name.c_str())));
-    cb_probe = cb_probe_func_type(reinterpret_cast<cb_probe_func_type.target_type()>(dlsym(handle, probe_cb_func_name.c_str())));
+    cb_probe = cb_probe_func_type(reinterpret_cast<cb_probe_func_type.target()>(dlsym(handle, probe_cb_func_name.c_str())));
 
     HalCallLogger::loaded = true;
 }
