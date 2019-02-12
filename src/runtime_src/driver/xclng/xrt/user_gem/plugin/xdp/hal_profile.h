@@ -4,6 +4,11 @@
 #include <functional>
 #include <iostream>
 
+enum class HalFuncType {
+  PROBE,
+  OPEN
+};
+
 namespace xdphal {
 
 using cb_probe_func_type = std::function<void()>;
@@ -48,11 +53,6 @@ public:
 void load_xdp_plugin_library();
 
 } //  xdphal
-
-enum class HalFuncType {
-  PROBE,
-  OPEN
-};
 
 /**
  * The declaration of the macros
