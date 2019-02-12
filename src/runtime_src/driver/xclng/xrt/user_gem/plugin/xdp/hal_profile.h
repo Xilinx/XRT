@@ -16,7 +16,7 @@ void register_cb_probe(cb_probe_type cb);
 
 class HalCallLogger {
 public:
-  HalCallLogger(int x);
+  HalCallLogger();
   ~HalCallLogger();
   static bool loaded;
 };
