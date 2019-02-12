@@ -999,7 +999,7 @@ namespace xocl {
 
   int XOCLShim::xclSwitchProfiling() {
     if (!xdphal::HalCallLogger::loaded) {
-      load_xdp_plugin_library();
+      xdphal::load_xdp_plugin_library();
     }
   }
 
