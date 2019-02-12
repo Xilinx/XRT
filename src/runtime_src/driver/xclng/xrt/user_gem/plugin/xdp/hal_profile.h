@@ -18,6 +18,7 @@ using cb_alloc_bo_func_type = std::function<void()>;
 using cb_alloc_user_ptr_bo_func_type = std::function<void()>;
 using cb_free_bo_func_type = std::function<void()>;
 using cb_write_bo_func_type = std::function<void()>;
+using cb_read_bo_func_type = std::function<void()>;
 
 typedef void (* cb_probe_load_func_type)();
 
