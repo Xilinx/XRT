@@ -31,7 +31,7 @@ static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
-HalCallLogger::HalCallLogger() {
+HalCallLogger::HalCallLogger(HalFuncType funcType) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
     if (cb_probe) {
         cb_probe();
@@ -41,7 +41,7 @@ HalCallLogger::HalCallLogger() {
     return;
 }
 
-HalCallLogger::~HalCallLogger() {
+HalCallLogger::~HalCallLogger(HalFuncType funcType) {
     std::cout << "hal_api_call_logger destructor is being called" << std::endl;
     return;
 }

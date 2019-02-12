@@ -6,6 +6,11 @@
 
 namespace xdphal {
 
+enum class HalFuncType {
+  PROBE,
+  OPEN
+};
+
 using cb_probe_func_type = std::function<void()>;
 using cb_open_func_type = std::function<void(int)>;
 using cb_close_func_type = std::function<void(int)>;
@@ -40,8 +45,8 @@ extern cb_probe_func_type cb_probe;
 
 class HalCallLogger {
 public:
-  HalCallLogger();
-  ~HalCallLogger();
+  HalCallLogger(HalFuncType funcType);
+  ~HalCallLogger(HalFuncType funcType);
   static bool loaded;
 };
 
