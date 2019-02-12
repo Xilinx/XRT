@@ -60,6 +60,6 @@ void load_xdp_plugin_library();
  * to be inserted into the shim 
  * implementations
  */
-#define XDP_LOG_PROBE_CALL() xdphal::HalCallLogger hal_plugin_object();
+#define XDP_LOG_PROBE_CALL(x) xdphal::HalCallLogger hal_plugin_object(x);
 
 #endif
