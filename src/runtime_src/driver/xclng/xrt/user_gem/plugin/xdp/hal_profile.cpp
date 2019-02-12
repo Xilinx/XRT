@@ -9,8 +9,6 @@ namespace xdphal {
 
 cb_probe_type cb_probe = nullptr;
 
-int test = 10;
-
 bool HalCallLogger::loaded = false;
 
 static boost::filesystem::path&
@@ -43,15 +41,11 @@ emptyOrValue(const char* cstr)
 
 HalCallLogger::HalCallLogger(int x) {
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    std::cout << "checking cb_probe in HalCallLogger" << std::endl;
-    std::cout << "value of cb_probe: " << (bool)cb_probe << std::endl;
     if (cb_probe) {
         cb_probe();
     } else {
         std::cout << "cb_probe is not registered" << std::endl;
     }
-    std::cout << "hal_api_call_logger the value of test: " << test << std::endl;
-    std::cout << "test int address: 0x" << std::hex << &test << std::dec << std::endl;
     return;
 }
 
