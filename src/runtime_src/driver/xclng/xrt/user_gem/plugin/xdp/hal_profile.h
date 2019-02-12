@@ -30,6 +30,9 @@ using cb_exec_buf_func_type = std::function<void()>;
 using cb_exec_buf_waitlist_func_type = std::function<void()>;
 using cb_exec_wait_func_type = std::function<void()>;
 using cb_create_write_queue_func_type = std::function<void()>;
+using cb_create_read_queue_func_type = std::function<void()>;
+using cb_alloc_qdma_func_type = std::function<void()>;
+using cb_free_qdma_func_type = std::function<void()>;
 
 typedef void (*cb_probe_load_func_type)();
 
