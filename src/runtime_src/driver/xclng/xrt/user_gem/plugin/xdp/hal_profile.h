@@ -7,6 +7,8 @@
 namespace xdphal {
 
 using cb_probe_type = std::function<void()>;
+using cb_open_type = std::function<void(int)>;
+using cb_close_type = std::function<void(int)>;
 
 typedef void (* cb_probe_load_type)();
 
