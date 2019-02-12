@@ -41,8 +41,6 @@ using cb_create_read_queue_func_type = std::function<void()>;
 using cb_alloc_qdma_func_type = std::function<void()>;
 using cb_free_qdma_func_type = std::function<void()>;
 
-cb_probe_func_type cb_probe;
-
 class HalCallLogger {
 public:
   HalCallLogger(HalFuncType funcType);

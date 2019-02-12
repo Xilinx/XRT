@@ -7,7 +7,7 @@ namespace bfs = boost::filesystem;
 
 namespace xdphal {
 
-cb_probe = nullptr;
+cb_probe_func_type cb_probe;
 
 bool HalCallLogger::loaded = false;
 
