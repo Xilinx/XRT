@@ -6,13 +6,15 @@
 
 namespace xdphal {
 
-using cb_probe_type = std::function<void()>;
-using cb_open_type = std::function<void(int)>;
-using cb_close_type = std::function<void(int)>;
+using cb_probe_func_type = std::function<void()>;
+using cb_open_func_type = std::function<void(int)>;
+using cb_close_func_type = std::function<void(int)>;
+using cb_load_xclbin_func_type = std::function<void()>;
+using cb_lock_device_func_type = std::function<void()>;
 
-typedef void (* cb_probe_load_type)();
+typedef void (* cb_probe_load_func_type)();
 
-extern cb_probe_type cb_test_probe;
+extern cb_probe_func_type cb_probe;
 
 class HalCallLogger {
 public:
