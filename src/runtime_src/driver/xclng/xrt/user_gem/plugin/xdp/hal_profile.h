@@ -46,7 +46,7 @@ extern cb_probe_func_type cb_probe;
 class HalCallLogger {
 public:
   HalCallLogger(HalFuncType funcType);
-  ~HalCallLogger(HalFuncType funcType);
+  ~HalCallLogger();
   static bool loaded;
 };
 
