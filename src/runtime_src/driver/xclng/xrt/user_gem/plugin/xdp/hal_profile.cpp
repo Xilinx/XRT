@@ -22,16 +22,12 @@ inline bool isDLL(const bfs::path& path) {
           && path.extension()==dllExt());
 }
 
-static void
-directoryOrError(const bfs::path& path)
-{
+static void directoryOrError(const bfs::path& path) {
   if (!bfs::is_directory(path))
     throw std::runtime_error("No such directory '" + path.string() + "'");
 }
 
-static const char*
-emptyOrValue(const char* cstr)
-{
+static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
