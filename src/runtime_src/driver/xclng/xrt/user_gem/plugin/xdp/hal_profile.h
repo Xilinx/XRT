@@ -11,7 +11,7 @@ enum class HalFuncType {
 
 namespace xdphal {
 
-typedef void(*cb_probe_load_func_type)();
+typedef void(*cb_load_func_type)();
 
 using cb_probe_func_type = std::function<void()>;
 using cb_open_func_type = std::function<void()>;
@@ -40,6 +40,12 @@ using cb_create_write_queue_func_type = std::function<void()>;
 using cb_create_read_queue_func_type = std::function<void()>;
 using cb_alloc_qdma_func_type = std::function<void()>;
 using cb_free_qdma_func_type = std::function<void()>;
+using cb_destroy_queue_func_type = std::function<void()>;
+using cb_modify_queue_func_type = std::function<void()>;
+using cb_start_queue_func_type = std::function<void()>;
+using cb_stop_queue_func_type = std::function<void()>;
+using cb_write_queue_func_type = std::function<void()>;
+using cb_read_queue_func_type = std::function<void()>;
 
 class HalCallLogger {
 public:
