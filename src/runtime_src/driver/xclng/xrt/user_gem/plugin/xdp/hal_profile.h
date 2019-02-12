@@ -13,8 +13,7 @@ namespace xdphal {
 
 typedef void (*cb_probe_load_func_type)();
 
-// using cb_probe_func_type = std::function<void()>;
-using cb_probe_func_type = std::function<cb_probe_load_func_type>;
+using cb_probe_func_type = std::function<void()>;
 using cb_open_func_type = std::function<void(int)>;
 using cb_close_func_type = std::function<void(int)>;
 using cb_load_xclbin_func_type = std::function<void()>;
@@ -42,8 +41,7 @@ using cb_create_read_queue_func_type = std::function<void()>;
 using cb_alloc_qdma_func_type = std::function<void()>;
 using cb_free_qdma_func_type = std::function<void()>;
 
-// extern cb_probe_func_type cb_probe;
-std::function<cb_probe_load_func_type> cb_probe;
+cb_probe_func_type cb_probe;
 
 class HalCallLogger {
 public:
