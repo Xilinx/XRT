@@ -16,32 +16,31 @@
 
 #ifndef xrt_message_h_
 #define xrt_message_h_
-
 #include <string>
 
 namespace xrt_core { namespace message {
 
-//modeled based on syslog severity. 
-enum class severity_level : unsigned short 
+//modeled based on syslog severity.
+enum class severity_level : unsigned short
 {
+ EMERGENCY,
  ALERT,
  CRITICAL,
- DEBUG,
- EMERGENCY,
  ERROR,
- INFO,
- INTERNAL,
+ WARNING,
  NOTICE,
- WARNING
+ INFO,
+ DEBUG
 };
 
+
 void 
-send(severity_level l, const char* msg);
+send(severity_level l, const char* tag, const char* msg);
 
 inline void 
-send(severity_level l, const std::string& msg)
+send(severity_level l, const std::string& tag, const std::string& msg)
 {
-  send(l,msg.c_str());
+  send(l, tag.c_str(), msg.c_str());
 }
 
 }} // message,xrt
