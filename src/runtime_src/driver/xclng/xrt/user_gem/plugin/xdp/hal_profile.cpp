@@ -47,6 +47,7 @@ HalCallLogger::~HalCallLogger() {
 }
 
 void load_xdp_plugin_library() {
+    std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname ("libxdp_hal_plugin.so");
     if (xrt.empty()) {
