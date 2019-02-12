@@ -14,8 +14,8 @@ namespace xdphal {
 typedef void(*cb_probe_load_func_type)();
 
 using cb_probe_func_type = std::function<void()>;
-using cb_open_func_type = std::function<void(int)>;
-using cb_close_func_type = std::function<void(int)>;
+using cb_open_func_type = std::function<void()>;
+using cb_close_func_type = std::function<void()>;
 using cb_load_xclbin_func_type = std::function<void()>;
 using cb_lock_device_func_type = std::function<void()>;
 using cb_unlock_device_func_type = std::function<void()>;
