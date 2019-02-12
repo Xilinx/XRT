@@ -11,16 +11,12 @@ cb_probe_type cb_probe = nullptr;
 
 bool HalCallLogger::loaded = false;
 
-static boost::filesystem::path&
-dllExt()
-{
+static boost::filesystem::path& dllExt() {
   static boost::filesystem::path sDllExt(".so");
   return sDllExt;
 }
 
-inline bool
-isDLL(const bfs::path& path)
-{
+inline bool isDLL(const bfs::path& path) {
   return (bfs::exists(path)
           && bfs::is_regular_file(path)
           && path.extension()==dllExt());

@@ -12,8 +12,6 @@ typedef void (* cb_probe_load_type)();
 
 extern cb_probe_type cb_test_probe;
 
-void register_cb_probe(cb_probe_type cb);
-
 class HalCallLogger {
 public:
   HalCallLogger();
