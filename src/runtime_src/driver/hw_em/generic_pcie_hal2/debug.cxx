@@ -142,11 +142,7 @@ namespace xclhwemhal2 {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if (baseAddress) baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if (portNames) {
-               char nameBuf[129] = {0};
-               std::memcpy(nameBuf, (char*)(map->m_debug_ip_data[i].m_name), 128);
-               portNames[count] = nameBuf;
-            }
+            if (portNames)   portNames[count].assign(reinterpret_cast<const char*>(map->m_debug_ip_data[i].m_name),128); 
             if (properties)  properties[count]  = map->m_debug_ip_data[i].m_properties;
             ++count;
           }
