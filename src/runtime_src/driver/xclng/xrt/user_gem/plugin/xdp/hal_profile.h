@@ -55,9 +55,8 @@ void load_xdp_plugin_library();
 } //  xdphal
 
 /**
- * The declaration of the macros
- * to be inserted into the shim 
- * implementations
+ * The declaration of the macros to be inserted into 
+ * the shim implementations
  */
 #define XDP_LOG_PROBE_CALL(x) xdphal::HalCallLogger hal_plugin_object(x);
 
