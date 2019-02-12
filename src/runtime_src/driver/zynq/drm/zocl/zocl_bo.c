@@ -288,7 +288,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	bo = zocl_create_userprt_bo(dev, args->size);
 	if (IS_ERR(bo)) {
-		DRM_INFO("Object creation failed\n");
+		DRM_ERROR("Object creation failed\n");
 		return PTR_ERR(bo);
 	}
 
