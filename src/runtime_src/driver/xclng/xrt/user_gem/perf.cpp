@@ -40,6 +40,7 @@
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/include/xclperf.h"
 #include "../user_common/perfmon_parameters.h"
+#include "plugin/xdp/hal_profile.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -996,6 +997,12 @@ namespace xocl {
     return 0;
   }
 
+  int XOCLShim::xclSwitchProfiling() {
+    if (!xdphal::HalCallLogger::loaded) {
+      load_xdp_plugin_library();
+    }
+  }
+
 } // namespace xocl_gem
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
@@ -1123,4 +1130,8 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
+int xclSwitchProfiling(xclDeviceHandle handle) {
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclSwitchProfiling() : -ENODEV;
+}
 

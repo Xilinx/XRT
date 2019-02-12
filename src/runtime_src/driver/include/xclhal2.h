@@ -1259,6 +1259,20 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
+/**
+ * Experimental API for switching on
+ * and off hal level host profiling
+ * and the loading of the dynamic 
+ * profiling plugins
+ * 
+ * Warning: These APIs are experimental and can be
+ * changed or removed at any time. They should only
+ * be used by debug and profile code.
+ * 
+ * @param handle the device handle
+ */
+XCL_DRIVER_DLLESPEC int xclSwitchProfiling(xclDeviceHandle handle);
+
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
