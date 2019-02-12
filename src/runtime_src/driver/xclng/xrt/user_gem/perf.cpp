@@ -1001,6 +1001,7 @@ namespace xocl {
     if (!xdphal::HalCallLogger::loaded) {
       xdphal::load_xdp_plugin_library();
     }
+    return 0;
   }
 
 } // namespace xocl_gem
