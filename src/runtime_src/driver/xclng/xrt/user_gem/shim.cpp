@@ -1744,7 +1744,7 @@ static int findMgmtDeviceID(int user_slot)
 
 unsigned xclProbe()
 {
-    XDP_LOG_API_CALL(0)
+    XDP_LOG_API_CALL()
     return pcidev::get_dev_ready();
 }
 
