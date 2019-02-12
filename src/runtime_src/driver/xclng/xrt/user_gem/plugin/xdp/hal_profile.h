@@ -11,6 +11,13 @@ using cb_open_func_type = std::function<void(int)>;
 using cb_close_func_type = std::function<void(int)>;
 using cb_load_xclbin_func_type = std::function<void()>;
 using cb_lock_device_func_type = std::function<void()>;
+using cb_unlock_device_func_type = std::function<void()>;
+using cb_open_context_func_type = std::function<void()>;
+using cb_close_context_func_type = std::function<void()>;
+using cb_alloc_bo_func_type = std::function<void()>;
+using cb_alloc_user_ptr_bo_func_type = std::function<void()>;
+using cb_free_bo_func_type = std::function<void()>;
+using cb_write_bo_func_type = std::function<void()>;
 
 typedef void (* cb_probe_load_func_type)();
 
