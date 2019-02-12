@@ -19,8 +19,19 @@ using cb_alloc_user_ptr_bo_func_type = std::function<void()>;
 using cb_free_bo_func_type = std::function<void()>;
 using cb_write_bo_func_type = std::function<void()>;
 using cb_read_bo_func_type = std::function<void()>;
+using cb_map_bo_func_type = std::function<void()>;
+using cb_sync_bo_func_type = std::function<void()>;
+using cb_copy_bo_func_type = std::function<void()>;
+using cb_unmgd_pread_func_type = std::function<void()>;
+using cb_unmgd_pwrite_func_type = std::function<void()>;
+using cb_reg_read_func_type = std::function<void()>;
+using cb_reg_write_func_type = std::function<void()>;
+using cb_exec_buf_func_type = std::function<void()>;
+using cb_exec_buf_waitlist_func_type = std::function<void()>;
+using cb_exec_wait_func_type = std::function<void()>;
+using cb_create_write_queue_func_type = std::function<void()>;
 
-typedef void (* cb_probe_load_func_type)();
+typedef void (*cb_probe_load_func_type)();
 
 extern cb_probe_func_type cb_probe;
 
