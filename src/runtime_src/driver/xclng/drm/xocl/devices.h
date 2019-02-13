@@ -575,7 +575,6 @@ enum subdev_id {
 		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
 		.subdev_info	= USER_RES_QDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
-		.flash_type = FLASH_TYPE_SPI				\
 	}
 
 #define	USER_RES_XDMA_DSA50						\
@@ -762,6 +761,7 @@ enum subdev_id {
 		.flags		= 0,					\
 		.subdev_info	= MGMT_RES_QDMA,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_QDMA),		\
+		.flash_type = FLASH_TYPE_SPI				\
 	}
 
 #define	MGMT_RES_XBB_QDMA						\
@@ -779,6 +779,7 @@ enum subdev_id {
 		.flags		= 0,					\
 		.subdev_info	= MGMT_RES_XBB_QDMA,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_QDMA),		\
+		.flash_type = FLASH_TYPE_SPI				\
 	}
 
 #define	XOCL_BOARD_MGMT_6B0F		XOCL_BOARD_MGMT_6A8F
