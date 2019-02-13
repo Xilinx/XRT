@@ -155,20 +155,10 @@ xocl::XOCLShim::XOCLShim(unsigned index,
     init(index, logfileName, verbosity);
 }
 
-/*
- * init()
- */
-void xocl::XOCLShim::init(unsigned index, const char *logfileName,
-    xclVerbosityLevel verbosity)
+int xocl::XOCLShim::dev_init()
 {
-    if( logfileName != nullptr ) {
-        mLogStream.open(logfileName);
-        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
-        mLogStream << __func__ << ", " << std::this_thread::get_id()
-            << std::endl;
-    }
+    auto dev = pcidev::get_dev(mBoardNumber);
 
-    auto dev = pcidev::get_dev(index);
    // pcidev::dump_dev_list();
     if(dev->user) {
         // Should only touch user pf when device is ready.
@@ -190,7 +180,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
 
             int result = ioctl(mUserHandle, DRM_IOCTL_VERSION, &version);
             if (result)
-                return;
+                return -errno;
 
             // Lets map 4M
             mUserMap = (char *)mmap(0, dev->user->user_bar_size,
@@ -208,13 +198,6 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
         std::string streamFile = "/dev/str_dma.u"+
             std::to_string(USER_PCIID(dev->user));
         mStreamHandle = open(streamFile.c_str(), O_RDWR | O_SYNC);
-
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = dev->user->sysfs_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
     }
 
     if (dev->mgmt) {
@@ -222,7 +205,7 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
         mMgtHandle = open(mgmtFile.c_str(), O_RDWR | O_SYNC);
         if(mMgtHandle < 0) {
             std::cout << "Could not open " << mgmtFile << std::endl;
-            return;
+            return -errno;
         }
         mMgtMap = (char *)mmap(0, dev->mgmt->user_bar_size, PROT_READ | PROT_WRITE,
             MAP_SHARED, mMgtHandle, 0);
@@ -243,6 +226,71 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
     } else {
         mAioEnabled = true;
     }
+
+    return 0;
+}
+
+void xocl::XOCLShim::dev_fini()
+{
+    auto dev = pcidev::get_dev(mBoardNumber);
+
+    if (mUserMap != nullptr) {
+        munmap(mUserMap, dev->user->user_bar_size);
+        mUserMap = nullptr;
+    }
+
+    if (mMgtMap != nullptr) {
+        munmap(mMgtMap, dev->mgmt->user_bar_size);
+        mMgtMap = nullptr;
+    }
+
+    if (mUserHandle > 0) {
+        close(mUserHandle);
+        mUserHandle = 0;
+    }
+
+    if (mMgtHandle > 0) {
+        close(mMgtHandle);
+        mMgtHandle = 0;
+    }
+
+    if (mStreamHandle > 0) {
+        close(mStreamHandle);
+        mStreamHandle = 0;
+    }
+
+    if (mAioEnabled) {
+	    io_destroy(mAioContext);
+            mAioEnabled = false;
+    }
+}
+
+/*
+ * init()
+ */
+void xocl::XOCLShim::init(unsigned index, const char *logfileName,
+    xclVerbosityLevel verbosity)
+{
+    if( logfileName != nullptr ) {
+        mLogStream.open(logfileName);
+        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+        mLogStream << __func__ << ", " << std::this_thread::get_id()
+            << std::endl;
+    }
+
+    dev_init();
+
+    auto dev = pcidev::get_dev(index);
+
+   // pcidev::dump_dev_list();
+    if(dev->user) {
+        // Profiling - defaults
+        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
+        mDevUserName = dev->user->sysfs_name;
+        mMemoryProfilingNumberSlots = 0;
+        mPerfMonFifoCtrlBaseAddress = 0x00;
+        mPerfMonFifoReadBaseAddress = 0x00;
+    }
 }
 
 /*
@@ -250,30 +298,12 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
  */
 xocl::XOCLShim::~XOCLShim()
 {
-    auto dev = pcidev::get_dev(mBoardNumber);
-
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
         mLogStream.close();
     }
 
-    if (mUserMap != nullptr)
-        munmap(mUserMap, dev->user->user_bar_size);
-
-    if (mMgtMap != nullptr)
-        munmap(mMgtMap, dev->mgmt->user_bar_size);
-
-    if (mUserHandle > 0)
-        close(mUserHandle);
-
-    if (mMgtHandle > 0)
-        close(mMgtHandle);
-
-    if (mStreamHandle > 0)
-        close(mStreamHandle);
-
-    if (mAioEnabled)
-	    io_destroy(mAioContext);
+    dev_fini();
 }
 
 /*
@@ -729,21 +759,22 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
 
 int xocl::XOCLShim::p2pEnable(bool enable, bool force)
 {
-    drm_xocl_p2p_enable obj;
+    const std::string input = "1\n";
+    std::string err;
 
-    std::memset(&obj, 0, sizeof(drm_xocl_p2p_enable));
-    obj.enable = enable ? 1 : 0;
-    ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
+    if (enable)
+        pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "p2p_enable", err, "1");
+    else
+        pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "p2p_enable", err, "0");
+
     if (errno == ENOSPC)
 	    return errno;
     else if (errno == EALREADY && !force)
 	    return 0;
 
     if (force) {
+        dev_fini();
         /* remove root bus and rescan */
-        const std::string input = "1\n";
-
-        std::string err;
         pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "root_dev/remove", err, input);
 
     
@@ -752,13 +783,14 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
         std::ofstream rescanFile(rescan_path);
         if(!rescanFile.is_open()) {
             perror(rescan_path.c_str());
-            return errno;
-        }
-        rescanFile << input;
+        } else {
+            rescanFile << input;
+	}
+
+	dev_init();
     }
 
     int p2p_enable = -1;
-    std::string err;
     pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "p2p_enable", err, p2p_enable);
     if (p2p_enable == 2)
 	    return EBUSY;

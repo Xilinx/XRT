@@ -54,7 +54,26 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 }
 #endif
 
-#define	XOCL_DRV_CHANGE		"$Change$"
+static inline void xocl_memcpy_fromio(void *buf, void *iomem, u32 size)
+{
+	int i;
+
+	BUG_ON(size & 0x3);
+
+        for (i = 0; i < size / 4; i++)
+                ((u32 *)buf)[i] = ioread32((char *)(iomem) + sizeof(u32) * i);
+}
+
+static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
+{
+	int i;
+
+	BUG_ON(size & 0x3);
+
+        for (i = 0; i < size / 4; i++)
+		iowrite32(((u32 *)buf)[i], ((char *)(iomem) + sizeof(u32) * i));
+}
+
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
 #define	ICAP_XCLBIN_V2			"xclbin2"
@@ -68,6 +87,7 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 
 #define MAX_DATA_SZ 128
 
+#define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -76,6 +96,13 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 #define xocl_dbg(dev, fmt, args...)			\
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
+#define xocl_xdev_info(xdev, fmt, args...)		\
+	xocl_info(XDEV2DEV(xdev), fmt, ##args)
+#define xocl_xdev_err(xdev, fmt, args...)		\
+	xocl_err(XDEV2DEV(xdev), fmt, ##args)
+#define xocl_xdev_dbg(xdev, fmt, args...)		\
+	xocl_dbg(XDEV2DEV(xdev), fmt, ##args)
+
 #define	XOCL_DRV_VER_NUM(ma, mi, p)		\
 	((ma) * 1000 + (mi) * 100 + (p))
 
@@ -83,8 +110,6 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 	ioread32(addr)
 #define	XOCL_WRITE_REG32(val, addr)	\
 	iowrite32(val, addr)
-#define	XOCL_COPY2IO(ioaddr, buf, len)	\
-	memcpy_toio(ioaddr, buf, len)
 
 /* xclbin helpers */
 #define sizeof_sect(sect, data) \
@@ -138,7 +163,6 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 
 extern struct class *xrt_class;
 
-struct xocl_dev;
 struct drm_xocl_bo;
 struct client_ctx;
 
@@ -162,8 +186,6 @@ struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
 	int (*intr_register)(xdev_handle_t xdev, u32 intr,
 		irq_handler_t handler, void *arg);
-	int (*dev_online)(xdev_handle_t xdev);
-	int (*dev_offline)(xdev_handle_t xdev);
 };
 
 #define	XDEV(dev)	((struct xocl_dev_core *)(dev))
@@ -173,32 +195,28 @@ struct xocl_pci_funcs {
 	XDEV_PCIOPS(xdev)->intr_config(xdev, intr, en)
 #define	xocl_user_interrupt_reg(xdev, intr, handler, arg)	\
 	XDEV_PCIOPS(xdev)->intr_register(xdev, intr, handler, arg)
-#define	xocl_user_dev_online(xdev)	\
-	XDEV_PCIOPS(xdev)->dev_online(xdev)
-#define	xocl_user_dev_offline(xdev)	\
-	XDEV_PCIOPS(xdev)->dev_offline(xdev)
-
-struct xocl_context {
-	struct hlist_node	hlist;
-	u32			arg_sz;
-	char			arg[1];
-};
-
-struct xocl_context_hash {
-	struct hlist_head	*hash;
-	u32			size;
-	u32			count;
-	spinlock_t		ctx_lock;
-	struct device		*dev;
-	u32 (*hash_func)(void *arg);
-	int (*cmp_func)(void *arg_o, void *arg_n);
-};
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
 	void		*arg;
 	u32		interval;    /* ms */
 	struct device	*dev;
+};
+
+struct xocl_drvinst_proc {
+	struct list_head	link;
+	u32			pid;
+	u32			count;
+};
+
+struct xocl_drvinst {
+	struct device		*dev;
+	u32			size;
+	atomic_t		ref;
+	struct completion	comp;
+	struct list_head	open_procs;
+	void			*file_dev;
+	char			data[1];
 };
 
 struct xocl_dev_core {
@@ -217,13 +235,14 @@ struct xocl_dev_core {
         void *__iomem		intr_bar_addr;
 	resource_size_t		intr_bar_size;
 
+	struct task_struct      *health_thread;
+	struct xocl_health_thread_arg thread_arg;
+
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
 
-	struct kref		kref;
-	bool			removed;
-	void (*remove_cb)(xdev_handle_t xdev_hdl);
+	bool			offline;
 };
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
@@ -290,60 +309,71 @@ struct xocl_rom_funcs {
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->get_raw_header(ROM_DEV(xdev), header) :\
 	NULL)
 
-/* mm_dma callbacks */
-struct xocl_mm_dma_funcs {
+/* dma callbacks */
+struct xocl_dma_funcs {
 	ssize_t (*migrate_bo)(struct platform_device *pdev,
 		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz);
 	int (*ac_chan)(struct platform_device *pdev, u32 dir);
 	void (*rel_chan)(struct platform_device *pdev, u32 dir, u32 channel);
-	int (*set_max_chan)(struct platform_device *pdev, u32 channel_count);
 	u32 (*get_chan_count)(struct platform_device *pdev);
 	u64 (*get_chan_stat)(struct platform_device *pdev, u32 channel,
 		u32 write);
+	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
+	int (*user_intr_config)(struct platform_device *pdev, u32 intr, bool en);
+	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
+			        irq_handler_t handler, void *arg, int event_fd);
+	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
+	void *(*get_drm_handle)(struct platform_device *pdev);
 };
-#define MM_DMA_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_MM_DMA).pldev
-#define	MM_DMA_OPS(xdev)	\
-	((struct xocl_mm_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MM_DMA).ops)
+
+#define DMA_DEV(xdev)	\
+	SUBDEV(xdev, XOCL_SUBDEV_DMA).pldev
+#define	DMA_OPS(xdev)	\
+	((struct xocl_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_DMA).ops)
 #define	xocl_migrate_bo(xdev, sgt, write, paddr, chan, len)	\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->migrate_bo(MM_DMA_DEV(xdev), \
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
 	sgt, write, paddr, chan, len) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->ac_chan(MM_DMA_DEV(xdev), dir) : \
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)
 #define	xocl_release_channel(xdev, dir, chan)	\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->rel_chan(MM_DMA_DEV(xdev), dir, \
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->rel_chan(DMA_DEV(xdev), dir, \
 	chan) : NULL)
-#define	xocl_set_max_channel(xdev, count)		\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->set_max_chan(MM_DMA_DEV(xdev), \
-	count) : -ENODEV)
 #define	xocl_get_chan_count(xdev)		\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->get_chan_count(MM_DMA_DEV(xdev)) \
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_chan_count(DMA_DEV(xdev)) \
 	: 0)
 #define	xocl_get_chan_stat(xdev, chan, write)		\
-	(MM_DMA_DEV(xdev) ? MM_DMA_OPS(xdev)->get_chan_stat(MM_DMA_DEV(xdev), \
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_chan_stat(DMA_DEV(xdev), \
 	chan, write) : 0)
+#define xocl_dma_intr_config(xdev, irq, en)			\
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_config(DMA_DEV(xdev), \
+	irq, en) : -ENODEV)
+#define xocl_dma_intr_register(xdev, irq, handler, arg, event_fd)	\
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_register(DMA_DEV(xdev), \
+	irq, handler, arg, event_fd) : -ENODEV)
+#define xocl_dma_intr_unreg(xdev, irq)				\
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_unreg(DMA_DEV(xdev),	\
+	irq) : -ENODEV)
+#define	xocl_dma_get_drm_handle(xdev)				\
+	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_drm_handle(DMA_DEV(xdev)) : \
+	NULL)
 
 /* mb_scheduler callbacks */
 struct xocl_mb_scheduler_funcs {
-	int (*add_exec_buffer)(struct platform_device *pdev, struct client_ctx *client,void *buf, int numdeps, struct drm_xocl_bo **deps);
 	int (*create_client)(struct platform_device *pdev, void **priv);
 	void (*destroy_client)(struct platform_device *pdev, void **priv);
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
 		poll_table *wait, void *priv);
+	int (*client_ioctl)(struct platform_device *pdev, int op,
+		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
-	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
 #define	MB_SCHEDULER_OPS(xdev)	\
 	((struct xocl_mb_scheduler_funcs *)SUBDEV(xdev, 	\
 		XOCL_SUBDEV_MB_SCHEDULER).ops)
-#define	xocl_exec_add_buffer(xdev, client, bo, numdeps, deps)	\
-	(MB_SCHEDULER_DEV(xdev) ? 				\
-	 MB_SCHEDULER_OPS(xdev)->add_exec_buffer(MB_SCHEDULER_DEV(xdev), client, bo,  numdeps, deps) : \
-	-ENODEV)
 #define	xocl_exec_create_client(xdev, priv)		\
 	(MB_SCHEDULER_DEV(xdev) ?			\
 	MB_SCHEDULER_OPS(xdev)->create_client(MB_SCHEDULER_DEV(xdev), priv) : \
@@ -356,6 +386,10 @@ struct xocl_mb_scheduler_funcs {
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	MB_SCHEDULER_OPS(xdev)->poll_client(MB_SCHEDULER_DEV(xdev), filp, \
 	wait, priv) : 0)
+#define	xocl_exec_client_ioctl(xdev, op, data, drm_filp)		\
+	(MB_SCHEDULER_DEV(xdev) ?				\
+	MB_SCHEDULER_OPS(xdev)->client_ioctl(MB_SCHEDULER_DEV(xdev),	\
+	op, data, drm_filp) : -ENODEV)
 #define	xocl_exec_stop(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
@@ -364,14 +398,18 @@ struct xocl_mb_scheduler_funcs {
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
         -ENODEV)
-#define	xocl_exec_validate(xdev, client, bo)			\
-	(MB_SCHEDULER_DEV(xdev) ? 				\
-	 MB_SCHEDULER_OPS(xdev)->validate(MB_SCHEDULER_DEV(xdev), client, bo) : \
-        -ENODEV)
-#define	XOCL_IS_DDR_USED(xdev, ddr)		\
-	(xdev->topology->m_mem_data[ddr].m_used == 1)
+
+#define XOCL_MEM_TOPOLOGY(xdev)						\
+	((struct mem_topology *)					\
+	 xocl_icap_get_axlf_section_data(xdev, MEM_TOPOLOGY))
+#define XOCL_IP_LAYOUT(xdev)						\
+	((struct ip_layout *)						\
+	 xocl_icap_get_axlf_section_data(xdev, IP_LAYOUT))
+
+#define	XOCL_IS_DDR_USED(xdev, ddr)					\
+	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
 #define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
-	((xdev)->topology ? (xdev)->topology->m_count : 0)
+	(XOCL_MEM_TOPOLOGY(xdev) ? XOCL_MEM_TOPOLOGY(xdev)->m_count : 0)
 #define	XOCL_DDR_COUNT(xdev)			\
 	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
@@ -416,8 +454,6 @@ struct xocl_firewall_funcs {
 	int (*get_prop)(struct platform_device *pdev, u32 prop, void *val);
 	int (*clear_firewall)(struct platform_device *pdev);
 	u32 (*check_firewall)(struct platform_device *pdev, int *level);
-	int (*health_check)(struct platform_device *pdev,
-		int (*cb)(void *data), void *cb_arg, u32 interval);
 };
 #define AF_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_AF).pldev
@@ -431,9 +467,6 @@ struct xocl_firewall_funcs {
 	(AF_DEV(xdev) ? AF_OPS(xdev)->check_firewall(AF_DEV(xdev), level) : 0)
 #define	xocl_af_clear(xdev)				\
 	(AF_DEV(xdev) ? AF_OPS(xdev)->clear_firewall(AF_DEV(xdev)) : -ENODEV)
-#define xocl_af_start_health_check(xdev, cb, cb_arg, interval)	\
-	(AF_DEV(xdev) ? AF_OPS(xdev)->health_check(AF_DEV(xdev), cb, cb_arg, \
-	interval) : -ENODEV)
 
 /* microblaze callbacks */
 struct xocl_mb_funcs {
@@ -599,32 +632,50 @@ struct xocl_icap_funcs {
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
 #define	xocl_icap_reset_axi_gate(xdev)					\
-	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev))
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev)) :		\
+	 NULL)
 #define	xocl_icap_reset_bitstream(xdev)					\
-	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev))
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
+	 -ENODEV)
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
-	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin) : \
+	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
-	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev))
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
+	 -ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
-	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
+	 -ENODEV)
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
-	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) : \
+	 -ENODEV)
 #define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
-	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num) : \
+	 -ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid, pid)			\
-	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid) :	\
+	 -ENODEV)
 #define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
-	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid)
-#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)				\
-	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind)
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
+	 -ENODEV)
+#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)		\
+	(ICAP_OPS(xdev) ? 						\
+	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind) : \
+	-ENODEV)
 
-#define	xocl_icap_get_axlf_section_data(xdev, kind)				\
-	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind)
-
-struct xocl_str_dma_funcs  {
-	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
-};
+#define	xocl_icap_get_axlf_section_data(xdev, kind)			\
+	(ICAP_OPS(xdev) ? 						\
+	 ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind) : \
+	 NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -635,6 +686,7 @@ int xocl_subdev_create_multi_inst(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
+int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
         struct xocl_subdev_info *sdev_info, u32 subdev_num);
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
@@ -653,30 +705,22 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 /* context helpers */
-int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,
-	u32 hash_sz, u32 (*hash_func)(void *arg),
-	int (*cmp_func)(void *arg_o, void *arg_n));
-void xocl_ctx_fini(struct device *dev, struct xocl_context_hash *ctx_hash);
-int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg);
-int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz);
-int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
-	int (*cb_func)(struct xocl_context_hash *ctx_hash, void *arg));
+extern struct mutex xocl_drvinst_mutex;
+extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
-void xocl_core_init(xdev_handle_t xdev_hdl,
-	void (*remove_cb)(xdev_handle_t xdev_hdl));
-void xocl_core_fini(xdev_handle_t xdev_hdl);
-bool xocl_drv_released(xdev_handle_t xdev_hdl);
-void xocl_drv_get(xdev_handle_t xdev_hdl);
-void xocl_drv_put(xdev_handle_t xdev_hdl);
+void *xocl_drvinst_alloc(struct device *dev, u32 size);
+void xocl_drvinst_free(void *data);
+void *xocl_drvinst_open(void *file_dev);
+void xocl_drvinst_close(void *data);
+void xocl_drvinst_set_filedev(void *data, void *file_dev);
 
 /* health thread functions */
-int health_thread_init(struct device *dev, char *thread_name,
-	struct xocl_health_thread_arg *arg, struct task_struct **pthread);
-void health_thread_fini(struct device *dev, struct task_struct *pthread);
+int health_thread_start(xdev_handle_t xdev);
+int health_thread_stop(xdev_handle_t xdev);
 
 /* init functions */
-int __init xocl_init_drv_user_xdma(void);
-void xocl_fini_drv_user_xdma(void);
+int __init xocl_init_userpf(void);
+void xocl_fini_fini_userpf(void);
 
 int __init xocl_init_drv_user_qdma(void);
 void xocl_fini_drv_user_qdma(void);
@@ -684,11 +728,11 @@ void xocl_fini_drv_user_qdma(void);
 int __init xocl_init_feature_rom(void);
 void xocl_fini_feature_rom(void);
 
-int __init xocl_init_mm_xdma(void);
-void xocl_fini_mm_xdma(void);
+int __init xocl_init_xdma(void);
+void xocl_fini_xdma(void);
 
-int __init xocl_init_mm_qdma(void);
-void xocl_fini_mm_qdma(void);
+int __init xocl_init_qdma(void);
+void xocl_fini_qdma(void);
 
 int __init xocl_init_mb_scheduler(void);
 void xocl_fini_mb_scheduler(void);
@@ -713,9 +757,6 @@ void xocl_fini_mailbox(void);
 
 int __init xocl_init_icap(void);
 void xocl_fini_icap(void);
-
-int __init xocl_init_str_qdma(void);
-void xocl_fini_str_qdma(void);
 
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);

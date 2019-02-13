@@ -70,6 +70,8 @@ struct sched_ops;
 struct xocl_sched;
 
 static bool queued_to_running(struct xocl_cmd *xcmd);
+static int validate(struct platform_device *pdev, struct client_ctx *client,
+		const struct drm_xocl_bo *bo);
 
 static void xocl_bitmap_to_arr32(u32 *buf, const unsigned long *bitmap,
 	unsigned int nbits)
@@ -163,6 +165,8 @@ struct exec_core {
 
 	/* Operations for dynamic indirection dependt on MB or kernel scheduler */
 	struct sched_ops	   *ops;
+
+	unsigned		   ip_reference[MAX_CUS];
 };
 
 /**
@@ -1135,7 +1139,7 @@ post_exec_custat(struct xocl_cmd *xcmd)
 	/* read back from ert if enabled */
 	if (exec_is_ert(exec)) {
 		u32 slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(exec);
-		memcpy_fromio(exec->cu_usage,exec->base + slot_addr + 4,exec->num_cus*sizeof(u32));
+		xocl_memcpy_fromio(exec->cu_usage,exec->base + slot_addr + 4,exec->num_cus*sizeof(u32));
 	}
 	SCHED_DEBUGF("<- post_exec_custat(%lu)\n",xcmd->id);
 	return 0;
@@ -1855,7 +1859,7 @@ mb_submit(struct xocl_cmd *xcmd)
 	SCHED_DEBUG_PACKET(xcmd->packet,packet_size(xcmd));
 
 	/* write packet minus header */
-	memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(u32));
+	xocl_memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(u32));
 
 	/* write header */
 	iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);
@@ -2045,6 +2049,44 @@ add_exec_buffer(struct platform_device *pdev, struct client_ctx *client, void *b
 }
 
 static int
+xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int pid = pid_nr(task_tgid(current));
+
+	if (client->xclbin_locked)
+		return 0;
+
+	if (!uuid_equal(&xdev->xclbin_id, &client->xclbin_id)) {
+		userpf_err(xdev, "device xclbin does not match context xclbin, "
+			"cannot obtain lock for process %d", pid);
+		return 1;
+	}
+
+	if (xocl_icap_lock_bitstream(xdev, &client->xclbin_id, pid) < 0) {
+		userpf_err(xdev,"could not lock bitstream for process %d", pid);
+		return 1;
+	}
+
+	client->xclbin_locked=true;
+	userpf_info(xdev, "process %d successfully locked xcblin", pid);
+	return 0;
+}
+
+static int
+xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
+{
+	int ret = 0;
+
+	mutex_lock(&client->lock);         // protect current client
+	mutex_lock(&xdev->ctx_list_lock);  // protect xdev->xclbin_id
+	ret = xocl_client_lock_bitstream_nolock(xdev,client);
+	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+
+static int
 create_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx	*client;
@@ -2086,11 +2128,32 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx *client = (struct client_ctx *)(*priv);
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
-	//struct exec_core *exec = pdev_get_exec(pdev);
+	struct exec_core *exec = pdev_get_exec(pdev);
 	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
 	int pid = pid_nr(task_tgid(current));
+	unsigned bit;
+	struct ip_layout *layout = XOCL_IP_LAYOUT(xdev);
+
+	bit = layout
+		? find_first_bit(client->cu_bitmap, layout->m_count)
+		: MAX_CUS;
+
+	/*
+	 * This happens when application exists without formally releasing the
+	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
+	 */
+	 while (layout && (bit < layout->m_count)) {
+		if (exec->ip_reference[bit]) {
+			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
+				&client->xclbin_id, pid,bit);
+			exec->ip_reference[bit]--;
+		}
+		bit = find_next_bit(client->cu_bitmap,layout->m_count,bit + 1);
+	}
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	// force scheduler to abort execs for this client
 	client->abort=true;
@@ -2164,6 +2227,210 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 	return ret;
 }
 
+static int client_ioctl_ctx(struct platform_device *pdev,
+		struct client_ctx *client, void *data)
+{
+	bool acquire_lock = false;
+	struct drm_xocl_ctx *args = data;
+	int ret = 0;
+	int pid = pid_nr(task_tgid(current));
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct exec_core *exec = platform_get_drvdata(pdev);
+
+	mutex_lock(&client->lock);
+	mutex_lock(&xdev->ctx_list_lock);
+	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	if (args->cu_index >= XOCL_IP_LAYOUT(xdev)->m_count) {
+		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
+		args->cu_index,XOCL_IP_LAYOUT(xdev)->m_count);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (args->op == XOCL_CTX_OP_FREE_CTX) {
+		ret = test_and_clear_bit(args->cu_index,
+			client->cu_bitmap) ? 0 : -EINVAL;
+		if (ret) // No context was previously allocated for this CU
+			goto out;
+
+		// CU unlocked explicitly
+		--exec->ip_reference[args->cu_index];
+		if (!--client->num_cus) {
+			// We just gave up the last context, unlock the xclbin
+			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid);
+			client->xclbin_locked=false;
+		}
+		userpf_info(xdev,"CTX del(%pUb, %d, %u)",
+			&xdev->xclbin_id, pid, args->cu_index);
+		goto out;
+	}
+
+	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if ((args->flags != XOCL_CTX_SHARED)) {
+		userpf_err(xdev,"Only shared contexts are supported in this release");
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (!client->num_cus && !client->xclbin_locked)
+		// Process has no other context on any CU yet, hence we need to
+		// lock the xclbin A process uses just one lock for all its ctxs
+		acquire_lock = true;
+
+	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
+		userpf_info(xdev, "CTX already allocated by this process");
+		// Context was previously allocated for the same CU,
+		// cannot allocate again
+		ret = 0;
+		goto out;
+	}
+
+	if (acquire_lock) {
+		// This is the first context on any CU for this process,
+		// lock the xclbin
+		ret = xocl_client_lock_bitstream_nolock(xdev, client);
+		if (ret) {
+			// Locking of xclbin failed, give up our context
+			clear_bit(args->cu_index, client->cu_bitmap);
+			goto out;
+		} else {
+			uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+		}
+	}
+
+	// Everything is good so far, hence increment the CU reference count
+	++client->num_cus; // explicitly acquired
+	++exec->ip_reference[args->cu_index];
+	xocl_info(&pdev->dev, "CTX add(%pUb, %d, %u, %d)",
+		&xdev->xclbin_id, pid, args->cu_index,acquire_lock);
+out:
+	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+static int client_ioctl_execbuf(struct platform_device *pdev,
+		struct client_ctx *client, void *data,
+		struct drm_file *filp)
+{
+	struct drm_xocl_execbuf *args = data;
+	struct drm_xocl_bo *xobj;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *deps[8] = {0};
+	int numdeps = -1;
+	int ret = 0;
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct drm_device *ddev = filp->minor->dev;
+
+	if (xdev->needs_reset) { 
+		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
+		return -EBUSY;
+	}
+
+	/* Look up the gem object corresponding to the BO handle.
+	 * This adds a reference to the gem object.  The refernece is
+	 * passed to kds or released here if errors occur.
+	 */
+	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO %d\n",
+		args->exec_bo_handle);
+		return -ENOENT;
+	}
+
+	/* Convert gem object to xocl_bo extension */
+	xobj = to_xocl_bo(obj);
+	if (!xocl_bo_execbuf(xobj)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = validate(pdev, client, xobj);
+	if (ret) {
+		userpf_err(xdev, "Exec buffer validation failed\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Copy dependencies from user.  It is an error if a BO handle specified
+	 * as a dependency does not exists. Lookup gem object corresponding to bo
+	 * handle.  Convert gem object to xocl_bo extension.  Note that the
+	 * gem lookup acquires a reference to the drm object, this reference
+	 * is passed on to the the scheduler via xocl_exec_add_buffer. */
+	for (numdeps=0; numdeps<8 && args->deps[numdeps]; ++numdeps) {
+		struct drm_gem_object *gobj = xocl_gem_object_lookup(ddev,
+				filp, args->deps[numdeps]);
+		struct drm_xocl_bo *xbo = gobj ? to_xocl_bo(gobj) : NULL;
+		if (!gobj)
+			userpf_err(xdev,"Failed to look up GEM BO %d\n",
+					args->deps[numdeps]);
+		if (!xbo) {
+			ret = -EINVAL;
+			goto out;
+		}
+		deps[numdeps] = xbo;
+	}
+
+	/* acquire lock on xclbin if necessary */
+	ret = xocl_client_lock_bitstream(xdev,client);
+	if (ret) {
+		userpf_err(xdev, "Failed to lock xclbin\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Add exec buffer to scheduler (kds).  The scheduler manages the
+	 * drm object references acquired by xobj and deps.  It is vital
+	 * that the references are released properly. */
+	ret = add_exec_buffer(pdev, client, xobj, numdeps, deps);
+	if (ret) {
+		userpf_err(xdev, "Failed to add exec buffer to scheduler\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Return here, noting that the gem objects passed to kds have
+	 * references that must be released by kds itself.  User manages
+	 * a regular reference to all BOs returned as file handles.  These
+	 * references are released with the BOs are freed. */
+	return ret;
+
+out:
+	for (--numdeps; numdeps >= 0; numdeps--)
+		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
+	drm_gem_object_unreference_unlocked(&xobj->base);
+	return ret;
+}
+
+int client_ioctl(struct platform_device *pdev,
+		int op, void *data, void *drm_filp)
+{
+	struct drm_file *filp = drm_filp;
+	struct client_ctx *client = filp->driver_priv;
+	int ret;
+
+	switch (op) {
+	case DRM_XOCL_CTX:
+		ret = client_ioctl_ctx(pdev, client, data);
+		break;
+	case DRM_XOCL_EXECBUF:
+		ret = client_ioctl_execbuf(pdev, client, data, drm_filp);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
 /**
  * reset() - Reset device exec data structure
  *
@@ -2272,13 +2539,12 @@ out:
 }
 
 struct xocl_mb_scheduler_funcs sche_ops = {
-	.add_exec_buffer = add_exec_buffer,
 	.create_client = create_client,
 	.destroy_client = destroy_client,
 	.poll_client = poll_client,
+	.client_ioctl = client_ioctl,
 	.stop = stop,
 	.reset = reset,
-	.validate = validate,
 };
 
 /* sysfs */
@@ -2388,7 +2654,7 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 	 */
 	xdev = xocl_get_xdev(pdev);
 	mutex_init(&exec->exec_lock);
-	exec->base = xdev->base_addr;
+	exec->base = xdev->core.bar_addr;
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	exec->intr_base = res->start;
@@ -2434,9 +2700,9 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 
 	xdev = xocl_get_xdev(pdev);
 	for (i = 0; i < exec->intr_num; i++) {
+		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
 		xocl_user_interrupt_reg(xdev, i + exec->intr_base,
 			NULL, NULL);
-		xocl_user_interrupt_config(xdev, i + exec->intr_base, false);
 	}
 	mutex_destroy(&exec->exec_lock);
 

@@ -206,6 +206,14 @@ failed:
 	return (ret);
 }
 
+int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+
+	return xocl_subdev_create_one(xdev_hdl, 
+			&core->priv.subdev_info[id]);
+}
+
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num)
 {

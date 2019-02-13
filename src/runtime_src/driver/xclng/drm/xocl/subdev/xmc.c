@@ -140,9 +140,9 @@ enum {
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_SCHED] + off)
 
 #define	COPY_MGMT(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
 #define	COPY_SCHE(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;

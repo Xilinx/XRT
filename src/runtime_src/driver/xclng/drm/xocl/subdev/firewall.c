@@ -69,9 +69,6 @@ struct firewall {
 	u32			err_detected_level;
 	u64			err_detected_time;
 
-	struct task_struct	*health_thread;
-	struct xocl_health_thread_arg thread_arg;
-
 	bool			inject_firewall;
 };
 
@@ -299,26 +296,10 @@ failed:
 	return ret;
 }
 
-static int health_check(struct platform_device *pdev,
-	int (*cb)(void *data), void *cb_arg, u32 interval)
-{
-	struct firewall	*fw;
-
-	fw = platform_get_drvdata(pdev);
-	BUG_ON(!fw);
-
-	fw->thread_arg.health_cb = cb;
-	fw->thread_arg.arg = cb_arg;
-	fw->thread_arg.interval = interval;
-	return health_thread_init(&pdev->dev, "mgmt_firewall_check",
-		&fw->thread_arg, &fw->health_thread);
-}
-
 static struct xocl_firewall_funcs fw_ops = {
 	.clear_firewall	= clear_firewall,
 	.check_firewall = check_firewall,
 	.get_prop = get_prop,
-	.health_check = health_check,
 };
 
 static int firewall_remove(struct platform_device *pdev)
@@ -331,9 +312,6 @@ static int firewall_remove(struct platform_device *pdev)
                 xocl_err(&pdev->dev, "driver data is NULL");
                 return -EINVAL;
         }
-
-	if (fw->health_thread)
-		health_thread_fini(&pdev->dev, fw->health_thread);
 
         sysfs_remove_group(&pdev->dev.kobj, &firewall_attrgroup);
 

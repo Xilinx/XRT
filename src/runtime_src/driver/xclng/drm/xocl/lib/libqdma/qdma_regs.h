@@ -667,10 +667,12 @@ struct qdma_c2h_cmpt_cmpl_status {
 #define STM_REG_H2C_MODE		0x30
 #define STM_REG_IND_CTXT_REG_COUNT	5
 #define STM_SUPPORTED_REV_MIN		0x4
-#define STM_ENABLED_DEVICE		0x6aa0
 #define	STM_MAX_SUPPORTED_QID		64
 #define STM_MAX_PKT_SIZE		4096
 #define STM_PORT_MAP			0xE1E1
+#define IS_STM_ENABLED_DEVICE(pdev)     \
+	(((pdev)->device == 0x6aa0) || ((pdev)->device == 0x5011))
+
 
 #define S_STM_H2C_CTXT_ENTRY_VALID	0
 #define F_STM_H2C_CTXT_ENTRY_VALID	(1 << S_STM_H2C_CTXT_ENTRY_VALID)

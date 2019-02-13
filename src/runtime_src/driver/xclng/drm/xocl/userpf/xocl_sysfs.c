@@ -59,10 +59,10 @@ static ssize_t kdsstat_show(struct device *dev,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),
 			   get_live_client_size(xdev));
+#if 0
 	buf += size;
 	if (xdev->layout == NULL)
 		return size;
-#if 0
 	// Enable in 2019.1
 	for (i = 0; i < xdev->layout->m_count; i++) {
 		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
@@ -76,12 +76,63 @@ static ssize_t kdsstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kdsstat);
 
+static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
+{
+	int i;
+	ssize_t count = 0;
+	ssize_t size = 0;
+	size_t memory_usage = 0;
+	unsigned bo_count = 0;
+	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
+	const char *raw_fmt = "%llu %d\n";
+	struct mem_topology *topo = XOCL_MEM_TOPOLOGY(xdev);
+	struct drm_xocl_mm_stat stat;
+	void *drm_hdl;
+
+	drm_hdl = xocl_dma_get_drm_handle(xdev);
+	if (!drm_hdl)
+		return -EINVAL;
+
+	if (!topo)
+		return -EINVAL;
+										        mutex_lock(&xdev->ctx_list_lock);
+
+	for (i = 0; i < topo->m_count; i++) {
+		xocl_mm_get_usage_stat(drm_hdl, i, &stat);
+
+		if (raw) {
+			memory_usage = 0;
+			bo_count = 0;
+			memory_usage = stat.memory_usage;
+			bo_count = stat.bo_count;
+
+			count = sprintf(buf, raw_fmt,
+				memory_usage,
+				bo_count);
+		} else {
+			count = sprintf(buf, txt_fmt,
+				topo->m_mem_data[i].m_used ?
+				"IN-USE" : "UNUSED",
+				topo->m_mem_data[i].m_tag,
+				topo->m_mem_data[i].m_base_address,
+				topo->m_mem_data[i].m_size / 1024,
+				stat.memory_usage / 1024,
+				stat.bo_count);
+		}
+		buf += count;
+		size += count;
+	}
+	mutex_unlock(&xdev->ctx_list_lock);
+	return size;
+}
+
 /* -live memory usage-- */
 static ssize_t memstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return xocl_mm_sysfs_stat(xdev, buf, false);
+
+	return xocl_mm_stat(xdev, buf, false);
 }
 static DEVICE_ATTR_RO(memstat);
 
@@ -89,7 +140,8 @@ static ssize_t memstat_raw_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return xocl_mm_sysfs_stat(xdev, buf, true);
+
+	return xocl_mm_stat(xdev, buf, true);
 }
 static DEVICE_ATTR_RO(memstat_raw);
 
@@ -99,7 +151,7 @@ static ssize_t p2p_enable_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
 
-	if (xdev->bypass_bar_addr)
+	if (xdev->p2p_bar_addr)
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
 			size > (1 << XOCL_PA_SECTION_SHIFT))
@@ -108,8 +160,99 @@ static ssize_t p2p_enable_show(struct device *dev,
 	return sprintf(buf, "0\n");
 }
 
-static DEVICE_ATTR_RO(p2p_enable);
+static ssize_t p2p_enable_store(struct device *dev,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret, p2p_bar;
+	u32 enable;
+	u64 size;
 
+
+	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1) {
+		return -EINVAL;
+	}
+
+	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
+	if (p2p_bar < 0) {
+		xocl_err(&pdev->dev, "p2p bar is not configurable");
+		return -EACCES;
+	}
+
+	size = xocl_get_ddr_channel_size(xdev) *
+		xocl_get_ddr_channel_count(xdev); /* GB */
+	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
+	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
+			(1 << size));
+	xocl_p2p_mem_release(xdev, false);
+
+	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
+	if (ret) {
+		xocl_err(&pdev->dev, "Failed to resize p2p BAR %d", ret);
+		goto failed;
+	}
+
+	xdev->p2p_bar_idx = p2p_bar;
+	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
+
+	if (enable) {
+		ret = xocl_p2p_mem_reserve(xdev);
+		if (ret) {
+			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
+					ret);
+		}
+	}
+
+	return count;
+
+failed:
+	return ret;
+
+}
+
+static DEVICE_ATTR(p2p_enable, 0644, p2p_enable_show, p2p_enable_store);
+
+static ssize_t dev_offline_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	int val = xdev->core.offline ? 1 : 0;
+
+	return sprintf(buf, "%d\n", val);
+}
+static ssize_t dev_offline_store(struct device *dev,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	int ret;
+	u32 offline;
+
+
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+		return -EINVAL;
+	}
+
+	device_lock(dev);
+	if (offline) {
+		xocl_subdev_destroy_all(xdev);
+		xdev->core.offline = true;
+	} else {
+		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+				xdev->core.priv.subdev_num);
+		if (ret) {
+			xocl_err(dev, "Online subdevices failed");
+			return -EIO;
+		}
+		xdev->core.offline = false;
+	}
+	device_unlock(dev);
+
+	return count;
+}
+
+static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
 /* - End attributes-- */
 
 static struct attribute *xocl_attrs[] = {
@@ -120,6 +263,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
+	&dev_attr_dev_offline.attr,
 	NULL,
 };
 
