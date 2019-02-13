@@ -153,9 +153,7 @@ cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
 cp ./${PETALINUX_NAME}/images/linux/image.ub ${XRT_REPO_DIR}/src/platform/zcu102ng/src/a53/xrt/image/image.ub
 
-if [ ! -d ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot ] ; then
-  mkdir -p ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot
-fi
+mkdir -p ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot
 
 cp ./${PETALINUX_NAME}/images/linux/bl31.elf ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot/bl31.elf
 cp ./${PETALINUX_NAME}/images/linux/pmufw.elf ${XRT_REPO_DIR}/src/platform/zcu102ng/src/boot/pmufw.elf

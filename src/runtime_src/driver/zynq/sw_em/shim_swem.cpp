@@ -1,5 +1,8 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
+ * Author(s): Ch Vamshi Krishna
+ *          : Hemant Kashyap
+ * ZNYQ HAL sw_emu Driver layered on top of ZYNQ hardware driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -12,12 +15,6 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations
  * under the License.
- */
-
-/**
- * Copyright (C) 2016-2017 Xilinx, Inc
- * Author: chvamshi
- * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
  */
 
 #include "pllauncher_defines.h"
