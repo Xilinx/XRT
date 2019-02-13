@@ -117,7 +117,7 @@ private:
   typedef int (* closeContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex);
 
   // xdp hal plugin switch
-  typedef int (* xclSwitchProfiling)(xclDeviceHandle handle);
+  typedef int (* switchProfilingFuncType)(xclDeviceHandle handle);
 
   //Streaming
   typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -201,6 +201,7 @@ public:
   readTraceFuncType mReadTrace;
   writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
+  switchProfilingFuncType mSwitchProfiling
 //Streaming
   createWriteQueueFuncType mCreateWriteQueue;
   createReadQueueFuncType mCreateReadQueue;
