@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <string.h>
 #include <stdio.h>
 #include "xclhal2.h"
 #include "xmaplugin.h"
@@ -134,21 +133,20 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
                        size_t        size,
                        size_t        offset)
 {
-    uint8_t *dst = (uint8_t*)s_handle.reg_map;
+    uint32_t *src_array = (uint32_t*)src;
     size_t   cur_min = offset; 
     size_t   cur_max = offset + size; 
+    int32_t  entries = size / sizeof(uint32_t);
+    int32_t  start = offset / sizeof(uint32_t);
 
-    dst += offset;
-    memcpy(dst, src, size);
+    for (int32_t i = 0; i < entries; i++)
+        s_handle.context->reg_map[start + i] = src_array[i];
 
-    if (cur_max > s_handle.max_offset)
-        s_handle.max_offset = cur_max;
+    if (cur_max > s_handle.context->max_offset)
+        s_handle.context->max_offset = cur_max;
 
-    if (s_handle.min_offset == 0)
-        s_handle.min_offset = cur_min;
-        
-    if (cur_min < s_handle.min_offset)
-        s_handle.min_offset = cur_min;
+    if (cur_min < s_handle.context->min_offset)
+        s_handle.context->min_offset = cur_min;
 
     return 0;
 }
@@ -156,19 +154,19 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
 void xma_plg_kernel_lock(XmaHwSession s_handle)
 {
     /* Only acquire the lock if we don't already own it */
-    if (s_handle.have_lock)
+    if (s_handle.context->have_lock)
         return;
 
-    pthread_mutex_lock(s_handle.lock);
-    s_handle.have_lock = true;
+    xma_res_kernel_lock(s_handle.context->lock);
+    s_handle.context->have_lock = true;
 }
 
 void xma_plg_kernel_unlock(XmaHwSession s_handle)
 {
-    if (s_handle.have_lock)
+    if (s_handle.context->have_lock)
     {
-        pthread_mutex_unlock(s_handle.lock);
-        s_handle.have_lock = false;
+        xma_res_kernel_unlock(s_handle.context->lock);
+        s_handle.context->have_lock = false;
     }
 }
 
@@ -197,9 +195,9 @@ void xma_plg_kernel_start(XmaHwSession s_handle)
 int32_t
 xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish)
 {
-    void   *src = s_handle.reg_map;
-    size_t  offset = s_handle.min_offset;
-    size_t  size = s_handle.max_offset;
+    uint8_t *src = (uint8_t*)s_handle.context->reg_map;
+    size_t  offset = s_handle.context->min_offset;
+    size_t  size = s_handle.context->max_offset;
     
     /* The lock is only acquired if the session does not already own it */
     xma_plg_kernel_lock(s_handle);
@@ -210,7 +208,7 @@ xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish)
     /* Write the kernel registers */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    xma_plg_register_write(s_handle, src, size, offset);
+    xma_plg_register_write(s_handle, src+offset, size, offset);
 #pragma GCC diagnostic pop
 
     /* Start the kernel */
