@@ -412,6 +412,10 @@ int main(int argc, char *argv[])
                 return -1;
             }
             regionIndex = std::atoi(optarg);
+            if((int)regionIndex < 0){
+                std::cout << "ERROR: Region Index can not be " << (int)regionIndex << ", option is invalid\n";
+                return -1;                
+            }
             break;
         case 'p':
             if (cmd != xcldev::PROGRAM) {
