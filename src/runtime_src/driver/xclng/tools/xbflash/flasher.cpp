@@ -52,7 +52,8 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 
     if (typeStr.empty())
     {
-        getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type);
+        if (getProgrammingTypeFromDeviceName(mFRHeader.VBNVName, type) != 0)
+		std::cout << "Unknown flash type" << std::endl;
     }
     else if (typeStr.compare("spi") == 0)
     {
