@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <iostream>
+#include "xclhal2.h"
 
 enum class HalFuncType {
   PROBE,
