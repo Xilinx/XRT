@@ -778,6 +778,50 @@ private:
   void* m_host_ptr = nullptr;
 };
 
+inline const void*
+get_host_ptr(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline void*
+get_host_ptr(cl_mem_flags flags, void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline unsigned int
+get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
+    : 0;
+}
+
+inline cl_kernel
+get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->kernel
+    : 0;
+}
+
+inline unsigned int
+get_xlnx_ext_argidx(cl_mem_flags flags, const void* host_ptr)
+{
+  return get_xlnx_ext_flags(flags,host_ptr) & 0xffffff;
+}
+
+inline unsigned int
+get_ocl_flags(cl_mem_flags flags)
+{
+  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
+}
+
 } // xocl
 
 #endif
