@@ -37,6 +37,7 @@
 #include "driver/include/xclbin.h"
 #include "scan.h"
 #include "driver/xclng/xrt/util/message.h"
+#include "driver/xclng/xrt/util/scheduler.h"
 #include <cstdio>
 #include <stdarg.h>
 
@@ -339,7 +340,7 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
-    
+
     if (len < 0) {
         //illegal arguments
         std::string err_str = "ERROR: Illegal arguments in log format string. ";
@@ -746,7 +747,7 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
         std::string err;
         pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "root_dev/remove", err, input);
 
-    
+
         // initiate rescan "echo 1 > /sys/bus/pci/rescan"
         const std::string rescan_path = "/sys/bus/pci/rescan";
         std::ofstream rescanFile(rescan_path);
@@ -1781,8 +1782,10 @@ int xclLoadXclBinMgmt(xclDeviceHandle handle, const xclBin *buffer)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-
-    return drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+      ret = xrt_core::scheduler::init(handle,buffer);
+    return ret;
 }
 
 int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
