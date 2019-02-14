@@ -33,7 +33,7 @@ ProfileIP::ProfileIP(xclDeviceHandle handle, int index) {
         device_handle = handle;
         ip_index = index;
     } else {
-        show_warning();
+        show_warning("Cannot get exclusive access");
     }
 }
 
@@ -76,26 +76,84 @@ void ProfileIP::map() {
     std::string subdev = "icap";
     std::string entry = "debug_ip_layout";
     size_t max_path_size = 256;
-    char raw_sysfs_path[max_path_size];
-    int sysfs_ret = xclGetSysfsPath(device_handle, subdev.c_str(), entry.c_str(), raw_sysfs_path, max_path_size);
-    if (sysfs_ret < 0) {
-        show_warning();
+    char raw_debug_ip_layout_path[max_path_size];
+    int get_sysfs_ret = xclGetSysfsPath(device_handle, subdev.c_str(), entry.c_str(), raw_debug_ip_layout_path, max_path_size);
+    if (get_sysfs_ret < 0) {
+        show_warning("Get debug_ip_layout path failed");
         return;
     }
-    std::string sysfs_open_path(raw_sysfs_path);
-    return;
+    std::string debug_ip_layout_path(raw_debug_ip_layout_path);
+    std::ifstream debug_ip_layout_fs(debug_ip_layout_path.c_str(), std::ifstream::binary);
+    size_t max_sysfs_size = 65536;
+    char buffer[max_sysfs_size];
+    if (debug_ip_layout_fs) {
+        debug_ip_layout_fs.read(buffer, max_sysfs_size);
+        if (debug_ip_layout_fs.gcount() > 0) {
+            debug_ip_layout* layout = (debug_ip_layout*)(buffer);
+            if (ip_index >= layout->m_count) {
+                show_warning("ip_index out of bound");
+                return;
+            }
+            debug_ip_data ip_data = layout->m_debug_ip_data[ip_index];
+            ip_name = std::string((char*)(&ip_data.m_name));
+            std::cout << "Mapping " << ip_name << std::endl;
+            mapped_address = ip_data.m_base_address;
+            mapped = true;
+            return;
+        } else {
+            show_warning("Reading from debug_ip_layout failed");
+            return;
+        }
+    } else {
+        show_warning("Cannot open debug_ip_layout");
+        return;
+    }
 }
 
 void ProfileIP::unmap() {
+    if (!exclusive || !mapped) {
+        return;
+    }
+    mapped = false;
+    mapped_address = 0;
     return;
 }
 
-int read(size_t offset, size_t size, void* data) {
+int ProfileIP::read(uint64_t offset, size_t size, void* data) {
+    if (!exclusive || !mapped) {
+        return -1;
+    }
+    uint64_t absolute_offset = mapped_address + offset;
+    size_t read_size = xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    if (read_size < 0) {
+        show_warning("xclRead failed");
+        return read_size;
+    }
     return 0;
 }
 
-int write(size_t offset, size_t size, void* data) {
+int ProfileIP::write(uint64_t offset, size_t size, void* data) {
+    if (!exclusive || !mapped) {
+        return -1;
+    }
+    uint64_t absolute_offset = mapped_address + offset;
+    size_t write_size = xclWrite(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    if (write_size < 0) {
+        show_warning("xclWrite failed");
+        return write_size;
+    }
     return 0;
+}
+
+void ProfileIP::show_warning(std::string reason) {
+    /**
+     * TODO: we will need to discuss more on how xdp should
+     * handle failure, and what are the effective ways of
+     * notifying the user that there is a problem in xde and
+     * do not expect any profiling information.
+     */
+    std::cout << "Error: profiling will not be avaiable. Reason: " << reason << std::endl;
+    return;
 }
 
 } //  xdp

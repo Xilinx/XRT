@@ -19,7 +19,10 @@
 #define XDP_PROFILE_DEVICE_PROFILE_IP_ACCESS_H_
 
 #include <stdexcept>
-#include "xclhal.h"
+#include <fstream>
+#include <iostream>
+#include "xclhal2.h"
+#include "xclbin.h"
 
 namespace xdp {
 
@@ -99,7 +102,7 @@ public:
      *     without error, exclusive access to the ip specified 
      *     is guaranteed.
      */
-    int read(size_t offset, size_t size, void* data);
+    int read(uint64_t offset, size_t size, void* data);
 
     /**
      * The write method act the same way as xclWrite with the 
@@ -113,14 +116,14 @@ public:
      *     without error, exclusive access to the ip specified 
      *     is guaranteed.
      */
-    int write(size_t offset, size_t size, void* data);
+    int write(uint64_t offset, size_t size, void* data);
 
     /**
      * Since this API as part of the profiling code should not
      * crash the rest of the code, it will need to simply warn
      * the user about the failure and move on.
      */
-    void show_warning();
+    void show_warning(std::string reason);
 
 private:
     xclDeviceHandle device_handle; /** < the xrt device handle from the hal layer */
@@ -128,9 +131,12 @@ private:
                                         to access the registers */
     bool mapped; /** < a flag to keep track of if the ip has been mapped */
     bool exclusive; /** < a flag indicating if the IP has exclusive access */
-    int ip_index; /** the index of the IP in debug_ip_layout */
+    int ip_index; /** < the index of the IP in debug_ip_layout */
+    std::string ip_name; /** < the string name of the IP for better debuggability */ 
 
-    // TODO: the exclusive context from hal
+    /**
+     * TODO: the exclusive context from hal
+     */
 };
 
 } //  xdp
