@@ -15,7 +15,7 @@ set called=(`\lsof +p $$ |\grep setup.csh`)
 
 # look for the right cmd component that contains setup.csh
 foreach x ($called)
-    if ( $x =~ *setup.csh ) then
+    if ( "$x" =~ *setup.csh ) then
         set script_path=`readlink -f $x`
         set xrt_dir=`dirname $script_path`
     endif
