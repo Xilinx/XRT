@@ -47,11 +47,24 @@ ProfileIP::~ProfileIP() {
 } 
 
 void ProfileIP::request_exclusive_ip_access(xclDeviceHandle handle, int index) {
+    /**
+     * TODO: when the XRT implements the exclusive context hal API, this
+     * method should try to open a exclusive context here and set the
+     * exclusive flag to be true if successful and save the context object
+     * into a member variable. If it fails, it should show a proper warning
+     * and return gracefully.
+     */
     exclusive = true;
     return;
 }
 
 void ProfileIP::release_exclusive_ip_access(xclDeviceHandle handle, int index) {
+    /**
+     * TODO: when the XRT implements the exclusive context hal API, this
+     * method should close the previously requested exclusive context if
+     * one was request and then set the exclusive flag back to false. If
+     * it fails, it should show a proper warning and return gracefully.
+     */
     exclusive = false;
     return;
 }
