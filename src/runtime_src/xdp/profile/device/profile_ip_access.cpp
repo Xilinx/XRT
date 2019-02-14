@@ -96,8 +96,8 @@ void ProfileIP::map() {
             }
             debug_ip_data ip_data = layout->m_debug_ip_data[ip_index];
             ip_name = std::string((char*)(&ip_data.m_name));
-            std::cout << "Mapping " << ip_name << std::endl;
             mapped_address = ip_data.m_base_address;
+            std::cout << "Mapping " << ip_name << " to address 0x" << std::hex << mapped_address << std::dec << std::endl;
             mapped = true;
             return;
         } else {
