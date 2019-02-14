@@ -791,7 +791,7 @@ EOF
     mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/test
 
     # Are there any verification tests
-    if [ -d {opt_dsadir}/test ] ; then
+    if [ -d ${opt_dsadir}/test ] ; then
        rsync -avz ${opt_dsadir}/test/ $pkgdir/opt/xilinx/dsa/$opt_dsa/test
     fi
 
@@ -898,7 +898,7 @@ echo "${post_inst_msg} ${featureRomTimestamp}"
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
 
-if [ -d {opt_dsadir}/test ] ; then
+if [ -d ${opt_dsadir}/test ] ; then
   mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
   cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
 fi
