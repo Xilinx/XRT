@@ -708,7 +708,7 @@ dodebdev()
 {
     uRel=`lsb_release -r -s`
     dir=debbuild/$dsa-$version-dev_${uRel}
-    pkg_dirname=debbuild/$dsa-${version}-$revision_${uRel}
+    pkg_dirname=debbuild/$dsa-${version}-dev-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname
 
     # Clean the directory
@@ -753,7 +753,7 @@ dodeb()
 {
     uRel=`lsb_release -r -s`
     dir=debbuild/$dsa-${version}_${uRel}
-    pkg_dirname=debbuild/$dsa-${version}-$revision_${uRel}
+    pkg_dirname=debbuild/$dsa-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname
 
     # Clean the directory
