@@ -473,7 +473,7 @@ initDsaBinEnvAndVars()
       if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
