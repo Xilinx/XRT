@@ -223,6 +223,7 @@ namespace xclbincat1 {
         m_bmc.emplace_back( _sFile );
         break;
 
+      case PDI:
       default:
         std::cout << "ERROR: Support missing for the following Segment Type: '" << _sSegmentType << "'" << std::endl;
         break;
@@ -452,6 +453,8 @@ namespace xclbincat1 {
       case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
       case USER_METADATA: return "USER_METADATA";
       case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
+      case PDI: return "PDI";
+
         break;
     }
 

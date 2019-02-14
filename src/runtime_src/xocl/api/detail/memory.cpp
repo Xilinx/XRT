@@ -23,39 +23,6 @@
 #include <string>
 #include <map>
 
-namespace {
-inline const void*
-get_host_ptr(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
-    : host_ptr;
-}
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-inline cl_kernel
-get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
-{
-  return (host_ptr && (flags & CL_MEM_EXT_PTR_XILINX))
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->kernel
-    : 0;
-}
-
-inline unsigned int
-get_ocl_flags(cl_mem_flags flags)
-{
-  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
-}
-
-} // namespace
-
 namespace xocl { namespace detail {
 
 namespace memory {
@@ -139,8 +106,7 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
     throw error(CL_INVALID_HOST_PTR,"bad host_ptr of mem use flags");
 
   if (auto ext_flags = get_xlnx_ext_flags(flags,host_ptr)) {
-    return;
-    if (get_xlnx_ext_kernel(ext_flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
+    if (!get_xlnx_ext_kernel(flags,host_ptr) && !(ext_flags & XCL_MEM_TOPOLOGY)) {
       auto ddr_bank_mask = XCL_MEM_DDR_BANK0 | XCL_MEM_DDR_BANK1 | XCL_MEM_DDR_BANK2 | XCL_MEM_DDR_BANK3;
       // Test that only one bank flag is set
       if (std::bitset<12>(ext_flags & ddr_bank_mask).count() > 1)

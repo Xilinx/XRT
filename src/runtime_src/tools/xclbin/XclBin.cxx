@@ -354,7 +354,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   std::fstream ofXclBin;
   ofXclBin.open(_binaryFileName, std::ifstream::out | std::ifstream::binary);
   if (!ofXclBin.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + _binaryFileName;
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + _binaryFileName;
     throw std::runtime_error(errMsg);
   }
 

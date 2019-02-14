@@ -52,13 +52,13 @@ validOrError(cl_kernel                 kernel,
   // kernel.
   if(param_name==CL_KERNEL_GLOBAL_WORK_SIZE &&
      (device && getDeviceType(device)!=CL_DEVICE_TYPE_CUSTOM) &&
-     (kernel && !xocl(kernel)->is_built_in())
+     (!xocl(kernel)->is_built_in())
     )
     throw error(CL_INVALID_VALUE);
-  
+
 }
 
-static cl_int 
+static cl_int
 clGetKernelWorkGroupInfo(cl_kernel                 kernel,
                          cl_device_id              device,
                          cl_kernel_work_group_info param_name,
@@ -123,5 +123,3 @@ clGetKernelWorkGroupInfo(cl_kernel                 kernel,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

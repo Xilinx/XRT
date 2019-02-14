@@ -22,6 +22,7 @@
 #include <sstream>
 #include <climits>
 #include <algorithm>
+#include <sys/mman.h>
 
 #include "xbutil.h"
 #include "shim.h"
@@ -197,7 +198,7 @@ int main(int argc, char *argv[])
     } else if( std::strcmp( argv[1], "reset" ) == 0 ) {
         return xcldev::xclReset(argc, argv);
     } else if( std::strcmp( argv[1], "p2p" ) == 0 ) {
-        return xcldev::xclSetP2p(argc, argv);
+        return xcldev::xclP2p(argc, argv);
     }
     optind--;
 
@@ -411,6 +412,10 @@ int main(int argc, char *argv[])
                 return -1;
             }
             regionIndex = std::atoi(optarg);
+            if((int)regionIndex < 0){
+                std::cout << "ERROR: Region Index can not be " << (int)regionIndex << ", option is invalid\n";
+                return -1;                
+            }
             break;
         case 'p':
             if (cmd != xcldev::PROGRAM) {
@@ -693,6 +698,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   scan [-v]\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
+    std::cout << "  p2p    [-d card] --validate\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -1081,6 +1087,15 @@ int xcldev::device::validate(bool quick)
     }
     std::cout << "INFO: DDR bandwidth test PASSED" << std::endl;
 
+    // Perform P2P test
+    std::cout << "INFO: Starting P2P test" << std::endl;
+    ret = testP2p();
+    if (ret != 0) {
+        std::cout << "ERROR: P2P test FAILED" << std::endl;
+        return ret;
+    }
+    std::cout << "INFO: P2P test PASSED" << std::endl;
+
     return 0;
 }
 
@@ -1352,21 +1367,165 @@ int xcldev::xclReset(int argc, char *argv[])
     return err;
 }
 
+static int p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+{
+    int stride = getpagesize();
+
+    assert((size % stride) == 0);
+    for (size_t i = 0; i < size; i += stride) {
+        if (set) {
+            boptr[i] = pattern;
+        } else if (boptr[i] != pattern) {
+            std::cout << "Error doing P2P comparison, expecting '" << pattern
+                << "', saw '" << boptr[i] << std::endl;
+            return -EINVAL;
+        }
+    }
+
+    return 0;
+}
+
+static int p2ptest_chunk(xclDeviceHandle handle, char *boptr,
+    uint64_t dev_addr, uint64_t size)
+{
+    char *buf = nullptr;
+    char patternA = 'A';
+    char patternB = 'B';
+
+    if (posix_memalign((void **)&buf, getpagesize(), size))
+          return -ENOMEM;
+
+    (void) p2ptest_set_or_cmp(buf, size, patternA, true);
+
+    if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0) {
+        std::cout << "Error (" << strerror (errno) << ") writing 0x"
+            << std::hex << size << " bytes to 0x" << std::hex << dev_addr
+            << std::dec << std::endl;
+        free(buf);
+        return -EIO;
+    }
+
+    if (p2ptest_set_or_cmp(boptr, size, patternA, false) != 0) {
+        free(buf);
+        return -EINVAL;
+    }
+
+    (void) p2ptest_set_or_cmp(boptr, size, patternB, true);
+
+    if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0) {
+        std::cout << "Error (" << strerror (errno) << ") reading 0x"
+            << std::hex << size << " bytes from 0x" << std::hex << dev_addr
+            << std::dec << std::endl;
+        free(buf);
+        return -EIO;
+    }
+
+    if (p2ptest_set_or_cmp(buf, size, patternB, false) != 0) {
+        free(buf);
+        return -EINVAL;
+    }
+
+    free(buf);
+    return 0;
+}
+
+static int p2ptest_bank(xclDeviceHandle handle, int memidx,
+    uint64_t addr, uint64_t size)
+{
+    const size_t chunk_size = 16 * 1024 * 1024;
+    int ret = 0;
+
+    unsigned int boh = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM,
+        XCL_BO_FLAGS_P2P | memidx);
+    if (boh == NULLBO) {
+        std::cout << "Error allocating P2P BO" << std::endl;
+        return -ENOMEM;
+    }
+
+    char *boptr = (char *)xclMapBO(handle, boh, true);
+    if (boptr == nullptr) {
+        std::cout << "Error mapping P2P BO" << std::endl;
+        xclFreeBO(handle, boh);
+        return -EINVAL;
+    }
+
+    int ci = 0;
+    for (size_t c = 0; c < size; c += chunk_size, ci++) {
+        if (p2ptest_chunk(handle, boptr + c, addr + c, chunk_size) != 0) {
+            std::cout << "Error P2P testing at offset 0x" << std::hex << c
+                << " on memory index " << std::dec << memidx << std::endl;
+            ret = -EINVAL;
+            break;
+        }
+        if (ci % (size / chunk_size / 16) == 0)
+            std::cout << "." << std::flush;
+    }
+
+    (void) munmap(boptr, size);
+    xclFreeBO(handle, boh);
+    return ret;
+}
+
+/*
+ * p2ptest
+ */
+int xcldev::device::testP2p()
+{
+    std::string errmsg;
+    std::vector<char> buf;
+    int ret = 0;
+    int p2p_enabled = 0;
+
+    auto dev = pcidev::get_dev(m_idx);
+    if (dev->user == nullptr)
+        return -EINVAL;
+
+    dev->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+    if (p2p_enabled != 1) {
+        std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
+        return 0;
+    }
+
+    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
+
+    const mem_topology *map = (mem_topology *)buf.data();
+    if(buf.empty() || map->m_count == 0) {
+        std::cout << "WARNING: 'mem_topology' invalid, "
+            << "unable to perform P2P Test. Has the bitstream been loaded? "
+            << "See 'xbutil program'." << std::endl;
+        return -EINVAL;
+    }
+
+    for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
+        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+            continue;
+
+        std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
+        ret = p2ptest_bank(m_handle, i, map->m_mem_data[i].m_base_address,
+            map->m_mem_data[i].m_size << 10);
+        std::cout << std::endl;
+    }
+
+    return ret;
+}
+
 int xcldev::device::setP2p(bool enable, bool force)
 {
     return xclP2pEnable(m_handle, enable, force);
 }
 
-int xcldev::xclSetP2p(int argc, char *argv[])
+int xcldev::xclP2p(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
     int p2p_enable = -1;
     bool root = ((getuid() == 0) || (geteuid() == 0));
-    const std::string usage("Options: [-d index] --[enable|disable]");
+    bool validate = false;
+    const std::string usage("Options: [-d index] --[enable|disable|validate]");
     static struct option long_options[] = {
         {"enable", no_argument, 0, xcldev::P2P_ENABLE},
         {"disable", no_argument, 0, xcldev::P2P_DISABLE},
+        {"validate", no_argument, 0, xcldev::P2P_VALIDATE},
         {0, 0, 0, 0}
     };
     int long_index, ret;
@@ -1374,27 +1533,38 @@ int xcldev::xclSetP2p(int argc, char *argv[])
     const char* exe = argv[ 0 ];
     bool force = false;
 
-    while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1) {
+    while ((c = getopt_long(argc, argv, short_options, long_options,
+        &long_index)) != -1) {
         switch (c) {
         case 'd':
             ret = str2index(optarg, index);
             if (ret != 0)
                 return ret;
-	    break;
-	case 'f':
-	    force = true;
-	    break;
-	case xcldev::P2P_ENABLE:
+            break;
+        case 'f':
+            force = true;
+            break;
+        case xcldev::P2P_ENABLE:
             p2p_enable = 1;
             break;
         case xcldev::P2P_DISABLE:
             p2p_enable = 0;
+            break;
+        case xcldev::P2P_VALIDATE:
+            validate = true;
             break;
         default:
             xcldev::printHelp(exe);
             return 1;
         }
     }
+
+    std::unique_ptr<device> d = xclGetDevice(index);
+    if (!d)
+        return -EINVAL;
+
+    if (validate)
+        return d->testP2p();
 
     if (p2p_enable == -1) {
         std::cerr << usage << std::endl;
@@ -1405,10 +1575,6 @@ int xcldev::xclSetP2p(int argc, char *argv[])
         std::cout << "ERROR: root privileges required." << std::endl;
         return -EPERM;
     }
-
-    std::unique_ptr<device> d = xclGetDevice(index);
-    if (!d)
-        return -EINVAL;
 
     ret = d->setP2p(p2p_enable, force);
     if (ret == ENOSPC) {

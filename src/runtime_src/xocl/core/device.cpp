@@ -267,7 +267,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count)
+    if(memidx<0 || (memidx+1)>mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];

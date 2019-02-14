@@ -157,6 +157,9 @@ public:
   ~xclbin();
 
   xclbin&
+  operator=(const xclbin&& rhs);
+
+  xclbin&
   operator=(const xclbin& rhs);
 
   bool

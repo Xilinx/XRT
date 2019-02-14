@@ -669,6 +669,16 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 //
 // TODO: pending implementations
 //
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  return 0;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  return 0;
+}
+
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 {
   return 0;

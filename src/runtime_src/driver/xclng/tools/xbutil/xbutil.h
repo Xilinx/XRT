@@ -97,6 +97,7 @@ enum statusmask {
 enum p2pcommand {
     P2P_ENABLE = 0x0,
     P2P_DISABLE,
+    P2P_VALIDATE,
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -313,7 +314,7 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
-
+        std::vector<std::string> mm_buf;
         ss << "Device Memory Usage\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
@@ -340,12 +341,30 @@ public:
             return;
         }
 
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        if(mm_buf.empty()){
+            ss << "WARNING: 'memstat_raw' invalid, unable to report memory stats. "
+                << "Has the bitstream been loaded? See 'xbutil program'.";
+            lines.push_back(ss.str());
+            return;            
+        }
         unsigned numDDR = map->m_count;
         for(unsigned i = 0; i < numDDR; i++ ) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
+            if(!map->m_mem_data[i].m_used)
+                continue;
+            uint64_t memoryUsage, boCount;
+            std::stringstream mem_usage(mm_buf[i]);
+            mem_usage >> memoryUsage >> boCount;            
 
-            float percentage = (float)devstat.ddrMemUsed[i] * 100 /
+            float percentage = (float)memoryUsage * 100 /
                 (map->m_mem_data[i].m_size << 10);
             int nums_fiftieth = (int)percentage / 2;
             std::string str = std::to_string(percentage).substr(0, 4) + "%";
@@ -408,6 +427,7 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
+        std::vector<std::string> mm_buf;
 
         ss << std::left << std::setw(48) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
@@ -446,10 +466,15 @@ public:
                 << "\n";
         }
 
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        if(mm_buf.empty())
+            return;
+
         for(unsigned i = 0; i < numDDR; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-
+            if (!map->m_mem_data[i].m_used)
+                continue;
             ss << " [" << i << "] " <<
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
                 << map->m_mem_data[i].m_tag;
@@ -477,11 +502,14 @@ public:
             } else {
                 ss << std::setw(12) << "Not Supp";
             }
+            uint64_t memoryUsage, boCount;
+            std::stringstream mem_stat(mm_buf[i]);
+            mem_stat >> memoryUsage >> boCount;
 
             ss << std::setw(8) << unitConvert(map->m_mem_data[i].m_size << 10);
-            ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
+            ss << std::setw(16) << unitConvert(memoryUsage);
             // print size
-            ss << std::setw(8) << std::dec << devstat.ddrBOAllocated[i] << "\n";
+            ss << std::setw(8) << std::dec << boCount << "\n";
         }
 
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
@@ -707,6 +735,7 @@ public:
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
         sensor_tree::put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",           m_devinfo.m1v2Bottom );
         sensor_tree::put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
         sensor_tree::put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
         sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
@@ -870,10 +899,11 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_top.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v8_top.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.voltage"    ) << std::endl;
-        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
+        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BTM" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_0v9.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
@@ -897,7 +927,7 @@ public:
             if( v.first == "mem" ) {
               std::string mem_usage, tag, size, type, temp;
               int index = 0;
-              unsigned bo_count;
+              unsigned bo_count = 0;
               for (auto& subv : v.second) {
                 if( subv.first == "index" ) {
                   index = subv.second.get_value<int>();
@@ -1036,9 +1066,8 @@ public:
         stream.read(buffer, length);
         const xclBin *header = (const xclBin *)buffer;
         int result = xclLockDevice(m_handle);
-        if (result)
-            return result;
-        result = xclLoadXclBin(m_handle, header);
+        if (result == 0)
+		result = xclLoadXclBin(m_handle, header);
         delete [] buffer;
         (void) xclUnlockDevice(m_handle);
 
@@ -1189,6 +1218,7 @@ public:
     }
 
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
+        std::ios_base::fmtflags f(std::cout.flags());
         if (strstr(m_devinfo.mName, "-xare")) {//This is ARE device
           if (aStartAddr > m_devinfo.mDDRSize) {
               std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1199,6 +1229,8 @@ public:
                            " is over ARE" << std::endl;
           }
         }
+        std::cout.flags(f);
+
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).read(
             aFilename, aStartAddr, aSize);
@@ -1218,6 +1250,7 @@ public:
     }
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
+        std::ios_base::fmtflags f(std::cout.flags());
         if (strstr(m_devinfo.mName, "-xare")) {//This is ARE device
             if (aStartAddr > m_devinfo.mDDRSize) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1228,6 +1261,7 @@ public:
                              " is over ARE" << std::endl;
             }
         }
+        std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).write(
             aStartAddr, aSize, aPattern);
@@ -1235,6 +1269,7 @@ public:
 
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
+        std::ios_base::fmtflags f(std::cout.flags());
         if( strstr( m_devinfo.mName, "-xare" ) ) { //This is ARE device
             if( aStartAddr > m_devinfo.mDDRSize ) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
@@ -1245,6 +1280,7 @@ public:
                              " is over ARE" << std::endl;
             }
         }
+        std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
             pcidev::get_dev(m_idx)->user->sysfs_name).write(
             aStartAddr, aSize, srcBuf);
@@ -1356,6 +1392,7 @@ public:
     int resetEccInfo();
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
+    int testP2p();
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1370,7 +1407,7 @@ int xclTop(int argc, char *argv[]);
 int xclReset(int argc, char *argv[]);
 int xclValidate(int argc, char *argv[]);
 std::unique_ptr<xcldev::device> xclGetDevice(unsigned index);
-int xclSetP2p(int argc, char *argv[]);
+int xclP2p(int argc, char *argv[]);
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

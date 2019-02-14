@@ -276,15 +276,19 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct page **pages;
 	unsigned int sg_count;
 
-	if (offset_in_page(args->addr))
+	if (offset_in_page(args->addr)) {
+		DRM_ERROR("User ptr not PAGE aligned\n");
 		return -EINVAL;
+	}
 
-	if (args->flags & XCL_BO_FLAGS_EXECBUF)
+	if (args->flags & XCL_BO_FLAGS_EXECBUF) {
+		DRM_ERROR("Exec buf could not be a user buffer\n");
 		return -EINVAL;
+	}
 
 	bo = zocl_create_userprt_bo(dev, args->size);
 	if (IS_ERR(bo)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("Object creation failed\n");
 		return PTR_ERR(bo);
 	}
 
@@ -299,6 +303,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	ret = get_user_pages_fast(args->addr, page_count, 1, pages);
 	if (ret != page_count) {
+		DRM_ERROR("Unable to get user pages\n");
 		ret = -ENOMEM;
 		goto out0;
 	}
@@ -309,10 +314,10 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
-
 	sg_count = dma_map_sg(dev->dev, bo->cma_base.sgt->sgl,
 				bo->cma_base.sgt->nents, 0);
 	if (sg_count <= 0) {
+		DRM_ERROR("Map SG list failed\n");
 		ret = -ENOMEM;
 		goto out0;
 	}
@@ -321,6 +326,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	/* Physical address must be continuous */
 	if (sg_count != 1) {
+		DRM_ERROR("User buffer is not physical contiguous\n");
 		ret = -EINVAL;
 		goto out0;
 	}
@@ -330,7 +336,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
 		ret = -EINVAL;
-		DRM_DEBUG("handle creation failed\n");
+		DRM_ERROR("Handle creation failed\n");
 		goto out0;
 	}
 
