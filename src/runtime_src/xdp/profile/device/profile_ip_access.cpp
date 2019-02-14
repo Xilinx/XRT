@@ -70,6 +70,11 @@ void ProfileIP::release_exclusive_ip_access(xclDeviceHandle handle, int index) {
 }
 
 void ProfileIP::map() {
+    /**
+     * TODO: so far we are asking the debug_ip_layout where the IP is. Once the XRT hal implements
+     * the function that maps the IP registers to user memory space, this method should be simplified
+     * to one function call to the hal API and saves the result in a mapped_address and set mapped flag.
+     */
     if (!exclusive) {
         return;
     }
@@ -111,6 +116,10 @@ void ProfileIP::map() {
 }
 
 void ProfileIP::unmap() {
+    /**
+     * TODO: This should use the unmapping API provided by XRT hal in
+     * the future. Now the API is not in place
+     */
     if (!exclusive || !mapped) {
         return;
     }
@@ -120,6 +129,11 @@ void ProfileIP::unmap() {
 }
 
 int ProfileIP::read(uint64_t offset, size_t size, void* data) {
+    /**
+     * TODO: so far we are using xclRead under the hood because the hal API that maps
+     * the IP is not ready yet. Once the API is ready, xclRead should be replaced by a
+     * memcpy from the mapped address with exception handling.
+     */
     if (!exclusive || !mapped) {
         return -1;
     }
@@ -133,6 +147,11 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
 }
 
 int ProfileIP::write(uint64_t offset, size_t size, void* data) {
+    /**
+     * TODO: so far we are using xclWrite under the hood because the hal API that maps
+     * the IP is not ready yet. Once the API is ready, xclWrite should be replaced by a
+     * memcpy to the mapped address with exception handling.
+     */
     if (!exclusive || !mapped) {
         return -1;
     }
