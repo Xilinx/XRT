@@ -5,9 +5,9 @@
 
 void alloc_bo_start(void* payload) {
     std::cout << "alloc bo start" << std::endl;
-    CallbackMarker* payload = reinterpret_cast<CallbackMarker*>(payload);
-    std::cout << "idcode: " << payload->idcode << std::endl;
-    std::cout << "devcode: " << payload->devcode << std::endl;
+    CallbackMarker* payload_content = reinterpret_cast<CallbackMarker*>(payload);
+    std::cout << "idcode: " << payload_content->idcode << std::endl;
+    std::cout << "devcode: " << payload_content->devcode << std::endl;
     return;
 }
 
