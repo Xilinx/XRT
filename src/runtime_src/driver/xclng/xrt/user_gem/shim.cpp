@@ -35,6 +35,7 @@
 #include <sys/syscall.h>
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
+#include "driver/include/xclperf.h"
 #include "scan.h"
 #include "driver/xclng/xrt/util/message.h"
 #include <cstdio>
@@ -463,6 +464,7 @@ size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hos
  */
 unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
+    ALLOC_BO_CB;
     //std::cout << "alloc bo with combined flags " << std::hex << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
@@ -1744,8 +1746,6 @@ static int findMgmtDeviceID(int user_slot)
 
 unsigned xclProbe()
 {
-    xdphal::load_xdp_plugin_library();
-    XDP_LOG_PROBE_CALL(HalFuncType::PROBE)
     return pcidev::get_dev_ready();
 }
 

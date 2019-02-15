@@ -998,9 +998,7 @@ namespace xocl {
   }
 
   int XOCLShim::xclSwitchProfiling() {
-    if (!xdphal::HalCallLogger::loaded) {
-      xdphal::load_xdp_plugin_library();
-    }
+    xdphal::load_xdp_plugin_library();
     return 0;
   }
 

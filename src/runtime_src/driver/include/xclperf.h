@@ -444,5 +444,21 @@ typedef struct {
   char nifd_name[MAX_NAME_LEN];
 } xclDebugProfileDeviceInfo;
 
+/**
+ * hal level xdp plugin types
+ * 
+ * The data structures for hal level xdp plugins
+ * that will be interpreted by both the shim and
+ * xdp
+ */ 
+
+enum HalCallbackType {
+  ALLOC_BO_START,
+  ALLOC_BO_END
+};
+
+/**
+ * end hal level xdp plugin types
+ */
 
 #endif

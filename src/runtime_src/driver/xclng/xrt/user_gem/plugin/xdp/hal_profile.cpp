@@ -1,15 +1,14 @@
-#include <dlfcn.h>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 #include "plugin/xdp/hal_profile.h"
 
 namespace bfs = boost::filesystem;
 
 namespace xdphal {
 
-cb_probe_func_type cb_probe;
+cb_func_type cb;
 
-bool HalCallLogger::loaded = false;
+bool loaded = false;
+std::atomic<unsigned> global_idcode(0);
+std::mutex lock;
 
 static boost::filesystem::path& dllExt() {
   static boost::filesystem::path sDllExt(".so");
@@ -31,23 +30,40 @@ static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
-HalCallLogger::HalCallLogger(HalFuncType funcType) {
+AllocBOCallLogger::AllocBOCallLogger(size_t size, xclBOKind domain, unsigned flags) {
+    if (!loaded) {
+        return;
+    }
+    local_idcode = global_idcode++;
     std::cout << "hal_api_call_logger is being called" << std::endl;
-    if (cb_probe) {
-        cb_probe();
+    if (cb) {
+        cb(HalCallbackType::ALLOC_BO_START, nullptr);
     } else {
         std::cout << "cb_probe is not registered" << std::endl;
     }
     return;
 }
 
-HalCallLogger::~HalCallLogger() {
+AllocBOCallLogger::~AllocBOCallLogger() {
     std::cout << "hal_api_call_logger destructor is being called" << std::endl;
+    if (!loaded) {
+        return;
+    }
+    std::cout << "hal_api_call_logger is being called" << std::endl;
+    if (cb) {
+        cb(HalCallbackType::ALLOC_BO_END, nullptr);
+    } else {
+        std::cout << "cb_probe is not registered" << std::endl;
+    }
     return;
 }
 
 void load_xdp_plugin_library() {
     std::cout << "Loading xdp plugins ..." << std::endl;
+    std::lock_guard<std::mutex> loader_guard(lock);
+    if (loaded) {
+        return;
+    }
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname ("libxdp_hal_plugin.so");
     if (xrt.empty()) {
@@ -62,11 +78,9 @@ void load_xdp_plugin_library() {
     auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (!handle)
         throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
-
-    const std::string probe_cb_func_name = "probe_cb_func";
-    cb_probe = cb_probe_func_type(reinterpret_cast<cb_probe_load_func_type>(dlsym(handle, probe_cb_func_name.c_str())));
-
-    HalCallLogger::loaded = true;
+    const std::string cb_func_name = "hal_level_xdp_cb_func";
+    cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
+    loaded = true;
 }
 
 }
