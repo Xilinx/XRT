@@ -37,7 +37,8 @@ static const char* emptyOrValue(const char* cstr) {
 AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
-    cb(HalCallbackType::ALLOC_BO_START, nullptr);
+    CallbackMarker payload = {local_idcode, (unsigned)handle};
+    cb(HalCallbackType::ALLOC_BO_START, &payload);
 }
 
 AllocBOCallLogger::~AllocBOCallLogger() {

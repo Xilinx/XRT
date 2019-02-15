@@ -459,6 +459,11 @@ enum HalCallbackType {
   FREE_BO_END
 };
 
+struct CallbackMarker {
+  unsigned idcode;
+  unsigned devcode;
+};
+
 /**
  * end hal level xdp plugin types
  */
