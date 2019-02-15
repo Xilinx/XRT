@@ -718,15 +718,14 @@ public:
             std::string errmsg;
             if(pcidev::get_dev(m_idx)->mgmt){
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
-                sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
-                sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
-                sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
-                sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
             }
-            
+            sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
+            sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
+            sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
+            sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
         }
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
         sensor_tree::put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
