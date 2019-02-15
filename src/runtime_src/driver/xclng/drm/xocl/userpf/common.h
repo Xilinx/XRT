@@ -172,5 +172,7 @@ void user_pci_reset_done(struct pci_dev *pdev);
 uint get_live_client_size(struct xocl_dev *xdev);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
 
+void get_pcie_link_info(struct xocl_dev	*xdev,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
 #endif

@@ -162,25 +162,23 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
 	int err = 0;
-	int msg = 0;
+	int msg = -ENODEV;
+	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
-	struct mailbox_req mb_req = { 0 };
-	struct drm_xocl_reclock_info *reclock = (struct drm_xocl_reclock_info *)data;
-	uint32_t data_sz = sizeof(struct drm_xocl_reclock_info);
+	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
+	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
+	req->req = MAILBOX_REQ_RECLOCK;
+	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
+	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
 
-	mb_req.req = MAILBOX_REQ_SEND_DATA;
-	mb_req.u.data_buf.cmd_type = MB_CMD_RECLOCK;
-	mb_req.u.data_buf.data_total_len = sizeof(struct drm_xocl_reclock_info);
-	mb_req.u.data_buf.buf_size = sizeof(struct mailbox_req);
-	mb_req.u.data_buf.len = data_sz;
-	mb_req.u.data_buf.offset = 0;
-	memcpy(mb_req.u.data_buf.data, ((char *)reclock), data_sz);
+	err = xocl_peer_request_new(xdev, req, reqlen, 
+		&msg, &resplen, NULL, NULL);
 
-	err = xocl_peer_request(xdev,
-		&mb_req, &msg, &resplen, NULL, NULL);
-	if(msg != 0)
-		return -ENODEV;
+	if(msg != 0){
+		err = -ENODEV;
+	}
 
+	kfree(req);
   return err;
 }
 
@@ -710,6 +708,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_qdma,
 	xocl_init_mb_scheduler,
 	xocl_init_mailbox,
+	xocl_init_xmc,
 	xocl_init_icap,
 	xocl_init_xvc,
 };
@@ -720,6 +719,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_qdma,
 	xocl_fini_mb_scheduler,
 	xocl_fini_mailbox,
+	xocl_fini_xmc,
 	xocl_fini_icap,
 	xocl_fini_xvc,
 };

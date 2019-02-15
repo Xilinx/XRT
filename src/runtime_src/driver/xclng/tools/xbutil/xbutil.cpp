@@ -173,7 +173,10 @@ int main(int argc, char *argv[])
      * xbflash and never returns. All arguments will be passed
      * down to xbflash.
      */
-    if( std::string( argv[ 1 ] ).compare( "flash" ) == 0 ) {
+    if( std::string( argv[ 1 ] ).compare( "flash" ) == 0        ||
+       (std::string( argv[ 1 ] ).compare( "mem" ) == 0          &&
+       (std::string( argv[ 2 ] ).compare( "--query-ecc" ) == 0  ||
+        std::string( argv[ 2 ] ).compare( "--reset-ecc" ) == 0  ))) {
         // get self path, launch xbflash from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
@@ -233,8 +236,6 @@ int main(int argc, char *argv[])
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"stream", no_argument, 0, xcldev::STREAM},
-        {"query-ecc", no_argument, 0, xcldev::MEM_QUERY_ECC},
-        {"reset-ecc", no_argument, 0, xcldev::MEM_RESET_ECC},
         {0, 0, 0, 0}
     };
 
@@ -305,24 +306,6 @@ int main(int argc, char *argv[])
                 return -1;
             }
             subcmd = xcldev::STREAM;
-            break;
-        }
-        case xcldev::MEM_QUERY_ECC : {
-            //--query-ecc
-            if (cmd != xcldev::MEM) {
-                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
-                return -1;
-            }
-            subcmd = xcldev::MEM_QUERY_ECC;
-            break;
-        }
-        case xcldev::MEM_RESET_ECC : {
-            //--reset-ecc
-            if (cmd != xcldev::MEM) {
-                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
-                return -1;
-            }
-            subcmd = xcldev::MEM_RESET_ECC;
             break;
         }
         //short options are dealt here
@@ -628,10 +611,6 @@ int main(int argc, char *argv[])
             result = deviceVec[index]->memread(outMemReadFile, startAddr, sizeInBytes);
         } else if (subcmd == xcldev::MEM_WRITE) {
             result = deviceVec[index]->memwrite(startAddr, sizeInBytes, pattern_byte);
-        } else if(subcmd == xcldev::MEM_QUERY_ECC) {
-            result = deviceVec[index]->printEccInfo(std::cout);
-        } else if(subcmd == xcldev::MEM_RESET_ECC) {
-            result = deviceVec[index]->resetEccInfo();
         }
         break;
     case xcldev::DD:
@@ -682,8 +661,6 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  list\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  mem --query-ecc [-d card]\n";
-    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card]\n";
@@ -1174,128 +1151,6 @@ int xcldev::xclValidate(int argc, char *argv[])
     }
 
     std::cout << "INFO: All cards validated successfully." << std::endl;
-    return 0;
-}
-
-static int getEccMemTags(const pcidev::pci_device *dev,
-    std::vector<std::string>& tags)
-{
-    std::string errmsg;
-    std::vector<char> buf;
-
-    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
-    if (!errmsg.empty()) {
-        std::cout << errmsg << std::endl;
-        return -EINVAL;
-    }
-    const mem_topology *map = (mem_topology *)buf.data();
-
-    if(buf.empty() || map->m_count == 0) {
-        std::cout << "WARNING: 'mem_topology' not found, "
-            << "unable to query ECC info. Has the xclbin been loaded? "
-            << "See 'xbutil program'." << std::endl;
-        return -EINVAL;
-    }
-
-    // Only support DDR4 mem controller for ECC status
-    for(int32_t i = 0; i < map->m_count; i++) {
-        if(!map->m_mem_data[i].m_used)
-            continue;
-        tags.emplace_back(
-            reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
-    }
-
-    if (tags.empty()) {
-        std::cout << "No supported ECC controller detected!" << std::endl;
-        return -ENOENT;
-    }
-    return 0;
-}
-
-static int eccStatus2String(unsigned int status, std::string& str)
-{
-    const int ce_mask = (0x1 << 1);
-    const int ue_mask = (0x1 << 0);
-
-    str.clear();
-
-    // If unknown status bits, can't support.
-    if (status & ~(ce_mask | ue_mask)) {
-        std::cout << "Bad ECC status detected!" << std::endl;
-        return -EINVAL;
-    }
-
-    if (status == 0) {
-        str = "(None)";
-        return 0;
-    }
-
-    if (status & ue_mask)
-        str += "UE ";
-    if (status & ce_mask)
-        str += "CE ";
-    // Remove the trailing space.
-    str.pop_back();
-    return 0;
-}
-
-int xcldev::device::printEccInfo(std::ostream& ostr) const
-{
-    std::string errmsg;
-    std::vector<std::string> tags;
-    auto dev = pcidev::get_dev(m_idx);
-
-    int err = getEccMemTags(dev, tags);
-    if (err)
-        return err;
-
-    // Report ECC status
-    ostr << std::endl;
-    ostr << std::left << std::setw(16) << "Tag" << std::setw(12) << "Errors"
-        << std::setw(12) << "CE Count" << std::setw(20) << "CE FFA"
-        << std::setw(20) << "UE FFA" << std::endl;
-    for (auto tag : tags) {
-        unsigned status = 0;
-        std::string st;
-        dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
-        if (!errmsg.empty())
-            continue;
-        err = eccStatus2String(status, st);
-        if (err)
-            return err;
-
-        unsigned ce_cnt = 0;
-        dev->mgmt->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
-        uint64_t ce_ffa = 0;
-        dev->mgmt->sysfs_get(tag, "ecc_ce_ffa", errmsg, ce_ffa);
-        uint64_t ue_ffa = 0;
-        dev->mgmt->sysfs_get(tag, "ecc_ue_ffa", errmsg, ue_ffa);
-        ostr << std::left << std::setw(16) << tag << std::setw(12) << st
-            << std::setw(12) << ce_cnt << "0x" << std::setw(18) << std::hex
-            << ce_ffa << "0x" << std::setw(18) << ue_ffa << std::endl;
-    }
-    ostr << std::endl;
-    return 0;
-}
-
-int xcldev::device::resetEccInfo()
-{
-    std::string errmsg;
-    std::vector<std::string> tags;
-    auto dev = pcidev::get_dev(m_idx);
-
-    if ((getuid() != 0) && (geteuid() != 0)) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
-
-    int err = getEccMemTags(dev, tags);
-    if (err)
-        return err;
-
-    std::cout << "Resetting ECC info..." << std::endl;
-    for (auto tag : tags)
-        dev->mgmt->sysfs_put(tag, "ecc_reset", errmsg, "1");
     return 0;
 }
 

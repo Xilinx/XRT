@@ -114,7 +114,6 @@ struct xclmgmt_dev {
 	int msix_user_start_vector;
 	bool ready;
 
-	struct xclmgmt_data_buf data_buf;
 };
 
 extern int health_check;
