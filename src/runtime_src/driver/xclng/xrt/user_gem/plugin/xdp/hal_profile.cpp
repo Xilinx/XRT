@@ -35,27 +35,36 @@ AllocBOCallLogger::AllocBOCallLogger(size_t size, xclBOKind domain, unsigned fla
         return;
     }
     local_idcode = global_idcode++;
-    std::cout << "hal_api_call_logger is being called" << std::endl;
     if (cb) {
         cb(HalCallbackType::ALLOC_BO_START, nullptr);
-    } else {
-        std::cout << "cb_probe is not registered" << std::endl;
     }
-    return;
 }
 
 AllocBOCallLogger::~AllocBOCallLogger() {
-    std::cout << "hal_api_call_logger destructor is being called" << std::endl;
     if (!loaded) {
         return;
     }
-    std::cout << "hal_api_call_logger is being called" << std::endl;
     if (cb) {
         cb(HalCallbackType::ALLOC_BO_END, nullptr);
-    } else {
-        std::cout << "cb_probe is not registered" << std::endl;
     }
-    return;
+}
+
+FreeBOCallLogger::FreeBOCallLogger(unsigned int boHandle) {
+    if (!loaded) {
+        return;
+    }
+    if (cb) {
+        cb(HalCallbackType::FREE_BO_START, nullptr);
+    }
+}
+
+FreeBOCallLogger::~FreeBOCallLogger() {
+    if (!loaded) {
+        return;
+    }
+    if (cb) {
+        cb(HalCallbackType::FREE_BO_END, nullptr);
+    }
 }
 
 void load_xdp_plugin_library() {

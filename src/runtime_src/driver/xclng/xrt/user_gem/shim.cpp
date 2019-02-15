@@ -464,7 +464,6 @@ size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hos
  */
 unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
-    ALLOC_BO_CB;
     //std::cout << "alloc bo with combined flags " << std::hex << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
     unsigned type = flags & 0xFF000000LL ;
@@ -1836,6 +1835,7 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
 {
+    ALLOC_BO_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
 }
@@ -1847,6 +1847,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
+    FREE_BO_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     if (!drv) {
         return;

@@ -24,6 +24,18 @@ public:
   unsigned local_idcode;
 };
 
+class FreeBOCallLogger {
+public:
+  FreeBOCallLogger(unsigned int boHandle);
+  ~FreeBOCallLogger();
+  unsigned local_idcode;
+};
+
+class SyncBOCallLogger {
+  SyncBOCallLogger();
+  ~SyncBOCallLogger();
+}
+
 void load_xdp_plugin_library();
 
 } //  xdphal
@@ -33,5 +45,6 @@ void load_xdp_plugin_library();
  * the shim implementations
  */
 #define ALLOC_BO_CB xdphal::AllocBOCallLogger alloc_bo_call_logger(size, domain, flags);
+#define FREE_BO_CB xdphal::FreeBOCallLogger free_bo_call_logger(boHandle);
 
 #endif

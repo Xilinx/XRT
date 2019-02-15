@@ -454,7 +454,9 @@ typedef struct {
 
 enum HalCallbackType {
   ALLOC_BO_START,
-  ALLOC_BO_END
+  ALLOC_BO_END,
+  FREE_BO_START,
+  FREE_BO_END
 };
 
 /**
