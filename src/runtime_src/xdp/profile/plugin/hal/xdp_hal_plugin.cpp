@@ -14,14 +14,18 @@ void alloc_bo_end(void* payload) {
 }
 
 void unknown_cb_type(void* payload) {
+    std::cout << "unknown cb type" << std::endl;
     return;
 }
 
 void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload) {
-    std::cout << "the probe callback is called" << std::endl;
+    std::cout << "a callback is called" << std::endl;
     switch (cb_type) {
         case HalCallbackType::ALLOC_BO_START:
             alloc_bo_start(payload);
+            break;
+        case HalCallbackType::ALLOC_BO_END:
+            alloc_bo_end(payload);
             break;
         default: 
             unknown_cb_type(payload);
