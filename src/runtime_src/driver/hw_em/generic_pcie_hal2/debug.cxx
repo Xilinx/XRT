@@ -142,7 +142,7 @@ namespace xclhwemhal2 {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if (baseAddress) baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if (portNames)   portNames[count]   = (char*)map->m_debug_ip_data[i].m_name;
+            if (portNames)   portNames[count]   = map->m_debug_ip_data[i].m_name;
             if (properties)  properties[count]  = map->m_debug_ip_data[i].m_properties;
             ++count;
           }

@@ -277,7 +277,7 @@ extern "C" {
         uint8_t m_minor;
         uint8_t m_reserved[3];
         uint64_t m_base_address;
-        uint8_t m_name[128];
+        char    m_name[128];
     };
 
     struct debug_ip_layout {

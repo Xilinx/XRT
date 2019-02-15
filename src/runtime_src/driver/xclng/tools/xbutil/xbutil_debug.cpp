@@ -60,7 +60,7 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
             if (baseAddress)
                 baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
             if(portNames)
-                portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+                portNames->push_back(map->m_debug_ip_data[i].m_name);
             ++count;
         }
     }
