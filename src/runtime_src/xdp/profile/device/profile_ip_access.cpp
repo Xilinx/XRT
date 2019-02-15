@@ -19,14 +19,12 @@
 
 namespace xdp {
 
-ProfileIP::ProfileIP(xclDeviceHandle handle, int index) {
-    // initialize member variables
-    exclusive = false;
-    mapped = false;
-    mapped_address = 0;
-    device_handle = nullptr;
-    ip_index = -1;
-
+ProfileIP::ProfileIP(xclDeviceHandle handle, int index) : 
+device_handle(nullptr),
+mapped_address(0),
+mapped(false),
+exclusive(false),
+ip_index(-1) {
     // check for exclusive access to this IP
     request_exclusive_ip_access(handle, index);
     if (exclusive) {
@@ -81,26 +79,27 @@ void ProfileIP::map() {
     std::string subdev = "icap";
     std::string entry = "debug_ip_layout";
     size_t max_path_size = 256;
-    char raw_debug_ip_layout_path[max_path_size];
+    char raw_debug_ip_layout_path[max_path_size] = {0};
     int get_sysfs_ret = xclGetSysfsPath(device_handle, subdev.c_str(), entry.c_str(), raw_debug_ip_layout_path, max_path_size);
     if (get_sysfs_ret < 0) {
         show_warning("Get debug_ip_layout path failed");
         return;
     }
+    raw_debug_ip_layout_path[max_path_size - 1] = '\0';
     std::string debug_ip_layout_path(raw_debug_ip_layout_path);
     std::ifstream debug_ip_layout_fs(debug_ip_layout_path.c_str(), std::ifstream::binary);
     size_t max_sysfs_size = 65536;
-    char buffer[max_sysfs_size];
+    char buffer[max_sysfs_size] = {0};
     if (debug_ip_layout_fs) {
         debug_ip_layout_fs.read(buffer, max_sysfs_size);
         if (debug_ip_layout_fs.gcount() > 0) {
-            debug_ip_layout* layout = (debug_ip_layout*)(buffer);
+            debug_ip_layout* layout = reinterpret_cast<debug_ip_layout*>(buffer);
             if (ip_index >= layout->m_count) {
                 show_warning("ip_index out of bound");
                 return;
             }
             debug_ip_data ip_data = layout->m_debug_ip_data[ip_index];
-            ip_name = std::string((char*)(&ip_data.m_name));
+            ip_name.assign(reinterpret_cast<const char*>(&ip_data.m_name), 64);
             mapped_address = ip_data.m_base_address;
             std::cout << "Mapping " << ip_name << " to address 0x" << std::hex << mapped_address << std::dec << std::endl;
             mapped = true;
