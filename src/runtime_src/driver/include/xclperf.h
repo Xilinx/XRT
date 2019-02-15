@@ -461,7 +461,7 @@ enum HalCallbackType {
 
 struct CallbackMarker {
   unsigned idcode;
-  uint64_t devcode;
+  unsigned long devcode;
 };
 
 /**
