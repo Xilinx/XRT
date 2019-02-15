@@ -740,6 +740,11 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 
         dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
         dev->user->sysfs_get("xmc", "xmc_12v_pex_vol", errmsg, info->m12VPex);
+        dev->user->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
+        dev->user->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
+        dev->user->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
+        dev->user->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+
     }
 
 }
