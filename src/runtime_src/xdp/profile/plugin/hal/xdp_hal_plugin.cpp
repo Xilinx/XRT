@@ -4,10 +4,12 @@
 #include "driver/xclng/xrt/user_gem/plugin/xdp/hal_profile.h"
 
 void alloc_bo_start(void* payload) {
+    std::cout << "alloc bo start" << std::endl;
     return;
 }
 
 void alloc_bo_end(void* payload) {
+    std::cout << "alloc bo end" << std::endl;
     return;
 }
 

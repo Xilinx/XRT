@@ -1857,18 +1857,21 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
+    WRITE_BO_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
+    READ_BO_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
+    MAP_BO_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }

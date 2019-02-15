@@ -10,6 +10,10 @@ bool loaded = false;
 std::atomic<unsigned> global_idcode(0);
 std::mutex lock;
 
+static bool cb_valid() {
+    return loaded && cb;
+}
+
 static boost::filesystem::path& dllExt() {
   static boost::filesystem::path sDllExt(".so");
   return sDllExt;
@@ -30,41 +34,74 @@ static const char* emptyOrValue(const char* cstr) {
   return cstr ? cstr : "";
 }
 
-AllocBOCallLogger::AllocBOCallLogger(size_t size, xclBOKind domain, unsigned flags) {
-    if (!loaded) {
-        return;
-    }
+AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags) {
+    if (!cb_valid()) return;
     local_idcode = global_idcode++;
-    if (cb) {
-        cb(HalCallbackType::ALLOC_BO_START, nullptr);
-    }
+    cb(HalCallbackType::ALLOC_BO_START, nullptr);
 }
 
 AllocBOCallLogger::~AllocBOCallLogger() {
-    if (!loaded) {
-        return;
-    }
-    if (cb) {
-        cb(HalCallbackType::ALLOC_BO_END, nullptr);
-    }
+    if (!cb_valid()) return;
+    cb(HalCallbackType::ALLOC_BO_END, nullptr);
 }
 
-FreeBOCallLogger::FreeBOCallLogger(unsigned int boHandle) {
-    if (!loaded) {
-        return;
-    }
-    if (cb) {
-        cb(HalCallbackType::FREE_BO_START, nullptr);
-    }
+FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle, unsigned int boHandle) {
+    if (!cb_valid()) return;
+    local_idcode = global_idcode++;
+    cb(HalCallbackType::FREE_BO_START, nullptr);
 }
 
 FreeBOCallLogger::~FreeBOCallLogger() {
-    if (!loaded) {
-        return;
-    }
-    if (cb) {
-        cb(HalCallbackType::FREE_BO_END, nullptr);
-    }
+    if (!cb_valid()) return;
+    cb(HalCallbackType::FREE_BO_END, nullptr);
+}
+
+WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek) {
+    
+}
+
+WriteBOCallLogger::~WriteBOCallLogger() {
+
+}
+
+ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip) {
+
+}
+
+ReadBOCallLogger::~ReadBOCallLogger() {
+
+}
+
+MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, bool write) {
+
+}
+
+MapBOCallLogger::~MapBOCallLogger() {
+
+}
+
+SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) {
+
+}
+
+SyncBOCallLogger::~SyncBOCallLogger() {
+
+}
+
+UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) {
+
+}
+
+UnmgdPwriteCallLogger::~UnmgdPwriteCallLogger() {
+
+}
+
+UnmgdPreadCallLogger::UnmgdPreadCallLogger(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset) {
+
+}
+
+UnmgdPreadCallLogger::~UnmgdPreadCallLogger() {
+
 }
 
 void load_xdp_plugin_library() {
