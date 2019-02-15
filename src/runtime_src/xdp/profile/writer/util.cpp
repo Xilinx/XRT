@@ -34,7 +34,7 @@ namespace xdp {
 
     struct tm *p_tstruct = std::localtime(&time);
     if(p_tstruct) {
-        char buf[80];
+        char buf[80] = {0};
         strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct);
         return std::string(buf);
     }
