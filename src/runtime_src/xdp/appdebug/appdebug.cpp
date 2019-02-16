@@ -1028,7 +1028,6 @@ uint32_t getIPCountAddrNames(std::string& devUserName, int type, std::vector<uin
   // Get the path to the device from the HAL
   // std::string path = "/sys/bus/pci/devices/" + devUserName + "/debug_ip_layout";
   std::string path = devUserName;
-  std::cout << "using: " << path << std::endl;
   std::ifstream ifs(path.c_str(), std::ifstream::binary);
   uint32_t count = 0;
   char buffer[debug_ip_layout_max_size];
