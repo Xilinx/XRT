@@ -13,6 +13,49 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
+/*
+ * Kernel Driver Scheduler (KDS) for XRT
+ *
+ * struct xocl_cmd
+ *  - wraps exec BOs create from user space
+ *  - transitions through a number of states
+ *  - initially added to pending command queue
+ *  - consumed by scheduler which manages its execution (state transition)
+ * struct xcol_cu
+ *  - compute unit for executing commands
+ *  - used only without embedded scheduler (ert)
+ *  - talks to HW compute units
+ * struct xocl_ert
+ *  - embedded scheduler for executing commands on ert
+ *  - talks to HW ERT
+ * struct exec_core
+ *  - execution core managing execution on one device
+ * struct xocl_scheduler
+ *  - manages execution of cmds on one or more exec cores
+ *  - executed in a separate kernel thread
+ *  - loops repeatedly when there is work to do
+ *  - moves pending commands into a scheduler command queue
+ *
+ * [new -> pending]. The xocl API adds exec BOs to KDS.  The exec BOs are
+ * wrapped in a xocl_cmd object and added to a pending command queue.
+ *
+ * [pending -> queued]. Scheduler loops repeatedly and copies pending commands
+ * to its own command queue, then managaes command execution on one or more
+ * execution cores.
+ *
+ * [queued -> submitted]. Commands are submitted for execution on execution
+ * core when the core has room for new commands.
+ *
+ * [submitted -> running]. Once submitted, a command is transition by
+ * scheduler into running state when there is an available compute unit (no
+ * ert) or if ERT is used, then when ERT has room.
+ *
+ * [running -> complete]. Commands running on ERT complete by sending an
+ * interrupt to scheduler.  When ERT is not used, commands are running on a
+ * compute unit and are polled for completion.
+ */
+
 #include <linux/bitmap.h>
 #include <linux/list.h>
 #include <linux/eventfd.h>
@@ -1056,7 +1099,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create();
 		cu_reset(xcu,cuidx,exec->base,cfg->data[cuidx]);
-		SCHED_DEBUGF("++ configure cu(%d) at 0x%x\n",xcu->idx,xcu->addr);
+		userpf_info(xdev,"configure cu(%d) at 0x%x\n",xcu->idx,xcu->addr);
 	}
 
 	if (cdma) {

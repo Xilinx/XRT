@@ -63,6 +63,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		reset_notify_client_ctx(xdev);
 		xocl_user_dev_online(xdev);
 		xocl_mailbox_reset(xdev, true);
+		xocl_exec_reset(xdev);
         }
 }
 
