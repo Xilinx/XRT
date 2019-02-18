@@ -430,7 +430,7 @@ configure(struct sched_cmd *cmd)
 		} else {
 			SCHED_DEBUG("++ configuring penguin scheduler mode\n");
 			exec->ops = &penguin_ops;
-			exec->polling_mode = 1;
+			exec->polling_mode = cfg->polling;
 			exec->configured = 1;
 		}
 	} else {
@@ -1125,6 +1125,12 @@ sched_wait_cond(struct scheduler *sched)
 		return 0;
 	}
 
+	if (sched->intc) {
+		SCHED_DEBUG("scheduler wakes on interrupt\n");
+		sched->intc = 0;
+		return 0;
+	}
+
 	if (sched->poll) {
 		SCHED_DEBUG("scheduler wakes to poll\n");
 		return 0;
@@ -1210,6 +1216,7 @@ init_scheduler_thread(void)
 	g_sched0.stop = 0;
 
 	INIT_LIST_HEAD(&g_sched0.cq);
+	g_sched0.intc = 0;
 	g_sched0.poll = 0;
 
 	g_sched0.sched_thread = kthread_run(scheduler, &g_sched0, name);
@@ -1621,6 +1628,41 @@ cq_check(void *data)
 	return 0;
 }
 
+static irqreturn_t sched_exec_isr(int irq, void *arg)
+{
+	struct drm_zocl_dev *zdev = arg;
+	void __iomem *regs;
+	int cu_idx;
+	volatile u32 __iomem *virt_addr;
+
+	SCHED_DEBUG("-> sched_exe_isr irq %d", irq);
+	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
+		if (zdev->irq[cu_idx] == irq)
+			break;
+	}
+
+	SCHED_DEBUG("cu_idx %d interrupt handle", cu_idx);
+	if (cu_idx >= zdev->cu_num) {
+		/* This should never happen */
+		DRM_ERROR("Unknown isr irq %d, polling %d\n",
+			  irq, zdev->exec->polling_mode);
+		return IRQ_HANDLED;
+	}
+
+	virt_addr = zdev->regs + cu_idx_to_offset(zdev->ddev, cu_idx);
+	/* Clear all CU interrupts, will need to handle ap_done and ap_ready
+	 * interrupt after support dataflow exectution model
+	 */
+	virt_addr[3] = virt_addr[3];
+
+	/* wake up all scheduler ... currently one only */
+	g_sched0.intc = 1;
+	wake_up_interruptible(&g_sched0.wait_queue);
+
+	SCHED_DEBUG("<- sched_exe_isr");
+	return IRQ_HANDLED;
+}
+
 /**
  * sched_init_exec() - Initialize the command execution for device
  *
@@ -1669,6 +1711,9 @@ sched_init_exec(struct drm_device *drm)
 	for (i = 0; i < MAX_U32_CU_MASKS; ++i)
 		exec_core->cu_status[i] = 0;
 
+	for (i = 0; i < zdev->cu_num; i++)
+		request_irq(zdev->irq[i], sched_exec_isr, 0, "zocl", zdev);
+
 	init_scheduler_thread();
 
 	if (zdev->ert)
@@ -1688,8 +1733,12 @@ sched_init_exec(struct drm_device *drm)
 int sched_fini_exec(struct drm_device *drm)
 {
 	struct drm_zocl_dev *zdev = drm->dev_private;
+	int i;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
+	for (i = 0; i < zdev->cu_num; i++)
+		free_irq(zdev->irq[i], zdev);
+
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
 	fini_scheduler_thread();

@@ -276,6 +276,7 @@ struct sched_exec_core {
  * @error: set to 1 to indicate scheduler error
  * @stop: set to 1 to indicate scheduler should stop
  * @cq: list of command objects managed by scheduler
+ * @intc: set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
  */
 struct scheduler {
@@ -287,6 +288,7 @@ struct scheduler {
 	unsigned int               stop;
 
 	struct list_head           cq;
+	unsigned int               intc; /* pending intr shared with isr*/
 	unsigned int               poll; /* number of cmds to poll */
 };
 
