@@ -26,6 +26,7 @@
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"
 #include "driver/include/ert.h"
+#include "driver/include/xclbin.h"
 #include "command.h"
 #include <limits>
 #include <bitset>
@@ -42,6 +43,42 @@ emulation_mode()
 {
   static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
   return val;
+}
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
+}
+
+template <typename SectionType>
+static SectionType*
+get_axlf_section(const axlf* top, axlf_section_kind kind)
+{
+  if (auto header = xclbin::get_axlf_section(top, kind)) {
+    auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
+    return reinterpret_cast<SectionType*>(begin);
+  }
+  return nullptr;
+}
+
+std::vector<uint64_t>
+get_cus(const axlf* top)
+{
+  std::vector<uint64_t> cus;
+  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  if (!ip_layout)
+   return cus;
+
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    if (ip_data.m_type == IP_TYPE::IP_KERNEL)
+      cus.push_back(ip_data.m_base_address);
+  }
+  std::sort(cus.begin(),cus.end());
+  return cus;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -456,7 +493,7 @@ class exec_core
   size_type num_cus = 0;
 
 public:
-  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint32_t>& cu_amap)
+  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint64_t>& cu_amap)
     : m_xdev(xdev), m_scheduler(xs), num_slots(slots), num_cus(cu_amap.size())
   {
     cu_usage.reserve(cu_amap.size());
@@ -826,14 +863,29 @@ stop()
 }
 
 void
-init(xrt::device* xdev, const std::vector<uint32_t>& cu_amap)
+init(xrt::device* xdev, const std::vector<uint32_t>& cu_addr_map)
+{
+  if (!is_sw_emulation())
+    throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
+
+  std::vector<uint64_t> amap;
+  std::copy(cu_addr_map.begin(),cu_addr_map.end(),std::back_inserter(amap));
+  auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  s_device_exec_core.erase(xdev);
+  s_device_exec_core.insert
+    (std::make_pair
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
+}
+
+void
+init(xrt::device* xdev, const axlf* top)
 {
   // create execution core for this device
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,cu_amap)));
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,get_cus(top))));
 }
 
 }} // sws,xrt

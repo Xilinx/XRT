@@ -150,26 +150,18 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  // cu base address offset from xclbin in current program
   auto xclbin = device->get_xclbin();
-  size_t cu_base_offset = xclbin.cu_base_offset();
-  size_t cu_shift = xclbin.cu_size();
-  bool cu_isr = xclbin.cu_interrupt();
-
-  auto cu2addr = xclbin.cu_base_address_map();
-
-  size_t regmap_size = xclbin.kernel_max_regmap_size();
-  XOCL_DEBUG(std::cout,"max regmap size:",regmap_size,"\n");
-
-  xrt::scheduler::init(device->get_xrt_device()
-                 ,regmap_size
-                 ,cu_isr
-                 ,device->get_num_cus()
-                 ,cu_shift // cu_offset in lsh value
-                 ,cu_base_offset
-                 ,cu2addr);
+  auto binary = xclbin.binary(); // ::xclbin::binary
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  if (is_sw_emulation()) {
+    auto cu2addr = xclbin.cu_base_address_map();
+    xrt::sws::init(device->get_xrt_device(),cu2addr);
+  }
+  else {
+    xrt::scheduler::init(device->get_xrt_device(),header);
+  }
 }
-
 
 }
 
