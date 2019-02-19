@@ -164,7 +164,7 @@ WriteCallLogger::~WriteCallLogger() {
     cb(HalCallbackType::WRITE_END, &payload);
 }
 
-void load_xdp_plugin_library() {
+void load_xdp_plugin_library(HalPluginConfig* config) {
     std::cout << "Loading xdp plugins ..." << std::endl;
     std::lock_guard<std::mutex> loader_guard(lock);
     if (loaded) {

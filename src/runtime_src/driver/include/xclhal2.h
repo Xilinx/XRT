@@ -1271,7 +1271,7 @@ XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xcl
  * 
  * @param handle the device handle
  */
-XCL_DRIVER_DLLESPEC int xclSwitchProfiling(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC int xclConfigPlugin(xclDeviceHandle handle, HalPluginConfig* config);
 
 
 /* Hack for xbflash only */

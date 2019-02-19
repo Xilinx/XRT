@@ -87,7 +87,7 @@ public:
   unsigned local_idcode;
 };
 
-void load_xdp_plugin_library();
+void load_xdp_plugin_library(HalPluginConfig* config);
 
 } //  xdphal
 

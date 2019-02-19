@@ -248,7 +248,7 @@ public:
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
 
     // Experimental hal level profiling on/off API
-    int xclSwitchProfiling();
+    int xclConfigPlugin(HalPluginConfig* config);
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);

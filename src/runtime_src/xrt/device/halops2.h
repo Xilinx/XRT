@@ -201,7 +201,6 @@ public:
   readTraceFuncType mReadTrace;
   writeHostEventFuncType mWriteHostEvent;
   debugReadIPStatusFuncType mDebugReadIPStatus;
-  switchProfilingFuncType mSwitchProfiling;
 //Streaming
   createWriteQueueFuncType mCreateWriteQueue;
   createReadQueueFuncType mCreateReadQueue;

@@ -452,6 +452,17 @@ typedef struct {
  * xdp
  */ 
 
+struct HalPluginConfig {
+  bool state;
+  char plugin_path[256];
+  /**
+   * The switches for what to profile and what
+   * not to should go here. The attibutes will
+   * be added once settle down on what kind of
+   * swtiches make sense for the plugins.
+   */
+};
+
 enum HalCallbackType {
   ALLOC_BO_START,
   ALLOC_BO_END,
