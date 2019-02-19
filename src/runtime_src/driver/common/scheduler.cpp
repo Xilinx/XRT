@@ -164,6 +164,7 @@ init(xclDeviceHandle handle, const axlf* top)
   ecmd->cu_dma  = xrt_core::config::get_ert_cudma();
   ecmd->cu_isr  = xrt_core::config::get_ert_cuisr() && get_cuisr(top);
   ecmd->cq_int  = xrt_core::config::get_ert_cqint();
+  ecmd->dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow");
 
   // cu addr map
   std::copy(cus.begin(), cus.end(), ecmd->data);
