@@ -202,6 +202,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
         {
             xma_logmsg("Could not get info for xclbin file %s\n",
                        xclfullname.c_str());
+            free(buffer);
             return false;
         }
 
@@ -232,6 +233,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 continue;
             /* Download xclbin first */
             rc = load_xclbin_to_device(hal->dev_handle, buffer);
+            free(buffer);
             if (rc != 0)
             {
                 xma_logmsg("Could not download xclbin file %s to device %d\n",
