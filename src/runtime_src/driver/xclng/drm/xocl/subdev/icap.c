@@ -2086,6 +2086,8 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 		if (err >= 0)
 			err = icap->icap_bitstream_ref;
+		if (err==1) /* reset on first reference */
+			xocl_exec_reset(xocl_get_xdev(pdev));
 	}
 	else {
 		mutex_unlock(&icap->icap_lock);
@@ -2122,7 +2124,7 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 		if (err >= 0)
 			err = icap->icap_bitstream_ref;
 		if (err==0)
-			xocl_exec_reset(xocl_get_xdev(pdev));
+			xocl_exec_stop(xocl_get_xdev(pdev));
 	} else {
 		mutex_unlock(&icap->icap_lock);
 		BUG_ON("mgmt should not call icap_unlock");

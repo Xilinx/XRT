@@ -84,6 +84,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		reset_notify_client_ctx(xdev);
 		xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
 		xocl_mailbox_reset(xdev, true);
+		xocl_exec_reset(xdev);
         }
 }
 

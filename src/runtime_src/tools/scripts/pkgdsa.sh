@@ -473,7 +473,7 @@ initDsaBinEnvAndVars()
       if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
@@ -791,7 +791,7 @@ EOF
     mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/test
 
     # Are there any verification tests
-    if [ -d {opt_dsadir}/test ] ; then
+    if [ -d ${opt_dsadir}/test ] ; then
        rsync -avz ${opt_dsadir}/test/ $pkgdir/opt/xilinx/dsa/$opt_dsa/test
     fi
 
@@ -898,7 +898,7 @@ echo "${post_inst_msg} ${featureRomTimestamp}"
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
 
-if [ -d {opt_dsadir}/test ] ; then
+if [ -d ${opt_dsadir}/test ] ; then
   mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
   cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
 fi
