@@ -1509,6 +1509,9 @@ static int is_config_bar(struct xdma_dev *xdev, int idx)
 	struct config_regs *cfg_regs =
 		(struct config_regs *)(xdev->bar[idx] + XDMA_OFS_CONFIG);
 
+	if (idx == 0)
+		return 0;
+
 	irq_id = read_register(&irq_regs->identifier);
 	cfg_id = read_register(&cfg_regs->identifier);
 
@@ -3301,27 +3304,6 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	return xdev;
 }
 
-static int request_regions(struct xdma_dev *xdev, struct pci_dev *pdev)
-{
-	int rv;
-
-	BUG_ON(!xdev);
-	BUG_ON(!pdev);
-
-	dbg_init("pci_request_regions()\n");
-	rv = pci_request_regions(pdev, xdev->mod_name);
-	/* could not request all regions? */
-	if (rv) {
-		dbg_init("pci_request_regions() = %d, device in use?\n", rv);
-		/* assume device is in use so do not disable it later */
-		xdev->regions_in_use = 1;
-	} else {
-		xdev->got_regions = 1;
-	}
-
-	return rv;
-}
-
 static int set_dma_mask(struct pci_dev *pdev)
 {
 	BUG_ON(!pdev);
@@ -3578,12 +3560,6 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	    xdev->c2h_channel_max > XDMA_CHANNEL_NUM_MAX)
 		xdev->c2h_channel_max = XDMA_CHANNEL_NUM_MAX;
 
-	rv = pci_enable_device(pdev);
-	if (rv) {
-		dbg_init("pci_enable_device() failed, %d.\n", rv);
-		goto err_enable;
-	}
-
 	/* keep INTx enabled */
 	pci_check_intr_pend(pdev);
 
@@ -3600,22 +3576,18 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	rv = pcie_get_readrq(pdev);
 	if (rv < 0) {
 		dev_err(&pdev->dev, "failed to read mrrs %d\n", rv);
-		goto err_regions;
+		goto err_map;
 	}
 	if (rv > 512) {
 		rv = pcie_set_readrq(pdev, 512);
 		if (rv) {
 			dev_err(&pdev->dev, "failed to force mrrs %d\n", rv);
-			goto err_regions;
+			goto err_map;
 		}
 	}
 
 	/* enable bus master capability */
 	pci_set_master(pdev);
-
-	rv = request_regions(xdev, pdev);
-	if (rv)
-		goto err_regions;
 
 	rv = map_bars(xdev, pdev);
 	if (rv)
@@ -3665,12 +3637,6 @@ err_engines:
 err_mask:
 	unmap_bars(xdev, pdev);
 err_map:
-	if (xdev->got_regions)
-		pci_release_regions(pdev);
-err_regions:
-	if (!xdev->regions_in_use)
-		pci_disable_device(pdev);
-err_enable:
 	xdev_list_remove(xdev);
 	kfree(xdev);
 	return NULL;
@@ -3705,16 +3671,6 @@ void xdma_device_close(struct pci_dev *pdev, void *dev_hndl)
 
 	remove_engines(xdev);
 	unmap_bars(xdev, pdev);
-
-	if (xdev->got_regions) {
-		dbg_init("pci_release_regions 0x%p.\n", pdev);
-		pci_release_regions(pdev);
-	}
-
-	if (!xdev->regions_in_use) {
-		dbg_init("pci_disable_device 0x%p.\n", pdev);
-		pci_disable_device(pdev);
-	}
 
 	xdev_list_remove(xdev);
 

@@ -1068,6 +1068,11 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 {
 	int rv;
 
+	if (!descq->xdev->stm_en) {
+		pr_err("%s: STM not enabled in hw.\n", descq->conf.name);
+		return -ENODEV;
+	}
+
 	if (!descq->conf.st) {
 		pr_err("%s: STM programming called for MM-mode\n",
 		       descq->conf.name);
@@ -1078,12 +1083,6 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		pr_err("%s: QID for STM cannot be > %d\n",
 			descq->conf.name, STM_MAX_SUPPORTED_QID);
 		return -EINVAL;
-	}
-
-	if (descq->xdev->stm_rev < STM_SUPPORTED_REV_MIN) {
-		pr_err("%s: No supported STM rev found in hw, 0x%x\n",
-		       descq->conf.name, descq->xdev->stm_rev);
-		return -ENODEV;
 	}
 
 	if (!descq->conf.c2h && !descq->conf.desc_bypass) {
