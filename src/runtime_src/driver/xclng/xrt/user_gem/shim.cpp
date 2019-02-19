@@ -1802,13 +1802,14 @@ int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, 
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+    WRITE_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    //  std::cout << "xclRead called" << std::endl;
+    READ_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
@@ -2049,12 +2050,14 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
+    UNMGD_PWRITE_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
+    UNMGD_PREAD_CB;
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }

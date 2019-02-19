@@ -67,8 +67,23 @@ public:
 };
 
 class UnmgdPreadCallLogger {
+public:
   UnmgdPreadCallLogger(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset);
   ~UnmgdPreadCallLogger();
+  unsigned local_idcode;
+};
+
+class ReadCallLogger {
+public:
+  ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
+  ~ReadCallLogger();
+  unsigned local_idcode;
+};
+
+class WriteCallLogger {
+public:
+  WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
+  ~WriteCallLogger();
   unsigned local_idcode;
 };
 
@@ -85,5 +100,9 @@ void load_xdp_plugin_library();
 #define WRITE_BO_CB xdphal::WriteBOCallLogger write_bo_call_logger(handle, boHandle, src, size, seek);
 #define READ_BO_CB xdphal::ReadBOCallLogger read_bo_call_logger(handle, boHandle, dst, size, skip);
 #define MAP_BO_CB xdphal::MapBOCallLogger map_bo_call_logger(handle, boHandle, write);
+#define UNMGD_PWRITE_CB xdphal::UnmgdPwriteCallLogger unmgd_pwrite_call_logger(handle, flags, buf, count, offset);
+#define UNMGD_PREAD_CB xdphal::UnmgdPreadCallLogger unnmgd_pread_call_logger(handle, flags, buf, count, offset);
+#define WRITE_CB xdphal::WriteCallLogger write_call_logger(handle, space, offset, hostBuf, size);
+#define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
 
 #endif

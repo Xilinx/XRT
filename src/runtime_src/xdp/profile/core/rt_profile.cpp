@@ -347,6 +347,26 @@ namespace xdp {
   // External access to logger
   // ***************************************************************************
 
+  /**
+   * hal level function loggers
+   */
+
+  void RTProfile::logHalFunctionStart(std::string& name, int uid) {
+
+  }
+
+  void RTProfile::logHalFunctionEnd(std::string& name, int uid) {
+
+  }
+  
+  void RTProfile::logHalBOActivity(std::string& name, int handle) {
+
+  }
+
+  /**
+   * end hal level function loggers
+   */
+
   void RTProfile::logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID)
   {
     mLogger->logFunctionCallStart(functionName, queueAddress, functionID);
