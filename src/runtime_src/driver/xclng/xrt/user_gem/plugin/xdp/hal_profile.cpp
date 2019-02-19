@@ -57,111 +57,111 @@ FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle, unsigned int boHandle
 FreeBOCallLogger::~FreeBOCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::FREE_BO_END, &payload);
 }
 
 WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::WRITE_BO_START, &payload);
 }
 
 WriteBOCallLogger::~WriteBOCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::WRITE_BO_END, &payload);
 }
 
 ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::READ_BO_START, &payload);
 }
 
 ReadBOCallLogger::~ReadBOCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::READ_BO_END, &payload);
 }  
 
 MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, bool write) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::MAP_BO_START, &payload);
 }
 
 MapBOCallLogger::~MapBOCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::MAP_BO_END, &payload);
 }
 
 SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::SYNC_BO_START, &payload);
 }
 
 SyncBOCallLogger::~SyncBOCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::SYNC_BO_END, &payload);
 }
 
 UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::UNMGD_WRITE_START, &payload);
 }
 
 UnmgdPwriteCallLogger::~UnmgdPwriteCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::UNMGD_WRITE_END, &payload);
 }
 
 UnmgdPreadCallLogger::UnmgdPreadCallLogger(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::UNMGD_READ_START, &payload);
 }
 
 UnmgdPreadCallLogger::~UnmgdPreadCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::UNMGD_READ_END, &payload);
 }
 
 ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::READ_START, &payload);
 }
 
 ReadCallLogger::~ReadCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::READ_END, &payload);
 }
 
 WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) {
     if (!cb_valid()) return;
     local_idcode = global_idcode++;
     CallbackMarker payload = {local_idcode, (unsigned long)handle};
-    cb(HalCallbackType::ALLOC_BO_START, &payload);
+    cb(HalCallbackType::WRITE_START, &payload);
 }
 
 WriteCallLogger::~WriteCallLogger() {
     if (!cb_valid()) return;
     CallbackMarker payload = {local_idcode, 0};
-    cb(HalCallbackType::ALLOC_BO_END, &payload);
+    cb(HalCallbackType::WRITE_END, &payload);
 }
 
 void load_xdp_plugin_library() {
