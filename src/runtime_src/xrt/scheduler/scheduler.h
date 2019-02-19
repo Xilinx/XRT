@@ -39,6 +39,9 @@ void
 stop();
 
 void
+init(xrt::device* device, const axlf* top);
+
+void
 init(xrt::device* device, const std::vector<uint32_t>& cu_addr_map);
 
 } // sws
@@ -58,7 +61,7 @@ void
 stop();
 
 void
-init(xrt::device* device, size_t slot_size, bool cu_isr, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
+init(xrt::device* device, const axlf* top);
 
 } // kds
 
@@ -76,7 +79,7 @@ void
 stop();
 
 void
-init(xrt::device* device, size_t slot_size, bool cu_isr,size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map);
+init(xrt::device* device, const axlf* top);
 
 } // scheduler
 
