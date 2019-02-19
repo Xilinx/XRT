@@ -59,8 +59,11 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
         if (map->m_debug_ip_data[i].m_type == type) {
             if (baseAddress)
                 baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
-            if(portNames)
-                portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+            if(portNames) {
+                std::string portName;
+                portName.assign(map->m_debug_ip_data[i].m_name, 128);
+                portNames->push_back(portName);
+            }
             ++count;
         }
     }

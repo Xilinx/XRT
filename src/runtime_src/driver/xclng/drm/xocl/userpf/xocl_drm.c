@@ -692,10 +692,12 @@ ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	unsigned bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
-	struct mem_topology *topo = xdev->topology;
-	struct drm_xocl_mm_stat **stat = xdev->mm_usage_stat;
+	struct mem_topology *topo = NULL;
+	struct drm_xocl_mm_stat **stat = NULL;
 
 	mutex_lock(&xdev->ctx_list_lock);
+	topo = xdev->topology;
+	stat = xdev->mm_usage_stat;
 	if (!topo || !stat)
 		goto out;
 
