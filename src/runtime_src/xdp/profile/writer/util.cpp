@@ -31,10 +31,14 @@ namespace xdp {
     //std::stringstream ss;
     //ss << std::put_time(std::localtime(&time), "%Y-%m-%d %X");
     //return ss.str();
-    struct tm tstruct = *(std::localtime(&time));
-    char buf[80];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %X", &tstruct);
-    return std::string(buf);
+
+    struct tm *p_tstruct = std::localtime(&time);
+    if(p_tstruct) {
+        char buf[80] = {0};
+        strftime(buf, sizeof(buf), "%Y-%m-%d %X", p_tstruct);
+        return std::string(buf);
+    }
+    return std::string("0000-00-00 0000");
   }
 
   std::string WriterI::getCurrentTimeMsec()
