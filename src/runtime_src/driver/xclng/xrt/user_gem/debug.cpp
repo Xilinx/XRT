@@ -33,6 +33,7 @@
  */
 
 #include "shim.h"
+#include "scan.h"
 #include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/include/xclbin.h"
 
@@ -177,7 +178,10 @@ namespace xocl {
                                          uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
                                          size_t size) {
     debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/debug_ip_layout";
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = "icap";
+    std::string entry_str = "debug_ip_layout";
+    std::string path = dev->user->get_sysfs_path(subdev_str, entry_str);
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     uint32_t count = 0;
     char buffer[65536];
@@ -190,7 +194,7 @@ namespace xocl {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames) portNames[count] = (char*)map->m_debug_ip_data[i].m_name;
+            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
             if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
             if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;

@@ -163,16 +163,14 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         prevHostTimestamp = trace.HostTimestamp;
       }
       else {
-        // for hw first two packets are for clock training
-        // 1000 is to account for delay in sending from host
-        // TODO: Calculate the delay instead of hard coding
+        // clock training relation is linear within small durations (1 sec)
         if (i == 0) {
-          y1 = static_cast <double> (trace.HostTimestamp) + 1000;
+          y1 = static_cast <double> (trace.HostTimestamp);
           x1 = static_cast <double> (trace.Timestamp);
           continue;
         }
         if (i == 1) {
-          y2 = static_cast <double> (trace.HostTimestamp) + 1000;
+          y2 = static_cast <double> (trace.HostTimestamp);
           x2 = static_cast <double> (trace.Timestamp);
           mTrainSlope[type] = (y2 - y1) / (x2 - x1);
           mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
