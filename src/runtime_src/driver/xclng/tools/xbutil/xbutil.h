@@ -151,7 +151,8 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_ARE, "MEM_ARE"},
     {MEM_HBM, "MEM_HBM"},
     {MEM_BRAM, "MEM_BRAM"},
-    {MEM_URAM, "MEM_URAM"}
+    {MEM_URAM, "MEM_URAM"},
+    {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
 };
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));

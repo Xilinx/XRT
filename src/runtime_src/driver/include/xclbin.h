@@ -128,7 +128,8 @@ extern "C" {
         KEYVALUE_METADATA,
         USER_METADATA,
         DNA_CERTIFICATE,
-        PDI 
+        PDI,
+        BITSTREAM_PARTIAL_PDI 
     };
 
     enum MEM_TYPE {

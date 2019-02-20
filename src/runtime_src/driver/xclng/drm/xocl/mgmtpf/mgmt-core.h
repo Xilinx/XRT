@@ -40,8 +40,6 @@
 	iowrite32(val, lro->core.bar_addr + off)
 #define	MGMT_WRITE_REG8(lro, off, val)	\
 	iowrite8(val, lro->core.bar_addr + off)
-#define	MGMT_TOIO(lro, off, addr, len)	\
-	memcpy_toio(lro->core.bar_addr + off, addr, len)
 
 #define	mgmt_err(lro, fmt, args...)	\
 	dev_err(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
@@ -84,7 +82,7 @@ struct xclmgmt_proc_ctx {
 
 struct xclmgmt_char {
 	struct xclmgmt_dev *lro;
-	struct cdev cdev;
+	struct cdev *cdev;
 	struct device *sys_device;
 };
 

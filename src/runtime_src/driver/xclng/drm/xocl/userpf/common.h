@@ -19,13 +19,11 @@
 #include "../xocl_drv.h"
 #include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
-#include "xocl_drm.h"
+#include "../xocl_drm.h"
+#include "xocl_ioctl.h"
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
-
-#define	XOCL_XDMA_PCI		"xocl_xdma"
-#define	XOCL_QDMA_PCI		"xocl_qdma"
 
 #define XOCL_DRIVER_DESC        "Xilinx PCIe Accelerator Device Manager"
 #define XOCL_DRIVER_DATE        "20180612"
@@ -77,43 +75,15 @@
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
-	void * __iomem		base_addr;
-	u64			bar_len;
-	u32			bar_idx;
-	u64     bypass_bar_len;
-	u32     bypass_bar_idx;
-
-
-	void		       *dma_handle;
-	u32			max_user_intr;
-	u32			start_user_intr;
-	struct eventfd_ctx    **user_msix_table;
-	struct mutex		user_msix_table_lock;
-
 	bool			offline;
-
-	/* memory management */
-	struct drm_device	       *ddev;
-	/* Memory manager array, one per DDR channel */
-	struct drm_mm		       **mm;
-	struct mutex			mm_lock;
-	struct drm_xocl_mm_stat	       **mm_usage_stat;
-	u64				*mm_p2p_off;
-	struct mutex			stat_lock;
-
-	struct mem_topology	       *topology;
-        struct ip_layout	       *layout;
-	struct debug_ip_layout	       *debug_layout;
-	struct connectivity	       *connectivity;
-
-	/* context table */
-	struct xocl_context_hash	ctx_table;
 
 	/* health thread */
 	struct task_struct	       *health_thread;
 	struct xocl_health_thread_arg	thread_arg;
 
-	void * __iomem bypass_bar_addr;
+	u32			p2p_bar_idx;
+	resource_size_t		p2p_bar_len;
+	void * __iomem		p2p_bar_addr;
 
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
@@ -125,15 +95,11 @@ struct xocl_dev	{
 	struct dev_pagemap pgmap;
 #endif
 	xuid_t                          xclbin_id;
-	unsigned                        ip_reference[MAX_CUS];
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
 	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	DECLARE_HASHTABLE(mm_range, 6);
-#endif
 	void				*p2p_res_grp;
 };
 
@@ -184,16 +150,12 @@ int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
                          struct drm_file *filp);
-int xocl_p2p_enable_ioctl(struct drm_device *dev, void *data,
-	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
   struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
-
-ssize_t xocl_mm_sysfs_stat(struct xocl_dev *xdev, char *buf, bool raw);
 
 /* helper functions */
 int xocl_hot_reset(struct xocl_dev *xdev, bool force);
@@ -210,11 +172,5 @@ void user_pci_reset_done(struct pci_dev *pdev);
 uint get_live_client_size(struct xocl_dev *xdev);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
 
-struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
-                                          uint64_t unaligned_size,
-                                          unsigned user_flags,
-                                          unsigned user_type);
-
-void xocl_dump_sgtable(struct device *dev, struct sg_table *sgt);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
 #endif

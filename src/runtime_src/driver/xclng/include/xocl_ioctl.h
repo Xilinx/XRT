@@ -150,8 +150,6 @@ enum drm_xocl_ops {
 	DRM_XOCL_COPY_BO,
 	/* Hot reset request */
 	DRM_XOCL_HOT_RESET,
-	/* Enable P2P */
-	DRM_XOCL_P2P_ENABLE,
 	/* Reclock through userpf*/
 	DRM_XOCL_RECLOCK,
 
@@ -483,16 +481,6 @@ struct drm_xocl_user_intr {
         int msix;
 };
 
-/**
- * struct drm_xocl_p2p_enable - enable/disable P2P
- *
- * @enable:		0: disable, 1: enable
- */
-struct drm_xocl_p2p_enable {
-	int enable;
-};
-
-
 struct drm_xocl_reclock_info {
   unsigned region;
   unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
@@ -537,8 +525,6 @@ struct drm_xocl_reclock_info {
 #define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
 					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
 #define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
-#define DRM_IOCTL_XOCL_P2P_ENABLE     DRM_IOWR(DRM_COMMAND_BASE +	\
-						DRM_XOCL_P2P_ENABLE, struct drm_xocl_p2p_enable)
 #define DRM_IOCTL_XOCL_RECLOCK     DRM_IOWR(DRM_COMMAND_BASE + \
             DRM_XOCL_RECLOCK, struct drm_xocl_reclock_info)
 #endif
