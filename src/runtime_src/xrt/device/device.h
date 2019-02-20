@@ -810,10 +810,10 @@ public:
     return m_hal->stopTrace(type);
   }
 
-  hal::operations_result<size_t>
-  getSysfsPath(std::string& subdev, std::string& entry, char* path, int size)
+  hal::operations_result<std::string>
+  getSysfsPath(std::string& subdev, std::string& entry)
   {
-    return m_hal->getSysfsPath(subdev, entry, path, size);
+    return m_hal->getSysfsPath(subdev, entry);
   }
 
   /**

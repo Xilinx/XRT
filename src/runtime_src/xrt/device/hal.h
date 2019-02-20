@@ -603,10 +603,10 @@ public:
     return operations_result<size_t>();
   }
 
-  virtual operations_result<size_t>
-  getSysfsPath(std::string subdev, std::string entry, char* path, int size)
+  virtual operations_result<std::string>
+  getSysfsPath(std::string subdev, std::string entry)
   {
-    return operations_result<size_t>();
+    return operations_result<std::string>();
   }
 
   virtual task::queue*

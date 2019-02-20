@@ -1221,19 +1221,18 @@ clGetDebugCounters() {
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugResults,0, sizeof(xclDebugCountersResults));
-  char raw_sysfs_path[256];
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   for (auto device : platform->get_device_range()) {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
-      device->get_xrt_device()->getSysfsPath(subdev, entry, raw_sysfs_path, 256);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
   }
-  std::string sysfs_open_path(raw_sysfs_path);
 
   if (ret) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
@@ -1371,9 +1370,9 @@ clGetDebugStreamCounters()
 
   xclStreamingDebugCountersResults streamingDebugCounters;  
   memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
-  char raw_sysfs_path[256];
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
@@ -1381,11 +1380,10 @@ clGetDebugStreamCounters()
     {
       // At this point, we are dealing with only one device
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
-      device->get_xrt_device()->getSysfsPath(subdev, entry, raw_sysfs_path, 256);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
   }
-  std::string sysfs_open_path(raw_sysfs_path);
 
   if (ret) 
   {
@@ -1585,9 +1583,9 @@ clGetDebugCheckers() {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
-  char raw_sysfs_path[256];
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
@@ -1596,12 +1594,10 @@ clGetDebugCheckers() {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
-      device->get_xrt_device()->getSysfsPath(subdev, entry, raw_sysfs_path, 256);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
-  std::string sysfs_open_path(raw_sysfs_path);
-
   if (ret) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error reading lapc status");
     return adv;
