@@ -495,14 +495,12 @@ configure(struct sched_cmd *cmd)
 	exec->num_cu_masks    = ((exec->num_cus-1)>>5) + 1;
 
 	if (!zdev->ert) {
-		if (cfg->ert) {
+		if (cfg->ert)
 			DRM_INFO("No ERT scheduler on MPSoC, using KDS\n");
-		} else {
-			SCHED_DEBUG("++ configuring penguin scheduler mode\n");
-			exec->ops = &penguin_ops;
-			exec->polling_mode = cfg->polling;
-			exec->configured = 1;
-		}
+		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
+		exec->ops = &penguin_ops;
+		exec->polling_mode = cfg->polling;
+		exec->configured = 1;
 	} else {
 		SCHED_DEBUG("++ configuring PS ERT mode\n");
 		exec->ops = &ps_ert_ops;
@@ -520,7 +518,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	/* Right now only support 32 CUs interrupts
-	 * If there are more than 32 CU, fall back to polling mode
+	 * If there are more than 32 CUs, fall back to polling mode
 	 */
 	if (exec->num_cus > 32) {
 		DRM_INFO("Only support up to 32 CUs interrupts\n");
@@ -530,6 +528,7 @@ configure(struct sched_cmd *cmd)
 	if (zdev->ert || exec->polling_mode)
 		goto print_and_out;
 
+	/* If re-config KDS is supported, should free old irq */
 	for (i = 0; i < exec->num_cus; i++)
 		request_irq(zdev->irq[i], sched_exec_isr, 0, "zocl", zdev);
 
@@ -1783,8 +1782,9 @@ int sched_fini_exec(struct drm_device *drm)
 	int i;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
-	for (i = 0; i < zdev->cu_num; i++)
-		free_irq(zdev->irq[i], zdev);
+	if (!(zdev->ert || zdev->exec->polling_mode))
+		for (i = 0; i < zdev->exec->num_cus; i++)
+			free_irq(zdev->irq[i], zdev);
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
