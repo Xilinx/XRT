@@ -300,6 +300,9 @@ private:
         return ((mDeviceInfo.mSubsystemId >> 12) == 4);
     }
 
+    int dev_init();
+    void dev_fini();
+
     int xclLoadAxlf(const axlf *buffer);
     int xclLoadAxlfMgmt(const axlf *buffer);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);

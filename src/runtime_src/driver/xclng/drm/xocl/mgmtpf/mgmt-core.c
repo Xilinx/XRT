@@ -70,8 +70,9 @@ static int char_open(struct inode *inode, struct file *file)
 	struct xclmgmt_dev *lro;
 
 	/* pointer to containing data structure of the character device inode */
-	lro = container_of(inode->i_cdev, struct xclmgmt_dev,
-			user_char_dev.cdev);
+	lro = xocl_drvinst_open(inode->i_cdev);
+	if (!lro)
+		return -ENXIO;
 
 	/* create a reference to our char device in the opened file */
 	file->private_data = lro;
@@ -79,8 +80,6 @@ static int char_open(struct inode *inode, struct file *file)
 
 	mgmt_info(lro, "opened file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
-
-	xocl_drv_get(lro);
 
 	return 0;
 }
@@ -95,14 +94,11 @@ static int char_close(struct inode *inode, struct file *file)
 	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
 
-	if (xocl_drv_released(lro))
-		goto end;
-
 	mgmt_info(lro, "Closing file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
 
-end:
-	xocl_drv_put(lro);
+	xocl_drvinst_close(lro);
+
 	return 0;
 }
 
@@ -335,10 +331,14 @@ static int create_char(struct xclmgmt_dev *lro)
 	lro_char = &lro->user_char_dev;
 
 	/* couple the control device file operations to the character device */
-	cdev_init(&lro_char->cdev, &ctrl_fops);
-	lro_char->cdev.owner = THIS_MODULE;
-	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
-	rc = cdev_add(&lro_char->cdev, lro_char->cdev.dev, 1);
+	lro_char->cdev = cdev_alloc();
+	if (!lro_char->cdev)
+		return -ENOMEM;
+
+	lro_char->cdev->ops = &ctrl_fops;
+	lro_char->cdev->owner = THIS_MODULE;
+	lro_char->cdev->dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
+	rc = cdev_add(lro_char->cdev, lro_char->cdev->dev, 1);
 	if (rc < 0) {
 		memset(lro_char, 0, sizeof(*lro_char));
 		printk(KERN_INFO "cdev_add() = %d\n", rc);
@@ -347,7 +347,7 @@ static int create_char(struct xclmgmt_dev *lro)
 
 	lro_char->sys_device = device_create(xrt_class,
 				&lro->core.pdev->dev,
-				lro_char->cdev.dev, NULL,
+				lro_char->cdev->dev, NULL,
 			 	DRV_NAME "%d", lro->instance);
 
 	if (IS_ERR(lro_char->sys_device)) {
@@ -358,7 +358,7 @@ static int create_char(struct xclmgmt_dev *lro)
 	return 0;
 
 fail_device:
-	cdev_del(&lro_char->cdev);
+	cdev_del(lro_char->cdev);
 fail_add:
 	return rc;
 }
@@ -369,8 +369,8 @@ static int destroy_sg_char(struct xclmgmt_char *lro_char)
 	BUG_ON(!xrt_class);
 
 	if (lro_char->sys_device)
-		device_destroy(xrt_class, lro_char->cdev.dev);
-	cdev_del(&lro_char->cdev);
+		device_destroy(xrt_class, lro_char->cdev->dev);
+	cdev_del(lro_char->cdev);
 
 	return 0;
 }
@@ -703,8 +703,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (ret)
 		goto fail_all_subdev;
 
-	xocl_af_start_health_check(lro, health_check_cb, lro,
-		health_interval * 1000);
+	lro->core.thread_arg.health_cb = health_check_cb;
+	lro->core.thread_arg.arg = lro;
+	lro->core.thread_arg.interval = health_interval * 1000;
+
+	health_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -746,7 +749,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	/* allocate zeroed device book keeping structure */
-	lro = kzalloc(sizeof(struct xclmgmt_dev), GFP_KERNEL);
+	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
 	if (!lro) {
 		xocl_err(&pdev->dev, "Could not kzalloc(xclmgmt_dev).\n");
 		rc = -ENOMEM;
@@ -799,14 +802,15 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
 		goto err_cdev;
 	}
+
+	xocl_drvinst_set_filedev(lro, lro->user_char_dev.cdev);
+
 	mutex_init(&lro->busy_mutex);
 
 	mgmt_init_sysfs(&pdev->dev);
 
 	/* Probe will not fail from now on. */
 	xocl_err(&pdev->dev, "minimum initialization done\n");
-
-	xocl_core_init(lro, NULL);
 
 	/* No further initialization for MFG board. */
 	if (minimum_initialization ||
@@ -825,8 +829,8 @@ err_map:
 err_regions:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
-	kfree(lro);
 	dev_set_drvdata(&pdev->dev, NULL);
+	xocl_drvinst_free(lro);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -846,6 +850,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	health_thread_stop(lro);
+
 	mgmt_fini_sysfs(&pdev->dev);
 
 	xocl_subdev_destroy_all(lro);
@@ -863,7 +869,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
-	xocl_core_fini(lro);
+	xocl_drvinst_free(lro);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,

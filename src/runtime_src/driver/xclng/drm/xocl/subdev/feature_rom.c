@@ -306,7 +306,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		}
 	}
 
-	memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+	xocl_memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+
 	if (strstr(rom->header.VBNVName, "-xare")) {
 		/*
 		 * ARE device, ARE is mapped like another DDR inside FPGA;
