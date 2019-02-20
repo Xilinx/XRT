@@ -174,7 +174,6 @@ struct xclmgmt_mailbox_conn{
 	void *kaddr;
 	uint64_t paddr;
 	uint32_t crc32;
-	size_t sz;
 };
 
 
