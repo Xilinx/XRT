@@ -157,11 +157,11 @@ private:
   size_type m_uid;
 
 public:
-  size_type slotidx;
-  size_type cuidx;
+  size_type slotidx = no_index;
+  size_type cuidx = no_index;
 
   xocl_cmd(exec_core* ec, cmd_ptr cmd)
-    : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec)
+    : m_cmd(cmd), m_ecmd(m_cmd->get_ert_cmd<ert_packet*>()), m_exec(ec), m_state(ERT_CMD_STATE_NEW)
   {
     static size_type count = 0;
     m_uid = count++;
@@ -347,7 +347,8 @@ private:
   value_type addr = 0;
 
   mutable value_type ctrlreg = 0;
-  mutable size_type done_counter = 0;
+  mutable size_type done_cnt = 0;
+  mutable size_type run_cnt = 0;
 
   void
   poll() const
@@ -356,10 +357,11 @@ private:
     ctrlreg = 0;
 
     xdev->read_register(addr,&ctrlreg,4);
-    XRT_DEBUGF("sws cu(%d) poll(0x%x)\n",idx,ctrlreg);
+    XRT_DEBUGF("sws cu(%d) poll(0x%x) done(%d) run(%d)\n",idx,ctrlreg,done_cnt,run_cnt);
     if (ctrlreg & (AP_DONE | AP_IDLE))  { // AP_IDLE check in sw emulation
-      ++done_counter;
-      XRT_ASSERT(done_counter <= running_queue.size(),"too many dones");
+      ++done_cnt;
+      --run_cnt;
+      XRT_ASSERT(done_cnt <= running_queue.size(),"too many dones");
       // acknowledge done
       value_type cont = AP_CONTINUE;
       xdev->write_register(addr,&cont,4);
@@ -395,12 +397,12 @@ public:
   xocl_cmd*
   get_done() const
   {
-    if (!done_counter) {
+    if (!done_cnt) {
       XRT_DEBUGF("sws get_done() is polling cu(%d)\n",idx);
       poll();
     }
 
-    return done_counter
+    return done_cnt
       ? running_queue.front()
       : nullptr;
   }
@@ -409,11 +411,12 @@ public:
   void
   pop_done()
   {
-    if (!done_counter)
+    if (!done_cnt)
       return;
 
     running_queue.pop();
-    --done_counter;
+    --done_cnt;
+    XRT_DEBUGF("sws pop_done() popped cu(%d) done(%d) run(%d)\n",idx,done_cnt,run_cnt);
   }
 
   // Start the CU with a new command.
@@ -423,7 +426,6 @@ public:
   start(xocl_cmd* xcmd)
   {
     XRT_ASSERT(!(ctrlreg & AP_START),"cu not ready");
-    XRT_DEBUGF("configuring cu(%d) at addr(0x%x)\n",idx,addr);
 
     // data past header and cu_masks
     auto size = xcmd->regmap_size();
@@ -434,18 +436,16 @@ public:
     xdev->write_register(addr,regmap,size*4);
 
     // start cu
-    ctrlreg |= 0x1;
-    const_cast<uint32_t*>(regmap)[0] = 1;
+    ctrlreg |= AP_START;
+    const_cast<uint32_t*>(regmap)[0] = AP_START;
     if (emulation_mode())
       xdev->write_register(addr,regmap,size*4);
     else
       xdev->write_register(addr,regmap,4);
 
     running_queue.push(xcmd);
-#if 0
-    if (running_queue.size()-done_counter > 1)
-      XRT_PRINTF("running_queue size %d\n",running_queue.size());
-#endif
+    ++run_cnt;
+    XRT_DEBUGF("started cu(%d) xcmd(%d) done(%d) run(%d)\n",idx,xcmd->get_uid(),done_cnt,run_cnt);
   }
 };
 
@@ -483,7 +483,7 @@ class exec_core
 
   // Commands submitted to this device, the queue is slot based
   // and a slot becomes free when its command is started on a CU
-  xocl_cmd* submit_queue[MAX_SLOTS]; // reflects ERT CQ # slots
+  xocl_cmd* submit_queue[MAX_SLOTS] = {nullptr}; // reflects ERT CQ # slots
   std::bitset<MAX_SLOTS> slot_status;
 
   // Compute units on this device
@@ -641,7 +641,7 @@ class xocl_scheduler
   std::mutex                 m_mutex;
   std::condition_variable    m_work;
 
-  bool                       m_stop;
+  bool                       m_stop = false;
   std::list<xcmd_ptr>        m_command_queue;
 
   // Copy pending commands into command queue.
