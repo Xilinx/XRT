@@ -87,7 +87,7 @@ typedef struct XmaActor
 
 /* XmaActor APIs */
 XmaActor *xma_actor_create(XmaThreadFunc      func,
-                           size_t             msg_size, 
+                           size_t             msg_size,
                            size_t             max_msg_entries);
 void xma_actor_start(XmaActor *actor);
 void xma_actor_destroy(XmaActor *actor);
@@ -99,6 +99,7 @@ typedef struct XmaLogger
 {
     bool      use_stdout;
     bool      use_fileout;
+    bool      use_syslog;
     char      filename[PATH_MAX];
     int32_t   fd;
     int32_t   log_level;
