@@ -281,6 +281,10 @@ enum mailbox_get_peer {
 	VOL_VCC_INT,
 	CUR_VCC_INT,
 	IDCODE,
+	IPLAYOUT_AXLF,
+	MEMTOPO_AXLF,
+	CONNECTIVITY_AXLF,
+	DEBUG_IPLAYOUT_AXLF,
 };
 
 
@@ -440,10 +444,10 @@ struct xocl_mb_scheduler_funcs {
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
 	((struct mem_topology *)					\
-	 xocl_icap_get_axlf_section_data(xdev, MEM_TOPOLOGY))
+	 xocl_icap_get_section_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)						\
-	 xocl_icap_get_axlf_section_data(xdev, IP_LAYOUT))
+	 xocl_icap_get_section_data(xdev, IPLAYOUT_AXLF))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -675,9 +679,9 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*parse_axlf_section)(struct platform_device *pdev,
 		const void __user *arg, enum axlf_section_kind kind);
-	void* (*get_axlf_section_data)(struct platform_device *pdev,
-		enum axlf_section_kind kind);
-	int (*get_register_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
+	uint64_t (*get_section_data)(struct platform_device *pdev,
+		enum mailbox_get_peer kind);
+//	int (*get_register_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -722,10 +726,10 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind) : \
 	-ENODEV)
-#define	xocl_icap_get_axlf_section_data(xdev, kind)				\
+#define	xocl_icap_get_section_data(xdev, kind)				\
 	(ICAP_OPS(xdev) ? 						\
-	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind) : \
-	NULL)
+	ICAP_OPS(xdev)->get_section_data(ICAP_DEV(xdev), kind) : \
+	0)
 #define xocl_icap_get_data(xdev, cmd)			\
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->get_register_data(ICAP_DEV(xdev), cmd) : \

@@ -117,13 +117,12 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		userpf_err(xdev, "failed to kill all clients");
 }
 
-int xocl_hot_reset(struct xocl_dev *xdev, bool force)
+int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	bool skip = false;
-	int ret = 0;
+	int64_t ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
 	size_t resplen = sizeof (ret);
-	int mbret;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (xdev->offline) {

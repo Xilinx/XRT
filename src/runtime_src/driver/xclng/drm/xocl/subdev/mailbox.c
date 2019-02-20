@@ -1008,8 +1008,8 @@ static int mailbox_connect_status(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_conn mb_conn = { 0 };
-	void *kaddr;
-	int msg = -ENODEV, ret = 0;
+	void *kaddr = NULL;
+	int64_t msg = -ENODEV, ret = 0;
 	size_t data_len = 0, reqlen = 0, resplen = sizeof(msg);
 	struct mailbox_req *mb_req = NULL;
 	data_len = sizeof(struct mailbox_conn);

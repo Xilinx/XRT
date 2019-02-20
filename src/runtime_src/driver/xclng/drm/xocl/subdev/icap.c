@@ -242,7 +242,7 @@ static struct icap_bitstream_user *obtain_user(struct icap *icap, pid_t pid)
 
 static void icap_read_from_peer(struct platform_device *pdev, enum mailbox_get_peer cmd, u32 *val)
 {
-	int resp = 0;
+	int64_t resp = 0;
 	size_t resplen = sizeof(resp);
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
@@ -1649,10 +1649,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
-	int msg = -ETIMEDOUT;
+	int64_t msg = -ETIMEDOUT;
 	size_t resplen = sizeof (msg);
 	int pid = pid_nr(task_tgid(current));
-	uint32_t data_len;
+	uint32_t data_len = 0;
 	int peer_connected;
 	struct mailbox_req *mb_req = NULL;
 
@@ -1848,19 +1848,18 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 		}
 
-		if((peer_connected & 0xF) == 0x3){
+		if((peer_connected & 0xF) == MB_PEER_SAME_DOM){
 			data_len = sizeof(struct mailbox_req);
 			mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 			mb_req->data_ptr = (void*)mb_req->data;
 
-		} else if ((peer_connected & 0xF) == 0x1){
+		} else if ((peer_connected & 0xF) == MB_PEER_CONNECTED){
 			data_len = sizeof(struct mailbox_req) + bin_obj.m_header.m_length;
 			mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
 		}
 
 		mb_req->data_total_len = data_len;
 		(void) xocl_peer_request(xdev,
-
 			mb_req, data_len, &msg, &resplen, NULL, NULL);
 
 		if(msg != 0){
@@ -2270,26 +2269,29 @@ done:
 	return err;
 }
 
-void *icap_get_axlf_section_data(struct platform_device *pdev,
-	enum axlf_section_kind kind)
+static uint64_t icap_get_section_data(struct platform_device *pdev,
+	enum mailbox_get_peer kind)
 {
 
 	struct icap *icap = platform_get_drvdata(pdev);
-	void *target = NULL;
+	uint64_t target = 0;
 
 	mutex_lock(&icap->icap_lock);
 	switch(kind){
-		case IP_LAYOUT:
-			target = icap->ip_layout;
+		case IPLAYOUT_AXLF:
+			target = (uint64_t)icap->ip_layout;
 			break;
-		case MEM_TOPOLOGY:
-			target = icap->mem_topo;
+		case MEMTOPO_AXLF:
+			target = (uint64_t)icap->mem_topo;
 			break;
-		case DEBUG_IP_LAYOUT:
-			target = icap->debug_layout;
+		case DEBUG_IPLAYOUT_AXLF:
+			target = (uint64_t)icap->debug_layout;
 			break;
-		case CONNECTIVITY:
-			target = icap->connectivity;
+		case CONNECTIVITY_AXLF:
+			target = (uint64_t)icap->connectivity;
+			break;
+		case IDCODE:
+			target = icap->idcode;
 			break;
 		default:
 			break;
@@ -2297,20 +2299,20 @@ void *icap_get_axlf_section_data(struct platform_device *pdev,
 	mutex_unlock(&icap->icap_lock);
 	return target;
 }
-
-static int icap_get_register_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
+#if 0
+static uint64_t icap_get_register_data(struct platform_device *pdev,
+	enum mailbox_get_peer cmd)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int val;
+	uint64_t val;
+
+	if(!ICAP_PRIVILEGED(icap))
+		return 0;
 
 	mutex_lock(&icap->icap_lock);
 	switch(cmd){
 		case IDCODE:
-			if(!icap->idcode){
-				val = reg_rd(&icap->icap_regs->ir_rf);
-				icap->idcode = val;
-			} else
-				val = icap->idcode;
+			val = icap->idcode;
 			break;
 		default:
 			break;
@@ -2318,7 +2320,7 @@ static int icap_get_register_data(struct platform_device *pdev, enum mailbox_get
 	mutex_unlock(&icap->icap_lock);
 	return val;
 }
-
+#endif
 
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
@@ -2332,8 +2334,8 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
-	.get_axlf_section_data = icap_get_axlf_section_data,
-	.get_register_data     = icap_get_register_data,
+	.get_section_data = icap_get_section_data,
+//	.get_register_data     = icap_get_register_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,

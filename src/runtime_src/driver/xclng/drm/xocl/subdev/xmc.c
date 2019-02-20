@@ -167,7 +167,7 @@ static int stop_xmc(struct platform_device *pdev);
 
 static void xmc_read_from_peer(struct platform_device *pdev, enum mailbox_get_peer cmd, u32 *val)
 {
-	int resp = 0;
+	int64_t resp = 0;
 	size_t resplen = sizeof(resp);
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
@@ -932,7 +932,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
 	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	memtopo = (struct mem_topology*)xocl_icap_get_axlf_section_data(lro, MEM_TOPOLOGY);
+	memtopo = (struct mem_topology*)xocl_icap_get_section_data(lro, MEMTOPO_AXLF);
 
 	if(!memtopo)
 		return 0;
