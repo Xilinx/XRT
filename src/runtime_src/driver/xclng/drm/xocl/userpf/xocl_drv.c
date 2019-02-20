@@ -203,6 +203,23 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
+void get_pcie_link_info(struct xocl_dev *xdev,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+{
+	u16 stat;
+	long result;
+	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+
+	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
+	if (result) {
+		*link_width = *link_speed = 0;
+		xocl_info(&xdev->core.pdev->dev, "Read pcie capability failed");
+		return;
+	}
+	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
+	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
+}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {
