@@ -146,7 +146,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	mbret = xocl_peer_request(xdev, &mbreq, &ret, &resplen, NULL, NULL);
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL);
 	if (mbret)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
@@ -171,7 +171,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
 	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
 
-	err = xocl_peer_request_new(xdev, req, reqlen, 
+	err = xocl_peer_request(xdev, req, reqlen,
 		&msg, &resplen, NULL, NULL);
 
 	if(msg != 0){

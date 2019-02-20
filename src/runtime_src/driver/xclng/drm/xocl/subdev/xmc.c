@@ -171,16 +171,28 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum mailbox_get_pe
 	size_t resplen = sizeof(resp);
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+
+	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	if(!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
 
 	subdev_peer.cmd = cmd;
+	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	(void) xocl_peer_request_alloc(XOCL_PL_DEV_TO_XDEV(pdev), 
-		&subdev_peer, data_len, MAILBOX_REQ_PEER_DATA, &resp, &resplen, NULL, NULL);
+	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+		mb_req, reqlen, &resp, &resplen, NULL, NULL);
+
+	vfree(mb_req);
 
 	*val = resp;
+
 }
 
-/* sysfs support */	
+/* sysfs support */
 static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
 {
 	mutex_lock(&xmc->xmc_lock);
@@ -212,11 +224,6 @@ static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pd
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static void safe_read(struct xocl_xmc *xmc, u32 reg, u32 *val)
-{
-	safe_read32(xmc, reg, val);
-}
-
 static int xmc_get_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
@@ -224,7 +231,7 @@ static int xmc_get_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
 	if(XMC_PRIVILEGED(xmc)){
 		switch(cmd){
 			case VOL_12V_PEX :
-				safe_read(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+				safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
 				break;
 			default:
 				break;
@@ -240,7 +247,7 @@ static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute 
 	u32 pes_val;
 
 	if(XMC_PRIVILEGED(xmc))
-		safe_read(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
 	else{
 		safe_read_from_peer(xmc, to_platform_device(dev), VOL_12V_PEX, &pes_val);
 	}
@@ -255,7 +262,7 @@ static ssize_t xmc_12v_aux_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -267,7 +274,7 @@ static ssize_t xmc_12v_pex_curr_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 pes_val;
 
-	safe_read(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+	safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
 
 	return sprintf(buf, "%d\n", pes_val);
 }
@@ -279,7 +286,7 @@ static ssize_t xmc_12v_aux_curr_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -291,7 +298,7 @@ static ssize_t xmc_3v3_pex_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -303,7 +310,7 @@ static ssize_t xmc_3v3_aux_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -315,7 +322,7 @@ static ssize_t xmc_ddr_vpp_btm_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -327,7 +334,7 @@ static ssize_t xmc_sys_5v5_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -339,7 +346,7 @@ static ssize_t xmc_1v2_top_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -351,7 +358,7 @@ static ssize_t xmc_1v8_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -363,7 +370,7 @@ static ssize_t xmc_0v85_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -375,7 +382,7 @@ static ssize_t xmc_ddr_vpp_top_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -388,7 +395,7 @@ static ssize_t xmc_mgt0v9avcc_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -400,7 +407,7 @@ static ssize_t xmc_12v_sw_show(struct device *dev, struct device_attribute *attr
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -413,7 +420,7 @@ static ssize_t xmc_mgtavtt_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -425,7 +432,7 @@ static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -437,7 +444,7 @@ static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -449,7 +456,7 @@ static ssize_t xmc_vccint_curr_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -461,7 +468,7 @@ static ssize_t xmc_se98_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -473,7 +480,7 @@ static ssize_t xmc_se98_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -485,7 +492,7 @@ static ssize_t xmc_se98_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -497,7 +504,7 @@ static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *a
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_FPGA_TEMP, &val);
+	safe_read32(xmc, XMC_FPGA_TEMP, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -509,7 +516,7 @@ static ssize_t xmc_fan_temp_show(struct device *dev, struct device_attribute *at
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_FAN_TEMP_REG, &val);
+	safe_read32(xmc, XMC_FAN_TEMP_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -521,7 +528,7 @@ static ssize_t xmc_fan_rpm_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_FAN_SPEED_REG, &val);
+	safe_read32(xmc, XMC_FAN_SPEED_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -534,7 +541,7 @@ static ssize_t xmc_dimm_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -546,7 +553,7 @@ static ssize_t xmc_dimm_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -558,7 +565,7 @@ static ssize_t xmc_dimm_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -570,7 +577,7 @@ static ssize_t xmc_dimm_temp3_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -583,7 +590,7 @@ static ssize_t xmc_cage_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -595,7 +602,7 @@ static ssize_t xmc_cage_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -607,7 +614,7 @@ static ssize_t xmc_cage_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -619,7 +626,7 @@ static ssize_t xmc_cage_temp3_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
+	safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -632,7 +639,7 @@ static ssize_t version_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_VERSION_REG, &val);
+	safe_read32(xmc, XMC_VERSION_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -644,7 +651,7 @@ static ssize_t sensor_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_SENSOR_REG, &val);
+	safe_read32(xmc, XMC_SENSOR_REG, &val);
 
 	return sprintf(buf, "0x%04x\n", val);
 }
@@ -657,7 +664,7 @@ static ssize_t id_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_MAGIC_REG, &val);
+	safe_read32(xmc, XMC_MAGIC_REG, &val);
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -669,7 +676,7 @@ static ssize_t status_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_STATUS_REG, &val);
+	safe_read32(xmc, XMC_STATUS_REG, &val);
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -681,7 +688,7 @@ static ssize_t error_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_ERROR_REG, &val);
+	safe_read32(xmc, XMC_ERROR_REG, &val);
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -693,7 +700,7 @@ static ssize_t capability_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_FEATURE_REG, &val);
+	safe_read32(xmc, XMC_FEATURE_REG, &val);
 
 	return sprintf(buf, "%x\n", val);
 }
@@ -705,7 +712,7 @@ static ssize_t power_checksum_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_SNSR_CHKSUM_REG, &val);
+	safe_read32(xmc, XMC_SNSR_CHKSUM_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -717,7 +724,7 @@ static ssize_t pause_show(struct device *dev,
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	safe_read(xmc, XMC_CONTROL_REG, &val);
+	safe_read32(xmc, XMC_CONTROL_REG, &val);
 
 	return sprintf(buf, "%d\n", !!(val & CTL_MASK_PAUSE));
 }
@@ -764,7 +771,7 @@ static ssize_t power_flag_show(struct device *dev, struct device_attribute *da,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_SNSR_FLAGS_REG, &val);
+	safe_read32(xmc, XMC_SNSR_FLAGS_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -776,7 +783,7 @@ static ssize_t host_msg_offset_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+	safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -788,7 +795,7 @@ static ssize_t host_msg_error_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_HOST_MSG_ERROR_REG, &val);
+	safe_read32(xmc, XMC_HOST_MSG_ERROR_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -800,7 +807,7 @@ static ssize_t host_msg_header_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_HOST_MSG_HEADER_REG, &val);
+	safe_read32(xmc, XMC_HOST_MSG_HEADER_REG, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -975,7 +982,7 @@ static ssize_t show_mb_pw(struct device *dev, struct device_attribute *da,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read(xmc, XMC_12V_PEX_REG + attr->index * sizeof(u32), &val);
+	safe_read32(xmc, XMC_12V_PEX_REG + attr->index * sizeof(u32), &val);
 
 	return sprintf(buf, "%d\n", val);
 }

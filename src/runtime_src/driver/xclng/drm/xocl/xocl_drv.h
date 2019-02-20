@@ -251,7 +251,7 @@ enum mailbox_get_peer {
 	DIMM0_TEMP,
 	DIMM1_TEMP,
 	DIMM2_TEMP,
-	DIMM3_TEMP,	
+	DIMM3_TEMP,
 	FPGA_TEMP,
 	VCC_BRAM,
 	CLOCK_FREQ_0,
@@ -634,17 +634,14 @@ struct xocl_mailbox_funcs {
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
 	int (*check_peer)(struct platform_device *pdev);
-	int (*request_alloc)(struct platform_device *pdev, void *data,
-		size_t data_len, enum mailbox_request cmd, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev)	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev))
-#define	xocl_peer_request(xdev, req, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, sizeof(*req), resp, resplen, cb, cbarg) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
 #define	xocl_peer_response(xdev, reqid, buf, len)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
 	reqid, buf, len) : -ENODEV)
@@ -660,12 +657,6 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_check_peer(xdev)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->check_peer(MAILBOX_DEV(xdev)) \
 		: -ENODEV)
-#define	xocl_peer_request_alloc(xdev, data, data_len, cmd, resp, resplen, cb, cbarg)		\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request_alloc(MAILBOX_DEV(xdev), \
-	data, data_len, cmd, resp, resplen, cb, cbarg) : -ENODEV)
-#define xocl_peer_request_new(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
 
 struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -686,7 +677,7 @@ struct xocl_icap_funcs {
 		const void __user *arg, enum axlf_section_kind kind);
 	void* (*get_axlf_section_data)(struct platform_device *pdev,
 		enum axlf_section_kind kind);
-	int (*get_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
+	int (*get_register_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -737,7 +728,10 @@ struct xocl_icap_funcs {
 	-ENODEV)
 #define xocl_icap_get_data(xdev, cmd)			\
 	(ICAP_OPS(xdev) ? 						\
-	(ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), cmd) : -ENODEV)
+	(ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), cmd) : \
+	-ENODEV)
+
+
 
 #define	xocl_icap_get_axlf_section_data(xdev, kind)			\
 	(ICAP_OPS(xdev) ? 						\

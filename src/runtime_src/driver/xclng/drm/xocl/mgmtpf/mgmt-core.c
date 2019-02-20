@@ -568,7 +568,7 @@ static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, char *data_ptr)
 		ret = -EFAULT;
 		goto done;
 	}
-	crc_chk = crc32c_le(~0, mb_conn->kaddr, mb_conn->sz);
+	crc_chk = crc32c_le(~0, mb_conn->kaddr, PAGE_SIZE);
 
 	if(crc_chk != mb_conn->crc32){
 		printk(KERN_ERR "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
@@ -635,7 +635,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_CONN_EXPL:
 		ret = xclmgmt_connection_explore(lro, req->data);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
-		break;				
+		break;
 	default:
 		break;
 	}

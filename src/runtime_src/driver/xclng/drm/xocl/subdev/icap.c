@@ -246,11 +246,22 @@ static void icap_read_from_peer(struct platform_device *pdev, enum mailbox_get_p
 	size_t resplen = sizeof(resp);
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+
+	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	if(!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
 
 	subdev_peer.cmd = cmd;
+	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	(void) xocl_peer_request_alloc(XOCL_PL_DEV_TO_XDEV(pdev), 
-		&subdev_peer, data_len, MAILBOX_REQ_PEER_DATA, &resp, &resplen, NULL, NULL);
+	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+		mb_req, reqlen, &resp, &resplen, NULL, NULL);
+
+	vfree(mb_req);
 
 	*val = resp;
 }
@@ -345,7 +356,7 @@ static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 	char *base = NULL;
 
 	if(ICAP_PRIVILEGED(icap)){
-		base = icap->icap_clock_bases[idx]; 
+		base = icap->icap_clock_bases[idx];
 	  val = reg_rd(base + OCL_CLKWIZ_STATUS_OFFSET);
 		if ((val & 1) == 0)
 			return 0;
@@ -1834,7 +1845,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if(!(peer_connected & 0x1)){
 			ICAP_ERR(icap, "%s fail to find peer, operation abort!", __func__);
 			err = -EFAULT;
-			goto done;			
+			goto done;
 		}
 
 		if((peer_connected & 0xF) == 0x3){
@@ -1848,7 +1859,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 
 		mb_req->data_total_len = data_len;
-		(void) xocl_peer_request_new(xdev, 
+		(void) xocl_peer_request(xdev,
+
 			mb_req, data_len, &msg, &resplen, NULL, NULL);
 
 		if(msg != 0){
@@ -2286,7 +2298,7 @@ void *icap_get_axlf_section_data(struct platform_device *pdev,
 	return target;
 }
 
-static int icap_get_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
+static int icap_get_register_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int val;
@@ -2294,7 +2306,11 @@ static int icap_get_data(struct platform_device *pdev, enum mailbox_get_peer cmd
 	mutex_lock(&icap->icap_lock);
 	switch(cmd){
 		case IDCODE:
-			val = reg_rd(&icap->icap_regs->ir_rf);
+			if(!icap->idcode){
+				val = reg_rd(&icap->icap_regs->ir_rf);
+				icap->idcode = val;
+			} else
+				val = icap->idcode;
 			break;
 		default:
 			break;
@@ -2317,7 +2333,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
 	.get_axlf_section_data = icap_get_axlf_section_data,
-	.get_data     = icap_get_data,
+	.get_register_data     = icap_get_register_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,
@@ -2365,7 +2381,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 			cnt += sprintf(buf + cnt, "%d\n", freq);
 		}
 	}
-	
+
 	mutex_unlock(&icap->icap_lock);
 
 	return cnt;
