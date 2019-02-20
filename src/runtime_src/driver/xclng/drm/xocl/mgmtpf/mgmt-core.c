@@ -590,7 +590,7 @@ static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
 			val = xocl_xmc_get_data(lro, subdev_req->kind);
 			break;
 		case IDCODE:
-			val = xocl_icap_get_section_data(lro, subdev_req->kind);
+			val = xocl_icap_get_data(lro, subdev_req->kind);
 			break;
 		default:
 			break;

@@ -444,10 +444,10 @@ struct xocl_mb_scheduler_funcs {
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
 	((struct mem_topology *)					\
-	 xocl_icap_get_section_data(xdev, MEMTOPO_AXLF))
+	 xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)						\
-	 xocl_icap_get_section_data(xdev, IPLAYOUT_AXLF))
+	 xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -680,7 +680,7 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*parse_axlf_section)(struct platform_device *pdev,
 		const void __user *arg, enum axlf_section_kind kind);
-	uint64_t (*get_section_data)(struct platform_device *pdev,
+	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
@@ -726,14 +726,10 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind) : \
 	-ENODEV)
-#define	xocl_icap_get_section_data(xdev, kind)				\
+#define	xocl_icap_get_data(xdev, kind)				\
 	(ICAP_OPS(xdev) ? 						\
-	ICAP_OPS(xdev)->get_section_data(ICAP_DEV(xdev), kind) : \
+	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
 	0)
-#define xocl_icap_get_data(xdev, cmd)			\
-	(ICAP_OPS(xdev) ? 						\
-	ICAP_OPS(xdev)->get_register_data(ICAP_DEV(xdev), cmd) : \
-	-ENODEV)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);

@@ -2269,7 +2269,7 @@ done:
 	return err;
 }
 
-static uint64_t icap_get_section_data(struct platform_device *pdev,
+static uint64_t icap_get_data(struct platform_device *pdev,
 	enum data_kind kind)
 {
 
@@ -2312,7 +2312,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
-	.get_section_data = icap_get_section_data,
+	.get_data = icap_get_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,

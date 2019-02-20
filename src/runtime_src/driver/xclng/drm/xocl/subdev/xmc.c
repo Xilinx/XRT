@@ -932,7 +932,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
 	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	memtopo = (struct mem_topology*)xocl_icap_get_section_data(lro, MEMTOPO_AXLF);
+	memtopo = (struct mem_topology*)xocl_icap_get_data(lro, MEMTOPO_AXLF);
 
 	if(!memtopo)
 		return 0;
