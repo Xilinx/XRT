@@ -584,13 +584,13 @@ done:
 static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
 {
 	uint64_t val = 0;
-	struct mailbox_subdev_peer *subdev_reg = (struct mailbox_subdev_peer *)data_ptr;
-	switch(subdev_reg->cmd){
+	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	switch(subdev_req->kind){
 		case VOL_12V_PEX:
-			val = xocl_xmc_get_data(lro, subdev_reg->cmd);
+			val = xocl_xmc_get_data(lro, subdev_req->kind);
 			break;
 		case IDCODE:
-			val = xocl_icap_get_section_data(lro, subdev_reg->cmd);
+			val = xocl_icap_get_section_data(lro, subdev_req->kind);
 			break;
 		default:
 			break;

@@ -240,7 +240,7 @@ static struct icap_bitstream_user *obtain_user(struct icap *icap, pid_t pid)
 	return NULL;
 }
 
-static void icap_read_from_peer(struct platform_device *pdev, enum mailbox_get_peer cmd, u32 *val)
+static void icap_read_from_peer(struct platform_device *pdev, enum data_kind kind, u32 *val)
 {
 	int64_t resp = 0;
 	size_t resplen = sizeof(resp);
@@ -255,7 +255,7 @@ static void icap_read_from_peer(struct platform_device *pdev, enum mailbox_get_p
 
 	mb_req->req = MAILBOX_REQ_PEER_DATA;
 
-	subdev_peer.cmd = cmd;
+	subdev_peer.kind = kind;
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
@@ -2270,7 +2270,7 @@ done:
 }
 
 static uint64_t icap_get_section_data(struct platform_device *pdev,
-	enum mailbox_get_peer kind)
+	enum data_kind kind)
 {
 
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -2299,28 +2299,6 @@ static uint64_t icap_get_section_data(struct platform_device *pdev,
 	mutex_unlock(&icap->icap_lock);
 	return target;
 }
-#if 0
-static uint64_t icap_get_register_data(struct platform_device *pdev,
-	enum mailbox_get_peer cmd)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	uint64_t val;
-
-	if(!ICAP_PRIVILEGED(icap))
-		return 0;
-
-	mutex_lock(&icap->icap_lock);
-	switch(cmd){
-		case IDCODE:
-			val = icap->idcode;
-			break;
-		default:
-			break;
-	}
-	mutex_unlock(&icap->icap_lock);
-	return val;
-}
-#endif
 
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
@@ -2335,7 +2313,6 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
 	.get_section_data = icap_get_section_data,
-//	.get_register_data     = icap_get_register_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,

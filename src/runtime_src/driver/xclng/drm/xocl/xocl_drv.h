@@ -246,7 +246,7 @@ struct xocl_dev_core {
 	bool			offline;
 };
 
-enum mailbox_get_peer {
+enum data_kind {
 	MIG_CALIB,
 	DIMM0_TEMP,
 	DIMM1_TEMP,
@@ -519,7 +519,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
+	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 
 struct xocl_dna_funcs {
@@ -604,7 +604,7 @@ struct mailbox_req_bitstream_lock {
 };
 
 struct mailbox_subdev_peer {
-		enum mailbox_get_peer cmd;
+		enum data_kind kind;
 };
 
 struct mailbox_gpctl {
@@ -680,8 +680,7 @@ struct xocl_icap_funcs {
 	int (*parse_axlf_section)(struct platform_device *pdev,
 		const void __user *arg, enum axlf_section_kind kind);
 	uint64_t (*get_section_data)(struct platform_device *pdev,
-		enum mailbox_get_peer kind);
-//	int (*get_register_data)(struct platform_device *pdev, enum mailbox_get_peer cmd);
+		enum data_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\

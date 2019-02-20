@@ -165,7 +165,7 @@ struct xocl_xmc {
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 
-static void xmc_read_from_peer(struct platform_device *pdev, enum mailbox_get_peer cmd, u32 *val)
+static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind, u32 *val)
 {
 	int64_t resp = 0;
 	size_t resplen = sizeof(resp);
@@ -180,7 +180,7 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum mailbox_get_pe
 
 	mb_req->req = MAILBOX_REQ_PEER_DATA;
 
-	subdev_peer.cmd = cmd;
+	subdev_peer.kind = kind;
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
@@ -213,23 +213,23 @@ static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pdev, enum mailbox_get_peer cmd, u32 *val)
+static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pdev, enum data_kind kind, u32 *val)
 {
 	mutex_lock(&xmc->xmc_lock);
 	if (xmc->enabled) {
-		xmc_read_from_peer(pdev, cmd, val);
+		xmc_read_from_peer(pdev, kind, val);
 	} else {
 		*val = 0;
 	}
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static int xmc_get_data(struct platform_device *pdev, enum mailbox_get_peer cmd)
+static int xmc_get_data(struct platform_device *pdev, enum data_kind kind)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 	int val;
 	if(XMC_PRIVILEGED(xmc)){
-		switch(cmd){
+		switch(kind){
 			case VOL_12V_PEX :
 				safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
 				break;
