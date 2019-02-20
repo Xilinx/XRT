@@ -4,8 +4,6 @@ microblaze-fdt
 <pmu_rom_qemu_sha3.elf>
 -device
 loader,file=<pmufw.elf>
--hw-dtb
-<zynqmp-pmu.dtb>
 -machine-path
 .
 -display
