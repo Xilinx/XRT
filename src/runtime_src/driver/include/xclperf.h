@@ -453,8 +453,8 @@ typedef struct {
  */ 
 
 struct HalPluginConfig {
-  bool state;
-  char plugin_path[256];
+  bool state; /** < [unused] indicates if on or off */
+  char plugin_path[256]; /** < [unused] indicates which dynamic library to load */
   /**
    * The switches for what to profile and what
    * not to should go here. The attibutes will

@@ -13,10 +13,21 @@
 
 namespace xdphal {
 
+/**
+ * This function type definition is used for
+ * dynamically loading the plugin function.
+ */
 typedef void(*cb_load_func_type)(unsigned, void*);
 
 using cb_func_type = std::function<void(unsigned, void*)>;
 
+/**
+ * Loggers are all alike except they each have different
+ * constructor arguments so that they can capture various
+ * information from different hal APIs.
+ * 
+ * @param local_idcode for identifying unique function calls
+ */
 class AllocBOCallLogger {
 public:
   AllocBOCallLogger(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags);
@@ -86,6 +97,7 @@ public:
   ~WriteCallLogger();
   unsigned local_idcode;
 };
+/** End of the loggers */
 
 void load_xdp_plugin_library(HalPluginConfig* config);
 
