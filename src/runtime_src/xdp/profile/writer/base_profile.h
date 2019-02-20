@@ -51,7 +51,7 @@ namespace xdp {
     public:
       inline void enableStallTable() { mEnStallTable = true; }
       inline void enableStreamTable() { mEnStreamTable = true; }
-      inline void enableHostInternalTable() { mEnHostInternalTable = true; }
+      inline void enableShellTables() { mEnShellTables = true; }
       // Functions for Summary
       // Write Kernel Execution Time stats
       virtual void writeTimeStats(const std::string& name, const TimeStats& stats);
@@ -72,9 +72,9 @@ namespace xdp {
       virtual void writeHostTransferSummary(const std::string& name,
           const BufferStats& stats, uint64_t totalTranx, uint64_t totalBytes,
           double totalTimeMsec, double maxTransferRateMBps);
-      // Write Read/Write Host Internal transfer stats
-      void writeHostInternalTransferSummary(const std::string& deviceName, const std::string& monitorName,
-          const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec);
+      // Write Read/Write Shell Internal transfer stats
+      void writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
+          uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec);
       // Write Read/Write Kernel transfer stats
       void writeKernelTransferSummary(const std::string& deviceName, const std::string& cuPortName,
           const std::string& argNames, const std::string& memoryName,
@@ -155,7 +155,7 @@ namespace xdp {
     protected:
       bool mEnStallTable = false;
       bool mEnStreamTable = false;
-      bool mEnHostInternalTable = false;
+      bool mEnShellTables = false;
 
     protected:
       XDPPluginI * mPluginHandle;

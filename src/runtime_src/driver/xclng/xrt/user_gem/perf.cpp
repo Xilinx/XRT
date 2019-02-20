@@ -188,7 +188,7 @@ namespace xocl {
       }
       return count;
     }
-    if (type == XCL_PERF_MON_HOST_INT) {
+    if (type == XCL_PERF_MON_SHELL) {
       uint32_t count = 0;
       for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
         if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {

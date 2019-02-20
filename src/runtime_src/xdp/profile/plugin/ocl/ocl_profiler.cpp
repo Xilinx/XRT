@@ -265,20 +265,21 @@ namespace xdp {
     // These tables are only enabled if a compatible monitor is present
     unsigned numStallSlots = 0;
     unsigned numStreamSlots = 0;
-    unsigned numHostIntSlots = 0;
+    unsigned numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
       for (auto device_id : Platform->get_device_range()) {
         std::string deviceName = device_id->get_unique_name();
-        numStallSlots    += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                   deviceName,
-                                                                   XCL_PERF_MON_STALL);
-        numStreamSlots   += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                   deviceName,
-                                                                   XCL_PERF_MON_STR);
-        numHostIntSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                   deviceName,
-                                                                   XCL_PERF_MON_HOST_INT);
+        numStallSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                 deviceName,
+                                                                 XCL_PERF_MON_STALL);
+        numStreamSlots += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                 deviceName,
+                                                                 XCL_PERF_MON_STR);
+        numShellSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                 deviceName,
+                                                                 XCL_PERF_MON_SHELL);
       }
+
       for (auto& w: ProfileWriters) {
         if (Plugin->getFlowMode() == RTUtil::DEVICE && numStallSlots > 0) {
           w->enableStallTable();
@@ -288,8 +289,8 @@ namespace xdp {
             numStreamSlots > 0) {
           w->enableStreamTable();
         }
-        if (Plugin->getFlowMode() == RTUtil::DEVICE && numHostIntSlots > 0) {
-          w->enableHostInternalTable();
+        if (Plugin->getFlowMode() == RTUtil::DEVICE && numShellSlots > 0) {
+          w->enableShellTables();
         }
       }
     }

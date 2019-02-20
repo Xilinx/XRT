@@ -256,7 +256,7 @@ namespace xdp {
     mProfileCounters->writeAcceleratorSummary(writer);
   }
 
-  void SummaryWriter::writeHostTransferSummary(ProfileWriterI* writer, RTUtil::e_host_monitor monitorType) const
+  void SummaryWriter::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_host_monitor monitorType) const
   {
     uint64_t totalReadBytes    = 0;
     uint64_t totalWriteBytes   = 0;
@@ -286,7 +286,7 @@ namespace xdp {
     // across all devices
     //
     // CR 951564: Use APM counters to calculate throughput (i.e., byte count and total time)
-    // NOTE: for now, we only use this for writes (see PerformanceCounter::writeHostTransferSummary)
+    // NOTE: for now, we only use this for writes (see PerformanceCounter::writeTransferSummary)
     auto iter = mFinalCounterResultsMap.begin();
     for (; iter != mFinalCounterResultsMap.end(); ++iter) {
       std::string key = iter->first;
@@ -345,19 +345,27 @@ namespace xdp {
 
       // Monitoring of KDMA/P2P is reported on per-device basis
       if (monitorType != RTUtil::HOST_MON_DYNAMIC) {
-        mProfileCounters->writeHostTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
-            totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
-        mProfileCounters->writeHostTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
-            totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+        if (totalReadTranx > 0) {
+          mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
+              totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
+        }
+        if (totalWriteTranx > 0) {
+          mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
+              totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+        }
       }
     }
 
     // Monitoring of host buffer transfers is reported on aggregated basis
     if (monitorType == RTUtil::HOST_MON_DYNAMIC) {
-      mProfileCounters->writeHostTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
-          totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
-      mProfileCounters->writeHostTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
-          totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+      if (totalReadTranx > 0) {
+        mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
+            totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
+      }
+      if (totalWriteTranx > 0) {
+        mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
+            totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+      }
     }
   }
 

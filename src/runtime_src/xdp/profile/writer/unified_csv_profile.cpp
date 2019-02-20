@@ -123,7 +123,7 @@ namespace xdp {
         HostTransferColumnLabels);
     if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU
         && mPluginHandle->getFlowMode() != xdp::RTUtil::COSIM_EM) {
-      profile->writeHostTransferSummary(this, xdp::RTUtil::HOST_MON_DYNAMIC);
+      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_DYNAMIC);
     }
     writeTableFooter(getStream());
 

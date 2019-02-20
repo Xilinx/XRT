@@ -75,10 +75,10 @@ namespace xdp {
     writeTableFooter(getStream());
 
     //Table 10: Parameters used in PRCs
-    std::vector<std::string> PRCSummaryColumnLabels = {
+    std::vector<std::string> GuidanceColumnLabels = {
       "Parameter", "Element", "Value"
     };
-    writeTableHeader(getStream(), "PRC Parameters", PRCSummaryColumnLabels);
+    writeTableHeader(getStream(), "Guidance Parameters", GuidanceColumnLabels);
     writeGuidanceMetadataSummary(profile, mPluginHandle->getDeviceExecTimesMap(), 
                                           mPluginHandle->getComputeUnitCallsMap(),
                                           mPluginHandle->getKernelCountsMap());

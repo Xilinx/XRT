@@ -83,48 +83,33 @@ namespace xdp {
       writeTableFooter(getStream());
     }
 
-    // Table 5: Data Transfer: Host & Global
+    // Table 5: Data Transfer: Host to Global Memory
     std::vector<std::string> DataTransferSummaryColumnLabels = {
-        "Context:Number of Devices", "Transfer Type", "Number Of Transfers",
+        "Context:Number of Devices", "Transfer Type", "Number Of Buffer Transfers",
         "Transfer Rate (MB/s)", "Average Bandwidth Utilization (%)",
-        "Average Size (KB)", "Total Time (ms)", "Average Time (ms)"
+        "Average Buffer Size (KB)", "Total Time (ms)", "Average Time (ms)"
     };
-    writeTableHeader(getStream(), "Data Transfer: Host and Global Memory",
+    writeTableHeader(getStream(), "Data Transfer: Host to Global Memory",
         DataTransferSummaryColumnLabels);
     if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
-      profile->writeHostTransferSummary(this, xdp::RTUtil::HOST_MON_DYNAMIC);
+      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_DYNAMIC);
     }
     writeTableFooter(getStream());
 
-    // Table 5.1 : Data Transfer: Host Internal
-    if (mEnHostInternalTable) {
-      std::vector<std::string> DataTransferSummaryColumnLabels2 = {
-        "Device", "Monitor Type", "Transfer Type", "Number Of Transfers",
-        "Total Data Transfer (MB)", "Transfer Rate (MB/s)",
-        "Average Size (KB)", "Average Latency (ns)"
-      };
-      writeTableHeader(getStream(), "Data Transfer: Host Internal",
-          DataTransferSummaryColumnLabels2);
-      profile->writeHostTransferSummary(this, xdp::RTUtil::HOST_MON_KDMA);
-      profile->writeHostTransferSummary(this, xdp::RTUtil::HOST_MON_XDMA);
-      profile->writeHostTransferSummary(this, xdp::RTUtil::HOST_MON_P2P);
-      writeTableFooter(getStream());
-    }
-
-    // Table 6: Data Transfer: Kernel & Global
+    // Table 6: Data Transfer: Kernels to Global Memory
     std::vector<std::string> KernelDataTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
 		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
 		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };
-    writeTableHeader(getStream(), "Data Transfer: Kernels and Global Memory",
+    writeTableHeader(getStream(), "Data Transfer: Kernels to Global Memory",
         KernelDataTransferSummaryColumnLabels);
     if (profile->isDeviceProfileOn()) {
       profile->writeKernelTransferSummary(this);
     }
     writeTableFooter(getStream());
 
-    // Table 6.1 : Stream Data Transfers
+    // Table 7: Stream Data Transfers
     if (mEnStallTable) {
       std::vector<std::string> StreamTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
@@ -135,13 +120,38 @@ namespace xdp {
       writeTableFooter(getStream());
     }
 
-    // Table 7: Top Data Transfer: Kernel & Global
+
+    if (mEnShellTables) {
+      // Table 8 : Data Transfer: Host to Device
+      std::vector<std::string> DataTransferSummaryColumnLabels2 = {
+        "Device", "Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
+		"Total Data Transfer (MB)", "Average Size (KB)", "Average Latency (ns)"
+      };
+      writeTableHeader(getStream(), "Data Transfer: Host to Device",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_XDMA);
+      writeTableFooter(getStream());
+
+      // Table 9 : Data Transfer: Device to Device
+      writeTableHeader(getStream(), "Data Transfer: Device to Device",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_P2P);
+      writeTableFooter(getStream());
+
+      // Table 10 : Data Transfer: Global Memory to Global Memory
+      writeTableHeader(getStream(), "Data Transfer: Global Memory to Global Memory",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_KDMA);
+      writeTableFooter(getStream());
+    }
+
+    // Table 11 : Top Data Transfer: Kernel & Global
     std::vector<std::string> TopKernelDataTransferSummaryColumnLabels = {
         "Device", "Compute Unit", "Number of Transfers", "Average Bytes per Transfer",
         "Transfer Efficiency (%)", "Total Data Transfer (MB)", "Total Write (MB)",
         "Total Read (MB)", "Total Transfer Rate (MB/s)"
     };
-    writeTableHeader(getStream(), "Top Data Transfer: Kernels and Global Memory",
+    writeTableHeader(getStream(), "Top Data Transfer: Kernels to Global Memory",
         TopKernelDataTransferSummaryColumnLabels);
     if (profile->isDeviceProfileOn()) {
       profile->writeTopKernelTransferSummary(this);
@@ -235,11 +245,11 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  // Table 5.1: Data Transfer: Host Internal
-  // Device, Monitor Type, Transfer Type, Number Of Transfers,
-  // Transfer Rate (MB/s), Average Size (KB), Average Latency (ns)
-  void ProfileWriterI::writeHostInternalTransferSummary(const std::string& deviceName, const std::string& monitorName,
-      const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec)
+  // Tables 8-10 : Data Transfer: Host to Device, Peer to Peer, & Memory to Memory
+  // Device, Transfer Type, Number Of Transfers, Transfer Rate (MB/s),
+  // Average Size (KB), Average Latency (ns)
+  void ProfileWriterI::writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
+      uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec)
   {
     double totalMB = totalBytes / 1.0e6;
     // TODO: re-calculate transfer rate with total transfer time not total latency
@@ -257,8 +267,8 @@ namespace xdp {
     }
 
     writeTableRowStart(getStream());
-    writeTableCells(getStream(), deviceName, monitorName, transferType,
-        totalTranx, totalMB, transferRateStr, aveBytes/1000.0, aveLatencyStr);
+    writeTableCells(getStream(), deviceName, transferType, totalTranx,
+        transferRateStr, totalMB, aveBytes/1000.0, aveLatencyStr);
     writeTableRowEnd(getStream());
   }
 

@@ -306,9 +306,9 @@ namespace xdp {
   {
     return mWriter->writeComputeUnitSummary(writer);
   }
-  void RTProfile::writeHostTransferSummary(ProfileWriterI* writer, RTUtil::e_host_monitor monitorType) const
+  void RTProfile::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_host_monitor monitorType) const
   {
-    mWriter->writeHostTransferSummary(writer, monitorType);
+    mWriter->writeTransferSummary(writer, monitorType);
   }
   void RTProfile::writeKernelTransferSummary(ProfileWriterI* writer)
   {

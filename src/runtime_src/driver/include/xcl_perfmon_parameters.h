@@ -25,12 +25,6 @@
 #ifndef _PERFMON_PARAMETERS_H_
 #define _PERFMON_PARAMETERS_H_
 
-/********************* KDMA/XDMA/P2P Monitors *********************************/
-
-#define XDMA_MONITOR_BASE               0x00270000
-#define P2P_MONITOR_BASE                0x00280000
-#define KDMA_MONITOR_BASE               0x00290000
-
 /************************ AXI Stream FIFOs ************************************/
 
 /* Address offsets in core */

@@ -469,8 +469,8 @@ namespace xdp {
 
   }
 
-  // Write host data transfer stats
-  void ProfileCounters::writeHostTransferSummary(ProfileWriterI* writer, std::string& deviceName,
+  // Write data transfer stats for: host, XDMA, KDMA, and P2P
+  void ProfileCounters::writeTransferSummary(ProfileWriterI* writer, std::string& deviceName,
       RTUtil::e_host_monitor monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
       double totalTimeMsec, double maxTransferRateMBps) const
   {
@@ -494,12 +494,8 @@ namespace xdp {
     }
 
     // Now write results from other host monitors (i.e., KDMA/XDMA/P2P)
-    std::string monitorName;
-    RTUtil::hostMonitorToString(monitorType, monitorName);
     std::string transferType = (isRead) ? "READ" : "WRITE";
-
-    writer->writeHostInternalTransferSummary(deviceName, monitorName, transferType,
-    	totalBytes, totalTranx, totalTimeMsec);
+    writer->writeShellTransferSummary(deviceName, transferType, totalBytes, totalTranx, totalTimeMsec);
   }
 
   void ProfileCounters::writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,
