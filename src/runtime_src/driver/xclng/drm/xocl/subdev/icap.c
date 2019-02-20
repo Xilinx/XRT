@@ -1848,7 +1848,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 		}
 
-		if((peer_connected & 0xF) == MB_PEER_SAME_DOM){
+		if((peer_connected & 0xF) == MB_PEER_SAMEDOM_CONNECTED){
 			data_len = sizeof(struct mailbox_req);
 			mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 			mb_req->data_ptr = (void*)mb_req->data;

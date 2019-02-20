@@ -625,6 +625,7 @@ struct mailbox_req {
 
 #define MB_PEER_CONNECTED 0x1
 #define MB_PEER_SAME_DOM  0x2
+#define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err);
