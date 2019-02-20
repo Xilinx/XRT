@@ -98,8 +98,8 @@ clCreateKernel(cl_program      program,
     // Generate mykernel_0/_1/_2.cl source file name
     // Find first index not already used by a file
     std::string fnm;
-    for (unsigned int idx=0; ; ++idx) {
-      char ext[4];
+    for (unsigned int idx=0; idx<1000; ++idx) {
+      char ext[6]; // 6 to make gcc on ubuntu1804 happy
       sprintf(ext,"%03u",idx);
       auto path = bfs::path(kernel_name);
       // path.append("_").append(ext).append(".cl");

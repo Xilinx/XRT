@@ -897,6 +897,7 @@ namespace xocl {
     // ******************************
     // Read & process all trace FIFOs
     // ******************************
+    static unsigned long long firstTimestamp;
     xclTraceResults results = {};
     for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
@@ -905,6 +906,9 @@ namespace xocl {
       temp = *(hostbuf + index) | (uint64_t)*(hostbuf + index + 1) << 32;
       if (!temp)
         continue;
+      // Poor Man's reset
+      if (wordnum == 0)
+        firstTimestamp = temp & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
       int mod = (wordnum % 4);
@@ -914,7 +918,11 @@ namespace xocl {
       }
       if (wordnum <= clockWordIndex) {
         if (mod == 0) {
-          results.Timestamp = temp & 0x1FFFFFFFFFFF;
+          uint64_t currentTimestamp = temp & 0x1FFFFFFFFFFF;
+          if (currentTimestamp >= firstTimestamp)
+            results.Timestamp = currentTimestamp - firstTimestamp;
+          else
+            results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - firstTimestamp);
         }
         uint64_t partial = (((temp >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
@@ -933,7 +941,7 @@ namespace xocl {
       }
 
       // SDSoC Packet Format
-      results.Timestamp = temp & 0x1FFFFFFFFFFF;
+      results.Timestamp = (temp & 0x1FFFFFFFFFFF) - firstTimestamp;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT : 
           XCL_PERF_MON_START_EVENT;
       results.TraceID = (temp >> 49) & 0xFFF;
@@ -980,7 +988,7 @@ namespace xocl {
   int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
     auto dev = pcidev::get_dev(mBoardNumber);
     uint16_t user_instance = dev->user->instance;
-    uint16_t mgmt_instance = dev->mgmt->instance;
+    uint16_t mgmt_instance = dev->mgmt ? dev->mgmt->instance : 0;
     uint16_t nifd_instance = 0;
     std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
     std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);

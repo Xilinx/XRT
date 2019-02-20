@@ -222,7 +222,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 			"Please warm reboot");
 		return -EIO;
 	}
-	
+
 	//Also freeze and free AXI gate to reset the OCL region.
 	xocl_icap_reset_axi_gate(lro);
 
@@ -361,7 +361,7 @@ unsigned compute_unit_busy(struct xclmgmt_dev *lro)
 	u32 r = MGMT_READ_REG32(lro, AXI_GATE_BASE_RD_BASE);
 
 	/*
-	 * r != 0x3 implies that OCL region is isolated and we cannot read 
+	 * r != 0x3 implies that OCL region is isolated and we cannot read
 	 * CUs' status
 	 */
 	if (r != 0x3)
@@ -385,7 +385,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	u8 pci_bctl;
 
 	mgmt_info(lro, "Reset PCI");
-	
+
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(pdev);
 
@@ -406,7 +406,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 		msleep(1);
 	}
 
-	mgmt_info(lro, "Resetting for %d ms", i); 
+	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
 }

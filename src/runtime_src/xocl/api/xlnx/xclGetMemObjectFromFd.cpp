@@ -24,16 +24,6 @@
 #include "xocl/api/detail/device.h"
 #include "xocl/api/detail/context.h"
 
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-
 namespace xocl {
 
 void

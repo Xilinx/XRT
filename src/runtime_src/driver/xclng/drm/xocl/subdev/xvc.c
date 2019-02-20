@@ -73,7 +73,7 @@ struct xil_xvc_properties {
 struct xocl_xvc {
 	void *__iomem base;
 	unsigned int instance;
-	struct cdev sys_cdev;
+	struct cdev *sys_cdev;
 	struct device *sys_device;
 };
 
@@ -308,8 +308,10 @@ static int char_open(struct inode *inode, struct file *file)
 {
 	struct xocl_xvc *xvc = NULL;
 
-	/* pointer to containing structure of the character device inode */
-	xvc = container_of(inode->i_cdev, struct xocl_xvc, sys_cdev);
+	xvc = xocl_drvinst_open(inode->i_cdev);
+	if (!xvc)
+		return -ENXIO;
+
 	/* create a reference to our char device in the opened file */
 	file->private_data = xvc;
 	return 0;
@@ -320,6 +322,9 @@ static int char_open(struct inode *inode, struct file *file)
  */
 static int char_close(struct inode *inode, struct file *file)
 {
+	struct xocl_xvc *xvc = file->private_data;
+
+	xocl_drvinst_close(xvc);
 	return 0;
 }
 
@@ -341,7 +346,7 @@ static int xvc_probe(struct platform_device *pdev)
 	struct xocl_dev_core *core;
 	int err;
 
-	xvc = devm_kzalloc(&pdev->dev, sizeof(*xvc), GFP_KERNEL);
+	xvc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xvc));
 	if (!xvc)
 		return -ENOMEM;
 
@@ -355,27 +360,29 @@ static int xvc_probe(struct platform_device *pdev)
 
 	core = xocl_get_xdev(pdev);
 
-	cdev_init(&xvc->sys_cdev, &xvc_fops);
-	xvc->sys_cdev.owner = THIS_MODULE;
+	xvc->sys_cdev = cdev_alloc();
+	xvc->sys_cdev->ops = &xvc_fops;
+	xvc->sys_cdev->owner = THIS_MODULE;
 	xvc->instance = XOCL_DEV_ID(core->pdev) |
 		platform_get_device_id(pdev)->driver_data;
-	xvc->sys_cdev.dev = MKDEV(MAJOR(xvc_dev), core->dev_minor);
-	err = cdev_add(&xvc->sys_cdev, xvc->sys_cdev.dev, 1);
+	xvc->sys_cdev->dev = MKDEV(MAJOR(xvc_dev), core->dev_minor);
+	err = cdev_add(xvc->sys_cdev, xvc->sys_cdev->dev, 1);
 	if (err) {
 		xocl_err(&pdev->dev, "cdev_add failed, %d",err);
-		return err;
+		goto failed;
 	}
 
 	xvc->sys_device = device_create(xrt_class, &pdev->dev,
-					xvc->sys_cdev.dev,
+					xvc->sys_cdev->dev,
 					NULL, "%s%d",
 					platform_get_device_id(pdev)->name,
 					xvc->instance & MINOR_NAME_MASK);
 	if (IS_ERR(xvc->sys_device)) {
 		err = PTR_ERR(xvc->sys_device);
-		cdev_del(&xvc->sys_cdev);
 		goto failed;
 	}
+
+	xocl_drvinst_set_filedev(xvc, xvc->sys_cdev);
 
 	platform_set_drvdata(pdev, xvc);
 	xocl_info(&pdev->dev, "XVC device instance %d initialized\n",
@@ -389,7 +396,16 @@ static int xvc_probe(struct platform_device *pdev)
 	xvc_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
 									pci_resource_start(core->pdev, core->bar_idx);
 
+	return 0;
 failed:
+	if (!IS_ERR(xvc->sys_device))
+		device_destroy(xrt_class, xvc->sys_cdev->dev);
+	if (xvc->sys_cdev)
+		cdev_del(xvc->sys_cdev);
+	if (xvc->base)
+		iounmap(xvc->base);
+	xocl_drvinst_free(xvc);
+
 	return err;
 }
 
@@ -403,13 +419,13 @@ static int xvc_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
-	device_destroy(xrt_class, xvc->sys_cdev.dev);
-	cdev_del(&xvc->sys_cdev);
+	device_destroy(xrt_class, xvc->sys_cdev->dev);
+	cdev_del(xvc->sys_cdev);
 	if (xvc->base)
 		iounmap(xvc->base);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xvc);
+	xocl_drvinst_free(xvc);
 
 	return 0;
 }

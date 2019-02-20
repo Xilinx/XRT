@@ -452,6 +452,9 @@ namespace xclbincat1 {
       case KEYVALUE_METADATA: return "KEYVALUE_METADATA";
       case USER_METADATA: return "USER_METADATA";
       case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
+      case PDI: return "PDI";
+      case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
+
         break;
     }
 

@@ -21,17 +21,14 @@ xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
-	../subdev/mm_xdma.o \
+	../subdev/xdma.o \
+	../subdev/qdma.o \
 	../subdev/feature_rom.o \
-	../subdev/mm_qdma.o \
 	../subdev/mb_scheduler.o \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
-	../subdev/str_qdma.o \
 	$(xocl_lib-y)	\
-	xdma.o	\
-	qdma.o	\
 	xocl_drv.o	\
 	xocl_bo.o	\
 	xocl_drm.o	\

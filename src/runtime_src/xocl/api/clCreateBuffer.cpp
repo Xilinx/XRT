@@ -30,55 +30,26 @@
 
 namespace {
 
-inline void*
-get_host_ptr(cl_mem_flags flags, void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
-    : host_ptr;
-}
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-inline cl_kernel
-get_xlnx_ext_kernel(cl_mem_flags flags, void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->kernel
-    : 0;
-}
-
-inline unsigned int
-get_xlnx_ext_argidx(cl_mem_flags flags, void* host_ptr)
-{
-  return get_xlnx_ext_flags(flags,host_ptr);
-}
-
 // Hack to determine if a context is associated with exactly one
-// device.  Additionally, in emulation mode, the device must be
-// active, e.g. loaded through a call to loadBinary.
+// device and memory bank can be determined for memory allocation.
+// Additionally, in emulation mode, the device must be active, e.g.
+// loaded through a call to loadBinary.
 //
 // This works around a problem where clCreateBuffer is called in
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-//
-// In non emulation mode it is sufficient to check that the context
-// has only one device.
-XRT_UNUSED static xocl::device*
-singleContextDevice(cl_context context, cl_mem_flags flags)
+static xocl::device*
+singleContextDevice(cl_context context, cl_mem_flags flags, const void *host_ptr)
 {
   auto device = xocl::xocl(context)->get_single_active_device();
   if (!device)
     return nullptr;
 
-  if(flags & CL_MEM_EXT_PTR_XILINX) {
+  if (flags & CL_MEM_EXT_PTR_XILINX) {
+    auto xflags = xocl::get_xlnx_ext_flags(flags, host_ptr);
+    if (!(xflags & XCL_MEM_TOPOLOGY) && !(xflags & 0xffffff))
+      return nullptr;
     // Explicit memory bank assignment should be treated as single device context.
     // MLx use case. Do nothing, proceed to returning the device.
   } else {
@@ -159,7 +130,7 @@ clCreateBuffer(cl_context   context,
     api::clSetKernelArg(kernel,argidx,sizeof(cl_mem),&mem);
   }
   else if (!(flags & CL_MEM_PROGVAR)) {
-    if (auto device = singleContextDevice(context,flags))
+    if (auto device = singleContextDevice(context,flags,host_ptr))
       buffer->get_buffer_object(device);
   }
 

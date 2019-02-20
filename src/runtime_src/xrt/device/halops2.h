@@ -222,11 +222,15 @@ public:
   freeDeviceBufferType mFreeDeviceBuffer;
 #endif
 
-  const std::string& getFileName() const {
+  const std::string&
+  getFileName() const
+  {
     return mFileName;
   }
 
-  const unsigned getDeviceCount() const {
+  unsigned
+  getDeviceCount() const
+  {
     return mDeviceCount;
   }
 

@@ -65,6 +65,10 @@
 #define XMC_SE98_TEMP0_REG          0x140
 #define XMC_SE98_TEMP1_REG          0x14C
 #define XMC_SE98_TEMP2_REG          0x158
+#define XMC_CAGE_TEMP0_REG          0x170
+#define XMC_CAGE_TEMP1_REG          0x17C
+#define XMC_CAGE_TEMP2_REG          0x188
+#define XMC_CAGE_TEMP3_REG          0x194
 #define XMC_SNSR_CHKSUM_REG         0x1A4
 #define XMC_SNSR_FLAGS_REG          0x1A8
 #define XMC_HOST_MSG_OFFSET_REG     0x300
@@ -136,9 +140,9 @@ enum {
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_SCHED] + off)
 
 #define	COPY_MGMT(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
 #define	COPY_SCHE(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;
@@ -375,9 +379,6 @@ static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR_RO(xmc_vcc1v2_btm);
 
-
-
-
 static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
@@ -522,6 +523,56 @@ static ssize_t xmc_dimm_temp3_show(struct device *dev, struct device_attribute *
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp3);
+
+
+static ssize_t xmc_cage_temp0_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp0);
+
+static ssize_t xmc_cage_temp1_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp1);
+
+static ssize_t xmc_cage_temp2_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp2);
+
+static ssize_t xmc_cage_temp3_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp3);
+
 
 static ssize_t version_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -745,7 +796,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		strncpy(temp, left_parentness+1, digit_len);
 		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
 		temp[digit_len] = '\0';
-		//convert to signed long, decimal base 
+		//convert to signed long, decimal base
 		if(kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >=0)
 			safe_read32(xmc, XMC_DIMM_TEMP0_REG+ (3*sizeof(int32_t)) * idx +sizeof(u32)*VOLTAGE_INS, &ret);
 		else{
@@ -793,6 +844,10 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_xmc_se98_temp0.attr,
 	&dev_attr_xmc_se98_temp1.attr,
 	&dev_attr_xmc_se98_temp2.attr,
+	&dev_attr_xmc_cage_temp0.attr,
+	&dev_attr_xmc_cage_temp1.attr,
+	&dev_attr_xmc_cage_temp2.attr,
+	&dev_attr_xmc_cage_temp3.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_power_flag.attr,

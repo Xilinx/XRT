@@ -33,6 +33,8 @@ All of the XRT recipes are in ``<XRT>/src/platform/recipes-xrt`` directory. Wher
         $ petalinux-create -t project -n <name> --template zynqMP
 
         # Get HDF file, which is exported by Vivado
+        # A menu will show up for configuration, use below config to avoid password for login.
+        #       menu -> "Yocto Setting" -> "Enable Debug Tweaks"
         $ petalinux-config -p <name> --get-hw-description=<HDF>
 
         # Go to the project specific directory of the project
@@ -53,6 +55,8 @@ Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-imag
         | IMAGE_INSTALL_append = " xrt-dev"
         | IMAGE_INSTALL_append = " xrt"
         | IMAGE_INSTALL_append = " zocl"
+        | IMAGE_INSTALL_append = " opencl-headers-dev"
+        | IMAGE_INSTALL_append = " opencl-clhpp-dev"
 
 Add XRT kernel node in device tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,6 +78,8 @@ Please see the comments in below code block. Enable "xrt" and "xrt-dev" options 
         #   menu -> "user packages" -> xrt
         #   menu -> "user packages" -> xrt-dev
         #   menu -> "user packages" -> zocl
+        #   menu -> "user packages" -> opencl-headers-dev
+        #   menu -> "user packages" -> opencl-clhpp-dev
         $ petalinux-config -c rootfs
 
         # Build package

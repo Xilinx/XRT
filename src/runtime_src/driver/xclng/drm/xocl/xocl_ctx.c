@@ -17,134 +17,185 @@
 #include <linux/platform_device.h>
 #include "xocl_drv.h"
 
-int xocl_ctx_init(struct device *dev, struct xocl_context_hash *ctx_hash,
-	u32 hash_sz, u32 (*hash_func)(void *arg),
-	int (*cmp_func)(void *arg_o, void *arg_n))
+/*
+ * helper functions to protect driver private data
+ */
+DEFINE_MUTEX(xocl_drvinst_lock);
+struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
+
+void *xocl_drvinst_alloc(struct device *dev, u32 size)
 {
-	int	i;
+	struct xocl_drvinst	*drvinstp;
+	int		inst;
 
-	ctx_hash->hash = devm_kzalloc(dev, sizeof (*ctx_hash->hash) * hash_sz,
-		GFP_KERNEL);
-	if (!ctx_hash->hash)
-		return -ENOMEM;
-
-	for (i = 0; i < hash_sz; i++)
-		INIT_HLIST_HEAD(&ctx_hash->hash[i]);
-
-	spin_lock_init(&ctx_hash->ctx_lock);
-	ctx_hash->hash_func = hash_func;
-	ctx_hash->cmp_func = cmp_func;
-
-	ctx_hash->size = hash_sz;
-	ctx_hash->dev = dev;
-
-	return 0;
-}
-
-void xocl_ctx_fini(struct device *dev, struct xocl_context_hash *ctx_hash)
-{
-	if (ctx_hash->hash == NULL)
-		return;
-
-	if (ctx_hash->count > 0) {
-		xocl_err(dev, "Context table is not NULL");
-	 	return;
-	}
-
-	devm_kfree(dev, ctx_hash->hash);
-
-	return;
-}
-
-int xocl_ctx_remove(struct xocl_context_hash *ctx_hash, void *arg)
-{
-	struct xocl_context	*ctx;
-	u32			hash_idx;
-	unsigned long		flags;
-	bool			found = false;
-	int			ret = 0;
-
-	if (ctx_hash->hash == NULL)
-		return ret;
-
-	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
-	hash_idx = ctx_hash->hash_func(arg);
-	BUG_ON(hash_idx >= ctx_hash->size);
-
-	hlist_for_each_entry(ctx, &ctx_hash->hash[hash_idx], hlist)
-		if (!ctx_hash->cmp_func(arg, ctx->arg)) {
-			found = true;
+	mutex_lock(&xocl_drvinst_lock);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++)
+		if (!xocl_drvinst_array[inst])
 			break;
-		}
-	if (!found) {
-		xocl_err(ctx_hash->dev, "entry does not exist");
-		ret = -ENOENT;
-		goto failed;
-	}
-	hlist_del(&ctx->hlist);
 
-	devm_kfree(ctx_hash->dev, ctx);
+	if (inst == ARRAY_SIZE(xocl_drvinst_array))
+		goto failed;
+
+	drvinstp = kzalloc(size + sizeof(struct xocl_drvinst), GFP_KERNEL);
+	if (!drvinstp)
+		goto failed;
+
+	drvinstp->dev = dev;
+	drvinstp->size = size;
+	init_completion(&drvinstp->comp);
+	atomic_set(&drvinstp->ref, 1);
+	INIT_LIST_HEAD(&drvinstp->open_procs);
+
+	xocl_drvinst_array[inst] = drvinstp;
+
+	mutex_unlock(&xocl_drvinst_lock);
+
+	return drvinstp->data;
 
 failed:
-	spin_unlock_irqrestore(&ctx_hash->ctx_lock, flags);
+	mutex_unlock(&xocl_drvinst_lock);
 
-	return ret;
+	if (drvinstp)
+		kfree(drvinstp);
+	return NULL;
 }
 
-int xocl_ctx_add(struct xocl_context_hash *ctx_hash, void *arg, u32 arg_sz)
+void xocl_drvinst_free(void *data)
 {
-	struct xocl_context	*ctx;
-	u32		hash_idx;
-	unsigned long	flags;
-	int		ret = 0;
+	struct xocl_drvinst	*drvinstp;
+	struct xocl_drvinst_proc *proc, *temp;
+	struct pid		*p;
+	int		inst;
+	int		ret;
 
-	if (ctx_hash->hash == NULL)
-		return ret;
-
-	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
-	hash_idx = ctx_hash->hash_func(arg);
-	BUG_ON(hash_idx >= ctx_hash->size);
-
-	hlist_for_each_entry(ctx, &ctx_hash->hash[hash_idx], hlist)
-		if (!ctx_hash->cmp_func(arg, ctx->arg)) {
-			xocl_err(ctx_hash->dev, "entry exist");
-			ret = -EEXIST;
-			goto failed;
-		}
-	ctx = devm_kzalloc(ctx_hash->dev, sizeof (*ctx) + arg_sz,
-		GFP_KERNEL);
-	if (!ctx) {
-		xocl_err(ctx_hash->dev, "out of memeory");
-		ret = -ENOMEM;
-		goto failed;
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(data, struct xocl_drvinst, data);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
 	}
-	memcpy(ctx->arg, arg, arg_sz);
-	hlist_add_head(&ctx->hlist, &ctx_hash->hash[hash_idx]);
 
-failed:
-	spin_unlock_irqrestore(&ctx_hash->ctx_lock, flags);
+	/* it must be created before */
+	BUG_ON(inst == ARRAY_SIZE(xocl_drvinst_array));
 
-	return ret; 
-}
+	xocl_drvinst_array[inst] = NULL;
+	mutex_unlock(&xocl_drvinst_lock);
 
-int xocl_ctx_traverse(struct xocl_context_hash *ctx_hash,
-	int (*cb_func)(struct xocl_context_hash *ctx_hash, void *arg))
-{
-	struct xocl_context		*ctx;
-	unsigned long			flags;
-	int				i, ret = 0;
-
-	if (ctx_hash->hash == NULL)
-		return ret;
-
-	spin_lock_irqsave(&ctx_hash->ctx_lock, flags);
-	for (i = 0; i < ctx_hash->size; i++) {
-		hlist_for_each_entry(ctx, &ctx_hash->hash[i], hlist)
-			if (cb_func(ctx_hash, ctx->arg)) {
-				ret = -EAGAIN;
+	/* wait all opened instances to close */
+	if (!atomic_dec_and_test(&drvinstp->ref)) {
+		xocl_info(drvinstp->dev, "Wait for close %p\n",
+				&drvinstp->comp);
+		ret = wait_for_completion_killable(&drvinstp->comp);
+		if (ret == -ERESTARTSYS) {
+			list_for_each_entry_safe(proc, temp,
+				&drvinstp->open_procs, link) {
+				p = find_get_pid(proc->pid);
+				if (!p)
+					continue;
+				ret = kill_pid(p, SIGBUS, 1);
+				if (ret)
+					xocl_err(drvinstp->dev, 
+						"kill %d failed",
+						proc->pid);
+				put_pid(p);
 			}
+			wait_for_completion(&drvinstp->comp);
+		}
 	}
-	spin_unlock_irqrestore(&ctx_hash->ctx_lock, flags);
 
-	return ret;
+	kfree(drvinstp);
+}
+
+void xocl_drvinst_set_filedev(void *data, void *file_dev)
+{
+	struct xocl_drvinst	*drvinstp;
+	int		inst;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(data, struct xocl_drvinst, data);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
+	}
+
+	BUG_ON(inst == ARRAY_SIZE(xocl_drvinst_array));
+
+	drvinstp->file_dev = file_dev;
+	mutex_unlock(&xocl_drvinst_lock);
+}
+
+void *xocl_drvinst_open(void *file_dev)
+{
+	struct xocl_drvinst	*drvinstp;
+	struct xocl_drvinst_proc	*proc;
+	int		inst;
+	u32		pid;
+
+	mutex_lock(&xocl_drvinst_lock);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		drvinstp = xocl_drvinst_array[inst];
+		if (drvinstp && file_dev == drvinstp->file_dev)
+			break;
+	}
+
+	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		mutex_unlock(&xocl_drvinst_lock);
+		return NULL;
+	}
+
+	pid = pid_nr(task_tgid(current));
+	list_for_each_entry(proc, &drvinstp->open_procs, link) {
+		if (proc->pid == pid)
+			break;
+	}
+	if (&proc->link == &drvinstp->open_procs) {
+		proc = kzalloc(sizeof(*proc), GFP_KERNEL);
+		if (!proc) {
+			mutex_unlock(&xocl_drvinst_lock);
+			return NULL;
+		}
+		proc->pid = pid;
+		list_add(&proc->link, &drvinstp->open_procs);
+	} else
+		proc->count++;
+	xocl_info(drvinstp->dev, "OPEN %d\n", drvinstp->ref.counter);
+
+	if (atomic_inc_return(&drvinstp->ref) == 2)
+		reinit_completion(&drvinstp->comp);
+
+
+	mutex_unlock(&xocl_drvinst_lock);
+
+	return drvinstp->data;
+}
+
+void xocl_drvinst_close(void *data)
+{
+	struct xocl_drvinst	*drvinstp;
+	struct xocl_drvinst_proc *proc;
+	u32	pid;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(data, struct xocl_drvinst, data);
+
+	xocl_info(drvinstp->dev, "CLOSE %d\n", drvinstp->ref.counter);
+
+	pid = pid_nr(task_tgid(current));
+	list_for_each_entry(proc, &drvinstp->open_procs, link) {
+		if (proc->pid == pid)
+			break;
+	}
+
+	if (proc) {
+		proc->count--;
+		if (!proc->count)
+			list_del(&proc->link);
+	}
+
+	if (atomic_dec_return(&drvinstp->ref) == 1) {
+		xocl_info(drvinstp->dev, "NOTIFY %p\n", &drvinstp->comp);
+		complete(&drvinstp->comp);
+	}
+
+	mutex_unlock(&xocl_drvinst_lock);
 }

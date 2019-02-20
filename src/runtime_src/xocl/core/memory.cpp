@@ -74,21 +74,22 @@ memory::
 {
   XOCL_DEBUG(std::cout,"xocl::memory::~memory(): ",m_uid,"\n");
 
-  if (m_dtor_notify)
-    std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
-                  [](std::function<void()>& fcn) { fcn(); });
+  try {
+    if (m_dtor_notify)
+      std::for_each(m_dtor_notify->rbegin(),m_dtor_notify->rend(),
+                    [](std::function<void()>& fcn) { fcn(); });
 
-  for (auto& cb: sg_destructor_callbacks)
-    cb(this);
+    for (auto& cb: sg_destructor_callbacks)
+      cb(this);
 
-  if(m_connidx==-1)
-    return;
-  //Not very clean, having to remove a const cast.
-  const device* dev = get_resident_device();
-  if(dev)
-    const_cast<device*>(dev)->clear_connection(m_connidx);
-
-   //appdebug::remove_clmem(this);
+    if(m_connidx==-1)
+      return;
+    //Not very clean, having to remove a const cast.
+    const device* dev = get_resident_device();
+    if(dev)
+      const_cast<device*>(dev)->clear_connection(m_connidx);
+  }
+  catch (...) {}
 }
 
 bool
@@ -107,12 +108,14 @@ set_kernel_argidx(const kernel* kernel, unsigned int argidx)
 
 void
 memory::
-update_buffer_object_map(device* device, buffer_object_handle boh)
+update_buffer_object_map(const device* device, buffer_object_handle boh)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   if (m_bomap.size() == 0) {
+    update_memidx_nolock(device,boh);
     m_bomap[device] = std::move(boh);
-  } else {
+  }
+  else {
     throw std::runtime_error("memory::update_buffer_object_map: bomap should be empty. This is a new cl_mem object.");
   }
 }
@@ -221,20 +224,22 @@ try_get_buffer_object_or_error(const device* device) const
 // private
 memory::memidx_type
 memory::
-get_ext_memidx_nolock(xclbin xclbin) const
+get_ext_memidx_nolock(const xclbin& xclbin) const
 {
   if (m_memidx>=0)
     return m_memidx;
 
   if ((m_flags & CL_MEM_EXT_PTR_XILINX) && !m_ext_kernel) {
-    auto flag = m_ext_flags;
-    if (flag & XCL_MEM_TOPOLOGY)
-      m_memidx = flag & 0xffffff;
-    else {
-      auto bank = __builtin_ctz(flag & 0xffffff);
+    auto memid = m_ext_flags & 0xffff;
+    if (m_ext_flags & XCL_MEM_TOPOLOGY) {
+      m_memidx = memid;
+    } else if (memid != 0) {
+      auto bank = __builtin_ctz(memid);
       m_memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
       if (m_memidx==-1)
         m_memidx = bank;
+    } else {
+        m_memidx = -1;
     }
   }
   return m_memidx;
@@ -242,10 +247,24 @@ get_ext_memidx_nolock(xclbin xclbin) const
 
 memory::memidx_type
 memory::
-get_ext_memidx(xclbin xclbin) const
+get_ext_memidx(const xclbin& xclbin) const
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   return get_ext_memidx_nolock(xclbin);
+}
+
+memory::memidx_type
+memory::
+update_memidx_nolock(const device* device, const buffer_object_handle& boh)
+{
+  auto mset = device->get_boh_memidx(boh);
+  for (size_t idx=0; idx<mset.size(); ++idx) {
+    if (mset.test(idx)) {
+      m_memidx=idx;
+      break;
+    }
+  }
+  return m_memidx;
 }
 
 // private

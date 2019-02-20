@@ -407,11 +407,11 @@ get_memidx(const device* device, unsigned int argidx) const
   for (auto cu : m_cus)
     kcu.set(cu->get_index());
 
+  // Compute the union of all connections for all CUs
   memidx_bitmask_type mset;
-  mset.set();
   for (auto& scu : device->get_cus())
     if (kcu.test(scu->get_index()) && scu->get_symbol_uid()==get_symbol_uid())
-      mset &= scu->get_memidx(argidx);
+      mset |= scu->get_memidx(argidx);
 
   return mset;
 }
@@ -421,7 +421,8 @@ kernel::
 validate_cus(unsigned long argidx, int memidx) const
 {
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
-  xclbin::memidx_bitmask_type connections(1<<memidx);
+  xclbin::memidx_bitmask_type connections;
+  connections.set(memidx);
   auto end = m_cus.end();
   for (auto itr=m_cus.begin(); itr!=end; ) {
     auto cu = (*itr);

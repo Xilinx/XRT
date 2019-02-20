@@ -95,6 +95,7 @@ public:
 void rescan(void);
 size_t get_dev_total(void);
 size_t get_dev_ready(void);
+void dump_dev_list(void);
 const pci_device* get_dev(int index);
 } /* pcidev */
 
