@@ -561,8 +561,6 @@ static int nifd_probe(struct platform_device *pdev) {
 	xocl_info(&pdev->dev, "NIFD device instance %d initialized\n",
 		nifd->instance);
 
-	printk("NIFD: probe => done");
-
 failed:
 	return err;
 }
@@ -575,8 +573,6 @@ static int nifd_remove(struct platform_device *pdev) {
 	core = xocl_get_xdev(pdev);
 	if (!core) {
 		printk("NIFD: remove => core is null");
-	} else {
-		printk("NIFD: remove => core is NOT null");
 	}
 
 	nifd = platform_get_drvdata(pdev);
@@ -611,25 +607,19 @@ static struct platform_driver	nifd_driver = {
 
 int __init xocl_init_nifd(void) {
 	int err = 0;
-	printk("NIFD: init => start");
 	err = alloc_chrdev_region(&nifd_dev, 0, XOCL_MAX_DEVICES, NIFD_DEV_NAME);
 	if (err < 0)
 		goto err_register_chrdev;
 
-	printk("NIFD: init => platform_driver_register start");
 	err = platform_driver_register(&nifd_driver);
-	printk("NIFD: init => platform_driver_register return");
 	if (err) {
-		printk("NIFD: init => platform_driver_register err");
 		goto err_driver_reg;
 	}
-	printk("NIFD: init => done");
 	return 0;
 
 err_driver_reg:
 	unregister_chrdev_region(nifd_dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
-	printk("NIFD: init => err");
 	return err;
 }
 
