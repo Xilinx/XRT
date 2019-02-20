@@ -161,7 +161,7 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
 	int err = 0;
-	int msg = -ENODEV;
+	int64_t msg = -ENODEV;
 	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
 	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
