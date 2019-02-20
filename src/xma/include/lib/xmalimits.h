@@ -21,7 +21,7 @@
 #define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
 #define MAX_DDR_MAP             16
 #define MAX_XILINX_DEVICES      16
-#define MAX_XILINX_KERNELS      16
+#define MAX_XILINX_KERNELS      60
 #define MAX_KERNEL_CONFIGS      60
 #define MAX_KERNEL_CHANS        64
 #define MAX_KERNEL_FREQS         2
