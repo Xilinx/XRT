@@ -811,7 +811,7 @@ public:
   }
 
   hal::operations_result<std::string>
-  getSysfsPath(std::string& subdev, std::string& entry)
+  getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     return m_hal->getSysfsPath(subdev, entry);
   }

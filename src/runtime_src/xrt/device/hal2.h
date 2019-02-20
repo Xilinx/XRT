@@ -576,7 +576,7 @@ public:
   }
 
   virtual hal::operations_result<std::string>
-  getSysfsPath(std::string subdev, std::string entry)
+  getSysfsPath(const std::string subdev, const std::string entry)
   {
     if (!m_ops->mGetSysfsPath)
       return hal::operations_result<std::string>();
