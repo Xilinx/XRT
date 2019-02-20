@@ -450,6 +450,14 @@ typedef struct {
  * The data structures for hal level xdp plugins
  * that will be interpreted by both the shim and
  * xdp
+ * 
+ * custom plugin requirements:
+ *  1. has a method called hal_level_xdp_cb_func
+ *      that takes a enume type and a void pointer
+ *      payload which can be casted to one of the
+ *      structs listed below.
+ *  2. config through initialization by setting the
+ *      plugin path attribute to the dynamic library.
  */ 
 
 struct HalPluginConfig {

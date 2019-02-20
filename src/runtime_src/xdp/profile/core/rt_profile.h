@@ -119,11 +119,6 @@ namespace xdp {
   public:
     // External access to logger
 
-    // Hal level function call logger APIs
-    void logHalFunctionStart(std::string& name, int uid/** TODO */);
-    void logHalFunctionEnd(std::string& name, int uid/** TODO */);
-    void logHalBOActivity(std::string& name, int handle/** TODO */);
-
     // OpenCL function call logger APIs
     void logFunctionCallStart(const char* functionName, long long queueAddress, unsigned int functionID);
     void logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID);
