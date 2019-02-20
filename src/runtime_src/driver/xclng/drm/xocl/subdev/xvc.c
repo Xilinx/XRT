@@ -340,7 +340,6 @@ static int xvc_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct xocl_dev_core *core;
 	int err;
-	printk("XVC: probe => start");
 	xvc = devm_kzalloc(&pdev->dev, sizeof(*xvc), GFP_KERNEL);
 	if (!xvc)
 		return -ENOMEM;
@@ -388,8 +387,6 @@ static int xvc_probe(struct platform_device *pdev)
 	xvc_pci_props.bar_index       = core->bar_idx;
 	xvc_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int) 
 									pci_resource_start(core->pdev, core->bar_idx);
-	
-	printk("XVC: probe => done");
 
 failed:
 	return err;
