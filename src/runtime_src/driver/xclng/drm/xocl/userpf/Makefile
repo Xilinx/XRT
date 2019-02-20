@@ -29,7 +29,6 @@ xocl-y := \
 	../subdev/xvc.o \
 	../subdev/icap.o \
 	../subdev/xmc.o \
-	../subdev/str_qdma.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\

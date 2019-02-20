@@ -725,18 +725,11 @@ struct xocl_icap_funcs {
 #define	xocl_icap_get_axlf_section_data(xdev, kind)				\
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind) : \
-	-ENODEV)
+	NULL)
 #define xocl_icap_get_data(xdev, cmd)			\
 	(ICAP_OPS(xdev) ? 						\
-	(ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), cmd) : \
+	ICAP_OPS(xdev)->get_register_data(ICAP_DEV(xdev), cmd) : \
 	-ENODEV)
-
-
-
-#define	xocl_icap_get_axlf_section_data(xdev, kind)			\
-	(ICAP_OPS(xdev) ? 						\
-	 ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind) : \
-	 NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
