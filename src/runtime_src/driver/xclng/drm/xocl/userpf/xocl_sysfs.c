@@ -214,6 +214,45 @@ failed:
 
 static DEVICE_ATTR(p2p_enable, 0644, p2p_enable_show, p2p_enable_store);
 
+static ssize_t dev_offline_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	int val = xdev->core.offline ? 1 : 0;
+
+	return sprintf(buf, "%d\n", val);
+}
+static ssize_t dev_offline_store(struct device *dev,
+							 struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	int ret;
+	u32 offline;
+
+
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+		return -EINVAL;
+	}
+
+	device_lock(dev);
+	if (offline) {
+		xocl_subdev_destroy_all(xdev);
+		xdev->core.offline = true;
+	} else {
+		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+										xdev->core.priv.subdev_num);
+		if (ret) {
+			xocl_err(dev, "Online subdevices failed");
+			return -EIO;
+		}
+		xdev->core.offline = false;
+	}
+	device_unlock(dev);
+
+	return count;
+}
+static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
+
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -275,6 +314,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
+	&dev_attr_dev_offline.attr,
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_link_width.attr,
 	&dev_attr_link_speed.attr,
