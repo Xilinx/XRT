@@ -285,6 +285,7 @@ enum data_kind {
 	MEMTOPO_AXLF,
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
+	PEER_CONN,
 };
 
 
@@ -638,7 +639,7 @@ struct xocl_mailbox_funcs {
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
-	int (*check_peer)(struct platform_device *pdev);
+	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -659,8 +660,8 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_reset(xdev, end)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
 	end) : -ENODEV)
-#define	xocl_mailbox_check_peer(xdev)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->check_peer(MAILBOX_DEV(xdev)) \
+#define	xocl_mailbox_get_data(xdev, kind)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
 		: -ENODEV)
 
 struct xocl_icap_funcs {

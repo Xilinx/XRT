@@ -1835,7 +1835,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 		}
 
-		peer_connected = xocl_mailbox_check_peer(xdev);
+		peer_connected = xocl_mailbox_get_data(xdev, PEER_CONN);
 		ICAP_INFO(icap, "%s peer_connected 0x%x", __func__, peer_connected);
 		if(peer_connected < 0) {
 			err = -ENODEV;
