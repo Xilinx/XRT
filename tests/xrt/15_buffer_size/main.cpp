@@ -168,6 +168,8 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
     }
 
     std::cout << "transferSizeTest1 complete. Release buffer objects.\n";
+    munmap(writeBuffer, maxSize);
+    munmap(readBuffer, maxSize);
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i)
@@ -233,6 +235,8 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
         }
     }
     std::cout << "transferSizeTest2 complete. Release buffer objects.\n";
+    munmap(writeBuffer, maxSize);
+    munmap(readBuffer, maxSize);
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     return 0;
