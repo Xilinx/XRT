@@ -495,7 +495,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * @handle:        Device handle
  * @level:         Severity level of the msg
- * @tag:           Name of the process giving the message
+ * @tag:           Tag supplied by the client, like "OCL", "XMA", etc.
  * @format:        Format of Msg string to write to log file
  * @...:           All other arguments as per the format
  *
