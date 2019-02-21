@@ -107,7 +107,7 @@ namespace xdp {
         double totalWriteTimeMsec, double totalReadTimeMsec,
         uint32_t maxBytesPerTransfer, double maxTransferRateMBps) const;
     void writeTransferSummary(ProfileWriterI* writer, std::string& deviceName,
-        RTUtil::e_host_monitor monitorType, bool isRead, uint64_t totalBytes,
+        RTUtil::e_monitor_type monitorType, bool isRead, uint64_t totalBytes,
         uint64_t totalTranx, double totalTimeMsec, double maxTransferRateMBps) const;
     void writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,
     	std::string& cuPortName, const std::string& argNames, const std::string& memoryName,

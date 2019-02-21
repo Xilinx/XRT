@@ -86,21 +86,21 @@ namespace xdp {
     }
   }
 
-  void RTUtil::hostMonitorToString(e_host_monitor hostMonitor,
-                                   std::string& hostString)
+  void RTUtil::monitorTypeToString(e_monitor_type monitorType,
+                                   std::string& monitorString)
   {
-    switch (hostMonitor) {
-    case HOST_MON_DYNAMIC:
-      hostString = "HOST";
+    switch (monitorType) {
+    case MON_HOST_DYNAMIC:
+      monitorString = "HOST";
       break;
-    case HOST_MON_KDMA:
-      hostString = "KDMA";
+    case MON_SHELL_KDMA:
+      monitorString = "Memory to Memory";
       break;
-    case HOST_MON_XDMA:
-      hostString = "XDMA";
+    case MON_SHELL_XDMA:
+      monitorString = "Host to Device";
       break;
-    case HOST_MON_P2P:
-      hostString = "P2P";
+    case MON_SHELL_P2P:
+      monitorString = "Device to Device";
       break;
     default:
       assert(0);

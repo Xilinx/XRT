@@ -471,10 +471,10 @@ namespace xdp {
 
   // Write data transfer stats for: host, XDMA, KDMA, and P2P
   void ProfileCounters::writeTransferSummary(ProfileWriterI* writer, std::string& deviceName,
-      RTUtil::e_host_monitor monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
+      RTUtil::e_monitor_type monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
       double totalTimeMsec, double maxTransferRateMBps) const
   {
-    if (monitorType == RTUtil::HOST_MON_DYNAMIC) {
+    if (monitorType == RTUtil::MON_HOST_DYNAMIC) {
 #ifdef BUFFER_STAT_PER_CONTEXT
       if (isRead) {
         for (auto readIter : BufferReadStat)

@@ -92,7 +92,7 @@ namespace xdp {
     writeTableHeader(getStream(), "Data Transfer: Host to Global Memory",
         DataTransferSummaryColumnLabels);
     if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
-      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_DYNAMIC);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_HOST_DYNAMIC);
     }
     writeTableFooter(getStream());
 
@@ -129,19 +129,19 @@ namespace xdp {
       };
       writeTableHeader(getStream(), "Data Transfer: Host to Device",
           DataTransferSummaryColumnLabels2);
-      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_XDMA);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_XDMA);
       writeTableFooter(getStream());
 
       // Table 9 : Data Transfer: Device to Device
       writeTableHeader(getStream(), "Data Transfer: Device to Device",
           DataTransferSummaryColumnLabels2);
-      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_P2P);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_P2P);
       writeTableFooter(getStream());
 
       // Table 10 : Data Transfer: Global Memory to Global Memory
       writeTableHeader(getStream(), "Data Transfer: Global Memory to Global Memory",
           DataTransferSummaryColumnLabels2);
-      profile->writeTransferSummary(this, xdp::RTUtil::HOST_MON_KDMA);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_KDMA);
       writeTableFooter(getStream());
     }
 

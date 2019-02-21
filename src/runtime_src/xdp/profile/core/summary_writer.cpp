@@ -256,7 +256,7 @@ namespace xdp {
     mProfileCounters->writeAcceleratorSummary(writer);
   }
 
-  void SummaryWriter::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_host_monitor monitorType) const
+  void SummaryWriter::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_monitor_type monitorType) const
   {
     uint64_t totalReadBytes    = 0;
     uint64_t totalWriteBytes   = 0;
@@ -271,7 +271,7 @@ namespace xdp {
 
     std::string deviceName;
     std::string monitorName;
-    RTUtil::hostMonitorToString(monitorType, monitorName);
+    RTUtil::monitorTypeToString(monitorType, monitorName);
 
     // Get maximum throughput rates
     double readMaxBandwidthMBps = 0.0;
@@ -301,7 +301,7 @@ namespace xdp {
       else
         memset(&rolloverCounts, 0, sizeof(xclCounterResults));
 
-      if (monitorType != RTUtil::HOST_MON_DYNAMIC) {
+      if (monitorType != RTUtil::MON_HOST_DYNAMIC) {
         totalReadBytes    = 0;
         totalWriteBytes   = 0;
         totalReadTranx    = 0;
@@ -343,8 +343,8 @@ namespace xdp {
       totalReadTimeMsec = totalReadLatency / (1000.0 * tp->getDeviceClockFreqMHz());
       totalWriteTimeMsec = totalWriteLatency / (1000.0 * tp->getDeviceClockFreqMHz());
 
-      // Monitoring of KDMA/P2P is reported on per-device basis
-      if (monitorType != RTUtil::HOST_MON_DYNAMIC) {
+      // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
+      if (monitorType != RTUtil::MON_HOST_DYNAMIC) {
         if (totalReadTranx > 0) {
           mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
               totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
@@ -357,7 +357,7 @@ namespace xdp {
     }
 
     // Monitoring of host buffer transfers is reported on aggregated basis
-    if (monitorType == RTUtil::HOST_MON_DYNAMIC) {
+    if (monitorType == RTUtil::MON_HOST_DYNAMIC) {
       if (totalReadTranx > 0) {
         mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
             totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
