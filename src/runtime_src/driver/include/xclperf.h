@@ -494,10 +494,20 @@ enum HalCallbackType {
   WRITE_END
 };
 
+/**
+ * This is an example of the struct that callback
+ * functions can take. Eventually, different API
+ * callbacks are likely to take different structs.
+ */
 struct CallbackMarker {
   unsigned idcode;
   unsigned long devcode;
 };
+
+/**
+ * More callback payload struct should be declared 
+ * here for the users to include.
+ */
 
 /**
  * end hal level xdp plugin types

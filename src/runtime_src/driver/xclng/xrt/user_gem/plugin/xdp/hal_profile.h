@@ -19,6 +19,11 @@ namespace xdphal {
  */
 typedef void(*cb_load_func_type)(unsigned, void*);
 
+/**
+ * This standard function is for storing the function
+ * loaded. Using cpp standard for robustness across 
+ * function calls and context sharing.
+ */
 using cb_func_type = std::function<void(unsigned, void*)>;
 
 /**
