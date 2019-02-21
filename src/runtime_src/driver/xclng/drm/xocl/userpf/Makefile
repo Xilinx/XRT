@@ -28,6 +28,7 @@ xocl-y := \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
+	../subdev/xmc.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\

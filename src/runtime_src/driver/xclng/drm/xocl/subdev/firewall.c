@@ -247,7 +247,7 @@ static int clear_firewall(struct platform_device *pdev)
 	}
 
 retry_level1:
-	for (i = 0; i < fw->max_level; i++) { 
+	for (i = 0; i < fw->max_level; i++) {
 		for (val = READ_STATUS(fw, i);
 			(val & FIREWALL_STATUS_BUSY) &&
 			retry++ < BUSY_RETRY_COUNT;

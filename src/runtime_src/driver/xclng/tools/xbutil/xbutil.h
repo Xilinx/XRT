@@ -85,8 +85,6 @@ enum subcommand {
     STATUS_SSPM,
     STREAM,
     STATUS_UNSUPPORTED,
-    MEM_QUERY_ECC,
-    MEM_RESET_ECC
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
@@ -125,9 +123,7 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM),
-    std::make_pair("query-ecc", MEM_QUERY_ECC),
-    std::make_pair("reset-ecc", MEM_RESET_ECC)
+    std::make_pair("stream", STREAM)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -701,6 +697,9 @@ public:
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
             }
+            if(pcidev::get_dev(m_idx)->user){
+                pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
+            }
             sensor_tree::put( "board.info.idcode", idcode );
             sensor_tree::put( "board.info.fpga_name", fpga );
             sensor_tree::put( "board.info.dna", dna);
@@ -715,15 +714,17 @@ public:
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
-            unsigned short temp0, temp1, temp2, temp3;
+            unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+            if(pcidev::get_dev(m_idx)->mgmt){
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
+            }
             sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
             sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
             sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
         }
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
@@ -1389,8 +1390,6 @@ public:
 
     int validate(bool quick);
 
-    int printEccInfo(std::ostream& ostr) const;
-    int resetEccInfo();
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
     int testP2p();

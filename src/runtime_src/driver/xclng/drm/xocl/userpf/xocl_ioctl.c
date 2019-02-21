@@ -282,7 +282,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = bin_obj.m_header.m_numSections;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(bin_obj.m_header.m_length);
+	axlf = vmalloc(axlf_size);
 	if (!axlf) {
 		DRM_ERROR("Unable to create axlf\n");
 		err = -ENOMEM;
@@ -291,7 +291,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	printk(KERN_INFO "XOCL: Marker 5\n");
 
-	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
+	if (copy_from_user(axlf, axlf_ptr->xclbin, axlf_size)) {
 		err = -EFAULT;
 		goto done;
 	}

@@ -85,8 +85,6 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 		 fmt, ##args)
 #define MAX_M_COUNT      64
 
-#define MAX_DATA_SZ 128
-
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
 #define xocl_err(dev, fmt, args...)			\
@@ -123,6 +121,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XOCL_PL_TO_PCI_DEV(pldev)		\
 	to_pci_dev(pldev->dev.parent)
+
+#define XOCL_PL_DEV_TO_XDEV(pldev) \
+	pci_get_drvdata(XOCL_PL_TO_PCI_DEV(pldev))
 
 #define	XOCL_QDMA_USER_BAR	2
 #define	XOCL_DSA_VERSION(xdev)			\
@@ -244,6 +245,48 @@ struct xocl_dev_core {
 
 	bool			offline;
 };
+
+enum data_kind {
+	MIG_CALIB,
+	DIMM0_TEMP,
+	DIMM1_TEMP,
+	DIMM2_TEMP,
+	DIMM3_TEMP,
+	FPGA_TEMP,
+	VCC_BRAM,
+	CLOCK_FREQ_0,
+	CLOCK_FREQ_1,
+	FREQ_COUNTER_0,
+	FREQ_COUNTER_1,
+	VOL_12V_PEX,
+	VOL_12V_AUX,
+	CUR_12V_PEX,
+	CUR_12V_AUX,
+	SE98_TEMP0,
+	SE98_TEMP1,
+	SE98_TEMP2,
+	FAN_TEMP,
+	FAN_RPM,
+	VOL_3V3_PEX,
+	VOL_3V3_AUX,
+	VPP_BTM,
+	VPP_TOP,
+	VOL_5V5_SYS,
+	VOL_1V2_TOP,
+	VOL_1V2_BTM,
+	VOL_1V8,
+	VCC_0V9A,
+	VOL_12V_SW,
+	VTT_MGTA,
+	VOL_VCC_INT,
+	CUR_VCC_INT,
+	IDCODE,
+	IPLAYOUT_AXLF,
+	MEMTOPO_AXLF,
+	CONNECTIVITY_AXLF,
+	DEBUG_IPLAYOUT_AXLF,
+};
+
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -401,10 +444,10 @@ struct xocl_mb_scheduler_funcs {
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
 	((struct mem_topology *)					\
-	 xocl_icap_get_axlf_section_data(xdev, MEM_TOPOLOGY))
+	 xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)						\
-	 xocl_icap_get_axlf_section_data(xdev, IP_LAYOUT))
+	 xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -476,6 +519,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
+	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 
 struct xocl_dna_funcs {
@@ -524,6 +568,9 @@ struct xocl_dna_funcs {
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV))
 
+#define xocl_xmc_get_data(xdev, cmd)			\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
+
 /*
  * mailbox callbacks
  */
@@ -535,46 +582,50 @@ enum mailbox_request {
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
 	MAILBOX_REQ_HOT_RESET,
 	MAILBOX_REQ_FIREWALL,
-	MAILBOX_REQ_DOWNLOAD_XCLBIN,
-	MAILBOX_REQ_SEND_DATA,
+	MAILBOX_REQ_GPCTL,
+	MAILBOX_REQ_LOAD_XCLBIN_KADDR,
+	MAILBOX_REQ_LOAD_XCLBIN,
+	MAILBOX_REQ_RECLOCK,
+	MAILBOX_REQ_PEER_DATA,
+	MAILBOX_REQ_CONN_EXPL,
 };
 
 enum mb_cmd_type {
 	MB_CMD_DEFAULT = 0,
 	MB_CMD_LOAD_XCLBIN,
 	MB_CMD_RECLOCK,
+	MB_CMD_CONN_EXPL,
+	MB_CMD_LOAD_XCLBIN_KADDR,
+	MB_CMD_READ_FROM_PEER,
 };
 struct mailbox_req_bitstream_lock {
 	pid_t pid;
 	xuid_t uuid;
 };
 
-struct mailbox_data_req {
-	void *data;
-	uint64_t data_len;
-	int resp;
+struct mailbox_subdev_peer {
+		enum data_kind kind;
 };
 
-struct mailbox_data_buf {
+struct mailbox_gpctl {
 	enum mb_cmd_type cmd_type;
 	uint32_t data_total_len;
-	uint32_t buf_size; // For kernel space to fill up __user buf
-	uint32_t len;
-	uint32_t offset;
 	uint64_t priv_data;
-	char data[MAX_DATA_SZ];
+	void *data_ptr;
 };
 
 
 struct mailbox_req {
 	enum mailbox_request req;
-	union {
-		struct mailbox_req_bitstream_lock req_bit_lock;
-		struct mailbox_data_req xclbin_reg;
-		struct mailbox_data_buf data_buf;
-	} u;
+	uint32_t data_total_len;
+	uint64_t flags;
+	void *data_ptr;
+	char data[0];
 };
 
+#define MB_PEER_CONNECTED 0x1
+#define MB_PEER_SAME_DOM  0x2
+#define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err);
@@ -587,14 +638,15 @@ struct xocl_mailbox_funcs {
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
+	int (*check_peer)(struct platform_device *pdev);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev)	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev))
-#define	xocl_peer_request(xdev, req, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, sizeof(*req), resp, resplen, cb, cbarg) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
 #define	xocl_peer_response(xdev, reqid, buf, len)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
 	reqid, buf, len) : -ENODEV)
@@ -607,6 +659,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_reset(xdev, end)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
 	end) : -ENODEV)
+#define	xocl_mailbox_check_peer(xdev)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->check_peer(MAILBOX_DEV(xdev)) \
+		: -ENODEV)
 
 struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -625,8 +680,8 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*parse_axlf_section)(struct platform_device *pdev,
 		const void __user *arg, enum axlf_section_kind kind);
-	void* (*get_axlf_section_data)(struct platform_device *pdev,
-		enum axlf_section_kind kind);
+	uint64_t (*get_data)(struct platform_device *pdev,
+		enum data_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -671,11 +726,10 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind) : \
 	-ENODEV)
-
-#define	xocl_icap_get_axlf_section_data(xdev, kind)			\
+#define	xocl_icap_get_data(xdev, kind)				\
 	(ICAP_OPS(xdev) ? 						\
-	 ICAP_OPS(xdev)->get_axlf_section_data(ICAP_DEV(xdev), kind) : \
-	 NULL)
+	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
+	0)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);

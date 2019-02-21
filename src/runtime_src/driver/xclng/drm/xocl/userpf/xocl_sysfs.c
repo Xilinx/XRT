@@ -253,6 +253,58 @@ static ssize_t dev_offline_store(struct device *dev,
 }
 
 static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
+
+static ssize_t mig_calibration_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "0\n");
+}
+
+static DEVICE_ATTR_RO(mig_calibration);
+
+static ssize_t link_width_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	get_pcie_link_info(xdev, &width, &speed, false);
+	return sprintf(buf, "%d\n", width);
+}
+static DEVICE_ATTR_RO(link_width);
+
+static ssize_t link_speed_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	get_pcie_link_info(xdev, &width, &speed, false);
+	return sprintf(buf, "%d\n", speed);
+}
+static DEVICE_ATTR_RO(link_speed);
+
+static ssize_t link_width_max_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	get_pcie_link_info(xdev, &width, &speed, true);
+	return sprintf(buf, "%d\n", width);
+}
+static DEVICE_ATTR_RO(link_width_max);
+
+static ssize_t link_speed_max_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned short speed, width;
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	get_pcie_link_info(xdev, &width, &speed, true);
+	return sprintf(buf, "%d\n", speed);
+}
+static DEVICE_ATTR_RO(link_speed_max);
 /* - End attributes-- */
 
 static struct attribute *xocl_attrs[] = {
@@ -264,6 +316,11 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_user_pf.attr,
 	&dev_attr_p2p_enable.attr,
 	&dev_attr_dev_offline.attr,
+	&dev_attr_mig_calibration.attr,
+	&dev_attr_link_width.attr,
+	&dev_attr_link_speed.attr,
+	&dev_attr_link_speed_max.attr,
+	&dev_attr_link_width_max.attr,
 	NULL,
 };
 
