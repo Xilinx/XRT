@@ -604,7 +604,7 @@ public:
   }
 
   virtual operations_result<std::string>
-  getSysfsPath(const std::string subdev, const std::string entry)
+  getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     return operations_result<std::string>();
   }
