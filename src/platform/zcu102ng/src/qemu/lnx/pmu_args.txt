@@ -1,7 +1,5 @@
 -M
 microblaze-fdt
--kernel
-<pmu_rom_qemu_sha3.elf>
 -device
 loader,file=<pmufw.elf>
 -machine-path
