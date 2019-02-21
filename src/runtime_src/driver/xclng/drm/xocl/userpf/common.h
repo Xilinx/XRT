@@ -158,7 +158,7 @@ int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
 /* helper functions */
-int xocl_hot_reset(struct xocl_dev *xdev, bool force);
+int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force);
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
 int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
@@ -172,5 +172,7 @@ void user_pci_reset_done(struct pci_dev *pdev);
 uint get_live_client_size(struct xocl_dev *xdev);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
 
+void get_pcie_link_info(struct xocl_dev	*xdev,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
 #endif

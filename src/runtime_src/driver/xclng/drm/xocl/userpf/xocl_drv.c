@@ -117,13 +117,12 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		userpf_err(xdev, "failed to kill all clients");
 }
 
-int xocl_hot_reset(struct xocl_dev *xdev, bool force)
+int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	bool skip = false;
-	int ret = 0;
+	int64_t ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
 	size_t resplen = sizeof (ret);
-	int mbret;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (xdev->offline) {
@@ -146,7 +145,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	mbret = xocl_peer_request(xdev, &mbreq, &ret, &resplen, NULL, NULL);
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL);
 	if (mbret)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
@@ -162,25 +161,23 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
 	int err = 0;
-	int msg = 0;
+	int64_t msg = -ENODEV;
+	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
-	struct mailbox_req mb_req = { 0 };
-	struct drm_xocl_reclock_info *reclock = (struct drm_xocl_reclock_info *)data;
-	uint32_t data_sz = sizeof(struct drm_xocl_reclock_info);
+	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
+	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
+	req->req = MAILBOX_REQ_RECLOCK;
+	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
+	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
 
-	mb_req.req = MAILBOX_REQ_SEND_DATA;
-	mb_req.u.data_buf.cmd_type = MB_CMD_RECLOCK;
-	mb_req.u.data_buf.data_total_len = sizeof(struct drm_xocl_reclock_info);
-	mb_req.u.data_buf.buf_size = sizeof(struct mailbox_req);
-	mb_req.u.data_buf.len = data_sz;
-	mb_req.u.data_buf.offset = 0;
-	memcpy(mb_req.u.data_buf.data, ((char *)reclock), data_sz);
+	err = xocl_peer_request(xdev, req, reqlen,
+		&msg, &resplen, NULL, NULL);
 
-	err = xocl_peer_request(xdev,
-		&mb_req, &msg, &resplen, NULL, NULL);
-	if(msg != 0)
-		return -ENODEV;
+	if(msg != 0){
+		err = -ENODEV;
+	}
 
+	kfree(req);
   return err;
 }
 
@@ -203,6 +200,23 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
 		break;
 	}
+}
+
+void get_pcie_link_info(struct xocl_dev *xdev,
+	unsigned short *link_width, unsigned short *link_speed, bool is_cap)
+{
+	u16 stat;
+	long result;
+	int pos = is_cap ? PCI_EXP_LNKCAP : PCI_EXP_LNKSTA;
+
+	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
+	if (result) {
+		*link_width = *link_speed = 0;
+		xocl_info(&xdev->core.pdev->dev, "Read pcie capability failed");
+		return;
+	}
+	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
+	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
@@ -710,6 +724,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_qdma,
 	xocl_init_mb_scheduler,
 	xocl_init_mailbox,
+	xocl_init_xmc,
 	xocl_init_icap,
 	xocl_init_xvc,
 };
@@ -720,6 +735,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_qdma,
 	xocl_fini_mb_scheduler,
 	xocl_fini_mailbox,
+	xocl_fini_xmc,
 	xocl_fini_icap,
 	xocl_fini_xvc,
 };

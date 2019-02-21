@@ -480,6 +480,14 @@ enum subdev_id {
 		ARRAY_SIZE(XOCL_RES_XMC),		\
 	}
 
+#define	XOCL_DEVINFO_XMC_USER			\
+	{						\
+		XOCL_SUBDEV_XMC,				\
+		XOCL_XMC,				\
+		NULL,					\
+		0,					\
+	}
+
 #define	XOCL_RES_MB					\
 		((struct resource []) {			\
 			{				\
@@ -600,6 +608,7 @@ enum subdev_id {
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_XMC_USER,				\
 		})
 
 #define	XOCL_BOARD_USER_XDMA_DSA50					\

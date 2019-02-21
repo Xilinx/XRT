@@ -673,8 +673,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("", "xpr", errmsg, info->mIsXPR);
         dev->mgmt->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
 
-        dev->mgmt->sysfs_get("sysmon", "temp", errmsg, info->mOnChipTemp);
-
         dev->mgmt->sysfs_get("sysmon", "vcc_int", errmsg, info->mVInt);
         dev->mgmt->sysfs_get("sysmon", "vcc_aux", errmsg, info->mVAux);
         dev->mgmt->sysfs_get("sysmon", "vcc_bram", errmsg, info->mVBram);
@@ -709,6 +707,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
+        dev->mgmt->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
 
         std::vector<uint64_t> freqs;
         dev->mgmt->sysfs_get("icap", "clock_freqs", errmsg, freqs);
@@ -719,8 +718,34 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         }
     }
     // Below info from user pf.
-    if(dev->user)
-      dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
+    if(dev->user){
+        dev->user->sysfs_get("", "vendor", errmsg, info->mVendorId);
+        dev->user->sysfs_get("", "device", errmsg, info->mDeviceId);
+        dev->user->sysfs_get("", "subsystem_device", errmsg, info->mSubsystemId);
+        info->mDeviceVersion = info->mSubsystemId & 0xff;
+        dev->user->sysfs_get("", "subsystem_vendor", errmsg, info->mSubsystemVendorId);
+        info->mDataAlignment = getpagesize();
+        dev->user->sysfs_get("rom", "ddr_bank_size", errmsg, info->mDDRSize);
+        info->mDDRSize = GB(info->mDDRSize);
+
+        dev->user->sysfs_get("rom", "VBNV", errmsg, s);
+        snprintf(info->mName, sizeof (info->mName), "%s", s.c_str());
+        dev->user->sysfs_get("rom", "FPGA", errmsg, s);
+        snprintf(info->mFpga, sizeof (info->mFpga), "%s", s.c_str());
+        dev->user->sysfs_get("rom", "timestamp", errmsg, info->mTimeStamp);
+        dev->user->sysfs_get("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount);
+        info->mDDRSize *= info->mDDRBankCount;
+
+        info->mNumClocks = numClocks(info->mName);
+
+        dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
+        dev->user->sysfs_get("xmc", "xmc_12v_pex_vol", errmsg, info->m12VPex);
+        dev->user->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
+        dev->user->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
+        dev->user->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
+        dev->user->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+
+    }
 
 }
 

@@ -26,6 +26,7 @@
 #include <linux/fs.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/crc32c.h>
 #include "../xocl_drv.h"
 #include "version.h"
 
@@ -548,80 +549,60 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_register = xclmgmt_intr_register,
 };
 
-static int xclmgmt_xclbin_download(struct xclmgmt_dev *lro ,void *data)
-{
-	struct mailbox_req *req = (struct mailbox_req *)data;
-
-	/* is magic number*/
-	if(memcmp(req->u.xclbin_reg.data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
-		return -EINVAL;
-
-	return xocl_icap_download_axlf(lro, req->u.xclbin_reg.data);
-}
-
-static int xbmgmt_mb_peer_data_broker(struct xclmgmt_dev *lro)
-{
-	int ret = -EINVAL;
-
-	switch(lro->data_buf.cmd_type){
-		case MB_CMD_LOAD_XCLBIN:
-			ret = xocl_icap_download_axlf(lro, lro->data_buf.data_buf);
-			break;
-		case MB_CMD_RECLOCK:
-			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling*)lro->data_buf.data_buf);
-			break;
-		default:
-			printk(KERN_ERR "Can't recognize data_type : %u\n", lro->data_buf.cmd_type);
-		  break;
-	}
-
-	return ret;
-}
-
-
-static int xclmgmt_mb_data_alloc_and_recv(struct xclmgmt_dev *lro ,void *data)
+static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, char *data_ptr)
 {
 	int ret = 0;
-	struct mailbox_req *req = (struct mailbox_req *)data;
-	uint32_t data_total_len = req->u.data_buf.data_total_len;
-	uint32_t len = req->u.data_buf.len;
-	uint32_t offset = req->u.data_buf.offset;
-	char *data_ptr = req->u.data_buf.data;
+	struct xclmgmt_mailbox_conn *mb_conn = (struct xclmgmt_mailbox_conn *)data_ptr;
+	uint32_t crc_chk;
+	phys_addr_t paddr;
 
-	if(lro->data_buf.data_buf == NULL){
-		printk(KERN_INFO "lro->data_buf.data_buf init ...\n");
-
-		lro->data_buf.data_buf = vmalloc(data_total_len);
-		if(lro->data_buf.data_buf == NULL){
-			printk(KERN_ERR "fail to alloc lro->data_buf.data_buf  ...\n");
-			ret = -ENOMEM;
-			return ret;
-		}
-		lro->data_buf.cmd_type = req->u.data_buf.cmd_type;
-		lro->data_buf.priv_data = req->u.data_buf.priv_data;
+	if(!data_ptr){
+		ret = -EFAULT;
+		goto done;
 	}
 
-	memcpy(lro->data_buf.data_buf+offset, data_ptr, len);
-
-	if(offset+len == data_total_len){
-		printk(KERN_INFO "Get whole data ...\n");
-		ret = xbmgmt_mb_peer_data_broker(lro);
-		vfree(lro->data_buf.data_buf);
-		lro->data_buf.data_buf = NULL;
+	paddr = virt_to_phys(mb_conn->kaddr);
+	if(paddr != mb_conn->paddr){
+		printk(KERN_ERR "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
+		printk(KERN_ERR "Failed to get the same physical addr, running in VMs?\n");
+		ret = -EFAULT;
+		goto done;
 	}
-	else if ((offset+len) > data_total_len){
-		vfree(lro->data_buf.data_buf);
-		lro->data_buf.data_buf = NULL;
-		ret = -ENOMEM;
-	}
+	crc_chk = crc32c_le(~0, mb_conn->kaddr, PAGE_SIZE);
 
+	if(crc_chk != mb_conn->crc32){
+		printk(KERN_ERR "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
+		printk(KERN_ERR "failed to get the same CRC\n");
+		ret = -EFAULT;
+		goto done;
+	}
+done:
 	return ret;
+}
+
+
+static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
+{
+	uint64_t val = 0;
+	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	switch(subdev_req->kind){
+		case VOL_12V_PEX:
+			val = xocl_xmc_get_data(lro, subdev_req->kind);
+			break;
+		case IDCODE:
+			val = xocl_icap_get_data(lro, subdev_req->kind);
+			break;
+		default:
+			break;
+	}
+
+	return val;
 }
 
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err)
 {
-	int ret;
+	uint64_t ret;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 
@@ -631,26 +612,28 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	printk(KERN_INFO "%s received request (%d) from peer\n", __func__, req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_LOCK_BITSTREAM:
-		ret = xocl_icap_lock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_UNLOCK_BITSTREAM:
-		ret = xocl_icap_unlock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
-		break;
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
-	case MAILBOX_REQ_DOWNLOAD_XCLBIN:
-		ret = xclmgmt_xclbin_download(lro, data);
+	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
+		ret = xocl_icap_download_axlf(lro, req->data_ptr);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
-	case MAILBOX_REQ_SEND_DATA:
-		ret = xclmgmt_mb_data_alloc_and_recv(lro, data);
+	case MAILBOX_REQ_LOAD_XCLBIN:
+		ret = xocl_icap_download_axlf(lro, req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_RECLOCK:
+		ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_PEER_DATA:
+		ret = xclmgmt_read_subdev_req(lro, req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		ret = xclmgmt_connection_explore(lro, req->data);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	default:
@@ -797,7 +780,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
-	lro->data_buf.data_buf = NULL;
 	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
 		goto err_cdev;
