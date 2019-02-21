@@ -36,17 +36,15 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/mgmtpf/Makefile
   driver/xclng/drm/xocl/devices.h
   driver/xclng/drm/xocl/xocl_drv.h
+  driver/xclng/drm/xocl/xocl_drm.h
   driver/xclng/drm/xocl/xocl_subdev.c
   driver/xclng/drm/xocl/xocl_ctx.c
   driver/xclng/drm/xocl/xocl_thread.c
   driver/xclng/drm/xocl/xocl_test.c
-  driver/xclng/drm/xocl/userpf/xdma.c
-  driver/xclng/drm/xocl/userpf/qdma.c
   driver/xclng/drm/xocl/userpf/common.h
   driver/xclng/drm/xocl/userpf/xocl_bo.c
   driver/xclng/drm/xocl/userpf/xocl_bo.h
   driver/xclng/drm/xocl/userpf/xocl_drm.c
-  driver/xclng/drm/xocl/userpf/xocl_drm.h
   driver/xclng/drm/xocl/userpf/xocl_ioctl.c
   driver/xclng/drm/xocl/userpf/xocl_sysfs.c
   driver/xclng/drm/xocl/userpf/xocl_drv.c
@@ -95,9 +93,9 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/lib/libqdma/version.h
   driver/xclng/drm/xocl/lib/libqdma/xdev.h
   driver/xclng/drm/xocl/lib/libqdma/xdev.c
+  driver/xclng/drm/xocl/subdev/xdma.c
+  driver/xclng/drm/xocl/subdev/qdma.c
   driver/xclng/drm/xocl/subdev/feature_rom.c
-  driver/xclng/drm/xocl/subdev/mm_xdma.c
-  driver/xclng/drm/xocl/subdev/mm_qdma.c
   driver/xclng/drm/xocl/subdev/mb_scheduler.c
   driver/xclng/drm/xocl/subdev/xvc.c
   driver/xclng/drm/xocl/subdev/sysmon.c
@@ -106,7 +104,6 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/subdev/xiic.c
   driver/xclng/drm/xocl/subdev/mailbox.c
   driver/xclng/drm/xocl/subdev/icap.c
-  driver/xclng/drm/xocl/subdev/str_qdma.c
   driver/xclng/drm/xocl/subdev/mig.c
   driver/xclng/drm/xocl/subdev/xmc.c
   driver/xclng/drm/xocl/subdev/dna.c

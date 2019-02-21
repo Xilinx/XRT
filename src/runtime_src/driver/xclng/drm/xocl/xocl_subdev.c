@@ -118,7 +118,7 @@ static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 error:
 	platform_device_put(pldev);
 	return NULL;
-}	
+}
 
 int xocl_subdev_get_devinfo(uint32_t subdev_id,
 	struct xocl_subdev_info *info, struct resource *res)
@@ -187,7 +187,7 @@ int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 		goto failed;
 	}
 	/*
-	 * force probe to avoid dependence issue. if probing 
+	 * force probe to avoid dependence issue. if probing
 	 * failed, it could be this device is not detected on the board.
 	 * delete the device.
 	 */
@@ -204,6 +204,14 @@ int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 
 failed:
 	return (ret);
+}
+
+int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+
+	return xocl_subdev_create_one(xdev_hdl, 
+			&core->priv.subdev_info[id]);
 }
 
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,

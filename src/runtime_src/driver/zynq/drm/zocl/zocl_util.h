@@ -24,6 +24,8 @@
 #define zocl_dbg(dev, fmt, args...)     \
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
+#define MAX_CU_NUM 128
+
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
 
@@ -46,7 +48,8 @@ struct drm_zocl_dev {
 	resource_size_t          res_len;
 	phys_addr_t              host_mem;
 	resource_size_t          host_mem_len;
-	unsigned int             irq;
+	unsigned int		 cu_num;
+	unsigned int             irq[MAX_CU_NUM];
 	struct sched_exec_core  *exec;
 
 	struct mem_topology	*topology;

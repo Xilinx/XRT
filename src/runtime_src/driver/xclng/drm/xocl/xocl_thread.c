@@ -31,30 +31,40 @@ int health_thread(void *data)
 	return 0;
 }
 
-int health_thread_init(struct device *dev, char *thread_name,
-	struct xocl_health_thread_arg *arg, struct task_struct **pthread)
+int health_thread_start(xdev_handle_t xdev)
 {
-	xocl_info(dev, "init_health_thread: %s.", thread_name);
-	*pthread = kthread_run(health_thread, (void *)arg, thread_name);
+	struct xocl_dev_core *core = XDEV(xdev);
 
-	if(IS_ERR(*pthread)) {
-		xocl_err(dev, "ERROR! thread %s init", thread_name);
+	xocl_info(&core->pdev->dev, "init_health_thread");
+	core->health_thread = kthread_run(health_thread, &core->thread_arg,
+		"xocl_health_thread");
+
+	if(IS_ERR(core->health_thread)) {
+		xocl_err(&core->pdev->dev, "ERROR! health thread init");
+		core->health_thread = NULL;
 		return -ENOMEM;
 	}
 
-	arg->dev = dev;
+	core->thread_arg.dev = &core->pdev->dev;
 
 	return 0;
 }
 
-void health_thread_fini(struct device *dev, struct task_struct *pthread)
+int health_thread_stop(xdev_handle_t xdev)
 {
-	int ret = kthread_stop(pthread);
+	struct xocl_dev_core *core = XDEV(xdev);
+	int ret;
 
-	xocl_info(dev, "fini_health_thread. ret = %d\n", ret);
-	if(ret != EINTR) {
-		xocl_err(dev, "The health thread has terminated.");
+	if (!core->health_thread)
+		return 0;
+
+	ret = kthread_stop(core->health_thread);
+
+	xocl_info(&core->pdev->dev, "fini_health_thread. ret = %d\n", ret);
+	if(ret != -EINTR) {
+		xocl_err(&core->pdev->dev, "The health thread has terminated");
+		ret = 0;
 	}
 
-	return;
+	return ret;
 }

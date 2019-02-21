@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
 #include "zocl_drv.h"
 #include "sched_exec.h"
 
@@ -477,6 +478,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct resource res_mem;
 	void __iomem *map;
+	int index;
+	int irq;
 	int ret;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
@@ -498,6 +501,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->regs       = map;
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
+
+	/* Record and get IRQ number */
+	for (index = 0; index < MAX_CU_NUM; index++) {
+		irq = platform_get_irq(pdev, index);
+		if (irq < 0)
+			break;
+		DRM_INFO("CU(%d) IRQ %d\n", index, irq);
+		zdev->irq[index] = irq;
+	}
+	zdev->cu_num = index;
 
 	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
 	zdev->host_mem_len = 0;

@@ -19,6 +19,7 @@
 #define	_XOCL_BO_H
 
 #include "xocl_ioctl.h"
+#include "../xocl_drm.h"
 
 #define XOCL_BO_USERPTR (1 << 31)
 #define XOCL_BO_IMPORT  (1 << 30)
@@ -39,40 +40,6 @@
  * be accessed over ARE
  */
 #define XOCL_BO_ARE  (1 << 26)
-
-/**
- * struct drm_xocl_exec_metadata - Meta data for exec bo
- *
- * @state: State of exec buffer object
- * @active: Reverse mapping to kds command object managed exclusively by kds
- */
-struct drm_xocl_exec_metadata {
-	enum drm_xocl_execbuf_state state;
-	struct xocl_cmd            *active;
-};
-
-struct drm_xocl_bo {
-	/* drm base object */
-	struct drm_gem_object base;
-	struct drm_mm_node   *mm_node;
-	struct drm_xocl_exec_metadata metadata;
-	struct page         **pages;
-	struct sg_table      *sgt;
-	void                 *vmapping;
-	void                 *bar_vmapping;
-	struct dma_buf			*dmabuf;
-	const struct vm_operations_struct *dmabuf_vm_ops;
-	unsigned		dma_nsg;
-	unsigned              flags;
-	unsigned              type;
-};
-
-struct drm_xocl_unmgd {
-	struct page         **pages;
-	struct sg_table      *sgt;
-	unsigned int          npages;
-	unsigned              flags;
-};
 
 static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)
 {
@@ -115,11 +82,6 @@ static inline struct drm_gem_object *xocl_gem_object_lookup(struct drm_device *d
 #endif
 }
 
-static inline struct drm_xocl_bo *to_xocl_bo(struct drm_gem_object *bo)
-{
-	return (struct drm_xocl_bo *)bo;
-}
-
 static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 {
 	return bo->base.dev->dev_private;
@@ -160,16 +122,11 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
-void xocl_free_bo(struct drm_gem_object *obj);
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
-
-int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
-        uint64_t size, u32 write);
-void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd);
 
 #endif

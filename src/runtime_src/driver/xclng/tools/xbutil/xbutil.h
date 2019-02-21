@@ -85,8 +85,6 @@ enum subcommand {
     STATUS_SSPM,
     STREAM,
     STATUS_UNSUPPORTED,
-    MEM_QUERY_ECC,
-    MEM_RESET_ECC
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
@@ -125,9 +123,7 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM),
-    std::make_pair("query-ecc", MEM_QUERY_ECC),
-    std::make_pair("reset-ecc", MEM_RESET_ECC)
+    std::make_pair("stream", STREAM)
 };
 
 static const std::vector<std::pair<std::string, std::string>> flash_types = {
@@ -151,7 +147,8 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_ARE, "MEM_ARE"},
     {MEM_HBM, "MEM_HBM"},
     {MEM_BRAM, "MEM_BRAM"},
-    {MEM_URAM, "MEM_URAM"}
+    {MEM_URAM, "MEM_URAM"},
+    {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
 };
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
@@ -314,7 +311,7 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
-
+        std::vector<std::string> mm_buf;
         ss << "Device Memory Usage\n";
 
         pcidev::get_dev(m_idx)->user->sysfs_get(
@@ -341,12 +338,30 @@ public:
             return;
         }
 
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        if (!errmsg.empty()) {
+            ss << errmsg << std::endl;
+            lines.push_back(ss.str());
+            return;
+        }
+
+        if(mm_buf.empty()){
+            ss << "WARNING: 'memstat_raw' invalid, unable to report memory stats. "
+                << "Has the bitstream been loaded? See 'xbutil program'.";
+            lines.push_back(ss.str());
+            return;            
+        }
         unsigned numDDR = map->m_count;
         for(unsigned i = 0; i < numDDR; i++ ) {
             if(map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
+            if(!map->m_mem_data[i].m_used)
+                continue;
+            uint64_t memoryUsage, boCount;
+            std::stringstream mem_usage(mm_buf[i]);
+            mem_usage >> memoryUsage >> boCount;            
 
-            float percentage = (float)devstat.ddrMemUsed[i] * 100 /
+            float percentage = (float)memoryUsage * 100 /
                 (map->m_mem_data[i].m_size << 10);
             int nums_fiftieth = (int)percentage / 2;
             std::string str = std::to_string(percentage).substr(0, 4) + "%";
@@ -409,6 +424,7 @@ public:
         std::stringstream ss;
         std::string errmsg;
         std::vector<char> buf;
+        std::vector<std::string> mm_buf;
 
         ss << std::left << std::setw(48) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
@@ -447,10 +463,15 @@ public:
                 << "\n";
         }
 
+        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        if(mm_buf.empty())
+            return;
+
         for(unsigned i = 0; i < numDDR; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
-
+            if (!map->m_mem_data[i].m_used)
+                continue;
             ss << " [" << i << "] " <<
                 std::setw(16 - (std::to_string(i).length()) - 4) << std::left
                 << map->m_mem_data[i].m_tag;
@@ -478,11 +499,14 @@ public:
             } else {
                 ss << std::setw(12) << "Not Supp";
             }
+            uint64_t memoryUsage, boCount;
+            std::stringstream mem_stat(mm_buf[i]);
+            mem_stat >> memoryUsage >> boCount;
 
             ss << std::setw(8) << unitConvert(map->m_mem_data[i].m_size << 10);
-            ss << std::setw(16) << unitConvert(devstat.ddrMemUsed[i]);
+            ss << std::setw(16) << unitConvert(memoryUsage);
             // print size
-            ss << std::setw(8) << std::dec << devstat.ddrBOAllocated[i] << "\n";
+            ss << std::setw(8) << std::dec << boCount << "\n";
         }
 
         ss << "\nTotal DMA Transfer Metrics:" << "\n";
@@ -673,6 +697,9 @@ public:
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
             }
+            if(pcidev::get_dev(m_idx)->user){
+                pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
+            }
             sensor_tree::put( "board.info.idcode", idcode );
             sensor_tree::put( "board.info.fpga_name", fpga );
             sensor_tree::put( "board.info.dna", dna);
@@ -687,15 +714,17 @@ public:
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
-            unsigned short temp0, temp1, temp2, temp3;
+            unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+            if(pcidev::get_dev(m_idx)->mgmt){
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
+            }
             sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
             sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
             sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
         }
         sensor_tree::put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
@@ -708,6 +737,7 @@ public:
         sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
         sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
         sensor_tree::put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",           m_devinfo.m1v2Bottom );
         sensor_tree::put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
         sensor_tree::put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
         sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
@@ -871,10 +901,11 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_top.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v8_top.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.voltage"    ) << std::endl;
-        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::endl;
+        ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BTM" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_0v9.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
@@ -1359,8 +1390,6 @@ public:
 
     int validate(bool quick);
 
-    int printEccInfo(std::ostream& ostr) const;
-    int resetEccInfo();
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
     int testP2p();
