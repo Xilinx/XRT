@@ -86,6 +86,8 @@ namespace xdp {
     }
   }
 
+  // Convert monitor type to string name to detect types
+  // NOTE: these strings must match those in VPL
   void RTUtil::monitorTypeToString(e_monitor_type monitorType,
                                    std::string& monitorString)
   {
