@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for MPSoC based OpenCL accelerators.
  *
- * Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Soren Soe <soren.soe@xilinx.com>
@@ -465,7 +465,8 @@ configure(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
 	struct configure_cmd *cfg;
-	unsigned int i;
+	unsigned int i, j;
+	int ret;
 
 	if (sched_error_on(exec, opcode(cmd) != OP_CONFIGURE))
 		return 1;
@@ -494,6 +495,8 @@ configure(struct sched_cmd *cmd)
 	exec->cu_base_addr    = cfg->cu_base_addr;
 	exec->num_cu_masks    = ((exec->num_cus-1)>>5) + 1;
 
+	write_lock(&zdev->attr_rwlock);
+
 	if (!zdev->ert) {
 		if (cfg->ert)
 			DRM_INFO("No ERT scheduler on MPSoC, using KDS\n");
@@ -517,22 +520,47 @@ configure(struct sched_cmd *cmd)
 		exec->configured = 1;
 	}
 
-	/* Right now only support 32 CUs interrupts
-	 * If there are more than 32 CUs, fall back to polling mode
-	 */
-	if (exec->num_cus > 32) {
-		DRM_INFO("Only support up to 32 CUs interrupts\n");
-		exec->polling_mode = 1;
+	for (i  = 0; i < exec->num_cus; i++) {
+		exec->cu_addr_phy[i] = cfg->data[i];
+		SCHED_DEBUG("++ configure cu(%d) at 0x%x\n", i,
+		    exec->cu_addr_phy[i]);
 	}
 
 	if (zdev->ert || exec->polling_mode)
 		goto print_and_out;
 
+	/* Right now only support 32 CUs interrupts
+	 * If there are more than 32 CUs, fall back to polling mode
+	 */
+	if (exec->num_cus > 32) {
+		DRM_WARN("Only support up to 32 CUs interrupts, "
+		    "request %d CUs. Fall back to polling mode\n",
+		    exec->num_cus);
+		exec->polling_mode = 1;
+		goto print_and_out;
+	}
+
 	/* If re-config KDS is supported, should free old irq */
-	for (i = 0; i < exec->num_cus; i++)
-		request_irq(zdev->irq[i], sched_exec_isr, 0, "zocl", zdev);
+	for (i = 0; i < exec->num_cus; i++) {
+		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
+		    "zocl", zdev);
+		if (ret) {
+			/* Fail to install at least one interrupt
+			 * handler. We need to free the handler(s)
+			 * already installed and fall back to
+			 * polling mode.
+			 */
+			for (j = 0; j < i; j++)
+				free_irq(zdev->irq[j], zdev);
+			DRM_WARN("Fail to install CU %d interrupt handler: %d. "
+			    "Fall back to polling mode.\n", i, ret);
+			exec->polling_mode = 1;
+			break;
+		}
+	}
 
 print_and_out:
+	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("scheduler config ert(%d)", is_ert(cmd->ddev));
 	DRM_INFO("  cus(%d)", exec->num_cus);
 	DRM_INFO("  slots(%d)", exec->num_slots);
@@ -851,15 +879,20 @@ add_cmd(struct sched_cmd *cmd)
 static int
 add_gem_bo_cmd(struct drm_device *dev, struct drm_zocl_bo *bo)
 {
-	struct sched_cmd *cmd = get_free_sched_cmd();
+	struct sched_cmd *cmd;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct sched_packet *packet;
 	int ret;
+
+	cmd = get_free_sched_cmd();
+	if (!cmd)
+		return -ENOMEM;
 
 	SCHED_DEBUG("-> add_gem_bo_cmd\n");
 	cmd->ddev = dev;
 	cmd->sched = zdev->exec->scheduler;
 	cmd->buffer = (void *)bo;
+	cmd->exec = zdev->exec;
 	if (zdev->domain)
 		packet = (struct sched_packet *)bo->vmapping;
 	else
@@ -1394,6 +1427,9 @@ penguin_submit(struct sched_cmd *cmd)
 	cmd->cu_idx = get_free_cu(cmd);
 	if (cmd->cu_idx < 0)
 		return false;
+
+	/* track cu executions */
+	++cmd->exec->cu_usage[cmd->cu_idx];
 
 	cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 	if (cmd->slot_idx < 0)
