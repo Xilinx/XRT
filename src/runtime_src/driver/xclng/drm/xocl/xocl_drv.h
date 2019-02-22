@@ -624,6 +624,10 @@ struct mailbox_req {
 	char data[0];
 };
 
+#define MB_PROT_VER_MAJOR 0
+#define MB_PROT_VER_MINOR 5
+#define MB_PROTOCOL_VER   ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
+
 #define MB_PEER_CONNECTED 0x1
 #define MB_PEER_SAME_DOM  0x2
 #define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)

@@ -161,9 +161,10 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define MAX_MSG_QUEUE_LEN 5
 
 #define MB_CONN_INIT	(0x1<<0)
-#define MB_CONN_SYN		(0x1<<1)
-#define MB_CONN_ACK		(0x1<<2)
-#define MB_CONN_FIN		(0x1<<3)
+#define MB_CONN_SYN 	(0x1<<1)
+#define MB_CONN_ACK 	(0x1<<2)
+#define MB_CONN_FIN 	(0x1<<3)
+
 /*
  * Mailbox IP register layout
  */
@@ -311,7 +312,7 @@ struct mailbox {
 	uint64_t mbx_conn_id;
 	enum conn_state mbx_state;
 	bool mbx_established;
-	char mbx_drv_ver[16];
+	uint32_t mbx_prot_ver;
 
 	void *mbx_kaddr;
 };
@@ -341,7 +342,7 @@ struct mailbox_conn{
 	void *kaddr;
 	phys_addr_t paddr;
 	uint32_t crc32;
-	char ver[16];
+	uint32_t ver;
 	uint64_t sec_id;
 };
 
@@ -1356,7 +1357,7 @@ static int mailbox_connection_notify(struct platform_device *pdev, uint64_t sec_
 	mb_conn.paddr = virt_to_phys(mbx->mbx_kaddr);
 	mb_conn.crc32 = crc32c_le(~0, mbx->mbx_kaddr, PAGE_SIZE);
 	mb_conn.flag = flag;
-	memcpy(mb_conn.ver, mbx->mbx_drv_ver, 16);
+	mb_conn.ver = mbx->mbx_prot_ver;
 
 	if(sec_id != 0){
 		mb_conn.sec_id = sec_id;
@@ -1448,6 +1449,7 @@ static void connect_state_handler(struct mailbox *mbx, struct mailbox_conn *conn
 				if(mbx->mbx_state == CONN_SYN_SENT){
 					if(!mailbox_connection_explore(mbx->mbx_pdev, conn)){
 						mbx->mbx_paired |= 0x2;
+						MBX_INFO(mbx, "mailbox mbx_prot_ver %x", mbx->mbx_prot_ver);
 					}
 					ret = mailbox_connection_notify(mbx->mbx_pdev, conn->sec_id, MB_CONN_ACK);
 					if(ret)
@@ -1521,7 +1523,6 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 			 */
 			if(conn->flag == MB_CONN_SYN){
 				init_conn.flag = MB_CONN_INIT;
-				mbx->mbx_state = CONN_START;
 				connect_state_handler(mbx, &init_conn);
 			}
 		}
@@ -1792,6 +1793,7 @@ static int mailbox_probe(struct platform_device *pdev)
 
 	conn.flag = MB_CONN_INIT;
 	connect_state_handler(mbx, &conn);
+	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
 	MBX_INFO(mbx, "successfully initialized");
 	return 0;
