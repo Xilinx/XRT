@@ -169,14 +169,6 @@ struct xclmgmt_ioc_freqscaling {
 	unsigned short ocl_target_freq[XCLMGMT_NUM_SUPPORTED_CLOCKS];
 };
 
-
-struct xclmgmt_mailbox_conn{
-	void *kaddr;
-	uint64_t paddr;
-	uint32_t crc32;
-};
-
-
 #define XCLMGMT_IOCINFO		  _IOR (XCLMGMT_IOC_MAGIC,XCLMGMT_IOC_INFO,		 struct xclmgmt_ioc_info)
 #define XCLMGMT_IOCICAPDOWNLOAD	  _IOW (XCLMGMT_IOC_MAGIC,XCLMGMT_IOC_ICAP_DOWNLOAD,	 struct xclmgmt_ioc_bitstream)
 #define XCLMGMT_IOCICAPDOWNLOAD_AXLF	 _IOW(XCLMGMT_IOC_MAGIC,XCLMGMT_IOC_ICAP_DOWNLOAD_AXLF,	 struct xclmgmt_ioc_bitstream_axlf)
