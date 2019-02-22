@@ -53,12 +53,12 @@ get_ini_path()
 {
   auto ini_path = boost::filesystem::path(valueOrEmpty(std::getenv("SDACCEL_INI_PATH")));
   if (ini_path.empty()) {
-    auto self_path = boost::filesystem::path(get_self_path());
-    if (self_path.empty()) {
-      auto curr_path = boost::filesystem::current_path();
-      if (curr_path.empty())
-        return "";
-      ini_path = curr_path;
+    auto self_path = boost::filesystem::path(get_self_path())/"sdaccel.ini";
+    if (self_path.empty() || !boost::filesystem::exists(self_path)) {
+      auto curr_path = boost::filesystem::current_path()/"sdaccel.ini";
+      if(boost::filesystem::exists(curr_path))
+        return curr_path.string();
+      ini_path = "";
     }
     else
       ini_path = self_path.parent_path();
@@ -72,8 +72,6 @@ get_ini_path()
     ? ini_path.string()
     : "";
 }
-
-
 
 struct tree
 {

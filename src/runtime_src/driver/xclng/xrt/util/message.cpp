@@ -15,6 +15,7 @@
  */
 
 #include "message.h"
+#include "driver/xclng/xrt/util/t_time.h"
 
 #include "config_reader.h"
 #include <unistd.h>
@@ -35,7 +36,6 @@
 # include <linux/limits.h>
 # include <sys/stat.h>
 #endif
-
 
 namespace {
 
@@ -178,10 +178,7 @@ file_dispatch::file_dispatch(const std::string &file) {
   handle << "Build hash: " << xrt_build_version_hash << std::endl;
   handle << "Build date: " << xrt_build_version_date << std::endl;
   handle << "Git branch: " << xrt_build_version_branch<< std::endl;
-  //timestamp
-  auto time = std::chrono::system_clock::now();
-  std::time_t t = std::chrono::system_clock::to_time_t(time);
-  handle << "[" << strtok(std::ctime(&t), "\n") << "]" << std::endl;
+  handle << xrt_core::timestamp() << std::endl;
   handle << "PID: " << getpid() << std::endl;
   handle << "UID: " << getuid() << std::endl;
   //hostname
@@ -198,9 +195,7 @@ file_dispatch::~file_dispatch() {
 void
 file_dispatch::send(severity_level l, const char* tag, const char* msg) {
 
-  auto time = std::chrono::system_clock::now();
-  std::time_t t = std::chrono::system_clock::to_time_t(time);
-  handle << "[" << strtok(std::ctime(&t), "\n") << "] [" << tag << "] Tid: "
+  handle << xrt_core::timestamp() <<" [" << tag << "] Tid: "
          << std::this_thread::get_id() << ", " << " " << severityMap[l]
          << msg << std::endl;
 }
@@ -213,10 +208,7 @@ console_dispatch::console_dispatch() {
   std::cout << "Git branch: " << xrt_build_version_branch<< std::endl;
   std::cout << "PID: " << getpid() << std::endl;
   std::cout << "UID: " << getuid() << std::endl;
-  //timestamp
-  auto time = std::chrono::system_clock::now();
-  std::time_t t = std::chrono::system_clock::to_time_t(time);
-  std::cout << "[" << strtok(std::ctime(&t), "\n") << "]" << std::endl;
+  std::cout << xrt_core::timestamp() << std::endl;
   //hostname
   char hostname[HOST_NAME_MAX];
   gethostname(hostname, HOST_NAME_MAX);
@@ -225,9 +217,7 @@ console_dispatch::console_dispatch() {
 }
 void
 console_dispatch::send(severity_level l, const char* tag, const char* msg) {
-  auto time = std::chrono::system_clock::now();
-  std::time_t t = std::chrono::system_clock::to_time_t(time);
-  std::cout << "[" << strtok(std::ctime(&t), "\n") << "] [" << tag << "] Tid:"
+  std::cout << xrt_core::timestamp() << " [" << tag << "] Tid:"
             << std::this_thread::get_id() << ", "<< " " << severityMap[l]
             << msg << std::endl;
 }
