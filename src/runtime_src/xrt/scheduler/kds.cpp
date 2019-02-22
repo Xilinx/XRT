@@ -184,8 +184,6 @@ monitor(const xrt::device* device)
   }
 }
 
-static std::thread s_monitor;
-
 } // namespace
 
 
@@ -232,50 +230,8 @@ stop()
 }
 
 void
-init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map)
+init(xrt::device* device, const axlf*)
 {
-  auto cudma = xrt::config::get_ert_cudma();
-  if (cudma && regmap_size>=0x210 && is_51_dsa(device)) {
-    // bug in cudma.c HW
-    xrt::message::send(xrt::message::severity_level::WARNING,
-                       "Disabling CUDMA. Kernel register map size '"
-                       + std::to_string(regmap_size)
-                       + " bytes' exceeds CUDMA limit '"
-                       + std::to_string(0x210)
-                       + " bytes'.");
-    cudma = false;
-  }
-
-  auto configure = std::make_shared<command>(device,ERT_CONFIGURE);
-  auto epacket = xrt::command_cast<ert_configure_cmd*>(configure.get());
-
-  // variables (one word each)
-  epacket->slot_size = xrt::config::get_ert_slotsize();
-  epacket->num_cus = num_cus;
-  epacket->cu_shift = cu_offset;
-  epacket->cu_base_addr = cu_base_addr;
-
-  // features (one word) per sdaccel.ini
-  epacket->ert     = xrt::config::get_ert();
-  epacket->polling = xrt::config::get_ert_polling();
-  epacket->cu_dma  = cudma;
-  epacket->cu_isr  = cu_isr && xrt::config::get_ert_cuisr();
-  epacket->cq_int  = xrt::config::get_ert_cqint();
-
-  // cu addr map
-  std::copy(cu_addr_map.begin(), cu_addr_map.end(), epacket->data);
-
-  // payload size
-  epacket->count = 5 + cu_addr_map.size();
-
-  XRT_DEBUG(std::cout,"configure scheduler(",getpid(),")\n");
-  auto exec_bo = configure->get_exec_bo();
-  device->exec_buf(exec_bo);
-
-  // wait for command to complete
-  while (!is_command_done(configure))
-    while (device->exec_wait(1000)==0) ;
-
   // create a submitted command queue for this device if necessary,
   // create a command monitor thread for this device if necessary
   std::lock_guard<std::mutex> lk(s_mutex);
@@ -285,8 +241,6 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
     s_device_cmds.emplace(device,command_queue_type());
     s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
   }
-
-  XRT_DEBUG(std::cout,"configure complete(",getpid(),")\n");
 }
 
 }} // kds,xrt
