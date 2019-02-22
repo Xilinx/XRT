@@ -187,6 +187,7 @@ struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
 	int (*intr_register)(xdev_handle_t xdev, u32 intr,
 		irq_handler_t handler, void *arg);
+	int (*reset)(xdev_handle_t xdev);
 };
 
 #define	XDEV(dev)	((struct xocl_dev_core *)(dev))
@@ -196,6 +197,9 @@ struct xocl_pci_funcs {
 	XDEV_PCIOPS(xdev)->intr_config(xdev, intr, en)
 #define	xocl_user_interrupt_reg(xdev, intr, handler, arg)	\
 	XDEV_PCIOPS(xdev)->intr_register(xdev, intr, handler, arg)
+#define xocl_reset(xdev)			\
+	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
+	-ENODEV)
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
@@ -682,6 +686,7 @@ struct xocl_icap_funcs {
 		const void __user *arg, enum axlf_section_kind kind);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	void (*get_uuid)(struct platform_device *pdev, xuid_t *uuid_p);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -730,6 +735,9 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
 	0)
+#define	xocl_icap_get_uuid(xdev, uuid_p)					\
+	(ICAP_OPS(xdev) ? 						\
+	 ICAP_OPS(xdev)->get_uuid(ICAP_DEV(xdev), uuid_p) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -746,6 +754,9 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
+
+int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
+int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
 int xocl_subdev_get_devinfo(uint32_t subdev_id,
 	struct xocl_subdev_info *subdev_info, struct resource *res);

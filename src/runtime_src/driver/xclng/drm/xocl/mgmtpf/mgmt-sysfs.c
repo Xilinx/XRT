@@ -180,6 +180,97 @@ static ssize_t ready_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(ready);
 
+static ssize_t dev_offline_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	int val = lro->core.offline ? 1 : 0;
+
+	return sprintf(buf, "%d\n", val);
+}
+
+static ssize_t dev_offline_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int ret;
+	u32 offline;
+
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+		return -EINVAL;
+	}
+
+	device_lock(dev);
+	if (offline) {
+		ret = health_thread_stop(lro);
+		if (ret) {
+			xocl_err(dev, "stop health thread failed");
+			return -EIO;
+		}
+		xocl_subdev_destroy_all(lro);
+		lro->core.offline = true;
+	} else {
+		ret = xocl_subdev_create_all(lro, lro->core.priv.subdev_info,
+			lro->core.priv.subdev_num);
+		if (ret) {
+			xocl_err(dev, "Online subdevices failed");
+			return -EIO;
+		}
+		ret = health_thread_start(lro);
+		if (ret) {
+			xocl_err(dev, "start health thread failed");
+			return -EIO;
+		}
+		lro->core.offline = false;
+	}
+	device_unlock(dev);
+
+	return count;
+}
+
+static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
+
+static ssize_t subdev_online_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int ret;
+	char *name = (char *)buf;
+
+	device_lock(dev);
+	ret = xocl_subdev_create_by_name(lro, name);
+	if (ret) {
+		xocl_err(dev, "create subdev by name failed");
+	} else
+		ret = count;
+	device_unlock(dev);
+
+	return ret;
+}
+
+static DEVICE_ATTR(subdev_online, 0200, NULL, subdev_online_store);
+
+static ssize_t subdev_offline_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int ret;
+	char *name = (char *)buf;
+
+	device_lock(dev);
+	ret = xocl_subdev_destroy_by_name(lro, name);
+	if (ret) {
+		xocl_err(dev, "destroy subdev by name failed");
+	} else
+		ret = count;
+	device_unlock(dev);
+
+	return ret;
+}
+
+static DEVICE_ATTR(subdev_offline, 0200, NULL, subdev_offline_store);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -198,6 +289,9 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
 	&dev_attr_feature_rom_offset.attr,
+	&dev_attr_dev_offline.attr,
+	&dev_attr_subdev_online.attr,
+	&dev_attr_subdev_offline.attr,
 	NULL,
 };
 

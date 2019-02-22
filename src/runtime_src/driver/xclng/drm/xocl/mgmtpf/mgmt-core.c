@@ -544,9 +544,17 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	return 0;
 }
 
+static int xclmgmt_reset(xdev_handle_t xdev_hdl)
+{
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+
+	return reset_hot_ioctl(lro);
+}
+
 struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_config = xclmgmt_intr_config,
 	.intr_register = xclmgmt_intr_register,
+	.reset = xclmgmt_reset,
 };
 
 static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, char *data_ptr)
@@ -763,13 +771,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (rc)
 		goto err_alloc_minor;
 
-	rc = pci_request_regions(pdev, DRV_NAME);
-	/* could not request all regions? */
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_request_regions() = %d\n", rc);
-		goto err_regions;
-	}
-
 	dev_info = (struct xocl_board_private *)id->driver_data;
 	xocl_fill_dsa_priv(lro, dev_info);
 
@@ -807,8 +808,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 err_cdev:
 	unmap_bars(lro);
 err_map:
-	pci_release_regions(pdev);
-err_regions:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	dev_set_drvdata(&pdev->dev, NULL);
@@ -845,7 +844,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	/* unmap the BARs */
 	unmap_bars(lro);
 	pci_disable_device(pdev);
-	pci_release_regions(pdev);
 
 	xocl_free_dev_minor(lro);
 
