@@ -64,8 +64,8 @@ else ()
     )
 
   add_custom_target(
-    xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst core/xma.rst core/xmaplugin.rst
+    xrt_docs
+    DEPENDS ${XRT_DOC_SRC} core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst core/xma.rst core/xmaplugin.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND mkdir -p html
     COMMAND ${SPHINX_EXECUTABLE} ${DOC_TOC_DIR} html
