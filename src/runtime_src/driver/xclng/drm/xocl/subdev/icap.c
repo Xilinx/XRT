@@ -2199,8 +2199,6 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 		if (err >= 0)
 			err = icap->icap_bitstream_ref;
-		if (err==1) /* reset on first reference */
-			xocl_exec_reset(xocl_get_xdev(pdev));
 	}
 	else {
 		mutex_unlock(&icap->icap_lock);
@@ -2211,6 +2209,9 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 		  pid, id, icap->icap_bitstream_ref, err);
 
 	mutex_unlock(&icap->icap_lock);
+
+	if (err==1) /* reset on first reference */
+		xocl_exec_reset(xocl_get_xdev(pdev));
 
 	return err;
 }
@@ -2353,21 +2354,14 @@ static uint64_t icap_get_data(struct platform_device *pdev,
 		case IDCODE:
 			target = icap->idcode;
 			break;
+		case XCLBIN_UUID:
+			target = (uint64_t)&icap->icap_bitstream_uuid;
+			break;
 		default:
 			break;
 	}
 	mutex_unlock(&icap->icap_lock);
 	return target;
-}
-
-void icap_get_uuid(struct platform_device *pdev,
-		xuid_t *uuid_p)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-
-	mutex_lock(&icap->icap_lock);
-	uuid_copy(uuid_p, &icap->icap_bitstream_uuid);
-	mutex_unlock(&icap->icap_lock);
 }
 
 /* Kernel APIs exported from this sub-device driver. */
@@ -2383,7 +2377,6 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
 	.get_data = icap_get_data,
-	.get_uuid = icap_get_uuid,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,

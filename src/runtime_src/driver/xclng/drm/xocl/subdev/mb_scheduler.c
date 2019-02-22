@@ -1170,25 +1170,26 @@ static void
 exec_reset(struct exec_core *exec)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	xuid_t xclbin_id;
+	xuid_t *xclbin_id;
 
 	mutex_lock(&exec->exec_lock);
 
-	xocl_icap_get_uuid(xdev, &xclbin_id);
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
 
 	userpf_info(xdev,"exec_reset(%d) cfg(%d)\n",exec->uid,exec->configured);
-	userpf_info(xdev,"exec->xclbin(%pUb),xdev->xclbin(%pUb)\n",&exec->xclbin_id,&xclbin_id);
 
 	// only reconfigure the scheduler on new xclbin
-	if (uuid_equal(&exec->xclbin_id, &xclbin_id) && exec->configured) {
+	if (!xclbin_id || (uuid_equal(&exec->xclbin_id, xclbin_id) &&
+				exec->configured)) {
 		exec->stopped = false;
 		exec->configured = false;  // TODO: remove, but hangs ERT because of in between AXI resets
 		goto out;
 	}
 
+	userpf_info(xdev,"exec->xclbin(%pUb),xclbin(%pUb)\n",&exec->xclbin_id,xclbin_id);
 	userpf_info(xdev,"exec_reset resets for new xclbin");
 	memset(exec->cu_usage,0,MAX_CUS*sizeof(u32));
-	uuid_copy(&exec->xclbin_id, &xclbin_id);
+	uuid_copy(&exec->xclbin_id, xclbin_id);
 	exec->num_cus = 0;
 	exec->num_cdma = 0;
 
@@ -2286,13 +2287,13 @@ static int
 xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
 {
 	int pid = pid_nr(task_tgid(current));
-	xuid_t xclbin_id;
+	xuid_t *xclbin_id;
 
 	if (client->xclbin_locked)
 		return 0;
 
-	xocl_icap_get_uuid(xdev, &xclbin_id);
-	if (!uuid_equal(&xclbin_id, &client->xclbin_id)) {
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	if (!xclbin_id || !uuid_equal(xclbin_id, &client->xclbin_id)) {
 		userpf_err(xdev, "device xclbin does not match context xclbin, "
 			"cannot obtain lock for process %d", pid);
 		return 1;
@@ -2465,12 +2466,12 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	int pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
-	xuid_t xclbin_id;
+	xuid_t *xclbin_id;
 
 	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
-	xocl_icap_get_uuid(xdev, &xclbin_id);
-	if (!uuid_equal(&xclbin_id, &args->xclbin_id)) {
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
 		goto out;
 	}
@@ -2492,11 +2493,11 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		--exec->ip_reference[args->cu_index];
 		if (!--client->num_cus) {
 			// We just gave up the last context, unlock the xclbin
-			ret = xocl_icap_unlock_bitstream(xdev, &xclbin_id,pid);
+			ret = xocl_icap_unlock_bitstream(xdev, xclbin_id,pid);
 			client->xclbin_locked=false;
 		}
 		userpf_info(xdev,"CTX del(%pUb, %d, %u)",
-			&xclbin_id, pid, args->cu_index);
+			xclbin_id, pid, args->cu_index);
 		goto out;
 	}
 
@@ -2533,7 +2534,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 			clear_bit(args->cu_index, client->cu_bitmap);
 			goto out;
 		} else {
-			uuid_copy(&client->xclbin_id, &xclbin_id);
+			uuid_copy(&client->xclbin_id, xclbin_id);
 		}
 	}
 
@@ -2541,7 +2542,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	++client->num_cus; // explicitly acquired
 	++exec->ip_reference[args->cu_index];
 	xocl_info(&pdev->dev, "CTX add(%pUb, %d, %u, %d)",
-		&xclbin_id, pid, args->cu_index,acquire_lock);
+		xclbin_id, pid, args->cu_index,acquire_lock);
 out:
 	mutex_unlock(&xdev->ctx_list_lock);
 	mutex_unlock(&client->lock);

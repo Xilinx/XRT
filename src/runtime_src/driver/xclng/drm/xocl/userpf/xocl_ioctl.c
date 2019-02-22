@@ -225,7 +225,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	int preserve_mem = 0;
 	struct mem_topology *new_topology, *topology;
 	struct xocl_dev *xdev = drm_p->xdev;
-	xuid_t xclbin_id;
+	xuid_t *xclbin_id;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -248,7 +248,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
-	xocl_icap_get_uuid(xdev, &xclbin_id);
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	if (!xclbin_id)
+		return -EINVAL;
 	/*
 	 * Support for multiple processes
 	 * 1. We lock &xdev->ctx_list_lock so no new contexts can be opened and no live contexts
@@ -259,7 +261,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 *    previous context (which was subsequently closed), hence we check for exec BO count.
 	 *    If exec BO are outstanding we return -EBUSY
 	 */
-	if (!uuid_equal(&xclbin_id, &bin_obj.m_header.uuid)) {
+	if (!uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
 		if (atomic_read(&xdev->outstanding_execs)) {
 			printk(KERN_ERR "Current xclbin is busy, can't change\n");
 			return -EBUSY;
@@ -275,7 +277,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
 
-	if (uuid_equal(&xclbin_id, &bin_obj.m_header.uuid)) {
+	if (uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
 		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
 		goto done;
 	}
@@ -351,7 +353,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	//Populate with "this" bitstream, so avoid redownload the next time
-	userpf_info(xdev, "Loaded xclbin %pUb", &xclbin_id);
+	userpf_info(xdev, "Loaded xclbin %pUb", xclbin_id);
 
 done:
 	if (size < 0)
@@ -374,7 +376,7 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct client_ctx *client = filp->driver_priv;
 	int err = 0;
-	xuid_t xclbin_id;
+	xuid_t *xclbin_id;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr);
@@ -384,8 +386,9 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	 * when a lock is eventually acquired it can be verified to be against to
 	 * be a lock on expected xclbin
 	 */
-	xocl_icap_get_uuid(xdev, &xclbin_id);
-	uuid_copy(&client->xclbin_id, (err ? &uuid_null : &xclbin_id));
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	uuid_copy(&client->xclbin_id,
+			((err || !xclbin_id) ? &uuid_null : xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
 }

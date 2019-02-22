@@ -289,6 +289,7 @@ enum data_kind {
 	MEMTOPO_AXLF,
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
+	XCLBIN_UUID,
 };
 
 
@@ -686,7 +687,6 @@ struct xocl_icap_funcs {
 		const void __user *arg, enum axlf_section_kind kind);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
-	void (*get_uuid)(struct platform_device *pdev, xuid_t *uuid_p);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -735,9 +735,6 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
 	0)
-#define	xocl_icap_get_uuid(xdev, uuid_p)					\
-	(ICAP_OPS(xdev) ? 						\
-	 ICAP_OPS(xdev)->get_uuid(ICAP_DEV(xdev), uuid_p) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
