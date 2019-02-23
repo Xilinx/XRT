@@ -655,9 +655,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_response(xdev, reqid, buf, len)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
 	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req)					\
+#define	xocl_peer_notify(xdev, req, reqlen)					\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, sizeof (*req)) : -ENODEV)
+	req, reqlen) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)

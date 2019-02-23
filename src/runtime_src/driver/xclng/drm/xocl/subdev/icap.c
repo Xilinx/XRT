@@ -1627,6 +1627,83 @@ free_buffers:
 	return err;
 }
 
+
+static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
+{
+	int err = 0;
+	struct icap *icap = platform_get_drvdata(pdev);
+	int64_t resp = 0;
+	size_t resplen = sizeof(resp);
+	struct mailbox_req_bitstream_lock bitstream_lock = {0};
+	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	/* if there is no user there
+	 * ask mgmt to lock the bitstream
+	 */
+	if(icap->icap_bitstream_ref == 0){
+			mb_req = (struct mailbox_req *)vmalloc(reqlen);
+			if(!mb_req){
+				err = -ENOMEM;
+				goto done;
+			}
+
+			mb_req->req = MAILBOX_REQ_LOCK_BITSTREAM;
+			uuid_copy(&bitstream_lock.uuid, id);
+
+			memcpy(mb_req->data, &bitstream_lock, data_len);
+
+			err = xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+				mb_req, reqlen, &resp, &resplen, NULL, NULL);
+
+			if(err){
+				err = -ENODEV;
+				goto done;
+			}
+			if(resp < 0){
+				err = (int32_t)resp;
+				goto done;
+			}
+	}
+
+done:
+	vfree(mb_req);
+	return err;
+}
+
+static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
+{
+	int err = 0;
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct mailbox_req_bitstream_lock bitstream_lock = {0};
+	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	/* if there is no user there
+	 * ask mgmt to unlock the bitstream
+	 */
+	if(icap->icap_bitstream_ref == 0){
+			mb_req = (struct mailbox_req *)vmalloc(reqlen);
+			if(!mb_req){
+				err = -ENOMEM;
+				goto done;
+			}
+
+			mb_req->req = MAILBOX_REQ_UNLOCK_BITSTREAM;
+			memcpy(mb_req->data, &bitstream_lock, data_len);
+
+			err = xocl_peer_notify(XOCL_PL_DEV_TO_XDEV(pdev), mb_req, reqlen);
+			if(err){
+				err = -ENODEV;
+				goto done;
+			}
+	}
+done:
+	vfree(mb_req);
+	return err;
+}
+
+
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const void __user *u_xclbin)
 {
@@ -1812,9 +1889,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		mutex_lock(&icap->icap_lock);
 
 		if(icap_bitstream_in_use(icap, pid)){
-			if (uuid_equal(&bin_obj.m_header.uuid, &icap->icap_bitstream_uuid))
-				err = add_user(icap, pid);
-			else {
+			if (!uuid_equal(&bin_obj.m_header.uuid, &icap->icap_bitstream_uuid)){
 				err = -EBUSY;
 				goto done;
 			}
@@ -1893,11 +1968,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = icap_verify_bitstream_axlf(pdev, copy_buffer, u_xclbin);
 
 done:
-	if(!ICAP_PRIVILEGED(icap)){
-		if(del_user(icap, pid)){
-			ICAP_INFO(icap, "%s fail to delete user", __FUNCTION__);
-		}
-	}
 	mutex_unlock(&icap->icap_lock);
 	vfree(mb_req);
 	vfree(copy_buffer);
@@ -2131,27 +2201,28 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 	mutex_lock(&icap->icap_lock);
 
-	if (!ICAP_PRIVILEGED(icap)) {
-		if (uuid_equal(id, &icap->icap_bitstream_uuid))
-			err = add_user(icap, pid);
-		else
-			err = -EBUSY;
+	if (!ICAP_PRIVILEGED(icap)){
+		err = __icap_lock_peer(pdev, id);
+		if(err < 0)
+			goto done;
+	}
 
-		if (err >= 0)
-			err = icap->icap_bitstream_ref;
+	if (uuid_equal(id, &icap->icap_bitstream_uuid))
+		err = add_user(icap, pid);
+	else
+		err = -EBUSY;
+
+	if (err >= 0)
+		err = icap->icap_bitstream_ref;
+
+	if (!ICAP_PRIVILEGED(icap)){
 		if (err==1) /* reset on first reference */
 			xocl_exec_reset(xocl_get_xdev(pdev));
 	}
-	else {
-		mutex_unlock(&icap->icap_lock);
-		BUG_ON("mgmt should not call icap_lock");
-	}
-
 	ICAP_INFO(icap, "proc %d try to lock bitstream %pUb, ref=%d, err=%d",
 		  pid, id, icap->icap_bitstream_ref, err);
-
+done:
 	mutex_unlock(&icap->icap_lock);
-
 	return err;
 }
 
@@ -2166,21 +2237,26 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 	mutex_lock(&icap->icap_lock);
 
+	/* Force unlock. */
+	if (uuid_is_null(id)){
+		del_all_users(icap);
+	}
+	else if (uuid_equal(id, &icap->icap_bitstream_uuid)){
+		err = del_user(icap, pid);
+	}
+	else
+		err = -EINVAL;
+
 	if (!ICAP_PRIVILEGED(icap)) {
-		/* Force unlock. */
-		if (uuid_is_null(id))
-			del_all_users(icap);
-		else if (uuid_equal(id, &icap->icap_bitstream_uuid))
-			err = del_user(icap, pid);
-		else
-			err = -EINVAL;
-		if (err >= 0)
-			err = icap->icap_bitstream_ref;
+		__icap_unlock_peer(pdev, id);
+	}
+
+	if (err >= 0)
+		err = icap->icap_bitstream_ref;
+
+	if (!ICAP_PRIVILEGED(icap)){	
 		if (err==0)
 			xocl_exec_stop(xocl_get_xdev(pdev));
-	} else {
-		mutex_unlock(&icap->icap_lock);
-		BUG_ON("mgmt should not call icap_unlock");
 	}
 
 	ICAP_INFO(icap, "proc %d try to unlock bitstream %pUb, ref=%d, err=%d",
