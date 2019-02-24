@@ -121,7 +121,8 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 
 	/* Convert gem object to xocl_bo extension */
 	xobj = to_xocl_bo(obj);
-	if (!xocl_bo_execbuf(xobj)) {
+	if (!xocl_bo_execbuf(xobj) ||
+		xocl_exec_convert(xdev, filp, xobj) != 0) {
 		ret = -EINVAL;
 		goto out;
 	}

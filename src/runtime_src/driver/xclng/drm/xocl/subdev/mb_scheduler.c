@@ -2018,6 +2018,77 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 	return ret;
 }
 
+static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+{
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+	xobj = to_xocl_bo(obj);
+
+	if (obj->size <= off || obj->size < off + size || !xobj->mm_node) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		drm_gem_object_unreference_unlocked(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	drm_gem_object_unreference_unlocked(obj);
+	return 0;
+}
+
+static int convert_execbuf(struct platform_device *pdev, struct drm_file *filp,
+	struct drm_xocl_bo *xobj)
+{
+	int i;
+	int ret;
+	size_t src_off;
+	size_t dst_off;
+	size_t sz;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct ert_start_copybo_cmd *scmd =
+		(struct ert_start_copybo_cmd*)xobj->vmapping;
+
+	/* Only convert COPYBO cmd for now. */
+	if (scmd->opcode != ERT_START_COPYBO)
+		return 0;
+
+	sz = scmd->size * COPYBO_UNIT;
+
+	src_off = scmd->src_addr_hi;
+	src_off <<= 32;
+	src_off |= scmd->src_addr_lo;
+	ret = get_bo_paddr(xocl_get_xdev(pdev), filp,
+		scmd->src_bo_hdl, src_off, sz, &src_addr);
+	if (ret != 0)
+		return ret;
+
+	dst_off = scmd->dst_addr_hi;
+	dst_off <<= 32;
+	dst_off |= scmd->dst_addr_lo;
+	ret = get_bo_paddr(xocl_get_xdev(pdev), filp,
+		scmd->dst_bo_hdl, dst_off, sz, &dst_addr);
+	if (ret != 0)
+		return ret;
+
+	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+		scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+	scmd->opcode = ERT_START_CU;
+
+	return 0;
+}
+
 /**
  * reset() - Reset device exec data structure
  *
@@ -2109,6 +2180,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.poll_client = poll_client,
 	.reset = reset,
 	.validate = validate,
+	.convert = convert_execbuf,
 };
 
 /* sysfs */

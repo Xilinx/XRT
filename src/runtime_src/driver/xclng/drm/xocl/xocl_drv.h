@@ -328,6 +328,7 @@ struct xocl_mb_scheduler_funcs {
 		poll_table *wait, void *priv);
 	int (*reset)(struct platform_device *pdev);
 	int (*validate)(struct platform_device *pdev, struct client_ctx *client, const struct drm_xocl_bo *cmd);
+	int (*convert)(struct platform_device *pdev, struct drm_file *filp, struct drm_xocl_bo *xobj);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
@@ -365,6 +366,10 @@ struct xocl_mb_scheduler_funcs {
 #define	XOCL_DDR_COUNT(xdev)			\
 	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
+#define	xocl_exec_convert(xdev, filp, bo)			\
+	(MB_SCHEDULER_DEV(xdev) ? 				\
+	 MB_SCHEDULER_OPS(xdev)->convert(MB_SCHEDULER_DEV(xdev), filp, bo) : \
+        -ENODEV)
 
 /* sysmon callbacks */
 enum {
