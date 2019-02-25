@@ -79,9 +79,7 @@ namespace xdp {
       "Parameter", "Element", "Value"
     };
     writeTableHeader(getStream(), "Guidance Parameters", GuidanceColumnLabels);
-    writeGuidanceMetadataSummary(profile, mPluginHandle->getDeviceExecTimesMap(), 
-                                          mPluginHandle->getComputeUnitCallsMap(),
-                                          mPluginHandle->getKernelCountsMap());
+    writeGuidanceMetadataSummary(profile);
     writeTableFooter(getStream());
   }
 

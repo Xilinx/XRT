@@ -467,11 +467,12 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  void ProfileWriterI::writeGuidanceMetadataSummary(RTProfile *profile,
-      const XDPPluginI::GuidanceMap  &deviceExecTimesMap,
-      const XDPPluginI::GuidanceMap  &computeUnitCallsMap,
-      const XDPPluginI::GuidanceMap2 &kernelCountsMap)
+  void ProfileWriterI::writeGuidanceMetadataSummary(RTProfile *profile)
   {
+    auto deviceExecTimesMap = mPluginHandle->getDeviceExecTimesMap();
+    auto computeUnitCallsMap = mPluginHandle->getComputeUnitCallsMap();
+    auto kernelCountsMap = mPluginHandle->getKernelCountsMap();
+
     // 1. Device execution times
     std::string checkName;
     XDPPluginI::getGuidanceName(XDPPluginI::DEVICE_EXEC_TIME, checkName);
@@ -523,7 +524,7 @@ namespace xdp {
 
     // 5. Usage of memory resources
     std::string checkName5;
-    XDPPluginI::getGuidanceName(XDPPluginI::DDR_BANKS, checkName5);
+    XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_USAGE, checkName5);
 
     auto cuPortVector = mPluginHandle->getCUPortVector();
     std::map<std::string, int> cuPortsToMemory;
@@ -541,6 +542,34 @@ namespace xdp {
       writeTableRowEnd(getStream());
     }
     cuPortsToMemory.clear();
+
+    // 5a. PLRAM device
+    std::string checkName5a;
+    XDPPluginI::getGuidanceName(XDPPluginI::PLRAM_DEVICE, checkName5a);
+    int isPlram = (mPluginHandle->isPlramDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5a, "all", isPlram);
+    writeTableRowEnd(getStream());
+
+    // 5b. HBM device
+    std::string checkName5b;
+    XDPPluginI::getGuidanceName(XDPPluginI::HBM_DEVICE, checkName5b);
+    int isHbm = (mPluginHandle->isHbmDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5b, "all", isHbm);
+    writeTableRowEnd(getStream());
+
+    // 5c. KDMA device
+    std::string checkName5c;
+    XDPPluginI::getGuidanceName(XDPPluginI::KDMA_DEVICE, checkName5c);
+    int isKdma = (mPluginHandle->isKdmaDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5c, "all", isKdma);
+    writeTableRowEnd(getStream());
+
+    // 5d. P2P device
+    std::string checkName5d;
+    XDPPluginI::getGuidanceName(XDPPluginI::P2P_DEVICE, checkName5d);
+    int isP2P = (mPluginHandle->isP2PDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5d, "all", isP2P);
+    writeTableRowEnd(getStream());
 
     // 6. Port data widths
     std::string checkName6;

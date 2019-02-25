@@ -150,9 +150,7 @@ namespace xdp {
       "Parameter", "Element", "Value"
     };
     writeTableHeader(getStream(), "PRC Parameters", PRCParameterColumnLabels);
-    writeGuidanceMetadataSummary(profile, mPluginHandle->getDeviceExecTimesMap(), 
-                                          mPluginHandle->getComputeUnitCallsMap(),
-                                          mPluginHandle->getKernelCountsMap());
+    writeGuidanceMetadataSummary(profile);
     writeTableFooter(getStream());
   }
 

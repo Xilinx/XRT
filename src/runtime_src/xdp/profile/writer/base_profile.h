@@ -98,10 +98,7 @@ namespace xdp {
           double timestamp, uint32_t sampleNum, bool firstReadAfterProgram);
 
       // Function for guidance metadata
-      void writeGuidanceMetadataSummary(RTProfile *profile,
-          const XDPPluginI::GuidanceMap  &deviceExecTimesMap,
-          const XDPPluginI::GuidanceMap  &computeUnitCallsMap,
-          const XDPPluginI::GuidanceMap2 &kernelCountsMap);
+      void writeGuidanceMetadataSummary(RTProfile *profile);
 
     protected:
       // Veraidic args function to take n number of any type of args and
