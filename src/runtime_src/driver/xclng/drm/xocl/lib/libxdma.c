@@ -1443,7 +1443,7 @@ static void unmap_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 		/* is this BAR mapped? */
 		if (xdev->bar[i]) {
 			/* unmap BAR */
-			pci_iounmap(dev, xdev->bar[i]);
+			iounmap(xdev->bar[i]);
 			/* mark as unmapped */
 			xdev->bar[i] = NULL;
 		}
@@ -1485,7 +1485,8 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	 * address space
 	 */
 	dbg_init("BAR%d: %llu bytes to be mapped.\n", idx, (u64)map_len);
-	xdev->bar[idx] = pci_iomap(dev, idx, map_len);
+	xdev->bar[idx] = ioremap_nocache(pci_resource_start(dev, idx),
+			 map_len);
 
 	if (!xdev->bar[idx]) {
 		pr_info("Could not map BAR %d.\n", idx);

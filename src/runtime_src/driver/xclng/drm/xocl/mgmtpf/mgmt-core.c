@@ -451,7 +451,7 @@ static int health_check_cb(void *data)
 		check_sysmon(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq);
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req));
 	}
 
 	return 0;
@@ -581,13 +581,23 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	uint64_t ret;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-
+	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	bitstm_lock =	(struct mailbox_req_bitstream_lock *)req->data;
 	if (err != 0)
 		return;
 
 	printk(KERN_INFO "%s received request (%d) from peer\n", __func__, req->req);
 
 	switch (req->req) {
+	case MAILBOX_REQ_LOCK_BITSTREAM:
+		ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
+			0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_UNLOCK_BITSTREAM:
+		ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
+			0);
+		break;
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
