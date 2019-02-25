@@ -285,6 +285,7 @@ enum data_kind {
 	MEMTOPO_AXLF,
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
+	PEER_CONN,
 };
 
 
@@ -623,6 +624,10 @@ struct mailbox_req {
 	char data[0];
 };
 
+#define MB_PROT_VER_MAJOR 0
+#define MB_PROT_VER_MINOR 5
+#define MB_PROTOCOL_VER   ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
+
 #define MB_PEER_CONNECTED 0x1
 #define MB_PEER_SAME_DOM  0x2
 #define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
@@ -638,7 +643,7 @@ struct xocl_mailbox_funcs {
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
-	int (*check_peer)(struct platform_device *pdev);
+	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -650,17 +655,17 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_response(xdev, reqid, buf, len)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
 	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req)					\
+#define	xocl_peer_notify(xdev, req, reqlen)					\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, sizeof (*req)) : -ENODEV)
+	req, reqlen) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
 #define	xocl_mailbox_reset(xdev, end)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
 	end) : -ENODEV)
-#define	xocl_mailbox_check_peer(xdev)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->check_peer(MAILBOX_DEV(xdev)) \
+#define	xocl_mailbox_get_data(xdev, kind)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
 		: -ENODEV)
 
 struct xocl_icap_funcs {

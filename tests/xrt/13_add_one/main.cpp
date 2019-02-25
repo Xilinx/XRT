@@ -219,7 +219,6 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         return 1;
     }
 
-
     // Validate our results
     //
     int err = 0;
@@ -248,6 +247,14 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             std::cout<<std::endl;
         }
     }
+
+    //Clean up stuff
+    munmap(bo1, DATA_SIZE);
+    munmap(bo2, DATA_SIZE);
+    munmap(execData, DATA_SIZE);
+    xclFreeBO(handle, boHandle1);
+    xclFreeBO(handle, boHandle2);
+    xclFreeBO(handle, execHandle);
 
     xclCloseContext(handle, xclbinId, cu_index);
 

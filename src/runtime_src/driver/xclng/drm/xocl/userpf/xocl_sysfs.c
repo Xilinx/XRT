@@ -85,7 +85,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	unsigned bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
-	struct mem_topology *topo = XOCL_MEM_TOPOLOGY(xdev);
+	struct mem_topology *topo = NULL;
 	struct drm_xocl_mm_stat stat;
 	void *drm_hdl;
 
@@ -93,9 +93,13 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	if (!drm_hdl)
 		return -EINVAL;
 
-	if (!topo)
+	mutex_lock(&xdev->ctx_list_lock);
+
+	topo = XOCL_MEM_TOPOLOGY(xdev);
+	if (!topo){
+		mutex_unlock(&xdev->ctx_list_lock);
 		return -EINVAL;
-										        mutex_lock(&xdev->ctx_list_lock);
+	}
 
 	for (i = 0; i < topo->m_count; i++) {
 		xocl_mm_get_usage_stat(drm_hdl, i, &stat);
