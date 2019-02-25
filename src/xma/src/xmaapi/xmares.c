@@ -1687,6 +1687,7 @@ static void xma_kern_mutex_init(XmaKernelInstance *k)
     pthread_mutexattr_init(&proc_shared_lock);
     pthread_mutexattr_setpshared(&proc_shared_lock, PTHREAD_PROCESS_SHARED);
     pthread_mutexattr_setrobust(&proc_shared_lock, PTHREAD_MUTEX_ROBUST);
+    pthread_mutexattr_setprotocol(&proc_shared_lock, PTHREAD_PRIO_INHERIT);
     pthread_mutex_init(&k->lock, &proc_shared_lock);
     k->lock_initialized = true;
 }
@@ -1726,7 +1727,18 @@ int xma_res_kernel_lock(pthread_mutex_t *lock)
 
     ret = pthread_mutex_lock(lock);
     if (ret == EOWNERDEAD) {
-        pthread_mutex_consistent(lock);
+        xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
+            "XMA kernel mutex owner is dead.\n");
+        xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
+            "Trying to make mutex consistent.\n");
+        ret = pthread_mutex_consistent(lock);
+        if(ret != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+                "Error trying to make kernel mutex consistent.\n");
+            xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+                "Error code = %d.\n", ret);
+            return XMA_ERROR;
+        }
         return XMA_SUCCESS;
     }
     return ret;
