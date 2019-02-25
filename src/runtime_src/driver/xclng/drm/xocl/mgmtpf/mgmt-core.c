@@ -451,7 +451,7 @@ static int health_check_cb(void *data)
 		check_sysmon(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq);
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req));
 	}
 
 	return 0;
@@ -549,38 +549,6 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_register = xclmgmt_intr_register,
 };
 
-static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, char *data_ptr)
-{
-	int ret = 0;
-	struct xclmgmt_mailbox_conn *mb_conn = (struct xclmgmt_mailbox_conn *)data_ptr;
-	uint32_t crc_chk;
-	phys_addr_t paddr;
-
-	if(!data_ptr){
-		ret = -EFAULT;
-		goto done;
-	}
-
-	paddr = virt_to_phys(mb_conn->kaddr);
-	if(paddr != mb_conn->paddr){
-		printk(KERN_ERR "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
-		printk(KERN_ERR "Failed to get the same physical addr, running in VMs?\n");
-		ret = -EFAULT;
-		goto done;
-	}
-	crc_chk = crc32c_le(~0, mb_conn->kaddr, PAGE_SIZE);
-
-	if(crc_chk != mb_conn->crc32){
-		printk(KERN_ERR "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
-		printk(KERN_ERR "failed to get the same CRC\n");
-		ret = -EFAULT;
-		goto done;
-	}
-done:
-	return ret;
-}
-
-
 static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
 {
 	uint64_t val = 0;
@@ -605,13 +573,23 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	uint64_t ret;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-
+	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	bitstm_lock =	(struct mailbox_req_bitstream_lock *)req->data;
 	if (err != 0)
 		return;
 
 	printk(KERN_INFO "%s received request (%d) from peer\n", __func__, req->req);
 
 	switch (req->req) {
+	case MAILBOX_REQ_LOCK_BITSTREAM:
+		ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
+			0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		break;
+	case MAILBOX_REQ_UNLOCK_BITSTREAM:
+		ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
+			0);
+		break;
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
@@ -630,10 +608,6 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	case MAILBOX_REQ_PEER_DATA:
 		ret = xclmgmt_read_subdev_req(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
-		break;
-	case MAILBOX_REQ_CONN_EXPL:
-		ret = xclmgmt_connection_explore(lro, req->data);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	default:
