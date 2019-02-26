@@ -350,6 +350,17 @@ int mailbox_request(struct platform_device *, void *, size_t,
 	void *, size_t *, mailbox_msg_cb_t, void *);
 int mailbox_post(struct platform_device *, u64, void *, size_t);
 static int mailbox_connect_status(struct platform_device *pdev);
+static void connect_state_handler(struct mailbox *mbx, struct mailbox_conn *conn);
+
+static void connect_state_touch(struct mailbox *mbx, uint64_t flag)
+{
+	struct mailbox_conn conn = {0};
+	if(!mbx)
+		return;
+	conn.flag = flag;
+	connect_state_handler(mbx, &conn);
+}
+
 
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 {
@@ -1495,7 +1506,6 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 {
 	struct mailbox_req *req = (struct mailbox_req *)msg->mbm_data;
 	struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-	struct mailbox_conn init_conn = {0};
 	int rc;
 	const char *recvstr = "received request from peer";
 	const char *sendstr = "sending test msg to peer";
@@ -1522,8 +1532,7 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 			 * again.
 			 */
 			if(conn->flag == MB_CONN_SYN){
-				init_conn.flag = MB_CONN_INIT;
-				connect_state_handler(mbx, &init_conn);
+				connect_state_touch(mbx, MB_CONN_INIT);
 			}
 		}
 		connect_state_handler(mbx, conn);
@@ -1694,11 +1703,10 @@ static struct xocl_mailbox_funcs mailbox_ops = {
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
-	struct mailbox_conn conn = {0};
+	
 	BUG_ON(mbx == NULL);
 
-	conn.flag = MB_CONN_FIN;
-	connect_state_handler(mbx, &conn);
+	connect_state_touch(mbx, MB_CONN_FIN);
 
 	mailbox_disable_intr_mode(mbx);
 
@@ -1725,7 +1733,6 @@ static int mailbox_probe(struct platform_device *pdev)
 {
 	struct mailbox *mbx = NULL;
 	struct resource *res;
-	struct mailbox_conn conn = {0};
 	int ret;
 
 	mbx = kzalloc(sizeof(struct mailbox), GFP_KERNEL);
@@ -1791,8 +1798,7 @@ static int mailbox_probe(struct platform_device *pdev)
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
 
-	conn.flag = MB_CONN_INIT;
-	connect_state_handler(mbx, &conn);
+	connect_state_touch(mbx, MB_CONN_INIT);
 	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
 	MBX_INFO(mbx, "successfully initialized");
