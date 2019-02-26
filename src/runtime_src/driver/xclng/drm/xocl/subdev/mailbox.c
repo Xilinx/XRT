@@ -987,6 +987,7 @@ static void check_tx_stall(struct mailbox_channel *ch)
 		MBX_ERR(mbx, "TX channel stall detected, reset...\n");
 		mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x1);
 		chan_msg_done(ch, -ETIME);
+		connect_state_touch(mbx, MB_CONN_FIN);
 	/* Mark it for next check. */
 	} else {
 		set_bit(MBXCS_BIT_CHK_STALL, &ch->mbc_state);
@@ -1484,8 +1485,10 @@ static void connect_state_handler(struct mailbox *mbx, struct mailbox_conn *conn
 			case MB_CONN_FIN:
 				mbx->mbx_paired = 0;
 				mbx->mbx_established = false;
-				if(mbx->mbx_kaddr)
+				if(mbx->mbx_kaddr){
 					kfree(mbx->mbx_kaddr);
+					mbx->mbx_kaddr = NULL;
+				}
 				mbx->mbx_state = CONN_START;
 				break;
 			default:
@@ -1752,6 +1755,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	mutex_init(&mbx->mbx_conn_lock);
 	mbx->mbx_established = false;
 	mbx->mbx_conn_id = 0;
+	mbx->mbx_kaddr = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
