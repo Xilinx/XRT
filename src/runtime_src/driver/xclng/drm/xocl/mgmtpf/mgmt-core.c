@@ -557,32 +557,45 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
-static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
+static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	uint64_t val = 0;
+	void *ptr = NULL;
 	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
 	switch(subdev_req->kind){
 		case VOL_12V_PEX:
 			val = xocl_xmc_get_data(lro, subdev_req->kind);
+			*sz = sizeof(u32);
+			ptr = (void *)&val;
 			break;
 		case IDCODE:
 			val = xocl_icap_get_data(lro, subdev_req->kind);
+			*sz = sizeof(u32);
+			ptr = (void *)&val;
+			break;
+		case XCLBIN_UUID:
+			ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
+			*sz = sizeof(xuid_t);
 			break;
 		default:
 			break;
 	}
-
-	return val;
+	*resp = vmalloc(*sz);
+	memcpy(*resp, ptr, *sz);
+	return 0;
 }
 
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err)
 {
 	uint64_t ret;
+	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	void *resp = NULL;
 	bitstm_lock =	(struct mailbox_req_bitstream_lock *)req->data;
+
 	if (err != 0)
 		return;
 
@@ -615,8 +628,9 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	case MAILBOX_REQ_PEER_DATA:
-		ret = xclmgmt_read_subdev_req(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		(void) xocl_peer_response(lro, msgid, resp, sz);
+		vfree(resp);
 		break;
 	default:
 		break;

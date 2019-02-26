@@ -165,10 +165,8 @@ struct xocl_xmc {
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 
-static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind, u32 *val)
+static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind, void *resp, size_t resplen)
 {
-	int64_t resp = 0;
-	size_t resplen = sizeof(resp);
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
 	struct mailbox_req *mb_req = NULL;
@@ -184,12 +182,8 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
-		mb_req, reqlen, &resp, &resplen, NULL, NULL);
-
+		mb_req, reqlen, resp, &resplen, NULL, NULL);
 	vfree(mb_req);
-
-	*val = resp;
-
 }
 
 /* sysfs support */
@@ -217,7 +211,7 @@ static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pd
 {
 	mutex_lock(&xmc->xmc_lock);
 	if (xmc->enabled) {
-		xmc_read_from_peer(pdev, kind, val);
+		xmc_read_from_peer(pdev, kind, val, sizeof(u32));
 	} else {
 		*val = 0;
 	}
