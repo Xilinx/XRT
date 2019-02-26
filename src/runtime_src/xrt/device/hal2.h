@@ -574,6 +574,11 @@ public:
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
   }
+
+  virtual void*
+  getHalDeviceHandle() { 
+    return m_handle; 
+  }
 };
 
 }} // hal2,xrt

@@ -605,6 +605,9 @@ public:
 
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
+
+  virtual void*
+  getHalDeviceHandle() = 0;
 };
 
 
