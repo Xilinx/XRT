@@ -557,38 +557,48 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
-static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
+static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	uint64_t val = 0;
+	size_t resp_sz = 0;
 	void *ptr = NULL;
 	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
 	switch(subdev_req->kind){
 		case VOL_12V_PEX:
 			val = xocl_xmc_get_data(lro, subdev_req->kind);
-			*sz = sizeof(u32);
+			resp_sz = sizeof(u32);
 			ptr = (void *)&val;
 			break;
 		case IDCODE:
 			val = xocl_icap_get_data(lro, subdev_req->kind);
-			*sz = sizeof(u32);
+			resp_sz = sizeof(u32);
 			ptr = (void *)&val;
 			break;
 		case XCLBIN_UUID:
 			ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
-			*sz = sizeof(xuid_t);
+			resp_sz = sizeof(xuid_t);
 			break;
 		default:
 			break;
 	}
-	*resp = vmalloc(*sz);
-	memcpy(*resp, ptr, *sz);
+
+	if(!resp_sz){
+		return -EINVAL;
+	}
+
+	*resp = vmalloc(resp_sz);
+	if(*resp == NULL){
+		return -ENOMEM;
+	}
+	memcpy(*resp, ptr, resp_sz);
+	*sz = resp_sz;
 	return 0;
 }
 
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err)
 {
-	uint64_t ret;
+	int ret = 0;
 	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
@@ -629,7 +639,12 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	case MAILBOX_REQ_PEER_DATA:
 		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
-		(void) xocl_peer_response(lro, msgid, resp, sz);
+		if(ret){
+			/* if can't get data, return 0 as response */
+			ret = 0;
+			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		} else
+			(void) xocl_peer_response(lro, msgid, resp, sz);
 		vfree(resp);
 		break;
 	default:
