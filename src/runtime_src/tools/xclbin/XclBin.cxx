@@ -1282,6 +1282,12 @@ XclBin::setKeyValue(const std::string & _keyValue)
       return; // Key processed 
     }
 
+    if (sKey == "FeatureRomUUID") {
+      sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
+      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
+      return; // Key processed 
+    }
+
     if (sKey == "PlatformVBNV") {
       XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sValue, sizeof(axlf_header::m_platformVBNV));
       return; // Key processed 

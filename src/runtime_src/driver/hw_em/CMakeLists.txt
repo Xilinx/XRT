@@ -22,6 +22,7 @@ add_library(hw_emu_objects OBJECT ${EM_SRC_FILES})
 set(CURR_SOURCE "")
 add_library(xrt_hwemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:hw_emu_objects>
+  $<TARGET_OBJECTS:util>
   )
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")

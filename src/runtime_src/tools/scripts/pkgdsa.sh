@@ -67,7 +67,7 @@ usage()
     echo "[-xrt <version>]           Requires xrt >= <version>"
     echo "[-cl <changelist>]         Changelist for package revision"
     echo "[-dsadir <path>]           Full path to directory with platforms (default: <sdx>/platforms/<dsa>)"
-    echo "[-pkgdir <path>]           Full path to direcory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
+    echo "[-pkgdir <path>]           Full path to directory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
     echo "[-dev]                     Build development package"
     echo "[-deploy]                  Build deployment package [default]"
     echo "[-license <path>]          Include license file(s) from the <path> in the package"
@@ -186,6 +186,7 @@ clearBitstreamFile=""
 metaDataJSONFile=""
 dsaXmlFile="dsa.xml"
 featureRomTimestamp="0"
+featureRomUUID=""
 fwScheduler=""
 fwManagement=""
 fwBMC=""
@@ -284,7 +285,7 @@ readDsaMetaData()
       recordDsaFiles
     fi    
 
-    # Record the FeatureRomTimestamp
+    # Record the top level DSA information, including FeatureRomTimestamp
     if [ "${ENTITY_NAME}" == "DSA" ]; then
       createEntityAttributeArray
 
@@ -311,8 +312,9 @@ readDsaMetaData()
     if [ "${ENTITY_NAME}" == "FeatureRom" ]; then
       createEntityAttributeArray
 
-      # Overright previous value
+      # Overwrite previous value
       featureRomTimestamp="${ENTITY_ATTRIBUTES_ARRAY[TimeSinceEpoch]}"
+      featureRomUUID="${ENTITY_ATTRIBUTES_ARRAY[UUID]}"
     fi    
 
   done < "${dsaXmlFile}"
@@ -473,7 +475,7 @@ initDsaBinEnvAndVars()
       if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
@@ -582,6 +584,13 @@ dodsabin()
        echo "Warning: Missing featureRomTimestamp"
     fi
 
+    # -- FeatureRom UUID --
+    if [ "${featureRomUUID}" != "" ]; then
+       xclbinOpts+=" --key-value SYS:FeatureRomUUID:${featureRomUUID}"
+    else
+       echo "Warning: Missing featureRomUUID"
+    fi
+
     # -- VBNV --
     if [ "${vbnv}" != "" ]; then
        xclbinOpts+=" --key-value SYS:PlatformVBNV:${vbnv}"
@@ -617,93 +626,6 @@ dodsabin()
     fi
 }
 
-dodsabin_xclbincat()
-{
-    pushd $opt_pkgdir > /dev/null
-    echo "Creating dsabin for: ${opt_dsa}"
-
-    initDsaBinEnvAndVars
-
-    # Build the xclbincat options
-    xclbinOpts=""
-
-    # -- MCS_PRIMARY image --
-    if [ "$mcsPrimary" != "" ]; then
-       xclbinOpts+=" -s MCS_PRIMARY ${mcsPrimary}"
-    fi
-    
-    # -- MCS_SECONDARY image --
-    if [ "$mcsSecondary" != "" ]; then
-       xclbinOpts+=" -s MCS_SECONDARY ${mcsSecondary}"
-    fi
-    
-    # -- Firmware: Scheduler --
-    if [ "${fwScheduler}" != "" ]; then
-       if [ -f "${fwScheduler}" ]; then
-         xclbinOpts+=" -s SCHEDULER ${fwScheduler}"
-       else
-         echo "Warning: Scheduler firmware does not exist: ${fwScheduler}"
-       fi
-    fi
-    
-    # -- Firmware: Management --
-    if [ "${fwManagement}" != "" ]; then
-       if [ -f "${fwManagement}" ]; then
-         xclbinOpts+=" -s FIRMWARE ${fwManagement}"
-       else
-         echo "Warning: Management firmware does not exist: ${fwManagement}"
-      fi
-    fi
-
-    # -- Firmware: MSP432 --
-    if [ "${fwBMC}" != "" ]; then
-       if [ -f "${fwBMC}" ]; then
-         xclbinOpts+=" -s BMC ${fwBMC}"
-       else
-         echo "Warning: MSP432 firmware does not exist: ${fwBMC}"
-      fi
-    fi
-
-    # -- Clear bitstream --
-    if [ "${clearBitstreamFile}" != "" ]; then
-       xclbinOpts+=" -s CLEAR_BITSTREAM ./firmware/${clearBitstreamFile}"
-    fi
-
-    # -- FeatureRom Timestamp --
-    if [ "${featureRomTimestamp}" != "" ]; then
-       xclbinOpts+=" --kvp featureRomTimestamp:${featureRomTimestamp}"
-    else
-       echo "Warning: Missing featureRomTimestamp"
-    fi
-
-    # -- VBNV --
-    if [ "${vbnv}" != "" ]; then
-       xclbinOpts+=" --kvp platformVBNV:${vbnv}"
-    else
-       echo "Warning: Missing Platform VBNV value"
-    fi
-
-
-    # -- Mode Hardware PR --
-    xclbinOpts+=" --kvp mode:hw_pr"
-
-    # -- Output filename --
-    localFeatureRomTimestamp="${featureRomTimestamp}"
-    if [ "${localFeatureRomTimestamp}" == "" ]; then
-      localFeatureRomTimestamp="0"
-    fi
-
-    # Build output file and lowercase the name
-    dsabinOutputFile=$(printf "%s-%s-%s-%016x.dsabin" "${pci_vendor_id#0x}" "${pci_device_id#0x}" "${pci_subsystem_id#0x}" "${localFeatureRomTimestamp}")
-    dsabinOutputFile="${dsabinOutputFile,,}"
-    xclbinOpts+=" -o ./firmware/${dsabinOutputFile}"  
-
-    echo "${XILINX_XRT}/bin/xclbincat ${xclbinOpts}"
-    ${XILINX_XRT}/bin/xclbincat ${xclbinOpts}
-
-    popd >/dev/null
-}
-
 dodebdev()
 {
     uRel=`lsb_release -r -s`
@@ -717,7 +639,6 @@ dodebdev()
     mkdir -p $pkgdir/DEBIAN
 
 cat <<EOF > $pkgdir/DEBIAN/control
-
 Package: $dsa-dev
 Architecture: amd64
 Version: $version-$revision
@@ -745,7 +666,7 @@ EOF
     dpkg-deb --build $pkgdir
 
     echo "================================================================"
-    echo "* Please locate dep for $dsa in: $pkgdir"
+    echo "* Debian package for $dsa generated in: $pkgdir"
     echo "================================================================"
 }
 
@@ -762,7 +683,6 @@ dodeb()
     mkdir -p $pkgdir/DEBIAN
 
 cat <<EOF > $pkgdir/DEBIAN/control
-
 Package: $dsa
 Architecture: all
 Version: $version-$revision
@@ -791,7 +711,7 @@ EOF
     mkdir -p $pkgdir/opt/xilinx/dsa/$opt_dsa/test
 
     # Are there any verification tests
-    if [ -d {opt_dsadir}/test ] ; then
+    if [ -d ${opt_dsadir}/test ] ; then
        rsync -avz ${opt_dsadir}/test/ $pkgdir/opt/xilinx/dsa/$opt_dsa/test
     fi
 
@@ -801,7 +721,7 @@ EOF
     dpkg-deb --build $pkgdir
 
     echo "================================================================"
-    echo "* Please locate dep for $dsa in: $pkgdir"
+    echo "* Debian package for $dsa generated in: $pkgdir"
     echo "================================================================"
 }
 
@@ -898,7 +818,7 @@ echo "${post_inst_msg} ${featureRomTimestamp}"
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
 
-if [ -d {opt_dsadir}/test ] ; then
+if [ -d ${opt_dsadir}/test ] ; then
   mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
   cp ${opt_dsadir}/test/* %{buildroot}/opt/xilinx/dsa/$opt_dsa/test
 fi

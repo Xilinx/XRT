@@ -683,10 +683,14 @@ start_cu(size_type slot_idx)
     if (cus.test(cu_idx) && !cu_status.test(cu_idx)) {
       ERT_DEBUGF("start_cu cu(%d) for slot_idx(%d)\n",cu_idx,slot_idx);
       ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==4,"cu not ready");
-      if (cu_dma_enabled) { // hardware transfer and start
+      // cudma in 5.1 DSAs has a bug and supports at most 127 word copy
+      // excluding the 4 control words
+      if (cu_dma_enabled && (cu_dma_52 || regmap_size(slot.header_value)<(127+4))) {
+        // hardware transfer and start
         configure_cu_dma(cu_idx,slot_idx,slot.slot_addr);
       }
-      else { // manually configure and start cu
+      else {
+        // manually configure and start cu
         configure_cu(cu_idx_to_addr(cu_idx),slot.regmap_addr,slot.regmap_size);
       }
       cu_status.toggle(cu_idx);     // toggle cu status bit, it is now busy

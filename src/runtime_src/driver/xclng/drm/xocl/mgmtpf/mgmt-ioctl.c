@@ -93,9 +93,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	BUG_ON(!lro);
 
-	if (xocl_drv_released(lro))
-		return -EINVAL;
-
 	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 

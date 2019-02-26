@@ -186,7 +186,7 @@ int main_(int argc, char** argv) {
 
     if ((vm.count("help")) ||
         (argc == 1)) {
-      std::cout << "This utility operations on a xclbin produced by xocc." << std::endl << std::endl;
+      std::cout << "This utility operates on a xclbin produced by xocc." << std::endl << std::endl;
       std::cout << "For example:" << std::endl;
       std::cout << "  1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
       std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;

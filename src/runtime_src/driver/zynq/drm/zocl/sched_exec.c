@@ -377,6 +377,75 @@ void setup_ert_hw(struct drm_zocl_dev *zdev)
 		iowrite32(0x0, ert_hw + ERT_HOST_INT_ENABLE);
 }
 
+static irqreturn_t sched_exec_isr(int irq, void *arg)
+{
+	struct drm_zocl_dev *zdev = arg;
+	int cu_idx;
+	volatile u32 __iomem *virt_addr;
+
+	SCHED_DEBUG("-> sched_exe_isr irq %d", irq);
+	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
+		if (zdev->irq[cu_idx] == irq)
+			break;
+	}
+
+	SCHED_DEBUG("cu_idx %d interrupt handle", cu_idx);
+	if (cu_idx >= zdev->cu_num) {
+		/* This should never happen */
+		DRM_ERROR("Unknown isr irq %d, polling %d\n",
+			  irq, zdev->exec->polling_mode);
+		return IRQ_NONE;
+	}
+
+	virt_addr = zdev->regs + cu_idx_to_offset(zdev->ddev, cu_idx);
+	/* Clear all interrupts of the CU
+	 *
+	 * HLS style kernel has Interrupt Status Register at offset 0x0C
+	 * It has two interrupt bits, bit[0] is ap_done, bit[1] is ap_ready.
+	 *
+	 * The ap_done interrupt means this CU is complete.
+	 * The ap_ready interrupt means all inputs have been read.
+	 *
+	 * TODO: Need to handle ap_done and ap_ready interrupt separately
+	 * after support dataflow exectution model
+	 *
+	 * The Interrupt Status Register is Toggle On Write
+	 * RegData = RegData ^ WriteData
+	 *
+	 * So, the reliable way to clear this register is read
+	 * then write the same value back.
+	 *
+	 * Do not write 1 to this register. If, somehow, the status register
+	 * is 0, write 1 to this register will trigger interrupt.
+	 *
+	 */
+	virt_addr[3] = virt_addr[3];
+
+	/* wake up all scheduler ... currently one only
+	 *
+	 * This might have race with sched_wait_cond(), which will read then set
+	 * intc to 0; This race should has no impact on the functionality.
+	 *
+	 * 1. If scheduler thread is on sleeping, there is no race.
+	 * 2. If scheduler thread has waked up, and returned from
+	 * sched_wait_cond(), there is no race.
+	 * 3. Only when scheduler thread waked up and accessing sched->intc,
+	 * race might happen. It has two results:
+	 *	a. intc set to 0 here. But then the scheduler thread will still
+	 *	iterate all submitted commands.
+	 *	b. intc set to 1 here. The scheduler thread failed to reset intc
+	 *	to 0. In this case, after iterate all submitted commands, the
+	 *	scheduler loop will go to sched_wait_cond() again and try to
+	 *	reset intc and start the second time iteration.
+	 *
+	 */
+	g_sched0.intc = 1;
+	wake_up_interruptible(&g_sched0.wait_queue);
+
+	SCHED_DEBUG("<- sched_exe_isr");
+	return IRQ_HANDLED;
+}
+
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -396,6 +465,7 @@ configure(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
 	struct configure_cmd *cfg;
+	unsigned int i;
 
 	if (sched_error_on(exec, opcode(cmd) != OP_CONFIGURE))
 		return 1;
@@ -425,14 +495,12 @@ configure(struct sched_cmd *cmd)
 	exec->num_cu_masks    = ((exec->num_cus-1)>>5) + 1;
 
 	if (!zdev->ert) {
-		if (cfg->ert) {
+		if (cfg->ert)
 			DRM_INFO("No ERT scheduler on MPSoC, using KDS\n");
-		} else {
-			SCHED_DEBUG("++ configuring penguin scheduler mode\n");
-			exec->ops = &penguin_ops;
-			exec->polling_mode = 1;
-			exec->configured = 1;
-		}
+		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
+		exec->ops = &penguin_ops;
+		exec->polling_mode = cfg->polling;
+		exec->configured = 1;
 	} else {
 		SCHED_DEBUG("++ configuring PS ERT mode\n");
 		exec->ops = &ps_ert_ops;
@@ -449,6 +517,22 @@ configure(struct sched_cmd *cmd)
 		exec->configured = 1;
 	}
 
+	/* Right now only support 32 CUs interrupts
+	 * If there are more than 32 CUs, fall back to polling mode
+	 */
+	if (exec->num_cus > 32) {
+		DRM_INFO("Only support up to 32 CUs interrupts\n");
+		exec->polling_mode = 1;
+	}
+
+	if (zdev->ert || exec->polling_mode)
+		goto print_and_out;
+
+	/* If re-config KDS is supported, should free old irq */
+	for (i = 0; i < exec->num_cus; i++)
+		request_irq(zdev->irq[i], sched_exec_isr, 0, "zocl", zdev);
+
+print_and_out:
 	DRM_INFO("scheduler config ert(%d)", is_ert(cmd->ddev));
 	DRM_INFO("  cus(%d)", exec->num_cus);
 	DRM_INFO("  slots(%d)", exec->num_slots);
@@ -1125,6 +1209,12 @@ sched_wait_cond(struct scheduler *sched)
 		return 0;
 	}
 
+	if (sched->intc) {
+		SCHED_DEBUG("scheduler wakes on interrupt\n");
+		sched->intc = 0;
+		return 0;
+	}
+
 	if (sched->poll) {
 		SCHED_DEBUG("scheduler wakes to poll\n");
 		return 0;
@@ -1210,6 +1300,7 @@ init_scheduler_thread(void)
 	g_sched0.stop = 0;
 
 	INIT_LIST_HEAD(&g_sched0.cq);
+	g_sched0.intc = 0;
 	g_sched0.poll = 0;
 
 	g_sched0.sched_thread = kthread_run(scheduler, &g_sched0, name);
@@ -1688,8 +1779,13 @@ sched_init_exec(struct drm_device *drm)
 int sched_fini_exec(struct drm_device *drm)
 {
 	struct drm_zocl_dev *zdev = drm->dev_private;
+	int i;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
+	if (!(zdev->ert || zdev->exec->polling_mode))
+		for (i = 0; i < zdev->exec->num_cus; i++)
+			free_irq(zdev->irq[i], zdev);
+
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
 	fini_scheduler_thread();

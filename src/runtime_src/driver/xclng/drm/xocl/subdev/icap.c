@@ -75,6 +75,12 @@ typedef struct {
 /* The imaginary module length register */
 #define XHI_MLR			15
 
+#define	GATE_FREEZE_USER	0x0c
+#define GATE_FREEZE_SHELL	0x00
+
+static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
+static u32 gate_free_shell[] = {0x8, 0xc, 0xe, 0xf};
+
 /*
  * AXI-HWICAP IP register layout
  */
@@ -117,6 +123,7 @@ struct icap {
 	struct icap_generic_state *icap_state;
 	unsigned int            idcode;
 	bool			icap_axi_gate_frozen;
+	bool			icap_axi_gate_shell_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
 
 	u64			icap_bitstream_id;
@@ -138,6 +145,8 @@ struct icap {
 	struct debug_ip_layout   *debug_layout;
 	struct connectivity      *connectivity;
 
+	char			*bit_buffer;
+	unsigned long		bit_length;
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -240,6 +249,29 @@ static struct icap_bitstream_user *obtain_user(struct icap *icap, pid_t pid)
 	return NULL;
 }
 
+static void icap_read_from_peer(struct platform_device *pdev, enum data_kind kind, void *resp, size_t resplen)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+
+	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	if(!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+
+	subdev_peer.kind = kind;
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+		mb_req, reqlen, resp, &resplen, NULL, NULL);
+
+	vfree(mb_req);
+}
+
+
 static int add_user(struct icap *icap, pid_t pid)
 {
 	struct icap_bitstream_user *u;
@@ -326,52 +358,56 @@ static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 	u32 div1;
 	u32 div_frac1 = 0;
 	u64 freq;
-	char *base = icap->icap_clock_bases[idx];
+	char *base = NULL;
 
-        val = reg_rd(base + OCL_CLKWIZ_STATUS_OFFSET);
-	if ((val & 1) == 0)
-		return 0;
+	if(ICAP_PRIVILEGED(icap)){
+		base = icap->icap_clock_bases[idx];
+	  val = reg_rd(base + OCL_CLKWIZ_STATUS_OFFSET);
+		if ((val & 1) == 0)
+			return 0;
 
-	val = reg_rd(base + OCL_CLKWIZ_CONFIG_OFFSET(0));
+		val = reg_rd(base + OCL_CLKWIZ_CONFIG_OFFSET(0));
 
-	div0 = val & 0xff;
-	mul0 = (val & 0xff00) >> 8;
-	if (val & BIT(26)) {
-		mul_frac0 = val >> 16;
-		mul_frac0 &= 0x3ff;
+		div0 = val & 0xff;
+		mul0 = (val & 0xff00) >> 8;
+		if (val & BIT(26)) {
+			mul_frac0 = val >> 16;
+			mul_frac0 &= 0x3ff;
+		}
+
+		/*
+		 * Multiply both numerator (mul0) and the denominator (div0) with 1000
+		 * to account for fractional portion of multiplier
+		 */
+		mul0 *= 1000;
+		mul0 += mul_frac0;
+		div0 *= 1000;
+
+		val = reg_rd(base + OCL_CLKWIZ_CONFIG_OFFSET(2));
+
+		div1 = val &0xff;
+		if (val & BIT(18)) {
+			div_frac1 = val >> 8;
+			div_frac1 &= 0x3ff;
+		}
+
+		/*
+		 * Multiply both numerator (mul0) and the denominator (div1) with 1000 to
+		 * account for fractional portion of divider
+		 */
+
+		div1 *= 1000;
+		div1 += div_frac1;
+		div0 *= div1;
+		mul0 *= 1000;
+		if (div0 == 0) {
+			ICAP_ERR(icap, "clockwiz 0 divider");
+			return 0;
+		}
+		freq = (input * mul0) / div0;
+	} else {
+		icap_read_from_peer(icap->icap_pdev, CLOCK_FREQ_0, (u32*)&freq, sizeof(u32));
 	}
-
-	/*
-	 * Multiply both numerator (mul0) and the denominator (div0) with 1000
-	 * to account for fractional portion of multiplier
-	 */
-	mul0 *= 1000;
-	mul0 += mul_frac0;
-	div0 *= 1000;
-
-	val = reg_rd(base + OCL_CLKWIZ_CONFIG_OFFSET(2));
-
-	div1 = val &0xff;
-	if (val & BIT(18)) {
-		div_frac1 = val >> 8;
-		div_frac1 &= 0x3ff;
-	}
-
-	/*
-	 * Multiply both numerator (mul0) and the denominator (div1) with 1000 to
-	 * account for fractional portion of divider
-	 */
-
-	div1 *= 1000;
-	div1 += div_frac1;
-	div0 *= div1;
-	mul0 *= 1000;
-	if (div0 == 0) {
-		ICAP_ERR(icap, "clockwiz 0 divider");
-		return 0;
-	}
-
-	freq = (input * mul0) / div0;
 	return freq;
 }
 
@@ -385,24 +421,26 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	/*
 	 * reset and wait until done
 	 */
+	if(ICAP_PRIVILEGED(icap)){
+		if(uuid_is_null(&icap->icap_bitstream_uuid)){
+			ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
+				"frequencies counter cannot be determine");
+			return freq;
+		}
+		reg_wr(base, 0x1);
 
-	if(uuid_is_null(&icap->icap_bitstream_uuid)){
-		ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
-			"frequencies counter cannot be determine");
-		return freq;
+		while(times!=0){
+			status = reg_rd(base);
+			if(status==0x2)
+				break;
+			mdelay(1);
+			times--;
+		};
+
+	  freq = reg_rd(base + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
+	} else {
+		icap_read_from_peer(icap->icap_pdev, FREQ_COUNTER_0, (u32*)&freq, sizeof(u32));
 	}
-	reg_wr(base, 0x1);
-
-	while(times!=0){
-		status = reg_rd(base);
-		if(status==0x2)
-			break;
-		mdelay(1);
-		times--;
-	};
-
-  freq = reg_rd(base + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
-
   return freq;
 }
 /*
@@ -426,6 +464,8 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 
 		idx = find_matching_freq_config(icap->icap_ocl_frequency[i]);
 		curr_freq = icap_get_ocl_frequency(icap, i);
+		ICAP_INFO(icap, "Clock %d, Current %d Mhz, New %d Mhz ",
+				i, curr_freq, icap->icap_ocl_frequency[i]);
 
 		/*
 		 * If current frequency is in the same step as the
@@ -504,15 +544,72 @@ static bool icap_bitstream_in_use(struct icap *icap, pid_t pid)
 	return true;
 }
 
+static int icap_freeze_axi_gate_shell(struct icap *icap)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+
+	ICAP_INFO(icap, "freezing Shell AXI gate");
+	BUG_ON(icap->icap_axi_gate_shell_frozen);
+
+	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_SHELL);
+	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+
+	if(!xocl_is_unified(xdev)) {
+		reg_wr(&icap->icap_regs->ir_cr, 0xc);
+		ndelay(20);
+	} else {
+		/* New ICAP reset sequence applicable only to unified dsa. */
+		reg_wr(&icap->icap_regs->ir_cr, 0x8);
+		ndelay(2000);
+		reg_wr(&icap->icap_regs->ir_cr, 0x0);
+		ndelay(2000);
+		reg_wr(&icap->icap_regs->ir_cr, 0x4);
+		ndelay(2000);
+		reg_wr(&icap->icap_regs->ir_cr, 0x0);
+		ndelay(2000);
+	}
+
+	icap->icap_axi_gate_shell_frozen = true;
+
+	return 0;
+}
+
+static int icap_free_axi_gate_shell(struct icap *icap)
+{
+	int i;
+
+	ICAP_INFO(icap, "freeing Shell AXI gate");
+	/*
+	 * First pulse the OCL RESET. This is important for PR with multiple
+	 * clocks as it resets the edge triggered clock converter FIFO
+	 */
+
+	if (!icap->icap_axi_gate_shell_frozen)
+		return 0;
+
+	for (i = 0; i < ARRAY_SIZE(gate_free_shell); i++) {
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_shell[i]);
+		mdelay(50);
+	}
+
+	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+
+	icap->icap_axi_gate_shell_frozen = false;
+
+	return 0;
+}
+
 static int icap_freeze_axi_gate(struct icap *icap)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 
-	ICAP_INFO(icap, "freezing AXI gate");
+	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x0);
+	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
 
 	if(!xocl_is_unified(xdev)) {
@@ -537,7 +634,9 @@ static int icap_freeze_axi_gate(struct icap *icap)
 
 static int icap_free_axi_gate(struct icap *icap)
 {
-	ICAP_INFO(icap, "freeing AXI gate");
+	int i;
+
+	ICAP_INFO(icap, "freeing CL AXI gate");
 	/*
 	 * First pulse the OCL RESET. This is important for PR with multiple
 	 * clocks as it resets the edge triggered clock converter FIFO
@@ -546,21 +645,11 @@ static int icap_free_axi_gate(struct icap *icap)
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
 
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x2);
-	ndelay(500);
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x0);
-	ndelay(500);
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x2);
-	ndelay(500);
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, 0x3);
-	ndelay(500);
+	for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
+		ndelay(500);
+	}
 
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
 
@@ -1594,6 +1683,83 @@ free_buffers:
 	return err;
 }
 
+
+static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
+{
+	int err = 0;
+	struct icap *icap = platform_get_drvdata(pdev);
+	int64_t resp = 0;
+	size_t resplen = sizeof(resp);
+	struct mailbox_req_bitstream_lock bitstream_lock = {0};
+	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	/* if there is no user there
+	 * ask mgmt to lock the bitstream
+	 */
+	if(icap->icap_bitstream_ref == 0){
+			mb_req = (struct mailbox_req *)vmalloc(reqlen);
+			if(!mb_req){
+				err = -ENOMEM;
+				goto done;
+			}
+
+			mb_req->req = MAILBOX_REQ_LOCK_BITSTREAM;
+			uuid_copy(&bitstream_lock.uuid, id);
+
+			memcpy(mb_req->data, &bitstream_lock, data_len);
+
+			err = xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+				mb_req, reqlen, &resp, &resplen, NULL, NULL);
+
+			if(err){
+				err = -ENODEV;
+				goto done;
+			}
+			if(resp < 0){
+				err = (int32_t)resp;
+				goto done;
+			}
+	}
+
+done:
+	vfree(mb_req);
+	return err;
+}
+
+static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
+{
+	int err = 0;
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct mailbox_req_bitstream_lock bitstream_lock = {0};
+	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	/* if there is no user there
+	 * ask mgmt to unlock the bitstream
+	 */
+	if(icap->icap_bitstream_ref == 0){
+			mb_req = (struct mailbox_req *)vmalloc(reqlen);
+			if(!mb_req){
+				err = -ENOMEM;
+				goto done;
+			}
+
+			mb_req->req = MAILBOX_REQ_UNLOCK_BITSTREAM;
+			memcpy(mb_req->data, &bitstream_lock, data_len);
+
+			err = xocl_peer_notify(XOCL_PL_DEV_TO_XDEV(pdev), mb_req, reqlen);
+			if(err){
+				err = -ENODEV;
+				goto done;
+			}
+	}
+done:
+	vfree(mb_req);
+	return err;
+}
+
+
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const void __user *u_xclbin)
 {
@@ -1613,13 +1779,16 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const struct axlf_section_header* clockHeader = NULL;
 	const struct axlf_section_header* secondaryHeader = NULL;
 	uint64_t copy_buffer_size = 0;
-	struct axlf *copy_buffer = NULL, *axlf = NULL;
+	struct axlf *copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
-	struct mailbox_req mb_xclbin_req = { 0 };
-	int msg = 0;
+	int64_t msg = -ETIMEDOUT;
 	size_t resplen = sizeof (msg);
 	int pid = pid_nr(task_tgid(current));
+	uint32_t data_len = 0;
+	int peer_connected;
+	struct mailbox_req *mb_req = NULL;
+	xuid_t peer_uuid;
 
 	if (copy_from_user((void *)&bin_obj, u_xclbin, sizeof(struct axlf)))
 		return -EFAULT;
@@ -1772,49 +1941,69 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			memcpy(&icap->icap_bitstream_uuid,
 				&bin_obj.m_header.m_timeStamp, 8);
 		}
-	}
+	} else {
 
-
-	if (!ICAP_PRIVILEGED(icap)){
 		mutex_lock(&icap->icap_lock);
 
 		if(icap_bitstream_in_use(icap, pid)){
-			if (uuid_equal(&bin_obj.m_header.uuid, &icap->icap_bitstream_uuid))
-				err = add_user(icap, pid);
-			else {
+			if (!uuid_equal(&bin_obj.m_header.uuid, &icap->icap_bitstream_uuid)){
 				err = -EBUSY;
 				goto done;
 			}
 		}
 
-		/*
-		 *  should replace with userpf download flow
-		 */
-		axlf = (struct axlf *)vmalloc(bin_obj.m_header.m_length);
-		if (!axlf) {
-			ICAP_ERR(icap, "Unable to create axlf\n");
-			err = -ENOMEM;
-			goto done;
-		}
+		icap_read_from_peer(pdev, XCLBIN_UUID, &peer_uuid, sizeof(xuid_t));
 
-		if (copy_from_user(axlf, u_xclbin, bin_obj.m_header.m_length)) {
-			err = -EFAULT;
-			goto done;
-		}
+		if(!uuid_equal(&peer_uuid, &bin_obj.m_header.uuid)){
+			/*
+			 *  should replace with userpf download flow
+			 */
+			mb_req = (struct mailbox_req *)vmalloc(sizeof(struct mailbox_req)+bin_obj.m_header.m_length);
+			if (!mb_req) {
+				ICAP_ERR(icap, "Unable to create mb_req\n");
+				err = -ENOMEM;
+				goto done;
+			}
 
-		//memory share-able
-		mb_xclbin_req.req = MAILBOX_REQ_DOWNLOAD_XCLBIN;
-		mb_xclbin_req.u.xclbin_reg.data = (void *)axlf;
-		mb_xclbin_req.u.xclbin_reg.data_len = bin_obj.m_header.m_length;
+			if (copy_from_user(mb_req->data, u_xclbin, bin_obj.m_header.m_length)) {
+				err = -EFAULT;
+				goto done;
+			}
 
-		(void) xocl_peer_request(xdev,
-			&mb_xclbin_req, &msg, &resplen, NULL, NULL);
+			peer_connected = xocl_mailbox_get_data(xdev, PEER_CONN);
+			ICAP_INFO(icap, "%s peer_connected 0x%x", __func__, peer_connected);
+			if(peer_connected < 0) {
+				err = -ENODEV;
+				goto done;
+			}
 
-		if(msg != 0){
-			ICAP_ERR(icap, "%s peer failed to download xclbin, operation abort!", __func__);
-			err = -EFAULT;
-			goto done;
-		}
+			if(!(peer_connected & 0x1)){
+				ICAP_ERR(icap, "%s fail to find peer, operation abort!", __func__);
+				err = -EFAULT;
+				goto done;
+			}
+
+			if((peer_connected & 0xF) == MB_PEER_SAMEDOM_CONNECTED){
+				data_len = sizeof(struct mailbox_req);
+				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
+				mb_req->data_ptr = (void*)mb_req->data;
+
+			} else if ((peer_connected & 0xF) == MB_PEER_CONNECTED){
+				data_len = sizeof(struct mailbox_req) + bin_obj.m_header.m_length;
+				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
+			}					
+			mb_req->data_total_len = data_len;
+			(void) xocl_peer_request(xdev,
+				mb_req, data_len, &msg, &resplen, NULL, NULL);
+
+			if(msg != 0){
+				ICAP_ERR(icap, "%s peer failed to download xclbin, operation abort!", __func__);
+				err = -EFAULT;
+				goto done;
+			}
+		} else 
+			ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx", bin_obj.m_uniqueId);
+
 		icap->icap_bitstream_id = bin_obj.m_uniqueId;
 		if (!uuid_is_null(&bin_obj.m_header.uuid)) {
 			uuid_copy(&icap->icap_bitstream_uuid, &bin_obj.m_header.uuid);
@@ -1823,7 +2012,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			memcpy(&icap->icap_bitstream_uuid,
 				&bin_obj.m_header.m_timeStamp, 8);
 		}
-	}
+
+	} 
 
 	buffer = (char __user *)u_xclbin;
 	if (ICAP_PRIVILEGED(icap)){
@@ -1840,13 +2030,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = icap_verify_bitstream_axlf(pdev, copy_buffer, u_xclbin);
 
 done:
-	if(!ICAP_PRIVILEGED(icap)){
-		if(del_user(icap, pid)){
-			ICAP_INFO(icap, "%s fail to delete user", __FUNCTION__);
-		}
-	}
 	mutex_unlock(&icap->icap_lock);
-	vfree(axlf);
+	vfree(mb_req);
 	vfree(copy_buffer);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	return err;
@@ -2078,24 +2263,30 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 	mutex_lock(&icap->icap_lock);
 
-	if (!ICAP_PRIVILEGED(icap)) {
-		if (uuid_equal(id, &icap->icap_bitstream_uuid))
-			err = add_user(icap, pid);
-		else
-			err = -EBUSY;
+	if (!ICAP_PRIVILEGED(icap)){
+		err = __icap_lock_peer(pdev, id);
+		if(err < 0)
+			goto done;
+	}
 
-		if (err >= 0)
-			err = icap->icap_bitstream_ref;
-	}
-	else {
-		mutex_unlock(&icap->icap_lock);
-		BUG_ON("mgmt should not call icap_lock");
-	}
+	if (uuid_equal(id, &icap->icap_bitstream_uuid))
+		err = add_user(icap, pid);
+	else
+		err = -EBUSY;
+
+	if (err >= 0)
+		err = icap->icap_bitstream_ref;
 
 	ICAP_INFO(icap, "proc %d try to lock bitstream %pUb, ref=%d, err=%d",
 		  pid, id, icap->icap_bitstream_ref, err);
-
+done:
 	mutex_unlock(&icap->icap_lock);
+
+	if (!ICAP_PRIVILEGED(icap) && err==1) /* reset on first reference */
+		xocl_exec_reset(xocl_get_xdev(pdev));
+
+	if(err>=0)
+		err = 0;
 
 	return err;
 }
@@ -2111,28 +2302,34 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 
 	mutex_lock(&icap->icap_lock);
 
+	/* Force unlock. */
+	if (uuid_is_null(id)){
+		del_all_users(icap);
+	}
+	else if (uuid_equal(id, &icap->icap_bitstream_uuid)){
+		err = del_user(icap, pid);
+	}
+	else
+		err = -EINVAL;
+
 	if (!ICAP_PRIVILEGED(icap)) {
-		/* Force unlock. */
-		if (uuid_is_null(id))
-			del_all_users(icap);
-		else if (uuid_equal(id, &icap->icap_bitstream_uuid))
-			err = del_user(icap, pid);
-		else
-			err = -EINVAL;
-		if (err >= 0)
-			err = icap->icap_bitstream_ref;
+		__icap_unlock_peer(pdev, id);
+	}
+
+	if (err >= 0)
+		err = icap->icap_bitstream_ref;
+
+	if (!ICAP_PRIVILEGED(icap)){	
 		if (err==0)
-			xocl_exec_reset(xocl_get_xdev(pdev));
-	} else {
-		mutex_unlock(&icap->icap_lock);
-		BUG_ON("mgmt should not call icap_unlock");
+			xocl_exec_stop(xocl_get_xdev(pdev));
 	}
 
 	ICAP_INFO(icap, "proc %d try to unlock bitstream %pUb, ref=%d, err=%d",
 		  pid, id, icap->icap_bitstream_ref, err);
 
 	mutex_unlock(&icap->icap_lock);
-
+	if(err>=0)
+		err = 0;
 	return err;
 }
 
@@ -2214,26 +2411,32 @@ done:
 	return err;
 }
 
-void *icap_get_axlf_section_data(struct platform_device *pdev,
-	enum axlf_section_kind kind)
+static uint64_t icap_get_data(struct platform_device *pdev,
+	enum data_kind kind)
 {
 
 	struct icap *icap = platform_get_drvdata(pdev);
-	void *target = NULL;
+	uint64_t target = 0;
 
 	mutex_lock(&icap->icap_lock);
 	switch(kind){
-		case IP_LAYOUT:
-			target = icap->ip_layout;
+		case IPLAYOUT_AXLF:
+			target = (uint64_t)icap->ip_layout;
 			break;
-		case MEM_TOPOLOGY:
-			target = icap->mem_topo;
+		case MEMTOPO_AXLF:
+			target = (uint64_t)icap->mem_topo;
 			break;
-		case DEBUG_IP_LAYOUT:
-			target = icap->debug_layout;
+		case DEBUG_IPLAYOUT_AXLF:
+			target = (uint64_t)icap->debug_layout;
 			break;
-		case CONNECTIVITY:
-			target = icap->connectivity;
+		case CONNECTIVITY_AXLF:
+			target = (uint64_t)icap->connectivity;
+			break;
+		case IDCODE:
+			target = icap->idcode;
+			break;
+		case XCLBIN_UUID:
+			target = (uint64_t)&icap->icap_bitstream_uuid;
 			break;
 		default:
 			break;
@@ -2254,7 +2457,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.parse_axlf_section = icap_parse_bitstream_axlf_section,
-	.get_axlf_section_data = icap_get_axlf_section_data,
+	.get_data = icap_get_data,
 };
 
 static ssize_t clock_freq_topology_show(struct device *dev,
@@ -2264,8 +2467,10 @@ static ssize_t clock_freq_topology_show(struct device *dev,
 	ssize_t cnt = 0;
 
 	mutex_lock(&icap->icap_lock);
-	memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
-	cnt = icap->icap_clock_freq_topology_length;
+	if(ICAP_PRIVILEGED(icap)){
+		memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
+		cnt = icap->icap_clock_freq_topology_length;
+	}
 	mutex_unlock(&icap->icap_lock);
 
 	return cnt;
@@ -2283,6 +2488,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 	u32 freq_counter, freq, request_in_khz, tolerance;
 
 	mutex_lock(&icap->icap_lock);
+
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
 		freq = icap_get_ocl_frequency(icap, i);
 		if(!uuid_is_null(&icap->icap_bitstream_uuid)){
@@ -2306,11 +2512,93 @@ static ssize_t clock_freqs_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(clock_freqs);
 
+static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
+{
+	XHwIcap_Bit_Header bit_header = { 0 };
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t ret = count;
+
+	if (off == 0) {
+		if (count < DMA_HWICAP_BITFILE_BUFFER_SIZE) {
+			ICAP_ERR(icap, "count is too small %ld", count);
+			return -EINVAL;
+		}
+
+		if (bitstream_parse_header(icap, buffer,
+			DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+			ICAP_ERR(icap, "parse header failed");
+			return -EINVAL;
+		}
+
+		icap->bit_length = bit_header.HeaderLength +
+			bit_header.BitstreamLength;
+		icap->bit_buffer = vmalloc(icap->bit_length);
+	}
+
+	if (off + count >= icap->bit_length) {
+		/*
+ 		 * assumes all subdevices are removed at this time
+		 */
+		memcpy(icap->bit_buffer + off, buffer, icap->bit_length - off);
+		icap_freeze_axi_gate_shell(icap); 
+		ret = icap_download(icap, icap->bit_buffer, icap->bit_length);
+		if (ret) {
+			ICAP_ERR(icap, "bitstream download failed");
+			ret = -EIO;
+		} else {
+			ret = count;
+		}
+		icap_free_axi_gate_shell(icap); 
+		/* has to reset pci, otherwise firewall trips */
+		xocl_reset(xocl_get_xdev(icap->icap_pdev));
+		icap->icap_bitstream_id = 0;
+		memset(&icap->icap_bitstream_uuid, 0, sizeof(xuid_t));
+		vfree(icap->bit_buffer);
+		icap->bit_buffer = NULL;
+	} else {
+		memcpy(icap->bit_buffer + off, buffer, count);
+	}
+
+	return ret;
+}
+
+static struct bin_attribute shell_program_attr = {
+	.attr = {
+		.name = "shell_program",
+		.mode = 0200
+	},
+	.read = NULL,
+	.write = icap_rl_program,
+	.size = 0
+};
+
+static struct bin_attribute *icap_mgmt_bin_attrs[] = {
+	&shell_program_attr,
+	NULL,
+};
+
+static struct attribute_group icap_mgmt_bin_attr_group = {
+	.bin_attrs = icap_mgmt_bin_attrs,
+};
+
 static ssize_t idcode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	return sprintf(buf, "0x%x\n", icap->idcode);
+	ssize_t cnt = 0;
+	uint32_t val;
+	mutex_lock(&icap->icap_lock);
+	if(ICAP_PRIVILEGED(icap)){
+		cnt = sprintf(buf, "0x%x\n", icap->idcode);
+	} else {
+		icap_read_from_peer(to_platform_device(dev), IDCODE, &val, sizeof(unsigned int));
+		cnt = sprintf(buf, "0x%x\n", val);
+	}
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
 }
 
 static DEVICE_ATTR_RO(idcode);
@@ -2509,6 +2797,12 @@ static int icap_remove(struct platform_device *pdev)
 	del_all_users(icap);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, NULL);
 
+	if (ICAP_PRIVILEGED(icap))
+		sysfs_remove_group(&pdev->dev.kobj, &icap_mgmt_bin_attr_group);
+
+	if (icap->bit_buffer)
+		vfree(icap->bit_buffer);
+
 	iounmap(icap->icap_regs);
 	iounmap(icap->icap_state);
 	iounmap(icap->icap_axi_gate);
@@ -2638,8 +2932,20 @@ static int icap_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	if (ICAP_PRIVILEGED(icap)) {
+		ret = sysfs_create_group(&pdev->dev.kobj,
+			&icap_mgmt_bin_attr_group);
+		if (ret) {
+			ICAP_ERR(icap, "create icap attrs failed: %d", ret);
+			goto failed;
+		}
+	}
+
 	icap_probe_chip(icap);
-	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x", icap->idcode);
+	if (!ICAP_PRIVILEGED(icap))
+		icap_unlock_bitstream(pdev, NULL, 0);
+	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x",
+			icap->idcode);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);
 	return 0;
 
