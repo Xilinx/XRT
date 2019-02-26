@@ -94,7 +94,6 @@ struct xocl_dev	{
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
 	struct dev_pagemap pgmap;
 #endif
-	xuid_t                          xclbin_id;
 	struct list_head                ctx_list;
 	struct mutex			ctx_list_lock;
 	unsigned int                    needs_reset; /* bool aligned */

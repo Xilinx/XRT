@@ -53,6 +53,7 @@ static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 		sdev_id = XOCL_DEV_ID(core->pdev);
 	}
 
+	xocl_info(&core->pdev->dev, "creating subdev %s", sdev_info->name);
 	pldev = platform_device_alloc(sdev_info->name, sdev_id);
 	if (!pldev) {
 		xocl_err(&core->pdev->dev, "failed to alloc device %s",
@@ -206,12 +207,58 @@ failed:
 	return (ret);
 }
 
+int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, n;
+
+	for (i = 0; i < core->priv.subdev_num; i++) {
+		n = strlen(name);
+		if (name[n - 1] == '\n')
+			n--;
+		if (!strncmp(core->priv.subdev_info[i].name, name, n))
+			break;
+	}
+	if (i == core->priv.subdev_num)
+		return -ENODEV;
+
+	return xocl_subdev_create_one(xdev_hdl, 
+			&core->priv.subdev_info[i]);
+}
+
+int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, n;
+
+	for (i = 0; i < core->priv.subdev_num; i++) {
+		n = strlen(name);
+		if (name[n - 1] == '\n')
+			n--;
+		if (!strncmp(core->priv.subdev_info[i].name, name, n))
+			break;
+	}
+	if (i == core->priv.subdev_num)
+		return -ENODEV;
+
+	xocl_subdev_destroy_one(xdev_hdl, core->priv.subdev_info[i].id);
+
+	return 0;
+}
+
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i;
+
+	for (i = 0; i < core->priv.subdev_num; i++)
+		if (core->priv.subdev_info[i].id == id)
+			break;
+	if (i == core->priv.subdev_num)
+		return -ENOENT;
 
 	return xocl_subdev_create_one(xdev_hdl, 
-			&core->priv.subdev_info[id]);
+			&core->priv.subdev_info[i]);
 }
 
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,

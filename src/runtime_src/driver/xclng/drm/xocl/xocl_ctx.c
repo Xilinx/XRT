@@ -188,8 +188,10 @@ void xocl_drvinst_close(void *data)
 
 	if (proc) {
 		proc->count--;
-		if (!proc->count)
+		if (!proc->count) {
 			list_del(&proc->link);
+			kfree(proc);
+		}
 	}
 
 	if (atomic_dec_return(&drvinstp->ref) == 1) {

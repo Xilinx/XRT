@@ -25,7 +25,10 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	return sprintf(buf, "%pUb\n", &xdev->xclbin_id);
+	xuid_t *xclbin_id;
+
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	return sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
 }
 
 static DEVICE_ATTR_RO(xclbinuuid);
@@ -53,9 +56,13 @@ static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int size = sprintf(buf,
+	int size;
+	xuid_t *xclbin_id;
+
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	size = sprintf(buf,
 			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
-			   &xdev->xclbin_id,
+			   xclbin_id ? xclbin_id : 0,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),
 			   get_live_client_size(xdev));
