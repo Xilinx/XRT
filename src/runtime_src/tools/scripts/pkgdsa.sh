@@ -639,7 +639,6 @@ dodebdev()
     mkdir -p $pkgdir/DEBIAN
 
 cat <<EOF > $pkgdir/DEBIAN/control
-
 Package: $dsa-dev
 Architecture: amd64
 Version: $version-$revision
@@ -684,7 +683,6 @@ dodeb()
     mkdir -p $pkgdir/DEBIAN
 
 cat <<EOF > $pkgdir/DEBIAN/control
-
 Package: $dsa
 Architecture: all
 Version: $version-$revision
