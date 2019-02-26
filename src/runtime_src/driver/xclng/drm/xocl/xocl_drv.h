@@ -187,6 +187,7 @@ struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
 	int (*intr_register)(xdev_handle_t xdev, u32 intr,
 		irq_handler_t handler, void *arg);
+	int (*reset)(xdev_handle_t xdev);
 };
 
 #define	XDEV(dev)	((struct xocl_dev_core *)(dev))
@@ -196,6 +197,9 @@ struct xocl_pci_funcs {
 	XDEV_PCIOPS(xdev)->intr_config(xdev, intr, en)
 #define	xocl_user_interrupt_reg(xdev, intr, handler, arg)	\
 	XDEV_PCIOPS(xdev)->intr_register(xdev, intr, handler, arg)
+#define xocl_reset(xdev)			\
+	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
+	-ENODEV)
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
@@ -286,6 +290,7 @@ enum data_kind {
 	CONNECTIVITY_AXLF,
 	DEBUG_IPLAYOUT_AXLF,
 	PEER_CONN,
+	XCLBIN_UUID,
 };
 
 
@@ -751,6 +756,9 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
+
+int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
+int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
 int xocl_subdev_get_devinfo(uint32_t subdev_id,
 	struct xocl_subdev_info *subdev_info, struct resource *res);

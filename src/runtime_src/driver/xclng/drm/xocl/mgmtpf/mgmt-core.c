@@ -544,37 +544,58 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	return 0;
 }
 
+static int xclmgmt_reset(xdev_handle_t xdev_hdl)
+{
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+
+	return reset_hot_ioctl(lro);
+}
+
 struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_config = xclmgmt_intr_config,
 	.intr_register = xclmgmt_intr_register,
+	.reset = xclmgmt_reset,
 };
 
-static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr)
+static uint64_t xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	uint64_t val = 0;
+	void *ptr = NULL;
 	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
 	switch(subdev_req->kind){
 		case VOL_12V_PEX:
 			val = xocl_xmc_get_data(lro, subdev_req->kind);
+			*sz = sizeof(u32);
+			ptr = (void *)&val;
 			break;
 		case IDCODE:
 			val = xocl_icap_get_data(lro, subdev_req->kind);
+			*sz = sizeof(u32);
+			ptr = (void *)&val;
+			break;
+		case XCLBIN_UUID:
+			ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
+			*sz = sizeof(xuid_t);
 			break;
 		default:
 			break;
 	}
-
-	return val;
+	*resp = vmalloc(*sz);
+	memcpy(*resp, ptr, *sz);
+	return 0;
 }
 
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err)
 {
 	uint64_t ret;
+	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	void *resp = NULL;
 	bitstm_lock =	(struct mailbox_req_bitstream_lock *)req->data;
+
 	if (err != 0)
 		return;
 
@@ -607,8 +628,9 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	case MAILBOX_REQ_PEER_DATA:
-		ret = xclmgmt_read_subdev_req(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		(void) xocl_peer_response(lro, msgid, resp, sz);
+		vfree(resp);
 		break;
 	default:
 		break;
@@ -737,13 +759,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (rc)
 		goto err_alloc_minor;
 
-	rc = pci_request_regions(pdev, DRV_NAME);
-	/* could not request all regions? */
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_request_regions() = %d\n", rc);
-		goto err_regions;
-	}
-
 	dev_info = (struct xocl_board_private *)id->driver_data;
 	xocl_fill_dsa_priv(lro, dev_info);
 
@@ -781,8 +796,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 err_cdev:
 	unmap_bars(lro);
 err_map:
-	pci_release_regions(pdev);
-err_regions:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	dev_set_drvdata(&pdev->dev, NULL);
@@ -819,7 +832,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	/* unmap the BARs */
 	unmap_bars(lro);
 	pci_disable_device(pdev);
-	pci_release_regions(pdev);
 
 	xocl_free_dev_minor(lro);
 

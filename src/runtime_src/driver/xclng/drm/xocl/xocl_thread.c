@@ -59,6 +59,7 @@ int health_thread_stop(xdev_handle_t xdev)
 		return 0;
 
 	ret = kthread_stop(core->health_thread);
+	core->health_thread = NULL;
 
 	xocl_info(&core->pdev->dev, "fini_health_thread. ret = %d\n", ret);
 	if(ret != -EINTR) {
