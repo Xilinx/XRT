@@ -1,7 +1,7 @@
 /*
  * FPGA Manager bindings for XRT driver
  *
- * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
  *
@@ -16,8 +16,8 @@
  */
 
 /*
- * FPGA Mgr integration is support limited to Ubuntu for now. RHEL/CentOS kernels
- * do not support FPGA Mgr
+ * FPGA Mgr integration is support limited to Ubuntu for now. RHEL/CentOS 7.X
+ * kernels do not support FPGA Mgr yet.
  */
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)
@@ -34,15 +34,14 @@
  * Manager's .write() backend sends incremental blocks without any knowledge of
  * xclbin format forcing us to collect the blocks and stitch them together here.
  * TODO:
- * 1. Refactor icap_download_bitstream_axlf() to read in the full xclbin into kernel
- *    memory instead of copying in section by section
- * 2. Call icap_download_bitstream_axlf() from FPGA Manager's write complete hook,
- *    xocl_pr_write_complete() when we have the full binary
+ * 1. Add a variant of API, icap_download_bitstream_axlf() which works off kernel buffer
+ * 2. Call this new API from FPGA Manager's write complete hook, xocl_pr_write_complete()
  */
 
 struct xfpga_klass {
 	struct xocl_dev *xdev;
 	struct axlf *blob;
+	char name[64];
 	size_t count;
 #if defined(FPGA_MGR_SUPPORT)
 	enum fpga_mgr_states state;
@@ -159,24 +158,31 @@ static int fmgr_probe(struct platform_device *pdev)
 	if (!obj)
 		return -ENOMEM;
 
-	dev_set_drvdata(&pdev->dev, obj);
 	obj->xdev = xocl_get_xdev(pdev);
+	snprintf(obj->name, sizeof(obj->name), "Xilinx PCIe FPGA Manager");
+
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	ret = fpga_mgr_register(&pdev->dev,
-				"Xilinx PCIe FPGA Manager", &xocl_pr_ops, obj);
+	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+#else
+	platform_set_drvdata(pdev, obj);
 #endif
 	return ret;
 }
 
 static int fmgr_remove(struct platform_device *pdev)
 {
-	struct xfpga_klass *obj = dev_get_drvdata(&pdev->dev);
 #if defined(FPGA_MGR_SUPPORT)
+	struct fpga_manager *mgr = platform_get_drvdata(pdev);
+	struct xfpga_klass *obj = mgr->priv;
+
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
 	fpga_mgr_unregister(&pdev->dev);
-	dev_set_drvdata(&pdev->dev, NULL);
+#else
+	struct xfpga_klass *obj = platform_get_drvdata(pdev);
 #endif
+
+	platform_set_drvdata(pdev, NULL);
 	vfree(obj->blob);
 	kfree(obj);
 	return 0;
