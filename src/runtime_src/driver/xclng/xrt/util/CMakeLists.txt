@@ -1,6 +1,7 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
+  ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 
 file(GLOB XRT_UTIL_FILES
