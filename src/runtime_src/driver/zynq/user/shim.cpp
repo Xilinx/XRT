@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <vector>
 #include <poll.h>
+#include "driver/common/message.h"
+#include "driver/common/scheduler.h"
 //#include "xclbin.h"
 #include <assert.h>
 
@@ -612,10 +614,11 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags) {
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-    if (!drv)
-        return -EINVAL;
-    return drv->xclLoadXclBin(buffer);
+    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+        ret = xrt_core::scheduler::init(handle,buffer);
+    return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
