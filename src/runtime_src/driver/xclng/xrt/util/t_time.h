@@ -14,38 +14,46 @@
  * under the License.
  */
 
-#ifndef xrt_message_h_
-#define xrt_message_h_
-#include <string>
+#ifndef xrt_util_time_h_
+#define xrt_util_time_h_
 
-namespace xrt_core { namespace message {
+#include <iostream>
+#include <string.h>
 
-//modeled based on syslog severity.
-enum class severity_level : unsigned short
+namespace xrt_core {
+
+/**
+ * @return
+ *   nanoseconds since first call
+ */
+unsigned long
+time_ns();
+
+/**
+ * @return formatted timestamp
+ */
+std::string
+timestamp();
+
+/**
+ * Simple time guard to accumulate scoped time
+ */
+class time_guard
 {
- EMERGENCY,
- ALERT,
- CRITICAL,
- ERROR,
- WARNING,
- NOTICE,
- INFO,
- DEBUG
+  unsigned long zero = 0;
+  unsigned long& tally;
+public:
+  explicit
+  time_guard(unsigned long& t)
+    : zero(time_ns()), tally(t)
+  {}
+
+  ~time_guard()
+  {
+    tally += time_ns() - zero;
+  }
 };
 
-
-void 
-send(severity_level l, const char* tag, const char* msg);
-
-inline void 
-send(severity_level l, const std::string& tag, const std::string& msg)
-{
-  send(l, tag.c_str(), msg.c_str());
-}
-
-}} // message,xrt
+} // xrt
 
 #endif
-
-
-
