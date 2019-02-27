@@ -36,8 +36,8 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "driver/xclng/xrt/util/message.h"
-#include "driver/xclng/xrt/util/scheduler.h"
+#include "driver/common/message.h"
+#include "driver/common/scheduler.h"
 #include <cstdio>
 #include <stdarg.h>
 
