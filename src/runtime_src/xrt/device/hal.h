@@ -607,7 +607,7 @@ public:
   getQueue(hal::queue_type qt) {return nullptr; }
 
   virtual void*
-  getHalDeviceHandle() = 0;
+  getHalDeviceHandle() {return nullptr;}
 };
 
 
