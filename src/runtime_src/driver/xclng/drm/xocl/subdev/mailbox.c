@@ -198,6 +198,7 @@ struct mailbox_msg {
 	void			*mbm_cb_arg;
 	u32			mbm_flags;
 	int			mbm_ttl;
+	bool		mbm_timer_on;
 };
 
 /*
@@ -531,13 +532,16 @@ void timeout_msg(struct mailbox_channel *ch)
 	/* Check active msg first. */
 	msg = ch->mbc_cur_msg;
 	if (msg) {
+
 		if (msg->mbm_ttl == 0) {
 			MBX_ERR(mbx, "found active msg time'd out");
 			chan_msg_done(ch, -ETIME);
 		} else {
-			msg->mbm_ttl--;
-			/* Need to come back again for this one. */
-			reschedule = true;
+			if(msg->mbm_timer_on){
+				msg->mbm_ttl--;
+				/* Need to come back again for this one. */
+				reschedule = true;
+			}
 		}
 	}
 
@@ -545,6 +549,8 @@ void timeout_msg(struct mailbox_channel *ch)
 
 	list_for_each_safe(pos, n, &ch->mbc_msgs) {
 		msg = list_entry(pos, struct mailbox_msg, mbm_list);
+		if (!msg->mbm_timer_on)
+			continue;
 		if (msg->mbm_req_id == 0)
 		       continue;
 		if (msg->mbm_ttl == 0) {
@@ -675,6 +681,7 @@ static struct mailbox_msg* alloc_msg(void *buf, size_t len)
 	msg->mbm_data = newbuf;
 	msg->mbm_len = len;
 	msg->mbm_ttl = calculated_ttl;
+	msg->mbm_timer_on = false;
 	init_completion(&msg->mbm_complete);
 
 	return msg;
@@ -994,6 +1001,30 @@ static void check_tx_stall(struct mailbox_channel *ch)
 	}
 }
 
+
+
+static void rx_enqueued_msg_timer_on(struct mailbox *mbx, uint64_t req_id)
+{
+	struct list_head *pos, *n;
+	struct mailbox_msg *msg = NULL;
+	struct mailbox_channel *ch = NULL;
+	ch = &mbx->mbx_rx;
+	MBX_DBG(mbx, "try to set ch rx, req_id %llu\n", req_id);
+	mutex_lock(&ch->mbc_mutex);
+
+	list_for_each_safe(pos, n, &ch->mbc_msgs) {
+		msg = list_entry(pos, struct mailbox_msg, mbm_list);
+		if (msg->mbm_req_id == req_id){
+			msg->mbm_timer_on = true;
+			MBX_DBG(mbx, "set ch rx, req_id %llu\n", req_id);
+			break;
+		}
+	}
+
+	mutex_unlock(&ch->mbc_mutex);
+
+}
+
 /*
  * Worker for TX channel.
  */
@@ -1014,11 +1045,15 @@ static void chan_do_tx(struct mailbox_channel *ch)
 		/* Finished sending a whole msg, call it done. */
 		if (ch->mbc_cur_msg &&
 			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done)) {
+			rx_enqueued_msg_timer_on(mbx, ch->mbc_cur_msg->mbm_req_id);
 			chan_msg_done(ch, 0);
 		}
 
-		if (!ch->mbc_cur_msg)
+		if (!ch->mbc_cur_msg){
 			ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
+			if(ch->mbc_cur_msg)
+				ch->mbc_cur_msg->mbm_timer_on = true;
+		}
 
 		if (ch->mbc_cur_msg) {
 			chan_msg2pkt(ch);
