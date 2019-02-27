@@ -521,6 +521,8 @@ static int identify_bar(struct xocl_dev *xdev)
 		if (bar_len >= (1 << XOCL_PA_SECTION_SHIFT)) {
 			xdev->p2p_bar_idx = i;
 			xdev->p2p_bar_len = bar_len;
+			pci_request_selected_regions(pdev, i,
+				XOCL_MODULE_NAME);
 		} else if (bar_len >= 32 * 1024 * 1024) {
 			xdev->core.bar_addr = ioremap_nocache(
 				pci_resource_start(pdev, i), bar_len);
@@ -540,6 +542,10 @@ static void unmap_bar(struct xocl_dev *xdev)
 		iounmap(xdev->core.bar_addr);
 		xdev->core.bar_addr = NULL;
 	}
+
+	if (xdev->p2p_bar_len)
+		pci_release_selected_regions(xdev->core.pdev,
+				xdev->p2p_bar_idx);
 }
 
 /* pci driver callbacks */
@@ -574,12 +580,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to enable device.");
 		goto failed_to_enable;
-	}
-
-	ret = pci_request_regions(pdev, XOCL_MODULE_NAME);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to req regions.");
-		goto failed_to_regions;
 	}
 
 	ret = xocl_alloc_dev_minor(xdev);
@@ -623,8 +623,6 @@ failed_create_subdev:
 	xocl_free_dev_minor(xdev);
 
 failed_alloc_minor:
-	pci_release_regions(pdev);
-failed_to_regions:
 	pci_disable_device(pdev);
 failed_to_enable:
 	unmap_bar(xdev);
@@ -651,7 +649,6 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_fini_sysfs(&pdev->dev);
 	xocl_free_dev_minor(xdev);
 
-	pci_release_regions(pdev);
 	pci_disable_device(pdev);
 
 	unmap_bar(xdev);
