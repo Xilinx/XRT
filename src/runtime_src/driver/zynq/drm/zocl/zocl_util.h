@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -38,6 +38,11 @@
 	(ret); \
 })
 
+struct drm_zocl_mm_stat {
+	size_t memory_usage;
+	unsigned int bo_count;
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -56,7 +61,18 @@ struct drm_zocl_dev {
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
+	struct drm_zocl_mm_stat	 mm_usage;
 	u64			 unique_id_last_bitstream;
+
+	/*
+	 * This RW lock is to protect the sysfs nodes exported
+	 * by zocl driver. Currently, all zocl attributes exported
+	 * to sysfs nodes are protected by a single lock. Any read
+	 * functions which not atomically touch those attributes should
+	 * hold read lock; And all write functions which not atomically
+	 * touch those attributes should hold write lock.
+	 */
+	rwlock_t		attr_rwlock;
 };
 
 #endif

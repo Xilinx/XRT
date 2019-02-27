@@ -112,5 +112,6 @@ int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *zdev);
 void zocl_free_bo(struct drm_gem_object *obj);
+void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count);
 
 #endif
