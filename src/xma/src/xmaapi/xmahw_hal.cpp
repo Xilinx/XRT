@@ -275,55 +275,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                            systemcfg->imagecfg[i].device_id_map[d]);
                 return false;
             }
-      //For execbo:" Configure KDS
+      //Setup execbo for use with kernel commands
       int execBO_size = 4096;
       uint32_t execBO_flags = (1<<31);
-      uint32_t bo_handle = xclAllocBO(hal->dev_handle, execBO_size, XCL_BO_SHARED_VIRTUAL, execBO_flags);
-      if (!bo_handle || bo_handle == mNullBO) {
-        cout << "ERROR: Unable to create bo for ERT/KDS configure" << endl;
-        xma_logmsg("ERROR: Unable to create bo for ERT/KDS configure\n");
-        return false;
-      }
-      char* bo_data = (char*)xclMapBO(hal->dev_handle, bo_handle, true);
-      //memset to zero
-      memset((void*)bo_data, 0x0, execBO_size);
-      ert_configure_cmd* configure_cmd = (ert_configure_cmd*) bo_data;
-      configure_cmd->state = ERT_CMD_STATE_NEW;
-      configure_cmd->count = 5 + info.num_ips;
-      configure_cmd->opcode = ERT_CONFIGURE;
-      configure_cmd->slot_size = execBO_size;
-      configure_cmd->num_cus = info.num_ips;
-      configure_cmd->cu_shift = 16;
-      configure_cmd->ert = true; //Use hardware ERT
+      uint32_t bo_handle = mNullBO;
+      char* bo_data = NULL;
 
-      configure_cmd->cu_base_addr = info.ip_layout[0].base_addr;
-      for (uint32_t i_configure = 0; i_configure < info.num_ips; i_configure++) {
-        if (configure_cmd->cu_base_addr > info.ip_layout[i_configure].base_addr) {
-          configure_cmd->cu_base_addr = info.ip_layout[i_configure].base_addr;
-        }
-        configure_cmd->data[i_configure] = info.ip_layout[i_configure].base_addr;
-      }
-
-      if (xclExecBuf(hal->dev_handle, bo_handle) != 0) {
-        cout << "ERROR: Failed to submit ERT/KDS configure cmd" << endl;
-        xma_logmsg("ERROR: Failed to submit ERT/KDS configure cmd\n");
-        return false;
-      }
-
-      while (configure_cmd->state < 4) {
-        if (xclExecWait(hal->dev_handle, 7000) < 0) {//With zero keep waiting. > 0 go and check status..
-            cout << "ERROR: Failed to wait for ERT?KDS configure done" << endl;
-            xma_logmsg("ERROR: Failed to wait for ERT?KDS configure done\n");
-            return false;
-        }
-        cout << "INFO: Waiting for ERT/KDS configure to finish" << endl;
-      }
-      if (configure_cmd->state != 4) {
-            cout << "ERROR: ERT/KDS configure failed" << endl;
-            xma_logmsg("ERROR: ERT/KDS configure failed\n");
-            return false;
-      }
-      //Setup execbo for use with kernel commands
       for (int32_t k = 0, t = 0;
            t < MAX_KERNEL_CONFIGS &&
            k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++) {
