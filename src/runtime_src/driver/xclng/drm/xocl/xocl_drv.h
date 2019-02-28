@@ -629,7 +629,6 @@ struct mailbox_req {
 	enum mailbox_request req;
 	uint32_t data_total_len;
 	uint64_t flags;
-	void *data_ptr;
 	char data[0];
 };
 
