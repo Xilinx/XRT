@@ -25,13 +25,13 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
-#find_package(Git)
-#
-#IF(GIT_FOUND)
-#  message("git found: ${GIT_EXECUTABLE}")
-#ELSE(GIT_FOUND)
-#  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
-#endif(GIT_FOUND)
+find_package(Git)
+
+IF(GIT_FOUND)
+  message("git found: ${GIT_EXECUTABLE}")
+ELSE(GIT_FOUND)
+  MESSAGE(FATAL_ERROR "Looking for GIT - not found")
+endif(GIT_FOUND)
 
 set(LINUX_FLAVOR ${CMAKE_SYSTEM_NAME})
 set(LINUX_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
@@ -58,6 +58,8 @@ file(GLOB XRT_EULA
 #install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
 install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
 message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
+
+include (CMake/version.cmake)
 
 include (CMake/ccache.cmake)
 
