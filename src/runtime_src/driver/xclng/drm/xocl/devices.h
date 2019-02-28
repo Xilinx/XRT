@@ -130,6 +130,8 @@ enum {
 #define	XOCL_MIG		"mig" SUBDEV_SUFFIX
 #define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
 #define	XOCL_DNA		"dna" SUBDEV_SUFFIX
+#define	XOCL_FMGR		"fmgr" SUBDEV_SUFFIX
+
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_DMA,
@@ -145,6 +147,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ICAP,
 	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
+	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_NUM
 };
 
@@ -558,6 +561,15 @@ enum subdev_id {
 		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
 	}
 
+#define	XOCL_DEVINFO_FMGR				\
+	{						\
+		XOCL_SUBDEV_FMGR,			\
+		XOCL_FMGR,				\
+		NULL,					\
+		0,					\
+	}
+
+
 /* user pf defines */
 #define	USER_RES_QDMA							\
 		((struct xocl_subdev_info []) {				\
@@ -657,6 +669,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,		        	\
 		})
 
 #define	MGMT_RES_DSA50							\
@@ -668,6 +681,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_DEFAULT						\
@@ -695,6 +709,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	MGMT_RES_6A8F_DSA50						\
@@ -705,6 +720,7 @@ enum subdev_id {
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	MGMT_RES_XBB_DSA51						\
@@ -716,6 +732,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_6A8F						\
@@ -752,6 +769,7 @@ enum subdev_id {
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 
@@ -792,6 +810,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_6A8F_DSA52					\
@@ -810,6 +829,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_XBB_DSA52					\
@@ -830,6 +850,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XIIC,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_6E8F_DSA52					\
@@ -846,6 +867,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
 		})
 
 #define	XOCL_BOARD_MGMT_MPSOC						\

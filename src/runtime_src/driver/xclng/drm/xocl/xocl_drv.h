@@ -828,4 +828,6 @@ void xocl_fini_xmc(void);
 int __init xocl_init_dna(void);
 void xocl_fini_dna(void);
 
+int __init xocl_init_fmgr(void);
+void xocl_fini_fmgr(void);
 #endif
