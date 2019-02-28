@@ -382,7 +382,7 @@ public:
     {
         std::string errmsg;
         std::vector<char> buf, temp_buf;
-        std::vector<std::string> mm_buf;
+        std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
 
         pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -397,6 +397,47 @@ public:
             return;
 
         for(int i = 0; i < map->m_count; i++) {
+            if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
+                std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
+                boost::property_tree::ptree ptStream;
+		std::map<std::string, std::string> stat_map;
+
+		lname = std::string((char *)map->m_mem_data[i].m_tag);
+                if (lname.back() == 'w')
+                    lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
+                else if (lname.back() == 'r')
+                    lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
+		else
+                    status = "N/A";
+
+	        pcidev::get_dev(m_idx)->user->sysfs_get("qdma", lname, errmsg, stream_stat);
+                if (errmsg.empty()) {
+                    status = "Active";
+		    for (unsigned k = 0; k < stream_stat.size(); k++) {
+			char key[50];
+			int64_t value;
+
+			std::sscanf(stream_stat[k].c_str(), "%[^:]:%ld", key, &value);
+			stat_map[std::string(key)] = std::to_string(value);
+		    }
+
+                    total = stat_map[std::string("complete_bytes")] +
+                        "/" + stat_map[std::string("complete_requests")];
+                    pending = stat_map[std::string("pending_bytes")] +
+                        "/" + stat_map[std::string("pending_requests")];
+		}
+
+		ptStream.put( "index",	i);
+                ptStream.put( "tag", map->m_mem_data[i].m_tag );
+                ptStream.put( "flow_id", map->m_mem_data[i].flow_id );
+                ptStream.put( "route_id", map->m_mem_data[i].route_id );
+		ptStream.put( "status", status );
+		ptStream.put( "total", total );
+		ptStream.put( "pending", pending );
+		sensor_tree::add_child( "board.memory.stream", ptStream);
+		continue;
+            }
+
             std::string str = "**UNUSED**";
             if(map->m_mem_data[i].m_used != 0) {
                 auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
@@ -522,120 +563,8 @@ public:
     /*
      * rewrite this function to place stream info in tree, dump will format the info.
      */
-    void m_stream_usage_stringize_dynamics( const xclDeviceInfo2& m_devinfo,
-        std::vector<std::string> &lines) const
+    void m_stream_usage_stringize_dynamics(std::vector<std::string> &lines) const
     {
-        std::stringstream ss;
-        std::string errmsg;
-        std::vector<char> buf;
-        std::vector<std::string> attrs;
-
-        ss << std::setfill(' ') << "\n";
-
-        ss << std::left << std::setw(48) << "Stream Topology" << "\n";
-
-        auto dev = pcidev::get_dev(m_idx);
-        if(!dev->user){
-            ss << "xocl driver is not loaded, skipped" << std::endl;
-            lines.push_back(ss.str());
-            return;
-        }
-        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
-
-        if (!errmsg.empty()) {
-            ss << errmsg << std::endl;
-            lines.push_back(ss.str());
-            return;
-        }
-
-        const mem_topology *map = (mem_topology *)buf.data();
-        unsigned num = 0;
-
-        if(!buf.empty())
-            num = map->m_count;
-
-        if(num == 0) {
-            ss << "-- none found --. See 'xbutil program'.\n";
-        } else if(num < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-               << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
-            return;
-        } else {
-            ss << std::setw(16) << "Tag"  << std::setw(8) << "Route"
-               << std::setw(5) << "Flow" << std::setw(10) << "Status"
-               << std::setw(14) << "Request(B/#)" << std::setw(14) << "Complete(B/#)"
-               << std::setw(10) << "Pending(B/#)" << "\n";
-        }
-
-        for(unsigned i = 0; i < num; i++) {
-            std::string lname;
-            bool flag = false;
-            std::map<std::string, std::string> stat_map;
-
-            if (map->m_mem_data[i].m_type != MEM_STREAMING)
-                continue;
-
-            ss << " [" << i << "] " << std::setw(16 - (std::to_string(i).length()) - 4) << std::left
-               << map->m_mem_data[i].m_tag;
-
-            ss << std::setw(8) << map->m_mem_data[i].route_id;
-            ss << std::setw(5) << map->m_mem_data[i].flow_id;
-
-            lname = std::string((char *)map->m_mem_data[i].m_tag);
-            if (lname.back() == 'w'){
-                lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
-                flag = true;
-            }
-            else
-                lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
-            pcidev::get_dev(m_idx)->user->sysfs_get("str_dma", lname, errmsg, attrs);
-
-            if (!errmsg.empty()) {
-                ss << std::setw(10) << "Inactive";
-                ss << std::setw(14) << "N/A" << std::setw(14) << "N/A" << std::setw(10) << "N/A";
-            } else {
-                ss << std::setw(10) << "Active";
-                for (unsigned k = 0; k < attrs.size(); k++) {
-                    char key[50];
-                    int64_t value;
-
-                    std::sscanf(attrs[k].c_str(), "%[^:]:%ld", key, &value);
-                    stat_map[std::string(key)] = std::to_string(value);
-                }
-
-                ss << std::setw(14) << stat_map[std::string("total_req_bytes")] +
-
-                    "/" + stat_map[std::string("total_req_num")];
-
-                ss << std::setw(14) << stat_map[std::string("total_complete_bytes")] +
-                    "/" + stat_map[std::string("total_complete_num")];
-
-                pcidev::get_dev(m_idx)->user->sysfs_get("wq2", lname, errmsg, attrs);
-                if (flag) {
-
-                    int write_pending = ((std::stoi(stat_map[std::string("descq_pidx")]) - std::stoi(stat_map[std::string("descq_cidx")])) &
-                                        (std::stoi(stat_map[std::string("descq_rngsz")])- 1))*4096;
-
-                    ss << std::setw(10) << std::to_string(write_pending) ;
-
-                }
-
-                pcidev::get_dev(m_idx)->user->sysfs_get("rq2", lname, errmsg, attrs);
-                if (!flag) {
-
-                    int read_pending = ((std::stoi(stat_map[std::string("c2h_wrb_pidx")]) - std::stoi(stat_map[std::string("descq_cidx_wrb_pend")])) &
-                                       (std::stoi(stat_map[std::string("descq_rngsz")]) - 1))*4096;
-                    ss << std::setw(10) << std::to_string(read_pending);
-
-                }
-            }
-            ss << "\n";
-
-        }
-
-
-        lines.push_back(ss.str());
     }
 
     void m_cu_usage_stringize_dynamics(std::vector<std::string>& lines) const
@@ -986,11 +915,50 @@ public:
         catch( std::exception const& e) {
           // eat the exception, probably bad path
         }
-        /* TODO: Stream topology and xclbin id. */
-//        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-//        ostr << "Stream Topology, TODO\n";
-//        printStreamInfo(ostr);
-//        ostr << "#################################\n";
+
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Streams" << std::endl;
+        ostr << std::setw(17) << "     Tag"  << std::setw(9) << "Flow ID"
+             << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
+        ostr << std::setw(16) << "Total (B/#)" << std::setw(10)  << "Pending (B/#)" << std::endl;
+	try {
+          for (auto& v : sensor_tree::get_child("board.memory")) {
+            if( v.first == "stream" ) {
+              std::string status, tag, total, pending;
+              int index = 0;
+              unsigned int flow_id = 0, route_id = 0;
+              for (auto& subv : v.second) {
+                if( subv.first == "index" ) {
+                  index = subv.second.get_value<int>();
+                } else if( subv.first == "tag" ) {
+                  tag = subv.second.get_value<std::string>();
+                } else if( subv.first == "flow_id" ) {
+                  flow_id = subv.second.get_value<unsigned int>();
+                } else if( subv.first == "route_id" ) {
+                  route_id = subv.second.get_value<unsigned int>();
+                } else if ( subv.first == "status" ) {
+                  status = subv.second.get_value<std::string>();
+                } else if ( subv.first == "total" ) {
+                  total = subv.second.get_value<std::string>();
+                } else if ( subv.first == "pending" ) {
+                  pending = subv.second.get_value<std::string>();
+		}
+              }
+              ostr << std::left
+                   << "[" << std::right << std::setw(2) << index << "] " << std::left
+                   << std::setw(12) << tag
+                   << std::setw(9) << flow_id
+                   << std::setw(9)  << route_id
+                   << std::setw(9)  << status
+		   << std::setw(16) << total
+		   << std::setw(10) << pending << std::endl;
+	    }
+	  }
+	}
+        catch( std::exception const& e) {
+          // eat the exception, probably bad path
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Xclbin UUID\n"
              << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
@@ -1025,13 +993,16 @@ public:
         return 0;
     }
 
-
     /*
      * print stream topology
      */
     int printStreamInfo(std::ostream& ostr) const {
-        std::vector<std::string> usage_lines;
-        m_stream_usage_stringize_dynamics(m_devinfo, usage_lines);
+        std::vector<std::string> lines;
+        m_stream_usage_stringize_dynamics(lines);
+        for(auto line:lines) {
+            ostr << line.c_str() << std::endl;
+        }
+
         return 0;
     }
 
