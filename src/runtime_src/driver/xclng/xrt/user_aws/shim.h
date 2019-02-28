@@ -245,6 +245,9 @@ public:
         int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
         int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
 
+        static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
+
+
         // Sanity checks
         int xclGetDeviceInfo2(xclDeviceInfo2 *info);
         static AwsXcl *handleCheck(void *handle);

@@ -60,6 +60,10 @@
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "scan.h"
 #include "awssak.h"
+#include "driver/xclng/xrt/util/message.h"
+#include "driver/xclng/xrt/util/scheduler.h"
+#include <stdarg.h>
+
 
 #ifdef INTERNAL_TESTING
 #include "driver/xclng/include/mgmt-ioctl.h"
@@ -1019,6 +1023,38 @@ namespace awsbwhal {
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
         return ret ? -errno : ret;
     }
+    /*
+     * xclLogMsg()
+     */
+    int AwsXcl::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+    {
+        int len = std::vsnprintf(nullptr, 0, format, args1);
+
+        if (len < 0) {
+            //illegal arguments
+            std::string err_str = "ERROR: Illegal arguments in log format string. ";
+            err_str.append(std::string(format));
+            xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+            return len;
+        }
+        len++; //To include null terminator
+
+        std::vector<char> buf(len);
+        len = std::vsnprintf(buf.data(), len, format, args1);
+
+        if (len < 0) {
+            //error processing arguments
+            std::string err_str = "ERROR: When processing arguments in log format string. ";
+            err_str.append(std::string(format));
+            xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+            return len;
+        }
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
+
+        return 0;
+}
+
+
 
     int AwsXcl::xclExportBO(unsigned int boHandle)
     {
@@ -1533,6 +1569,18 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
+
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+
+  int ret = awsbwhal::AwsXcl::xclLogMsg(handle, level, tag, format, args);
+  va_end(args);
+
+  return ret;
+}
+
 
 int xclUpgradeFirmwareXSpi(xclDeviceHandle handle, const char *fileName, int index)
 {
