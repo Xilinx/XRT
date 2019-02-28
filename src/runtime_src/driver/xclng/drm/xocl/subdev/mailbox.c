@@ -198,7 +198,7 @@ struct mailbox_msg {
 	void			*mbm_cb_arg;
 	u32			mbm_flags;
 	int			mbm_ttl;
-	bool		mbm_timer_on;
+	bool			mbm_timer_on;
 };
 
 /*
