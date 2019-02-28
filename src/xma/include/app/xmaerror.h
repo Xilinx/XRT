@@ -61,15 +61,15 @@
  *  Routine timed out.
  *  @def XMA_ERROR_NO_CHAN
  *  No channels remain to be allocated on the kernel
- *  @def XMA_ERROR_NO_CHAN_APP
+ *  @def XMA_ERROR_NO_CHAN_CAP
  *  The session would exceed the remaining channel capability on the kernel
 */
-#define XMA_SUCCESS          (0)
-#define XMA_SEND_MORE_DATA   (1)
-#define XMA_END_OF_FILE      (2)
-#define XMA_EOS      	     (3)
-#define XMA_FLUSH_AGAIN      (4)
-#define XMA_TRY_AGAIN        (5)
+#define XMA_SUCCESS             (0)
+#define XMA_SEND_MORE_DATA      (1)
+#define XMA_END_OF_FILE         (2)
+#define XMA_EOS      	        (3)
+#define XMA_FLUSH_AGAIN         (4)
+#define XMA_TRY_AGAIN           (5)
 
 #define XMA_ERROR               (-1)
 #define XMA_ERROR_INVALID       (-2)

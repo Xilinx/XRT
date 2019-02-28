@@ -66,7 +66,17 @@ typedef struct XmaFilterPlugin
                                   XmaFrame          *frame);
     /** Callback called when application calls xma_filter_session_destroy() */
     int32_t         (*close)(XmaFilterSession *session);
-    /** Optional callback called when app calls xma_filter_session_create() */
+
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
     xma_plg_alloc_chan alloc_chan;
 } XmaFilterPlugin;
 

@@ -78,7 +78,16 @@ typedef struct XmaDecoderPlugin
     /** Callback invoked to clean up device buffers when app has terminated session */
     int32_t         (*close)(XmaDecoderSession *session);
 
-    /** Optional callback called when app calls xma_dec_session_create() */
+    /** Optional callback called when app calls xma_dec_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_dec_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
     xma_plg_alloc_chan alloc_chan;
 } XmaDecoderPlugin;
 

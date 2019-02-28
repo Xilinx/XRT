@@ -70,8 +70,19 @@ typedef struct XmaScalerPlugin
                                       XmaFrame          **frame_list);
     /** callback to perform cleanup when client terminates session */
     int32_t         (*close)(XmaScalerSession *sc_session);
-    /** allocate a kernel channel; only required if kernel supports channels */
+
+    /** Optional callback called when app calls xma_scal_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_scal_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
     xma_plg_alloc_chan alloc_chan;
+
 } XmaScalerPlugin;
 
 /**

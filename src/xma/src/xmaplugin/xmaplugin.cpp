@@ -18,15 +18,14 @@
 #include "xclhal2.h"
 #include "xmaplugin.h"
 
-#define XMA_ADDR_AP_CTRL 0x00   /* AXI-Lite control signals */
-#define XMA_ADDR_AP_GIER 0x04   /* Global Interrupt enable register */
-#define XMA_ADDR_AP_IIER 0x08   /* IP Interrupt enable register */
-#define XMA_ADDR_AP_IISR 0x0C   /* IP Interrupt status register */ 
+#include <iostream>
+#include <memory.h>
+#include <thread>
+#include <chrono>
+#include "ert.h"
+using namespace std;
 
-#define XMA_AP_CTRL_START 0x01  /* AXI-Lite control start bit */
-#define XMA_AP_CTRL_DONE  0x02  /* AXI-Lite control done bit */
-#define XMA_AP_CTRL_IDLE  0x04  /* AXI-Lite control idle bit */
-#define XMA_AP_CTRL_READY 0x08  /* AXI-Lite control ready bit */
+#define XMAPLUGIN_MOD "xmapluginlib"
 
 XmaBufferHandle
 xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
@@ -170,61 +169,128 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle)
     }
 }
 
-void xma_plg_kernel_wait_on_finish(XmaHwSession s_handle)
+int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
 {
-    uint32_t val = 0;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    while((val & XMA_AP_CTRL_IDLE) != XMA_AP_CTRL_IDLE)
-    {
-        xma_plg_register_read(s_handle, &val, sizeof(val), XMA_ADDR_AP_CTRL);
-    }
-#pragma GCC diagnostic pop
-}
+    int32_t i;
+    int32_t rc = -1;
+    bool    found = false;
 
-void xma_plg_kernel_start(XmaHwSession s_handle)
-{
-    
-    uint32_t val = XMA_AP_CTRL_START;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    xma_plg_register_write(s_handle, &val, sizeof(val), XMA_ADDR_AP_CTRL);
-#pragma GCC diagnostic pop
+    for (i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
+    {
+        ert_start_kernel_cmd *cu_cmd = 
+            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
+        if (s_handle.kernel_info->kernel_execbo_inuse[i])
+        { 
+            switch(cu_cmd->state)
+            {
+                case ERT_CMD_STATE_NEW:
+                case ERT_CMD_STATE_QUEUED:
+                case ERT_CMD_STATE_RUNNING:
+                    continue;
+                break;
+                case ERT_CMD_STATE_COMPLETED:
+                    found = true;
+                    // Update count of completed work items
+                    s_handle.kernel_info->kernel_complete_count++;
+                break;
+                case ERT_CMD_STATE_ERROR:
+                case ERT_CMD_STATE_ABORT:
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                               "Could not find free execBO cmd buffer\n");
+                break;
+            }
+        }
+        else
+            found = true;
+
+        if (found)
+            break;
+    }
+    if (found)
+    {
+        s_handle.kernel_info->kernel_execbo_inuse[i] = true;
+        rc = i;
+    }
+
+    return rc;
 }
 
 int32_t
-xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish)
+xma_plg_schedule_work_item(XmaHwSession s_handle)
 {
     uint8_t *src = (uint8_t*)s_handle.context->reg_map;
-    size_t  offset = s_handle.context->min_offset;
     size_t  size = s_handle.context->max_offset;
+    int32_t bo_idx;
+    int32_t rc = XMA_SUCCESS;
     
-    /* The lock is only acquired if the session does not already own it */
-    xma_plg_kernel_lock(s_handle);
-
-    /* Must wait for the kernel to be idle before configuring it */
-    xma_plg_kernel_wait_on_finish(s_handle);
-
-    /* Write the kernel registers */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    xma_plg_register_write(s_handle, src+offset, size, offset);
-#pragma GCC diagnostic pop
-
-    /* Start the kernel */
-    xma_plg_kernel_start(s_handle);
-
-    /* Only wait for the kernel to complete if the caller explicitly requests */
-    if (wait_on_kernel_finish)
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1)
+        rc = XMA_ERROR;
+    else
     {
-        /* Block, waiting for the IDLE status */
-        xma_plg_kernel_wait_on_finish(s_handle);
+        // Setup ert_start_kernel_cmd 
+        ert_start_kernel_cmd *cu_cmd = 
+            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[bo_idx];
+        cu_cmd->state = ERT_CMD_STATE_NEW;
+        cu_cmd->opcode = ERT_START_CU; 
 
-        /* Can only unlock if we've finished using the kernel */
-        xma_plg_kernel_unlock(s_handle);
+        // Copy reg_map into execBO buffer 
+        memcpy(cu_cmd->data, src, size);
+
+        // Set count to size in 32-bit words + 1 
+        cu_cmd->count = (size >> 2) + 1;
+     
+        if (xclExecBuf(s_handle.dev_handle, 
+                       s_handle.kernel_info->kernel_execbo_handle[bo_idx]) != 0)
+        {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                       "Failed to submit kernel start with xclExecBuf\n");
+            rc = XMA_ERROR;
+        }
+    }
+         
+    return rc;
+}
+
+int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
+{
+    int32_t rc = XMA_SUCCESS;
+    int32_t count = s_handle.kernel_info->kernel_complete_count;
+
+    // Keep track of the number of kernel completions
+    while (count == 0)
+    {
+        // Look for inuse commands that have completed and increment the count
+        for (int32_t i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
+        {
+            if (s_handle.kernel_info->kernel_execbo_inuse[i])
+            {
+                ert_start_kernel_cmd *cu_cmd = 
+                    (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
+                if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+                {
+                    // Increment completed kernel count and make BO buffer available
+                    count++;
+                    s_handle.kernel_info->kernel_execbo_inuse[i] = false;
+                } 
+            }
+        }
+
+        if (count)
+            break;
+
+        // Wait for a notification
+        xclExecWait(s_handle.dev_handle, timeout_ms);
     }
 
-    return 0;
+    if (rc == XMA_SUCCESS)
+    {
+        count--;
+        s_handle.kernel_info->kernel_complete_count += count;
+    }
+
+    return rc;
 }
     
 int32_t
