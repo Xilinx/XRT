@@ -25,4 +25,7 @@ rm -f /etc/udev/rules.d/10-xclmgmt.rules
 rm -f /etc/dracut.conf.d/xocl.dracut.conf
 rm -f /etc/dracut.conf.d/xclmgmt.dracut.conf
 
+echo "Cleaning up XMA..."
+rm -f /tmp/xma_shm_db
+
 exit 0

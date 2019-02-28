@@ -207,15 +207,14 @@ enum xclAddressSpace {
  */
 
 enum xclLogMsgLevel {
-    ALERT = 0,
-    CRITICAL = 1,
-    DEBUG = 2,
-    EMERGENCY = 3,
-    ERROR = 4,
-    INFO = 5,
-    INTERNAL = 6,
-    NOTICE = 7,
-    WARNING = 8
+     EMERGENCY = 0,
+     ALERT = 1,
+     CRITICAL = 2,
+     ERROR = 3,
+     WARNING = 4,
+     NOTICE = 5,
+     INFO = 6,
+     DEBUG = 7
 };
 
 /**
@@ -496,12 +495,13 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * @handle:        Device handle
  * @level:         Severity level of the msg
+ * @tag:           Tag supplied by the client, like "OCL", "XMA", etc.
  * @format:        Format of Msg string to write to log file
  * @...:           All other arguments as per the format
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs

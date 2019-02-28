@@ -577,7 +577,22 @@ public:
 
   virtual void*
   getHalDeviceHandle() { 
-    return m_handle; 
+    return m_handle;
+  }
+
+  virtual hal::operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<std::string>();
+    size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string sysfs_path = std::string(path_buf);
+    return sysfs_path;
   }
 };
 

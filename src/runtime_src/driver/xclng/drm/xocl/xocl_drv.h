@@ -688,8 +688,6 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
-	int (*parse_axlf_section)(struct platform_device *pdev,
-		const void __user *arg, enum axlf_section_kind kind);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
@@ -732,10 +730,6 @@ struct xocl_icap_funcs {
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
 	 -ENODEV)
-#define	xocl_icap_parse_axlf_section(xdev, xclbin, kind)		\
-	(ICAP_OPS(xdev) ? 						\
-	ICAP_OPS(xdev)->parse_axlf_section(ICAP_DEV(xdev), xclbin, kind) : \
-	-ENODEV)
 #define	xocl_icap_get_data(xdev, kind)				\
 	(ICAP_OPS(xdev) ? 						\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
