@@ -521,7 +521,7 @@ static int identify_bar(struct xocl_dev *xdev)
 		if (bar_len >= (1 << XOCL_PA_SECTION_SHIFT)) {
 			xdev->p2p_bar_idx = i;
 			xdev->p2p_bar_len = bar_len;
-			pci_request_selected_regions(pdev, i,
+			pci_request_selected_regions(pdev, 1 << i,
 				XOCL_MODULE_NAME);
 		} else if (bar_len >= 32 * 1024 * 1024) {
 			xdev->core.bar_addr = ioremap_nocache(
@@ -545,7 +545,7 @@ static void unmap_bar(struct xocl_dev *xdev)
 
 	if (xdev->p2p_bar_len)
 		pci_release_selected_regions(xdev->core.pdev,
-				xdev->p2p_bar_idx);
+				1 << xdev->p2p_bar_idx);
 }
 
 /* pci driver callbacks */
