@@ -1688,7 +1688,7 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 {
 	int err = 0;
 	struct icap *icap = platform_get_drvdata(pdev);
-	int64_t resp = 0;
+	int resp = 0;
 	size_t resplen = sizeof(resp);
 	struct mailbox_req_bitstream_lock bitstream_lock = {0};
 	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
@@ -1716,8 +1716,9 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 				err = -ENODEV;
 				goto done;
 			}
+
 			if(resp < 0){
-				err = (int32_t)resp;
+				err = resp;
 				goto done;
 			}
 	}
@@ -1782,7 +1783,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *copy_buffer = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
-	int64_t msg = -ETIMEDOUT;
+	int msg = -ETIMEDOUT;
 	size_t resplen = sizeof (msg);
 	int pid = pid_nr(task_tgid(current));
 	uint32_t data_len = 0;
