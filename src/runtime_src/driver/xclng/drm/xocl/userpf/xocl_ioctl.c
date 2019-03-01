@@ -236,7 +236,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id)
 		return -EINVAL;
 	/*
@@ -353,21 +353,10 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	struct drm_xocl_axlf *axlf_obj_ptr = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	struct client_ctx *client = filp->driver_priv;
 	int err = 0;
-	xuid_t *xclbin_id;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr);
-	/*
-	 * Record that user land configured this context for current device xclbin
-	 * It doesn't mean that the context has a lock on the xclbin, only that
-	 * when a lock is eventually acquired it can be verified to be against to
-	 * be a lock on expected xclbin
-	 */
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
-	uuid_copy(&client->xclbin_id,
-			((err || !xclbin_id) ? &uuid_null : xclbin_id));
 	mutex_unlock(&xdev->ctx_list_lock);
 	return err;
 }

@@ -970,17 +970,13 @@ int xcldev::device::runTestCase(const std::string& exe,
     }
 
     // Program xclbin first.
-#if 0
-    // Workaround auto configure locking issues where the process which
-    // downloads xclbin auto acquires xclbin lock and only gives up at
-    // process exit time
     int ret = program(xclbinPath, 0);
     if (ret != 0) {
         output += "ERROR: Failed to download xclbin: ";
         output += xclbin;
         return -EINVAL;
     }
-#endif
+
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 
