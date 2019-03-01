@@ -154,7 +154,7 @@ namespace xdp {
     bool foundMemory = false;
     std::string portNameCheck = portName;
 
-    size_t index = portName.find_last_of(PORT_MEM_SEP);
+    size_t index = portName.find_last_of(IP_LAYOUT_SEP);
     if (index != std::string::npos) {
       foundMemory = true;
       portNameCheck = portName.substr(0, index);

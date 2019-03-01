@@ -28,6 +28,10 @@
 #include <thread>
 #include <queue>
 
+#define IP_LAYOUT_HOST_NAME "HOST"
+#define IP_LAYOUT_SEP "-"
+#define FIELD_NOT_APPLICABLE "N/A"
+
 namespace xdp {
   class TimeTrace;
 
