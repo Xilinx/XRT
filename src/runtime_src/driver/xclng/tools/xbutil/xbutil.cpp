@@ -745,7 +745,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
 
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
-    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(lines);
 
     dev->m_cu_usage_stringize_dynamics(lines);
 
@@ -758,7 +758,7 @@ static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devin
 {
     std::vector<std::string> lines;
 
-    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(lines);
 
     for(auto line:lines) {
         printw("%s\n", line.c_str());
