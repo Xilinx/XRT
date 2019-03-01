@@ -603,6 +603,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	struct mailbox_bitstream_kaddr *mb_kaddr = NULL;
 	void *resp = NULL;
 	bitstm_lock =	(struct mailbox_req_bitstream_lock *)req->data;
 
@@ -626,7 +627,8 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
-		ret = xocl_icap_download_axlf(lro, req->data_ptr);
+		mb_kaddr = (struct mailbox_bitstream_kaddr*)req->data;
+		ret = xocl_icap_download_axlf(lro, (void*)mb_kaddr->addr);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN:

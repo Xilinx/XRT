@@ -610,7 +610,11 @@ struct mailbox_req_bitstream_lock {
 };
 
 struct mailbox_subdev_peer {
-		enum data_kind kind;
+	enum data_kind kind;
+};
+
+struct mailbox_bitstream_kaddr {
+	uint64_t addr;
 };
 
 struct mailbox_gpctl {
@@ -625,7 +629,6 @@ struct mailbox_req {
 	enum mailbox_request req;
 	uint32_t data_total_len;
 	uint64_t flags;
-	void *data_ptr;
 	char data[0];
 };
 
