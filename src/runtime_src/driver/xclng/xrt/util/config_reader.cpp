@@ -53,17 +53,17 @@ get_ini_path()
 {
   auto ini_path = boost::filesystem::path(valueOrEmpty(std::getenv("SDACCEL_INI_PATH")));
   // Support SDACCEL_INI_PATH with/without actual filename
-  if (ini_path.filename() != "sdaccel.ini")
-    ini_path /= "sdaccel.ini";
-  if (boost::filesystem::exists(ini_path))
-    return ini_path.string();
-  auto exe_path = boost::filesystem::path(get_self_path()).parent_path()/"sdaccel.ini";
-  if (boost::filesystem::exists(exe_path))
-    return exe_path.string();
-  auto self_path = boost::filesystem::current_path()/"sdaccel.ini";
   try {
-    if (boost::filesystem::exists(self_path))
-      return self_path.string();
+    if (ini_path.filename() != "sdaccel.ini")
+      ini_path /= "sdaccel.ini";
+    if (boost::filesystem::exists(ini_path))
+      return ini_path.string();
+    auto exe_path = boost::filesystem::path(get_self_path()).parent_path()/"sdaccel.ini";
+    if (boost::filesystem::exists(exe_path))
+      return exe_path.string();
+    auto self_path = boost::filesystem::current_path()/"sdaccel.ini";
+      if (boost::filesystem::exists(self_path))
+        return self_path.string();
   }  catch (const boost::filesystem::filesystem_error& e){ }
 
   return "";
