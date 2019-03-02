@@ -172,6 +172,9 @@ namespace xocl {
   }
   
   uint32_t XOCLShim::getPerfMonNumberSlots(xclPerfMonType type) {
+    if (type < 0 || type >= XCL_PERF_MON_TOTAL_PROFILE)
+      return 0;
+
     if (type == XCL_PERF_MON_MEMORY)
       return mMemoryProfilingNumberSlots;
     if (type == XCL_PERF_MON_ACCEL)
@@ -188,19 +191,17 @@ namespace xocl {
       }
       return count;
     }
-    if (type == XCL_PERF_MON_SHELL) {
-      uint32_t count = 0;
-      for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {
-          std::string slotName = mPerfMonSlotName[i];
-          if (slotName.find("HOST") == std::string::npos)
-            count++;
-        }
-      }
-      return count;
-    }
 
-    return 0;
+    // type == XCL_PERF_MON_SHELL
+    uint32_t count = 0;
+    for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
+      if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {
+        std::string slotName = mPerfMonSlotName[i];
+        if (slotName.find("HOST") == std::string::npos)
+          count++;
+      }
+    }
+    return count;
   }
 
   uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {

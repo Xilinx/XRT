@@ -470,7 +470,7 @@ namespace xdp {
   }
 
   // Write data transfer stats for: host, XDMA, KDMA, and P2P
-  void ProfileCounters::writeTransferSummary(ProfileWriterI* writer, std::string& deviceName,
+  void ProfileCounters::writeTransferSummary(ProfileWriterI* writer, const std::string& deviceName,
       RTUtil::e_monitor_type monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
       double totalTimeMsec, double maxTransferRateMBps) const
   {
