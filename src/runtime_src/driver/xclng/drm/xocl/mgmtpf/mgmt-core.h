@@ -114,6 +114,8 @@ struct xclmgmt_dev {
 	int msix_user_start_vector;
 	bool ready;
 
+	uint64_t ch_state;
+
 };
 
 extern int health_check;

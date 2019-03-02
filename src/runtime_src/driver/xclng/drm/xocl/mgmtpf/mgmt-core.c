@@ -451,7 +451,7 @@ static int health_check_cb(void *data)
 		check_sysmon(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req));
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req), false);
 	}
 
 	return 0;
@@ -594,11 +594,36 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	*sz = resp_sz;
 	return 0;
 }
+static uint64_t xclmgmt_connection_explore(struct xclmgmt_dev *lro, struct mailbox_conn *mb_conn)
+{
+	uint64_t ret = 0;
+	uint32_t crc_chk;
+	phys_addr_t paddr;
 
+	ret = (lro->ch_state & MB_PEER_SW_CHAN_EN);
+
+	paddr = virt_to_phys((void*)mb_conn->kaddr);
+	if(paddr != (phys_addr_t)mb_conn->paddr){
+		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
+		mgmt_info(lro, "Failed to get the same physical addr, running in VMs?\n");
+		goto done;
+	}
+	crc_chk = crc32c_le(~0, (void*)mb_conn->kaddr, PAGE_SIZE);
+
+	if(crc_chk != mb_conn->crc32){
+		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
+		mgmt_info(lro, "failed to get the same CRC\n");
+		goto done;
+	}
+	ret |= MB_PEER_SAME_DOM;
+done:
+	return ret;
+}
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
-	u64 msgid, int err)
+	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
+	uint64_t ret_64 = 0;
 	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
@@ -616,7 +641,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOCK_BITSTREAM:
 		ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
 			0);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), false);
 		break;
 	case MAILBOX_REQ_UNLOCK_BITSTREAM:
 		ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
@@ -624,30 +649,34 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), false);
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
 		mb_kaddr = (struct mailbox_bitstream_kaddr*)req->data;
 		ret = xocl_icap_download_axlf(lro, (void*)mb_kaddr->addr);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), false);
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN:
 		ret = xocl_icap_download_axlf(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), false);
 		break;
 	case MAILBOX_REQ_RECLOCK:
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), false);
 		break;
 	case MAILBOX_REQ_PEER_DATA:
 		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
 		if(ret){
 			/* if can't get data, return 0 as response */
 			ret = 0;
-			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), false);
 		} else
-			(void) xocl_peer_response(lro, msgid, resp, sz);
+			(void) xocl_peer_response(lro, msgid, resp, sz, false);
 		vfree(resp);
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		ret_64 = xclmgmt_connection_explore(lro, (struct mailbox_conn *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret_64, sizeof (ret_64), false);
 		break;
 	default:
 		break;
@@ -718,6 +747,31 @@ fail_firewall:
 	xclmgmt_teardown_msix(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
+}
+
+
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+	void *kaddr = NULL;
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if(!mb_req){
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CONN_EXPL;
+	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if(!kaddr){
+		return;
+	}
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	(void) xocl_peer_notify(lro, mb_req, reqlen, (lro->ch_state & MB_PEER_SW_CHAN_EN) ? true : false);
+	kfree(kaddr);
+	vfree(mb_req);
 }
 
 /*
@@ -807,6 +861,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	xclmgmt_extended_probe(lro);
+
+	xclmgmt_connect_notify(lro);
 
 	return 0;
 
