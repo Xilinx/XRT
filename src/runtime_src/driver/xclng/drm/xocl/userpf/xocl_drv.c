@@ -18,6 +18,8 @@
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/crc32c.h>
+#include <linux/random.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
@@ -66,9 +68,25 @@ static int userpf_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		xocl_dma_intr_unreg(xdev_hdl, intr);
 }
 
+static uint64_t userpf_get_data(xdev_handle_t xdev_hdl, enum data_kind kind)
+{
+	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
+	uint64_t ret = 0;
+	switch(kind){
+		case CHAN_STATE:
+			ret = xdev->ch_state;
+			break;
+		default:
+			break;
+	}
+	return ret;
+}
+
+
 struct xocl_pci_funcs userpf_pci_ops = {
 	.intr_config = userpf_intr_config,
 	.intr_register = userpf_intr_register,
+	.get_data = userpf_get_data,
 };
 
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
@@ -145,7 +163,7 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL);
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL, (xdev->ch_state & 0x1) ? true : false);
 	if (mbret)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
@@ -157,6 +175,44 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
+void xocl_mb_connect(struct xocl_dev *xdev)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	int ret = 0;
+	uint64_t resp = 0;
+	size_t data_len = 0, reqlen = 0, resplen = sizeof(resp);
+	void *kaddr = NULL;
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if(!mb_req){
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CONN_EXPL;
+	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if(!kaddr){
+		return;
+	}
+	mb_conn.kaddr = (uint64_t)kaddr;
+	mb_conn.paddr = (uint64_t)virt_to_phys(kaddr);
+	get_random_bytes(kaddr, PAGE_SIZE);
+	mb_conn.crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
+
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &resp, &resplen,
+		NULL, NULL, (xdev->ch_state & MB_PEER_SW_CHAN_EN) ? true : false);
+	if(!ret){
+		mutex_lock(&xdev->xdev_lock);
+		xdev->ch_state = MB_PEER_CONNECTED;
+		xdev->ch_state |= resp;
+		userpf_info(xdev, "xdev->ch_state 0x%llx\n", xdev->ch_state);
+		mutex_unlock(&xdev->xdev_lock);
+	}
+	kfree(kaddr);
+	vfree(mb_req);
+}
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
@@ -171,7 +227,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
 
 	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL);
+		&msg, &resplen, NULL, NULL, (xdev->ch_state & 0x1) ? true : false);
 
 	if(msg != 0){
 		err = -ENODEV;
@@ -182,7 +238,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 }
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
-	u64 msgid, int err)
+	u64 msgid, int err, bool sw_ch)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
@@ -195,6 +251,9 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
 		(void) xocl_hot_reset(xdev, true);
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		(void) xocl_mb_connect(xdev);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
@@ -605,14 +664,16 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	mutex_init(&xdev->ctx_list_lock);
+	mutex_init(&xdev->xdev_lock);
 	xdev->needs_reset=false;
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
-        /* Launch the mailbox server. */
-        (void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
+	(void) xocl_mb_connect(xdev);
 	return 0;
 
 failed_init_sysfs:

@@ -27,6 +27,8 @@
 #include "devices.h"
 #include "xocl_ioctl.h"
 #include "mgmt-ioctl.h"
+#include "mailbox_proto.h"
+
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
@@ -188,6 +190,7 @@ struct xocl_pci_funcs {
 	int (*intr_register)(xdev_handle_t xdev, u32 intr,
 		irq_handler_t handler, void *arg);
 	int (*reset)(xdev_handle_t xdev);
+	uint64_t (*get_data)(xdev_handle_t xdev, enum data_kind kind);
 };
 
 #define	XDEV(dev)	((struct xocl_dev_core *)(dev))
@@ -200,6 +203,10 @@ struct xocl_pci_funcs {
 #define xocl_reset(xdev)			\
 	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
 	-ENODEV)
+#define xocl_get_data(xdev, kind)			\
+	(XDEV_PCIOPS(xdev)->get_data ? XDEV_PCIOPS(xdev)->get_data(xdev, kind) : \
+	-ENODEV)
+
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
@@ -249,50 +256,6 @@ struct xocl_dev_core {
 
 	bool			offline;
 };
-
-enum data_kind {
-	MIG_CALIB,
-	DIMM0_TEMP,
-	DIMM1_TEMP,
-	DIMM2_TEMP,
-	DIMM3_TEMP,
-	FPGA_TEMP,
-	VCC_BRAM,
-	CLOCK_FREQ_0,
-	CLOCK_FREQ_1,
-	FREQ_COUNTER_0,
-	FREQ_COUNTER_1,
-	VOL_12V_PEX,
-	VOL_12V_AUX,
-	CUR_12V_PEX,
-	CUR_12V_AUX,
-	SE98_TEMP0,
-	SE98_TEMP1,
-	SE98_TEMP2,
-	FAN_TEMP,
-	FAN_RPM,
-	VOL_3V3_PEX,
-	VOL_3V3_AUX,
-	VPP_BTM,
-	VPP_TOP,
-	VOL_5V5_SYS,
-	VOL_1V2_TOP,
-	VOL_1V2_BTM,
-	VOL_1V8,
-	VCC_0V9A,
-	VOL_12V_SW,
-	VTT_MGTA,
-	VOL_VCC_INT,
-	CUR_VCC_INT,
-	IDCODE,
-	IPLAYOUT_AXLF,
-	MEMTOPO_AXLF,
-	CONNECTIVITY_AXLF,
-	DEBUG_IPLAYOUT_AXLF,
-	PEER_CONN,
-	XCLBIN_UUID,
-};
-
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -577,6 +540,7 @@ struct xocl_dna_funcs {
 #define xocl_xmc_get_data(xdev, cmd)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
 
+#if 0
 /*
  * mailbox callbacks
  */
@@ -624,7 +588,6 @@ struct mailbox_gpctl {
 	void *data_ptr;
 };
 
-
 struct mailbox_req {
 	enum mailbox_request req;
 	uint32_t data_total_len;
@@ -632,22 +595,18 @@ struct mailbox_req {
 	char data[0];
 };
 
-#define MB_PROT_VER_MAJOR 0
-#define MB_PROT_VER_MINOR 5
-#define MB_PROTOCOL_VER   ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
-
 #define MB_PEER_CONNECTED 0x1
 #define MB_PEER_SAME_DOM  0x2
 #define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
-
+#endif
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
-	u64 msgid, int err);
+	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg);
+		mailbox_msg_cb_t cb, void *cbarg, bool sw_ch);
 	int (*post)(struct platform_device *pdev, u64 req_id,
-		void *resp, size_t len);
+		void *resp, size_t len, bool sw_ch);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
@@ -657,15 +616,15 @@ struct xocl_mailbox_funcs {
 #define	MAILBOX_OPS(xdev)	\
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev)	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev))
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, sw_ch)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
-#define	xocl_peer_response(xdev, reqid, buf, len)			\
+	req, reqlen, resp, resplen, cb, cbarg, sw_ch) : -ENODEV)
+#define	xocl_peer_response(xdev, reqid, buf, len, sw_ch)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
-	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req, reqlen)					\
+	reqid, buf, len, sw_ch) : -ENODEV)
+#define	xocl_peer_notify(xdev, req, reqlen, sw_ch)					\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, reqlen) : -ENODEV)
+	req, reqlen, sw_ch) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)

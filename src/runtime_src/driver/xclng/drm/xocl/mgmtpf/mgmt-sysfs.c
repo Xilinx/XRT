@@ -271,6 +271,56 @@ static ssize_t subdev_offline_store(struct device *dev,
 
 static DEVICE_ATTR(subdev_offline, 0200, NULL, subdev_offline_store);
 
+static ssize_t sw_chan_en_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+ 	uint64_t val;
+
+ 	if (kstrtoull(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	if(val & 0x3){
+		mgmt_err(lro, "can only set BIT2 to BIT63");
+		return -EINVAL;
+	}
+
+ 	mutex_lock(&lro->busy_mutex);
+	lro->ch_state |= val;
+	mutex_unlock(&lro->busy_mutex);
+
+ 	return count;
+}
+static ssize_t sw_chan_en_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	uint64_t ret;
+ 	mutex_lock(&lro->busy_mutex);
+	ret = lro->ch_state;
+	mutex_unlock(&lro->busy_mutex);
+
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
+
+ static ssize_t sw_chan_reset_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	mutex_lock(&lro->busy_mutex);
+	lro->ch_state = 0;
+	mutex_unlock(&lro->busy_mutex);
+
+	return count;
+}
+
+static DEVICE_ATTR(sw_chan_reset, 0200, NULL, sw_chan_reset_store);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -292,6 +342,8 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_dev_offline.attr,
 	&dev_attr_subdev_online.attr,
 	&dev_attr_subdev_offline.attr,
+	&dev_attr_sw_chan_en.attr,
+	&dev_attr_sw_chan_reset.attr,
 	NULL,
 };
 

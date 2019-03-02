@@ -114,6 +114,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/include/mgmt-reg.h
   driver/xclng/include/mgmt-ioctl.h
   driver/xclng/include/qdma_ioctl.h
+  driver/xclng/include/mailbox_proto.h
   driver/include/ert.h
   driver/include/xclfeatures.h
   driver/include/xclbin.h

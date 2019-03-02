@@ -171,6 +171,9 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	struct xocl_dev *xdev = (struct xocl_dev *)XOCL_PL_DEV_TO_XDEV(pdev);
+	uint64_t chan_flag = xocl_get_data(xdev, CHAN_STATE);
+	bool sw_ch = chan_flag & MB_SW_ENABLE_CONN_EXPL;
 
 	mb_req = (struct mailbox_req *)vmalloc(reqlen);
 	if(!mb_req)
@@ -181,8 +184,8 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind
 	subdev_peer.kind = kind;
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
-		mb_req, reqlen, resp, &resplen, NULL, NULL);
+	(void) xocl_peer_request(xdev,
+		mb_req, reqlen, resp, &resplen, NULL, NULL, sw_ch);
 	vfree(mb_req);
 }
 
