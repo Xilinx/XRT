@@ -577,6 +577,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	if (topo == NULL)
+		return 0;
+
 	length = topo->m_count * sizeof(struct mem_data);
 	size = topo->m_count * sizeof(void *);
 	wrapper_size = sizeof(struct xocl_mm_wrapper);
