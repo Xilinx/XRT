@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "lib/xmaapi.h"
@@ -1407,6 +1408,7 @@ static XmaKernReq *xma_res_create_kern_req(enum XmaKernType type,
 static int xma_shm_lock(XmaResConfig *xma_shm)
 {
     extern XmaSingleton *g_xma_singleton;
+    struct timespec lock_timeout;
     int ret;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
@@ -1416,7 +1418,16 @@ static int xma_shm_lock(XmaResConfig *xma_shm)
         return XMA_ERROR_INVALID;
     }
 
-    ret = pthread_mutex_lock(&xma_shm->lock);
+    clock_gettime(CLOCK_REALTIME, &lock_timeout);
+    lock_timeout.tv_sec += 10;
+
+    ret = pthread_mutex_timedlock(&xma_shm->lock, &lock_timeout);
+    if (ret == ETIMEDOUT) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+            "Timed out trying to aquire xma_shm_db mutex\n");
+        return XMA_ERROR;
+    }
+
     if (ret == EOWNERDEAD) {
         xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
             "XMA shm db mutex owner is dead.\n");
