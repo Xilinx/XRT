@@ -15,7 +15,7 @@
  */
 
 #include "message.h"
-#include "driver/xclng/xrt/util/t_time.h"
+#include "driver/common/t_time.h"
 
 #include "config_reader.h"
 #include <unistd.h>
