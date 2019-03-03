@@ -196,6 +196,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 						len,
 						i == 0, i == sgmax);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 				if (data_used < len)
 					break;
 
@@ -223,6 +224,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 						i == 0, i == sgmax);
 
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 				if (data_used < len)
 					break;
 
@@ -468,6 +470,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 						len, i == 0, (i == sgmax),
 						req->eot);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 
 				/* sg entry not finished */
 				if (data_used < len)
@@ -496,6 +499,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 						len, i == 0, i == sgmax,
 						req->eot);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 
 				/* sg entry not finished */
 				if (data_used < len)
@@ -1235,6 +1239,10 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 	if (cb->cancel) {
 		qdma_request_cancel_done(descq, req);
 	} else {
+		descq->stat.complete_requests++;
+		descq->stat.pending_requests--;
+		descq->stat.pending_bytes -= req->count;
+
 		if ((cb->offset != req->count) &&
 		    !(descq->conf.st && descq->conf.c2h)) {
 			pr_info("req 0x%p not completed %u != %u.\n",

@@ -147,7 +147,7 @@ get_api_checks()
 inline std::string
 get_logging()
 {
-  static std::string value = detail::get_string_value("Runtime.runtime_log","console");
+  static std::string value = detail::get_string_value("Runtime.runtime_log","null");
   return value;
 }
 

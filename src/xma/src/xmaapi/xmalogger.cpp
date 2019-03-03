@@ -336,7 +336,7 @@ void* xma_logger_actor(void *data)
                 sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
                 */
                 //rc = xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, logmsg);
-                xclLogMsg(NULL, xclLogMsgLevel::INFO, logmsg);
+                xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
             } else {
                 if (logger->fd != -1)
                 {

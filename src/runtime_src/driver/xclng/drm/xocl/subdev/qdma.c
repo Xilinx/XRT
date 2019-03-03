@@ -79,6 +79,7 @@ struct stream_async_req {
 
 struct stream_queue {
 	struct device		dev;
+	struct xocl_qdma	*qdma;
 	unsigned long		queue;
 	struct qdma_queue_conf  qconf;
 	u32			state;
@@ -87,7 +88,6 @@ struct stream_queue {
 	struct file		*file;
 	int			qfd;
 	int			refcnt;
-	struct xocl_qdma	*qdma;
 	kuid_t			uid;
 	spinlock_t		req_lock;
 	struct list_head	req_pend_list;
@@ -214,15 +214,10 @@ static ssize_t stat_show(struct device *dev, struct device_attribute *da,
 
 	pstat = &stat;
 
-	__SHOW_MEMBER(pstat, total_req_bytes);
-	__SHOW_MEMBER(pstat, total_req_num);
-	__SHOW_MEMBER(pstat, total_complete_bytes);
-	__SHOW_MEMBER(pstat, total_complete_num);
-
-	__SHOW_MEMBER(pstat, descq_rngsz);
-	__SHOW_MEMBER(pstat, descq_pidx);
-	__SHOW_MEMBER(pstat, descq_cidx);
-	__SHOW_MEMBER(pstat, descq_avail);
+	__SHOW_MEMBER(pstat, pending_bytes);
+	__SHOW_MEMBER(pstat, pending_requests);
+	__SHOW_MEMBER(pstat, complete_bytes);
+	__SHOW_MEMBER(pstat, complete_requests);
 
 	return off;
 }
@@ -1460,7 +1455,7 @@ static int stream_close(struct inode *inode, struct file *file)
 
 	qdma = (struct xocl_qdma *)file->private_data;
 
-
+	xocl_drvinst_close(qdma);
 	xocl_info(&qdma->pdev->dev, "Closing file %p by pid: %d",
 		file, pid_nr(task_tgid(current)));
 
@@ -1535,14 +1530,15 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	qdma->sys_device = device_create(xrt_class, &pdev->dev,
-		qdma->cdev->dev, NULL, "%s%d",
-		platform_get_device_id(pdev)->name,
+		qdma->cdev->dev, NULL, "%s%d", "str_dma.u",
 		qdma->instance & MINOR_NAME_MASK);
 	if (IS_ERR(qdma->sys_device)) {
 		ret = PTR_ERR(qdma->sys_device);
 		xocl_err(&pdev->dev, "failed to create cdev");
 		goto failed;
 	}
+
+	xocl_drvinst_set_filedev(qdma, qdma->cdev);
 
 	qdma->drm = xocl_drm_init(xdev);
 	if (!qdma->drm) {

@@ -449,6 +449,22 @@ int ZYNQShim::xclExecWait(int timeoutMilliSec)
   return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
 }
 
+int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+{
+  // Until we have a programmatic way to determine what this directory
+  //  is on Zynq platforms, this is hard-coded so we can test out 
+  //  debug and profile features.
+  std::string path = "/sys/devices/platform/amba/a0000000.zyxclmm_drm/";
+  path += entry ;
+
+  if (path.length() >= size) return -1 ;
+
+  // Since path.length() < size, we are sure to copy over the null 
+  //  terminating byte.
+  strncpy(sysfsPath, path.c_str(), size) ;
+  return 0 ;
+}
+
 }
 ;
 //end namespace ZYNQ
@@ -664,6 +680,15 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   if (!drv)
     return -EINVAL;
   return drv->xclExecWait(timeoutMilliSec);
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+		    const char* entry, char* sysfsPath, size_t size)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
 }
 
 //

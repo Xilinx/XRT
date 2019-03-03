@@ -1025,8 +1025,9 @@ isAppdebugEnabled()
 
 uint32_t getIPCountAddrNames(std::string& devUserName, int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
   debug_ip_layout *map;
-  //Get the path to the device from the HAL
-  std::string path = "/sys/bus/pci/devices/" + devUserName + "/debug_ip_layout";
+  // Get the path to the device from the HAL
+  // std::string path = "/sys/bus/pci/devices/" + devUserName + "/debug_ip_layout";
+  std::string path = devUserName;
   std::ifstream ifs(path.c_str(), std::ifstream::binary);
   uint32_t count = 0;
   char buffer[debug_ip_layout_max_size];
@@ -1093,6 +1094,7 @@ struct spm_debug_view {
   unsigned int   LastReadData[XSPM_MAX_NUMBER_SLOTS];
   unsigned int   NumSlots;
   std::string    DevUserName;
+  std::string    SysfsPath;
   spm_debug_view () {
     std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (WriteTranx, WriteTranx+XSPM_MAX_NUMBER_SLOTS, 0);
@@ -1130,7 +1132,7 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
   }
 
   //  unsigned int numSlots = 
-  getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
+  getIPCountAddrNames(SysfsPath, AXI_MM_MONITOR, nullptr, &slotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 
   if (aJSONFormat) {
@@ -1219,11 +1221,15 @@ clGetDebugCounters() {
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugResults,0, sizeof(xclDebugCountersResults));
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   for (auto device : platform->get_device_range()) {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
   }
@@ -1232,6 +1238,7 @@ clGetDebugCounters() {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
     return adv;
   }
+
   auto spm_view = new spm_debug_view ();
   std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteBytes);
   std::copy(debugResults.WriteTranx, debugResults.WriteTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteTranx);
@@ -1244,8 +1251,12 @@ clGetDebugCounters() {
   std::copy(debugResults.LastReadData, debugResults.LastReadData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadData);
   spm_view->NumSlots = debugResults.NumSlots;
   spm_view->DevUserName = debugResults.DevUserName;
+  spm_view->SysfsPath = sysfs_open_path;
 
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
+
+  std::cout << "DEBUGGING: spm clGetDebugCounters ends, sysfs path: " << sysfs_open_path << std::endl;
+
   return adv;
 }
 
@@ -1260,6 +1271,7 @@ struct sspm_debug_view {
 
   unsigned int NumSlots ;
   std::string  DevUserName ;
+  std::string    SysfsPath;
 
   sspm_debug_view() 
   {
@@ -1358,7 +1370,9 @@ clGetDebugStreamCounters()
 
   xclStreamingDebugCountersResults streamingDebugCounters;  
   memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
-
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
@@ -1366,6 +1380,7 @@ clGetDebugStreamCounters()
     {
       // At this point, we are dealing with only one device
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
   }
@@ -1396,6 +1411,7 @@ clGetDebugStreamCounters()
   
   sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
   sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
+  sspm_view->SysfsPath = sysfs_open_path;
 
   auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
   return adv ;
@@ -1407,6 +1423,7 @@ struct lapc_debug_view {
   unsigned int   SnapshotStatus[XLAPC_MAX_NUMBER_SLOTS][4];
   unsigned int   NumSlots;
   std::string    DevUserName;
+  std::string    SysfsPath;
   lapc_debug_view () {
     std::fill (OverallStatus, OverallStatus+XLAPC_MAX_NUMBER_SLOTS, 0);
     for (auto i = 0; i<XLAPC_MAX_NUMBER_SLOTS; ++i)
@@ -1441,7 +1458,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
   }
 
   // unsigned int numSlots = 
-  getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
+  getIPCountAddrNames(SysfsPath, LAPC, nullptr, &lapcSlotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
 
   bool violations_found = false;
@@ -1566,6 +1583,9 @@ clGetDebugCheckers() {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
@@ -1574,10 +1594,10 @@ clGetDebugCheckers() {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
       device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
-
   if (ret) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error reading lapc status");
     return adv;
@@ -1590,6 +1610,7 @@ clGetDebugCheckers() {
     std::copy(debugCheckers.SnapshotStatus[i], debugCheckers.SnapshotStatus[i]+4, lapc_view->SnapshotStatus[i]);
   lapc_view->NumSlots = debugCheckers.NumSlots;
   lapc_view->DevUserName = debugCheckers.DevUserName;
+  lapc_view->SysfsPath = sysfs_open_path;
   auto adv = new app_debug_view <lapc_debug_view> (lapc_view, [lapc_view](){delete lapc_view;}, false, "");
   return adv;
 }

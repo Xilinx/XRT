@@ -1217,15 +1217,10 @@ int qdma_vf_qconf(unsigned long dev_hndl, int qmax);
 
 
 struct qdma_queue_stats {
-	unsigned long total_req_bytes;
-	unsigned long total_complete_bytes;
-	unsigned int total_req_num;
-	unsigned int total_complete_num;
-
-	unsigned int descq_rngsz;
-	unsigned int descq_pidx;
-	unsigned int descq_cidx;
-	unsigned int descq_avail;
+	unsigned long pending_bytes;
+	unsigned long complete_bytes;
+	unsigned int pending_requests;
+	unsigned int complete_requests;
 };
 
 int qdma_queue_get_stats(unsigned long dev_hndl, unsigned long qhndl,

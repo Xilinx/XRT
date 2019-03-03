@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -411,6 +411,8 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return ret;
 	}
 
+	write_lock(&zdev->attr_rwlock);
+
 	zocl_free_sections(zdev);
 
 	/* Get full axlf header */
@@ -418,8 +420,10 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	num_of_sections = axlf_head.m_header.m_numSections-1;
 	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
 	axlf = vmalloc(axlf_size);
-	if (!axlf)
+	if (!axlf) {
+		write_unlock(&zdev->attr_rwlock);
 		return -ENOMEM;
+	}
 
 	if (copy_from_user(axlf, axlf_obj->xclbin, axlf_size)) {
 		ret = -EFAULT;
@@ -477,6 +481,7 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	zdev->unique_id_last_bitstream = axlf_head.m_uniqueId;
 
 out0:
+	write_unlock(&zdev->attr_rwlock);
 	if (size < 0)
 		ret = size;
 	vfree(axlf);

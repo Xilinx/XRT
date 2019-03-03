@@ -367,7 +367,7 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 
@@ -375,7 +375,7 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         //illegal arguments
         std::string err_str = "ERROR: Illegal arguments in log format string. ";
         err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
     len++; //To include null terminator
@@ -387,10 +387,10 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         //error processing arguments
         std::string err_str = "ERROR: When processing arguments in log format string. ";
         err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
-    xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
 
     return 0;
 }
@@ -1845,12 +1845,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return ret;
 }
 
-int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    int ret = xocl::XOCLShim::xclLogMsg(handle, level, format, args);
+    int ret = xocl::XOCLShim::xclLogMsg(handle, level, tag, format, args);
     va_end(args);
 
     return ret;

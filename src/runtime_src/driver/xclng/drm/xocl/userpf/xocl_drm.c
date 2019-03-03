@@ -545,19 +545,12 @@ void xocl_cleanup_mem(struct xocl_drm *drm_p)
 			drm_p->mm_usage_stat[i] = NULL;
 		}
 	}
-
-	if (drm_p->mm) {
-		vfree(drm_p->mm);
-		drm_p->mm = NULL;
-	}
-	if (drm_p->mm_usage_stat) {
-		vfree(drm_p->mm_usage_stat);
-		drm_p->mm_usage_stat = NULL;
-	}
-	if (drm_p->mm_p2p_off) {
-		vfree(drm_p->mm_p2p_off);
-		drm_p->mm_p2p_off = NULL;
-	}
+	vfree(drm_p->mm);
+	drm_p->mm = NULL;
+	vfree(drm_p->mm_usage_stat);
+	drm_p->mm_usage_stat = NULL;
+	vfree(drm_p->mm_p2p_off);
+	drm_p->mm_p2p_off = NULL;
 }
 
 int xocl_init_mem(struct xocl_drm *drm_p)
@@ -673,24 +666,20 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	return 0;
 
 failed:
-	if (wrapper)
-		vfree(wrapper);
-
+	vfree(wrapper);
 	if (drm_p->mm) {
 		for (; i >= 0; i--) {
 			drm_mm_takedown(drm_p->mm[i]);
-			if (drm_p->mm[i])
-				vfree(drm_p->mm[i]);
-			if (drm_p->mm_usage_stat[i])
-				vfree(drm_p->mm_usage_stat[i]);
+			vfree(drm_p->mm[i]);
+			vfree(drm_p->mm_usage_stat[i]);
 		}
-
 		vfree(drm_p->mm);
+		drm_p->mm = NULL;
 	}
-	if (drm_p->mm_usage_stat)
-		vfree(drm_p->mm_usage_stat);
-	if (drm_p->mm_p2p_off)
-		vfree(drm_p->mm_p2p_off);
+	vfree(drm_p->mm_usage_stat);
+	drm_p->mm_usage_stat = NULL;
+	vfree(drm_p->mm_p2p_off);
+	drm_p->mm_p2p_off = NULL;
 
 	return err;
 }
