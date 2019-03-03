@@ -16,6 +16,7 @@ FPGA. The key user APIs are defined in ``xclhal2.h`` header file.
    :maxdepth: 1
    :caption: Table of Contents
 
+   execution-model.rst
    xclhal2.main.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst

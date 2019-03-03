@@ -1,5 +1,5 @@
 Create MPSoC Based Embedded Platforms
--------------------------------------
+*************************************
 
 An MPSoC Based Embedded platform defines a base hardware and software
 architecture and application context. We provide a few scripts and
@@ -17,7 +17,7 @@ If you are interested in details about creating DSA for a platform.
 Please read the Hardware Platform section of Xilinx Document UG1146.
 
 Build Hardware Platform
-~~~~~~~~~~~~~~~~~~~~~~~
+=======================
 
 To create Hardware Platform, under platform/zcu102/
 
@@ -27,15 +27,15 @@ To create Hardware Platform, under platform/zcu102/
 
 This will generate hardware Device Support Archive
 ``platform/zcu102/zcu102.dsa`` and Hardware Definition File
-``platform/zcu102/zcu102_vivado/zcu102.hdf`` 
+``platform/zcu102/zcu102_vivado/zcu102.hdf``
 
 .. _`Build Boot Images`:
 
 Build Boot Images
-~~~~~~~~~~~~~~~~~
+=================
 
 Using PetaLinux to build necessray Boot Images for the software
-platform with the Hardware Definition File we created. :ref:`Yocto Recipes For Embedded Flow`.
+platform with the Hardware Definition File we created is described in :ref:`yocto.rst` document.
 
 The boot image files required include
 
@@ -58,7 +58,7 @@ files to ``platform/zcu102/src/boot/``
     cp u-boot.elf platform/zcu102/src/boot/
 
 Build Software Platform
-~~~~~~~~~~~~~~~~~~~~~~~
+=======================
 
 To Create Software Platform, under platform/zcu102/
 
@@ -71,7 +71,7 @@ The created zcu102 platform will be posted at
 - ``platform/zcu102/output/zcu102/export/zcu102``
 
 Make use of Platform
-~~~~~~~~~~~~~~~~~~~~
+====================
 
 Here is a simple example of how to make use of the customized platform we built.
 Suppose we have a hello world OpenCL application hello.cl, we can use xocc tool
