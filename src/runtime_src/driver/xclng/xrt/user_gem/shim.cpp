@@ -1763,8 +1763,19 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
+int xocl::XOCLShim::xclDaemonUserpf(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
+    return ret ? -errno : ret;
+}
 
-
+int xocl::XOCLShim::xclDaemonMgmtpf(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
+    return ret ? -errno : ret;
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -2252,4 +2263,16 @@ char *xclMapMgmt(xclDeviceHandle handle)
 {
   xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
   return drv ? drv->xclMapMgmt() :   nullptr;
+}
+
+int xclDaemonUserpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclDaemonUserpf(args) : -ENODEV;
+}
+
+int xclDaemonMgmtpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclDaemonMgmtpf(args) : -ENODEV;
 }

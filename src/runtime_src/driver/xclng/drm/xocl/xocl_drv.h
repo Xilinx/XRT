@@ -552,6 +552,7 @@ struct xocl_mailbox_funcs {
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*reset)(struct platform_device *pdev, bool end_of_reset);
 	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
+	int (*sw_transfer)(struct platform_device *pdev, void *args);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -575,6 +576,9 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_get_data(xdev, kind)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
 		: -ENODEV)
+#define	xocl_mailbox_sw_transfer(xdev, args)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->sw_transfer(MAILBOX_DEV(xdev), \
+	args) : -ENODEV)
 
 struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -593,6 +597,7 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	int (*xclmgmt_mailbox_sw)(struct platform_device *pdev, struct xclmgmt_ioc_sw_mailbox *sw_chan);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
