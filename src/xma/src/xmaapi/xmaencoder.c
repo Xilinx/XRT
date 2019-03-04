@@ -190,6 +190,10 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    enc_session->base.hw_session.dev_index = hal->dev_index;
+
     enc_session->encoder_plugin = &g_xma_singleton->encodercfg[enc_handle];
 
     // Allocate the private data
@@ -310,7 +314,7 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
 void 
 xma_enc_session_statsfile_init(XmaEncoderSession *session)
 {
-    char            *path = "/var/tmp";
+    char            *path = "/var/tmp/xilinx";
     char            *enc_type_str;
     char            *vendor;
     int32_t          dev_id = 0;

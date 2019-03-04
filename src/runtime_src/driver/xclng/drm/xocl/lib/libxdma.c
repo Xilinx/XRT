@@ -1509,6 +1509,9 @@ static int is_config_bar(struct xdma_dev *xdev, int idx)
 	struct config_regs *cfg_regs =
 		(struct config_regs *)(xdev->bar[idx] + XDMA_OFS_CONFIG);
 
+	if (idx == 0)
+		return 0;
+
 	irq_id = read_register(&irq_regs->identifier);
 	cfg_id = read_register(&cfg_regs->identifier);
 

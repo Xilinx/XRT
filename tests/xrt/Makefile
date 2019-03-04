@@ -8,17 +8,17 @@
 #####################################################################################################################
 TARGETS := \
  00_hello \
+ 02_simple \
  03_loopback \
+ 04_swizzle \
  07_sequence \
  11_fp_mmult256 \
+ 13_add_one \
  15_buffer_size \
- 02_simple \
- 04_swizzle \
+ 22_verify \
  100_ert_ncu \
  102_multiproc_verify \
- 103_multiproc \
- 13_add_one \
- 22_verify
+ 103_multiproc
 
 all:
 	for t in $(TARGETS) ; do echo "Generating exe and xclbin files  .." ; cd  $$PWD/$$t ; make all  ;  cd .. ; done

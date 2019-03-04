@@ -80,15 +80,15 @@ struct ert_packet {
  *
  * @state:           [3-0] current state of a command
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
- * @count:           [22-12] number of words in payload (data)
+ * @count:           [22-12] number of words following header
  * @opcode:          [27-23] 0, opcode for start_kernel
  * @type:            [31-27] 0, type of start_kernel
  *
  * @cu_mask:         first mandatory CU mask
- * @data:            count number of words representing command payload
+ * @data:            count-1 number of words representing interpreted payload
  *
- * The packet payload is comprised of 1 mandatory CU mask plus
- * extra_cu_masks per header field, followed a CU register map of size
+ * The packet payload is comprised of reserved id field, a mandatory CU mask,
+ * and extra_cu_masks per header field, followed by a CU register map of size
  * (count - (1 + extra_cu_masks)) uint32_t words.
  */
 struct ert_start_kernel_cmd {
@@ -188,6 +188,7 @@ struct ert_abort_cmd {
  *
  * @ERT_CMD_STATE_NEW:      Set by host before submitting a command to scheduler
  * @ERT_CMD_STATE_QUEUED:   Internal scheduler state
+ * @ERT_CMD_STATE_SUBMITTED:Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:  Internal scheduler state
  * @ERT_CMD_STATE_COMPLETE: Set by scheduler when command completes
  * @ERT_CMD_STATE_ERROR:    Set by scheduler if command failed
@@ -200,6 +201,7 @@ enum ert_cmd_state {
   ERT_CMD_STATE_COMPLETED = 4,
   ERT_CMD_STATE_ERROR = 5,
   ERT_CMD_STATE_ABORT = 6,
+  ERT_CMD_STATE_SUBMITTED = 7,
 };
 
 /**

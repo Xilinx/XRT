@@ -518,12 +518,6 @@ mkImageCore (cl_context context,
     adjusted_row_pitch = w*bpp;
     if(adjusted_row_pitch < row_pitch && (user_ptr) != nullptr)
 	adjusted_row_pitch = row_pitch;
-    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer) {
-      if(adjusted_row_pitch < row_pitch) {
-        adjusted_row_pitch = row_pitch;
-      }
-      adjusted_h = h;
-    }
 
     //Till we have native h/w support.
     if(adjusted_h==0)
@@ -531,12 +525,6 @@ mkImageCore (cl_context context,
 
     //Initialize the size.
     sz = adjusted_row_pitch * adjusted_h * depth;
-
-    if(image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER)
-	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");
-
-    if (image_type == CL_MEM_OBJECT_IMAGE2D && buffer)
-	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image2D buffer");
 
     if(user_ptr)
 	throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage: Image1D buffer");

@@ -1457,7 +1457,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
          else {
            if (OverallStatus[i]) {
               std::string tstr;
-              unsigned int tCummStatus[4];
+              unsigned int tCummStatus[4] = {0};
               //snapshot reflects first violation, cumulative has all violations
               tstr = xclAXICheckerCodes::decodeAXICheckerCodes(SnapshotStatus[i]);
               tstr = (tstr == "") ? "None" : tstr;

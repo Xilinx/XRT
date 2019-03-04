@@ -246,10 +246,26 @@ void xma_res_mark_xma_ready(XmaResources shm_cfg);
  * @brief Before attempting hw config, verify that hw init hasn't already
  * completed
  *
+ * @param shm_cfg shared memory pointer
+ *
  * @returns true if init is already complete, false otherwise
 */
-bool xma_res_xma_init_completed(void);
+bool xma_res_xma_init_completed(XmaResources shm_cfg);
 
+/**
+ *
+*/
+pthread_mutex_t * xma_res_obtain_kernel_mutex(XmaSession *session);
+
+/**
+ *
+*/
+int xma_res_kernel_lock(pthread_mutex_t *lock);
+
+/**
+ *
+*/
+int xma_res_kernel_unlock(pthread_mutex_t *lock);
 /** @} */
 #ifdef __cplusplus
 }

@@ -15,6 +15,12 @@
  * under the License.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <iostream>
+#include <fstream>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,10 +33,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sched.h>
-#include <cstdlib>
-#include <string>
-#include <fstream>
-#include <iostream>
+#include <errno.h>
+#include <syslog.h>
 
 #include "lib/xmaapi.h"
 #include "app/xmalogger.h"
@@ -78,7 +82,7 @@ void xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level)
 
     g_xma_loggercb_singleton->callback = callback;
     g_xma_loggercb_singleton->level = level;
-    
+
 }
 
 int xma_logger_init(XmaLogger *logger)
@@ -91,21 +95,33 @@ int xma_logger_init(XmaLogger *logger)
         printf("XMA Logger: defaulting to stdout, loglevel INFO\n");
         logger->use_stdout = true;
         logger->use_fileout = false;
+        logger->use_syslog = false;
         logger->log_level = XMA_INFO_LOG;
+    }
+    else if (strcmp(g_xma_singleton->systemcfg.logfile,"syslog") >= 0)
+    {
+        printf("XMA Logger: using syslog\n");
+        logger->use_stdout = false;
+        logger->use_fileout = false;
+        logger->use_syslog = true;
+        strcpy(logger->filename, g_xma_singleton->systemcfg.logfile);
+        logger->log_level = g_xma_singleton->systemcfg.loglevel;
+        openlog("xma: ", LOG_PID|LOG_CONS, LOG_USER);
     }
     else
     {
         printf("XMA Logger: using configuration file settings\n");
         logger->use_stdout = false;
         logger->use_fileout = true;
+        logger->use_syslog = false;
         strcpy(logger->filename, g_xma_singleton->systemcfg.logfile);
         logger->log_level = g_xma_singleton->systemcfg.loglevel;
-    } 
+    }
 
     /* Save FD of output file */
     if (logger->use_fileout)
     {
-        logger->fd = open((const char*)logger->filename, 
+        logger->fd = open((const char*)logger->filename,
                           O_APPEND | O_CREAT | O_WRONLY, 00666);
         if (logger->fd == -1)
         {
@@ -130,6 +146,9 @@ int xma_logger_close(XmaLogger *logger)
 {
     /* Verify parameters */
     assert(logger);
+    if(logger->use_syslog){
+        closelog();
+    }
     xma_actor_destroy(logger->actor);
 
     return 0;
@@ -146,8 +165,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     struct tm      *tm_info;
     struct timeval  tv;
     int32_t         millisec;
-    char            log_time[40];
-    char            log_name[40];
+    char            log_time[40] = {0};
+    char            log_name[40] = {0};
     const char     *log_level;
     int32_t         hdr_offset;
     bool            send2callback = false;
@@ -171,7 +190,7 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
 
     if (!(send2callback || send2actor))
         return;
-    
+
     /* Get time */
     gettimeofday(&tv, NULL);
     millisec = lrint(tv.tv_usec/1000.0);
@@ -187,18 +206,24 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     if (name == NULL)
         strncpy(log_name, "XMA-default", sizeof(log_name));
     else
-        strncpy(log_name, name, sizeof(log_name));
+        strncpy(log_name, name, sizeof(log_name)-1);
 
     log_level = g_loglevel_tbl[level].lvl_str;
-    
+
     /* Format log message */
-    sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
+    //NOTE: Usage of program_invocation_short_name may hinder portability
+    if(logger->use_syslog){
+        sprintf(msg_buff, "%s %s %s ", program_invocation_short_name, log_level, log_name);
+    }
+    else{
+        sprintf(msg_buff, "%s.%03d %d %s %s %s ", log_time, millisec, getpid(), program_invocation_short_name, log_level, log_name);
+    }
     hdr_offset = strlen(msg_buff);
-    va_start(ap, msg); 
+    va_start(ap, msg);
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
     va_end(ap);
 
-    /* Send message buffer to logger Actor - 
+    /* Send message buffer to logger Actor -
        will be copied to loggers message buffer */
     if (send2actor)
         xma_actor_sendmsg(logger->actor, msg_buff, sizeof(msg_buff));
@@ -258,7 +283,7 @@ void* xma_logger_actor(void *data)
             }
         }
     }
-    
+
     //std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     //std::cout << "ERROR: ini_file1: " << ini_file1 << std::endl;
     //std::cout << "ERROR: ini_file2: " << ini_file2 << std::endl;
@@ -307,7 +332,7 @@ void* xma_logger_actor(void *data)
                 printf("XMA logger: received shutdown\n");
                 break;
             }
-            
+
             if (found_sdaccel_ini_file) {
                 /* Format log message
                 sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
@@ -323,6 +348,16 @@ void* xma_logger_actor(void *data)
                         perror("XMA Logger: could not write to file: ");
                         break;
                     }
+                }
+                if (logger->use_syslog){
+                    uint8_t syslog_level = LOG_DEBUG;
+                    switch(logger->log_level){
+                        case XMA_CRITICAL_LOG: syslog_level = LOG_CRIT ; break;
+                        case XMA_ERROR_LOG   : syslog_level = LOG_ERR  ; break;
+                        case XMA_INFO_LOG    : syslog_level = LOG_INFO ; break;
+                        case XMA_DEBUG_LOG   : syslog_level = LOG_DEBUG; break;
+                    }
+                    syslog(syslog_level,"%s", logmsg);
                 }
                 if (logger->use_stdout)
                     printf("%s", logmsg);
@@ -347,7 +382,7 @@ XmaThread *xma_thread_create(XmaThreadFunc func, void *data)
     thread->data = data;
     thread->is_running = false;
 
-    return thread; 
+    return thread;
 }
 
 void xma_thread_destroy(XmaThread *thread)
@@ -363,10 +398,10 @@ void *xma_thread_entry_func(void *data)
 
     return 0;
 };
-    
+
 void xma_thread_start(XmaThread *thread)
 {
-    pthread_create(&thread->tid, NULL, xma_thread_entry_func, thread);  
+    pthread_create(&thread->tid, NULL, xma_thread_entry_func, thread);
 }
 
 bool xma_thread_is_running(XmaThread *thread)
@@ -388,7 +423,7 @@ XmaMsgQ *xma_msgq_create(size_t msg_size, size_t max_msg_entries)
     msgq->msg_array = (uint8_t*) malloc(msg_size * max_msg_entries);
     msgq->num_entries = 0;
     msgq->front = 0;
-    msgq->back = 0; 
+    msgq->back = 0;
 
     return msgq;
 }
@@ -406,7 +441,7 @@ bool xma_msgq_isfull(XmaMsgQ *msgq)
 
 bool xma_msgq_isempty(XmaMsgQ *msgq)
 {
-    return (msgq->num_entries == 0); 
+    return (msgq->num_entries == 0);
 }
 
 int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size)
@@ -422,16 +457,16 @@ int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size)
         XMA_DBG_PRINTF("%s", "XMA msgq enqueue: too Large\n");
         return XMA_MSGQ_MSG_TOO_LARGE;
     }
-    
+
     uint8_t *msgdst = msgq->msg_array + (msgq->msg_size * msgq->back);
     memcpy(msgdst, msg, size);
-    
+
     msgq->back = (msgq->back + 1) % (msgq->max_msg_entries);
     msgq->num_entries++;
 
     return 0;
 }
-    
+
 int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
 {
     if (xma_msgq_isempty(msgq))
@@ -446,8 +481,8 @@ int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
         return XMA_MSGQ_MSG_TOO_SMALL;
     }
 
-    uint8_t *msgsrc = msgq->msg_array + (msgq->msg_size * msgq->front); 
-    memcpy(msg, msgsrc, msgq->msg_size); 
+    uint8_t *msgsrc = msgq->msg_array + (msgq->msg_size * msgq->front);
+    memcpy(msg, msgsrc, msgq->msg_size);
 
     msgq->front = (msgq->front + 1) % (msgq->max_msg_entries);
     msgq->num_entries--;
@@ -466,7 +501,7 @@ XmaActor *xma_actor_create(XmaThreadFunc    func,
     pthread_cond_init(&actor->dequeued_cond, NULL);
     actor->msg_q = xma_msgq_create(msg_size, max_msg_entries);
     actor->thread = xma_thread_create(func, actor);
-    
+
     return actor;
 }
 
@@ -495,7 +530,7 @@ int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
     bool    was_empty;
 
     pthread_mutex_lock(&actor->lock);
-    XMA_DBG_PRINTF("XMA actor sendmsg on entry depth=%d, front=%d, back=%d\n", 
+    XMA_DBG_PRINTF("XMA actor sendmsg on entry depth=%d, front=%d, back=%d\n",
             actor->msg_q->num_entries,
             actor->msg_q->front,
             actor->msg_q->back);
@@ -513,15 +548,15 @@ int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
         pthread_cond_broadcast(&actor->queued_cond);
     }
 
-    XMA_DBG_PRINTF("XMA actor sendmsg on exit depth=%d, front=%d, back=%d\n", 
+    XMA_DBG_PRINTF("XMA actor sendmsg on exit depth=%d, front=%d, back=%d\n",
             actor->msg_q->num_entries,
             actor->msg_q->front,
             actor->msg_q->back);
 
     pthread_mutex_unlock(&actor->lock);
 
-    return rc; 
-        
+    return rc;
+
 }
 
 int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
@@ -531,7 +566,7 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
 
     pthread_mutex_lock(&actor->lock);
 
-    XMA_DBG_PRINTF("XMA actor recvmsg on entry depth=%d, front=%d, back=%d\n", 
+    XMA_DBG_PRINTF("XMA actor recvmsg on entry depth=%d, front=%d, back=%d\n",
             actor->msg_q->num_entries,
             actor->msg_q->front,
             actor->msg_q->back);
@@ -548,7 +583,7 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
         pthread_cond_broadcast(&actor->dequeued_cond);
     }
 
-    XMA_DBG_PRINTF("XMA actor recvmsg on exit depth=%d, front=%d, back=%d\n", 
+    XMA_DBG_PRINTF("XMA actor recvmsg on exit depth=%d, front=%d, back=%d\n",
             actor->msg_q->num_entries,
             actor->msg_q->front,
             actor->msg_q->back);

@@ -95,10 +95,19 @@ typedef struct XmaEncoderPlugin
                                  int32_t            *data_size);
     /** Callback called when application calls xma_enc_session_destroy() */
     int32_t         (*close)(XmaEncoderSession *session);
-    /** Optional callback called when app calls xma_enc_session_create() */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
+
     /** Callback called if this encoder supports zerocopy */
     uint64_t        (*get_dev_input_paddr)(XmaEncoderSession *enc_session);
 } XmaEncoderPlugin;
