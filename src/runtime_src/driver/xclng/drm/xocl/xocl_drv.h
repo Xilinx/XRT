@@ -540,65 +540,6 @@ struct xocl_dna_funcs {
 #define xocl_xmc_get_data(xdev, cmd)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
 
-#if 0
-/*
- * mailbox callbacks
- */
-enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN = 0,
-	MAILBOX_REQ_TEST_READY,
-	MAILBOX_REQ_TEST_READ,
-	MAILBOX_REQ_LOCK_BITSTREAM,
-	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET,
-	MAILBOX_REQ_FIREWALL,
-	MAILBOX_REQ_GPCTL,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR,
-	MAILBOX_REQ_LOAD_XCLBIN,
-	MAILBOX_REQ_RECLOCK,
-	MAILBOX_REQ_PEER_DATA,
-	MAILBOX_REQ_CONN_EXPL,
-};
-
-enum mb_cmd_type {
-	MB_CMD_DEFAULT = 0,
-	MB_CMD_LOAD_XCLBIN,
-	MB_CMD_RECLOCK,
-	MB_CMD_CONN_EXPL,
-	MB_CMD_LOAD_XCLBIN_KADDR,
-	MB_CMD_READ_FROM_PEER,
-};
-struct mailbox_req_bitstream_lock {
-	pid_t pid;
-	xuid_t uuid;
-};
-
-struct mailbox_subdev_peer {
-	enum data_kind kind;
-};
-
-struct mailbox_bitstream_kaddr {
-	uint64_t addr;
-};
-
-struct mailbox_gpctl {
-	enum mb_cmd_type cmd_type;
-	uint32_t data_total_len;
-	uint64_t priv_data;
-	void *data_ptr;
-};
-
-struct mailbox_req {
-	enum mailbox_request req;
-	uint32_t data_total_len;
-	uint64_t flags;
-	char data[0];
-};
-
-#define MB_PEER_CONNECTED 0x1
-#define MB_PEER_SAME_DOM  0x2
-#define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
-#endif
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {

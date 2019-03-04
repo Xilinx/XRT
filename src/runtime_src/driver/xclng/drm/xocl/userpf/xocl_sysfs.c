@@ -316,30 +316,8 @@ static ssize_t link_speed_max_show(struct device *dev,
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed_max);
-/* - End attributes-- */
 
-static ssize_t sw_chan_en_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
- 	uint64_t val;
-
- 	if (kstrtoull(buf, 0, &val) < 0)
-		return -EINVAL;
-
-	if(val & 0x3){
-		xocl_err(dev, "can only set BIT2 to BIT63");
-		return -EINVAL;
-	}
-
- 	mutex_lock(&xdev->xdev_lock);
-	xdev->ch_state |= val;
-	mutex_unlock(&xdev->xdev_lock);
-
- 	return count;
-}
-static ssize_t sw_chan_en_show(struct device *dev,
+static ssize_t sw_chan_state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -352,23 +330,25 @@ static ssize_t sw_chan_en_show(struct device *dev,
 	return sprintf(buf, "0x%llx\n", ret);
 }
 
-static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
+static DEVICE_ATTR(sw_chan_state, 0444, sw_chan_state_show, NULL);
 
- static ssize_t sw_chan_reset_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
+static ssize_t sw_chan_switch_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
-	mutex_lock(&xdev->xdev_lock);
-	xdev->ch_state &= ~(0x3);
+	uint64_t ret;
+ 	mutex_lock(&xdev->xdev_lock);
+	ret = xdev->ch_switch;
 	mutex_unlock(&xdev->xdev_lock);
 
-	return count;
+	return sprintf(buf, "0x%llx\n", ret);
 }
 
-static DEVICE_ATTR(sw_chan_reset, 0200, NULL, sw_chan_reset_store);
+static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
 
 
+/* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
@@ -383,9 +363,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_speed.attr,
 	&dev_attr_link_speed_max.attr,
 	&dev_attr_link_width_max.attr,
-	&dev_attr_sw_chan_en.attr,
-	&dev_attr_sw_chan_reset.attr,
-
+	&dev_attr_sw_chan_state.attr,
+	&dev_attr_sw_chan_switch.attr,
 	NULL,
 };
 

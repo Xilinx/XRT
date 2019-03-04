@@ -172,8 +172,8 @@ static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	struct xocl_dev *xdev = (struct xocl_dev *)XOCL_PL_DEV_TO_XDEV(pdev);
-	uint64_t chan_flag = xocl_get_data(xdev, CHAN_STATE);
-	bool sw_ch = chan_flag & MB_SW_ENABLE_CONN_EXPL;
+	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	bool sw_ch = chan_flag & MB_SW_ENABLE_PEER_DATA;
 
 	mb_req = (struct mailbox_req *)vmalloc(reqlen);
 	if(!mb_req)
