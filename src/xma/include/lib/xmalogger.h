@@ -23,6 +23,10 @@
 #include <pthread.h>
 #include <limits.h>
 
+#if !defined (PATH_MAX) || !defined (NAME_MAX)
+#include <linux/limits.h>
+#endif
+
 #define XMA_MAX_LOGMSG_SIZE          255
 #define XMA_MAX_LOGMSG_Q_ENTRIES     128
 
