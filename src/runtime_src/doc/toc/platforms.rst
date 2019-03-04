@@ -21,7 +21,7 @@ PCIe Based Platforms
 
 Alveo PCIe platforms are supported on x86_64, PPC64LE and AARCH64 host architectures. AWS F1 is only supported on AWS host architectures.
 
-Alveo PCIe platforms have a *shell* which is static and a reconfigurable (dynamic) region. The shell is automatically loaded from PROM when host is booted and cannot be changed till next cold reboot. The shell (previously known as DSA) has two physical functions: Management Physical Function and User Physical Function. Dynamic region contents are compiled by the user using SDx compiler tool chain like xocc which produces *xclbin* file.
+Alveo PCIe platforms have a static *shell* and a reconfigurable (dynamic) region. The shell is automatically loaded from PROM when host is booted and cannot be changed till next cold reboot. The shell (also previously known as DSA) has two physical functions: Management Physical Function and User Physical Function. The reconfigurable region contents are compiled by the user using SDx compiler tool chain like xocc which produces *xclbin* file.
 
 MGMT PF
 -------

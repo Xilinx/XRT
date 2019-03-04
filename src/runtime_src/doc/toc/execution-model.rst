@@ -22,7 +22,7 @@ For both class of platforms, memory management is performed inside Linux kernel 
 xocl
 ----
 
-Xilinx PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use drm_mm for allocation of memory and drm_gem framework for mmap handling. Since ordinarly our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA PCIe DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
+Xilinx PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use drm_mm for allocation of memory and drm_gem framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA PCIe DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
 
 zocl
 ----
@@ -50,9 +50,10 @@ Execution Flow
 
 1. Load xclbin using DOWNLOAD ioctl
 2. Discover compute unit register map from xclbin
-3. Allocate data buffers to feed to the compute units using CREATE/MAP ioctl calls
-4. Migrate the data
-5. Allocate an execution command buffer using CREATE/MAP ioctl call and fill the command buffer using data in 2 above and using the format defined in ert.h
+3. Allocate data buffers to feed to the compute units using CREATE_BO/MAP_BO ioctl calls
+4. Migrate input data buffers from host to device using SYNC_BO ioctl
+5. Allocate an execution command buffer using CREATE_BO/MAP_BO ioctl call and fill the command buffer using data in 2 above and following the format defined in ert.h
 6. Submit the execution command buffer using EXECBUF ioctl
 7. Wait for completion using POSIX poll
-8. Release data buffers and command buffer
+8. Migrate output data buffers from device to host using SYNC_BO ioctl
+9. Release data buffers and command buffer
