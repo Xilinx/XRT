@@ -287,8 +287,10 @@ static ssize_t sw_chan_en_store(struct device *dev,
 	}
 
  	mutex_lock(&lro->busy_mutex);
-	lro->ch_state |= val;
+	lro->ch_switch |= val;
 	mutex_unlock(&lro->busy_mutex);
+
+	xclmgmt_chan_switch_notify(lro);
 
  	return count;
 }
@@ -299,7 +301,7 @@ static ssize_t sw_chan_en_show(struct device *dev,
 
 	uint64_t ret;
  	mutex_lock(&lro->busy_mutex);
-	ret = lro->ch_state;
+	ret = lro->ch_switch;
 	mutex_unlock(&lro->busy_mutex);
 
 	return sprintf(buf, "0x%llx\n", ret);
@@ -313,9 +315,10 @@ static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
 	mutex_lock(&lro->busy_mutex);
-	lro->ch_state = 0;
+	lro->ch_switch = 0;
 	mutex_unlock(&lro->busy_mutex);
 
+	xclmgmt_chan_switch_notify(lro);
 	return count;
 }
 

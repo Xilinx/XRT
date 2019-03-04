@@ -196,8 +196,8 @@ struct mailbox_msg {
 	void			*mbm_cb_arg;
 	u32			mbm_flags; // SW/HW
 	int			mbm_ttl;
-	bool		mbm_timer_on;
-	bool		sw_ch;
+	bool			mbm_timer_on;
+	bool			sw_ch;
 };
 
 /*
@@ -833,24 +833,54 @@ static void chan_do_rx(struct mailbox_channel *ch)
 	struct mailbox *mbx = ch->mbc_parent;
 	struct mailbox_pkt *pkt = &ch->mbc_packet;
 	struct mailbox_msg *msg = NULL;
-	bool needs_read = false;
+	bool read_hw = false;
 	u64 id = 0;
-	bool eom;
-	int err;
+	bool eom = false;
+	int err = 0;
 	u32 type;
 	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
 
 	/* Check if a packet is ready for reading. */
 	if (st == 0xffffffff) {
 		/* Device is still being reset. */
-		needs_read = false;
+		read_hw = false;
 	} else if (test_bit(MBXCS_BIT_POLL_MODE, &ch->mbc_state)) {
-		needs_read = ((st & STATUS_EMPTY) == 0);
+		read_hw = ((st & STATUS_EMPTY) == 0);
 	} else {
-		needs_read = ((st & STATUS_RTA) != 0);
+		read_hw = ((st & STATUS_RTA) != 0);
 	}
 
-	if (needs_read) {
+	if(!read_hw){
+		/* 
+		  wake up by timer or sw channel
+		  check sw_req_id, sw_buf, sw_len
+		  if (mbx->sw_buf)
+		    ch->mbc_cur_msg = chan_msg_dequeue(ch, mbx->sw_req_id);
+		  else {
+			//wake up by timer, go to sleep
+			goto done;
+		  }
+
+		  if(ch->mbc_cur_msg) 
+		     it a response
+		  else {
+		    it a request, let's alloc_msg 
+			msg = alloc_msg(NULL, mbx->sw_len);
+			msg->mbm_ch = ch;
+			msg->mbm_flags |= MSG_FLAG_REQUEST;
+			msg->sw_ch = true;
+			ch->mbc_cur_msg = msg;
+		  }
+		  ch->mbc_bytes_done = ch->mbc_cur_msg->mbm_len;
+		  ptr = memcpy(ch->mbc_cur_msg->mbm_data, mbx->sw_buf, ch->mbc_cur_msg->mbm_len);
+		  if(ptr != ch->mbc_cur_msg->mbm_data)
+		  	err = -EINVAL;
+		  clean up sw_req_id, sw_buf, sw_len as 0 or NULL;
+		  complete(&rx_worker);
+		  chan_msg_done(ch, err);
+
+		 */
+	} else {
 		chan_recv_pkt(ch);
 		type = pkt->hdr.type & PKT_TYPE_MASK;
 		eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
@@ -907,6 +937,7 @@ static void chan_do_rx(struct mailbox_channel *ch)
 		}
 	}
 
+done:
 	/* Handle timer event. */
 	if (test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
 		timeout_msg(ch);
@@ -1009,41 +1040,55 @@ static void rx_enqueued_msg_timer_on(struct mailbox *mbx, uint64_t req_id)
 static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
-	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+	u32 st = 0;
 
-	/* Check if a packet has been read by peer. */
-	if ((st != 0xffffffff) && ((st & STATUS_STA) != 0)) {
-		clear_bit(MBXCS_BIT_CHK_STALL, &ch->mbc_state);
+	/*
+	 * The mailbox is free for sending new pkt now. See if we
+	 * have something to send.
+	 */
 
-		/*
-		 * The mailbox is free for sending new pkt now. See if we
-		 * have something to send.
-		 */
+	/* Finished sending a whole msg, call it done. */
+	if (ch->mbc_cur_msg &&
+		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done)) {
+		rx_enqueued_msg_timer_on(mbx, ch->mbc_cur_msg->mbm_req_id);
+		chan_msg_done(ch, 0);
+	}
 
-		/* Finished sending a whole msg, call it done. */
-		if (ch->mbc_cur_msg &&
-			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done)) {
-			rx_enqueued_msg_timer_on(mbx, ch->mbc_cur_msg->mbm_req_id);
-			chan_msg_done(ch, 0);
-		}
+	if (!ch->mbc_cur_msg){
+		ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
+		if(ch->mbc_cur_msg)
+			ch->mbc_cur_msg->mbm_timer_on = true;
+	}
 
-		if (!ch->mbc_cur_msg){
-			ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
-			if(ch->mbc_cur_msg)
-				ch->mbc_cur_msg->mbm_timer_on = true;
-		}
-
-		if (ch->mbc_cur_msg) {
-			chan_msg2pkt(ch);
-		} else if (valid_pkt(&mbx->mbx_tst_pkt)) {
-			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
-				sizeof(struct mailbox_pkt));
-			reset_pkt(&mbx->mbx_tst_pkt);
+	if(ch->mbc_cur_msg){
+		if(ch->mbc_cur_msg->sw_ch){
+			//check req_id, buf, len if zero, if not, no-op and sleep, wait for timer wake you up; 
+			// mutex_lock(&mbx->mbx_lock)
+			// mbx->sw_req_id = ch->mbc_cur_msg->mbm_req_id;
+			//memcpy(mbx->sw_buf, ch->mbc_cur_msg->mbm_data, mbx->sw_len);
+			//ch->mbc_cur_msg->mbm_len = mbx->sw_len
+			//mutex_unlock(&mbx->mbx_lock)
+			//complete(&mbx->sw_ch_complete);
+			ch->mbc_bytes_done = ch->mbc_cur_msg->mbm_len;
 		} else {
-			return; /* Nothing to send. */
-		}
+			/* Check if a packet has been read by peer. */
+			st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+			if ((st != 0xffffffff) && ((st & STATUS_STA) != 0)) {
+				clear_bit(MBXCS_BIT_CHK_STALL, &ch->mbc_state);
 
-		chan_send_pkt(ch);
+				if (ch->mbc_cur_msg) {
+					chan_msg2pkt(ch);
+				} else if (valid_pkt(&mbx->mbx_tst_pkt)) {
+					(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
+						sizeof(struct mailbox_pkt));
+					reset_pkt(&mbx->mbx_tst_pkt);
+				} else {
+					return; /* Nothing to send. */
+				}
+
+				chan_send_pkt(ch);
+			}
+		}
 	}
 
 	/* Handle timer event. */

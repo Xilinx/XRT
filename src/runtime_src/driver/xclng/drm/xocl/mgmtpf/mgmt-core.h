@@ -114,7 +114,7 @@ struct xclmgmt_dev {
 	int msix_user_start_vector;
 	bool ready;
 
-	uint64_t ch_state;
+	uint64_t ch_switch;
 
 };
 
@@ -128,6 +128,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 void get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *width, unsigned short *speed, bool is_cap);
+void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro);
 
 // utils.c
 unsigned compute_unit_busy(struct xclmgmt_dev *lro);

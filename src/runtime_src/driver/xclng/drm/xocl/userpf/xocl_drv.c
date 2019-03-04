@@ -76,6 +76,9 @@ static uint64_t userpf_get_data(xdev_handle_t xdev_hdl, enum data_kind kind)
 		case CHAN_STATE:
 			ret = xdev->ch_state;
 			break;
+		case CHAN_SWITCH:
+			ret = xdev->ch_switch;
+			break;
 		default:
 			break;
 	}
@@ -135,12 +138,14 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		userpf_err(xdev, "failed to kill all clients");
 }
 
-int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
+int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	bool skip = false;
-	int64_t ret = 0, mbret = 0;
+	int ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
 	size_t resplen = sizeof (ret);
+	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	bool sw_ch = false;
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (xdev->offline) {
@@ -163,7 +168,8 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL, (xdev->ch_state & 0x1) ? true : false);
+	sw_ch = (chan_flag & MB_SW_ENABLE_HOT_RESET) != 0;
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL, sw_ch);
 	if (mbret)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
@@ -180,9 +186,12 @@ void xocl_mb_connect(struct xocl_dev *xdev)
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_conn mb_conn = { 0 };
 	int ret = 0;
-	uint64_t resp = 0;
+	int resp = 0;
 	size_t data_len = 0, reqlen = 0, resplen = sizeof(resp);
 	void *kaddr = NULL;
+	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	bool sw_ch = false;
+
 	data_len = sizeof(struct mailbox_conn);
 	reqlen = sizeof(struct mailbox_req) + data_len;
 	mb_req = (struct mailbox_req *)vzalloc(reqlen);
@@ -201,12 +210,15 @@ void xocl_mb_connect(struct xocl_dev *xdev)
 
 	memcpy(mb_req->data, &mb_conn, data_len);
 
+	sw_ch = (chan_flag & MB_SW_ENABLE_CONN_EXPL) != 0;
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &resp, &resplen,
-		NULL, NULL, (xdev->ch_state & MB_PEER_SW_CHAN_EN) ? true : false);
+		NULL, NULL, sw_ch);
 	if(!ret){
 		mutex_lock(&xdev->xdev_lock);
 		xdev->ch_state = MB_PEER_CONNECTED;
-		xdev->ch_state |= resp;
+		if(resp > 0){
+			xdev->ch_state |= resp;
+		}
 		userpf_info(xdev, "xdev->ch_state 0x%llx\n", xdev->ch_state);
 		mutex_unlock(&xdev->xdev_lock);
 	}
@@ -221,13 +233,17 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
 	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
+	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	bool sw_ch = false;
+
 	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
 	req->req = MAILBOX_REQ_RECLOCK;
 	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
 	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
 
+	sw_ch = (chan_flag & MB_SW_ENABLE_RECLOCK) != 0;
 	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL, (xdev->ch_state & 0x1) ? true : false);
+		&msg, &resplen, NULL, NULL, sw_ch);
 
 	if(msg != 0){
 		err = -ENODEV;
@@ -235,6 +251,14 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 
 	kfree(req);
   return err;
+}
+
+static void xocl_ch_switch(struct xocl_dev *xdev, struct mailbox_conn *conn)
+{
+	userpf_info(xdev, "%s set channel switch 0x%llx\n", __func__, conn->flag);
+ 	mutex_lock(&xdev->xdev_lock);
+	xdev->ch_switch = conn->flag;
+	mutex_unlock(&xdev->xdev_lock);
 }
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -254,6 +278,9 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		break;
 	case MAILBOX_REQ_CONN_EXPL:
 		(void) xocl_mb_connect(xdev);
+		break;
+	case MAILBOX_REQ_CHAN_SWITCH:
+		xocl_ch_switch(xdev, (struct mailbox_conn *)req->data);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
