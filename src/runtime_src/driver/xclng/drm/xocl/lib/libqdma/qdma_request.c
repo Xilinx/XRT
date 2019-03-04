@@ -322,6 +322,9 @@ void qdma_request_cancel_done(struct qdma_descq *descq,
 	cb->status = -ECANCELED;
 	cb->done = 1;
 
+	descq->stat.pending_requests--;
+	descq->stat.pending_bytes -= req->count;
+
 	if (cb->unmap_needed) {
 	       qdma_request_unmap(descq->xdev->conf.pdev, req);
 	       cb->unmap_needed = 0;

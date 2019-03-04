@@ -516,11 +516,11 @@ kernel type:
 - xmascaler
 - xmakernel
 
-The general initialzation sequence that is common to all kernel classeis as follows:
+The general initialization sequence that is common to all kernel classes is as follows:
 
 - define key type-specific properties of the kernel to be initialized
-- call the_session_create() routine corresponding to thekernel (e.g. xma_enc_session_create())
- Using the decoder kernel as an example, the following code definea request for an H264 decoder kernel made by Xilinx:
+- call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())
+  Using the decoder kernel as an example, the following code defines request for an H264 decoder kernel made by Xilinx:
 
 
 ::
