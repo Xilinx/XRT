@@ -103,6 +103,25 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
     return std::pair<size_t, size_t>(max1, max2);
 }
 
+std::pair<size_t, size_t> xcldev::device::getStreamName (std::vector<std::string>& aSlotNames,
+    std::vector< std::pair<std::string, std::string> >& aStreamNames) {
+    //Slotnames are of the format "Master-Slave", split them and return in separate vector
+    //return max length of the Master and Slave port names
+    size_t max1 = 0, max2 = 0;
+    char sep = '-';
+    for (auto &s: aSlotNames) {
+        size_t found;
+        found = s.find(sep, 0);
+        if (found != std::string::npos)
+            aStreamNames.emplace_back(s.substr(0, found), s.substr(found+1));
+        else
+            aStreamNames.emplace_back("Unknown", "Unknown");
+        max1 = std::max(aStreamNames.back().first.length(), max1);
+        max2 = std::max(aStreamNames.back().second.length(), max2);
+    }
+    return std::pair<size_t, size_t>(max1, max2);
+}
+
 int xcldev::device::readSPMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
@@ -161,17 +180,17 @@ int xcldev::device::readSSPMCounters() {
         std::cout << "ERROR: SSPM IP does not exist on the platform" << std::endl;
         return 0;
     }
-    std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+    std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
 
     std::cout << "SDx Streaming Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
+    int col2 = std::max(widths.second, strlen("Stream Slave"));
 
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
-            << std::setw(col1) << "CU Name"
-            << " " << std::setw(col2) << "AXI Portname"
+            << std::setw(col1) << "Stream Master"
+            << " " << std::setw(col2) << "Stream Slave"
             << "  " << std::setw(16)  << "Num Trans."
             << "  " << std::setw(16)  << "Data Bytes"
             << "  " << std::setw(16)  << "Busy Cycles"
