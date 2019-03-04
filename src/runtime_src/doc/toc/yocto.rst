@@ -1,4 +1,4 @@
-.. _`Yocto Recipes For Embedded Flow`:
+.. _yocto.rst:
 
 Yocto Recipes For Embedded Flow
 -------------------------------
@@ -87,4 +87,3 @@ These files can be used when creating an embedded platform.
 - ``fsbl.elf``
 - ``pmufw.elf``
 - ``u-boot.elf``
-
