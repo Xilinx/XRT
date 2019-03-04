@@ -1261,6 +1261,16 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 
+/**
+  * API for SW Mailbox Daemon Mgmtpf to Userpf
+  */
+XCL_DRIVER_DLLESPEC int xclDaemonUserpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+
+/**
+  * API for SW Mailbox Daemon Userpf to Mgmtpf
+  */
+XCL_DRIVER_DLLESPEC int xclDaemonMgmtpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
 XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);

@@ -1244,3 +1244,23 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 
 	return 0;
 }
+
+int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
+				   struct drm_file *filp)
+{
+//printk(KERN_INFO "xocl_sw_mailbox_ioctl START\n" );
+	int ret = 0;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	// cast data
+	struct drm_xocl_sw_mailbox *args;
+	args = (struct drm_xocl_sw_mailbox *)data;
+
+//printk(KERN_INFO "U-ioctl: dir: %i sz=%lu, id=0x%llx, data_ptr*=%llx data_ptr&=%llx \n", args->isTx , args->sz, args->id, args->pData, &args->pData );
+
+	// 0 is a successful transfer
+	ret = xocl_mailbox_sw_transfer(xdev, args);
+//printk(KERN_INFO "xocl_sw_mailbox_ioctl FINISH sz=%lu, id=0x%llx ret:  %lu      , data_ptr*=%llx data_ptr&=%llx \n", args->sz, args->id, ret, args->pData, &args->pData );
+	return ret;
+}

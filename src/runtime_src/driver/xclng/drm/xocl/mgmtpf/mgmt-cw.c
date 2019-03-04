@@ -35,3 +35,30 @@ void fill_frequency_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	(void) xocl_icap_ocl_get_freq(lro, 0, obj->ocl_frequency,
 		ARRAY_SIZE(obj->ocl_frequency));
 }
+
+int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *data)
+{
+//printk(KERN_INFO "mgmt_sw_mailbox_ioctl START\n");
+	int ret = 0;
+	struct drm_xocl_sw_mailbox args;
+	if (copy_from_user((void *)&args,
+			   data,
+			   sizeof(struct drm_xocl_sw_mailbox))) {
+		return -EFAULT;
+	}
+
+//printk(KERN_INFO "M-ioctl: dir: %i\n", args.isTx );
+
+	ret = xocl_mailbox_sw_transfer(lro, &args);
+	if( args.isTx && (ret==0) ) {
+		ret = copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox));
+	} else {
+		ret = copy_to_user((void *)data+offsetof(struct drm_xocl_sw_mailbox, sz),
+				   (void *)&args.sz,
+				   sizeof(size_t));
+		ret = 0; // Ignore return value in call of copy_to_user above.
+	}
+
+//printk(KERN_INFO "mgmt_sw_mailbox_ioctl FINISH sz=%lu, id=0x%llx ret:  %lu\n", args.sz, args.id, ret );
+	return ret;
+}

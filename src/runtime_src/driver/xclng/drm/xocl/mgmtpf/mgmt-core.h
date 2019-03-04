@@ -121,6 +121,7 @@ struct xclmgmt_dev {
 extern int health_check;
 
 int ocl_freqscaling_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
+int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *data);
 void platform_axilite_flush(struct xclmgmt_dev *lro);
 u16 get_dsa_version(struct xclmgmt_dev *lro);
 void fill_frequency_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
