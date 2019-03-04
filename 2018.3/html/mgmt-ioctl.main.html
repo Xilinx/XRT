@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Management Physical Function &mdash; Xilinx Runtime 2018.3 documentation</title>
+  <title>XCLMGMT (PCIe Management Physical Function) Driver Interfaces &mdash; Xilinx Runtime 2018.3 documentation</title>
   
 
   
@@ -36,7 +36,7 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
-        <link rel="next" title="User Physical Function" href="xocl_ioctl.main.html"/>
+        <link rel="next" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html"/>
         <link rel="prev" title="Xilinx Runtime (XRT) Core Library" href="xclhal2.main.html"/> 
 
   
@@ -92,10 +92,11 @@
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
@@ -108,6 +109,7 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -153,7 +155,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Management Physical Function</li>
+      <li>XCLMGMT (PCIe Management Physical Function) Driver Interfaces</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -172,8 +174,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="management-physical-function">
-<h1>Management Physical Function<a class="headerlink" href="#management-physical-function" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="xclmgmt-pcie-management-physical-function-driver-interfaces">
+<span id="mgmt-ioctl-main-rst"></span><h1>XCLMGMT (PCIe Management Physical Function) Driver Interfaces<a class="headerlink" href="#xclmgmt-pcie-management-physical-function-driver-interfaces" title="Permalink to this headline">¶</a></h1>
 <p><strong>PCIe Kernel Driver for Managament Physical Function</strong></p>
 <p>Interfaces exposed by <em>xclmgmt</em> driver are defined in file, <em>mgmt-ioctl.h</em>.
 Core functionality provided by <em>xclmgmt</em> driver is described in the following table:</p>
@@ -294,7 +296,7 @@ struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-right" title="User Physical Function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-right" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xclhal2.main.html" class="btn btn-neutral" title="Xilinx Runtime (XRT) Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

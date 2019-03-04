@@ -36,8 +36,8 @@
               href="genindex.html"/>
         <link rel="search" title="Search" href="search.html"/>
     <link rel="top" title="Xilinx Runtime 2018.3 documentation" href="index.html"/>
-        <link rel="next" title="Management Physical Function" href="mgmt-ioctl.main.html"/>
-        <link rel="prev" title="Xilinx Runtime (XRT) Architecture" href="index.html"/> 
+        <link rel="next" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" href="mgmt-ioctl.main.html"/>
+        <link rel="prev" title="Execution Model Overview" href="execution-model.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -92,10 +92,11 @@
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
@@ -108,6 +109,7 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -173,7 +175,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="xilinx-runtime-xrt-core-library">
-<h1>Xilinx Runtime (XRT) Core Library<a class="headerlink" href="#xilinx-runtime-xrt-core-library" title="Permalink to this headline">¶</a></h1>
+<span id="xclhal2-main-rst"></span><h1>Xilinx Runtime (XRT) Core Library<a class="headerlink" href="#xilinx-runtime-xrt-core-library" title="Permalink to this headline">¶</a></h1>
 <p><strong>Xilinx Runtime (XRT) Library Interface Definitions</strong></p>
 <p>Header file <em>xclhal2.h</em> defines data structures and function signatures exported by
 Xilinx Runtime (XRT) Library. XRT is part of software stack which is integrated
@@ -200,7 +202,7 @@ XCL_DRIVER_DLLESPEC unsigned <code class="descname">xclProbe</code><span class="
 <p>count of devices found</p>
 <dl class="function">
 <dt id="c.xclOpen">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a> <code class="descname">xclOpen</code><span class="sig-paren">(</span>unsigned<em>&nbsp;deviceIndex</em>, const char *<em>&nbsp;logFileName</em>, enum xclVerbosityLevel<em>&nbsp;level</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpen" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a> <code class="descname">xclOpen</code><span class="sig-paren">(</span>unsigned<em>&nbsp;deviceIndex</em>, const char *<em>&nbsp;logFileName</em>, xclVerbosityLevel<em>&nbsp;level</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpen" title="Permalink to this definition">¶</a></dt>
 <dd><p>Open a device and obtain its handle.</p>
 </dd></dl>
 
@@ -210,7 +212,7 @@ XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xclDeviceHandle" titl
 <dd>Slot number of device 0 for first device, 1 for the second device…</dd>
 <dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">logFileName</span></code></dt>
 <dd>Log file to use for optional logging</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">level</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclVerbosityLevel</span> <span class="pre">level</span></code></dt>
 <dd>Severity level of messages to log</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -228,7 +230,7 @@ XCL_DRIVER_DLLESPEC void <code class="descname">xclClose</code><span class="sig-
 </dl>
 <dl class="function">
 <dt id="c.xclResetDevice">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclResetKind<em>&nbsp;kind</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclResetDevice" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclResetKind<em>&nbsp;kind</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclResetDevice" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reset a device or its CL</p>
 </dd></dl>
 
@@ -236,7 +238,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclResetDevice</code><span class=
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclResetKind</span> <span class="pre">kind</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclResetKind</span> <span class="pre">kind</span></code></dt>
 <dd>Reset kind</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -264,7 +266,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclP2pEnable</code><span class="s
 <p>Enable or Disable P2P feature. Warm reboot might be required.</p>
 <dl class="function">
 <dt id="c.xclGetDeviceInfo2">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclDeviceInfo2 *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDeviceInfo2" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclDeviceInfo2 *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDeviceInfo2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain various bits of information from the device</p>
 </dd></dl>
 
@@ -272,14 +274,14 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span cla
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
 <dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="function">
 <dt id="c.xclGetUsageInfo">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetUsageInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclDeviceUsage *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetUsageInfo" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetUsageInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclDeviceUsage *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetUsageInfo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain usage information from the device</p>
 </dd></dl>
 
@@ -287,14 +289,14 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetUsageInfo</code><span class
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
 <dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="function">
 <dt id="c.xclGetErrorStatus">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetErrorStatus</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclErrorStatus *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetErrorStatus" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetErrorStatus</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclErrorStatus *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetErrorStatus" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain error information from the device</p>
 </dd></dl>
 
@@ -302,14 +304,14 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetErrorStatus</code><span cla
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
 <dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="function">
 <dt id="c.xclLoadXclBin">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclLoadXclBin</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const struct axlf *<em>&nbsp;buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclLoadXclBin" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclLoadXclBin</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const axlf *<em>&nbsp;buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclLoadXclBin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Download FPGA image (xclbin) to the device</p>
 </dd></dl>
 
@@ -317,7 +319,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclLoadXclBin</code><span class="
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer</span></code></dt>
 <dd>Pointer to device image (xclbin) in memory</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -454,7 +456,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclBootFPGA</code><span class="si
 <p>This should only be called when there are no other clients. It will cause PCIe bus re-enumeration</p>
 <dl class="function">
 <dt id="c.xclLogMsg">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclLogMsgLevel<em>&nbsp;level</em>, const char *<em>&nbsp;format</em>, ...<span class="sig-paren">)</span><a class="headerlink" href="#c.xclLogMsg" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclLogMsgLevel<em>&nbsp;level</em>, const char *<em>&nbsp;tag</em>, const char *<em>&nbsp;format</em>, ...<span class="sig-paren">)</span><a class="headerlink" href="#c.xclLogMsg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Send message to log file as per settings in ini file.</p>
 </dd></dl>
 
@@ -464,6 +466,8 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">xclLogMsgLevel</span> <span class="pre">level</span></code></dt>
 <dd>Severity level of the msg</dd>
+<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">tag</span></code></dt>
+<dd>Tag supplied by the client, like “OCL”, “XMA”, etc.</dd>
 <dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format</span></code></dt>
 <dd>Format of Msg string to write to log file</dd>
 <dt><code class="docutils literal"><span class="pre">...</span></code></dt>
@@ -477,7 +481,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-
 between host and device memory</p>
 <dl class="function">
 <dt id="c.xclAllocBO">
-XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, enum xclBOKind<em>&nbsp;domain</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, xclBOKind<em>&nbsp;domain</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO of requested size with appropriate flags</p>
 </dd></dl>
 
@@ -487,7 +491,7 @@ XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span c
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
 <dd>Size of buffer</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclBOKind</span> <span class="pre">domain</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclBOKind</span> <span class="pre">domain</span></code></dt>
 <dd>Memory domain</dd>
 <dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">flags</span></code></dt>
 <dd>Specify bank information, etc</dd>
@@ -593,7 +597,7 @@ XCL_DRIVER_DLLESPEC void * <code class="descname">xclMapBO</code><span class="si
 To unmap the buffer call POSIX <code class="xref c c-func docutils literal"><span class="pre">unmap()</span></code> on mapped void * pointer returned from xclMapBO</p>
 <dl class="function">
 <dt id="c.xclSyncBO">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclSyncBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;boHandle</em>, enum xclBOSyncDirection<em>&nbsp;dir</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclSyncBO" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclSyncBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;boHandle</em>, xclBOSyncDirection<em>&nbsp;dir</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclSyncBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Synchronize buffer contents in requested direction</p>
 </dd></dl>
 
@@ -603,7 +607,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclSyncBO</code><span class="sig-
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">boHandle</span></code></dt>
 <dd>BO handle</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclBOSyncDirection</span> <span class="pre">dir</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclBOSyncDirection</span> <span class="pre">dir</span></code></dt>
 <dd>To device or from device</dd>
 <dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
 <dd>Size of data to synchronize</dd>
@@ -678,7 +682,7 @@ XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclImportBO</code><span 
 This operation is backed by Linux DMA-BUF framework</p>
 <dl class="function">
 <dt id="c.xclGetBOProperties">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetBOProperties</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;boHandle</em>, struct xclBOProperties *<em>&nbsp;properties</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetBOProperties" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetBOProperties</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;boHandle</em>, xclBOProperties *<em>&nbsp;properties</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetBOProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain xclBOProperties struct for a BO</p>
 </dd></dl>
 
@@ -688,7 +692,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclGetBOProperties</code><span cl
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">boHandle</span></code></dt>
 <dd>BO handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties</span></code></dt>
 <dd>BO properties struct pointer</dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -718,7 +722,7 @@ XCL_DRIVER_DLLESPEC uint64_t <code class="descname">xclAllocDeviceBuffer</code><
 Use <a class="reference internal" href="#c.xclAllocBO" title="xclAllocBO"><code class="xref c c-func docutils literal"><span class="pre">xclAllocBO()</span></code></a> in all new code.</p>
 <dl class="function">
 <dt id="c.xclAllocDeviceBuffer2">
-XCL_DRIVER_DLLESPEC uint64_t <code class="descname">xclAllocDeviceBuffer2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, enum xclMemoryDomains<em>&nbsp;domain</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocDeviceBuffer2" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC uint64_t <code class="descname">xclAllocDeviceBuffer2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, xclMemoryDomains<em>&nbsp;domain</em>, unsigned<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocDeviceBuffer2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a buffer on the device on a specific DDR</p>
 </dd></dl>
 
@@ -728,7 +732,7 @@ XCL_DRIVER_DLLESPEC uint64_t <code class="descname">xclAllocDeviceBuffer2</code>
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
 <dd>Size of buffer</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclMemoryDomains</span> <span class="pre">domain</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclMemoryDomains</span> <span class="pre">domain</span></code></dt>
 <dd>Memory domain</dd>
 <dt><code class="docutils literal"><span class="pre">unsigned</span> <span class="pre">flags</span></code></dt>
 <dd>Desired DDR bank as a bitmap.</dd>
@@ -858,7 +862,7 @@ may use this if they want to perform their own device memory management – not 
 object (BO) framework defined before.</p>
 <dl class="function">
 <dt id="c.xclWrite">
-XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, const void *<em>&nbsp;hostBuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWrite" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, const void *<em>&nbsp;hostBuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWrite" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform register write operation</p>
 </dd></dl>
 
@@ -866,7 +870,7 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="si
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
 <dd>Address space</dd>
 <dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
 <dd>Offset in the address space</dd>
@@ -883,7 +887,7 @@ the address space. A device may have many address spaces.
 execution management please use XRT Compute Unit Execution Management APIs defined below</em></p>
 <dl class="function">
 <dt id="c.xclRead">
-XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, void *<em>&nbsp;hostbuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRead" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, void *<em>&nbsp;hostbuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRead" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform register read operation</p>
 </dd></dl>
 
@@ -891,7 +895,7 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclAddressSpace</span> <span class="pre">space</span></code></dt>
 <dd>Address space</dd>
 <dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
 <dd>Offset in the address space</dd>
@@ -1001,7 +1005,7 @@ struct <code class="descname">xclQueueContext</code><a class="headerlink" href="
 <p><strong>Members</strong></p>
 <dl class="function">
 <dt id="c.xclCreateWriteQueue">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct <a class="reference internal" href="#c.xclQueueContext" title="xclQueueContext">xclQueueContext</a> *<em>&nbsp;q_ctx</em>, uint64_t *<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCreateWriteQueue" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, <a class="reference internal" href="#c.xclQueueContext" title="xclQueueContext">xclQueueContext</a> *<em>&nbsp;q_ctx</em>, uint64_t *<em>&nbsp;q_hdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCreateWriteQueue" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create Write Queue xclCreateReadQueue - Create Read Queue</p>
 </dd></dl>
 
@@ -1009,7 +1013,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclCreateWriteQueue</code><span c
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd>Device handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclQueueContext</span> <span class="pre">*</span> <span class="pre">q_ctx</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclQueueContext</span> <span class="pre">*</span> <span class="pre">q_ctx</span></code></dt>
 <dd>Queue Context</dd>
 <dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">q_hdl</span></code></dt>
 <dd>Queue handle</dd>
@@ -1174,7 +1178,7 @@ struct <code class="descname">xclReqCompletion</code><a class="headerlink" href=
 <p><strong>Members</strong></p>
 <dl class="function">
 <dt id="c.xclWriteQueue">
-XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em>, struct <a class="reference internal" href="#c.xclQueueRequest" title="xclQueueRequest">xclQueueRequest</a> *<em>&nbsp;wr_req</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteQueue" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclWriteQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em>, <a class="reference internal" href="#c.xclQueueRequest" title="xclQueueRequest">xclQueueRequest</a> *<em>&nbsp;wr_req</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteQueue" title="Permalink to this definition">¶</a></dt>
 <dd><p>write data to queue</p>
 </dd></dl>
 
@@ -1184,7 +1188,7 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclWriteQueue</code><span cla
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt>
 <dd>Queue handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">wr_req</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">wr_req</span></code></dt>
 <dd>write request</dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -1215,7 +1219,7 @@ The bytes been written should equal to bytes been requested unless error happens
 </dl>
 <dl class="function">
 <dt id="c.xclReadQueue">
-XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclReadQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em>, struct <a class="reference internal" href="#c.xclQueueRequest" title="xclQueueRequest">xclQueueRequest</a> *<em>&nbsp;wr_req</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclReadQueue" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclReadQueue</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint64_t<em>&nbsp;q_hdl</em>, <a class="reference internal" href="#c.xclQueueRequest" title="xclQueueRequest">xclQueueRequest</a> *<em>&nbsp;wr_req</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclReadQueue" title="Permalink to this definition">¶</a></dt>
 <dd><p>read data from queue</p>
 </dd></dl>
 
@@ -1225,7 +1229,7 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclReadQueue</code><span clas
 <dd>Device handle</dd>
 <dt><code class="docutils literal"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt>
 <dd>Queue handle</dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">wr_req</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">wr_req</span></code></dt>
 <dd><em>undescribed</em></dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -1247,7 +1251,7 @@ XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclReadQueue</code><span clas
 </dl>
 <dl class="function">
 <dt id="c.xclPollCompletion">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, int<em>&nbsp;min_compl</em>, int<em>&nbsp;max_compl</em>, struct <a class="reference internal" href="#c.xclReqCompletion" title="xclReqCompletion">xclReqCompletion</a> *<em>&nbsp;comps</em>, int *<em>&nbsp;actual_compl</em>, int<em>&nbsp;timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclPollCompletion" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, int<em>&nbsp;min_compl</em>, int<em>&nbsp;max_compl</em>, <a class="reference internal" href="#c.xclReqCompletion" title="xclReqCompletion">xclReqCompletion</a> *<em>&nbsp;comps</em>, int *<em>&nbsp;actual_compl</em>, int<em>&nbsp;timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclPollCompletion" title="Permalink to this definition">¶</a></dt>
 <dd><p>for non-blocking read/write, check if there is any request been completed. <strong>min_compl</strong> unblock only when receiving min_compl completions <strong>max_compl</strong> Max number of completion with one poll</p>
 </dd></dl>
 
@@ -1259,7 +1263,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span cla
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">max_compl</span></code></dt>
 <dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">struct</span> <span class="pre">xclReqCompletion</span> <span class="pre">*</span> <span class="pre">comps</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclReqCompletion</span> <span class="pre">*</span> <span class="pre">comps</span></code></dt>
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">actual_compl</span></code></dt>
 <dd><em>undescribed</em></dd>
@@ -1270,16 +1274,16 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span cla
 <p>return number of requests been completed.</p>
 <dl class="function">
 <dt id="c.xclWriteHostEvent">
-XCL_DRIVER_DLLESPEC void <code class="descname">xclWriteHostEvent</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclPerfMonEventType<em>&nbsp;type</em>, enum xclPerfMonEventID<em>&nbsp;id</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteHostEvent" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC void <code class="descname">xclWriteHostEvent</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclPerfMonEventType<em>&nbsp;type</em>, xclPerfMonEventID<em>&nbsp;id</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteHostEvent" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
 <dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclPerfMonEventType</span> <span class="pre">type</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclPerfMonEventType</span> <span class="pre">type</span></code></dt>
 <dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">enum</span> <span class="pre">xclPerfMonEventID</span> <span class="pre">id</span></code></dt>
+<dt><code class="docutils literal"><span class="pre">xclPerfMonEventID</span> <span class="pre">id</span></code></dt>
 <dd><em>undescribed</em></dd>
 </dl>
 <p><strong>Description</strong></p>
@@ -1288,50 +1292,6 @@ XCL_DRIVER_DLLESPEC void <code class="descname">xclWriteHostEvent</code><span cl
 OpenCL runtime will be using the BUFFER MANAGEMNT APIs described above to manage OpenCL buffers.
 It would use these functions to initialize and sample the performance monitoring on the card.
 Note that the offset is wrt the address space</p>
-<dl class="function">
-<dt id="c.xclGetSysfsPath">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetSysfsPath</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const char *<em>&nbsp;subdev</em>, const char *<em>&nbsp;entry</em>, char *<em>&nbsp;sysfsPath</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetSysfsPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">subdev</span></code></dt>
-<dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">entry</span></code></dt>
-<dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">sysfsPath</span></code></dt>
-<dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd><em>undescribed</em></dd>
-</dl>
-<p><strong>Description</strong></p>
-<p>(For debug and profile usage only for now)
-The sysfs information is not accessible above hal layer now
-However, debug/profile need information from sysfs (for example
-debug_ip_layout) to properly initialize xdp code, so this
-experimental API is added</p>
-<dl class="function">
-<dt id="c.xclGetDebugProfileDeviceInfo">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDebugProfileDeviceInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclDebugProfileDeviceInfo *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDebugProfileDeviceInfo" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd><em>undescribed</em></dd>
-<dt><code class="docutils literal"><span class="pre">xclDebugProfileDeviceInfo</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
-<dd><em>undescribed</em></dd>
-</dl>
-<p><strong>Description</strong></p>
-<p>Warning: These APIs are experimental and can be
-changed or removed at any time. They should only
-be used by debug and profile code.</p>
-<p><strong>param</strong> handle the device handle
-<strong>param</strong> info the xclDebugProfileDeviceInfo
-structure that this API will fill in as
-result</p>
 </div>
 
 
@@ -1344,10 +1304,10 @@ result</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-right" title="Management Physical Function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-right" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="Xilinx Runtime (XRT) Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="execution-model.html" class="btn btn-neutral" title="Execution Model Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

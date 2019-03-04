@@ -91,10 +91,11 @@
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
@@ -107,6 +108,7 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -313,15 +315,11 @@
 </li>
       <li><a href="xclhal2.main.html#c.xclGetBOProperties">xclGetBOProperties (C function)</a>
 </li>
-      <li><a href="xclhal2.main.html#c.xclGetDebugProfileDeviceInfo">xclGetDebugProfileDeviceInfo (C function)</a>
-</li>
       <li><a href="xclhal2.main.html#c.xclGetDeviceInfo2">xclGetDeviceInfo2 (C function)</a>
 </li>
       <li><a href="xclhal2.main.html#c.xclGetErrorStatus">xclGetErrorStatus (C function)</a>
 </li>
       <li><a href="xclhal2.main.html#c.xclGetSectionInfo">xclGetSectionInfo (C function)</a>
-</li>
-      <li><a href="xclhal2.main.html#c.xclGetSysfsPath">xclGetSysfsPath (C function)</a>
 </li>
       <li><a href="xclhal2.main.html#c.xclGetUsageInfo">xclGetUsageInfo (C function)</a>
 </li>
@@ -333,8 +331,6 @@
 </li>
       <li><a href="xclhal2.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xclhal2.main.html#c.xclMapBO">xclMapBO (C function)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
@@ -349,6 +345,8 @@
 </li>
       <li><a href="xclhal2.main.html#c.xclOpenContext">xclOpenContext (C function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xclhal2.main.html#c.xclP2pEnable">xclP2pEnable (C function)</a>
 </li>
       <li><a href="xclhal2.main.html#c.xclPollCompletion">xclPollCompletion (C function)</a>
@@ -398,6 +396,28 @@
       <li><a href="xclhal2.main.html#c.xclWriteHostEvent">xclWriteHostEvent (C function)</a>
 </li>
       <li><a href="xclhal2.main.html#c.xclWriteQueue">xclWriteQueue (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_initialize">xma_initialize (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_ebo_kernel_done">xma_plg_ebo_kernel_done (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_ebo_kernel_start">xma_plg_ebo_kernel_start (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_get_paddr">xma_plg_get_paddr (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_register_dump">xma_plg_register_dump (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_register_read">xma_plg_register_read (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_register_write">xma_plg_register_write (C function)</a>
 </li>
   </ul></td>
 </tr></table>

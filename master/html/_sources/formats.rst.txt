@@ -1,8 +1,10 @@
+.. _formats.rst:
+
 Binary Formats
---------------
+**************
 
 xclbin
-~~~~~~
+======
 
 ``xclbin`` container format is defined in file ``xclbin.h``. Since
 2017.1, tools use ``xclbin2`` format also known as AXLF format. AXLF is
@@ -25,7 +27,7 @@ The path to ``xclbin.h`` is ``runtime/driver/include/xclbin.h`` under
 SDx installation directory.
 
 Feature ROM
-~~~~~~~~~~~
+===========
 
 Feature ROM is like a BIOS like table for FPGA which describes key
 properties of the device like its name and features enabled in the

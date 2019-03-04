@@ -92,10 +92,11 @@
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
@@ -104,7 +105,7 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Building and Installing Software Stack</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xrt">XRT</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xrt-for-pcie-platforms">XRT for PCIe Platforms</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#build-the-runtime">Build the runtime</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#build-rpm-package-on-rhel-centos-or-deb-package-on-ubuntu">Build RPM package on RHEL/CentOS or DEB package on Ubuntu</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#install-the-xrt-rpm-package">Install the XRT RPM package</a></li>
@@ -112,12 +113,14 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#xrt-documentation">XRT Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xrt-for-embedded">XRT for Embedded</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -183,9 +186,9 @@
            <div itemprop="articleBody">
             
   <div class="section" id="building-and-installing-software-stack">
-<h1>Building and Installing Software Stack<a class="headerlink" href="#building-and-installing-software-stack" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="xrt">
-<h2>XRT<a class="headerlink" href="#xrt" title="Permalink to this headline">¶</a></h2>
+<span id="build-rst"></span><h1>Building and Installing Software Stack<a class="headerlink" href="#building-and-installing-software-stack" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="xrt-for-pcie-platforms">
+<h2>XRT for PCIe Platforms<a class="headerlink" href="#xrt-for-pcie-platforms" title="Permalink to this headline">¶</a></h2>
 <p>XRT requires C++14 compiler and a few development libraries bundled with modern Linux
 distribution. Please install the necessary tools and dependencies
 using the provided <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code></p>
@@ -242,6 +245,10 @@ the top of the repository:</p>
 xdg-open Release/runtime_src/doc/html/index.html
 </pre></div>
 </div>
+</div>
+<div class="section" id="xrt-for-embedded">
+<h2>XRT for Embedded<a class="headerlink" href="#xrt-for-embedded" title="Permalink to this headline">¶</a></h2>
+<p>Refer to <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a> for more information.</p>
 </div>
 </div>
 
