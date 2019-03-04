@@ -110,7 +110,7 @@ clCreateProgramWithBinary(cl_context                      context ,
                           cl_int *                        errcode_ret )
 {
   validOrError(context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
-               
+
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;
   if (!once) {
@@ -130,10 +130,12 @@ clCreateProgramWithBinary(cl_context                      context ,
   for (auto device : xocl::get_range(device_list,device_list+num_devices)) {
     try {
       loadProgramBinary(program.get(),xocl(device));
-      xocl::assign(&binary_status[idx++],CL_SUCCESS);
+      if (binary_status)
+        xocl::assign(&binary_status[idx++],CL_SUCCESS);
     }
     catch (const xocl::error& ex) {
-      xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
+      if (binary_status)
+        xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
       throw;
     }
   }
