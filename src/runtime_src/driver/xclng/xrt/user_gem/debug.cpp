@@ -34,7 +34,7 @@
 
 #include "shim.h"
 #include "scan.h"
-#include "../user_common/perfmon_parameters.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/include/xclbin.h"
 
 #include <sys/types.h>
@@ -170,6 +170,7 @@ namespace xocl {
       }
       ifs.close();
     }
+
     return count;
   }
 

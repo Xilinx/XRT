@@ -79,8 +79,20 @@ namespace xdp {
       case MIGRATE_MEM:
         name = "MIGRATE_MEM";
         break;
-      case DDR_BANKS:
-        name = "DDR_BANKS";
+      case MEMORY_USAGE:
+        name = "MEMORY_USAGE";
+        break;
+      case PLRAM_DEVICE:
+        name = "PLRAM_DEVICE";
+        break;
+      case HBM_DEVICE:
+        name = "HBM_DEVICE";
+        break;
+      case KDMA_DEVICE:
+        name = "KDMA_DEVICE";
+        break;
+      case P2P_DEVICE:
+        name = "P2P_DEVICE";
         break;
       case PORT_BIT_WIDTH:
         name = "PORT_BIT_WIDTH";

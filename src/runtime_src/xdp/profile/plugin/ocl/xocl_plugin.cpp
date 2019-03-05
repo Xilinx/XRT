@@ -199,6 +199,12 @@ namespace xdp {
 
   void XoclPlugin::getDeviceExecutionTimes(RTProfile *profile)
   {
+    // NOTE: all device are assumed to support PLRAMs
+    setPlramDevice(true);
+    setHbmDevice(false);
+    setKdmaDevice(false);
+    setP2PDevice(false);
+
     // Traverse all devices in platform
     for (auto device_id : mPlatformHandle->get_device_range()) {
       std::string deviceName = device_id->get_unique_name();
@@ -207,6 +213,23 @@ namespace xdp {
       // NOTE: if unused, then this returns 0.0
       double deviceExecTime = profile->getTotalKernelExecutionTime(deviceName);
       mDeviceExecTimesMap[deviceName] = std::to_string(deviceExecTime);
+
+      // TODO: checks below are kludgy; are there better ways to check for device support?
+
+      // Check if device supports HBM
+      if (deviceName.find("280") != std::string::npos)
+        setHbmDevice(true);
+
+      // Check if device supports KDMA
+      if ((deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos)
+          || (deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos))
+        setKdmaDevice(true);
+
+      // Check if device supports P2P
+      if ((deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos)
+          || (deviceName.find("xilinx_u250_xdma_201830_2") != std::string::npos)
+          || (deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos))
+        setP2PDevice(true);
     }
   }
 
