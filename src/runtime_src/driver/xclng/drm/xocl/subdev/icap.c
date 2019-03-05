@@ -1743,7 +1743,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_bitstream_kaddr mb_addr = {0};
 	xuid_t peer_uuid;
-	uint64_t chan_flag = xocl_get_data(xdev, CHAN_STATE);
+	uint64_t ch_state = xocl_get_data(xdev, CHAN_STATE);
 	uint64_t ch_switch = xocl_get_data(xdev, CHAN_SWITCH);
 	bool sw_ch = false;
 
@@ -1892,14 +1892,14 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			/*
 			 *  should replace with userpf download flow
 			 */
-			if(!(chan_flag & 0x1)){
+			if(!(ch_state & MB_PEER_CONNECTED)){
 				ICAP_ERR(icap, "%s fail to find peer, abort!",
 					__func__);
 				err = -EFAULT;
 				goto done;
 			}
 
-			if((chan_flag & 0xF) == MB_PEER_SAMEDOM_CONNECTED){
+			if((ch_state & 0xF) == MB_PEER_SAMEDOM_CONNECTED){
 				data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
 				mb_req = (struct mailbox_req *)vmalloc(data_len);
 				if (!mb_req) {
@@ -1912,7 +1912,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				sw_ch = ch_switch & MB_SW_ENABLE_XCLBIN_KADDR;
 				memcpy(mb_req->data, &mb_addr, sizeof(struct mailbox_bitstream_kaddr));
 
-			} else if ((chan_flag & 0xF) == MB_PEER_CONNECTED){
+			} else if ((ch_state & 0xF) == MB_PEER_CONNECTED){
 				data_len = sizeof(struct mailbox_req) +
 					xclbin->m_header.m_length;
 				mb_req = (struct mailbox_req *)vmalloc(data_len);

@@ -274,6 +274,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
+	struct mailbox_conn *conn = NULL;
 
 	if (err != 0)
 		return;
@@ -285,7 +286,15 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_hot_reset(xdev, true);
 		break;
 	case MAILBOX_REQ_CONN_EXPL:
-		(void) xocl_mb_connect(xdev);
+		conn = (struct mailbox_conn *)req->data;
+		if(conn->flag)
+			(void) xocl_mb_connect(xdev);
+		else {
+			mutex_lock(&xdev->xdev_lock);
+			xdev->ch_state = 0;
+			mutex_unlock(&xdev->xdev_lock);
+		}
+		userpf_info(xdev, "xdev->ch_state 0x%llx\n", xdev->ch_state);
 		break;
 	case MAILBOX_REQ_CHAN_SWITCH:
 		xocl_ch_switch(xdev, (struct mailbox_conn *)req->data);
