@@ -86,6 +86,30 @@ namespace xdp {
     }
   }
 
+  // Convert monitor type to string name to detect types
+  // NOTE: these strings must match those in VPL
+  void RTUtil::monitorTypeToString(e_monitor_type monitorType,
+                                   std::string& monitorString)
+  {
+    switch (monitorType) {
+    case MON_HOST_DYNAMIC:
+      monitorString = "HOST";
+      break;
+    case MON_SHELL_KDMA:
+      monitorString = "Memory to Memory";
+      break;
+    case MON_SHELL_XDMA:
+      monitorString = "Host to Device";
+      break;
+    case MON_SHELL_P2P:
+      monitorString = "Device to Device";
+      break;
+    default:
+      assert(0);
+      break;
+    }
+  }
+
   void RTUtil::setTimeStamp(e_profile_command_state objStage,
                             TimeTrace* traceObject, double timeStamp)
   {

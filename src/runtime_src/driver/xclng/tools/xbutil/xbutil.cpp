@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
             regionIndex = std::atoi(optarg);
             if((int)regionIndex < 0){
                 std::cout << "ERROR: Region Index can not be " << (int)regionIndex << ", option is invalid\n";
-                return -1;                
+                return -1;
             }
             break;
         case 'p':
@@ -745,7 +745,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
 
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
-    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(lines);
 
     dev->m_cu_usage_stringize_dynamics(lines);
 
@@ -758,7 +758,7 @@ static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devin
 {
     std::vector<std::string> lines;
 
-    dev->m_stream_usage_stringize_dynamics(devinfo, lines);
+    dev->m_stream_usage_stringize_dynamics(lines);
 
     for(auto line:lines) {
         printw("%s\n", line.c_str());
@@ -964,13 +964,17 @@ int xcldev::device::runTestCase(const std::string& exe,
     }
 
     // Program xclbin first.
+#if 0
+    // Workaround auto configure locking issues where the process which
+    // downloads xclbin auto acquires xclbin lock and only gives up at
+    // process exit time
     int ret = program(xclbinPath, 0);
     if (ret != 0) {
         output += "ERROR: Failed to download xclbin: ";
         output += xclbin;
         return -EINVAL;
     }
-
+#endif
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 

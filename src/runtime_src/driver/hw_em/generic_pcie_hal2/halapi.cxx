@@ -19,7 +19,7 @@
  */
 
 #include <shim.h>
-#include "driver/xclng/xrt/util/scheduler.h"
+#include "driver/common/scheduler.h"
 
 //########################################## THESE HAS TO BE DEFINED START ##########################################
 

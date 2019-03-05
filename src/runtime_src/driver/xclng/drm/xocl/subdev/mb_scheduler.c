@@ -657,6 +657,7 @@ struct xocl_cu
 {
 	struct list_head   running_queue;
 	unsigned int idx;
+	bool dataflow;
 	void __iomem *base;
 	u32 addr;
 
@@ -669,9 +670,10 @@ struct xocl_cu
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, bool dataflow, void __iomem *base, u32 addr)
 {
 	xcu->idx=idx;
+	xcu->dataflow = dataflow;
 	xcu->base=base;
 	xcu->addr=addr;
 	xcu->ctrlreg=0;
@@ -732,11 +734,13 @@ cu_poll(struct xocl_cu *xcu)
 static int
 cu_ready(struct xocl_cu *xcu)
 {
-	if (xcu->ctrlreg & AP_START) {
+	if ( (xcu->ctrlreg & AP_START) || (xcu->dataflow && xcu->run_cnt) )
 		cu_poll(xcu);
-	}
-	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,!(xcu->ctrlreg & AP_START));
-	return !(xcu->ctrlreg & AP_START);
+
+	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,
+		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0);
+
+	return xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0;
 }
 
 /*
@@ -1068,6 +1072,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 	bool ert = xocl_mb_sched_on(xdev);
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
+	bool dataflow = false;  // TBD to be configured
 	struct ert_configure_cmd *cfg;
 	int cuidx=0;
 
@@ -1100,7 +1105,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create();
-		cu_reset(xcu,cuidx,exec->base,cfg->data[cuidx]);
+		cu_reset(xcu,cuidx,dataflow,exec->base,cfg->data[cuidx]);
 		userpf_info(xdev,"configure cu(%d) at 0x%x\n",xcu->idx,xcu->addr);
 	}
 
@@ -1112,7 +1117,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 				struct xocl_cu *xcu = exec->cus[cuidx];
 				if (!xcu)
 					xcu = exec->cus[cuidx] = cu_create();
-				cu_reset(xcu,cuidx,exec->base,*addr);
+				cu_reset(xcu,cuidx,false,exec->base,*addr);
 				++exec->num_cus;
 				++exec->num_cdma;
 				++cfg->num_cus;
@@ -1170,22 +1175,26 @@ static void
 exec_reset(struct exec_core *exec)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
+	xuid_t *xclbin_id;
 
 	mutex_lock(&exec->exec_lock);
 
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+
 	userpf_info(xdev,"exec_reset(%d) cfg(%d)\n",exec->uid,exec->configured);
-	userpf_info(xdev,"exec->xclbin(%pUb),xdev->xclbin(%pUb)\n",&exec->xclbin_id,&xdev->xclbin_id);
 
 	// only reconfigure the scheduler on new xclbin
-	if (uuid_equal(&exec->xclbin_id, &xdev->xclbin_id) && exec->configured) {
+	if (!xclbin_id || (uuid_equal(&exec->xclbin_id, xclbin_id) &&
+				exec->configured)) {
 		exec->stopped = false;
 		exec->configured = false;  // TODO: remove, but hangs ERT because of in between AXI resets
 		goto out;
 	}
 
+	userpf_info(xdev,"exec->xclbin(%pUb),xclbin(%pUb)\n",&exec->xclbin_id,xclbin_id);
 	userpf_info(xdev,"exec_reset resets for new xclbin");
 	memset(exec->cu_usage,0,MAX_CUS*sizeof(u32));
-	uuid_copy(&exec->xclbin_id, &xdev->xclbin_id);
+	uuid_copy(&exec->xclbin_id, xclbin_id);
 	exec->num_cus = 0;
 	exec->num_cdma = 0;
 
@@ -1477,6 +1486,17 @@ exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 }
 
 /*
+ * execute_copbo_cmd() - Execute ERT_START_COPYBO commands
+ *
+ * This is special case for copying P2P
+ */
+static int
+exec_execute_copybo_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
+{
+	return 1; // error for now
+}
+
+/*
  * notify_host() - Notify user space that a command is complete.
  */
 static void
@@ -1576,6 +1596,11 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return false;
 	}
 
+	if (opcode==ERT_START_COPYBO && exec_execute_copybo_cmd(exec,xcmd)) {
+		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
+		return false;
+	}
+
 	if (opcode!=ERT_START_CU) {
 		SCHED_DEBUGF("<- exec_penguin_start_cmd -> true\n");
 		return true;
@@ -1633,8 +1658,9 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 static bool
 exec_ert_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	// if (cmd_type(xcmd) == ERT_DATAFLOW)
-	//   exec_penguin_start_cmd(exec,xcmd);
+	if (cmd_type(xcmd)==ERT_KDS_LOCAL)
+		return exec_penguin_start_cmd(exec,xcmd);
+
 	return ert_start_cmd(exec->ert,xcmd);
 }
 
@@ -2283,11 +2309,13 @@ static int
 xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
 {
 	int pid = pid_nr(task_tgid(current));
+	xuid_t *xclbin_id;
 
 	if (client->xclbin_locked)
 		return 0;
 
-	if (!uuid_equal(&xdev->xclbin_id, &client->xclbin_id)) {
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	if (!xclbin_id || !uuid_equal(xclbin_id, &client->xclbin_id)) {
 		userpf_err(xdev, "device xclbin does not match context xclbin, "
 			"cannot obtain lock for process %d", pid);
 		return 1;
@@ -2460,10 +2488,12 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	int pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
+	xuid_t *xclbin_id;
 
 	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
-	if (!uuid_equal(&xdev->xclbin_id, &args->xclbin_id)) {
+	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
 		goto out;
 	}
@@ -2485,11 +2515,11 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		--exec->ip_reference[args->cu_index];
 		if (!--client->num_cus) {
 			// We just gave up the last context, unlock the xclbin
-			ret = xocl_icap_unlock_bitstream(xdev, &xdev->xclbin_id,pid);
+			ret = xocl_icap_unlock_bitstream(xdev, xclbin_id,pid);
 			client->xclbin_locked=false;
 		}
 		userpf_info(xdev,"CTX del(%pUb, %d, %u)",
-			&xdev->xclbin_id, pid, args->cu_index);
+			xclbin_id, pid, args->cu_index);
 		goto out;
 	}
 
@@ -2526,7 +2556,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 			clear_bit(args->cu_index, client->cu_bitmap);
 			goto out;
 		} else {
-			uuid_copy(&client->xclbin_id, &xdev->xclbin_id);
+			uuid_copy(&client->xclbin_id, xclbin_id);
 		}
 	}
 
@@ -2534,16 +2564,83 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	++client->num_cus; // explicitly acquired
 	++exec->ip_reference[args->cu_index];
 	xocl_info(&pdev->dev, "CTX add(%pUb, %d, %u, %d)",
-		&xdev->xclbin_id, pid, args->cu_index,acquire_lock);
+		xclbin_id, pid, args->cu_index,acquire_lock);
 out:
 	mutex_unlock(&xdev->ctx_list_lock);
 	mutex_unlock(&client->lock);
 	return ret;
 }
 
+static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+{
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+	xobj = to_xocl_bo(obj);
+
+	if (obj->size <= off || obj->size < off + size || !xobj->mm_node) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		drm_gem_object_unreference_unlocked(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	drm_gem_object_unreference_unlocked(obj);
+	return 0;
+}
+
+static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
+	struct exec_core *exec, struct drm_xocl_bo *xobj)
+{
+	int i;
+	int ret;
+	size_t src_off;
+	size_t dst_off;
+	size_t sz;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	struct ert_start_copybo_cmd *scmd =
+		(struct ert_start_copybo_cmd*)xobj->vmapping;
+
+	/* Only convert COPYBO cmd for now. */
+	if (scmd->opcode != ERT_START_COPYBO)
+		return 0;
+
+	sz = scmd->size * COPYBO_UNIT;
+
+	src_off = scmd->src_addr_hi;
+	src_off <<= 32;
+	src_off |= scmd->src_addr_lo;
+	ret = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off, sz, &src_addr);
+	if (ret != 0)
+		return ret;
+
+	dst_off = scmd->dst_addr_hi;
+	dst_off <<= 32;
+	dst_off |= scmd->dst_addr_lo;
+	ret = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off, sz, &dst_addr);
+	if (ret != 0)
+		return ret;
+
+	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+		scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+	scmd->opcode = ERT_START_CU;
+
+	return 0;
+}
+
 static int client_ioctl_execbuf(struct platform_device *pdev,
-		struct client_ctx *client, void *data,
-		struct drm_file *filp)
+	struct client_ctx *client, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -2554,7 +2651,7 @@ static int client_ioctl_execbuf(struct platform_device *pdev,
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct drm_device *ddev = filp->minor->dev;
 
-	if (xdev->needs_reset) { 
+	if (xdev->needs_reset) {
 		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
@@ -2572,7 +2669,8 @@ static int client_ioctl_execbuf(struct platform_device *pdev,
 
 	/* Convert gem object to xocl_bo extension */
 	xobj = to_xocl_bo(obj);
-	if (!xocl_bo_execbuf(xobj)) {
+	if (!xocl_bo_execbuf(xobj) || convert_execbuf(xdev, filp,
+		platform_get_drvdata(pdev), xobj) != 0) {
 		ret = -EINVAL;
 		goto out;
 	}

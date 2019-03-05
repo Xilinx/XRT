@@ -1,4 +1,5 @@
 add_subdirectory(include)
+add_subdirectory(common)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xclng)
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")

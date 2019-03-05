@@ -277,6 +277,8 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		 *  cause an interrupt and may miss processing of writeback
 		 */
 		list_add_tail(&cb->list, &descq->pend_list);
+		descq->stat.pending_bytes += req->count;
+		descq->stat.pending_requests++;
 		/* any rcv'ed packet not yet read ? */
 		/** read the data from the device */
 		descq_st_c2h_read(descq, req, 1, 1);
@@ -370,12 +372,7 @@ int qdma_queue_get_stats(unsigned long dev_hndl, unsigned long qhndl,
 	if (!descq)
 		return -EINVAL;
 
-	memset(stats, 0, sizeof(struct qdma_queue_stats));
-
-	stats->descq_rngsz = descq->conf.rngsz;
-	stats->descq_pidx = descq->pidx;
-	stats->descq_cidx = descq->cidx;
-	stats->descq_avail = descq->avail;
+	memcpy(stats, &descq->stat, sizeof(struct qdma_queue_stats));
 
 	return 0;
 }
@@ -1242,6 +1239,7 @@ int qdma_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 
 	/** fill in config. info */
 	qdma_descq_config(descq, qconf, 0);
+	memset(&descq->stat, 0, sizeof(descq->stat));
 
 	/** copy back the name in config*/
 	memcpy(qconf->name, descq->conf.name, QDMA_QUEUE_NAME_MAXLEN);
@@ -1918,6 +1916,8 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long id,
 		goto unmap_sgl;
 	}
 	list_add_tail(&cb->list, &descq->work_list);
+	descq->stat.pending_bytes += req->count;
+	descq->stat.pending_requests++;
 	descq->pend_req_desc += ((req->count + PAGE_SIZE - 1) >> PAGE_SHIFT);
 	unlock_descq(descq);
 

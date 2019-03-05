@@ -1443,7 +1443,7 @@ static void unmap_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 		/* is this BAR mapped? */
 		if (xdev->bar[i]) {
 			/* unmap BAR */
-			pci_iounmap(dev, xdev->bar[i]);
+			iounmap(xdev->bar[i]);
 			/* mark as unmapped */
 			xdev->bar[i] = NULL;
 		}
@@ -1470,10 +1470,16 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	 */
 	pr_info("map bar %d, len %lld\n", idx, bar_len);
 	if (!bar_len || bar_len >= (1 << 28)) {
-		//pr_info("BAR #%d is not present - skipping\n", idx);
-		return bar_len;
+		return 0;
 	}
 
+	/*
+	 * bail out if the bar is mapped
+	 */
+	if (!request_mem_region(bar_start, bar_len, xdev->mod_name)) 
+		return 0;
+
+	release_mem_region(bar_start, bar_len);
 	/* BAR size exceeds maximum desired mapping? */
 	if (bar_len > INT_MAX) {
 		pr_info("Limit BAR %d mapping from %llu to %d bytes\n", idx,
@@ -1485,7 +1491,8 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 	 * address space
 	 */
 	dbg_init("BAR%d: %llu bytes to be mapped.\n", idx, (u64)map_len);
-	xdev->bar[idx] = pci_iomap(dev, idx, map_len);
+	xdev->bar[idx] = ioremap_nocache(pci_resource_start(dev, idx),
+			 map_len);
 
 	if (!xdev->bar[idx]) {
 		pr_info("Could not map BAR %d.\n", idx);
@@ -1509,7 +1516,7 @@ static int is_config_bar(struct xdma_dev *xdev, int idx)
 	struct config_regs *cfg_regs =
 		(struct config_regs *)(xdev->bar[idx] + XDMA_OFS_CONFIG);
 
-	if (idx == 0)
+	if (!xdev->bar[idx])
 		return 0;
 
 	irq_id = read_register(&irq_regs->identifier);

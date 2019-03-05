@@ -48,8 +48,7 @@ clGetMemObjectFd(cl_mem mem,
   auto xmem = xocl(mem);
   auto context = xmem->get_context();
   for (auto device : context->get_device_range()) {
-    if (xmem->is_resident(device)) {
-      auto boh = xmem->get_buffer_object_or_error(device);
+    if (auto boh = xmem->get_buffer_object_or_null(device)) {
       *fd = device->get_xrt_device()->getMemObjectFd(boh);
       return CL_SUCCESS;
     }

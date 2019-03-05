@@ -132,6 +132,8 @@ struct qdma_descq {
 	dma_addr_t desc_cmpt_bus;
 	/** descriptor writeback dma bus address*/
 	u8 *desc_cmpt_cmpl_status;
+	/** statistics **/
+	struct qdma_queue_stats stat;
 
 #ifdef DEBUGFS
 	/** debugfs queue index root */
