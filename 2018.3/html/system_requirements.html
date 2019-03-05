@@ -92,10 +92,11 @@
             
               <p class="caption"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclhal2.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">Management Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">User Physical Function</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
@@ -104,14 +105,16 @@
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#host-platform">Host Platform</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xilinx-accelerator-card">Xilinx Accelerator Card</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xilinx-pcie-accelerator-card">Xilinx PCIe Accelerator Card</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#software-platform">Software Platform</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#centos-rhel-7-4-7-5">CentOS/RHEL 7.4, 7.5</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#switching-to-c-14-build-environment">Switching to C++14 build environment</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#ubuntu-16-04-18-04">Ubuntu 16.04, 18.04</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#build-and-install">Build and Install</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
@@ -119,6 +122,7 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
@@ -184,28 +188,30 @@
            <div itemprop="articleBody">
             
   <div class="section" id="system-requirements">
-<h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
+<span id="system-requirements-rst"></span><h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="host-platform">
 <h2>Host Platform<a class="headerlink" href="#host-platform" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
 <li>x86_64</li>
-<li>AARCH64</li>
 <li>PPC64LE</li>
+<li>AARCH64</li>
 </ol>
 </div>
-<div class="section" id="xilinx-accelerator-card">
-<h2>Xilinx Accelerator Card<a class="headerlink" href="#xilinx-accelerator-card" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="xilinx-pcie-accelerator-card">
+<h2>Xilinx PCIe Accelerator Card<a class="headerlink" href="#xilinx-pcie-accelerator-card" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
 <li>VCU1525</li>
-<li>U200</li>
-<li>U250</li>
-<li>U280</li>
+<li>Alveo U200</li>
+<li>Alveo U250</li>
+<li>Alveo U280</li>
 <li>AWS F1</li>
 </ol>
 </div>
 <div class="section" id="software-platform">
 <h2>Software Platform<a class="headerlink" href="#software-platform" title="Permalink to this headline">¶</a></h2>
-<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++14 features. The stack has been tested on RHEL/CentOS 7.4, 7.5 and Ubuntu 16.04.4 LTS, 18.04.1 LTS. CentOS/RHEL 7.4, 7.5 require additional steps to get C++11 tool set and a few dependent libraies. Please use the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.</p>
+<p>XRT and OpenCL runtime require Linux kernel 3.10 and GCC with C++14 features. The stack has been tested on <strong>RHEL/CentOS 7.4, 7.5</strong> and <strong>Ubuntu 16.04.4 LTS, 18.04.1 LTS</strong>. CentOS/RHEL 7.4, 7.5 require additional steps to get C++11 tool set and a few dependent libraries.</p>
+<p>Please use the provided script <code class="docutils literal"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions.</p>
+<p>Additional information for RHEL/CentOS is below.</p>
 <div class="section" id="centos-rhel-7-4-7-5">
 <h3>CentOS/RHEL 7.4, 7.5<a class="headerlink" href="#centos-rhel-7-4-7-5" title="Permalink to this headline">¶</a></h3>
 <p>XRT requires <em>EPEL 7</em> and SCL repositories. The included xrtdeps.sh script will attempt to automatically configure the repositories and download the required dependent packages.</p>
@@ -216,6 +222,14 @@
 </div>
 </div>
 </div>
+<div class="section" id="ubuntu-16-04-18-04">
+<h3>Ubuntu 16.04, 18.04<a class="headerlink" href="#ubuntu-16-04-18-04" title="Permalink to this headline">¶</a></h3>
+<p>Native compiler tool chain supports C++14 features needed by XRT</p>
+</div>
+</div>
+<div class="section" id="build-and-install">
+<h2>Build and Install<a class="headerlink" href="#build-and-install" title="Permalink to this headline">¶</a></h2>
+<p>Refer to <a class="reference internal" href="build.html#build-rst"><span class="std std-ref">Building and Installing Software Stack</span></a></p>
 </div>
 </div>
 

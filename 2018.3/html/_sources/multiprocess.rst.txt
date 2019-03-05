@@ -1,5 +1,7 @@
+.. _multiprocess.rst:
+
 Multi-Process Support
----------------------
+*********************
 
 Support for Multi-Process kernel execution is added in the 2018.2
 release as a preview feature and supported as Early Access feature
