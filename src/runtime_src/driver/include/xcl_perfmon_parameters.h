@@ -25,10 +25,6 @@
 #ifndef _PERFMON_PARAMETERS_H_
 #define _PERFMON_PARAMETERS_H_
 
-//#define PERFMON0_OFFSET                 0x100000
-//#define PERFMON1_OFFSET                 0x120000
-//#define PERFMON2_OFFSET                 0x010000
-
 /************************ AXI Stream FIFOs ************************************/
 
 /* Address offsets in core */

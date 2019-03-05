@@ -16,7 +16,7 @@
  */
 
 #include "shim.h"
-#include "../user_common/perfmon_parameters.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 
 #include <sys/types.h>
