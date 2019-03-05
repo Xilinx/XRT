@@ -134,6 +134,10 @@ struct mailbox_gpctl {
 /*
  * MAILBOX_REQ_RECLOCK
  */
+struct mailbox_clock_freqscaling {
+  unsigned region;
+  unsigned short target_freqs[4];
+};
 
 struct mailbox_req {
   enum mailbox_request req;
