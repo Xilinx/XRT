@@ -809,7 +809,7 @@ fail:
 }
 
 
-void xclmgmt_connect_notify(struct xclmgmt_dev *lro)
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 {
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_conn mb_conn = { 0 };
@@ -823,7 +823,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro)
 		return;
 	}
 	mb_req->req = MAILBOX_REQ_CONN_EXPL;
-	mb_conn.flag = lro->ch_switch;
+	mb_conn.flag = online;
 	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
 	if(!kaddr){
 		return;
@@ -923,7 +923,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xclmgmt_extended_probe(lro);
 
-	xclmgmt_connect_notify(lro);
+	xclmgmt_connect_notify(lro, true);
 
 	return 0;
 
@@ -952,6 +952,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_info(lro, "remove(0x%p) where pdev->dev.driver_data = 0x%p",
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
+
+	xclmgmt_connect_notify(lro, false);
 
 	health_thread_stop(lro);
 
