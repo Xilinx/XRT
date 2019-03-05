@@ -1,27 +1,41 @@
 /*
  * ryan.radjabi@xilinx.com
  */
+#include <dirent.h>
+#include <iterator>
+#include <cstdlib>
+#include <cstring>
+#include <sstream>
+#include <iostream>
+#include <stdlib.h>
+#include <string>
+#include <sys/stat.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <vector>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdexcept>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <string.h>
 #include <sys/ioctl.h>
 #include <libdrm/drm.h>
 #include <pthread.h>
 #include <time.h>
-#include <iostream>
 
 #include "xclhal2.h"
 
 #define INIT_BUF_SZ 64
+
+xclDeviceHandle uHandle;
+pthread_t xcl_xocl_to_xclmgmt_id;
+pthread_t xcl_xclmgmt_to_xocl_id;
+
+struct s_handle {
+        xclDeviceHandle uDevHandle;
+};
 
 struct drm_xocl_sw_mailbox {
     uint64_t flags;
@@ -29,10 +43,6 @@ struct drm_xocl_sw_mailbox {
     bool isTx;
     size_t sz;
     uint64_t id;
-};
-
-struct s_handle {
-    xclDeviceHandle uDevHandle;
 };
 
 int resize_buffer( uint32_t *&buf, const size_t new_sz )
@@ -153,12 +163,10 @@ void *xcl_sw_chan_xclmgmt_to_xocl(void *handle_ptr)
     std::cout << "Exit thread XCLMGMT->XOCL\n";
 }
 
-
-int main(void)
+int init(void)
 {
     xclDeviceInfo2 deviceInfo;
     unsigned deviceIndex = 0;
-    xclDeviceHandle uHandle;
 
     deviceIndex = 0;
     if( deviceIndex >= xclProbe() ) {
@@ -174,16 +182,81 @@ int main(void)
         return -EBUSY;
     }
 
-    pthread_t xcl_xocl_to_xclmgmt_id;
     pthread_create(&xcl_xocl_to_xclmgmt_id, NULL, xcl_sw_chan_xocl_to_xclmgmt, &devHandle);
-
-    pthread_t xcl_xclmgmt_to_xocl_id;
     pthread_create(&xcl_xclmgmt_to_xocl_id, NULL, xcl_sw_chan_xclmgmt_to_xocl, &devHandle);
+}
 
-    pthread_join(xcl_xocl_to_xclmgmt_id, NULL);
-    pthread_join(xcl_xclmgmt_to_xocl_id, NULL);
+// For security purposes, we don't allow any arguments to be passed into the daemon
+int main(void)
+{
+   // Define variables
+   pid_t pid, sid;
 
-    xclClose(uHandle);
+   // Fork the current process
+   pid = fork();
+   // The parent process continues with a process ID greater than 0
+   if(pid > 0)
+   {
+      exit(EXIT_SUCCESS);
+   }
+   // A process ID lower than 0 indicates a failure in either process
+   else if(pid < 0)
+   {
+      exit(EXIT_FAILURE);
+   }
+   // The parent process has now terminated, and the forked child process will continue
+   // (the pid of the child process was 0)
 
-    return 0;
+   // Since the child process is a daemon, the umask needs to be set so files and logs can be written
+   umask(0);
+
+   // Open system logs for the child process
+   openlog("daemon-named", LOG_NOWAIT | LOG_PID, LOG_USER);
+   syslog(LOG_NOTICE, "Successfully started daemon-name");
+
+   // Generate a session ID for the child process
+   sid = setsid();
+   // Ensure a valid SID for the child process
+   if(sid < 0)
+   {
+      // Log failure and exit
+      syslog(LOG_ERR, "Could not generate session ID for child process");
+
+      // If a new session ID could not be generated, we must terminate the child process
+      // or it will be orphaned
+      exit(EXIT_FAILURE);
+   }
+
+   // Change the current working directory to a directory guaranteed to exist
+   if((chdir("/")) < 0)
+   {
+      // Log failure and exit
+      syslog(LOG_ERR, "Could not change working directory to /");
+
+      // If our guaranteed directory does not exist, terminate the child process to ensure
+      // the daemon has not been hijacked
+      exit(EXIT_FAILURE);
+   }
+
+   // A daemon cannot use the terminal, so close standard file descriptors for security reasons
+   close(STDIN_FILENO);
+   close(STDOUT_FILENO);
+   close(STDERR_FILENO);
+
+   // Daemon-specific intialization should go here
+   const int SLEEP_INTERVAL = 5;
+
+   init();
+
+   // Enter daemon loop
+   pthread_join(xcl_xocl_to_xclmgmt_id, NULL);
+   pthread_join(xcl_xclmgmt_to_xocl_id, NULL);
+
+   // Close system logs for the child process
+   xclClose(uHandle);
+   syslog(LOG_NOTICE, "Stopping daemon-name");
+   closelog();
+
+   // Terminate the child process when the daemon completes
+   exit(EXIT_SUCCESS);
 }
