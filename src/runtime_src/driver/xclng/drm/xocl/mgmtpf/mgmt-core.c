@@ -712,7 +712,6 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			ret = -ENXIO;
 		else
 			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
-		printk(KERN_INFO "%s ret %d\n", __func__, ret);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_PEER_DATA:

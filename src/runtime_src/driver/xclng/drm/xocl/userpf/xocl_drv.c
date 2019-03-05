@@ -228,18 +228,26 @@ void xocl_mb_connect(struct xocl_dev *xdev)
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
-	int err = 0;
-	int64_t msg = -ENODEV;
+	int err = 0, i = 0;
+	int msg = -ENODEV;
 	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
-	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
+	size_t data_len = sizeof(struct mailbox_clock_freqscaling);
+	size_t reqlen = sizeof(struct mailbox_req)+data_len;
 	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
 	bool sw_ch = false;
+	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
+	struct mailbox_clock_freqscaling mb_freqs = {0};
+
+	mb_freqs.region = freqs->region;
+	for(i=0;i<4;++i){
+		mb_freqs.target_freqs[i] = freqs->ocl_target_freq[i];
+	}
 
 	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
 	req->req = MAILBOX_REQ_RECLOCK;
-	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
-	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
+	req->data_total_len = data_len;
+	memcpy(req->data, data, data_len);
 
 	sw_ch = (chan_flag & MB_SW_ENABLE_RECLOCK) != 0;
 	err = xocl_peer_request(xdev, req, reqlen,
