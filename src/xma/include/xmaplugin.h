@@ -157,14 +157,14 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
- *  xma_plg_register_write() - Write kernel register(s)
+ *  @brief Prepare for writing kernel register(s)
  *
  *  This function writes the data provided and sets the specified AXI_Lite
  *  register(s) exposed by a kernel. The base offset of 0 is the beginning
  *  of the kernels AXI_Lite memory map as this function adds the required
- *  offsets internally for the kernel and PCIe.
- *
- *  Note: Do not use this API. Instead use below mentioned xma_plg_ebo_kernel* APIs
+ *  offsets internally for the kernel and PCIe.  This function does not write
+ *  the registers immediately, instead the registers are shadowed as part of
+ *  the XmaHwSession until the xma_plg_schedule_work_item() is invoked.
  *
  *  @s_handle:  The session handle associated with this plugin instance
  *  @dst:       Destination data pointer
@@ -173,7 +173,98 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
  *                   register map
  *
  * RETURN:      >=0 number of bytes written
- * <0 on failure
+ *               <0 on failure
+ *
+ */
+int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
+                                    void            *dst,
+                                    size_t           size,
+                                    size_t           offset);
+
+/**
+ * @brief Schedule a work item for execution on a kernel 
+ *
+ * This function schedules a request to the XRT scheduler for execution of a
+ * kernel based on the saved state of the kernel registers supplied by the
+ * xma_plg_register_prep_write() function call.  The prep_write() keeps a 
+ * shadow register map so that the schedule_work_item() can gather all registers 
+ * and push a new work item onto the scheduler queue.  Work items are processed
+ * in FIFO order.  After calling schedule_work_item() one or more times, the caller
+ * can invoke xma_plg_is_work_item_done() to wait for one item of work to complete. 
+ *
+ * @param s_handle The session handle associated with this plugin instance
+ *
+ * @return         XMA_SUCCESS on success
+ * @return         XMA_ERROR on failure
+ *
+ */
+int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
+
+/**
+ * @brief Check if at least one work item has completed execution on a kernel
+ *
+ * This function checks if at least one work item previously submitted
+ * via xma_plg_schedule_work_item() has completed.  If the supplied timeout
+ * expires before a work item has completed, this function returns an error.  
+ *
+ * @param s_handle      The session handle associated with this plugin instance
+ * @param timeout_in_ms A timeout value in milliseconds 
+ *
+ * @return         XMA_SUCCESS on success
+ * @return         XMA_ERROR on timeout
+ *
+ */
+int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_in_ms);
+
+void xma_plg_kernel_lock(XmaHwSession s_handle);
+void xma_plg_kernel_unlock(XmaHwSession s_handle);
+
+/**
+ *  @brief Write kernel register(s)
+ *
+ *  This function writes the data provided and sets the specified AXI_Lite
+ *  register(s) exposed by a kernel. The base offset of 0 is the beginning
+ *  of the kernels AXI_Lite memory map as this function adds the required
+ *  offsets internally for the kernel and PCIe.
+ *
+ *  @param s_handle  The session handle associated with this plugin instance
+ *  @param dst       Destination data pointer
+ *  @param size      Size of data to copy
+ *  @param offset    Offset from the beginning of the kernel AXI_Lite register
+ *                   register map
+ *
+ *  @return          >=0 number of bytes written
+ *  @return          <0 on failure
+ *
+ */
+int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
+                                    void            *dst,
+                                    size_t           size,
+                                    size_t           offset);
+
+
+void xma_plg_kernel_lock(XmaHwSession s_handle);
+void xma_plg_kernel_unlock(XmaHwSession s_handle);
+void xma_plg_kernel_wait_on_finish(XmaHwSession s_handle);
+void xma_plg_kernel_start(XmaHwSession s_handle);
+int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
+
+/**
+ *  @brief Write kernel register(s)
+ *
+ *  This function writes the data provided and sets the specified AXI_Lite
+ *  register(s) exposed by a kernel. The base offset of 0 is the beginning
+ *  of the kernels AXI_Lite memory map as this function adds the required
+ *  offsets internally for the kernel and PCIe.
+ *
+ *  @param s_handle  The session handle associated with this plugin instance
+ *  @param dst       Destination data pointer
+ *  @param size      Size of data to copy
+ *  @param offset    Offset from the beginning of the kernel AXI_Lite register
+ *                   register map
+ *
+ *  @return          >=0 number of bytes written
+ *  @return          <0 on failure
  *
  */
 int32_t xma_plg_register_write(XmaHwSession     s_handle,

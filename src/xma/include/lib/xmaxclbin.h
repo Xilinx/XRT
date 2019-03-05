@@ -17,6 +17,7 @@
 #ifndef _XMA_XCLBIN_H_
 #define _XMA_XCLBIN_H_
 
+#include <uuid/uuid.h>
 #include "lib/xmacfg.h"
 #include "lib/xmahw.h"
 #include "lib/xmalimits.h"
@@ -28,6 +29,7 @@ typedef struct XmaIpLayout
 {
     uint8_t      kernel_name[MAX_KERNEL_NAME];
     uint64_t     base_addr;
+    uint32_t     reserved[16];
 } XmaIpLayout;
 
 typedef struct XmaXclbinInfo
@@ -35,6 +37,10 @@ typedef struct XmaXclbinInfo
     char        xclbin_name[PATH_MAX + NAME_MAX];
     uint16_t    freq_list[MAX_KERNEL_FREQS];
     XmaIpLayout ip_layout[MAX_KERNEL_CONFIGS];
+    //For execbo:
+    uint32_t    num_ips;
+    uuid_t      uuid;
+    uint32_t    reserved[32];
 } XmaXclbinInfo;
 
 char *xma_xclbin_file_open(const char *xclbin_name);
