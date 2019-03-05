@@ -241,7 +241,7 @@ static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute 
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 pes_val;
+	u32 pes_val = 0;
 
 	if(XMC_PRIVILEGED(xmc))
 		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
