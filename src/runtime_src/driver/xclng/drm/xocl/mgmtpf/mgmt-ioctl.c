@@ -100,6 +100,28 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 	return ret;
 }
 
+static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *data)
+{
+	int ret = 0;
+	struct drm_xocl_sw_mailbox args;
+	if (copy_from_user((void *)&args,
+			   data,
+			   sizeof(struct drm_xocl_sw_mailbox))) {
+		return -EFAULT;
+	}
+
+	ret = xocl_mailbox_sw_transfer(lro, &args);
+	if( args.isTx && (ret==0) ) {
+		ret = copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox));
+	} else {
+		ret = copy_to_user((void *)data+offsetof(struct drm_xocl_sw_mailbox, sz),
+				   (void *)&args.sz,
+				   sizeof(size_t));
+		ret = 0; // Ignore return value in call of copy_to_user above.
+	}
+	return ret;
+}
+
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	printk(KERN_ERR "mgmt_ioctl START\n");
