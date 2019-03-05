@@ -665,12 +665,12 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
-		if((ch_switch & MB_SW_ENABLE_LOCK)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_LOCK) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
 				0);
-		is_sw = (ch_switch & MB_SW_ENABLE_LOCK) != 0;
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_UNLOCK_BITSTREAM:
@@ -681,46 +681,46 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			0);
 		break;
 	case MAILBOX_REQ_HOT_RESET:
-		if((ch_switch & MB_SW_ENABLE_HOT_RESET)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_HOT_RESET) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = (int) reset_hot_ioctl(lro);
-		is_sw = (ch_switch & MB_SW_ENABLE_HOT_RESET) != 0;
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
-		if((ch_switch & MB_SW_ENABLE_XCLBIN_KADDR)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_XCLBIN_KADDR) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else{
 			mb_kaddr = (struct mailbox_bitstream_kaddr*)req->data;
 			ret = xocl_icap_download_axlf(lro, (void*)mb_kaddr->addr);
 		}
-		is_sw = (ch_switch & MB_SW_ENABLE_XCLBIN_KADDR) != 0;
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN:
-		if((ch_switch & MB_SW_ENABLE_XCLBIN)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_XCLBIN) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = xocl_icap_download_axlf(lro, req->data);
-		is_sw = (ch_switch & MB_SW_ENABLE_XCLBIN) != 0;
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_RECLOCK:
-		if((ch_switch & MB_SW_ENABLE_RECLOCK)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_RECLOCK) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
-		is_sw = (ch_switch & MB_SW_ENABLE_RECLOCK) != 0;
 		printk(KERN_INFO "%s ret %d\n", __func__, ret);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_PEER_DATA:
-		if((ch_switch & MB_SW_ENABLE_PEER_DATA)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_PEER_DATA) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
-		is_sw = (ch_switch & MB_SW_ENABLE_PEER_DATA) != 0;
 		if(ret){
 			/* if can't get data, return 0 as response */
 			ret = 0;
@@ -730,11 +730,11 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		vfree(resp);
 		break;
 	case MAILBOX_REQ_CONN_EXPL:
-		if((ch_switch & MB_SW_ENABLE_CONN_EXPL)^sw_ch)
+		is_sw = (ch_switch & MB_SW_ENABLE_CONN_EXPL) != 0;
+		if(is_sw^sw_ch)
 			ret = -ENXIO;
 		else
 			ret = xclmgmt_connection_explore(lro, (struct mailbox_conn *)req->data);
-		is_sw = (ch_switch & MB_SW_ENABLE_CONN_EXPL) != 0;
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		(void) xclmgmt_chan_switch_notify(lro);
 		break;
