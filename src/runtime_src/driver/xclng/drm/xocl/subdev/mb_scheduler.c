@@ -1486,6 +1486,17 @@ exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 }
 
 /*
+ * execute_copbo_cmd() - Execute ERT_START_COPYBO commands
+ *
+ * This is special case for copying P2P
+ */
+static int
+exec_execute_copybo_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
+{
+	return 1; // error for now
+}
+
+/*
  * notify_host() - Notify user space that a command is complete.
  */
 static void
@@ -1585,6 +1596,11 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return false;
 	}
 
+	if (opcode==ERT_START_COPYBO && exec_execute_copybo_cmd(exec,xcmd)) {
+		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
+		return false;
+	}
+
 	if (opcode!=ERT_START_CU) {
 		SCHED_DEBUGF("<- exec_penguin_start_cmd -> true\n");
 		return true;
@@ -1642,8 +1658,9 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 static bool
 exec_ert_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	// if (cmd_type(xcmd) == ERT_DATAFLOW)
-	//   exec_penguin_start_cmd(exec,xcmd);
+	if (cmd_type(xcmd)==ERT_KDS_LOCAL)
+		return exec_penguin_start_cmd(exec,xcmd);
+
 	return ert_start_cmd(exec->ert,xcmd);
 }
 
