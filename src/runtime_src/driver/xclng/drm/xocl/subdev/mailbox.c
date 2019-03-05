@@ -1673,7 +1673,10 @@ MBX_DBG(mbx, "RFR: isTx: %d", p_sw_chan_st->isTx);
 MBX_DBG(mbx, "RFR: TX: going to sleep");
 		/* sleep until chan_send_pkt copies to sw_chan_buf */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
-MBX_ERR(mbx, "RFR, sw_chan_complete signalled with ERESTARTSYS.");
+			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
+			ch->sw_chan_ready = false;
+			ch->sw_chan_buf = NULL;
+			ch->sw_chan_buf_sz = 0;
 			retVal = -ERESTARTSYS;
 			goto end;
 		}
@@ -1732,7 +1735,10 @@ MBX_DBG(mbx, "mbc_worker complete called.");
 MBX_DBG(mbx, "RFR: RX: going to sleep");
 		/* sleep until chan_do_rx dequeues */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
-MBX_ERR(mbx, "RFR, sw_chan_complete signalled with ERESTARTSYS.");
+			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
+			ch->sw_chan_ready = false;
+			ch->sw_chan_buf = NULL;
+			ch->sw_chan_buf_sz = 0;
 			retVal = -ERESTARTSYS;
 			goto end;
 		}
