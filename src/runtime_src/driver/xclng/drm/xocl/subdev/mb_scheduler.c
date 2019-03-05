@@ -657,6 +657,7 @@ struct xocl_cu
 {
 	struct list_head   running_queue;
 	unsigned int idx;
+	bool dataflow;
 	void __iomem *base;
 	u32 addr;
 
@@ -669,9 +670,10 @@ struct xocl_cu
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, bool dataflow, void __iomem *base, u32 addr)
 {
 	xcu->idx=idx;
+	xcu->dataflow = dataflow;
 	xcu->base=base;
 	xcu->addr=addr;
 	xcu->ctrlreg=0;
@@ -732,11 +734,13 @@ cu_poll(struct xocl_cu *xcu)
 static int
 cu_ready(struct xocl_cu *xcu)
 {
-	if (xcu->ctrlreg & AP_START) {
+	if ( (xcu->ctrlreg & AP_START) || (xcu->dataflow && xcu->run_cnt) )
 		cu_poll(xcu);
-	}
-	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,!(xcu->ctrlreg & AP_START));
-	return !(xcu->ctrlreg & AP_START);
+
+	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,
+		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0);
+
+	return xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0;
 }
 
 /*
@@ -1068,6 +1072,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 	bool ert = xocl_mb_sched_on(xdev);
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
+	bool dataflow = false;  // TBD to be configured
 	struct ert_configure_cmd *cfg;
 	int cuidx=0;
 
@@ -1100,7 +1105,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create();
-		cu_reset(xcu,cuidx,exec->base,cfg->data[cuidx]);
+		cu_reset(xcu,cuidx,dataflow,exec->base,cfg->data[cuidx]);
 		userpf_info(xdev,"configure cu(%d) at 0x%x\n",xcu->idx,xcu->addr);
 	}
 
@@ -1112,7 +1117,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 				struct xocl_cu *xcu = exec->cus[cuidx];
 				if (!xcu)
 					xcu = exec->cus[cuidx] = cu_create();
-				cu_reset(xcu,cuidx,exec->base,*addr);
+				cu_reset(xcu,cuidx,false,exec->base,*addr);
 				++exec->num_cus;
 				++exec->num_cdma;
 				++cfg->num_cus;
@@ -2629,7 +2634,7 @@ static int client_ioctl_execbuf(struct platform_device *pdev,
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct drm_device *ddev = filp->minor->dev;
 
-	if (xdev->needs_reset) { 
+	if (xdev->needs_reset) {
 		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
