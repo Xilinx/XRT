@@ -1351,7 +1351,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 
-	MBX_INFO(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
+	MBX_DBG(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
