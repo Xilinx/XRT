@@ -1085,7 +1085,8 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
          j < kernel_inst->chan_cnt;
          j++)
         chan_ids[j] = kernel_inst->channels[j].chan_id;
-        xma_qsort_chan_list(chan_ids, (size_t)j);
+
+    xma_qsort_chan_list(chan_ids, (size_t)j);
 
     if (!j) { /* unused kernel; j == 0 */
         XmaChannel new_chan;
@@ -1109,8 +1110,8 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
                 xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
                            "%s() Channel request rejected\n", __func__);
 
-            if (ret == XMA_ERROR_NO_CHAN || ret == XMA_ERROR)
-                kernel_inst->no_chan_cap = true;
+                if (ret == XMA_ERROR_NO_CHAN || ret == XMA_ERROR)
+                    kernel_inst->no_chan_cap = true;
 
                 xma_shm_unlock(xma_shm);
                 return ret;
