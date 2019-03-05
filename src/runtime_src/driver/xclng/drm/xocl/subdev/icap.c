@@ -1924,7 +1924,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				memcpy(mb_req->data, u_xclbin, xclbin->m_header.m_length);
 				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
 				sw_ch = ch_switch & MB_SW_ENABLE_XCLBIN;
-			}					
+			}
 			mb_req->data_total_len = data_len;
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL, sw_ch);
@@ -1936,7 +1936,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				err = -EFAULT;
 				goto done;
 			}
-		} else 
+		} else
 			ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
 				xclbin->m_uniqueId);
 
@@ -1949,7 +1949,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				&xclbin->m_header.m_timeStamp, 8);
 		}
 
-	} 
+	}
 
 	if (ICAP_PRIVILEGED(icap)){
 		icap_parse_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
@@ -2248,7 +2248,7 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	if (err >= 0)
 		err = icap->icap_bitstream_ref;
 
-	if (!ICAP_PRIVILEGED(icap)){	
+	if (!ICAP_PRIVILEGED(icap)){
 		if (err==0)
 			xocl_exec_stop(xocl_get_xdev(pdev));
 	}
@@ -2441,7 +2441,7 @@ static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
  		 * assumes all subdevices are removed at this time
 		 */
 		memcpy(icap->bit_buffer + off, buffer, icap->bit_length - off);
-		icap_freeze_axi_gate_shell(icap); 
+		icap_freeze_axi_gate_shell(icap);
 		ret = icap_download(icap, icap->bit_buffer, icap->bit_length);
 		if (ret) {
 			ICAP_ERR(icap, "bitstream download failed");
@@ -2449,7 +2449,7 @@ static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
 		} else {
 			ret = count;
 		}
-		icap_free_axi_gate_shell(icap); 
+		icap_free_axi_gate_shell(icap);
 		/* has to reset pci, otherwise firewall trips */
 		xocl_reset(xocl_get_xdev(icap->icap_pdev));
 		icap->icap_bitstream_id = 0;

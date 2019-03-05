@@ -1083,7 +1083,6 @@ static void do_hw_tx(struct mailbox_channel *ch)
 {
 	u32 st;
 	struct mailbox *mbx = ch->mbc_parent;
-	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
 
 	/* Check if a packet has been read by peer. */
 	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
@@ -1109,7 +1108,6 @@ static void do_hw_tx(struct mailbox_channel *ch)
 static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
-	u32 st = 0;
 	/*
 	 * The mailbox is free for sending new pkt now. See if we
 	 * have something to send.
@@ -1764,7 +1762,7 @@ static struct xocl_mailbox_funcs mailbox_ops = {
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
-	
+
 	BUG_ON(mbx == NULL);
 
 	mailbox_disable_intr_mode(mbx);
