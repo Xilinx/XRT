@@ -438,20 +438,22 @@ static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
-	bool tripped;
+	bool tripped, is_sw;
+
 
 	if (!health_check)
 		return 0;
 
 	mutex_lock(&lro->busy_mutex);
 	tripped = xocl_af_check(lro, NULL);
+	is_sw = (lro->ch_switch & MB_SW_ENABLE_FIREWALL) != 0;
 	mutex_unlock(&lro->busy_mutex);
 
 	if (!tripped) {
 		check_sysmon(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req), false);
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req), is_sw);
 	}
 
 	return 0;
@@ -661,7 +663,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	if (err != 0)
 		return;
 
-	printk(KERN_INFO "%s received request (%d) from peer sw_ch %d\n", __func__, req->req, sw_ch);
+	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
