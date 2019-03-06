@@ -203,6 +203,7 @@ struct xocl_cmd
 	union {
 		struct ert_packet           *ecmd;
 		struct ert_start_kernel_cmd *kcmd;
+		struct ert_start_copybo_cmd *ccmd;
 	};
 
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
@@ -1493,7 +1494,15 @@ exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 static int
 exec_execute_copybo_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 {
-	return 1; // error for now
+	int ret;
+	struct ert_start_copybo_cmd *ecmd = xcmd->ccmd;
+	struct drm_file *filp = (struct drm_file *)ecmd->arg;
+	struct drm_device *ddev = filp->minor->dev;
+
+	SCHED_DEBUGF("-> exec_copybo_cmd(%d,%lu)\n",exec->uid,xcmd->uid);
+	ret = xocl_copy_import_bo(ddev, filp, ecmd);
+	SCHED_DEBUG("<- exec_copybo\n");
+	return ret == 0 ? 0 : 1;
 }
 
 /*
@@ -2583,9 +2592,15 @@ static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
 		return -ENOENT;
 	}
-	xobj = to_xocl_bo(obj);
 
-	if (obj->size <= off || obj->size < off + size || !xobj->mm_node) {
+	xobj = to_xocl_bo(obj);
+	if (!xobj->mm_node) {
+		/* Not a local BO */
+		drm_gem_object_unreference_unlocked(obj);
+		return -EADDRNOTAVAIL;
+	}
+
+	if (obj->size <= off || obj->size < off + size) {
 		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
 		drm_gem_object_unreference_unlocked(obj);
 		return -EINVAL;
@@ -2600,7 +2615,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	struct exec_core *exec, struct drm_xocl_bo *xobj)
 {
 	int i;
-	int ret;
+	int ret_src, ret_dst;
 	size_t src_off;
 	size_t dst_off;
 	size_t sz;
@@ -2613,22 +2628,33 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if (scmd->opcode != ERT_START_COPYBO)
 		return 0;
 
-	sz = scmd->size * COPYBO_UNIT;
+	sz = ert_copybo_size(scmd);
 
-	src_off = scmd->src_addr_hi;
-	src_off <<= 32;
-	src_off |= scmd->src_addr_lo;
-	ret = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off, sz, &src_addr);
-	if (ret != 0)
-		return ret;
+	src_off = ert_copybo_src_offset(scmd);
+	ret_src = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off,
+		sz, &src_addr);
+	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
+		return ret_src;
 
-	dst_off = scmd->dst_addr_hi;
-	dst_off <<= 32;
-	dst_off |= scmd->dst_addr_lo;
-	ret = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off, sz, &dst_addr);
-	if (ret != 0)
-		return ret;
+	dst_off = ert_copybo_dst_offset(scmd);
+	ret_dst = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off,
+		sz, &dst_addr);
+	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
+		return ret_dst;
 
+	/* We need at least one local BO for copy */
+	if (ret_src == -EADDRNOTAVAIL && ret_dst == -EADDRNOTAVAIL)
+		return -EINVAL;
+
+	/* One of them is not local BO, perform P2P copy */
+	if (ret_src != ret_dst) {
+		/* Not a ERT cmd, make sure KDS will handle it. */
+		scmd->type = ERT_KDS_LOCAL;
+		scmd->arg = filp;
+		return 0;
+	}
+
+	/* Both BOs are local, copy via KDMA CU */
 	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
 
 	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)

@@ -379,9 +379,9 @@ struct xocl_dma_funcs {
 	SUBDEV(xdev, XOCL_SUBDEV_DMA).pldev
 #define	DMA_OPS(xdev)	\
 	((struct xocl_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_DMA).ops)
-#define	xocl_migrate_bo(xdev, sgt, write, paddr, chan, len)	\
+#define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
-	sgt, write, paddr, chan, len) : 0)
+	sgt, to_dev, paddr, chan, len) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)
