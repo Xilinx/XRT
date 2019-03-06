@@ -23,6 +23,8 @@
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
 
+#include "driver/include/xcl_perfmon_parameters.h"
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -254,10 +256,12 @@ namespace xdp {
     mProfileCounters->writeAcceleratorSummary(writer);
   }
 
-  void SummaryWriter::writeHostTransferSummary(ProfileWriterI* writer) const
+  void SummaryWriter::writeTransferSummary(ProfileWriterI* writer, RTUtil::e_monitor_type monitorType) const
   {
     uint64_t totalReadBytes    = 0;
     uint64_t totalWriteBytes   = 0;
+    uint64_t totalReadTranx    = 0;
+    uint64_t totalWriteTranx   = 0;
     uint64_t totalReadLatency  = 0;
     uint64_t totalWriteLatency = 0;
     double totalReadTimeMsec   = 0.0;
@@ -265,40 +269,9 @@ namespace xdp {
 
     auto tp = mTraceParserHandle;
 
-    // Get total bytes and total time (currently derived from latency)
-    // across all devices
-    //
-    // CR 951564: Use APM counters to calculate throughput (i.e., byte count and total time)
-    // NOTE: for now, we only use this for writes (see PerformanceCounter::writeHostTransferSummary)
-    auto iter = mFinalCounterResultsMap.begin();
-    for (; iter != mFinalCounterResultsMap.end(); ++iter) {
-      std::string key = iter->first;
-      std::string deviceName = key.substr(0, key.find_first_of("|"));
-
-      // Get results
-      xclCounterResults counterResults = iter->second;
-
-      xclCounterResults rolloverCounts;
-      if (mRolloverCountsMap.find(key) != mRolloverCountsMap.end())
-        rolloverCounts = mRolloverCountsMap.at(key);
-      else
-        memset(&rolloverCounts, 0, sizeof(xclCounterResults));
-      uint32_t  numHostSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_HOST, deviceName);
-      for (uint32_t s=HostSlotIndex; s < HostSlotIndex + numHostSlots; s++) {
-        totalReadBytes += counterResults.ReadBytes[s]
-                          + (rolloverCounts.ReadBytes[s] * 4294967296UL);
-        totalWriteBytes += counterResults.WriteBytes[s]
-                          + (rolloverCounts.WriteBytes[s] * 4294967296UL);
-        // Total transfer time = sum of all tranx latencies
-        // msec = cycles / (1000 * (Mcycles/sec))
-        totalReadLatency += counterResults.ReadLatency[s]
-                            + (rolloverCounts.ReadLatency[s] * 4294967296UL);
-        totalWriteLatency += counterResults.WriteLatency[s]
-                            + (rolloverCounts.WriteLatency[s] * 4294967296UL);
-      }
-    }
-    totalReadTimeMsec = totalReadLatency / (1000.0 * tp->getDeviceClockFreqMHz());
-    totalWriteTimeMsec = totalWriteLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+    std::string deviceName;
+    std::string monitorName;
+    RTUtil::monitorTypeToString(monitorType, monitorName);
 
     // Get maximum throughput rates
     double readMaxBandwidthMBps = 0.0;
@@ -309,8 +282,91 @@ namespace xdp {
       writeMaxBandwidthMBps = mPluginHandle->getWriteMaxBandwidthMBps();
     }
 
-    mProfileCounters->writeHostTransferSummary(writer, true,  totalReadBytes,  totalReadTimeMsec,  readMaxBandwidthMBps);
-    mProfileCounters->writeHostTransferSummary(writer, false, totalWriteBytes, totalWriteTimeMsec, writeMaxBandwidthMBps);
+    // Get total bytes and total time (currently derived from latency)
+    // across all devices
+    //
+    // CR 951564: Use APM counters to calculate throughput (i.e., byte count and total time)
+    // NOTE: for now, we only use this for writes (see PerformanceCounter::writeTransferSummary)
+    auto iter = mFinalCounterResultsMap.begin();
+    for (; iter != mFinalCounterResultsMap.end(); ++iter) {
+      std::string key = iter->first;
+      deviceName = key.substr(0, key.find_first_of("|"));
+
+      // Get results
+      xclCounterResults counterResults = iter->second;
+
+      xclCounterResults rolloverCounts;
+      if (mRolloverCountsMap.find(key) != mRolloverCountsMap.end())
+        rolloverCounts = mRolloverCountsMap.at(key);
+      else
+        memset(&rolloverCounts, 0, sizeof(xclCounterResults));
+
+      if (monitorType != RTUtil::MON_HOST_DYNAMIC) {
+        totalReadBytes    = 0;
+        totalWriteBytes   = 0;
+        totalReadTranx    = 0;
+        totalWriteTranx   = 0;
+        totalReadLatency  = 0;
+        totalWriteLatency = 0;
+      }
+
+      // Traverse all slots to find host monitors
+      uint32_t numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+
+      for (uint32_t s=0; s < numSlots; s++) {
+        // Make sure it's a host monitor
+        uint32_t properties = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_MEMORY, deviceName, s);
+        if (!(properties & XSPM_HOST_PROPERTY_MASK))
+          continue;
+
+        std::string slotName;
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
+        if (slotName.find(monitorName) == std::string::npos)
+          continue;
+
+        totalReadBytes += counterResults.ReadBytes[s]
+                          + (rolloverCounts.ReadBytes[s] * 4294967296UL);
+        totalWriteBytes += counterResults.WriteBytes[s]
+                          + (rolloverCounts.WriteBytes[s] * 4294967296UL);
+        totalReadTranx += counterResults.ReadTranx[s]
+                          + (rolloverCounts.ReadTranx[s] * 4294967296UL);
+        totalWriteTranx += counterResults.WriteTranx[s]
+                          + (rolloverCounts.WriteTranx[s] * 4294967296UL);
+        // Total transfer time = sum of all tranx latencies
+        // msec = cycles / (1000 * (Mcycles/sec))
+        totalReadLatency += counterResults.ReadLatency[s]
+                            + (rolloverCounts.ReadLatency[s] * 4294967296UL);
+        totalWriteLatency += counterResults.WriteLatency[s]
+                            + (rolloverCounts.WriteLatency[s] * 4294967296UL);
+      }
+
+      totalReadTimeMsec = totalReadLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+      totalWriteTimeMsec = totalWriteLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+
+      // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
+      if (monitorType != RTUtil::MON_HOST_DYNAMIC) {
+        if (totalReadTranx > 0) {
+          mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
+              totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
+        }
+        if (totalWriteTranx > 0) {
+          mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
+              totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+        }
+      }
+    }
+
+    // Monitoring of host buffer transfers is reported on aggregated basis
+    if (monitorType == RTUtil::MON_HOST_DYNAMIC) {
+      if (totalReadTranx > 0) {
+        mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
+            totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
+      }
+      if (totalWriteTranx > 0) {
+        mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
+            totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+      }
+    }
   }
 
   void SummaryWriter::writeStallSummary(ProfileWriterI* writer) const

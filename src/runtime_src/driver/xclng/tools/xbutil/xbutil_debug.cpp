@@ -97,8 +97,11 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
         }
-        max1 = std::max(aCUNamePortNames.back().first.length(), max1);
-        max2 = std::max(aCUNamePortNames.back().second.length(), max2);
+
+        // Use strlen() instead of length() because the strings taken from debug_ip_layout
+        // are always 128 in length, where the end is full of null characters
+        max1 = std::max(strlen(aCUNamePortNames.back().first.c_str()), max1);
+        max2 = std::max(strlen(aCUNamePortNames.back().second.c_str()), max2);
     }
     return std::pair<size_t, size_t>(max1, max2);
 }
@@ -116,37 +119,38 @@ int xcldev::device::readSPMCounters() {
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
 
     std::cout << "SDx Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
+    int col2 = std::max(widths.second, strlen("Type or Port"));
 
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
-            << std::setw(col1) << "CU Name"
-            << " " << std::setw(col2) << "AXI Portname"
-            << "  " << std::setw(16)  << "Write Bytes"
-            << "  " << std::setw(16)  << "Write Trans."
-            << "  " << std::setw(16)  << "Read Bytes"
-            << "  " << std::setw(16)  << "Read Tranx."
-            << "  " << std::setw(16)  << "Outstanding Cnt"
-            << "  " << std::setw(16)  << "Last Wr Addr"
-            << "  " << std::setw(16)  << "Last Wr Data"
-            << "  " << std::setw(16)  << "Last Rd Addr"
-            << "  " << std::setw(16)  << "Last Rd Data"
-            << std::endl;
+              << std::setw(col1) << "Region or CU"
+              << " " << std::setw(col2) << "Type or Port"
+              << "  " << std::setw(16)  << "Write Bytes"
+              << "  " << std::setw(16)  << "Write Trans."
+              << "  " << std::setw(16)  << "Read Bytes"
+              << "  " << std::setw(16)  << "Read Tranx."
+              << "  " << std::setw(16)  << "Outstanding Cnt"
+              << "  " << std::setw(16)  << "Last Wr Addr"
+              << "  " << std::setw(16)  << "Last Wr Data"
+              << "  " << std::setw(16)  << "Last Rd Addr"
+              << "  " << std::setw(16)  << "Last Rd Data"
+              << std::endl;
     for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+    	// NOTE: column 2 only aligns if we use c_str() instead of the string
         std::cout << std::left
-            << std::setw(col1) << cuNameportNames[i].first
-            << " " << std::setw(col2) << cuNameportNames[i].second
-            << "  " << std::setw(16) << debugResults.WriteBytes[i]
-            << "  " << std::setw(16) << debugResults.WriteTranx[i]
-            << "  " << std::setw(16) << debugResults.ReadBytes[i]
-            << "  " << std::setw(16) << debugResults.ReadTranx[i]
-            << "  " << std::setw(16) << debugResults.OutStandCnts[i]
-            << "  " << std::hex << "0x" << std::setw(16) << debugResults.LastWriteAddr[i] << std::dec
-            << "  " << std::setw(16) << debugResults.LastWriteData[i]
-            << "  " << std::hex << "0x" << std::setw(16) <<  debugResults.LastReadAddr[i] << std::dec
-            << "  " << std::setw(16) << debugResults.LastReadData[i]
-            << std::endl;
+                  << std::setw(col1) << cuNameportNames[i].first
+                  << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
+                  << "  " << std::setw(16) << debugResults.WriteBytes[i]
+                  << "  " << std::setw(16) << debugResults.WriteTranx[i]
+                  << "  " << std::setw(16) << debugResults.ReadBytes[i]
+                  << "  " << std::setw(16) << debugResults.ReadTranx[i]
+                  << "  " << std::setw(16) << debugResults.OutStandCnts[i]
+                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastWriteAddr[i] << std::dec
+                  << "  " << std::setw(16) << debugResults.LastWriteData[i]
+                  << "  " << std::hex << "0x" << std::setw(14) <<  debugResults.LastReadAddr[i] << std::dec
+                  << "  " << std::setw(16) << debugResults.LastReadData[i]
+                  << std::endl;
     }
     std::cout.flags(f);
     return 0;
@@ -166,12 +170,12 @@ int xcldev::device::readSSPMCounters() {
 
     std::cout << "SDx Streaming Performance Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    int col2 = std::max(widths.second, strlen("Port Name"));
 
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
             << std::setw(col1) << "CU Name"
-            << " " << std::setw(col2) << "AXI Portname"
+            << " " << std::setw(col2) << "Port Name"
             << "  " << std::setw(16)  << "Num Trans."
             << "  " << std::setw(16)  << "Data Bytes"
             << "  " << std::setw(16)  << "Busy Cycles"
@@ -181,7 +185,7 @@ int xcldev::device::readSSPMCounters() {
     for (size_t i = 0; i<debugResults.NumSlots; ++i) {
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
-            << " " << std::setw(col2) << cuNameportNames[i].second
+            << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
             << "  " << std::setw(16) << debugResults.StrNumTranx[i]
             << "  " << std::setw(16) << debugResults.StrDataBytes[i]
             << "  " << std::setw(16) << debugResults.StrBusyCycles[i]

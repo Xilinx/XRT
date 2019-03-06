@@ -71,6 +71,7 @@ namespace xdp {
     profile->writeComputeUnitSummary(this);
     writeTableFooter(getStream());
 
+    // Table 4: Compute Units: Stall Information
     if (mEnStallTable) {
       std::vector<std::string> KernelStallLabels = {
         "Compute Unit", "Execution Count", "Running Time (ms)", "Intra-Kernel Dataflow Stalls (ms)", 
@@ -82,35 +83,35 @@ namespace xdp {
       writeTableFooter(getStream());
     }
 
-    // Table 5: Data Transfer: Host & Global
+    // Table 5: Data Transfer: Host to Global Memory
     std::vector<std::string> DataTransferSummaryColumnLabels = {
-        "Context:Number of Devices", "Transfer Type", "Number Of Transfers",
+        "Context:Number of Devices", "Transfer Type", "Number Of Buffer Transfers",
         "Transfer Rate (MB/s)", "Average Bandwidth Utilization (%)",
-        "Average Size (KB)", "Total Time (ms)", "Average Time (ms)"
+        "Average Buffer Size (KB)", "Total Time (ms)", "Average Time (ms)"
     };
-    writeTableHeader(getStream(), "Data Transfer: Host and Global Memory",
+    writeTableHeader(getStream(), "Data Transfer: Host to Global Memory",
         DataTransferSummaryColumnLabels);
     if ((flowMode != xdp::RTUtil::CPU) && (flowMode != xdp::RTUtil::COSIM_EM)) {
-      profile->writeHostTransferSummary(this);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_HOST_DYNAMIC);
     }
     writeTableFooter(getStream());
 
-    // Table 6: Data Transfer: Kernel & Global
+    // Table 6: Data Transfer: Kernels to Global Memory
     std::vector<std::string> KernelDataTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
 		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
 		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };
-    writeTableHeader(getStream(), "Data Transfer: Kernels and Global Memory",
+    writeTableHeader(getStream(), "Data Transfer: Kernels to Global Memory",
         KernelDataTransferSummaryColumnLabels);
     if (profile->isDeviceProfileOn()) {
       profile->writeKernelTransferSummary(this);
     }
     writeTableFooter(getStream());
 
-    // Table 6.1 : Stream Data Transfers
+    // Table 7: Stream Data Transfers
     if (mEnStallTable) {
-    std::vector<std::string> StreamTransferSummaryColumnLabels = {
+      std::vector<std::string> StreamTransferSummaryColumnLabels = {
         "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
         "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
         };
@@ -119,13 +120,38 @@ namespace xdp {
       writeTableFooter(getStream());
     }
 
-    // Table 7: Top Data Transfer: Kernel & Global
+
+    if (mEnShellTables) {
+      // Table 8 : Data Transfer: Host to Device
+      std::vector<std::string> DataTransferSummaryColumnLabels2 = {
+        "Device", "Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
+		"Total Data Transfer (MB)", "Average Size (KB)", "Average Latency (ns)"
+      };
+      writeTableHeader(getStream(), "Data Transfer: Host to Device",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_XDMA);
+      writeTableFooter(getStream());
+
+      // Table 9 : Data Transfer: Device to Device
+      writeTableHeader(getStream(), "Data Transfer: Device to Device",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_P2P);
+      writeTableFooter(getStream());
+
+      // Table 10 : Data Transfer: Global Memory to Global Memory
+      writeTableHeader(getStream(), "Data Transfer: Global Memory to Global Memory",
+          DataTransferSummaryColumnLabels2);
+      profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_KDMA);
+      writeTableFooter(getStream());
+    }
+
+    // Table 11 : Top Data Transfer: Kernel & Global
     std::vector<std::string> TopKernelDataTransferSummaryColumnLabels = {
         "Device", "Compute Unit", "Number of Transfers", "Average Bytes per Transfer",
         "Transfer Efficiency (%)", "Total Data Transfer (MB)", "Total Write (MB)",
         "Total Read (MB)", "Total Transfer Rate (MB/s)"
     };
-    writeTableHeader(getStream(), "Top Data Transfer: Kernels and Global Memory",
+    writeTableHeader(getStream(), "Top Data Transfer: Kernels to Global Memory",
         TopKernelDataTransferSummaryColumnLabels);
     if (profile->isDeviceProfileOn()) {
       profile->writeTopKernelTransferSummary(this);
@@ -163,7 +189,7 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  // Table 4: Data Transfer: Host & Global Memory
+  // Table 5: Data Transfer: Host & Global Memory
   // Context ID, Transfer Type, Number Of Transfers, Transfer Rate (MB/s),
   // Average Size (KB), Total Time (ms), Average Time (ms)
   void ProfileWriterI::writeHostTransferSummary(const std::string& name,
@@ -216,6 +242,33 @@ namespace xdp {
     writeTableCells(getStream(), contextDevices, name, totalTranx,
         transferRateStr, aveBWUtilStr, aveBytes/1000.0, totalTimeStr, aveTimeStr);
 
+    writeTableRowEnd(getStream());
+  }
+
+  // Tables 8-10 : Data Transfer: Host to Device, Peer to Peer, & Memory to Memory
+  // Device, Transfer Type, Number Of Transfers, Transfer Rate (MB/s),
+  // Average Size (KB), Average Latency (ns)
+  void ProfileWriterI::writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
+      uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec)
+  {
+    double totalMB = totalBytes / 1.0e6;
+    // TODO: re-calculate transfer rate with total transfer time not total latency
+    double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
+        totalBytes / (1000.0 * totalTimeMsec);
+    double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
+    double aveLatencyMsec = (totalTranx == 0) ? 0.0 : totalTimeMsec / totalTranx;
+
+    // Don't show these values for HW emulation
+    std::string transferRateStr = std::to_string(transferRateMBps);
+    std::string aveLatencyStr = std::to_string(1.0e6 * aveLatencyMsec);
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
+      transferRateStr = "N/A";
+      aveLatencyStr = "N/A";
+    }
+
+    writeTableRowStart(getStream());
+    writeTableCells(getStream(), deviceName, transferType, totalTranx,
+        transferRateStr, totalMB, aveBytes/1000.0, aveLatencyStr);
     writeTableRowEnd(getStream());
   }
 
@@ -414,11 +467,12 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  void ProfileWriterI::writeGuidanceMetadataSummary(RTProfile *profile,
-      const XDPPluginI::GuidanceMap  &deviceExecTimesMap,
-      const XDPPluginI::GuidanceMap  &computeUnitCallsMap,
-      const XDPPluginI::GuidanceMap2 &kernelCountsMap)
+  void ProfileWriterI::writeGuidanceMetadataSummary(RTProfile *profile)
   {
+    auto deviceExecTimesMap = mPluginHandle->getDeviceExecTimesMap();
+    auto computeUnitCallsMap = mPluginHandle->getComputeUnitCallsMap();
+    auto kernelCountsMap = mPluginHandle->getKernelCountsMap();
+
     // 1. Device execution times
     std::string checkName;
     XDPPluginI::getGuidanceName(XDPPluginI::DEVICE_EXEC_TIME, checkName);
@@ -470,7 +524,7 @@ namespace xdp {
 
     // 5. Usage of memory resources
     std::string checkName5;
-    XDPPluginI::getGuidanceName(XDPPluginI::DDR_BANKS, checkName5);
+    XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_USAGE, checkName5);
 
     auto cuPortVector = mPluginHandle->getCUPortVector();
     std::map<std::string, int> cuPortsToMemory;
@@ -488,6 +542,34 @@ namespace xdp {
       writeTableRowEnd(getStream());
     }
     cuPortsToMemory.clear();
+
+    // 5a. PLRAM device
+    std::string checkName5a;
+    XDPPluginI::getGuidanceName(XDPPluginI::PLRAM_DEVICE, checkName5a);
+    int isPlram = (mPluginHandle->isPlramDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5a, "all", isPlram);
+    writeTableRowEnd(getStream());
+
+    // 5b. HBM device
+    std::string checkName5b;
+    XDPPluginI::getGuidanceName(XDPPluginI::HBM_DEVICE, checkName5b);
+    int isHbm = (mPluginHandle->isHbmDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5b, "all", isHbm);
+    writeTableRowEnd(getStream());
+
+    // 5c. KDMA device
+    std::string checkName5c;
+    XDPPluginI::getGuidanceName(XDPPluginI::KDMA_DEVICE, checkName5c);
+    int isKdma = (mPluginHandle->isKdmaDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5c, "all", isKdma);
+    writeTableRowEnd(getStream());
+
+    // 5d. P2P device
+    std::string checkName5d;
+    XDPPluginI::getGuidanceName(XDPPluginI::P2P_DEVICE, checkName5d);
+    int isP2P = (mPluginHandle->isP2PDevice()) ? 1 : 0;
+    writeTableCells(getStream(), checkName5d, "all", isP2P);
+    writeTableRowEnd(getStream());
 
     // 6. Port data widths
     std::string checkName6;

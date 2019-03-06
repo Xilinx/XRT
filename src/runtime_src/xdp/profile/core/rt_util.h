@@ -83,6 +83,13 @@ namespace xdp {
       STALL_TRACE_ALL = STALL_TRACE_EXT | STALL_TRACE_INT | STALL_TRACE_STR
     };
 
+    enum e_monitor_type {
+      MON_HOST_DYNAMIC = 0x0,
+      MON_SHELL_KDMA = 0x1,
+      MON_SHELL_XDMA = 0x2,
+      MON_SHELL_P2P = 0x3
+    };
+
     enum e_flow_mode {CPU = 0, COSIM_EM, HW_EM, DEVICE};
 
   public:
@@ -94,6 +101,8 @@ namespace xdp {
         std::string& commandString);
     static void commandStageToString(e_profile_command_state objStage,
         std::string& stageString);
+    static void monitorTypeToString(e_monitor_type monitorType,
+        std::string& monitorString);
     static void setTimeStamp(e_profile_command_state objStage, TimeTrace* traceObject,
     	double timeStamp);
     static xclPerfMonEventID getFunctionEventID(const std::string &functionName,

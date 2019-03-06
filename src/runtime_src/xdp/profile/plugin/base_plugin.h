@@ -88,7 +88,11 @@ namespace xdp {
         CU_CALLS,
         MEMORY_BIT_WIDTH,
         MIGRATE_MEM,
-        DDR_BANKS,
+        MEMORY_USAGE,
+        PLRAM_DEVICE,
+        HBM_DEVICE,
+        KDMA_DEVICE,
+        P2P_DEVICE,
         PORT_BIT_WIDTH,
         KERNEL_COUNT,
         OBJECTS_RELEASED
@@ -100,6 +104,19 @@ namespace xdp {
       // Objects released
       void setObjectsReleased(bool objectsReleased) {IsObjectsReleased = objectsReleased;}
       bool isObjectsReleased() {return IsObjectsReleased;}
+      // Device that supports PLRAM
+      void setPlramDevice(bool plramDevice) {IsPlramDevice = plramDevice;}
+      bool isPlramDevice() {return IsPlramDevice;}
+      // Device that supports HBM
+      void setHbmDevice(bool hbmDevice) {IsHbmDevice = hbmDevice;}
+      bool isHbmDevice() {return IsHbmDevice;}
+      // Device that supports KDMA
+      void setKdmaDevice(bool kdmaDevice) {IsKdmaDevice = kdmaDevice;}
+      bool isKdmaDevice() {return IsKdmaDevice;}
+      // Device that supports P2P
+      void setP2PDevice(bool p2pDevice) {IsP2PDevice = p2pDevice;}
+      bool isP2PDevice() {return IsP2PDevice;}
+      // Get maps of metadata results used for guidance
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
@@ -109,6 +126,10 @@ namespace xdp {
       GuidanceMap  mComputeUnitCallsMap;
       GuidanceMap2 mKernelCountsMap;
       bool IsObjectsReleased = false;
+      bool IsPlramDevice = false;
+      bool IsHbmDevice = false;
+      bool IsKdmaDevice = false;
+      bool IsP2PDevice = false;
 
     // ****************************************
     // Platform Metadata required by profiler
