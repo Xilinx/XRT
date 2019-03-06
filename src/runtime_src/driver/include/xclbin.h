@@ -252,7 +252,7 @@ extern "C" {
         union {
             uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
             struct {     // Used by IP_MEM_* types
-               uint32_t m_index;
+               uint16_t m_index;
                uint8_t m_pc_index;
                uint8_t unused;
             } indices;
