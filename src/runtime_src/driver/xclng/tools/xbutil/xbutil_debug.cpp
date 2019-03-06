@@ -30,6 +30,7 @@
 #include <sys/file.h>
 
 #include "driver/include/xclbin.h"
+#include "driver/include/xclperf.h"
 #include "scan.h"
 #include "xbutil.h"
 
@@ -111,10 +112,9 @@ std::pair<size_t, size_t> xcldev::device::getStreamName (std::vector<std::string
     //Slotnames are of the format "Master-Slave", split them and return in separate vector
     //return max length of the Master and Slave port names
     size_t max1 = 0, max2 = 0;
-    char sep = '-';
     for (auto &s: aSlotNames) {
         size_t found;
-        found = s.find(sep, 0);
+        found = s.find(IP_LAYOUT_SEP, 0);
         if (found != std::string::npos)
             aStreamNames.emplace_back(s.substr(0, found), s.substr(found+1));
         else
