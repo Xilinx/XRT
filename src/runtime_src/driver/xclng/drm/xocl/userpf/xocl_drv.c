@@ -72,6 +72,7 @@ static uint64_t userpf_get_data(xdev_handle_t xdev_hdl, enum data_kind kind)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
 	uint64_t ret = 0;
+ 	mutex_lock(&xdev->xdev_lock);
 	switch(kind){
 		case CHAN_STATE:
 			ret = xdev->ch_state;
@@ -82,6 +83,7 @@ static uint64_t userpf_get_data(xdev_handle_t xdev_hdl, enum data_kind kind)
 		default:
 			break;
 	}
+	mutex_unlock(&xdev->xdev_lock);
 	return ret;
 }
 
