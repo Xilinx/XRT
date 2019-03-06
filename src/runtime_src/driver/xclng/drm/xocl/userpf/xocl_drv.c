@@ -402,7 +402,7 @@ int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
-		xocl_err(&dev->dev, "did not find rebar cap");
+		xocl_info(&dev->dev, "rebar cap does not exist");
 		return -ENOTSUPP;
 	}
 
@@ -448,7 +448,7 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
-		xocl_err(&dev->dev, "did not find rebar cap");
+		xocl_info(&dev->dev, "rebar cap does not exist");
 		return -ENOTSUPP;
 	}
 
