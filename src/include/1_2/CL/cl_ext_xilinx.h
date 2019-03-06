@@ -395,6 +395,13 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 	    cl_pipe pipe,
 	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
 
+/*
+ * Low level access to XRT device for use with xrt++
+ */
+struct xrt_device;
+extern CL_API_ENTRY xrt_device*
+xclGetXrtDevice(cl_device_id device,
+                cl_int* errcode);
 
 /*
   Host Accessible Program Scope Globals
