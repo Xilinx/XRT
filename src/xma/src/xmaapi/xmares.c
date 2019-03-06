@@ -1059,11 +1059,8 @@ static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
                                    kernel_data_size, plugin_alloc_chan_mp);
 
     /* use xma_client_sp_alloc for deprecated case of single process kernel alloc */
-    if (plugin_alloc_chan)
-        return xma_client_sp_alloc(shm_cfg, kernel_inst, session,
-                                   kernel_data_size, plugin_alloc_chan);
-
-    return XMA_ERROR;
+    return xma_client_sp_alloc(shm_cfg, kernel_inst, session,
+                               kernel_data_size, plugin_alloc_chan);
 }
 
 static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
@@ -1214,7 +1211,7 @@ static int32_t xma_client_sp_alloc(XmaResources shm_cfg,
 
     kernel_inst->clients[0] = proc_id;
 
-    for (j = 0; kernel_inst->channels[j].thread_id && j < MAX_KERNEL_CHANS; j++)
+    for (j = 0; j < MAX_KERNEL_CHANS && kernel_inst->channels[j].thread_id; j++)
         sessions[j] = kernel_inst->channels[j].session;
 
     if (!j) { /* unused kernel */
@@ -1698,6 +1695,7 @@ pthread_mutex_t * xma_res_obtain_kernel_mutex(XmaSession *session)
     extern XmaSingleton *g_xma_singleton;
     XmaResConfig *xma_shm;
     int32_t device_id, kern_inst;
+    uint32_t dev_idx, kern_idx;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
 
@@ -1711,7 +1709,13 @@ pthread_mutex_t * xma_res_obtain_kernel_mutex(XmaSession *session)
     kern_inst = xma_res_kern_handle_get(session->kern_res);
     xma_shm = (XmaResConfig *)g_xma_singleton->shm_res_cfg;
 
-    return &xma_shm->sys_res.devices[device_id].kernels[kern_inst].lock;
+    if (device_id < 0 || kern_inst < 0)
+        return NULL;
+
+    dev_idx = device_id;
+    kern_idx = kern_inst;
+
+    return &xma_shm->sys_res.devices[dev_idx].kernels[kern_idx].lock;
 }
 
 int xma_res_kernel_lock(pthread_mutex_t *lock)
