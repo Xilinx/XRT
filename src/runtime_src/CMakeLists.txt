@@ -55,7 +55,13 @@ add_subdirectory(xrt)
 add_subdirectory(ert)
 add_subdirectory(tools/scripts)
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
+else()
+  # Attach XRT options to the end of Yocto's default LINKER flags
+  # Otherwise, we might see errors on the QA check of yocto
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+endif()
 
 set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
