@@ -30,8 +30,8 @@
 #define INIT_BUF_SZ 64
 
 xclDeviceHandle uHandle;
-pthread_t xcl_xocl_to_xclmgmt_id;
-pthread_t xcl_xclmgmt_to_xocl_id;
+pthread_t mpd_id;
+pthread_t msd_id;
 
 struct s_handle {
         xclDeviceHandle uDevHandle;
@@ -60,7 +60,7 @@ int resize_buffer( uint32_t *&buf, const size_t new_sz )
     return 0;
 }
 
-void *xcl_sw_chan_xocl_to_xclmgmt(void *handle_ptr)
+void *mpd(void *handle_ptr)
 {
     int xferCount = 0;
     int ret;
@@ -77,7 +77,7 @@ void *xcl_sw_chan_xocl_to_xclmgmt(void *handle_ptr)
     for( ;; ) {
         args.isTx = true;
         args.sz = prev_sz;
-        ret = xclDaemonUserpf(handle, &args);
+        ret = xclMbxUserDaemon(handle, &args);
         if( ret != 0 ) {
             //std::cout << "sw channel xfer errno=" << errno << " (" << strerror(errno) << ")\n";
             if( errno == EMSGSIZE ) {
@@ -88,7 +88,7 @@ void *xcl_sw_chan_xocl_to_xclmgmt(void *handle_ptr)
                 }
                 prev_sz = args.sz;
                 args.pData = buf1;
-                ret = xclDaemonUserpf(handle, &args);
+                ret = xclMbxUserDaemon(handle, &args);
             } else {
                 std::cout << "user: transfer failed for other reason\n";
                 exit(1);
@@ -102,7 +102,7 @@ void *xcl_sw_chan_xocl_to_xclmgmt(void *handle_ptr)
         printf("[XOCL-PKT-TX]\n");
 
         args.isTx = false;
-        ret = xclDaemonMgmtpf(handle, &args);
+        ret = xclMbxMgmtDaemon(handle, &args);
         if( ret != 0 ) {
             std::cout << "mgmt: transfer error: " << strerror(errno) << std::endl;
             break;
@@ -113,7 +113,7 @@ void *xcl_sw_chan_xocl_to_xclmgmt(void *handle_ptr)
     std::cout << "Exit thread XOCL->XCLMGMT\n";
 }
 
-void *xcl_sw_chan_xclmgmt_to_xocl(void *handle_ptr)
+void *msd(void *handle_ptr)
 {
     int xferCount = 0;
     int ret;
@@ -130,7 +130,7 @@ void *xcl_sw_chan_xclmgmt_to_xocl(void *handle_ptr)
     for( ;; ) {
         args.isTx = true;
         args.sz = prev_sz;
-        ret = xclDaemonMgmtpf(handle, &args);
+        ret = xclMbxMgmtDaemon(handle, &args);
         if( ret != 0 ) {
             //std::cout << "sw channel xfer errno=" << errno << " (" << strerror(errno) << ")\n";
             if( errno == EMSGSIZE ) {
@@ -141,7 +141,7 @@ void *xcl_sw_chan_xclmgmt_to_xocl(void *handle_ptr)
                 }
                 prev_sz = args.sz;
                 args.pData = buf2;
-                ret = xclDaemonMgmtpf(handle, &args);
+                ret = xclMbxMgmtDaemon(handle, &args);
             } else {
                 std::cout << "              mgmt: transfer failed for other reason\n";
                 exit(1);
@@ -151,7 +151,7 @@ void *xcl_sw_chan_xclmgmt_to_xocl(void *handle_ptr)
         printf("                [MGMT-PKT-TX]\n");
 
         args.isTx = false;
-        ret = xclDaemonUserpf(handle, &args);
+        ret = xclMbxUserDaemon(handle, &args);
         if( ret != 0 ) {
             std::cout << "                    user: transfer error: " << strerror(errno) << std::endl;
             exit(1);
@@ -182,8 +182,8 @@ int init(void)
         return -EBUSY;
     }
 
-    pthread_create(&xcl_xocl_to_xclmgmt_id, NULL, xcl_sw_chan_xocl_to_xclmgmt, &devHandle);
-    pthread_create(&xcl_xclmgmt_to_xocl_id, NULL, xcl_sw_chan_xclmgmt_to_xocl, &devHandle);
+    pthread_create(&mpd_id, NULL, mpd, &devHandle);
+    pthread_create(&msd_id, NULL, msd, &devHandle);
 }
 
 // For security purposes, we don't allow any arguments to be passed into the daemon
@@ -249,8 +249,8 @@ int main(void)
    init();
 
    // Enter daemon loop
-   pthread_join(xcl_xocl_to_xclmgmt_id, NULL);
-   pthread_join(xcl_xclmgmt_to_xocl_id, NULL);
+   pthread_join(mpd_id, NULL);
+   pthread_join(msd_id, NULL);
 
    // Close system logs for the child process
    xclClose(uHandle);
@@ -260,3 +260,4 @@ int main(void)
    // Terminate the child process when the daemon completes
    exit(EXIT_SUCCESS);
 }
+

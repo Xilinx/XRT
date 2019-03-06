@@ -289,8 +289,8 @@ struct mailbox_channel {
  */
 struct sw_chan {
 	uint64_t flags;
-	uint32_t *pData;
-	bool isTx;
+	uint32_t *data;
+	bool is_tx;
 	size_t sz;
 	uint64_t id;
 };
@@ -1661,16 +1661,16 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 MBX_DBG(mbx, "RFR: START");
 
 	p_sw_chan_st = (struct sw_chan *)args;
-MBX_DBG(mbx, "RFR: isTx: %d", p_sw_chan_st->isTx);
+MBX_DBG(mbx, "RFR: is_tx: %d", p_sw_chan_st->is_tx);
 
-	if (p_sw_chan_st->isTx)
+	if (p_sw_chan_st->is_tx)
 		ch = &mbx->mbx_tx;
 	else
 		ch = &mbx->mbx_rx;
 
 	ch->sw_chan_from_ioctl = p_sw_chan_st;
 
-	if (ch->sw_chan_from_ioctl->isTx) {
+	if (ch->sw_chan_from_ioctl->is_tx) {
 		ch->sw_chan_ready = true;
 
 		/* must wake the worker thread */
@@ -1705,7 +1705,7 @@ MBX_DBG(mbx, "RFR: TX unsuccessful, userspace buf too small.");
 		} else {
 			ch->sw_chan_from_ioctl->sz = ch->mbc_cur_msg->mbm_len;
 			ch->sw_chan_from_ioctl->id = ch->mbc_cur_msg->mbm_req_id;
-			retVal = copy_to_user(ch->sw_chan_from_ioctl->pData, // verify this data in ioctl
+			retVal = copy_to_user(ch->sw_chan_from_ioctl->data, // verify this data in ioctl
 					      ch->mbc_cur_msg->mbm_data,
 					      ch->mbc_cur_msg->mbm_len);
 		}
@@ -1726,7 +1726,7 @@ MBX_DBG(mbx, "RFR: all bytes copied successfully, marking bytes done.");
 		}
 		ch->sw_chan_buf_sz = ch->sw_chan_from_ioctl->sz;
 		retVal = copy_from_user(ch->sw_chan_buf,
-					ch->sw_chan_from_ioctl->pData,
+					ch->sw_chan_from_ioctl->data,
 					ch->sw_chan_from_ioctl->sz);
 		mutex_unlock(&ch->sw_chan_mutex);
 MBX_DBG(mbx, "RFR: RX: copy_from_user ret=%i, sz=%li, id=0x%llx.", retVal, ch->sw_chan_from_ioctl->sz, ch->sw_chan_from_ioctl->id);

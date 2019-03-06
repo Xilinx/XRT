@@ -1262,14 +1262,14 @@ XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xcl
 
 
 /**
-  * API for SW Mailbox Daemon Mgmtpf to Userpf
+  * API for SW Mailbox Userpf Daemon
   */
-XCL_DRIVER_DLLESPEC int xclDaemonUserpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+XCL_DRIVER_DLLESPEC int xclMbxUserDaemon(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
 
 /**
-  * API for SW Mailbox Daemon Userpf to Mgmtpf
+  * API for SW Mailbox Mgmtpf Daemon
   */
-XCL_DRIVER_DLLESPEC int xclDaemonMgmtpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+XCL_DRIVER_DLLESPEC int xclMbxMgmtDaemon(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

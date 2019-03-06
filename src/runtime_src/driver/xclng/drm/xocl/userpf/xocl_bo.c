@@ -1257,10 +1257,10 @@ int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_sw_mailbox *args;
 	args = (struct drm_xocl_sw_mailbox *)data;
 
-//printk(KERN_INFO "U-ioctl: dir: %i sz=%lu, id=0x%llx, data_ptr*=%llx data_ptr&=%llx \n", args->isTx , args->sz, args->id, args->pData, &args->pData );
+//printk(KERN_INFO "U-ioctl: dir: %i sz=%lu, id=0x%llx, data_ptr*=%llx data_ptr&=%llx \n", args->is_tx , args->sz, args->id, args->data, &args->data );
 
 	// 0 is a successful transfer
 	ret = xocl_mailbox_sw_transfer(xdev, args);
-//printk(KERN_INFO "xocl_sw_mailbox_ioctl FINISH sz=%lu, id=0x%llx ret:  %lu      , data_ptr*=%llx data_ptr&=%llx \n", args->sz, args->id, ret, args->pData, &args->pData );
+//printk(KERN_INFO "xocl_sw_mailbox_ioctl FINISH sz=%lu, id=0x%llx ret:  %lu      , data_ptr*=%llx data_ptr&=%llx \n", args->sz, args->id, ret, args->data, &args->data );
 	return ret;
 }

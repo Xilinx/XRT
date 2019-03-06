@@ -111,7 +111,7 @@ static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *dat
 	}
 
 	ret = xocl_mailbox_sw_transfer(lro, &args);
-	if( args.isTx && (ret==0) ) {
+	if( args.is_tx && (ret==0) ) {
 		ret = copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox));
 	} else {
 		ret = copy_to_user((void *)data+offsetof(struct drm_xocl_sw_mailbox, sz),
