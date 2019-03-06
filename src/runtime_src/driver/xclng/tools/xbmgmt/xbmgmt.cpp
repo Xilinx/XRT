@@ -884,7 +884,7 @@ int main( int argc, char *argv[])
 
     if (index >= deviceVec.size()) {
         if (index >= total)
-            std::cout << "ERROR: Card index " << index << "is out of range";
+            std::cout << "ERROR: Card index " << index << " is out of range";
         else
             std::cout << "ERROR: Card [" << index << "] is not ready";
         std::cout << std::endl;
@@ -892,7 +892,7 @@ int main( int argc, char *argv[])
     }
 
     if(pcidev::get_dev(index)->mgmt == NULL){
-        std::cout << "ERROR: Card index " << index << "is not usable\n";
+        std::cout << "ERROR: Card index " << index << " is not usable\n";
         return 1;
     }
 
