@@ -203,6 +203,7 @@ struct xocl_cmd
 	union {
 		struct ert_packet           *ecmd;
 		struct ert_start_kernel_cmd *kcmd;
+		struct ert_start_copybo_cmd *ccmd;
 	};
 
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
@@ -1494,8 +1495,7 @@ static int
 exec_execute_copybo_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 {
 	int ret;
-	struct ert_start_copybo_cmd *ecmd =
-		(struct ert_start_copybo_cmd *)cmd_packet(xcmd);
+	struct ert_start_copybo_cmd *ecmd = xcmd->ccmd;
 	struct drm_file *filp = (struct drm_file *)ecmd->arg;
 	struct drm_device *ddev = filp->minor->dev;
 

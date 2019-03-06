@@ -423,18 +423,12 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
 static inline uint64_t
 ert_copybo_src_offset(struct ert_start_copybo_cmd *pkt)
 {
-  uint64_t off = pkt->src_addr_hi;
-  off <<= 32;
-  off |= pkt->src_addr_lo;
-  return off;
+  return (uint64_t)pkt->src_addr_hi << 32 | pkt->src_addr_lo;
 }
 static inline uint64_t
 ert_copybo_dst_offset(struct ert_start_copybo_cmd *pkt)
 {
-  uint64_t off = pkt->dst_addr_hi;
-  off <<= 32;
-  off |= pkt->dst_addr_lo;
-  return off;
+  return (uint64_t)pkt->dst_addr_hi << 32 | pkt->dst_addr_lo;
 }
 static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
