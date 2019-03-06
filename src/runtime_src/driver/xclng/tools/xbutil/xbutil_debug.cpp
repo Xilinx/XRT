@@ -165,11 +165,12 @@ int xcldev::device::readSPMCounters() {
                   << "  " << std::setw(16) << debugResults.ReadBytes[i]
                   << "  " << std::setw(16) << debugResults.ReadTranx[i]
                   << "  " << std::setw(16) << debugResults.OutStandCnts[i]
-                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastWriteAddr[i] << std::dec
-                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastWriteData[i]
-                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastReadAddr[i] << std::dec
-                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastReadData[i]
-                  << std::endl;
+                  << std::hex
+                  << "  " << "0x" << std::setw(14) << debugResults.LastWriteAddr[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastWriteData[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastReadAddr[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastReadData[i]
+                  << std::dec << std::endl;
     }
     std::cout.flags(f);
     return 0;
