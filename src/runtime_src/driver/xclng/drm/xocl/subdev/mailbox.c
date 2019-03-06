@@ -276,11 +276,12 @@ struct mailbox_channel {
 	/*
 	 * Software channel settings
 	 */
-	bool sw_chan_ready;
-	struct completion sw_chan_complete;
-	struct sw_chan *sw_chan_from_ioctl;
-	void *sw_chan_buf;
-	size_t sw_chan_buf_sz;
+	bool			sw_chan_ready;
+	size_t			sw_chan_buf_sz;
+	struct completion	sw_chan_complete;
+	struct mutex		sw_chan_mutex;
+	struct sw_chan		*sw_chan_from_ioctl;
+	void			*sw_chan_buf;
 };
 
 /*
@@ -715,11 +716,14 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	INIT_WORK(&ch->mbc_work, chann_worker);
 	queue_work(ch->mbc_wq, &ch->mbc_work);
 
+	mutex_init(&ch->sw_chan_mutex);
 	ch->sw_chan_ready = false;
 	init_completion(&ch->sw_chan_complete);
 	// preallocate buffer
+	mutex_lock(&ch->sw_chan_mutex);
 	ch->sw_chan_buf = vmalloc(PAGE_SIZE);
 	ch->sw_chan_buf_sz = 0;
+	mutex_unlock(&ch->sw_chan_mutex);
 
 	/* One timer for one channel. */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
@@ -750,8 +754,10 @@ static void chan_fini(struct mailbox_channel *ch)
 	cancel_work_sync(&ch->mbc_work);
 	destroy_workqueue(ch->mbc_wq);
 
+	mutex_lock(&ch->sw_chan_mutex);
 	if(ch->sw_chan_buf != NULL)
 		vfree(ch->sw_chan_buf);
+	mutex_unlock(&ch->sw_chan_mutex);
 
 	msg = ch->mbc_cur_msg;
 	if (msg)
@@ -878,7 +884,9 @@ static void do_sw_rx(struct mailbox_channel *ch)
 		msg->mbm_chan_sw = true;
 	}
 
+	mutex_lock(&ch->sw_chan_mutex);
 	ptr = memcpy(msg->mbm_data, ch->sw_chan_buf, ch->sw_chan_buf_sz);
+	mutex_unlock(&ch->sw_chan_mutex);
 	if(ptr != msg->mbm_data)
 		err = -EINVAL;
 	ch->mbc_cur_msg = msg;
@@ -1673,8 +1681,10 @@ MBX_DBG(mbx, "RFR: TX: going to sleep");
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
 			ch->sw_chan_ready = false;
+			mutex_lock(&ch->sw_chan_mutex);
 			ch->sw_chan_buf = NULL;
 			ch->sw_chan_buf_sz = 0;
+			mutex_unlock(&ch->sw_chan_mutex);
 			retVal = -ERESTARTSYS;
 			goto end;
 		}
@@ -1709,6 +1719,7 @@ MBX_DBG(mbx, "RFR: all bytes copied successfully, marking bytes done.");
 		complete(&ch->mbc_worker);
 	} else {
 		/* copy into sw_chan_buf */
+		mutex_lock(&ch->sw_chan_mutex);
 		if (ch->sw_chan_from_ioctl->sz > ch->sw_chan_buf_sz) {
 			vfree(ch->sw_chan_buf);
 			ch->sw_chan_buf = vmalloc(ch->sw_chan_from_ioctl->sz);
@@ -1717,6 +1728,7 @@ MBX_DBG(mbx, "RFR: all bytes copied successfully, marking bytes done.");
 		retVal = copy_from_user(ch->sw_chan_buf,
 					ch->sw_chan_from_ioctl->pData,
 					ch->sw_chan_from_ioctl->sz);
+		mutex_unlock(&ch->sw_chan_mutex);
 MBX_DBG(mbx, "RFR: RX: copy_from_user ret=%i, sz=%li, id=0x%llx.", retVal, ch->sw_chan_from_ioctl->sz, ch->sw_chan_from_ioctl->id);
 
 		if (retVal != 0) {
@@ -1735,8 +1747,10 @@ MBX_DBG(mbx, "RFR: RX: going to sleep");
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
 			ch->sw_chan_ready = false;
+			mutex_lock(&ch->sw_chan_mutex);
 			ch->sw_chan_buf = NULL;
 			ch->sw_chan_buf_sz = 0;
+			mutex_unlock(&ch->sw_chan_mutex);
 			retVal = -ERESTARTSYS;
 			goto end;
 		}
