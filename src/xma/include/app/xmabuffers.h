@@ -26,54 +26,14 @@
 extern "C" {
 #endif
 /**
- * @ingroup xma_app_intf
- * @file app/xmabuffers.h
+ * DOC: 
  * Video buffer data structures needed for sharing and receiving data from
  * kernels. Library functions for allocating host buffers as well as buffer
  * data structures for sending/receiving data to/from video kernels.
 */
 
 /**
- * @ingroup xma
- * @addtogroup xmabuff xmabuffers.h
- * @{
-*/
-
-/**
- * @typedef XmaFraction
- * Used for describing video frame rates
- *
- * @typedef XmaBufferType
- * Describes the location of a buffer. Device buffers
- * reside on DDR banks located on the PCIe board hosting
- * the device.
- *
- * @typedef XmaBufferRef
- * Reference counted buffer used in XmaFrame and XmaDataBuffer
- *
- * @typedef XmaFormatType
- * ID describing fourcc format of video frame buffer
- *
- * @typedef XmaFrameProperties
- * Description of frame dimensions for XmaFrame
- *
- * @typedef XmaFrame
- * Data structure describing a raw video frame and its buffers
- *
- * @typedef XmaDataBuffer
- * A structure describing a raw data buffer
- *
- * @typedef XmaFrameData
- * Member structure with array of raw data pointers for multiplane buffer
- *
- * @typedef XmaFrameFormatDesc
- * Member data structure describing video format and frame count
- *
-*/
-
-/**
- * @struct XmaFraction
- * Used for describing video frame rates
+ * struct XmaFraction - Used for describing video frame rates
 */
 typedef struct XmaFraction
 {
@@ -82,8 +42,7 @@ typedef struct XmaFraction
 } XmaFraction;
 
 /**
- * @enum XmaBufferType
- * Describes the location of a buffer. Device buffers
+ * enum XmaBufferType - Describes the location of a buffer. Device buffers
  * reside on DDR banks located on the PCIe board hosting
  * the device.
 */
@@ -94,8 +53,7 @@ typedef enum XmaBufferType
 } XmaBufferType;
 
 /**
- * @struct XmaBufferRef
- * Reference counted buffer used in XmaFrame and XmaDataBuffer
+ * struct XmaBufferRef - Reference counted buffer used in XmaFrame and XmaDataBuffer
  *
 */
 typedef struct XmaBufferRef
@@ -107,8 +65,7 @@ typedef struct XmaBufferRef
 } XmaBufferRef;
 
 /**
- * @enum XmaFormatType
- * ID describing fourcc format of video frame buffer
+ * enum XmaFormatType - ID describing fourcc format of video frame buffer
 */
 typedef enum XmaFormatType
 {
@@ -121,8 +78,7 @@ typedef enum XmaFormatType
 } XmaFormatType;
 
 /**
- * @struct XmaFrameProperties
- * Description of frame dimensions for XmaFrame
+ * struct XmaFrameProperties - Description of frame dimensions for XmaFrame
 */
 typedef struct XmaFrameProperties
 {
@@ -133,8 +89,7 @@ typedef struct XmaFrameProperties
 } XmaFrameProperties;
 
 /**
- * @struct XmaFrame
- * Data structure describing a raw video frame and its buffers
+ * struct XmaFrame - Data structure describing a raw video frame and its buffers
 */
 typedef struct XmaFrame
 {
@@ -149,8 +104,7 @@ typedef struct XmaFrame
 } XmaFrame;
 
 /**
- * @struct XmaDataBuffer
- * A structure describing a raw data buffer
+ * struct XmaDataBuffer - A structure describing a raw data buffer
 */
 typedef struct XmaDataBuffer
 {
@@ -162,8 +116,7 @@ typedef struct XmaDataBuffer
 } XmaDataBuffer;
 
 /**
- * @struct XmaFrameData
- * Member structure with array of raw data pointers for multiplane buffer
+ * struct XmaFrameData - Member structure with array of raw data pointers for multiplane buffer
 */
 typedef struct XmaFrameData
 {
@@ -171,8 +124,7 @@ typedef struct XmaFrameData
 } XmaFrameData;
 
 /**
- * @struct XmaFrameFormatDesc
- * Member data structure describing video format and frame count
+ * struct XmaFrameFormatDesc - Member data structure describing video format and frame count
 */
 typedef struct XmaFrameFormatDesc
 {
@@ -181,44 +133,44 @@ typedef struct XmaFrameFormatDesc
 } XmaFrameFormatDesc;
 
 /**
- * Allocate a new frame buffer according to specified frame properties
+ * xma_frame_alloc() - Allocate a new frame buffer according to specified frame properties
  *
- * @param [in] frame_props Description of frame buffer to be allocated
+ * @frame_props: Description of frame buffer to be allocated
  *
- * @returns XmaFrame pointer
+ * RETURN: XmaFrame pointer
 */
 XmaFrame*
 xma_frame_alloc(XmaFrameProperties *frame_props);
 
 /**
- * Return the number of planes in the frame specified
+ * xma_frame_planes_get() - Return the number of planes in the frame specified
  *
- * @param [in] frame_props Properties of frame being queried
+ * @frame_props: Properties of frame being queried
  *
- * @returns number of planes in format specified by frame_props (0-3)
+ * RETURN: number of planes in format specified by frame_props (0-3)
 */
 int32_t
 xma_frame_planes_get(XmaFrameProperties *frame_props);
 
 /**
- * Wraps buffers described in XmaFrameData into XmaFrame container
+ * xma_frame_from_buffers_clone() - Wraps buffers described in XmaFrameData into XmaFrame container
  *
- * @param [in] frame_props Properties of XmaFrame to create
- * @param [in] frame_data Container of previously allocated frame buffers
+ * @frame_props: Properties of XmaFrame to create
+ * @frame_data: Container of previously allocated frame buffers
  *
- * @returns XmaFrame pointer populated with frame properties and pointers
- *  to frame data specified by parameters
+ * RETURN: XmaFrame pointer populated with frame properties and pointers
+ * to frame data specified by parameters
 */
 XmaFrame*
 xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
                              XmaFrameData       *frame_data);
 
 /**
- * Free frame data structure
+ * xma_frame_free() - Free frame data structure
  *
- * @param frame frame instance to free
+ * @frame: frame instance to free
  *
- * @note: A buffer with is_clone flag set will not be freed
+ * Note: A buffer with is_clone flag set will not be freed
  * by XMA when the refcount is == 0.  Any XMA container with
  * references to this buffer will be freed (e.g. XmaFrame), however.
 */
@@ -226,38 +178,38 @@ void
 xma_frame_free(XmaFrame *frame);
 
 /**
- * Allocate a single buffer and return as XmaDataBuffer pointer
+ * xma_data_buffer_alloc() - Allocate a single buffer and return as XmaDataBuffer pointer
  *
- * @param size of buffer to allocate from heap
+ * @size: of buffer to allocate from heap
  *
- * @return pointer to XmaDataBuffer with allocated memory
+ * RETURN: pointer to XmaDataBuffer with allocated memory
 */
 XmaDataBuffer*
 xma_data_buffer_alloc(size_t size);
 
 /**
- * Create an XmaDataBuffer object from data of given size
+ * xma_data_from_buffer_clone() - Create an XmaDataBuffer object from data of given size
  *
- * @param data pointer to raw data previously allocated
- * @param size size of data
+ * @data: pointer to raw data previously allocated
+ * @size: size of data
  *
- * @returns pointer to XmaDataBuffer container with members initialized
- *  to point to data with provided size
+ * RETURN: pointer to XmaDataBuffer container with members initialized
+ * to point to data with provided size
 */
 XmaDataBuffer*
 xma_data_from_buffer_clone(uint8_t *data, size_t size);
 
 /**
- * Free XmaDataBuffer container structure
+ * xma_data_buffer_free() - Free XmaDataBuffer container structure
  *
- * @param data structure to be freed
+ * @data: structure to be freed
  *
- * @note: A buffer with is_clone flag set will not be freed
+ * Note: A buffer with is_clone flag set will not be freed
  * by XMA when the refcount is == 0.
 */
 void
 xma_data_buffer_free(XmaDataBuffer *data);
-/** @} */
+
 #ifdef __cplusplus
 }
 #endif
