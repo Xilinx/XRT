@@ -55,7 +55,9 @@ configure_file(
 )
 
 install(FILES ${CMAKE_BINARY_DIR}/gen/version.h DESTINATION ${XRT_INSTALL_DIR}/include)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 install(FILES ${CMAKE_BINARY_DIR}/gen/version.json DESTINATION ${XRT_INSTALL_DIR})
+endif()
 
 # This is not required on MPSoC platform. To avoid yocto error, do NOT intall
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")

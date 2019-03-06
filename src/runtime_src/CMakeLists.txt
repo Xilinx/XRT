@@ -53,7 +53,12 @@ add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
-add_subdirectory(tools/scripts)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  # Only for host native build.
+  # For embedded, headers and libraries are installed in /usr
+  # Not requeired setup.sh/.csh
+  add_subdirectory(tools/scripts)
+endif()
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
