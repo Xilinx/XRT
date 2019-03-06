@@ -444,10 +444,10 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
-	mutex_lock(&lro->busy_mutex);
+	mutex_lock(&lro->mdev_lock);
 	tripped = xocl_af_check(lro, NULL);
 	is_sw = (lro->ch_switch & MB_SW_ENABLE_FIREWALL) != 0;
-	mutex_unlock(&lro->busy_mutex);
+	mutex_unlock(&lro->mdev_lock);
 
 	if (!tripped) {
 		check_sysmon(lro);
@@ -634,10 +634,10 @@ void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro)
 		return;
 	}
 	mb_req->req = MAILBOX_REQ_CHAN_SWITCH;
-	mutex_lock(&lro->busy_mutex);
+	mutex_lock(&lro->mdev_lock);
 	is_sw = (lro->ch_switch & MB_SW_ENABLE_CHAN_SWITCH) != 0;
 	mb_conn.flag = lro->ch_switch;
-	mutex_unlock(&lro->busy_mutex);
+	mutex_unlock(&lro->mdev_lock);
 	memcpy(mb_req->data, &mb_conn, data_len);
 
 	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
@@ -657,8 +657,9 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	bool is_sw = false;
 	bitstm_lock = (struct mailbox_req_bitstream_lock *)req->data;
 
-
+ 	mutex_lock(&lro->mdev_lock);
 	ch_switch = lro->ch_switch;
+	mutex_unlock(&lro->mdev_lock);
 
 	if (err != 0)
 		return;
@@ -831,7 +832,9 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 		return;
 	}
 	memcpy(mb_req->data, &mb_conn, data_len);
+	mutex_lock(&lro->mdev_lock);
 	is_sw = (lro->ch_switch & MB_SW_ENABLE_CONN_EXPL) != 0;
+	mutex_unlock(&lro->mdev_lock);
 	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
 	kfree(kaddr);
 	vfree(mb_req);
@@ -911,6 +914,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_drvinst_set_filedev(lro, lro->user_char_dev.cdev);
 
 	mutex_init(&lro->busy_mutex);
+	mutex_init(&lro->mdev_lock);
 
 	mgmt_init_sysfs(&pdev->dev);
 
