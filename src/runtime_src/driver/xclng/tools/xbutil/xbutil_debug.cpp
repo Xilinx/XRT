@@ -59,8 +59,11 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
         if (map->m_debug_ip_data[i].m_type == type) {
             if (baseAddress)
                 baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
-            if(portNames)
-                portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+            if(portNames) {
+                std::string portName;
+                portName.assign(map->m_debug_ip_data[i].m_name, 128);
+                portNames->push_back(portName);
+            }
             ++count;
         }
     }
@@ -116,6 +119,7 @@ int xcldev::device::readSPMCounters() {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
+    std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
             << std::setw(col1) << "CU Name"
             << " " << std::setw(col2) << "AXI Portname"
@@ -144,6 +148,7 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16) << debugResults.LastReadData[i]
             << std::endl;
     }
+    std::cout.flags(f);
     return 0;
 }
 
@@ -163,6 +168,7 @@ int xcldev::device::readSSPMCounters() {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
+    std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
             << std::setw(col1) << "CU Name"
             << " " << std::setw(col2) << "AXI Portname"
@@ -183,6 +189,7 @@ int xcldev::device::readSSPMCounters() {
             << "  " << std::setw(16) << debugResults.StrStarveCycles[i]
             << std::endl;
     }
+    std::cout.flags(f);
     return 0;
 }
 
@@ -359,7 +366,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         "monitorfifolite",
         "monitorfifofull",
         "accelmonitor",
-	"sspm"
+        "sspm"
     };
     int available_ip [debug_ip_max_type] = {0};
     std::string errmsg;

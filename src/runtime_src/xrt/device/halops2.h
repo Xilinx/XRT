@@ -125,6 +125,10 @@ private:
   typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
+
+  //xdp experimental apis
+  typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
 //End Streaming
 //
 #if 0
@@ -209,6 +213,9 @@ public:
   pollQueuesFuncType mPollQueues;
 //End Streaming
 
+//Experimental xdp apis
+  xclGetSysfsPathFuncType mGetSysfsPath;
+
 #if 0
   /* TBD */
   loadBitstreamFuncType mLoadBitstream;
@@ -222,11 +229,15 @@ public:
   freeDeviceBufferType mFreeDeviceBuffer;
 #endif
 
-  const std::string& getFileName() const {
+  const std::string&
+  getFileName() const
+  {
     return mFileName;
   }
 
-  const unsigned getDeviceCount() const {
+  unsigned
+  getDeviceCount() const
+  {
     return mDeviceCount;
   }
 

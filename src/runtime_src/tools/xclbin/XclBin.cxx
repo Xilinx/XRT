@@ -354,7 +354,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   std::fstream ofXclBin;
   ofXclBin.open(_binaryFileName, std::ifstream::out | std::ifstream::binary);
   if (!ofXclBin.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + _binaryFileName;
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + _binaryFileName;
     throw std::runtime_error(errMsg);
   }
 
@@ -1279,6 +1279,12 @@ XclBin::setKeyValue(const std::string & _keyValue)
 
     if (sKey == "FeatureRomTimestamp") {
       m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(sValue);
+      return; // Key processed 
+    }
+
+    if (sKey == "FeatureRomUUID") {
+      sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
+      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
       return; // Key processed 
     }
 

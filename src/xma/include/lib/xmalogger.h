@@ -99,6 +99,7 @@ typedef struct XmaLogger
 {
     bool      use_stdout;
     bool      use_fileout;
+    bool      use_syslog;
     char      filename[PATH_MAX];
     int32_t   fd;
     int32_t   log_level;

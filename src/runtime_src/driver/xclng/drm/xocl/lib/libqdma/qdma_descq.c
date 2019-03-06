@@ -196,6 +196,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 						len,
 						i == 0, i == sgmax);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 				if (data_used < len)
 					break;
 
@@ -223,6 +224,7 @@ static ssize_t descq_mm_proc_request(struct qdma_descq *descq)
 						i == 0, i == sgmax);
 
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 				if (data_used < len)
 					break;
 
@@ -468,6 +470,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 						len, i == 0, (i == sgmax),
 						req->eot);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 
 				/* sg entry not finished */
 				if (data_used < len)
@@ -496,6 +499,7 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 						len, i == 0, i == sgmax,
 						req->eot);
 				cb->offset += data_used;
+				descq->stat.complete_bytes += data_used;
 
 				/* sg entry not finished */
 				if (data_used < len)
@@ -1068,6 +1072,11 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 {
 	int rv;
 
+	if (!descq->xdev->stm_en) {
+		pr_err("%s: STM not enabled in hw.\n", descq->conf.name);
+		return -ENODEV;
+	}
+
 	if (!descq->conf.st) {
 		pr_err("%s: STM programming called for MM-mode\n",
 		       descq->conf.name);
@@ -1078,12 +1087,6 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 		pr_err("%s: QID for STM cannot be > %d\n",
 			descq->conf.name, STM_MAX_SUPPORTED_QID);
 		return -EINVAL;
-	}
-
-	if (descq->xdev->stm_rev < STM_SUPPORTED_REV_MIN) {
-		pr_err("%s: No supported STM rev found in hw, 0x%x\n",
-		       descq->conf.name, descq->xdev->stm_rev);
-		return -ENODEV;
 	}
 
 	if (!descq->conf.c2h && !descq->conf.desc_bypass) {
@@ -1111,9 +1114,60 @@ int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear)
 }
 #endif
 
+static void descq_proc_request_cancel(struct qdma_descq *descq)
+{
+	struct qdma_sgt_req_cb *cb, *tmp;
+
+	lock_descq(descq);
+	if (likely(!descq->cancel_cnt))
+		goto unlock;
+
+	if (descq->conf.st && descq->conf.c2h) {
+		list_for_each_entry_safe(cb, tmp, &descq->pend_list, list) {
+			if (cb->cancel) {
+				struct qdma_request *req =
+						(struct qdma_request *)cb;
+
+				pr_info("%s, req 0x%p needs to be cancelled.\n",
+					descq->conf.name, req);
+				qdma_request_cancel_done(descq, req);
+
+				descq->cancel_cnt--;
+				if (!descq->cancel_cnt)
+					break;
+			}
+		}
+	} else {
+		list_for_each_entry_safe(cb, tmp, &descq->work_list, list) {
+			if (cb->cancel) {
+				struct qdma_request *req =
+						(struct qdma_request *)cb;
+
+				pr_info("%s, req 0x%p needs to be cancelled.\n",
+					descq->conf.name, req);
+
+			       	if (!cb->offset) {
+					qdma_request_cancel_done(descq, req);
+				} else {
+					req_submitted(descq, cb);
+				}
+
+				descq->cancel_cnt--;
+				if (!descq->cancel_cnt)
+					break;
+			}
+		}
+	}
+
+unlock:
+	unlock_descq(descq);
+}
+
 void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 				bool c2h_upd_cmpl)
 {
+	descq_proc_request_cancel(descq);
+
 	if (descq->conf.st && descq->conf.c2h) {
 		lock_descq(descq);
 		if (descq->q_state == Q_STATE_ONLINE)
@@ -1185,6 +1239,10 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 	if (cb->cancel) {
 		qdma_request_cancel_done(descq, req);
 	} else {
+		descq->stat.complete_requests++;
+		descq->stat.pending_requests--;
+		descq->stat.pending_bytes -= req->count;
+
 		if ((cb->offset != req->count) &&
 		    !(descq->conf.st && descq->conf.c2h)) {
 			pr_info("req 0x%p not completed %u != %u.\n",

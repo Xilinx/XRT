@@ -63,7 +63,6 @@ usage()
     echo "When selecting tests from csv file, only PASS tests are selected by default."
     echo "Use the -select option to pick any tests that matches the regular expression."
     echo "% board.sh -board u200 -sync -select 'PASS|INTR' -csv <csv>"
-
     exit 1
 }
 
@@ -208,7 +207,9 @@ for f in ${tests[*]}; do
  cd $here
  if [ $sync == 1 ]; then
   # sync from sprite
+  echo $base/$f/${rundir}
   rsync -avz -f '- /*/*/' $base/$f/${rundir} $f/
+  rsync -avz -f '+ /*/xclbin/' -f '+ /*/src/' -f '+ /*/data/' -f '- /*/*/' $base/$f/${rundir} $f/
  fi
 
  if [ $run -eq 0 ]; then
@@ -229,7 +230,14 @@ for f in ${tests[*]}; do
   echo "XILINX_OPENCL   = $XILINX_OPENCL"
   echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
   echo "================================================================"
+
   cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
+
+  # this is required for dsv.onbrd suite
+  if [ "X$cmd" == "X" ]; then
+      cmd=`grep -e 'args.*:' sdainfo.yml | awk -F: '{print $2}'`
+  fi
+
   echo "Running $cmd"
   $cmd | tee run.log
   rc=${PIPESTATUS[0]}

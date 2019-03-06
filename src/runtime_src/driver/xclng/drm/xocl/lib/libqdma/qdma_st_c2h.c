@@ -243,7 +243,7 @@ static int qdma_flq_refill(struct qdma_descq *descq, int idx, int count,
 int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 			bool update_pidx, bool refill)
 {
-	struct xlnx_dma_dev *xdev = descq->xdev; 
+	struct xlnx_dma_dev *xdev = descq->xdev;
 	struct qdma_flq *flq = (struct qdma_flq *)descq->flq;
 	unsigned int pidx = flq->pidx_pend;
 	unsigned int fsgcnt = ring_idx_delta(descq->pidx, pidx, flq->size);
@@ -257,13 +257,16 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
         if (unlikely(!fl_used))
                 return 0;
 
+	descq->stat.complete_bytes += copied;
+
 	if (xdev->stm_en) {
 		unsigned int last = ring_idx_incr(pidx, fl_used - 1, flq->size);
 		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 
-		pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
-			descq->conf.name, req, cb->offset, req->count);
 		req->eot_rcved = flq->sdesc_info[last].f.stm_eot;
+		if (req->eot_rcved)
+			pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
+				descq->conf.name, req, cb->offset, req->count);
 	}
 
 	incr_cmpl_desc_cnt(descq, fl_used);
@@ -318,7 +321,7 @@ static int qdma_c2h_packets_proc_dflt(struct qdma_descq *descq)
 			qdma_sgt_req_done(descq, cb, 0);
 		else if (req->eot && req->eot_rcved)
 			qdma_sgt_req_done(descq, cb, 0);
-		else			
+		else
 			break;
 	}
 
@@ -356,7 +359,7 @@ static int parse_cmpl_entry(struct qdma_descq *descq, struct cmpl_info *cmpl)
 	cmpl->f.eot = cmpt[0] & F_C2H_CMPT_ENTRY_F_EOT ? 1 : 0;
 	cmpl->f.desc_used = cmpt[0] & F_C2H_CMPT_ENTRY_F_DESC_USED ? 1 : 0;
 
-	pr_debug("%s, cmpl fmt %d, color %d, err %d, eot %d, desc %d,%llx.\n",
+	pr_debug("%s, fmt %d, colr %d, err %d, eot %d, desc %d,0x%llx.\n",
 		descq->conf.name, cmpl->f.format, cmpl->f.color, cmpl->f.err,
 		cmpl->f.eot, cmpl->f.desc_used,
 		(cmpt[0] >> S_C2H_CMPT_ENTRY_LENGTH) & M_C2H_CMPT_ENTRY_LENGTH);

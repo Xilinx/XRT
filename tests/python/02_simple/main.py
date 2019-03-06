@@ -1,11 +1,9 @@
-import sys, struct
-import numpy as np
+import sys
 # import source files
 sys.path.append('../../../src/python/')
 from xrt_binding import *
 sys.path.append('../')
 from utils_binding import *
-from cffi import FFI
 
 XSIMPLE_CONTROL_ADDR_AP_CTRL = 0x00
 XSIMPLE_CONTROL_ADDR_GIE = 0x04
@@ -33,33 +31,29 @@ XSIMPLE_CONTROL_BITS_FOO_DATA = 32
 
 def runKernel(opt):
     count = 1024
-    DATA_SIZE = sizeof(c_int64) * count
+    DATA_SIZE = ctypes.sizeof(ctypes.c_int64) * count
 
-    ffi = FFI()  # create the FFI obj
     boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
     boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
 
-    bo1 = xclMapBO(opt.handle, boHandle1, True)
-    bo2 = xclMapBO(opt.handle, boHandle2, True)
+    bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
+    bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
 
-    bo1_fp = ffi.cast("FILE *", bo1)
-    bo2_fp = ffi.cast("FILE *", bo2)
+    ctypes.memset(bo1, 0, opt.DATA_SIZE)
+    ctypes.memset(bo2, 0, opt.DATA_SIZE)
 
     # bo1
-    bo1_arr = np.array([0x586C0C6C for _ in range(count)])
-    ffi.memmove(bo1_fp, ffi.from_buffer(bo1_arr), count*5)
+    bo1_arr = [0X586C0C6C for _ in range(count)]
+    arr = (ctypes.c_int * len(bo1_arr))(*bo1_arr)
+    ctypes.memmove(bo1, arr, count*5)
 
-    # bo2
-    int_arr = np.array([i * i for i in range(count)])
-    bo2_arr = np.array(map(str, int_arr.astype(int)))
-
-    ffi.memmove(bo2_fp, ffi.from_buffer(bo2_arr), count*7)
+    #bo2
+    bo2_arr = [i*i for i in range(count)]
+    arr = (ctypes.c_int * len(bo2_arr))(*bo2_arr)
+    ctypes.memmove(bo2, arr, count*5)
 
     # bufReference
-    int_arr_2 = np.array([i * i+i*16 for i in range(count)])
-    str_arr = np.array(map(str, int_arr_2))
-    buf = ffi.from_buffer(str_arr)
-    bufReference = ''.join(buf)
+    bufReference = [i * i+i*16 for i in range(count)]
 
     if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0):
         return 1
@@ -76,19 +70,17 @@ def runKernel(opt):
 
     # Allocate the exec_bo
     execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
-    execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
-    c_f = ffi.cast("FILE *", execData)
+    execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # required buffer size = 128
 
-    if execData is ffi.NULL:
+    if execData is None:
         print("execData is NULL")
-
     print("Construct the exe buf cmd to configure FPGA")
-
-    ecmd = ert_configure_cmd()
+    xclOpenContext(opt.handle, opt.xuuid, 0, True)
+    ecmd = ert_configure_cmd.from_buffer(execData.contents)
     ecmd.m_uert.m_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
     ecmd.m_uert.m_cmd_struct.opcode = 2  # ERT_CONFIGURE
 
-    ecmd.slot_size = 1024
+    ecmd.slot_size = opt.DATA_SIZE
     ecmd.num_cus = 1
     ecmd.cu_shift = 16
     ecmd.cu_base_addr = opt.cu_base_addr
@@ -102,8 +94,6 @@ def runKernel(opt):
     ecmd.data[0] = opt.cu_base_addr
     ecmd.m_uert.m_cmd_struct.count = 5 + ecmd.num_cus
 
-    sz = sizeof(ert_configure_cmd)
-    ffi.memmove(c_f, ecmd, sz)
     print("Send the exec command and configure FPGA (ERT)")
 
     # Send the command.
@@ -113,32 +103,32 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 1000) == 0:
         print(".")
+
 
     print("Construct the exec command to run the kernel on FPGA")
     print("Due to the 1D OpenCL group size, the kernel must be launched %d times") % count
 
     # construct the exec buffer cmd to start the kernel
     for id in range(count):
-        start_cmd = ert_start_kernel_cmd()
+        start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
         rsz = XSIMPLE_CONTROL_ADDR_FOO_DATA/4 + 2  # regmap array size
-        new_data = ((start_cmd.data._type_) * rsz)()
+        ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
         start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
         start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
         start_cmd.m_uert.m_start_cmd_struct.count = 1 + rsz
         start_cmd.cu_mask = 0x1
 
+        # Prepare kernel reg map
+        new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
         new_data[XSIMPLE_CONTROL_ADDR_AP_CTRL] = 0x0
         new_data[XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id
         new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4] = bo1devAddr & 0xFFFFFFFF  # output
-        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4] = bo2devAddr & 0xFFFFFFFF  # input
+        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4] = bo2devAddr & 0xFFFFFFFF
+        new_data[XSIMPLE_CONTROL_ADDR_S1_DATA / 4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF  # output
+        new_data[XSIMPLE_CONTROL_ADDR_S2_DATA / 4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF  # input
         new_data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10  # foo
-        ffi.memmove(c_f, start_cmd, 2 * sizeof(c_uint32))
-
-        tmp_buf = ffi.buffer(c_f, 2 * sizeof(c_uint32) + (len(new_data) * sizeof(c_uint32)))
-        data_ptr = ffi.from_buffer(tmp_buf)
-        ffi.memmove(data_ptr + 2 * sizeof(c_uint32), new_data, len(new_data) * sizeof(c_uint32))
 
         if xclExecBuf(opt.handle, execHandle):
             print("Unable to issue xclExecBuf")
@@ -146,18 +136,26 @@ def runKernel(opt):
 
         print("Wait until the command finish")
 
-        while xclExecWait(opt.handle, 100) != 0:
+        while xclExecWait(opt.handle, 100) == 0:
             print("reentering wait... \n")
+
+
+    if start_cmd.m_uert.m_start_cmd_struct.state != 4:
+        print("configure command failed")
+        return 1
 
     # get the output xclSyncBO
     print("Get the output data from the device")
     if xclSyncBO(opt.handle, boHandle1, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0):
         return 1
-    rd_buf = ffi.buffer(bo1_fp, count*7)
-    print("RESULT: ")
-    # print(rd_buf[:] + "\n")
 
-    if bufReference != rd_buf[:]:
+    xclCloseContext(opt.handle, opt.xuuid, 0)
+    xclFreeBO(opt.handle, execHandle)
+    xclFreeBO(opt.handle, boHandle1)
+    xclFreeBO(opt.handle, boHandle2)
+
+    print("RESULT: ")
+    if bufReference[:count] != bo1[:count]:
         print("FAILED TEST")
         print("Value read back does not match value written")
         sys.exit()
@@ -169,10 +167,13 @@ def main(args):
 
     try:
         if initXRT(opt):
+            xclClose(opt.handle)
             return 1
         if opt.first_mem < 0:
+            xclClose(opt.handle)
             return 1
         if runKernel(opt):
+            xclClose(opt.handle)
             return 1
 
     except Exception as exp:

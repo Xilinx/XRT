@@ -117,6 +117,7 @@ typedef enum XmaFormatType
     XMA_YUV422_FMT_TYPE, /**< 2 */
     XMA_YUV444_FMT_TYPE, /**< 3 */
     XMA_RGB888_FMT_TYPE, /**< 4 */
+    XMA_RGBP_FMT_TYPE,   /**< 5 */
 } XmaFormatType;
 
 /**

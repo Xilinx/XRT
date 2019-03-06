@@ -54,6 +54,59 @@ struct drv_mode_name mode_name_list[] = {
 	{ LEGACY_INTR_MODE,		"legacy interrupt"}
 };
 /* ********************* static function definitions ************************ */
+
+static int qdma_queue_get_context(struct qdma_descq *descq,
+				struct hw_descq_context *hw_ctxt,
+				struct stm_descq_context *stm_ctxt,
+				struct stm_descq_context *stm_can,
+				struct stm_descq_context *stm_map)
+{
+	int rv;
+
+	if (!descq)
+		return -EINVAL;
+
+	if (hw_ctxt) {
+		rv = qdma_descq_context_read(descq->xdev, descq->qidx_hw,
+					descq->conf.st, descq->conf.c2h,
+					hw_ctxt);
+		if (rv < 0)
+			return rv;
+	}
+
+	 if (!descq->xdev->stm_en || !descq->conf.st ||
+	     (!descq->conf.c2h && !descq->conf.desc_bypass))
+		return 0;
+
+	if (stm_ctxt) {
+		/* read stm context */
+		rv = qdma_descq_stm_read(descq->xdev, descq->qidx_hw,
+					descq->conf.pipe_flow_id,
+					descq->conf.c2h, false, true, stm_ctxt);
+		if (rv < 0)
+			return rv;
+	}
+	if (stm_can) {
+ 		/* read stm can */
+		rv = qdma_descq_stm_read(descq->xdev, descq->qidx_hw,
+					descq->conf.pipe_flow_id,
+					descq->conf.c2h, false, false, stm_can);
+		if (rv < 0)
+			return rv;
+	}
+
+	if (stm_map) {
+		/* read stm c2h map or h2c map */
+		rv = qdma_descq_stm_read(descq->xdev, descq->qidx_hw,
+					descq->conf.pipe_flow_id,
+					descq->conf.c2h, true, false, stm_map);
+		if (rv < 0)
+			return rv;
+	}
+
+	return 0;
+}
+
 /*****************************************************************************/
 /**
  * qdma_request_wait_for_cmpl() - static function to monitor the
@@ -94,6 +147,15 @@ static int qdma_request_wait_for_cmpl(struct xlnx_dma_dev *xdev,
 	 *  return i/o error
 	 */
 	if (!cb->done || cb->status) {
+		int rv;
+		struct hw_descq_context hw_ctxt;
+		struct stm_descq_context stm_ctxt;
+		struct stm_descq_context stm_can;
+		struct stm_descq_context stm_map;
+
+		rv = qdma_queue_get_context(descq, &hw_ctxt, &stm_ctxt,
+						&stm_can, &stm_map);
+
 		pr_info("%s: req 0x%p, %c,%u,%u/%u,0x%llx, done %d, err %d, tm %u.\n",
 				descq->conf.name,
 				req, req->write ? 'W' : 'R',
@@ -104,8 +166,52 @@ static int qdma_request_wait_for_cmpl(struct xlnx_dma_dev *xdev,
 				cb->done,
 				cb->status,
 			req->timeout_ms);
+
 		qdma_descq_dump(descq, NULL, 0, 1);
+
 		unlock_descq(descq);
+
+		if (rv < 0)
+			return -EIO;
+
+		pr_info("SW CTXT: [4]:0x%08x [3]:0x%08x [2]:0x%08x "
+			"[1]:0x%08x [0]:0x%08x\n",
+			hw_ctxt.sw[4], hw_ctxt.sw[3], hw_ctxt.sw[2],
+			hw_ctxt.sw[1], hw_ctxt.sw[0]);
+		pr_info("HW CTXT: [1]:0x%08x [0]:0x%08x\n",
+			hw_ctxt.hw[1], hw_ctxt.hw[0]);
+		pr_info("CR CTXT: [0]:0x%08x\n", hw_ctxt.cr[0]);
+		if (descq->conf.c2h && descq->conf.st) {
+			pr_info("CMPT CTXT:[4]:0x%08x [3]:0x%08x [2]:0x%08x "
+				"[1]:0x%08x [0]:0x%08x\n",
+				hw_ctxt.cmpt[4], hw_ctxt.cmpt[3],
+				hw_ctxt.cmpt[2], hw_ctxt.cmpt[1],
+				hw_ctxt.cmpt[0]);
+			pr_info( "PFTCH CTXT: [1]:0x%08x [0]:0x%08x\n",
+				hw_ctxt.prefetch[1], hw_ctxt.prefetch[0]);
+		}
+
+		if (descq->xdev->stm_en && descq->conf.st &&
+		    (descq->conf.c2h || descq->conf.desc_bypass)) {
+			pr_info("STM CTXT: [5]:0x%08x [4]:0x%08x [3]:0x%08x "
+				"[2]:0x%08x [1]:0x%08x [0]:0x%08x\n",
+				stm_ctxt.stm[5], stm_ctxt.stm[4],
+				stm_ctxt.stm[3], stm_ctxt.stm[2],
+				stm_ctxt.stm[1], stm_ctxt.stm[0]);
+			pr_info("STM CAN: [4]:0x%08x [3]:0x%08x [2]:0x%08x "
+				"[1]:0x%08x [0]:0x%08x\n",
+				stm_can.stm[4], stm_can.stm[3], stm_can.stm[2],
+				stm_can.stm[1], stm_can.stm[0]);
+			if (descq->conf.c2h)
+				pr_info("STM C2H MAP: [0]:0x%08x\n",
+					stm_map.stm[0]);
+			else
+				pr_info("STM H2C MAP:[4]:0x%08x [3]:0x%08x "
+					"[2]:0x%08x [1]:0x%08x [0]:0x%08x\n",
+					stm_map.stm[4], stm_map.stm[3],
+					stm_map.stm[2], stm_map.stm[1],
+					stm_map.stm[0]);
+		}
 
 		return -EIO;
 	}
@@ -171,13 +277,18 @@ static ssize_t qdma_request_submit_st_c2h(struct xlnx_dma_dev *xdev,
 		 *  cause an interrupt and may miss processing of writeback
 		 */
 		list_add_tail(&cb->list, &descq->pend_list);
+		descq->stat.pending_bytes += req->count;
+		descq->stat.pending_requests++;
 		/* any rcv'ed packet not yet read ? */
 		/** read the data from the device */
 		descq_st_c2h_read(descq, req, 1, 1);
-		if (!cb->left) {
+		if (!cb->left || (req->eot && req->eot_rcved)) {
 			list_del(&cb->list);
 			unlock_descq(descq);
-			return req->count;
+			pr_debug("%s: 0x%p done, req len %u, %u,%u.\n",
+				descq->conf.name, req, req->count,
+				cb->offset, cb->left);
+			return (req->count - cb->left);
 		}
 		descq->pend_list_empty = 0;
 		unlock_descq(descq);
@@ -261,12 +372,7 @@ int qdma_queue_get_stats(unsigned long dev_hndl, unsigned long qhndl,
 	if (!descq)
 		return -EINVAL;
 
-	memset(stats, 0, sizeof(struct qdma_queue_stats));
-
-	stats->descq_rngsz = descq->conf.rngsz;
-	stats->descq_pidx = descq->pidx;
-	stats->descq_cidx = descq->cidx;
-	stats->descq_avail = descq->avail;
+	memcpy(stats, &descq->stat, sizeof(struct qdma_queue_stats));
 
 	return 0;
 }
@@ -1133,6 +1239,7 @@ int qdma_queue_add(unsigned long dev_hndl, struct qdma_queue_conf *qconf,
 
 	/** fill in config. info */
 	qdma_descq_config(descq, qconf, 0);
+	memset(&descq->stat, 0, sizeof(descq->stat));
 
 	/** copy back the name in config*/
 	memcpy(qconf->name, descq->conf.name, QDMA_QUEUE_NAME_MAXLEN);
@@ -1232,6 +1339,11 @@ int qdma_queue_start(unsigned long dev_hndl, unsigned long id,
 		return QDMA_ERR_INVALID_DESCQ_STATE;
 	}
 	unlock_descq(descq);
+
+	/* per queue irq_en needs to be in sync with per device setting */
+	descq->conf.irq_en = (descq->xdev->conf.qdma_drv_mode == POLL_MODE) ?
+				0 : 1;
+
 	/** allocate the queue resources*/
 	rv = qdma_descq_alloc_resource(descq);
 	if (rv < 0) {
@@ -1449,7 +1561,7 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long qhndl, char *buf,
 		if (cb->cancel) {
 			cb->canceled = 1;
 			cb->status = -ECANCELED;
-		} else 
+		} else
 			cb->status = -ENXIO;
 
 		if (req->fp_done) {
@@ -1465,7 +1577,7 @@ int qdma_queue_stop(unsigned long dev_hndl, unsigned long qhndl, char *buf,
 		if (cb->cancel) {
 			cb->canceled = 1;
 			cb->status = -ECANCELED;
-		} else 
+		} else
 			cb->status = -ENXIO;
 
 		if (req->fp_done) {
@@ -1804,6 +1916,8 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long id,
 		goto unmap_sgl;
 	}
 	list_add_tail(&cb->list, &descq->work_list);
+	descq->stat.pending_bytes += req->count;
+	descq->stat.pending_requests++;
 	descq->pend_req_desc += ((req->count + PAGE_SIZE - 1) >> PAGE_SHIFT);
 	unlock_descq(descq);
 
@@ -2021,4 +2135,3 @@ module_init(libqdma_mod_init);
 module_exit(libqdma_mod_exit);
 
 #endif /* ifdef __LIBQDMA_MOD__ */
-

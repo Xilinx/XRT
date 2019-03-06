@@ -105,7 +105,6 @@ def initXRT(opt):
     if opt.index >= xclProbe():
         print("Error")
         return -1
-
     opt.handle = xclOpen(opt.index, opt.halLogFile, xclVerbosityLevel.XCL_INFO)
 
     if xclGetDeviceInfo2(opt.handle, ctypes.byref(deviceInfo)):
@@ -156,9 +155,8 @@ def initXRT(opt):
         print("Finished downloading bitstream %s") % opt.bitstreamFile
         myuuid = buffer(xbinary.m_header.u2.uuid)[:]
         opt.xuuid = uuid.UUID(bytes=myuuid)
-
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.IP_LAYOUT)
-        layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset);
+        layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset)
 
         if opt.cu_index > layout.m_count:
             print("Can't determine cu base address")

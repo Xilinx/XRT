@@ -2,7 +2,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -28,6 +28,7 @@
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
 #include "zocl_util.h"
+#include "xclhal2_mem.h"
 
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
@@ -66,19 +67,21 @@ drm_zocl_bo *to_zocl_bo(struct drm_gem_object *bo)
 	static inline bool
 zocl_bo_userptr(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & DRM_ZOCL_BO_FLAGS_USERPTR);
+	return (bo->flags & XCL_BO_FLAGS_USERPTR);
 }
 
 	static inline bool
 zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & DRM_ZOCL_BO_FLAGS_EXECBUF);
+	return (bo->flags & XCL_BO_FLAGS_EXECBUF);
 }
 
 
 int zocl_create_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_userptr_bo_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_sync_bo_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
@@ -97,6 +100,7 @@ int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 void zocl_describe(const struct drm_zocl_bo *obj);
 
 void zocl_free_userptr_bo(struct drm_gem_object *obj);
+void zocl_free_host_bo(struct drm_gem_object *obj);
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 #if defined(XCLBIN_DOWNLOAD)
@@ -108,5 +112,6 @@ int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *zdev);
 void zocl_free_bo(struct drm_gem_object *obj);
+void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count);
 
 #endif

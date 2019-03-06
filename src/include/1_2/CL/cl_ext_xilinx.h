@@ -80,17 +80,17 @@ extern "C" {
 typedef struct cl_mem_ext_ptr_t {
   union {
     struct { // legacy layout
-      unsigned int flags;   // Top 8 bits reserved.
+      unsigned int flags;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *obj;
       void *param;
     };
     struct { // interpreted legcy bank assignment
-      unsigned int banks;   // Top 8 bits reserved.
+      unsigned int banks;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr;
       void *unused1;        // nullptr required
     };
     struct { // interpreted kernel arg assignment
-      unsigned int argidx;
+      unsigned int argidx;  // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr_;      // use as host_ptr
       cl_kernel kernel;
     };

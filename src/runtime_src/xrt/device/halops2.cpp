@@ -66,6 +66,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mCountTrace(0)
   ,mReadTrace(0)
   ,mWriteHostEvent(0)
+  ,mDebugReadIPStatus(0)
   ,mCreateWriteQueue(0)
   ,mCreateReadQueue(0)
   ,mDestroyQueue(0)
@@ -74,6 +75,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mWriteQueue(0)
   ,mReadQueue(0)
   ,mPollQueues(0)
+  ,mGetSysfsPath(0)
 {
   mProbe = (probeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
   if (!mProbe)
@@ -160,6 +162,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
 
+  // Experimental xdp apis
+  mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
 }
 
 operations::

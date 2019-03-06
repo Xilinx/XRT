@@ -32,7 +32,7 @@ def runKernel(opt):
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0):
         return 1
 
-    print("Original string = [%s]\n") % ctypes.cast(bo.contents, ctypes.c_char_p).value
+    print("Original string = [%s]\n") % bo.contents[:]
 
     p = xclBOProperties()
     bodevAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle, p)) else -1
@@ -76,10 +76,10 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 1000) == 0:
         print(".")
 
-    if (ecmd.m_uert.m_cmd_struct.state != 4):
+    if ecmd.m_uert.m_cmd_struct.state != 4:
         print("configure command failed")
         return 1
 
@@ -110,10 +110,10 @@ def runKernel(opt):
 
     print("Wait until the command finish")
 
-    while xclExecWait(opt.handle, 1000) != 0:
+    while xclExecWait(opt.handle, 100) == 0:
         print(".")
 
-    if (start_cmd.m_uert.m_start_cmd_struct.state != 4):
+    if start_cmd.m_uert.m_start_cmd_struct.state != 4:
         print("configure command failed")
         return 1
 
@@ -122,14 +122,14 @@ def runKernel(opt):
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
         return 1
 
-    result = ctypes.cast(bo.contents, ctypes.c_char_p).value;
+    result = bo.contents[:len("Hello World")]
     print("Result string = [%s]\n") % result
 
     xclCloseContext(opt.handle, opt.xuuid, 0)
     xclFreeBO(opt.handle, execHandle)
     xclFreeBO(opt.handle, boHandle)
 
-    if result != "Hello World\n":
+    if result != "Hello World":
         return 1
     else:
         return 0

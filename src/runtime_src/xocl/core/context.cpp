@@ -59,4 +59,14 @@ get_platform() const
   return get_global_platform();
 }
 
+device*
+context::
+get_single_active_device() const
+{
+  auto device = get_device_if_one();
+  return (device && device->is_active())
+    ? device
+    : nullptr;
+}
+
 } // xocl

@@ -80,15 +80,15 @@ struct ert_packet {
  *
  * @state:           [3-0] current state of a command
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
- * @count:           [22-12] number of words in payload (data)
+ * @count:           [22-12] number of words following header
  * @opcode:          [27-23] 0, opcode for start_kernel
  * @type:            [31-27] 0, type of start_kernel
  *
  * @cu_mask:         first mandatory CU mask
- * @data:            count number of words representing command payload
+ * @data:            count-1 number of words representing interpreted payload
  *
- * The packet payload is comprised of 1 mandatory CU mask plus
- * extra_cu_masks per header field, followed a CU register map of size
+ * The packet payload is comprised of reserved id field, a mandatory CU mask,
+ * and extra_cu_masks per header field, followed by a CU register map of size
  * (count - (1 + extra_cu_masks)) uint32_t words.
  */
 struct ert_start_kernel_cmd {
@@ -107,6 +107,25 @@ struct ert_start_kernel_cmd {
   /* payload */
   uint32_t cu_mask;          /* mandatory cu mask */
   uint32_t data[1];          /* count-1 number of words */
+};
+
+#define COPYBO_UNIT   64     /* Limited by KDMA CU */
+struct ert_start_copybo_cmd {
+  uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
+  uint32_t unused:6;         /* [9-4] */
+  uint32_t extra_cu_masks:2; /* [11-10], = 3 */
+  uint32_t count:11;         /* [22-12], = sizeof(ert_start_copybo_cmd)-1 */
+  uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
+  uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
+  uint32_t cu_mask[4];       /* mandatory cu masks */
+  uint32_t reserved[4];      /* for scheduler use */
+  uint32_t src_addr_lo;      /* low 32 bit of src addr */
+  uint32_t src_addr_hi;      /* high 32 bit of src addr */
+  uint32_t src_bo_hdl;       /* src bo handle, cleared by driver */
+  uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
+  uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
+  uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
+  uint32_t size;             /* size in COPYBO_UNIT byte */
 };
 
 /**
@@ -188,6 +207,7 @@ struct ert_abort_cmd {
  *
  * @ERT_CMD_STATE_NEW:      Set by host before submitting a command to scheduler
  * @ERT_CMD_STATE_QUEUED:   Internal scheduler state
+ * @ERT_CMD_STATE_SUBMITTED:Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:  Internal scheduler state
  * @ERT_CMD_STATE_COMPLETE: Set by scheduler when command completes
  * @ERT_CMD_STATE_ERROR:    Set by scheduler if command failed
@@ -200,6 +220,7 @@ enum ert_cmd_state {
   ERT_CMD_STATE_COMPLETED = 4,
   ERT_CMD_STATE_ERROR = 5,
   ERT_CMD_STATE_ABORT = 6,
+  ERT_CMD_STATE_SUBMITTED = 7,
 };
 
 /**
@@ -210,6 +231,8 @@ enum ert_cmd_state {
  * @ERT_CONFIGURE:      configure command scheduler
  * @ERT_WRITE:          write pairs of addr and value
  * @ERT_CU_STAT:        get stats about CU execution
+ * @ERT_START_COPYBO:   start KDMA CU or P2P, may be converted to ERT_START_CU
+ *                      before cmd reach to scheduler, short-term hack
  */
 enum ert_cmd_opcode {
   ERT_START_CU     = 0,
@@ -219,6 +242,7 @@ enum ert_cmd_opcode {
   ERT_ABORT        = 4,
   ERT_WRITE        = 5,
   ERT_CU_STAT      = 6,
+  ERT_START_COPYBO = 7,
 };
 
 /**
@@ -369,5 +393,27 @@ enum ert_cmd_type {
 #define ERT_INTC_IER_ADDR                 (ERT_INTC_ADDR + 0x8)  /* enable */
 #define ERT_INTC_IAR_ADDR                 (ERT_INTC_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_MER_ADDR                 (ERT_INTC_ADDR + 0x1C) /* master enable */
+
+static inline void
+ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
+  uint32_t dst_bo, uint64_t src_offset, uint64_t dst_offset, uint64_t size)
+{
+  pkt->state = ERT_CMD_STATE_NEW;
+  pkt->extra_cu_masks = 3;
+  pkt->count = sizeof (struct ert_start_copybo_cmd) / 4 - 1;
+  pkt->opcode = ERT_START_COPYBO;
+  pkt->type = ERT_DEFAULT;
+  pkt->cu_mask[0] = 0;
+  pkt->cu_mask[1] = 0;
+  pkt->cu_mask[2] = 0;
+  pkt->cu_mask[3] = 0;
+  pkt->src_addr_lo = src_offset;
+  pkt->src_addr_hi = (src_offset >> 32) & 0xFFFFFFFF;
+  pkt->src_bo_hdl = src_bo;
+  pkt->dst_addr_lo = dst_offset;
+  pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
+  pkt->dst_bo_hdl = dst_bo;
+  pkt->size = size / COPYBO_UNIT;
+}
 
 #endif

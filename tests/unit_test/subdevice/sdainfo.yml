@@ -1,0 +1,36 @@
+# Copyright (C) 2016-2017 Xilinx, Inc
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may
+# not use this file except in compliance with the License. A copy of the
+# License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+args: addone.xclbin
+board_copy: [cuselect.xclbin]
+copy: [main.cpp, addone.cl]
+devices:
+- [xilinx_.*]
+flags: -g -Wall -std=c++14
+flows: [hw_all]
+krnls:
+- name: addone
+  srcs: [addone.cl]
+  type: clc
+name: subdevice
+owner: soeren
+srcs: [main.cpp]
+xclbins:
+- cus:
+  - {krnl: addone, name: addone_1}
+  - {krnl: addone, name: addone_2}
+  - {krnl: addone, name: addone_3}
+  - {krnl: addone, name: addone_4}
+  link_flags: --sp addone_1.a:bank0 --sp addone_1.b:bank1 --sp addone_2.a:bank1 --sp addone_2.b:bank2 --sp addone_3.a:bank2 --sp addone_3.b:bank3 --sp addone_4.a:bank3  --sp addone_4.b:bank0
+  name: addone
+  region: OCL_REGION_0

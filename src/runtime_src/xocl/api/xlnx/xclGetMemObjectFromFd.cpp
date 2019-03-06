@@ -24,16 +24,6 @@
 #include "xocl/api/detail/device.h"
 #include "xocl/api/detail/context.h"
 
-
-inline unsigned int
-get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
-{
-  return (flags & CL_MEM_EXT_PTR_XILINX)
-    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
-    : 0;
-}
-
-
 namespace xocl {
 
 void
@@ -85,7 +75,7 @@ clGetMemObjectFromFd(cl_context context,
   if (auto boh = xdevice->get_xrt_device()->getBufferFromFd(fd, size, iflags)) {
     auto buffer = std::make_unique<xocl::buffer>(xcontext, flags, size, nullptr);
     // set fields in cl_buffer
-    buffer->add_ext_flags(get_xlnx_ext_flags(flags,nullptr));
+    buffer->set_ext_flags(get_xlnx_ext_flags(flags,nullptr));
 
     buffer->update_buffer_object_map(xdevice,boh);
     *mem = buffer.release();
@@ -105,7 +95,7 @@ clGetMemObjectFromFd(cl_context context,
     }
     */
 
-  } 
+  }
 
   throw error(CL_INVALID_MEM_OBJECT, "CreateBufferFromFd: Unable to get MemObject Handle from FD");
 }
@@ -146,5 +136,3 @@ xclGetMemObjectFromFd(cl_context context,
 {
   return xlnx::clGetMemObjectFromFd(context, device, flags, fd, mem);
 }
-
-

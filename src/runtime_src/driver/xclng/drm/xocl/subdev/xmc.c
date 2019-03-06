@@ -65,6 +65,10 @@
 #define XMC_SE98_TEMP0_REG          0x140
 #define XMC_SE98_TEMP1_REG          0x14C
 #define XMC_SE98_TEMP2_REG          0x158
+#define XMC_CAGE_TEMP0_REG          0x170
+#define XMC_CAGE_TEMP1_REG          0x17C
+#define XMC_CAGE_TEMP2_REG          0x188
+#define XMC_CAGE_TEMP3_REG          0x194
 #define XMC_SNSR_CHKSUM_REG         0x1A4
 #define XMC_SNSR_FLAGS_REG          0x1A8
 #define XMC_HOST_MSG_OFFSET_REG     0x300
@@ -78,6 +82,7 @@
 #define	GPIO_ENABLED		0x1
 
 #define	SELF_JUMP(ins)		(((ins) & 0xfc00ffff) == 0xb8000000)
+#define	XMC_PRIVILEGED(xmc)	((xmc)->base_addrs[0] != NULL)
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
@@ -136,9 +141,9 @@ enum {
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_SCHED] + off)
 
 #define	COPY_MGMT(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
 #define	COPY_SCHE(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;
@@ -159,6 +164,27 @@ struct xocl_xmc {
 
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
+
+static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind, void *resp, size_t resplen)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+
+	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	if(!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+
+	subdev_peer.kind = kind;
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	(void) xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
+		mb_req, reqlen, resp, &resplen, NULL, NULL);
+	vfree(mb_req);
+}
 
 /* sysfs support */
 static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
@@ -181,13 +207,44 @@ static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 	mutex_unlock(&xmc->xmc_lock);
 }
 
+static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pdev, enum data_kind kind, u32 *val)
+{
+	mutex_lock(&xmc->xmc_lock);
+	if (xmc->enabled) {
+		xmc_read_from_peer(pdev, kind, val, sizeof(u32));
+	} else {
+		*val = 0;
+	}
+	mutex_unlock(&xmc->xmc_lock);
+}
+
+static int xmc_get_data(struct platform_device *pdev, enum data_kind kind)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	int val;
+	if(XMC_PRIVILEGED(xmc)){
+		switch(kind){
+			case VOL_12V_PEX :
+				safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+				break;
+			default:
+				break;
+		}
+	}
+	return val;
+}
+
 static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 pes_val;
 
-	safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+	if(XMC_PRIVILEGED(xmc))
+		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+	else{
+		safe_read_from_peer(xmc, to_platform_device(dev), VOL_12V_PEX, &pes_val);
+	}
 
 	return sprintf(buf, "%d\n", pes_val);
 }
@@ -375,9 +432,6 @@ static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR_RO(xmc_vcc1v2_btm);
 
-
-
-
 static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
@@ -522,6 +576,56 @@ static ssize_t xmc_dimm_temp3_show(struct device *dev, struct device_attribute *
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp3);
+
+
+static ssize_t xmc_cage_temp0_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp0);
+
+static ssize_t xmc_cage_temp1_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp1);
+
+static ssize_t xmc_cage_temp2_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp2);
+
+static ssize_t xmc_cage_temp3_show(struct device *dev, struct device_attribute *attr,
+	char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(xmc_cage_temp3);
+
 
 static ssize_t version_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -745,7 +849,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		strncpy(temp, left_parentness+1, digit_len);
 		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
 		temp[digit_len] = '\0';
-		//convert to signed long, decimal base 
+		//convert to signed long, decimal base
 		if(kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >=0)
 			safe_read32(xmc, XMC_DIMM_TEMP0_REG+ (3*sizeof(int32_t)) * idx +sizeof(u32)*VOLTAGE_INS, &ret);
 		else{
@@ -793,6 +897,10 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_xmc_se98_temp0.attr,
 	&dev_attr_xmc_se98_temp1.attr,
 	&dev_attr_xmc_se98_temp2.attr,
+	&dev_attr_xmc_cage_temp0.attr,
+	&dev_attr_xmc_cage_temp1.attr,
+	&dev_attr_xmc_cage_temp2.attr,
+	&dev_attr_xmc_cage_temp3.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
 	&dev_attr_power_flag.attr,
@@ -814,10 +922,11 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	uint32_t temp[MAX_M_COUNT] = {0};
 	struct xclmgmt_dev *lro;
 
+	//xocl_icap_lock_bitstream
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
 	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	memtopo = (struct mem_topology*)xocl_icap_get_axlf_section_data(lro, MEM_TOPOLOGY);
+	memtopo = (struct mem_topology*)xocl_icap_get_data(lro, MEMTOPO_AXLF);
 
 	if(!memtopo)
 		return 0;
@@ -837,6 +946,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 		nread = size - offset;
 
 	memcpy(buffer, temp, nread);
+	//xocl_icap_unlock_bitstream
 	return nread;
 }
 
@@ -1265,6 +1375,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
 	.stop			= stop_xmc,
+	.get_data     = xmc_get_data,
 };
 
 static int xmc_remove(struct platform_device *pdev)
@@ -1318,7 +1429,7 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
-		xocl_info(&pdev->dev, "Microblaze is not supported.");
+		xocl_err(&pdev->dev, "Microblaze is not supported.");
 		devm_kfree(&pdev->dev, xmc);
 		platform_set_drvdata(pdev, NULL);
 		return 0;
@@ -1326,15 +1437,19 @@ static int xmc_probe(struct platform_device *pdev)
 
 	for (i = 0; i < NUM_IOADDR; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
-			res->start, res->end);
-		xmc->base_addrs[i] =
-			ioremap_nocache(res->start, res->end - res->start + 1);
-		if (!xmc->base_addrs[i]) {
-			err = -EIO;
-			xocl_err(&pdev->dev, "Map iomem failed");
-			goto failed;
+		if(res){
+			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
+				res->start, res->end);
+			xmc->base_addrs[i] =
+				ioremap_nocache(res->start, res->end - res->start + 1);
+			if (!xmc->base_addrs[i]) {
+				err = -EIO;
+				xocl_err(&pdev->dev, "Map iomem failed");
+				goto failed;
+			}
 		}
+		else
+			break;
 	}
 
 	err = mgmt_sysfs_create_xmc(pdev);
@@ -1363,7 +1478,7 @@ static struct platform_driver	xmc_driver = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
-		.name = "xocl_xmc",
+		.name = XOCL_XMC,
 	},
 	.id_table = xmc_id_table,
 };

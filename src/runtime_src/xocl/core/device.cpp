@@ -150,26 +150,18 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  // cu base address offset from xclbin in current program
   auto xclbin = device->get_xclbin();
-  size_t cu_base_offset = xclbin.cu_base_offset();
-  size_t cu_shift = xclbin.cu_size();
-  bool cu_isr = xclbin.cu_interrupt();
-
-  auto cu2addr = xclbin.cu_base_address_map();
-
-  size_t regmap_size = xclbin.kernel_max_regmap_size();
-  XOCL_DEBUG(std::cout,"max regmap size:",regmap_size,"\n");
-
-  xrt::scheduler::init(device->get_xrt_device()
-                 ,regmap_size
-                 ,cu_isr
-                 ,device->get_num_cus()
-                 ,cu_shift // cu_offset in lsh value
-                 ,cu_base_offset
-                 ,cu2addr);
+  auto binary = xclbin.binary(); // ::xclbin::binary
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  if (is_sw_emulation()) {
+    auto cu2addr = xclbin.cu_base_address_map();
+    xrt::sws::init(device->get_xrt_device(),cu2addr);
+  }
+  else {
+    xrt::scheduler::init(device->get_xrt_device(),header);
+  }
 }
-
 
 }
 
@@ -199,7 +191,7 @@ clear_connection(connidx_type conn)
 
 xrt::device::BufferObjectHandle
 device::
-alloc(memory* mem, unsigned int memidx)
+alloc(memory* mem, memidx_type memidx)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
@@ -267,7 +259,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
     if (!mems)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-    if((memidx+1) > mems->m_count)
+    if(memidx<0 || (memidx+1)>mems->m_count)
       throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
 
     auto& mem = mems->m_mem_data[memidx];
@@ -542,59 +534,16 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  if ((mem->get_flags() & CL_MEM_EXT_PTR_XILINX)
-	  && xdevice->hasBankAlloc())
-  {
-    //Extension flags were passed. Get the extension flags.
-    //First 8 bits will indicate legacy/mem_topology etc.
-    //Rest 24 bits directly indexes into mem topology section OR.
-    //have legacy one-hot encoding.
-    auto flag = mem->get_ext_flags();
-    int32_t memidx = 0;
-    if (auto kernel = mem->get_ext_kernel()) {
-      //param<==>kernel; flag<==>arg_index
-      int32_t conn = 0;
-      flag = flag & 0xffffff;
-      auto& kernel_name = kernel->get_name_from_constructor();
-      memidx = m_xclbin.get_memidx_from_arg(kernel_name,flag,conn);
-      assert(conn!=-1);
-      mem->set_connidx(conn);
-    }
-    else if (flag & XCL_MEM_TOPOLOGY) {
-      memidx = flag & 0xffffff;
-    }
-    else {
-      flag = flag & 0xffffff;
-      auto bank = myctz(flag);
-      memidx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-      if (memidx==-1){
-        memidx = bank;
-      }
-    }
+  if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
+    throw std::runtime_error
+      ("Cannot allocate device buffer for host buffer ("
+       + std::to_string(mem->get_uid())
+       + "). Host buffer has no bank assignment and is not used as kernel argument.");
 
-    try {
-      auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in memory index(",memidx,")\n");
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-      throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,"could not allocate with memidx: "+std::to_string(memidx));
-    }
-  }
-
-  // If buffer could not be allocated on the requested bank,
-  // or if no bank was specified, then allocate on the bank
-  // (memidx) matching the CU connectivity of CUs in device.
-  auto memidx = get_cu_memidx();
-  if (memidx>=0) {
-    try {
-      auto boh = alloc(mem,memidx);
-      XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in bank with idx(",memidx,")\n");
-      return boh;
-    }
-    catch (const std::bad_alloc&) {
-    }
-  }
+  xrt::message::send
+    (xrt::message::severity_level::WARNING
+     , "Host buffer (" + std::to_string(mem->get_uid())
+     + ") has no bank assignment and is not used as kernel argument; allocating in default device bank.");
 
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
@@ -603,8 +552,11 @@ allocate_buffer_object(memory* mem)
 
 xrt::device::BufferObjectHandle
 device::
-allocate_buffer_object(memory* mem, uint64_t memidx)
+allocate_buffer_object(memory* mem, memidx_type memidx)
 {
+  if (memidx==-1)
+    return allocate_buffer_object(mem);
+
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
 
@@ -620,19 +572,6 @@ allocate_buffer_object(memory* mem, uint64_t memidx)
       return xdevice->alloc(boh,size,offset);
     }
     throw std::runtime_error("parent sub-buffer memory bank mismatch");
-  }
-
-  auto flag = (mem->get_ext_flags()) & 0xffffff;
-  if (flag && xdevice->hasBankAlloc() && !is_sw_emulation()) {
-    auto bank = myctz(flag);
-    auto midx = m_xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
-    if (midx==-1)
-      midx=bank;
-    if (static_cast<uint64_t>(midx)!=memidx)
-      throw std::runtime_error("implicitly request memidx("
-                               +std::to_string(memidx)
-                               +") does not match explicit memidx("
-                               +std::to_string(midx)+")");
   }
 
   auto boh = alloc(mem,memidx);
@@ -678,6 +617,7 @@ get_boh_memidx(const xrt::device::BufferObjectHandle& boh) const
   auto bset = m_xclbin.mem_address_to_memidx(addr);
   if (bset.none() && is_sw_emulation())
     bset.set(0); // default bank in sw_emu
+
   return bset;
 }
 
@@ -692,7 +632,7 @@ get_boh_banktag(const xrt::device::BufferObjectHandle& boh) const
   return m_xclbin.memidx_to_banktag(memidx);
 }
 
-int
+device::memidx_type
 device::
 get_cu_memidx() const
 {
@@ -944,9 +884,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   offset += maxidx/32 + 1; // packet offset past cumasks
 
   // Insert copy command content
-  auto src_boh = xocl::xocl(src_buffer)->get_buffer_object(this);
+  auto src_boh = src_buffer->get_buffer_object(this);
   auto src_addr = xdevice->getDeviceAddr(src_boh) + src_offset;
-  auto dst_boh = xocl::xocl(dst_buffer)->get_buffer_object(this);
+  auto dst_boh = dst_buffer->get_buffer_object(this);
   auto dst_addr = xdevice->getDeviceAddr(dst_boh) + dst_offset;
 
   packet[offset++] = 0; // 0x0 reserved CU AP_CTRL
@@ -962,8 +902,13 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   packet[offset++] = (size*8) / 512;                 // 0x28 units of 512 bits
 
   sk_cmd->count = offset-1; // number of words in payload (excludes header)
-  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma((%p,%p,%d)\n",dst_addr,src_addr,size);
+  XOCL_DEBUGF("xocl::device::copy_buffer schedules cdma(%p,%p,%d)\n",dst_addr,src_addr,size);
+  cmd->start();
   xrt::scheduler::schedule(cmd);
+
+  // KDMA fills dst buffer same as migrate_buffer does, hence dst buffer
+  // is resident after KDMA is done even if host does explicitly migrate.
+  dst_buffer->set_resident(this);
 }
 
 void
@@ -1156,13 +1101,13 @@ load_program(program* program)
       unsigned short target_freqs[4] = {0};
       auto kclocks = m_xclbin.kernel_clocks();
       if (kclocks.size()>2)
-	throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
+        throw xocl::error(CL_INVALID_PROGRAM,"Too many kernel clocks");
       for (auto& clock : kclocks) {
-	if (idx == 0) {
-	  std::string device_name = get_unique_name();
-	  profile::set_kernel_clock_freq(device_name, clock.frequency);
-	}
-	target_freqs[idx++] = clock.frequency;
+        if (idx == 0) {
+          std::string device_name = get_unique_name();
+          profile::set_kernel_clock_freq(device_name, clock.frequency);
+        }
+        target_freqs[idx++] = clock.frequency;
       }
 
       // System clocks
@@ -1232,7 +1177,7 @@ unload_program(const program* program)
 
 bool
 device::
-acquire_context(compute_unit* cu, bool shared) const
+acquire_context(const compute_unit* cu, bool shared) const
 {
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
@@ -1241,7 +1186,7 @@ acquire_context(compute_unit* cu, bool shared) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->acquire_cu_context(xclbin.uuid(),cu->get_index(),shared);
-    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
     cu->set_context_type(shared);
     return true;
   }
@@ -1250,7 +1195,7 @@ acquire_context(compute_unit* cu, bool shared) const
 
 bool
 device::
-release_context(compute_unit* cu) const
+release_context(const compute_unit* cu) const
 {
   if (cu->get_context_type() == compute_unit::context_type::none)
     return true;
@@ -1259,7 +1204,7 @@ release_context(compute_unit* cu) const
     auto xclbin = program->get_xclbin(this);
     auto xdevice = get_xrt_device();
     xdevice->release_cu_context(xclbin.uuid(),cu->get_index());
-    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_index(),")\n");
+    XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
     cu->reset_context_type();
     return true;
   }

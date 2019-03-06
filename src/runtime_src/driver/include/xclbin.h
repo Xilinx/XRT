@@ -127,7 +127,9 @@ extern "C" {
         BUILD_METADATA,
         KEYVALUE_METADATA,
         USER_METADATA,
-        DNA_CERTIFICATE
+        DNA_CERTIFICATE,
+        PDI,
+        BITSTREAM_PARTIAL_PDI 
     };
 
     enum MEM_TYPE {
@@ -140,6 +142,7 @@ extern "C" {
         MEM_HBM,
         MEM_BRAM,
         MEM_URAM,
+        MEM_STREAMING_CONNECTION
     };
 
     enum IP_TYPE {
@@ -276,7 +279,7 @@ extern "C" {
         uint8_t m_minor;
         uint8_t m_reserved[3];
         uint64_t m_base_address;
-        uint8_t m_name[128];
+        char    m_name[128];
     };
 
     struct debug_ip_layout {

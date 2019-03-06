@@ -177,7 +177,7 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 			}
 			off -= len;
 		}
-		
+
 		pr_info("bad offset %u.\n", req->offset);
 		sgt_dump(sgt);
 		return -EINVAL;
@@ -204,13 +204,12 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 
 void qdma_request_dump(const char *str, struct qdma_request *req, bool dump_cb)
 {
-	pr_info("%s, req 0x%p %u,%u, ep 0x%llx, tm %u ms, %s,%s,%s,%s,%s,%s,async %d.\n",
+	pr_info("%s, req 0x%p %u,%u, ep 0x%llx, tm %u ms, %s,%s,%s,%s,%s,async %d.\n",
                 str, req, req->offset, req->count, req->ep_addr,
                 req->timeout_ms,
                 req->write ? "W":"R", req->dma_mapped ? "M":"",
                 req->eot ? "EOT":"", req->use_sgt ? "SGT":"SGL",
-                req->eot_rcved ? "EOT RCV":"", req->use_sgt ? "SGT":"SGL",
-		req->fp_done ? 1 : 0);
+                req->eot_rcved ? "EOT RCV":"", req->fp_done ? 1 : 0);
 
 	if (req->use_sgt)
 		sgt_dump(req->sgt);
@@ -323,6 +322,9 @@ void qdma_request_cancel_done(struct qdma_descq *descq,
 	cb->status = -ECANCELED;
 	cb->done = 1;
 
+	descq->stat.pending_requests--;
+	descq->stat.pending_bytes -= req->count;
+
 	if (cb->unmap_needed) {
 	       qdma_request_unmap(descq->xdev->conf.pdev, req);
 	       cb->unmap_needed = 0;
@@ -341,7 +343,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 	struct qdma_descq *descq =
 		qdma_device_get_descq_by_id(xdev, qhndl, NULL, 0, 1);
 	struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
-	
+
 	pr_info("%s, %s, cancel req 0x%p.\n",
 		xdev->conf.name, descq->conf.name, req);
 
@@ -349,9 +351,7 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 
 	lock_descq(descq);
 	cb->cancel = 1;
-	if (!cb->offset || (descq->conf.st && descq->conf.c2h)) {
-		qdma_request_cancel_done(descq, req);
-	}
+	descq->cancel_cnt++;
 	unlock_descq(descq);
 
 	schedule_work(&descq->work);

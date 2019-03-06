@@ -22,7 +22,7 @@
 
 #include "xclbin/binary.h"
 
-namespace XCL
+namespace xdp
 {
   class RTDebug
   {

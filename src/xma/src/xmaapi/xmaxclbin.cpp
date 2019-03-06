@@ -26,7 +26,7 @@
 #define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
 
 /* Private function */
-static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout);
+//static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout);
 
 char *xma_xclbin_file_open(const char *xclbin_name)
 {
@@ -49,11 +49,6 @@ char *xma_xclbin_file_open(const char *xclbin_name)
 
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
 {
-    return get_xclbin_iplayout(buffer, info->ip_layout);
-}
-
-static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
-{
     //int rc = XMA_SUCCESS;
     axlf *xclbin = reinterpret_cast<axlf *>(buffer);
 
@@ -63,14 +58,16 @@ static int get_xclbin_iplayout(char *buffer, XmaIpLayout *layout)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
+        //For execbo:
+        info->num_ips = ipl->m_count;
         for (int i = 0; i < ipl->m_count; i++)
         {
-            memcpy(layout[i].kernel_name,
+            memcpy(info->ip_layout[i].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
-            layout[i].base_addr = ipl->m_ip_data[i].m_base_address;
+            info->ip_layout[i].base_addr = ipl->m_ip_data[i].m_base_address;
             printf("kernel name = %s, base_addr = %lx\n",
-                    layout[i].kernel_name,
-                    layout[i].base_addr);
+                    info->ip_layout[i].kernel_name,
+                    info->ip_layout[i].base_addr);
         }
     }
     else

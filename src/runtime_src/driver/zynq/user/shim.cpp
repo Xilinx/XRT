@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -200,6 +200,17 @@ unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
     return info.handle;
 }
 
+unsigned int ZYNQShim::xclGetHostBO(uint64_t paddr, size_t size) {
+  drm_zocl_host_bo info = { paddr, size, 0xffffffff };
+  //std::cout  << "xclGetHostBO paddr " << std::hex << paddr << std::dec << std::endl;
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
+  if (mVerbosity == XCL_INFO) {
+    std::cout  << "xclGetHostBO result = " << result << std::endl;
+    std::cout << "Handle " << info.handle << std::endl;
+  }
+  return info.handle;
+}
+
 void ZYNQShim::xclFreeBO(unsigned int boHandle)
 {
   drm_gem_close closeInfo = {boHandle, 0};
@@ -288,8 +299,15 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
 int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  //no need to sync for MPSOC.
-  return 0;
+  drm_zocl_sync_bo_dir zocl_dir;
+  if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_TO_DEVICE;
+  else if (dir == XCL_BO_SYNC_BO_FROM_DEVICE)
+      zocl_dir = DRM_ZOCL_SYNC_BO_FROM_DEVICE;
+  else
+      return -EINVAL;
+  drm_zocl_sync_bo syncInfo = { boHandle, zocl_dir, offset, size };
+  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
 }
 
 #ifndef __HWEM__
@@ -431,6 +449,22 @@ int ZYNQShim::xclExecWait(int timeoutMilliSec)
   return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
 }
 
+int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+{
+  // Until we have a programmatic way to determine what this directory
+  //  is on Zynq platforms, this is hard-coded so we can test out 
+  //  debug and profile features.
+  std::string path = "/sys/devices/platform/amba/a0000000.zyxclmm_drm/";
+  path += entry ;
+
+  if (path.length() >= size) return -1 ;
+
+  // Since path.length() < size, we are sure to copy over the null 
+  //  terminating byte.
+  strncpy(sysfsPath, path.c_str(), size) ;
+  return 0 ;
+}
+
 }
 ;
 //end namespace ZYNQ
@@ -500,6 +534,15 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
     return -EINVAL;
   return drv->xclAllocUserPtrBO(userptr, size, flags);
   //return 0xffffffff;
+}
+
+unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
+{
+  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetHostBO(paddr, size);
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
@@ -639,9 +682,28 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv->xclExecWait(timeoutMilliSec);
 }
 
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+		    const char* entry, char* sysfsPath, size_t size)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
 //
 // TODO: pending implementations
 //
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  return 0;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  return 0;
+}
+
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 {
   return 0;

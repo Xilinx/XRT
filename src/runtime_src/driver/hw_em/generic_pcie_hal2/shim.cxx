@@ -863,6 +863,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mMemModel->writeDevMem(dest,src,size);
       return size;
     }
+    src = (unsigned char*)src + seek;
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << seek << std::endl;

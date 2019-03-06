@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -24,6 +24,8 @@
 #define zocl_dbg(dev, fmt, args...)     \
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
+#define MAX_CU_NUM 128
+
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
 
@@ -36,6 +38,11 @@
 	(ret); \
 })
 
+struct drm_zocl_mm_stat {
+	size_t memory_usage;
+	unsigned int bo_count;
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -44,14 +51,28 @@ struct drm_zocl_dev {
 	void __iomem            *regs;
 	phys_addr_t              res_start;
 	resource_size_t          res_len;
-	unsigned int             irq;
+	phys_addr_t              host_mem;
+	resource_size_t          host_mem_len;
+	unsigned int		 cu_num;
+	unsigned int             irq[MAX_CU_NUM];
 	struct sched_exec_core  *exec;
 
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
+	struct drm_zocl_mm_stat	 mm_usage;
 	u64			 unique_id_last_bitstream;
+
+	/*
+	 * This RW lock is to protect the sysfs nodes exported
+	 * by zocl driver. Currently, all zocl attributes exported
+	 * to sysfs nodes are protected by a single lock. Any read
+	 * functions which not atomically touch those attributes should
+	 * hold read lock; And all write functions which not atomically
+	 * touch those attributes should hold write lock.
+	 */
+	rwlock_t		attr_rwlock;
 };
 
 #endif
