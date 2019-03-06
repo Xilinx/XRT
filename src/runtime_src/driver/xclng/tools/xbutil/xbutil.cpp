@@ -565,6 +565,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    if(pcidev::get_dev(index)->user == NULL){
+        std::cout << "ERROR: Card index " << index << " is not usable\n";
+        return 1;
+    }
+
+
     int result = 0;
 
     switch (cmd)
