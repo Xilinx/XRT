@@ -473,8 +473,8 @@ struct drm_xocl_reclock_info {
  */
 struct drm_xocl_sw_mailbox {
 	uint64_t flags;
-	uint32_t *pData;
-	bool isTx;
+	uint32_t *data;
+	bool is_tx;
 	size_t sz;
 	uint64_t id;
 };

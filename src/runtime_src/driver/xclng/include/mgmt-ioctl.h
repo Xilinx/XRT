@@ -177,7 +177,7 @@ struct xclmgmt_ioc_freqscaling {
 struct xclmgmt_ioc_sw_mailbox {
 	uint64_t flags;
 	uint32_t *data;
-	bool isTx;
+	bool is_tx;
 	size_t sz;
 	uint64_t id;
 };

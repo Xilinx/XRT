@@ -1763,14 +1763,14 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
-int xocl::XOCLShim::xclDaemonUserpf(struct drm_xocl_sw_mailbox *args)
+int xocl::XOCLShim::xclMbxUserDaemon(struct drm_xocl_sw_mailbox *args)
 {
     int ret;
     ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
     return ret ? -errno : ret;
 }
 
-int xocl::XOCLShim::xclDaemonMgmtpf(struct drm_xocl_sw_mailbox *args)
+int xocl::XOCLShim::xclMbxMgmtDaemon(struct drm_xocl_sw_mailbox *args)
 {
     int ret;
     ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
@@ -2265,14 +2265,14 @@ char *xclMapMgmt(xclDeviceHandle handle)
   return drv ? drv->xclMapMgmt() :   nullptr;
 }
 
-int xclDaemonUserpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+int xclMbxUserDaemon(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-  return drv ? drv->xclDaemonUserpf(args) : -ENODEV;
+  return drv ? drv->xclMbxUserDaemon(args) : -ENODEV;
 }
 
-int xclDaemonMgmtpf(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+int xclMbxMgmtDaemon(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-  return drv ? drv->xclDaemonMgmtpf(args) : -ENODEV;
+  return drv ? drv->xclMbxMgmtDaemon(args) : -ENODEV;
 }
