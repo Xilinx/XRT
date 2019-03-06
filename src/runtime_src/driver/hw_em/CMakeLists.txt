@@ -25,8 +25,6 @@ add_library(xrt_hwemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:util>
   )
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
-
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
