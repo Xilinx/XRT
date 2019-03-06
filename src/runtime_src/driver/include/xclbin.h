@@ -149,7 +149,9 @@ extern "C" {
         IP_MB = 0,
         IP_KERNEL, //kernel instance
         IP_DNASC,
-        IP_DDR4_CONTROLLER
+        IP_DDR4_CONTROLLER,
+        IP_MEM_DDR4,
+        IP_MEM_HBM
     };
 
     struct axlf_section_header {
@@ -247,7 +249,14 @@ extern "C" {
     /* IPs on AXI lite - their types, names, and base addresses.*/
     struct ip_data {
         uint32_t m_type; //map to IP_TYPE enum
-        uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
+        union {
+            uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
+            struct {     // Used by IP_MEM_* types
+               uint16_t m_index;
+               uint8_t m_pc_index;
+               uint8_t unused;
+            } indices;
+        };
         uint64_t m_base_address;
         uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
     };
