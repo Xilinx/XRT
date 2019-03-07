@@ -274,7 +274,8 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
 	    }
 
             //Setup execbo for use with kernel commands
-            for (int32_t k = 0, t = 0;
+#ifdef DISABLE_SOFT_KERNEL
+	    for (int32_t k = 0, t = 0;
                 t < MAX_KERNEL_CONFIGS &&
                 k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++) 
             {
@@ -338,6 +339,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                     }
                 }
             }
+#endif /* DISABLE_SOFT_KERNEL */
         }
         free(buffer);
     }

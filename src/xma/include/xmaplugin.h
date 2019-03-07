@@ -137,6 +137,8 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           size,
                             size_t           offset);
 
+
+#ifdef DISABLE_SOFT_KERNEL
 /**
  *
  * xma_plg_register_write() - Write kernel register(s)
@@ -196,10 +198,13 @@ int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
  *
  */
 int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_in_ms);
+#endif /* DISABLE_SOFT_KERNEL */
 
 void xma_plg_kernel_lock(XmaHwSession s_handle);
 void xma_plg_kernel_unlock(XmaHwSession s_handle);
 
+
+#ifdef DISABLE_SOFT_KERNEL
 /**
  *  xma_plg_register_prep_write() - This function writes the data provided and sets
  * the specified AXI_Lite register(s) exposed by a kernel. The base offset of 0
@@ -222,6 +227,7 @@ int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
                                     size_t           size,
                                     size_t           offset);
 
+#endif /* DISABLE_SOFT_KERNEL */
 
 void xma_plg_kernel_lock(XmaHwSession s_handle);
 void xma_plg_kernel_unlock(XmaHwSession s_handle);

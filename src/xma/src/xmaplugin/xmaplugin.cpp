@@ -130,6 +130,7 @@ xma_plg_buffer_read(XmaHwSession s_handle,
     return rc;
 }
 
+#ifdef DISABLE_SOFT_KERNEL
 int32_t
 xma_plg_register_prep_write(XmaHwSession  s_handle,
                        void         *src,
@@ -153,6 +154,8 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
 
     return 0;
 }
+#endif /* DISABLE_SOFT_KERNEL */
+
 
 void xma_plg_kernel_lock(XmaHwSession s_handle)
 {
@@ -173,6 +176,7 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle)
     }
 }
 
+#ifdef DISABLE_SOFT_KERNEL
 int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
 {
     int32_t i;
@@ -302,7 +306,8 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
         return XMA_ERROR;
     }
 }
-    
+#endif /* DISABLE_SOFT_KERNEL */
+
 int32_t
 xma_plg_register_write(XmaHwSession  s_handle,
                        void         *src,
