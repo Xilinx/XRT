@@ -675,6 +675,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	xdev->core.pdev = pdev;
 	xocl_fill_dsa_priv(xdev, dev_info);
 
+	mutex_init(&xdev->xdev_lock);
+
 	ret = identify_bar(xdev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to identify bar");
@@ -710,7 +712,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	mutex_init(&xdev->ctx_list_lock);
-	mutex_init(&xdev->xdev_lock);
 	xdev->needs_reset=false;
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
