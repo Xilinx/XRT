@@ -43,8 +43,7 @@ find_package(Curses REQUIRED)
 
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
+  include/1_2/CL/cl_ext_xilinx.h)
 install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
 message("-- XRT CL extension header files")
 foreach (header ${XRT_CL_EXT_SRC})
