@@ -100,9 +100,6 @@ struct xocl_dev	{
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
 	void				*p2p_res_grp;
-	uint64_t			ch_state;
-	uint64_t			ch_switch;
-	struct mutex			xdev_lock;
 };
 
 /**

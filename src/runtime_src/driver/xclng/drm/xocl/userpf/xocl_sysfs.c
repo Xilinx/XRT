@@ -323,9 +323,7 @@ static ssize_t sw_chan_state_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	uint64_t ret;
- 	mutex_lock(&xdev->xdev_lock);
-	ret = xdev->ch_state;
-	mutex_unlock(&xdev->xdev_lock);
+	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
 
 	return sprintf(buf, "0x%llx\n", ret);
 }
@@ -338,10 +336,7 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	uint64_t ret;
- 	mutex_lock(&xdev->xdev_lock);
-	ret = xdev->ch_switch;
-	mutex_unlock(&xdev->xdev_lock);
-
+ 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
 

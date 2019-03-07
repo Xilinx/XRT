@@ -17,7 +17,10 @@
 #ifndef _XCL_MB_PROTOCOL_H_
 #define _XCL_MB_PROTOCOL_H_
 
-/* OPCODE */
+/**
+ *  mailbox_req OPCODE
+ *
+ */
 enum mailbox_request {
   MAILBOX_REQ_UNKNOWN = 0,
   MAILBOX_REQ_TEST_READY,
@@ -35,6 +38,9 @@ enum mailbox_request {
   MAILBOX_REQ_CHAN_SWITCH,
 };
 
+/**
+ *  MAILBOX_REQ_GPCTL sub command
+ */
 enum mb_cmd_type {
   MB_CMD_DEFAULT = 0,
   MB_CMD_LOAD_XCLBIN,
@@ -44,13 +50,21 @@ enum mb_cmd_type {
   MB_CMD_READ_FROM_PEER,
 };
 
-/* struct of MAILBOX_REQ_LOCK_BITSTREAM &
- *         MAILBOX_REQ_UNLOCK_BITSTREAM
+
+/**
+ *  MAILBOX_REQ_LOCK_BITSTREAM &
+ *  MAILBOX_REQ_UNLOCK_BITSTREAM payload type
  */
+
 struct mailbox_req_bitstream_lock {
   pid_t pid;
   xuid_t uuid;
 };
+
+
+/**
+ *  data_kind
+ */
 
 enum data_kind {
   MIG_CALIB,
@@ -93,18 +107,18 @@ enum data_kind {
   DEBUG_IPLAYOUT_AXLF,
   PEER_CONN,
   XCLBIN_UUID,
-  CHAN_STATE,
-  CHAN_SWITCH,
 };
 
-/* struct of MAILBOX_REQ_PEER_DATA
+/**
+ *  MAILBOX_REQ_PEER_DATA payload type
  */
 struct mailbox_subdev_peer {
     enum data_kind kind;
 };
 
-/* struct of MAILBOX_REQ_CONN_EXPL
- *           MAILBOX_REQ_CHAN_SWITCH
+/**
+ *  MAILBOX_REQ_CONN_EXPL & MAILBOX_REQ_CHAN_SWITCH
+ *  payload type
  */
 struct mailbox_conn{
   uint64_t flag;
@@ -116,32 +130,41 @@ struct mailbox_conn{
 };
 
 
-/* struct of MAILBOX_REQ_LOAD_XCLBIN_KADDR
- *
+/**
+ *  MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type
  */
 struct mailbox_bitstream_kaddr {
   uint64_t addr;
 };
 
+/**
+ *  MAILBOX_REQ_GPCTL payload type
+ */
 struct mailbox_gpctl {
   enum mb_cmd_type cmd_type;
   uint32_t data_total_len;
   uint64_t priv_data;
   void *data_ptr;
 };
-/* MAILBOX_REQ_LOAD_XCLBIN */
 
-/*
- * MAILBOX_REQ_RECLOCK
+/**
+ *  MAILBOX_REQ_RECLOCK payload type
  */
 struct mailbox_clock_freqscaling {
   unsigned region;
   unsigned short target_freqs[4];
 };
 
+/**
+ *  mailbox_req header
+ *  req:            opcode
+ *  data_len:       payload size
+ *  flags:          reserved
+ *  data:           payload
+ */
 struct mailbox_req {
   enum mailbox_request req;
-  uint32_t data_total_len;
+  uint32_t data_len;
   uint64_t flags;
   char data[0];
 };
@@ -150,22 +173,16 @@ struct mailbox_req {
 #define MB_PROT_VER_MINOR 5
 #define MB_PROTOCOL_VER   ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
 
+
+
+/**
+ *  MAILBOX_REQ_CONN_EXPL response
+ *  MB_PEER_SAME_DOM
+ */
 #define MB_PEER_CONNECTED         (0x1 << 0)
 #define MB_PEER_SAME_DOM          (0x1 << 1)
-#define MB_PEER_SW_CHAN_EN        (0x1 << 2)
 #define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
-#define MB_SW_ENABLE_LOCK         (0x1 << 3)
-#define MB_SW_ENABLE_UNLOCK       (0x1 << 4)
-#define MB_SW_ENABLE_HOT_RESET    (0x1 << 5)
-#define MB_SW_ENABLE_FIREWALL     (0x1 << 6)
-#define MB_SW_ENABLE_GPCTL        (0x1 << 7)
-#define MB_SW_ENABLE_XCLBIN_KADDR (0x1 << 8)
-#define MB_SW_ENABLE_XCLBIN       (0x1 << 9)
-#define MB_SW_ENABLE_RECLOCK      (0x1 << 10)
-#define MB_SW_ENABLE_PEER_DATA    (0x1 << 11)
-#define MB_SW_ENABLE_CONN_EXPL    (0x1 << 12)
-#define MB_SW_ENABLE_CHAN_SWITCH  (0x1 << 13)
 #endif /* _XCL_MB_PROTOCOL_H_ */
 
 
