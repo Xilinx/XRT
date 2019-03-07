@@ -64,14 +64,11 @@ void *mpd(void *handle_ptr)
 {
     int xferCount = 0;
     int ret;
-    uint64_t flags = 0;
-    uint64_t id = 0;
     struct s_handle *s_handle_ptr = (struct s_handle *)handle_ptr;
     xclDeviceHandle handle = s_handle_ptr->uDevHandle;
     size_t prev_sz = INIT_BUF_SZ;
-    uint32_t *buf;
-    buf = (uint32_t *)malloc(prev_sz);
-    struct drm_xocl_sw_mailbox args = { flags, buf, true, prev_sz, id };
+    struct drm_xocl_sw_mailbox args = { 0, 0, true, prev_sz, 0 };
+    args.data = (uint32_t *)malloc(prev_sz);
 
     std::cout << "[XOCL->XCLMGMT Intercept ON (HAL)]\n";
     for( ;; ) {
@@ -82,12 +79,11 @@ void *mpd(void *handle_ptr)
             // sw channel xfer error 
             if( errno == EMSGSIZE ) {
                 // buffer was of insufficient size, resizing
-                if( resize_buffer( buf, args.sz ) != 0 ) {
+                if( resize_buffer( args.data, args.sz ) != 0 ) {
                     std::cout << "MPD: resize_buffer() failed...exiting\n";
                     exit(1);
                 }
                 prev_sz = args.sz; // store the newly alloc'd size
-                args.data = buf;   // move the data pointer
                 ret = xclMPD(handle, &args);
             } else {
                 std::cout << "MPD: transfer failed for other reason\n";
@@ -117,14 +113,11 @@ void *msd(void *handle_ptr)
 {
     int xferCount = 0;
     int ret;
-    uint64_t flags = 0;
-    uint64_t id = 0;
     struct s_handle *s_handle_ptr = (struct s_handle *)handle_ptr;
     xclDeviceHandle handle = s_handle_ptr->uDevHandle;
     size_t prev_sz = INIT_BUF_SZ;
-    uint32_t *buf;
-    buf = (uint32_t *)malloc(prev_sz);
-    struct drm_xocl_sw_mailbox args = { flags, buf, true, prev_sz, id };
+    struct drm_xocl_sw_mailbox args = { 0, 0, true, prev_sz, 0 };
+    args.data = (uint32_t *)malloc(prev_sz);
 
     std::cout << "               [XCLMGMT->XOCL Intercept ON (HAL)]\n";
     for( ;; ) {
@@ -132,15 +125,14 @@ void *msd(void *handle_ptr)
         args.sz = prev_sz;
         ret = xclMSD(handle, &args);
         if( ret != 0 ) {
-            //std::cout << "sw channel xfer errno=" << errno << " (" << strerror(errno) << ")\n";
+            // sw channel xfer error 
             if( errno == EMSGSIZE ) {
-                //std::cout << "buffer was of insufficient size, resizing from: " << prev_sz << " to: " << args.sz;
-                if( resize_buffer( buf, args.sz ) != 0 ) {
+                // buffer was of insufficient size, resizing
+                if( resize_buffer( args.data, args.sz ) != 0 ) {
                     std::cout << "              MSD: resize_buffer() failed...exiting\n";
                     exit(1);
                 }
                 prev_sz = args.sz; // store the newly alloc'd size
-                args.data = buf;   // move the data pointer
                 ret = xclMSD(handle, &args);
             } else {
                 std::cout << "              MSD: transfer failed for other reason\n";
