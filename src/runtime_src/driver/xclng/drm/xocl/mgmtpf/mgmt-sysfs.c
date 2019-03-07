@@ -281,8 +281,8 @@ static ssize_t sw_chan_en_store(struct device *dev,
  	if (kstrtoull(buf, 0, &val) < 0)
 		return -EINVAL;
 
-	if(val & 0x7){
-		mgmt_err(lro, "can only set BIT3 to BIT63");
+	if(val & 0x1){
+		mgmt_err(lro, "can only set BIT1 to BIT63");
 		return -EINVAL;
 	}
 	xocl_mailbox_set(lro, CHAN_SWITCH, &val);

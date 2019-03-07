@@ -664,7 +664,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	if (err != 0)
 		return;
 
-	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
+	mgmt_info(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
