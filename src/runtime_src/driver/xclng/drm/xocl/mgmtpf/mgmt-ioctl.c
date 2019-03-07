@@ -16,7 +16,8 @@
 
 #include "mgmt-core.h"
 
-static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
+static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
+{
 
 	struct xclmgmt_err_info obj;
 	u32	val, level;
@@ -33,7 +34,7 @@ static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
 
 	obj.mNumFirewalls = val;
 	memset(obj.mAXIErrorStatus, 0, sizeof (obj.mAXIErrorStatus));
-	for(i = 0; i < obj.mNumFirewalls; ++i) {
+	for (i = 0; i < obj.mNumFirewalls; ++i) {
 		obj.mAXIErrorStatus[i].mErrFirewallID = i;
 	}
 
@@ -111,13 +112,13 @@ static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *dat
 	}
 
 	ret = xocl_mailbox_sw_transfer(lro, &args);
-	if( args.is_tx && (ret==0) ) {
+	if (args.is_tx && (ret == 0)) {
 		ret = copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox));
 	} else {
 		ret = copy_to_user((void *)data+offsetof(struct drm_xocl_sw_mailbox, sz),
 				   (void *)&args.sz,
 				   sizeof(size_t));
-		ret = 0; // Ignore return value in call of copy_to_user above.
+		ret = 0; /* Ignore return value in call of copy_to_user above. */
 	}
 	return ret;
 }
@@ -172,7 +173,7 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		result = err_info_ioctl(lro, (void __user *)arg);
 		break;
 	case XCLMGMT_IOCSWMAILBOX:
-		// give up the mutex for Mailbox ioctl
+		/* give up the mutex for Mailbox ioctl */
 		mutex_unlock(&lro->busy_mutex);
 		result = mgmt_sw_mailbox_ioctl(lro, (void __user *)arg);
 		break;
