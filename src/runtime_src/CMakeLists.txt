@@ -65,6 +65,12 @@ target_link_libraries(oclxdp
   xilinxopencl
  )
 
+set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
 target_link_libraries(xilinxopencl
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
