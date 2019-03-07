@@ -1464,22 +1464,6 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len,
 	return rv;
 }
 
-#if 0
-static int mailbox_get_data(struct platform_device *pdev, enum data_kind kind)
-{
-	int ret = 0;
-	switch(kind){
-		case PEER_CONN:
-			ret = mailbox_connect_status(pdev);
-			break;
-		default:
-			break;
-	}
-
-	return ret;
-}
-#endif
-
 static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 {
 	struct mailbox_req *req = (struct mailbox_req *)msg->mbm_data;
