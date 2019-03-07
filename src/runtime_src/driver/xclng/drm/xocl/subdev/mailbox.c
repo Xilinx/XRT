@@ -338,6 +338,9 @@ struct mailbox {
 	void *mbx_kaddr;
 
 	bool sw_mbx_enabled;
+
+	uint64_t mbx_ch_state;
+	uint64_t mbx_ch_switch;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg) {
@@ -1357,7 +1360,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 
-	MBX_DBG(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
+	MBX_INFO(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -1461,6 +1464,7 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len,
 	return rv;
 }
 
+#if 0
 static int mailbox_get_data(struct platform_device *pdev, enum data_kind kind)
 {
 	int ret = 0;
@@ -1474,6 +1478,7 @@ static int mailbox_get_data(struct platform_device *pdev, enum data_kind kind)
 
 	return ret;
 }
+#endif
 
 static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 {
@@ -1631,21 +1636,71 @@ static void mailbox_disable_intr_mode(struct mailbox *mbx)
 	mbx->mbx_irq = -1;
 }
 
-int mailbox_reset(struct platform_device *pdev, bool end_of_reset)
+
+int mailbox_get(struct platform_device *pdev, enum mb_kind kind, void *data)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	int ret = 0;
+	uint64_t *ch_data = (uint64_t*)data;
+
+	mutex_lock(&mbx->mbx_lock);
+	switch(kind){
+		case CHAN_STATE:
+			*ch_data = mbx->mbx_ch_state;
+			break;
+		case CHAN_SWITCH:
+			*ch_data = mbx->mbx_ch_switch;
+			break;
+		default:
+			break;
+	}
+	mutex_unlock(&mbx->mbx_lock);
+	return ret;
+}
+
+
+int mailbox_set(struct platform_device *pdev, enum mb_kind kind, void *data)
+{
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+	int ret = 0;
+	uint64_t* ch_data = (uint64_t*)data;
 
 	if (mailbox_no_intr)
 		return 0;
 
-	if (end_of_reset) {
-		MBX_INFO(mbx, "enable intr mode");
-		if (mailbox_enable_intr_mode(mbx) != 0)
-			MBX_ERR(mbx, "failed to enable intr after reset");
-	} else {
-		MBX_INFO(mbx, "enable polling mode");
-		mailbox_disable_intr_mode(mbx);
+	switch(kind){
+		case RESET_END:
+			MBX_INFO(mbx, "enable intr mode");
+			if (mailbox_enable_intr_mode(mbx) != 0)
+				MBX_ERR(mbx, "failed to enable intr after reset");
+			break;
+		case NOT_RESET_END:
+			MBX_INFO(mbx, "enable polling mode");
+			mailbox_disable_intr_mode(mbx);
+			break;
+		case CHAN_STATE:
+			mutex_lock(&mbx->mbx_lock);
+			mbx->mbx_ch_state = *ch_data;
+			mutex_unlock(&mbx->mbx_lock);
+			break;
+		case CHAN_SWITCH:
+			mutex_lock(&mbx->mbx_lock);
+			mbx->mbx_ch_switch |= *ch_data;
+			mutex_unlock(&mbx->mbx_lock);
+			break;
+		case CH_STATE_RST:
+			mutex_lock(&mbx->mbx_lock);
+			mbx->mbx_ch_state = 0;
+			mbx->mbx_ch_switch = 0;
+			mutex_unlock(&mbx->mbx_lock);
+			break;	
+		case CH_SWITCH_RST:
+			mutex_lock(&mbx->mbx_lock);
+			mbx->mbx_ch_switch = 0;
+			mutex_unlock(&mbx->mbx_lock);
+			break;	
+		default:
+			break;
 	}
 	return ret;
 }
@@ -1768,8 +1823,8 @@ static struct xocl_mailbox_funcs mailbox_ops = {
 	.request 	= mailbox_request,
 	.post 		= mailbox_post,
 	.listen 	= mailbox_listen,
-	.reset 		= mailbox_reset,
-	.get_data 	= mailbox_get_data,
+	.set 		= mailbox_set,
+	.get 		= mailbox_get,
 	.sw_transfer 	= mailbox_sw_transfer,
 };
 

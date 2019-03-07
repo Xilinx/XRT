@@ -68,30 +68,9 @@ static int userpf_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		xocl_dma_intr_unreg(xdev_hdl, intr);
 }
 
-static uint64_t userpf_get_data(xdev_handle_t xdev_hdl, enum data_kind kind)
-{
-	struct xocl_dev *xdev = (struct xocl_dev *)xdev_hdl;
-	uint64_t ret = 0;
- 	mutex_lock(&xdev->xdev_lock);
-	switch(kind){
-		case CHAN_STATE:
-			ret = xdev->ch_state;
-			break;
-		case CHAN_SWITCH:
-			ret = xdev->ch_switch;
-			break;
-		default:
-			break;
-	}
-	mutex_unlock(&xdev->xdev_lock);
-	return ret;
-}
-
-
 struct xocl_pci_funcs userpf_pci_ops = {
 	.intr_config = userpf_intr_config,
 	.intr_register = userpf_intr_register,
-	.get_data = userpf_get_data,
 };
 
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
@@ -101,12 +80,12 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
         xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
         if (prepare) {
-		xocl_mailbox_reset(xdev, false);
+		xocl_mailbox_set(xdev, NOT_RESET_END, NULL);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DMA);
         } else {
 		reset_notify_client_ctx(xdev);
 		xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
-		xocl_mailbox_reset(xdev, true);
+		xocl_mailbox_set(xdev, RESET_END, NULL);
 		xocl_exec_reset(xdev);
         }
 }
@@ -146,8 +125,9 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	int ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
 	size_t resplen = sizeof (ret);
-	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	uint64_t chan_flag = 0;
 	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
 
 	mutex_lock(&xdev->ctx_list_lock);
 	if (xdev->offline) {
@@ -170,7 +150,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	sw_ch = (chan_flag & MB_SW_ENABLE_HOT_RESET) != 0;
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_HOT_RESET)) != 0;
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL, sw_ch);
 	if (mbret)
 		ret = mbret;
@@ -191,8 +171,10 @@ void xocl_mb_connect(struct xocl_dev *xdev)
 	int resp = 0;
 	size_t data_len = 0, reqlen = 0, resplen = sizeof(resp);
 	void *kaddr = NULL;
-	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	uint64_t chan_flag = 0, ch_state = 0;
 	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
+
 
 	data_len = sizeof(struct mailbox_conn);
 	reqlen = sizeof(struct mailbox_req) + data_len;
@@ -212,17 +194,19 @@ void xocl_mb_connect(struct xocl_dev *xdev)
 
 	memcpy(mb_req->data, &mb_conn, data_len);
 
-	sw_ch = (chan_flag & MB_SW_ENABLE_CONN_EXPL) != 0;
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &resp, &resplen,
 		NULL, NULL, sw_ch);
 	if(!ret){
-		mutex_lock(&xdev->xdev_lock);
-		xdev->ch_state = MB_PEER_CONNECTED;
+
+		ch_state = MB_PEER_CONNECTED;
 		if(resp > 0){
-			xdev->ch_state |= resp;
+			ch_state |= resp;
 		}
-		userpf_info(xdev, "xdev->ch_state 0x%llx\n", xdev->ch_state);
-		mutex_unlock(&xdev->xdev_lock);
+
+		xocl_mailbox_set(xdev, CHAN_STATE, &ch_state);
+
+		userpf_info(xdev, "ch_state 0x%llx\n", ch_state);
 	}
 	kfree(kaddr);
 	vfree(mb_req);
@@ -236,10 +220,13 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	size_t resplen = sizeof (msg);
 	size_t data_len = sizeof(struct mailbox_clock_freqscaling);
 	size_t reqlen = sizeof(struct mailbox_req)+data_len;
-	uint64_t chan_flag = xocl_get_data(xdev, CHAN_SWITCH);
+	uint64_t chan_flag = 0;
 	bool sw_ch = false;
 	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
 	struct mailbox_clock_freqscaling mb_freqs = {0};
+
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
+
 
 	mb_freqs.region = freqs->region;
 	for(i=0;i<4;++i){
@@ -248,10 +235,9 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 
 	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
 	req->req = MAILBOX_REQ_RECLOCK;
-	req->data_total_len = data_len;
 	memcpy(req->data, data, data_len);
 
-	sw_ch = (chan_flag & MB_SW_ENABLE_RECLOCK) != 0;
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_RECLOCK)) != 0;
 	err = xocl_peer_request(xdev, req, reqlen,
 		&msg, &resplen, NULL, NULL, sw_ch);
 
@@ -266,9 +252,10 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 static void xocl_ch_switch(struct xocl_dev *xdev, struct mailbox_conn *conn)
 {
 	userpf_info(xdev, "%s set channel switch 0x%llx\n", __func__, conn->flag);
- 	mutex_lock(&xdev->xdev_lock);
-	xdev->ch_switch = conn->flag;
-	mutex_unlock(&xdev->xdev_lock);
+	if(!conn->flag)
+		xocl_mailbox_set(xdev, CH_SWITCH_RST, NULL);
+	else
+ 		xocl_mailbox_set(xdev, CHAN_SWITCH, &conn->flag);
 }
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -292,11 +279,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		if(conn->flag)
 			(void) xocl_mb_connect(xdev);
 		else {
-			mutex_lock(&xdev->xdev_lock);
-			xdev->ch_state = 0;
-			mutex_unlock(&xdev->xdev_lock);
+			xocl_mailbox_set(xdev, CH_STATE_RST, NULL);
 		}
-		userpf_info(xdev, "xdev->ch_state 0x%llx\n", xdev->ch_state);
 		break;
 	case MAILBOX_REQ_CHAN_SWITCH:
 		xocl_ch_switch(xdev, (struct mailbox_conn *)req->data);
@@ -674,8 +658,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xocl_fill_dsa_priv(xdev, dev_info);
-
-	mutex_init(&xdev->xdev_lock);
 
 	ret = identify_bar(xdev);
 	if (ret) {

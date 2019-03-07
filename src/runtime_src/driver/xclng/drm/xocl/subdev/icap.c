@@ -256,8 +256,10 @@ static void icap_read_from_peer(struct platform_device *pdev, enum data_kind kin
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	uint64_t ch_switch = xocl_get_data(xdev, CHAN_SWITCH);
-	bool sw_ch = ch_switch & MB_SW_ENABLE_PEER_DATA;
+	uint64_t ch_switch = 0;
+	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA);
 
 	mb_req = (struct mailbox_req *)vmalloc(reqlen);
 	if(!mb_req)
@@ -1644,8 +1646,10 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	struct xocl_dev *xdev = (struct xocl_dev *)XOCL_PL_DEV_TO_XDEV(pdev);
-	uint64_t ch_switch = xocl_get_data(xdev, CHAN_SWITCH);
-	bool sw_ch = ch_switch & MB_SW_ENABLE_LOCK;
+	uint64_t ch_switch = 0;
+	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_LOCK_BITSTREAM);
 	/* if there is no user there
 	 * ask mgmt to lock the bitstream
 	 */
@@ -1689,8 +1693,10 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	struct xocl_dev *xdev = (struct xocl_dev *)XOCL_PL_DEV_TO_XDEV(pdev);
-	uint64_t ch_switch = xocl_get_data(xdev, CHAN_SWITCH);
-	bool sw_ch = ch_switch & MB_SW_ENABLE_UNLOCK;
+	uint64_t ch_switch = 0;
+	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_UNLOCK_BITSTREAM);
 
 	/* if there is no user there
 	 * ask mgmt to unlock the bitstream
@@ -1739,14 +1745,15 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	size_t resplen = sizeof (msg);
 	int pid = pid_nr(task_tgid(current));
 	uint32_t data_len = 0;
-//	int peer_connected;
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_bitstream_kaddr mb_addr = {0};
 	xuid_t peer_uuid;
-	uint64_t ch_state = xocl_get_data(xdev, CHAN_STATE);
-	uint64_t ch_switch = xocl_get_data(xdev, CHAN_SWITCH);
+	uint64_t ch_state = 0;
+	uint64_t ch_switch = 0;
 	bool sw_ch = false;
 
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
 
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
@@ -1909,7 +1916,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				}
 				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 				mb_addr.addr = (uint64_t)xclbin;
-				sw_ch = ch_switch & MB_SW_ENABLE_XCLBIN_KADDR;
+				sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN_KADDR);
 				memcpy(mb_req->data, &mb_addr, sizeof(struct mailbox_bitstream_kaddr));
 
 			} else if ((ch_state & 0xF) == MB_PEER_CONNECTED){
@@ -1923,9 +1930,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				}
 				memcpy(mb_req->data, u_xclbin, xclbin->m_header.m_length);
 				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
-				sw_ch = ch_switch & MB_SW_ENABLE_XCLBIN;
+				sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN);
 			}
-			mb_req->data_total_len = data_len;
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL, sw_ch);
 

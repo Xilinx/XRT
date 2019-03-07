@@ -190,7 +190,6 @@ struct xocl_pci_funcs {
 	int (*intr_register)(xdev_handle_t xdev, u32 intr,
 		irq_handler_t handler, void *arg);
 	int (*reset)(xdev_handle_t xdev);
-	uint64_t (*get_data)(xdev_handle_t xdev, enum data_kind kind);
 };
 
 #define	XDEV(dev)	((struct xocl_dev_core *)(dev))
@@ -540,6 +539,17 @@ struct xocl_dna_funcs {
 #define xocl_xmc_get_data(xdev, cmd)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
 
+
+
+enum mb_kind {
+	RESET_END,
+	NOT_RESET_END,
+	CHAN_STATE,
+	CHAN_SWITCH,
+	CH_STATE_RST,
+	CH_SWITCH_RST,
+};
+
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {
@@ -550,8 +560,8 @@ struct xocl_mailbox_funcs {
 		void *resp, size_t len, bool sw_ch);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*reset)(struct platform_device *pdev, bool end_of_reset);
-	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
+	int (*set)(struct platform_device *pdev, enum mb_kind kind, void *data);
+	int (*get)(struct platform_device *pdev, enum mb_kind kind, void *data);
 	int (*sw_transfer)(struct platform_device *pdev, void *args);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
@@ -570,9 +580,12 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
-#define	xocl_mailbox_reset(xdev, end)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
-	end) : -ENODEV)
+#define	xocl_mailbox_set(xdev, kind, data)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->set(MAILBOX_DEV(xdev), \
+	kind, data) : -ENODEV)
+#define	xocl_mailbox_get(xdev, kind, data)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
+	kind, data) : -ENODEV)
 #define	xocl_mailbox_get_data(xdev, kind)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
 		: -ENODEV)

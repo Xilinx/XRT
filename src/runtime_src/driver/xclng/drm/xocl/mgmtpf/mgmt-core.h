@@ -116,9 +116,10 @@ struct xclmgmt_dev {
 	int msix_user_start_vector;
 	bool ready;
 
+#if 0
 	struct mutex mdev_lock;
 	uint64_t ch_switch;
-
+#endif
 };
 
 extern int health_check;

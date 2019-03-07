@@ -281,15 +281,11 @@ static ssize_t sw_chan_en_store(struct device *dev,
  	if (kstrtoull(buf, 0, &val) < 0)
 		return -EINVAL;
 
-	if(val & 0x3){
-		mgmt_err(lro, "can only set BIT2 to BIT63");
+	if(val & 0x7){
+		mgmt_err(lro, "can only set BIT3 to BIT63");
 		return -EINVAL;
 	}
-
- 	mutex_lock(&lro->busy_mutex);
-	lro->ch_switch |= val;
-	mutex_unlock(&lro->busy_mutex);
-
+	xocl_mailbox_set(lro, CHAN_SWITCH, &val);
 	xclmgmt_chan_switch_notify(lro);
 
  	return count;
@@ -298,13 +294,10 @@ static ssize_t sw_chan_en_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
-	uint64_t ret;
- 	mutex_lock(&lro->busy_mutex);
-	ret = lro->ch_switch;
-	mutex_unlock(&lro->busy_mutex);
-
-	return sprintf(buf, "0x%llx\n", ret);
+	return sprintf(buf, "0x%llx\n", ch_switch);
 }
 
 static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
@@ -313,10 +306,7 @@ static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-
-	mutex_lock(&lro->busy_mutex);
-	lro->ch_switch = 0;
-	mutex_unlock(&lro->busy_mutex);
+	xocl_mailbox_set(lro, CH_SWITCH_RST, NULL);
 
 	xclmgmt_chan_switch_notify(lro);
 	return count;
