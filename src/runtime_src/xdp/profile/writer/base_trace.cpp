@@ -300,7 +300,7 @@ namespace xdp {
             if (sepIndex != std::string::npos) {
               auto slaveName = cuPortName.substr(sepIndex + 1);
               auto masterName = cuPortName.substr(0, sepIndex);
-              if (masterName == IP_LAYOUT_HOST_NAME) {
+              if (masterName == IP_LAYOUT_HOST_NAME || masterName == IP_LAYOUT_PIPE_NAME) {
                 cuPortName = slaveName;
               } else {
                 cuPortName = masterName;

@@ -43,6 +43,7 @@
 /************************ DEBUG IP LAYOUT ************************************/
 
 #define IP_LAYOUT_HOST_NAME "HOST"
+#define IP_LAYOUT_PIPE_NAME "PIPE"
 #define IP_LAYOUT_SEP "-"
 
 /************************ APM 0: Monitor MIG Ports ****************************/

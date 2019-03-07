@@ -438,27 +438,30 @@ namespace xdp {
       std::string slavePortName;
       std::string masterArgNames = FIELD_NOT_APPLICABLE;
       std::string slaveArgNames = FIELD_NOT_APPLICABLE;
+      std::size_t cuFound = 0;
+      std::size_t masterSlaveFound = 0;
       double totalCUTimeMsec = 0.0;
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = mDeviceBinaryStrSlotsMap.at(key)[s];
-        size_t sepIndex = cuPortName.find(IP_LAYOUT_SEP);
+        masterSlaveFound = cuPortName.find(IP_LAYOUT_SEP);
         // Debug IP format : "MasterName-SlaveName"
-        if (sepIndex == std::string::npos)
+        if (masterSlaveFound == std::string::npos)
           return;
-        masterPortName = cuPortName.substr(0, sepIndex);
-        slavePortName = cuPortName.substr(sepIndex + 1);
-        if (masterPortName != IP_LAYOUT_HOST_NAME) {
-          auto index = masterPortName.find_first_of("/");
-          auto cu = masterPortName.substr(0, index);
-          auto port = masterPortName.substr(index+1);
+        masterPortName = cuPortName.substr(0, masterSlaveFound);
+        slavePortName = cuPortName.substr(masterSlaveFound + 1);
+        cuFound = masterPortName.find_first_of("/");
+        // Look for arguments if not HOST or PIPE
+        if (cuFound != std::string::npos) {
+          auto cu = masterPortName.substr(0, cuFound);
+          auto port = masterPortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, masterArgNames, placeholder);
           totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
         }
-        if (slavePortName != IP_LAYOUT_HOST_NAME) {
-          auto index = slavePortName.find_first_of("/");
-          auto cu = slavePortName.substr(0, index);
-          auto port = slavePortName.substr(index+1);
+        cuFound = slavePortName.find_first_of("/");
+        if (cuFound != std::string::npos) {
+          auto cu = slavePortName.substr(0, cuFound);
+          auto port = slavePortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, slaveArgNames, placeholder);
           totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
