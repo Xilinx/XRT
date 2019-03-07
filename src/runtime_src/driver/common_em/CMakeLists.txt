@@ -34,8 +34,6 @@ add_library(common_em SHARED ${CURR_SOURCE}
 
 add_dependencies(common_em generated_code)
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
-
 set_target_properties(common_em PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
