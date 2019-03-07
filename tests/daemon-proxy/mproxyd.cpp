@@ -39,8 +39,8 @@ struct s_handle {
 
 struct drm_xocl_sw_mailbox {
     uint64_t flags;
-    uint32_t *pData;
-    bool isTx;
+    uint32_t *data;
+    bool is_tx;
     size_t sz;
     uint64_t id;
 };
@@ -69,45 +69,45 @@ void *mpd(void *handle_ptr)
     struct s_handle *s_handle_ptr = (struct s_handle *)handle_ptr;
     xclDeviceHandle handle = s_handle_ptr->uDevHandle;
     size_t prev_sz = INIT_BUF_SZ;
-    uint32_t *buf1;
-    buf1 = (uint32_t *)malloc(prev_sz);
-    struct drm_xocl_sw_mailbox args = { flags, buf1, true, prev_sz, id };
+    uint32_t *buf;
+    buf = (uint32_t *)malloc(prev_sz);
+    struct drm_xocl_sw_mailbox args = { flags, buf, true, prev_sz, id };
 
-    printf( "[XOCL->XCLMGMT Intercept ON (HAL)]\n" );
+    std::cout << "[XOCL->XCLMGMT Intercept ON (HAL)]\n";
     for( ;; ) {
-        args.isTx = true;
+        args.is_tx = true;
         args.sz = prev_sz;
-        ret = xclMbxUserDaemon(handle, &args);
+        ret = xclMPD(handle, &args);
         if( ret != 0 ) {
-            //std::cout << "sw channel xfer errno=" << errno << " (" << strerror(errno) << ")\n";
+            // sw channel xfer error 
             if( errno == EMSGSIZE ) {
-                //std::cout << "buffer was of insufficient size, resizing from: " << prev_sz << " to: " << args.sz;
-                if( resize_buffer( buf1, args.sz ) != 0 ) {
-                    std::cout << "user: resize_buffer() failed...exiting\n";
+                // buffer was of insufficient size, resizing
+                if( resize_buffer( buf, args.sz ) != 0 ) {
+                    std::cout << "MPD: resize_buffer() failed...exiting\n";
                     exit(1);
                 }
-                prev_sz = args.sz;
-                args.pData = buf1;
-                ret = xclMbxUserDaemon(handle, &args);
+                prev_sz = args.sz; // store the newly alloc'd size
+                args.data = buf;   // move the data pointer
+                ret = xclMPD(handle, &args);
             } else {
-                std::cout << "user: transfer failed for other reason\n";
+                std::cout << "MPD: transfer failed for other reason\n";
                 exit(1);
             }
 
             if( ret != 0 ) {
-                std::cout << "user: second transfer failed, exiting.\n";
+                std::cout << "MPD: second transfer failed, exiting.\n";
                 exit(1);
             }
         }
-        printf("[XOCL-PKT-TX]\n");
+        std::cout << "[MPD-TX]\n";
 
-        args.isTx = false;
-        ret = xclMbxMgmtDaemon(handle, &args);
+        args.is_tx = false;
+        ret = xclMSD(handle, &args);
         if( ret != 0 ) {
-            std::cout << "mgmt: transfer error: " << strerror(errno) << std::endl;
-            break;
+            std::cout << "MSD: transfer error: " << strerror(errno) << std::endl;
+            exit(1);
         }
-        std::cout << "[MGMT-PKT-RX]: " << xferCount << std::endl;
+        std::cout << "[MSD-RX]: " << xferCount << std::endl;
         xferCount++;
     }
     std::cout << "Exit thread XOCL->XCLMGMT\n";
@@ -122,41 +122,41 @@ void *msd(void *handle_ptr)
     struct s_handle *s_handle_ptr = (struct s_handle *)handle_ptr;
     xclDeviceHandle handle = s_handle_ptr->uDevHandle;
     size_t prev_sz = INIT_BUF_SZ;
-    uint32_t *buf2;
-    buf2 = (uint32_t *)malloc(prev_sz);
-    struct drm_xocl_sw_mailbox args = { flags, buf2, true, prev_sz, id };
+    uint32_t *buf;
+    buf = (uint32_t *)malloc(prev_sz);
+    struct drm_xocl_sw_mailbox args = { flags, buf, true, prev_sz, id };
 
     std::cout << "               [XCLMGMT->XOCL Intercept ON (HAL)]\n";
     for( ;; ) {
-        args.isTx = true;
+        args.is_tx = true;
         args.sz = prev_sz;
-        ret = xclMbxMgmtDaemon(handle, &args);
+        ret = xclMSD(handle, &args);
         if( ret != 0 ) {
             //std::cout << "sw channel xfer errno=" << errno << " (" << strerror(errno) << ")\n";
             if( errno == EMSGSIZE ) {
                 //std::cout << "buffer was of insufficient size, resizing from: " << prev_sz << " to: " << args.sz;
-                if( resize_buffer( buf2, args.sz ) != 0 ) {
-                    std::cout << "              mgmt: resize_buffer() failed...exiting\n";
+                if( resize_buffer( buf, args.sz ) != 0 ) {
+                    std::cout << "              MSD: resize_buffer() failed...exiting\n";
                     exit(1);
                 }
-                prev_sz = args.sz;
-                args.pData = buf2;
-                ret = xclMbxMgmtDaemon(handle, &args);
+                prev_sz = args.sz; // store the newly alloc'd size
+                args.data = buf;   // move the data pointer
+                ret = xclMSD(handle, &args);
             } else {
-                std::cout << "              mgmt: transfer failed for other reason\n";
+                std::cout << "              MSD: transfer failed for other reason\n";
                 exit(1);
             }
         }
 
-        printf("                [MGMT-PKT-TX]\n");
+        std::cout << "                [MSD-TX]\n";
 
-        args.isTx = false;
-        ret = xclMbxUserDaemon(handle, &args);
+        args.is_tx = false;
+        ret = xclMPD(handle, &args);
         if( ret != 0 ) {
-            std::cout << "                    user: transfer error: " << strerror(errno) << std::endl;
+            std::cout << "                    MPD: transfer error: " << strerror(errno) << std::endl;
             exit(1);
         }
-        std::cout << "                [XOCL-PKT-RX] " << xferCount << std::endl;
+        std::cout << "                [MPD-RX] " << xferCount << std::endl;
         xferCount++;
     }
 

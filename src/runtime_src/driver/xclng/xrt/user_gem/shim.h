@@ -274,8 +274,8 @@ public:
     char *xclMapMgmt(void) { return mMgtMap; }
     xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
 
-    int xclMbxUserDaemon(struct drm_xocl_sw_mailbox *args);
-    int xclMbxMgmtDaemon(struct drm_xocl_sw_mailbox *args);
+    int xclMPD(struct drm_xocl_sw_mailbox *args);
+    int xclMSD(struct drm_xocl_sw_mailbox *args);
 
 private:
     xclVerbosityLevel mVerbosity;
