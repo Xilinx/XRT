@@ -42,10 +42,9 @@ XRT
 
 ## Prerequisites
 1. Python
-2. Enum package: pip install Enum
 
 ## Using source files
-Calling functions from xclhal2_binding.py and xclbin_binding.py
+Calling functions from xrt_binding.py and xclbin_binding.py
 * import source file:
 >> sys.path.append('< path of the source file >') <br>
 from < source file > import *

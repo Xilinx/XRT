@@ -23,7 +23,6 @@ add_compile_options("-fPIC" "-fvisibility=hidden")
 #set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
 add_subdirectory(user_common)
-add_subdirectory(util)
 add_subdirectory(user_gem)
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}

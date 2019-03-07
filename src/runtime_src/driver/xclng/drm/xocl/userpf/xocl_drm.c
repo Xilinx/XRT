@@ -286,8 +286,6 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(XOCL_COPY_BO, xocl_copy_bo_ioctl,
-			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
 		  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_RECLOCK, xocl_reclock_ioctl,
@@ -545,19 +543,12 @@ void xocl_cleanup_mem(struct xocl_drm *drm_p)
 			drm_p->mm_usage_stat[i] = NULL;
 		}
 	}
-
-	if (drm_p->mm) {
-		vfree(drm_p->mm);
-		drm_p->mm = NULL;
-	}
-	if (drm_p->mm_usage_stat) {
-		vfree(drm_p->mm_usage_stat);
-		drm_p->mm_usage_stat = NULL;
-	}
-	if (drm_p->mm_p2p_off) {
-		vfree(drm_p->mm_p2p_off);
-		drm_p->mm_p2p_off = NULL;
-	}
+	vfree(drm_p->mm);
+	drm_p->mm = NULL;
+	vfree(drm_p->mm_usage_stat);
+	drm_p->mm_usage_stat = NULL;
+	vfree(drm_p->mm_p2p_off);
+	drm_p->mm_p2p_off = NULL;
 }
 
 int xocl_init_mem(struct xocl_drm *drm_p)
@@ -584,6 +575,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	if (topo == NULL)
+		return 0;
+
 	length = topo->m_count * sizeof(struct mem_data);
 	size = topo->m_count * sizeof(void *);
 	wrapper_size = sizeof(struct xocl_mm_wrapper);
@@ -673,24 +667,20 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	return 0;
 
 failed:
-	if (wrapper)
-		vfree(wrapper);
-
+	vfree(wrapper);
 	if (drm_p->mm) {
 		for (; i >= 0; i--) {
 			drm_mm_takedown(drm_p->mm[i]);
-			if (drm_p->mm[i])
-				vfree(drm_p->mm[i]);
-			if (drm_p->mm_usage_stat[i])
-				vfree(drm_p->mm_usage_stat[i]);
+			vfree(drm_p->mm[i]);
+			vfree(drm_p->mm_usage_stat[i]);
 		}
-
 		vfree(drm_p->mm);
+		drm_p->mm = NULL;
 	}
-	if (drm_p->mm_usage_stat)
-		vfree(drm_p->mm_usage_stat);
-	if (drm_p->mm_p2p_off)
-		vfree(drm_p->mm_p2p_off);
+	vfree(drm_p->mm_usage_stat);
+	drm_p->mm_usage_stat = NULL;
+	vfree(drm_p->mm_p2p_off);
+	drm_p->mm_p2p_off = NULL;
 
 	return err;
 }

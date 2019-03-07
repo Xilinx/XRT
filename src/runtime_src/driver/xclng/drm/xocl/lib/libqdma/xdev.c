@@ -342,7 +342,11 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		return -EINVAL;
 	}
 
-	if (IS_STM_ENABLED_DEVICE(pdev)) {
+	xdev->stm_en = 0;
+#ifndef __XRT__
+	if (IS_STM_ENABLED_DEVICE(pdev)) 
+#endif
+	{
 		u32 rev;
 
 		map_len = pci_resource_len(pdev, STM_BAR);
@@ -376,8 +380,6 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 				xdev->conf.name, xdev->stm_rev, rev);
 			xdev->stm_en = 1;
 		}
-	} else {
-		xdev->stm_en = 0;
 	}
 
 	return 0;

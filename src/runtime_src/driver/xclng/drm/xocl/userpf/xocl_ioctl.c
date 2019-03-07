@@ -138,7 +138,7 @@ get_axlf_section(const struct axlf *top, enum axlf_section_kind kind)
 	return NULL;
 }
 
-int
+static int
 xocl_check_section(const struct axlf_section_header *header, uint64_t len,
 		enum axlf_section_kind kind)
 {
@@ -160,15 +160,13 @@ xocl_check_section(const struct axlf_section_header *header, uint64_t len,
 }
 
 /* Return value: Negative for error, or the size in bytes has been copied */
-int
-xocl_read_sect(enum axlf_section_kind kind, void *sect,
-		struct axlf *axlf_full, char __user *xclbin_ptr)
+static int
+xocl_read_sect(enum axlf_section_kind kind, void **sect, struct axlf *axlf_full)
 {
 	const struct axlf_section_header *memHeader;
 	uint64_t xclbin_len;
 	uint64_t offset;
 	uint64_t size;
-	void **sect_tmp = (void *)sect;
 	int err = 0;
 
 	memHeader = get_axlf_section(axlf_full, kind);
@@ -182,13 +180,7 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 
 	offset = memHeader->m_sectionOffset;
 	size = memHeader->m_sectionSize;
-	*sect_tmp = vmalloc(size);
-	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
-	if (err) {
-		vfree(*sect_tmp);
-		sect = NULL;
-		return -EINVAL;
-	}
+	*sect = &((char *)axlf_full)[offset];
 
 	return size;
 }
@@ -215,12 +207,8 @@ static int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 {
 	long err = 0;
-	uint64_t axlf_size = 0;
 	struct axlf *axlf = 0;
-	char __user *buf = 0;
 	struct axlf bin_obj;
-	size_t size_of_header;
-	size_t num_of_sections;
 	size_t size;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology, *topology;
@@ -283,10 +271,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	//Copy from user space and proceed.
-	size_of_header = sizeof(struct axlf_section_header);
-	num_of_sections = bin_obj.m_header.m_numSections;
-	axlf_size = sizeof(struct axlf) + size_of_header * num_of_sections;
-	axlf = vmalloc(axlf_size);
+	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
 		DRM_ERROR("Unable to create axlf\n");
 		err = -ENOMEM;
@@ -295,20 +280,13 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	printk(KERN_INFO "XOCL: Marker 5\n");
 
-	if (copy_from_user(axlf, axlf_ptr->xclbin, axlf_size)) {
-		err = -EFAULT;
-		goto done;
-	}
-
-	buf = (char __user *)axlf_ptr->xclbin;
-	err = !access_ok(VERIFY_READ, buf, bin_obj.m_header.m_length);
-	if (err) {
+	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
 		goto done;
 	}
 
 	/* Populating MEM_TOPOLOGY sections. */
-	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
+	size = xocl_read_sect(MEM_TOPOLOGY, (void **)&new_topology, axlf);
 	if (size <= 0) {
 		if (size != 0)
 			goto done;
@@ -319,7 +297,10 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	topology = XOCL_MEM_TOPOLOGY(xdev);
 
-	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
+	/*
+	 * Compare MEM_TOPOLOGY previous vs new.
+	 * Ignore this and keep disable preserve_mem if not for aws.
+	 */
 	if (xocl_is_aws(xdev) && (topology != NULL)) {
 		if ( (size == sizeof_sect(topology, m_mem_data)) &&
 		    !memcmp(new_topology, topology, size) ) {
@@ -340,29 +321,28 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		xocl_cleanup_mem(drm_p);
 	}
 
-	err = xocl_icap_download_axlf(xdev, buf);
+	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {
 		DRM_ERROR("%s Fail to download \n", __FUNCTION__);
-		goto done;
+		/*
+		 * Don't just bail out here, always recreate drm mem
+		 * since we have cleaned it up before download.
+		 */
 	}
 
 	if (!preserve_mem) {
-		err = xocl_init_mem(drm_p);
-		if (err)
-			goto done;
+		int rc = xocl_init_mem(drm_p);
+		if (err == 0)
+			err = rc;
 	}
-
-	//Populate with "this" bitstream, so avoid redownload the next time
-	userpf_info(xdev, "Loaded xclbin %pUb", xclbin_id);
 
 done:
 	if (size < 0)
 		err = size;
-	/*
-	 * Always give up ownership for multi process use case; the real locking
-	 * is done by context creation API or by execbuf
-	 */
-	xocl_xdev_info(xdev, "err: %ld\n", err);
+	if (err)
+		userpf_err(xdev, "err: %ld\n", err);
+	else
+		userpf_info(xdev, "Loaded xclbin %pUb", xclbin_id);
 	vfree(axlf);
 	return err;
 }

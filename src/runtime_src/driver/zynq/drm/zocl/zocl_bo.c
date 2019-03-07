@@ -212,6 +212,10 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	zocl_describe(bo);
 	drm_gem_object_unreference_unlocked(&bo->gem_base);
+
+	/* Update memory usage statistics */
+	zocl_update_mem_stat(dev->dev_private, args->size, 1);
+
 	return ret;
 
 out_free:
@@ -262,6 +266,15 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	zocl_describe(bo);
 	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+
+	/*
+	 * Update memory usage statistics.
+	 *
+	 * Note: We can not use args->size here because it is
+	 *       the required size while gem object records the
+	 *       actual size allocated.
+	 */
+	zocl_update_mem_stat(zdev, bo->gem_base.size, 1);
 
 	return ret;
 }
@@ -642,3 +655,17 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 }
 
+/*
+ * Update the memory usage of by BO.
+ *
+ * count is the number of BOs being allocated/freed. If count > 0, we are
+ * allocating 'count' BOs with total size 'size'; If count < 0, we are
+ * freeing 'count' BOs with total size 'size'.
+ */
+void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count)
+{
+	write_lock(&zdev->attr_rwlock);
+	zdev->mm_usage.memory_usage += (count > 0) ?  size : -size;
+	zdev->mm_usage.bo_count += count;
+	write_unlock(&zdev->attr_rwlock);
+}

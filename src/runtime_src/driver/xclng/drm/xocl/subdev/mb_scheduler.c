@@ -203,6 +203,7 @@ struct xocl_cmd
 	union {
 		struct ert_packet           *ecmd;
 		struct ert_start_kernel_cmd *kcmd;
+		struct ert_start_copybo_cmd *ccmd;
 	};
 
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
@@ -657,6 +658,7 @@ struct xocl_cu
 {
 	struct list_head   running_queue;
 	unsigned int idx;
+	bool dataflow;
 	void __iomem *base;
 	u32 addr;
 
@@ -669,9 +671,10 @@ struct xocl_cu
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, bool dataflow, void __iomem *base, u32 addr)
 {
 	xcu->idx=idx;
+	xcu->dataflow = dataflow;
 	xcu->base=base;
 	xcu->addr=addr;
 	xcu->ctrlreg=0;
@@ -732,11 +735,13 @@ cu_poll(struct xocl_cu *xcu)
 static int
 cu_ready(struct xocl_cu *xcu)
 {
-	if (xcu->ctrlreg & AP_START) {
+	if ( (xcu->ctrlreg & AP_START) || (xcu->dataflow && xcu->run_cnt) )
 		cu_poll(xcu);
-	}
-	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,!(xcu->ctrlreg & AP_START));
-	return !(xcu->ctrlreg & AP_START);
+
+	SCHED_DEBUGF("cu_ready(%d) returns %d\n",xcu->idx,
+		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0);
+
+	return xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0;
 }
 
 /*
@@ -1068,6 +1073,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 	bool ert = xocl_mb_sched_on(xdev);
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = xocl_dsa_version(xdev);
+	bool dataflow = false;  // TBD to be configured
 	struct ert_configure_cmd *cfg;
 	int cuidx=0;
 
@@ -1100,7 +1106,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create();
-		cu_reset(xcu,cuidx,exec->base,cfg->data[cuidx]);
+		cu_reset(xcu,cuidx,dataflow,exec->base,cfg->data[cuidx]);
 		userpf_info(xdev,"configure cu(%d) at 0x%x\n",xcu->idx,xcu->addr);
 	}
 
@@ -1112,7 +1118,7 @@ exec_cfg_cmd(struct exec_core* exec, struct xocl_cmd *xcmd)
 				struct xocl_cu *xcu = exec->cus[cuidx];
 				if (!xcu)
 					xcu = exec->cus[cuidx] = cu_create();
-				cu_reset(xcu,cuidx,exec->base,*addr);
+				cu_reset(xcu,cuidx,false,exec->base,*addr);
 				++exec->num_cus;
 				++exec->num_cdma;
 				++cfg->num_cus;
@@ -1481,6 +1487,25 @@ exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
 }
 
 /*
+ * execute_copbo_cmd() - Execute ERT_START_COPYBO commands
+ *
+ * This is special case for copying P2P
+ */
+static int
+exec_execute_copybo_cmd(struct exec_core *exec, struct xocl_cmd* xcmd)
+{
+	int ret;
+	struct ert_start_copybo_cmd *ecmd = xcmd->ccmd;
+	struct drm_file *filp = (struct drm_file *)ecmd->arg;
+	struct drm_device *ddev = filp->minor->dev;
+
+	SCHED_DEBUGF("-> exec_copybo_cmd(%d,%lu)\n",exec->uid,xcmd->uid);
+	ret = xocl_copy_import_bo(ddev, filp, ecmd);
+	SCHED_DEBUG("<- exec_copybo\n");
+	return ret == 0 ? 0 : 1;
+}
+
+/*
  * notify_host() - Notify user space that a command is complete.
  */
 static void
@@ -1580,6 +1605,11 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return false;
 	}
 
+	if (opcode==ERT_START_COPYBO && exec_execute_copybo_cmd(exec,xcmd)) {
+		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
+		return false;
+	}
+
 	if (opcode!=ERT_START_CU) {
 		SCHED_DEBUGF("<- exec_penguin_start_cmd -> true\n");
 		return true;
@@ -1637,8 +1667,9 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 static bool
 exec_ert_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	// if (cmd_type(xcmd) == ERT_DATAFLOW)
-	//   exec_penguin_start_cmd(exec,xcmd);
+	if (cmd_type(xcmd)==ERT_KDS_LOCAL)
+		return exec_penguin_start_cmd(exec,xcmd);
+
 	return ert_start_cmd(exec->ert,xcmd);
 }
 
@@ -2549,9 +2580,93 @@ out:
 	return ret;
 }
 
+static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
+	uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+{
+	struct drm_device *ddev = filp->minor->dev;
+	struct drm_gem_object *obj;
+	struct drm_xocl_bo *xobj;
+
+	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
+	if (!obj) {
+		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		return -ENOENT;
+	}
+
+	xobj = to_xocl_bo(obj);
+	if (!xobj->mm_node) {
+		/* Not a local BO */
+		drm_gem_object_unreference_unlocked(obj);
+		return -EADDRNOTAVAIL;
+	}
+
+	if (obj->size <= off || obj->size < off + size) {
+		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		drm_gem_object_unreference_unlocked(obj);
+		return -EINVAL;
+	}
+
+	*paddrp = xobj->mm_node->start + off;
+	drm_gem_object_unreference_unlocked(obj);
+	return 0;
+}
+
+static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
+	struct exec_core *exec, struct drm_xocl_bo *xobj)
+{
+	int i;
+	int ret_src, ret_dst;
+	size_t src_off;
+	size_t dst_off;
+	size_t sz;
+	uint64_t src_addr;
+	uint64_t dst_addr;
+	struct ert_start_copybo_cmd *scmd =
+		(struct ert_start_copybo_cmd*)xobj->vmapping;
+
+	/* Only convert COPYBO cmd for now. */
+	if (scmd->opcode != ERT_START_COPYBO)
+		return 0;
+
+	sz = ert_copybo_size(scmd);
+
+	src_off = ert_copybo_src_offset(scmd);
+	ret_src = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off,
+		sz, &src_addr);
+	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
+		return ret_src;
+
+	dst_off = ert_copybo_dst_offset(scmd);
+	ret_dst = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off,
+		sz, &dst_addr);
+	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
+		return ret_dst;
+
+	/* We need at least one local BO for copy */
+	if (ret_src == -EADDRNOTAVAIL && ret_dst == -EADDRNOTAVAIL)
+		return -EINVAL;
+
+	/* One of them is not local BO, perform P2P copy */
+	if (ret_src != ret_dst) {
+		/* Not a ERT cmd, make sure KDS will handle it. */
+		scmd->type = ERT_KDS_LOCAL;
+		scmd->arg = filp;
+		return 0;
+	}
+
+	/* Both BOs are local, copy via KDMA CU */
+	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+		scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+	scmd->opcode = ERT_START_CU;
+
+	return 0;
+}
+
 static int client_ioctl_execbuf(struct platform_device *pdev,
-		struct client_ctx *client, void *data,
-		struct drm_file *filp)
+	struct client_ctx *client, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -2562,7 +2677,7 @@ static int client_ioctl_execbuf(struct platform_device *pdev,
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct drm_device *ddev = filp->minor->dev;
 
-	if (xdev->needs_reset) { 
+	if (xdev->needs_reset) {
 		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
 		return -EBUSY;
 	}
@@ -2580,7 +2695,8 @@ static int client_ioctl_execbuf(struct platform_device *pdev,
 
 	/* Convert gem object to xocl_bo extension */
 	xobj = to_xocl_bo(obj);
-	if (!xocl_bo_execbuf(xobj)) {
+	if (!xocl_bo_execbuf(xobj) || convert_execbuf(xdev, filp,
+		platform_get_drvdata(pdev), xobj) != 0) {
 		ret = -EINVAL;
 		goto out;
 	}

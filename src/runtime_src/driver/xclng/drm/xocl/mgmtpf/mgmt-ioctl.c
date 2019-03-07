@@ -73,16 +73,30 @@ static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
-	struct xclmgmt_ioc_bitstream_axlf bitstream_obj;
+	void *copy_buffer = NULL;
+	size_t copy_buffer_size = 0;
+	struct xclmgmt_ioc_bitstream_axlf ioc_obj = { 0 };
+	struct axlf xclbin_obj = { 0 };
 	int ret = 0;
-	if (copy_from_user((void *)&bitstream_obj, arg,
-		sizeof(struct xclmgmt_ioc_bitstream_axlf)))
+
+	if (copy_from_user((void *)&ioc_obj, arg, sizeof(ioc_obj)))
+		return -EFAULT;
+	if (copy_from_user((void *)&xclbin_obj, ioc_obj.xclbin,
+		sizeof(xclbin_obj)))
 		return -EFAULT;
 
-	ret = xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
-	if(ret)
-		return ret;
-	ret = xocl_icap_parse_axlf_section(lro, bitstream_obj.xclbin, MEM_TOPOLOGY);
+	copy_buffer_size = xclbin_obj.m_header.m_length;
+	copy_buffer = vmalloc(copy_buffer_size);
+	if (copy_buffer == NULL)
+		return -ENOMEM;
+
+	if (copy_from_user((void *)copy_buffer, ioc_obj.xclbin,
+		copy_buffer_size))
+		ret = -EFAULT;
+	else
+		ret = xocl_icap_download_axlf(lro, copy_buffer);
+
+	vfree(copy_buffer);
 	return ret;
 }
 

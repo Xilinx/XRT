@@ -31,6 +31,8 @@
 #include <unistd.h>
 #include <vector>
 #include <poll.h>
+#include "driver/common/message.h"
+#include "driver/common/scheduler.h"
 //#include "xclbin.h"
 #include <assert.h>
 
@@ -449,6 +451,22 @@ int ZYNQShim::xclExecWait(int timeoutMilliSec)
   return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
 }
 
+int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+{
+  // Until we have a programmatic way to determine what this directory
+  //  is on Zynq platforms, this is hard-coded so we can test out 
+  //  debug and profile features.
+  std::string path = "/sys/devices/platform/amba/a0000000.zyxclmm_drm/";
+  path += entry ;
+
+  if (path.length() >= size) return -1 ;
+
+  // Since path.length() < size, we are sure to copy over the null 
+  //  terminating byte.
+  strncpy(sysfsPath, path.c_str(), size) ;
+  return 0 ;
+}
+
 }
 ;
 //end namespace ZYNQ
@@ -596,10 +614,11 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags) {
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-    if (!drv)
-        return -EINVAL;
-    return drv->xclLoadXclBin(buffer);
+    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+        ret = xrt_core::scheduler::init(handle,buffer);
+    return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
@@ -664,6 +683,15 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   if (!drv)
     return -EINVAL;
   return drv->xclExecWait(timeoutMilliSec);
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+		    const char* entry, char* sysfsPath, size_t size)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
 }
 
 //

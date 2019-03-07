@@ -109,6 +109,26 @@ struct ert_start_kernel_cmd {
   uint32_t data[1];          /* count-1 number of words */
 };
 
+#define COPYBO_UNIT   64     /* Limited by KDMA CU */
+struct ert_start_copybo_cmd {
+  uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
+  uint32_t unused:6;         /* [9-4] */
+  uint32_t extra_cu_masks:2; /* [11-10], = 3 */
+  uint32_t count:11;         /* [22-12], = 15, exclude 'arg' */
+  uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
+  uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
+  uint32_t cu_mask[4];       /* mandatory cu masks */
+  uint32_t reserved[4];      /* for scheduler use */
+  uint32_t src_addr_lo;      /* low 32 bit of src addr */
+  uint32_t src_addr_hi;      /* high 32 bit of src addr */
+  uint32_t src_bo_hdl;       /* src bo handle, cleared by driver */
+  uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
+  uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
+  uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
+  uint32_t size;             /* size in COPYBO_UNIT byte */
+  void     *arg;             /* pointer to aux data for KDS */
+};
+
 /**
  * struct ert_configure_cmd: ERT configure command format
  *
@@ -212,6 +232,8 @@ enum ert_cmd_state {
  * @ERT_CONFIGURE:      configure command scheduler
  * @ERT_WRITE:          write pairs of addr and value
  * @ERT_CU_STAT:        get stats about CU execution
+ * @ERT_START_COPYBO:   start KDMA CU or P2P, may be converted to ERT_START_CU
+ *                      before cmd reach to scheduler, short-term hack
  */
 enum ert_cmd_opcode {
   ERT_START_CU     = 0,
@@ -221,6 +243,7 @@ enum ert_cmd_opcode {
   ERT_ABORT        = 4,
   ERT_WRITE        = 5,
   ERT_CU_STAT      = 6,
+  ERT_START_COPYBO = 7,
 };
 
 /**
@@ -371,5 +394,47 @@ enum ert_cmd_type {
 #define ERT_INTC_IER_ADDR                 (ERT_INTC_ADDR + 0x8)  /* enable */
 #define ERT_INTC_IAR_ADDR                 (ERT_INTC_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_MER_ADDR                 (ERT_INTC_ADDR + 0x1C) /* master enable */
+
+/*
+ * Helper functions to hide details of ert_start_copybo_cmd
+ */
+static inline void
+ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
+  uint32_t dst_bo, uint64_t src_offset, uint64_t dst_offset, uint64_t size)
+{
+  pkt->state = ERT_CMD_STATE_NEW;
+  pkt->extra_cu_masks = 3;
+  pkt->count = 15;
+  pkt->opcode = ERT_START_COPYBO;
+  pkt->type = ERT_DEFAULT;
+  pkt->cu_mask[0] = 0;
+  pkt->cu_mask[1] = 0;
+  pkt->cu_mask[2] = 0;
+  pkt->cu_mask[3] = 0;
+  pkt->src_addr_lo = src_offset;
+  pkt->src_addr_hi = (src_offset >> 32) & 0xFFFFFFFF;
+  pkt->src_bo_hdl = src_bo;
+  pkt->dst_addr_lo = dst_offset;
+  pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
+  pkt->dst_bo_hdl = dst_bo;
+  pkt->size = size / COPYBO_UNIT;
+  pkt->arg = 0;
+}
+static inline uint64_t
+ert_copybo_src_offset(struct ert_start_copybo_cmd *pkt)
+{
+  return (uint64_t)pkt->src_addr_hi << 32 | pkt->src_addr_lo;
+}
+static inline uint64_t
+ert_copybo_dst_offset(struct ert_start_copybo_cmd *pkt)
+{
+  return (uint64_t)pkt->dst_addr_hi << 32 | pkt->dst_addr_lo;
+}
+static inline uint64_t
+ert_copybo_size(struct ert_start_copybo_cmd *pkt)
+{
+  uint64_t sz = pkt->size;
+  return sz * COPYBO_UNIT;
+}
 
 #endif

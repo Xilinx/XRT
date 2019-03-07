@@ -39,7 +39,7 @@
 namespace {
 
 static bool
-emulation_mode()
+is_emulation()
 {
   static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
   return val;
@@ -382,12 +382,14 @@ public:
   bool
   ready() const
   {
-    if (ctrlreg & AP_START) {
+    if ( (ctrlreg & AP_START) || (is_sw_emulation() && run_cnt) ) {
       XRT_DEBUGF("sws ready() is polling cu(%d)\n",idx);
       poll();
     }
 
-    return !(ctrlreg & AP_START);
+    return is_sw_emulation()
+      ? run_cnt==0
+      : !(ctrlreg & AP_START);
   }
 
   // Get the first completed command from the running queue
@@ -438,7 +440,7 @@ public:
     // start cu
     ctrlreg |= AP_START;
     const_cast<uint32_t*>(regmap)[0] = AP_START;
-    if (emulation_mode())
+    if (is_emulation())
       xdev->write_register(addr,regmap,size*4);
     else
       xdev->write_register(addr,regmap,4);

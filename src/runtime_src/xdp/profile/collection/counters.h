@@ -18,6 +18,8 @@
 #define __XDP_COLLECTION_COUNTERS_H
 
 #include "results.h"
+#include "xdp/profile/core/rt_util.h"
+
 #include <limits>
 #include <cstdint>
 #include <map>
@@ -104,8 +106,9 @@ namespace xdp {
         uint64_t totalWriteTranx, uint64_t totalReadTranx,
         double totalWriteTimeMsec, double totalReadTimeMsec,
         uint32_t maxBytesPerTransfer, double maxTransferRateMBps) const;
-    void writeHostTransferSummary(ProfileWriterI* writer, bool isRead, uint64_t totalBytes,
-        double totalTimeMsec, double maxTransferRateMBps) const;
+    void writeTransferSummary(ProfileWriterI* writer, const std::string& deviceName,
+        RTUtil::e_monitor_type monitorType, bool isRead, uint64_t totalBytes,
+        uint64_t totalTranx, double totalTimeMsec, double maxTransferRateMBps) const;
     void writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,
     	std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
     	bool isRead, uint64_t totalBytes, uint64_t totalTranx, double totalKernelTimeMsec,
