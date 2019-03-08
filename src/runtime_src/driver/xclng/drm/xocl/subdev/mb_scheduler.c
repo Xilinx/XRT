@@ -460,19 +460,20 @@ cmd_mark_deactive(struct xocl_cmd *xcmd)
  * the number of dependencies that are active.
  */
 static int
-cmd_chain_dependencies(struct xocl_cmd* xcmd)
+cmd_chain_dependencies(struct xocl_cmd *xcmd)
 {
 	int didx;
 	int dcount = xcmd->wait_count;
+
 	SCHED_DEBUGF("-> chain_dependencies of xcmd(%lu)\n", xcmd->uid);
 	for (didx = 0; didx < dcount; ++didx) {
 		struct drm_xocl_bo *dbo = xcmd->deps[didx];
-		struct xocl_cmd* chain_to = dbo->metadata.active;
-		/* release reference created in ioctl call when dependency was looked up
-		 * see comments in xocl_ioctl.c:xocl_execbuf_ioctl() */
+		struct xocl_cmd *chain_to = dbo->metadata.active;
+		// release reference created in ioctl call when dependency was looked up
+		// see comments in xocl_ioctl.c:xocl_execbuf_ioctl()
 		drm_gem_object_unreference_unlocked(&dbo->base);
 		xcmd->deps[didx] = NULL;
-		if (!chain_to) { /* command may have completed already */
+		if (!chain_to) { // command may have completed already
 			--xcmd->wait_count;
 			continue;
 		}
@@ -735,15 +736,15 @@ cu_poll(struct xocl_cu *xcu)
  * cu_ready() - Check if CU is ready to start another command
  *
  * The CU is ready when AP_START is low
-*/
+ */
 static int
 cu_ready(struct xocl_cu *xcu)
 {
-	if ( (xcu->ctrlreg & AP_START) || (xcu->dataflow && xcu->run_cnt) )
+	if ((xcu->ctrlreg & AP_START) || (xcu->dataflow && xcu->run_cnt))
 		cu_poll(xcu);
 
 	SCHED_DEBUGF("%s(%d) returns %d\n", __func__, xcu->idx,
-		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt==0);
+		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0);
 
 	return xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0;
 }
@@ -1618,8 +1619,8 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return false;
 	}
 
-	if (opcode==ERT_START_COPYBO && exec_execute_copybo_cmd(exec,xcmd)) {
-		cmd_set_state(xcmd,ERT_CMD_STATE_ERROR);
+	if (opcode == ERT_START_COPYBO && exec_execute_copybo_cmd(exec, xcmd)) {
+		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
 		return false;
 	}
 
@@ -2659,12 +2660,12 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	sz = ert_copybo_size(scmd);
 
 	src_off = ert_copybo_src_offset(scmd);
-	ret_src = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off,sz, &src_addr);
+	ret_src = get_bo_paddr(xdev, filp, scmd->src_bo_hdl, src_off, sz, &src_addr);
 	if (ret_src != 0 && ret_src != -EADDRNOTAVAIL)
 		return ret_src;
 
 	dst_off = ert_copybo_dst_offset(scmd);
-	ret_dst = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off,sz, &dst_addr);
+	ret_dst = get_bo_paddr(xdev, filp, scmd->dst_bo_hdl, dst_off, sz, &dst_addr);
 	if (ret_dst != 0 && ret_dst != -EADDRNOTAVAIL)
 		return ret_dst;
 
