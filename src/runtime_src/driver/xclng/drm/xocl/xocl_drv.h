@@ -17,7 +17,7 @@
 #define	_XOCL_DRV_H_
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
@@ -31,10 +31,10 @@
 
 
 #if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_UUID
 #endif
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 #define XOCL_UUID
 #endif
 /* UUID helper functions not present in older kernels */
@@ -62,8 +62,8 @@ static inline void xocl_memcpy_fromio(void *buf, void *iomem, u32 size)
 
 	BUG_ON(size & 0x3);
 
-        for (i = 0; i < size / 4; i++)
-                ((u32 *)buf)[i] = ioread32((char *)(iomem) + sizeof(u32) * i);
+	for (i = 0; i < size / 4; i++)
+		((u32 *)buf)[i] = ioread32((char *)(iomem) + sizeof(u32) * i);
 }
 
 static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
@@ -72,7 +72,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 	BUG_ON(size & 0x3);
 
-        for (i = 0; i < size / 4; i++)
+	for (i = 0; i < size / 4; i++)
 		iowrite32(((u32 *)buf)[i], ((char *)(iomem) + sizeof(u32) * i));
 }
 
@@ -83,8 +83,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
 #define xocl_sysfs_error(xdev, fmt, args...)     \
-        snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
-		 fmt, ##args)
+		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
+		fmt, ##args)
 #define MAX_M_COUNT      64
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
@@ -145,10 +145,10 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #ifdef RHEL_RELEASE_VERSION
 
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
 #define RHEL_P2P_SUPPORT_74  0
 #define RHEL_P2P_SUPPORT_76  1
-#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,6)
+#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
 #define RHEL_P2P_SUPPORT_74  1
 #define RHEL_P2P_SUPPORT_76  0
 #endif
@@ -181,7 +181,7 @@ struct xocl_subdev_private {
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
-	((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data
+	(((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data)
 
 typedef	void *	xdev_handle_t;
 
@@ -238,12 +238,12 @@ struct xocl_dev_core {
 	struct xocl_pci_funcs	*pci_ops;
 
 	u32			bar_idx;
-        void *__iomem		bar_addr;
+	void *__iomem		bar_addr;
 	resource_size_t		bar_size;
 	resource_size_t		feature_rom_offset;
 
 	u32			intr_bar_idx;
-        void *__iomem		intr_bar_addr;
+	void *__iomem		intr_bar_addr;
 	resource_size_t		intr_bar_size;
 
 	struct task_struct      *health_thread;
@@ -332,7 +332,7 @@ struct xocl_dma_funcs {
 	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr, bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
-			        irq_handler_t handler, void *arg, int event_fd);
+					irq_handler_t handler, void *arg, int event_fd);
 	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
 	void *(*get_drm_handle)(struct platform_device *pdev);
 };
@@ -404,18 +404,18 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_stop(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
-        -ENODEV)
+		-ENODEV)
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
-        -ENODEV)
+		-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
 	((struct mem_topology *)					\
-	 xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)						\
-	 xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+	xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -603,7 +603,7 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
-	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling* freqs);
+	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
@@ -667,7 +667,7 @@ int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
-        struct xocl_subdev_info *sdev_info, u32 subdev_num);
+		struct xocl_subdev_info *sdev_info, u32 subdev_num);
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
@@ -682,7 +682,7 @@ void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-        struct axlf *bin_obj, bool major_only);
+		struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 

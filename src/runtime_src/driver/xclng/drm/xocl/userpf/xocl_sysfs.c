@@ -16,8 +16,7 @@
  */
 #include "common.h"
 
-//Attributes followed by bin_attributes.
-//
+/* Attributes followed by bin_attributes. */
 /* -Attributes -- */
 
 /* -xclbinuuid-- (supersedes xclbinid) */
@@ -47,7 +46,7 @@ static DEVICE_ATTR_RO(userbar);
 static ssize_t user_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	// The existence of entry indicates user function.
+	/* The existence of entry indicates user function. */
 	return sprintf(buf, "%s", "");
 }
 static DEVICE_ATTR_RO(user_pf);
@@ -322,7 +321,7 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	uint64_t ret;
- 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
 
@@ -353,7 +352,6 @@ static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
 };
 
-//---
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;
