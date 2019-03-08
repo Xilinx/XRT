@@ -1701,7 +1701,6 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 		/* sleep until do_hw_tx copies to sw_chan_buf */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
-			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
 			ret = -ERESTARTSYS;
 			goto end;
 		}
@@ -1723,11 +1722,8 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 					ch->sw_chan_buf_sz);
 		mutex_unlock(&ch->sw_chan_mutex);
 
-		if (ret != 0) {
-			MBX_ERR(mbx, "Software channel TX copy_to_user failed.");
+		if (ret != 0)
 			ret = -EBADMSG;
-			goto end;
-		}
 	} else {
 		/* copy into sw_chan_buf */
 		mutex_lock(&ch->sw_chan_mutex);
@@ -1742,7 +1738,6 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		mutex_unlock(&ch->sw_chan_mutex);
 
 		if (ret != 0) {
-			MBX_ERR(mbx, "Software channel RX copy_from_user failed.");
 			ret = -EBADMSG;
 			goto end;
 		}

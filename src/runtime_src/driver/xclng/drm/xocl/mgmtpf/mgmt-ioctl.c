@@ -105,15 +105,12 @@ static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *dat
 {
 	int ret = 0;
 	struct drm_xocl_sw_mailbox args;
-	if (copy_from_user((void *)&args,
-			   data,
-			   sizeof(struct drm_xocl_sw_mailbox))) {
+	if (copy_from_user((void *)&args, data, sizeof(struct drm_xocl_sw_mailbox)))
 		return -EFAULT;
-	}
 
 	ret = xocl_mailbox_sw_transfer(lro, &args);
-	copy_to_user((void *)data+offsetof(struct drm_xocl_sw_mailbox, sz),
-			(void *)&args.sz, sizeof(size_t));
+	if (copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox)))
+		return -EFAULT;
 
 	return ret;
 }
@@ -151,7 +148,7 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD:
 		printk(KERN_ERR
-			"Bitstream ioctl with legacy bitstream not supported") ;
+			"Bitstream ioctl with legacy bitstream not supported");
 		result = -EINVAL;
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD_AXLF:
