@@ -30,8 +30,6 @@
 #include "../xocl_drv.h"
 #include "version.h"
 
-//#define USE_FEATURE_ROM
-
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
 	{ 0, }

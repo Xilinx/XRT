@@ -80,12 +80,12 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
-	xocl_mailbox_set(xdev, NOT_RESET_END, NULL);
+	xocl_mailbox_set(xdev, PRE_RST, NULL);
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DMA);
 	} else {
 	reset_notify_client_ctx(xdev);
 	xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
-	xocl_mailbox_set(xdev, RESET_END, NULL);
+	xocl_mailbox_set(xdev, POST_RST, NULL);
 	xocl_exec_reset(xdev);
 	}
 }
@@ -282,6 +282,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 			(void) xocl_mb_connect(xdev);
 		else {
 			xocl_mailbox_set(xdev, CH_STATE_RST, NULL);
+			xocl_mailbox_set(xdev, CH_SWITCH_RST, NULL);
 		}
 		break;
 	case MAILBOX_REQ_CHAN_SWITCH:

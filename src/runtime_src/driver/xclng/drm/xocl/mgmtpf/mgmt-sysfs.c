@@ -285,7 +285,7 @@ static ssize_t sw_chan_en_store(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	uint64_t val;
+	uint64_t val, ch_switch;
 
 	if (kstrtoull(buf, 0, &val) < 0)
 		return -EINVAL;
@@ -294,7 +294,9 @@ static ssize_t sw_chan_en_store(struct device *dev,
 		mgmt_err(lro, "can only set BIT1 to BIT63");
 		return -EINVAL;
 	}
-	xocl_mailbox_set(lro, CHAN_SWITCH, &val);
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+	ch_switch |= val;
+	xocl_mailbox_set(lro, CHAN_SWITCH, &ch_switch);
 	xclmgmt_chan_switch_notify(lro);
 
 	return count;

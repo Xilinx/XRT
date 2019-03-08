@@ -158,11 +158,6 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define MAX_MSG_QUEUE_SZ  (PAGE_SIZE << 16)
 #define MAX_MSG_QUEUE_LEN 5
 
-#define MB_CONN_INIT	(0x1<<0)
-#define MB_CONN_SYN 	(0x1<<1)
-#define MB_CONN_ACK 	(0x1<<2)
-#define MB_CONN_FIN 	(0x1<<3)
-
 /*
  * Mailbox IP register layout
  */
@@ -210,14 +205,6 @@ enum packet_type {
 	PKT_TEST,
 	PKT_MSG_START,
 	PKT_MSG_BODY
-};
-
-
-enum conn_state {
-	CONN_START = 0,
-	CONN_SYN_SENT,
-	CONN_SYN_RECV,
-	CONN_ESTABLISH,
 };
 
 /* Lower 8 bits for type, the rest for flags. */
@@ -330,7 +317,6 @@ struct mailbox {
 
 	struct mutex mbx_conn_lock;
 	uint64_t mbx_conn_id;
-	enum conn_state mbx_state;
 	bool mbx_established;
 	uint32_t mbx_prot_ver;
 
@@ -458,7 +444,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 		list_for_each_safe(pos, n, &ch->mbc_msgs) {
 			msg = list_entry(pos, struct mailbox_msg, mbm_list);
 			if (msg->mbm_req_id == 0)
-			       continue;
+				continue;
 			on = true;
 			break;
 		}
@@ -555,7 +541,7 @@ void timeout_msg(struct mailbox_channel *ch)
 		if (!msg->mbm_timer_on)
 			continue;
 		if (msg->mbm_req_id == 0)
-		       continue;
+			continue;
 		if (msg->mbm_ttl == 0) {
 			list_del(&msg->mbm_list);
 			list_add_tail(&msg->mbm_list, &l);
@@ -1644,12 +1630,12 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, void *data)
 		return 0;
 
 	switch (kind) {
-	case RESET_END:
+	case POST_RST:
 		MBX_INFO(mbx, "enable intr mode");
 		if (mailbox_enable_intr_mode(mbx) != 0)
 			MBX_ERR(mbx, "failed to enable intr after reset");
 		break;
-	case NOT_RESET_END:
+	case PRE_RST:
 		MBX_INFO(mbx, "enable polling mode");
 		mailbox_disable_intr_mode(mbx);
 		break;
@@ -1660,13 +1646,12 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, void *data)
 		break;
 	case CHAN_SWITCH:
 		mutex_lock(&mbx->mbx_lock);
-		mbx->mbx_ch_switch |= *ch_data;
+		mbx->mbx_ch_switch = *ch_data;
 		mutex_unlock(&mbx->mbx_lock);
 		break;
 	case CH_STATE_RST:
 		mutex_lock(&mbx->mbx_lock);
 		mbx->mbx_ch_state = 0;
-		mbx->mbx_ch_switch = 0;
 		mutex_unlock(&mbx->mbx_lock);
 		break;
 	case CH_SWITCH_RST:
@@ -1765,12 +1750,12 @@ end:
 
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_mailbox_funcs mailbox_ops = {
-	.request 	= mailbox_request,
-	.post 		= mailbox_post,
-	.listen 	= mailbox_listen,
-	.set 		= mailbox_set,
-	.get 		= mailbox_get,
-	.sw_transfer 	= mailbox_sw_transfer,
+	.request	= mailbox_request,
+	.post		= mailbox_post,
+	.listen		= mailbox_listen,
+	.set		= mailbox_set,
+	.get		= mailbox_get,
+	.sw_transfer	= mailbox_sw_transfer,
 };
 
 static int mailbox_remove(struct platform_device *pdev)

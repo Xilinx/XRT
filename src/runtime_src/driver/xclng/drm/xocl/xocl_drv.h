@@ -542,8 +542,8 @@ struct xocl_dna_funcs {
 
 
 enum mb_kind {
-	RESET_END,
-	NOT_RESET_END,
+	POST_RST,
+	PRE_RST,
 	CHAN_STATE,
 	CHAN_SWITCH,
 	CH_STATE_RST,
