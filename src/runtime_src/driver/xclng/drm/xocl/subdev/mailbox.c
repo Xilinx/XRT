@@ -194,7 +194,7 @@ struct mailbox_msg {
 	struct completion	mbm_complete;
 	mailbox_msg_cb_t	mbm_cb;
 	void			*mbm_cb_arg;
-	u32			mbm_flags; // SW/HW
+	u32			mbm_flags;
 	int			mbm_ttl;
 	bool			mbm_timer_on;
 	bool			mbm_chan_sw;
@@ -343,7 +343,8 @@ struct mailbox {
 	uint64_t mbx_ch_switch;
 };
 
-static inline const char *reg2name(struct mailbox *mbx, u32 *reg) {
+static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
+{
 	const char *reg_names[] = {
 		"wrdata",
 		"reserved1",
@@ -427,7 +428,7 @@ irqreturn_t mailbox_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 static void chan_timer(unsigned long data)
 {
 	struct mailbox_channel *ch = (struct mailbox_channel *)data;
@@ -496,9 +497,9 @@ static void msg_done(struct mailbox_msg *msg, int err)
 			msg->mbm_req_id, msg->mbm_error, msg->mbm_chan_sw);
 		free_msg(msg);
 	} else {
-		if(msg->mbm_flags & MSG_FLAG_REQUEST){
-			if((mbx->mbx_req_sz+msg->mbm_len) >= MAX_MSG_QUEUE_SZ ||
-				  mbx->mbx_req_cnt >= MAX_MSG_QUEUE_LEN){
+		if (msg->mbm_flags & MSG_FLAG_REQUEST) {
+			if ((mbx->mbx_req_sz+msg->mbm_len) >= MAX_MSG_QUEUE_SZ ||
+				  mbx->mbx_req_cnt >= MAX_MSG_QUEUE_LEN) {
 				goto done;
 			}
 			mutex_lock(&ch->mbc_parent->mbx_lock);
@@ -542,7 +543,7 @@ void timeout_msg(struct mailbox_channel *ch)
 			MBX_ERR(mbx, "found active msg time'd out");
 			chan_msg_done(ch, -ETIME);
 		} else {
-			if(msg->mbm_timer_on){
+			if (msg->mbm_timer_on) {
 				msg->mbm_ttl--;
 				/* Need to come back again for this one. */
 				reschedule = true;
@@ -622,7 +623,6 @@ static int chan_msg_enqueue(struct mailbox_channel *ch, struct mailbox_msg *msg)
 	} else {
 		list_add_tail(&msg->mbm_list, &ch->mbc_msgs);
 		msg->mbm_ch = ch;
-//		msg->mbm_ttl = MSG_TTL;
 	}
 	mutex_unlock(&ch->mbc_mutex);
 
@@ -662,7 +662,7 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 	return msg;
 }
 
-static struct mailbox_msg* alloc_msg(void *buf, size_t len)
+static struct mailbox_msg *alloc_msg(void *buf, size_t len)
 {
 	char *newbuf = NULL;
 	struct mailbox_msg *msg = NULL;
@@ -686,7 +686,7 @@ static struct mailbox_msg* alloc_msg(void *buf, size_t len)
 	msg->mbm_len = len;
 	msg->mbm_ttl = calculated_ttl;
 	msg->mbm_timer_on = false;
-	msg->mbm_chan_sw = false; // default
+	msg->mbm_chan_sw = false;
 	init_completion(&msg->mbm_complete);
 
 	return msg;
@@ -722,14 +722,14 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	mutex_init(&ch->sw_chan_mutex);
 	ch->sw_chan_ready = false;
 	init_completion(&ch->sw_chan_complete);
-	// preallocate buffer
+
 	mutex_lock(&ch->sw_chan_mutex);
 	ch->sw_chan_buf = vmalloc(PAGE_SIZE);
 	ch->sw_chan_buf_sz = 0;
 	mutex_unlock(&ch->sw_chan_mutex);
 
 	/* One timer for one channel. */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	setup_timer(&ch->mbc_timer, chan_timer, (unsigned long)ch);
 #else
 	timer_setup(&ch->mbc_timer, chan_timer, 0);
@@ -758,7 +758,7 @@ static void chan_fini(struct mailbox_channel *ch)
 	destroy_workqueue(ch->mbc_wq);
 
 	mutex_lock(&ch->sw_chan_mutex);
-	if(ch->sw_chan_buf != NULL)
+	if (ch->sw_chan_buf != NULL)
 		vfree(ch->sw_chan_buf);
 	mutex_unlock(&ch->sw_chan_mutex);
 
@@ -776,7 +776,7 @@ static void listen_wq_fini(struct mailbox *mbx)
 {
 	BUG_ON(mbx == NULL);
 
-	if(mbx->mbx_listen_wq != NULL) {
+	if (mbx->mbx_listen_wq != NULL) {
 		complete(&mbx->mbx_comp);
 		cancel_work_sync(&mbx->mbx_listen_worker);
 		destroy_workqueue(mbx->mbx_listen_wq);
@@ -890,7 +890,7 @@ static void do_sw_rx(struct mailbox_channel *ch)
 	mutex_lock(&ch->sw_chan_mutex);
 	ptr = memcpy(msg->mbm_data, ch->sw_chan_buf, ch->sw_chan_buf_sz);
 	mutex_unlock(&ch->sw_chan_mutex);
-	if(ptr != msg->mbm_data)
+	if (ptr != msg->mbm_data)
 		err = -EINVAL;
 	ch->mbc_cur_msg = msg;
 	chan_msg_done(ch, err);
@@ -912,48 +912,48 @@ static void do_hw_rx(struct mailbox_channel *ch)
 	eom = ((pkt->hdr.type & PKT_TYPE_MSG_END) != 0);
 
 	switch (type) {
-		case PKT_TEST:
-			(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
-				sizeof(struct mailbox_pkt));
+	case PKT_TEST:
+		(void) memcpy(&mbx->mbx_tst_pkt, &ch->mbc_packet,
+			sizeof(struct mailbox_pkt));
+		reset_pkt(pkt);
+		return;
+	case PKT_MSG_START:
+		if (ch->mbc_cur_msg) {
+			MBX_ERR(mbx, "received partial msg\n");
+			chan_msg_done(ch, -EBADMSG);
+		}
+
+		/* Get a new active msg. */
+		id = 0;
+		if (pkt->body.msg_start.msg_flags & MSG_FLAG_RESPONSE)
+			id = pkt->body.msg_start.msg_req_id;
+		ch->mbc_cur_msg = chan_msg_dequeue(ch, id);
+
+		if (!ch->mbc_cur_msg) {
+			/* no msg, alloc dynamically */
+			msg = alloc_msg(NULL, pkt->body.msg_start.msg_size);
+
+			msg->mbm_ch = ch;
+			msg->mbm_flags |= MSG_FLAG_REQUEST;
+			ch->mbc_cur_msg = msg;
+
+		}	else if (pkt->body.msg_start.msg_size >
+			ch->mbc_cur_msg->mbm_len) {
+			chan_msg_done(ch, -EMSGSIZE);
+			MBX_ERR(mbx, "received msg is too big");
 			reset_pkt(pkt);
-			return;
-		case PKT_MSG_START:
-			if (ch->mbc_cur_msg) {
-				MBX_ERR(mbx, "received partial msg\n");
-				chan_msg_done(ch, -EBADMSG);
-			}
-
-			/* Get a new active msg. */
-			id = 0;
-			if (pkt->body.msg_start.msg_flags & MSG_FLAG_RESPONSE)
-				id = pkt->body.msg_start.msg_req_id;
-			ch->mbc_cur_msg = chan_msg_dequeue(ch, id);
-
-			if (!ch->mbc_cur_msg) {
-				//no msg, alloc dynamically
-				msg = alloc_msg(NULL, pkt->body.msg_start.msg_size);
-
-				msg->mbm_ch = ch;
-				msg->mbm_flags |= MSG_FLAG_REQUEST;
-				ch->mbc_cur_msg = msg;
-
-			}	else if (pkt->body.msg_start.msg_size >
-				ch->mbc_cur_msg->mbm_len) {
-				chan_msg_done(ch, -EMSGSIZE);
-				MBX_ERR(mbx, "received msg is too big");
-				reset_pkt(pkt);
-			}
-			break;
-		case PKT_MSG_BODY:
-			if (!ch->mbc_cur_msg) {
-				MBX_ERR(mbx, "got unexpected msg body pkt\n");
-				reset_pkt(pkt);
-			}
-			break;
-		default:
-			MBX_ERR(mbx, "invalid mailbox pkt type\n");
+		}
+		break;
+	case PKT_MSG_BODY:
+		if (!ch->mbc_cur_msg) {
+			MBX_ERR(mbx, "got unexpected msg body pkt\n");
 			reset_pkt(pkt);
-			return;
+		}
+		break;
+	default:
+		MBX_ERR(mbx, "invalid mailbox pkt type\n");
+		reset_pkt(pkt);
+		return;
 	}
 
 
@@ -980,7 +980,7 @@ static void chan_do_rx(struct mailbox_channel *ch)
 		read_hw = ((st & STATUS_RTA) != 0);
 	}
 
-	if(!read_hw){
+	if (!read_hw) {
 		do_sw_rx(ch);
 	} else {
 		do_hw_rx(ch);
@@ -1070,7 +1070,7 @@ static void rx_enqueued_msg_timer_on(struct mailbox *mbx, uint64_t req_id)
 
 	list_for_each_safe(pos, n, &ch->mbc_msgs) {
 		msg = list_entry(pos, struct mailbox_msg, mbm_list);
-		if (msg->mbm_req_id == req_id){
+		if (msg->mbm_req_id == req_id) {
 			msg->mbm_timer_on = true;
 			MBX_DBG(mbx, "set ch rx, req_id %llu\n", req_id);
 			break;
@@ -1131,13 +1131,13 @@ static void chan_do_tx(struct mailbox_channel *ch)
 		chan_msg_done(ch, 0);
 	}
 
-	if (!ch->mbc_cur_msg){
+	if (!ch->mbc_cur_msg) {
 		ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
-		if(ch->mbc_cur_msg)
+		if (ch->mbc_cur_msg)
 			ch->mbc_cur_msg->mbm_timer_on = true;
 	}
-	if(ch->mbc_cur_msg){
-		if(ch->mbc_cur_msg->mbm_chan_sw){
+	if (ch->mbc_cur_msg) {
+		if (ch->mbc_cur_msg->mbm_chan_sw) {
 			if (!ch->sw_chan_ready)
 				goto done;
 
@@ -1509,19 +1509,18 @@ static void mailbox_recv_request(struct work_struct *work)
 		/* Only interested in request msg. */
 
 		rv = wait_for_completion_interruptible(&mbx->mbx_comp);
-		if(rv)
+		if (rv)
 			break;
 		mutex_lock(&mbx->mbx_lock);
 		msg = list_first_entry_or_null(&mbx->mbx_req_list,
 			struct mailbox_msg, mbm_list);
 
-		if(msg){
+		if (msg) {
 			list_del(&msg->mbm_list);
 			mbx->mbx_req_cnt--;
 			mbx->mbx_req_sz -= msg->mbm_len;
 			mutex_unlock(&mbx->mbx_lock);
-		}
-		else{
+		} else{
 			mutex_unlock(&mbx->mbx_lock);
 			break;
 		}
@@ -1535,7 +1534,7 @@ static void mailbox_recv_request(struct work_struct *work)
 	else if (rv != 0)
 		MBX_ERR(mbx, "failed to receive request from peer, err=%d", rv);
 
-	if(msg)
+	if (msg)
 		free_msg(msg);
 }
 
@@ -1556,7 +1555,7 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	struct resource *res;
 	int ret;
 	struct platform_device *pdev = mbx->mbx_pdev;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (mbx->mbx_irq != -1)
 		return 0;
@@ -1595,7 +1594,7 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 static void mailbox_disable_intr_mode(struct mailbox *mbx)
 {
 	struct platform_device *pdev = mbx->mbx_pdev;
-	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	/*
 	 * No need to turn on polling mode for TX, which has
@@ -1625,18 +1624,18 @@ int mailbox_get(struct platform_device *pdev, enum mb_kind kind, void *data)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	int ret = 0;
-	uint64_t *ch_data = (uint64_t*)data;
+	uint64_t *ch_data = (uint64_t *)data;
 
 	mutex_lock(&mbx->mbx_lock);
-	switch(kind){
-		case CHAN_STATE:
-			*ch_data = mbx->mbx_ch_state;
-			break;
-		case CHAN_SWITCH:
-			*ch_data = mbx->mbx_ch_switch;
-			break;
-		default:
-			break;
+	switch (kind) {
+	case CHAN_STATE:
+		*ch_data = mbx->mbx_ch_state;
+		break;
+	case CHAN_SWITCH:
+		*ch_data = mbx->mbx_ch_switch;
+		break;
+	default:
+		break;
 	}
 	mutex_unlock(&mbx->mbx_lock);
 	return ret;
@@ -1647,44 +1646,44 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, void *data)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	int ret = 0;
-	uint64_t* ch_data = (uint64_t*)data;
+	uint64_t *ch_data = (uint64_t *)data;
 
 	if (mailbox_no_intr)
 		return 0;
 
-	switch(kind){
-		case RESET_END:
-			MBX_INFO(mbx, "enable intr mode");
-			if (mailbox_enable_intr_mode(mbx) != 0)
-				MBX_ERR(mbx, "failed to enable intr after reset");
-			break;
-		case NOT_RESET_END:
-			MBX_INFO(mbx, "enable polling mode");
-			mailbox_disable_intr_mode(mbx);
-			break;
-		case CHAN_STATE:
-			mutex_lock(&mbx->mbx_lock);
-			mbx->mbx_ch_state = *ch_data;
-			mutex_unlock(&mbx->mbx_lock);
-			break;
-		case CHAN_SWITCH:
-			mutex_lock(&mbx->mbx_lock);
-			mbx->mbx_ch_switch |= *ch_data;
-			mutex_unlock(&mbx->mbx_lock);
-			break;
-		case CH_STATE_RST:
-			mutex_lock(&mbx->mbx_lock);
-			mbx->mbx_ch_state = 0;
-			mbx->mbx_ch_switch = 0;
-			mutex_unlock(&mbx->mbx_lock);
-			break;	
-		case CH_SWITCH_RST:
-			mutex_lock(&mbx->mbx_lock);
-			mbx->mbx_ch_switch = 0;
-			mutex_unlock(&mbx->mbx_lock);
-			break;	
-		default:
-			break;
+	switch (kind) {
+	case RESET_END:
+		MBX_INFO(mbx, "enable intr mode");
+		if (mailbox_enable_intr_mode(mbx) != 0)
+			MBX_ERR(mbx, "failed to enable intr after reset");
+		break;
+	case NOT_RESET_END:
+		MBX_INFO(mbx, "enable polling mode");
+		mailbox_disable_intr_mode(mbx);
+		break;
+	case CHAN_STATE:
+		mutex_lock(&mbx->mbx_lock);
+		mbx->mbx_ch_state = *ch_data;
+		mutex_unlock(&mbx->mbx_lock);
+		break;
+	case CHAN_SWITCH:
+		mutex_lock(&mbx->mbx_lock);
+		mbx->mbx_ch_switch |= *ch_data;
+		mutex_unlock(&mbx->mbx_lock);
+		break;
+	case CH_STATE_RST:
+		mutex_lock(&mbx->mbx_lock);
+		mbx->mbx_ch_state = 0;
+		mbx->mbx_ch_switch = 0;
+		mutex_unlock(&mbx->mbx_lock);
+		break;
+	case CH_SWITCH_RST:
+		mutex_lock(&mbx->mbx_lock);
+		mbx->mbx_ch_switch = 0;
+		mutex_unlock(&mbx->mbx_lock);
+		break;
+	default:
+		break;
 	}
 	return ret;
 }
@@ -1744,9 +1743,10 @@ MBX_DBG(mbx, "RFR: TX unsuccessful, userspace buf too small.");
 		} else {
 			ch->sw_chan_from_ioctl->sz = ch->mbc_cur_msg->mbm_len;
 			ch->sw_chan_from_ioctl->id = ch->mbc_cur_msg->mbm_req_id;
-			retVal = copy_to_user(ch->sw_chan_from_ioctl->data, // verify this data in ioctl
-					      ch->mbc_cur_msg->mbm_data,
-					      ch->mbc_cur_msg->mbm_len);
+			/* verify this data in ioctl */
+			retVal = copy_to_user(ch->sw_chan_from_ioctl->data,
+						ch->mbc_cur_msg->mbm_data,
+						ch->mbc_cur_msg->mbm_len);
 		}
 MBX_DBG(mbx, "RFR: TX: copy_to_user: %i", retVal);
 		if (retVal == 0) {

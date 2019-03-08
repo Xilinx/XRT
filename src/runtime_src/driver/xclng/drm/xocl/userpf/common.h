@@ -78,7 +78,7 @@ struct xocl_dev	{
 	bool			offline;
 
 	/* health thread */
-	struct task_struct	       *health_thread;
+	struct task_struct       *health_thread;
 	struct xocl_health_thread_arg	thread_arg;
 
 	u32			p2p_bar_idx;
