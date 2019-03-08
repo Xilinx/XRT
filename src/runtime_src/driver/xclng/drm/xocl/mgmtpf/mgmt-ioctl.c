@@ -125,10 +125,9 @@ static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *dat
 
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	printk(KERN_ERR "mgmt_ioctl START\n");
 	struct xclmgmt_dev *lro;
-	lro = (struct xclmgmt_dev *)filp->private_data;
 	long result = 0;
+	lro = (struct xclmgmt_dev *)filp->private_data;
 
 	BUG_ON(!lro);
 
