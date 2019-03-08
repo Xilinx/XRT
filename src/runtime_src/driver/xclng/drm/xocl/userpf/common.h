@@ -78,12 +78,12 @@ struct xocl_dev	{
 	bool			offline;
 
 	/* health thread */
-	struct task_struct       *health_thread;
+	struct task_struct		*health_thread;
 	struct xocl_health_thread_arg	thread_arg;
 
 	u32			p2p_bar_idx;
 	resource_size_t		p2p_bar_len;
-	void *__iomem p2p_bar_addr;
+	void *__iomem		p2p_bar_addr;
 
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT

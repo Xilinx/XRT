@@ -1036,13 +1036,13 @@ static const struct attribute_group hwmon_xmc_attrgroup = {
 };
 
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
-		char *buf)
+	char *buf)
 {
 	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
 }
 
 static struct sensor_device_attribute name_attr =
-		SENSOR_ATTR(name, 0444, show_name, NULL, 0);
+	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
 
 static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 {
@@ -1207,7 +1207,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	/* Shouldnt make it here but if we do then exit */
 	if (reg_val != GPIO_RESET) {
 		xmc->state = XMC_STATE_ERROR;
-			return -EIO;
+		return -EIO;
 	}
 
 	return 0;
@@ -1251,7 +1251,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 		/* Stop XMC first */
 	ret = stop_xmc_nolock(xmc->pdev);
 	if (ret != 0)
-	goto out;
+		goto out;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
