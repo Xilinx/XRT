@@ -1520,7 +1520,7 @@ static void mailbox_recv_request(struct work_struct *work)
 			mbx->mbx_req_cnt--;
 			mbx->mbx_req_sz -= msg->mbm_len;
 			mutex_unlock(&mbx->mbx_lock);
-		} else{
+		} else {
 			mutex_unlock(&mbx->mbx_lock);
 			break;
 		}
