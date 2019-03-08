@@ -261,7 +261,7 @@ public:
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
             ptCu.put( "status",       parseCUStatus( statusBuf ) );
-            sensor_tree::add_child( "card.compute_unit.cu", ptCu );
+            sensor_tree::add_child( "board.compute_unit.cu", ptCu );
         }
         return 0;
     }
@@ -434,7 +434,7 @@ public:
 		ptStream.put( "status", status );
 		ptStream.put( "total", total );
 		ptStream.put( "pending", pending );
-		sensor_tree::add_child( "card.memory.stream", ptStream);
+		sensor_tree::add_child( "board.memory.stream", ptStream);
 		continue;
             }
 
@@ -455,7 +455,7 @@ public:
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
             ptMem.put( "mem_usage", unitConvert(memoryUsage));
             ptMem.put( "bo_count",  boCount);
-            sensor_tree::add_child( "card.memory.mem", ptMem );
+            sensor_tree::add_child( "board.memory.mem", ptMem );
         }
     }
 
@@ -605,20 +605,20 @@ public:
         sensor_tree::put( "runtime.build.date",      xrt_build_version_date );
         sensor_tree::put( "runtime.build.branch",    xrt_build_version_branch );
         // info
-        sensor_tree::put( "card.info.dsa_name", m_devinfo.mName );
-        sensor_tree::put( "card.info.vendor", m_devinfo.mVendorId );
-        sensor_tree::put( "card.info.device", m_devinfo.mDeviceId );
-        sensor_tree::put( "card.info.subdevice", m_devinfo.mSubsystemId );
-        sensor_tree::put( "card.info.subvendor", m_devinfo.mSubsystemVendorId );
-        sensor_tree::put( "card.info.xmcversion", m_devinfo.mXMCVersion );
-        sensor_tree::put( "card.info.ddr_size", m_devinfo.mDDRSize );
-        sensor_tree::put( "card.info.ddr_count", m_devinfo.mDDRBankCount );
-        sensor_tree::put( "card.info.clock0", m_devinfo.mOCLFrequency[0] );
-        sensor_tree::put( "card.info.clock1", m_devinfo.mOCLFrequency[1] );
-        sensor_tree::put( "card.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
-        sensor_tree::put( "card.info.pcie_width", m_devinfo.mPCIeLinkWidth );
-        sensor_tree::put( "card.info.dma_threads", m_devinfo.mDMAThreads );
-        sensor_tree::put( "card.info.mig_calibrated", m_devinfo.mMigCalib );
+        sensor_tree::put( "board.info.dsa_name", m_devinfo.mName );
+        sensor_tree::put( "board.info.vendor", m_devinfo.mVendorId );
+        sensor_tree::put( "board.info.device", m_devinfo.mDeviceId );
+        sensor_tree::put( "board.info.subdevice", m_devinfo.mSubsystemId );
+        sensor_tree::put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
+        sensor_tree::put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        sensor_tree::put( "board.info.ddr_size", m_devinfo.mDDRSize );
+        sensor_tree::put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
+        sensor_tree::put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
+        sensor_tree::put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
+        sensor_tree::put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
+        sensor_tree::put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
+        sensor_tree::put( "board.info.dma_threads", m_devinfo.mDMAThreads );
+        sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
         {
             std::string idcode, fpga, dna, errmsg;
             if(pcidev::get_dev(m_idx)->mgmt){
@@ -629,19 +629,19 @@ public:
             if(pcidev::get_dev(m_idx)->user){
                 pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
             }
-            sensor_tree::put( "card.info.idcode", idcode );
-            sensor_tree::put( "card.info.fpga_name", fpga );
-            sensor_tree::put( "card.info.dna", dna);
+            sensor_tree::put( "board.info.idcode", idcode );
+            sensor_tree::put( "board.info.fpga_name", fpga );
+            sensor_tree::put( "board.info.dna", dna);
         }
 
 
         // physical
-        sensor_tree::put( "card.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
-        sensor_tree::put( "card.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
-        sensor_tree::put( "card.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
-        sensor_tree::put( "card.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
-        sensor_tree::put( "card.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
-        sensor_tree::put( "card.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        sensor_tree::put( "board.physical.thermal.pcb.top_front",                m_devinfo.mSE98Temp[ 0 ] );
+        sensor_tree::put( "board.physical.thermal.pcb.top_rear",                 m_devinfo.mSE98Temp[ 1 ] );
+        sensor_tree::put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
+        sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
+        sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
+        sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
@@ -651,37 +651,37 @@ public:
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
                 pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             }
-            sensor_tree::put( "card.physical.thermal.cage.temp0", temp0);
-            sensor_tree::put( "card.physical.thermal.cage.temp1", temp1);
-            sensor_tree::put( "card.physical.thermal.cage.temp2", temp2);
-            sensor_tree::put( "card.physical.thermal.cage.temp3", temp3);
+            sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
+            sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
+            sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
+            sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
         }
-        sensor_tree::put( "card.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
-        sensor_tree::put( "card.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
-        sensor_tree::put( "card.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
-        sensor_tree::put( "card.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
-        sensor_tree::put( "card.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
-        sensor_tree::put( "card.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
-        sensor_tree::put( "card.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
-        sensor_tree::put( "card.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
-        sensor_tree::put( "card.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
-        sensor_tree::put( "card.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
-        sensor_tree::put( "card.physical.electrical.1v2_btm.voltage",           m_devinfo.m1v2Bottom );
-        sensor_tree::put( "card.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
-        sensor_tree::put( "card.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
-        sensor_tree::put( "card.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
-        sensor_tree::put( "card.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
-        sensor_tree::put( "card.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
-        sensor_tree::put( "card.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        sensor_tree::put( "card.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
+        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",           m_devinfo.m12VPex );
+        sensor_tree::put( "board.physical.electrical.12v_pex.current",           m_devinfo.mPexCurr );
+        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",           m_devinfo.m12VAux );
+        sensor_tree::put( "board.physical.electrical.12v_aux.current",           m_devinfo.mAuxCurr );
+        sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",           m_devinfo.m3v3Pex );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",           m_devinfo.m3v3Aux );
+        sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",    m_devinfo.mDDRVppBottom );
+        sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",       m_devinfo.mDDRVppTop );
+        sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",           m_devinfo.mSys5v5 );
+        sensor_tree::put( "board.physical.electrical.1v2_top.voltage",           m_devinfo.m1v2Top );
+        sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",           m_devinfo.m1v2Bottom );
+        sensor_tree::put( "board.physical.electrical.1v8_top.voltage",           m_devinfo.m1v8Top );
+        sensor_tree::put( "board.physical.electrical.0v85.voltage",              m_devinfo.m0v85 );
+        sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",           m_devinfo.mMgt0v9 );
+        sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
+        sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
+        sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        sensor_tree::put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
 
         // powerm_devinfo_power
-        sensor_tree::put( "card.physical.power", m_devinfo_power(m_devinfo));
+        sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
 
         // firewall
         unsigned i = m_errinfo.mFirewallLevel;
-        sensor_tree::put( "card.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
-        sensor_tree::put( "card.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
+        sensor_tree::put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
+        sensor_tree::put( "board.error.firewall.status", parseFirewallStatus( m_errinfo.mAXIErrorStatus[ i ].mErrFirewallStatus ) );
 
         // memory
         xclDeviceUsage devstat = { 0 };
@@ -691,7 +691,7 @@ public:
             pt_dma.put( "index", i );
             pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
             pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
-            sensor_tree::add_child( "card.pcie_dma.transfer_metrics.chan", pt_dma );
+            sensor_tree::add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
         }
         getMemTopology( devstat );
         // stream
@@ -700,7 +700,7 @@ public:
         std::string errmsg, xclbinid;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         if(errmsg.empty()) {
-            sensor_tree::put( "card.xclbin.uuid", xclbinid );
+            sensor_tree::put( "board.xclbin.uuid", xclbinid );
         }
 
         // compute unit
@@ -732,7 +732,7 @@ public:
 	int p2p_enabled;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
 	if(errmsg.empty()) {
-		sensor_tree::put( "card.info.p2p_enabled", p2p_enabled );
+		sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
 	}
         return 0;
     }
@@ -762,28 +762,28 @@ public:
              <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "Shell" << std::setw(28) << "FPGA" << "IDCode" << std::endl;
-        ostr << std::setw(32) << sensor_tree::get<std::string>( "card.info.dsa_name",  "N/A" )
-             << std::setw(28) << sensor_tree::get<std::string>( "card.info.fpga_name", "N/A" )
-             << sensor_tree::get<std::string>( "card.info.idcode",    "N/A" ) << std::endl;
+        ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
+             << std::setw(28) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
+             << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
         // get_pretty since we want these as hex
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.info.vendor",    "N/A", true )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.info.device",    "N/A", true )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.info.subdevice", "N/A", true )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.info.subvendor", "N/A", true ) << std::dec << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.vendor",    "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.device",    "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subvendor", "N/A", true ) << std::dec << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::endl;
-        ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "card.info.ddr_size", -1 ))
-             << std::setw(16) << sensor_tree::get( "card.info.ddr_count", -1 )
-             << std::setw(16) << sensor_tree::get( "card.info.clock0", -1 )
-             << std::setw(16) << sensor_tree::get( "card.info.clock1", -1 ) << std::endl;
+        ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
+             << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
              << std::setw(16) << "DMA chan(bidir)"
              << std::setw(16) << "MIG Calibrated"
              << std::setw(16) << "P2P Enabled" << std::endl;
-        ostr << "GEN " << sensor_tree::get( "card.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "card.info.pcie_width", -1 )
-             << std::setw(16) << sensor_tree::get( "card.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "card.info.mig_calibrated", "N/A" );
-	switch(sensor_tree::get( "card.info.p2p_enabled", -1)) {
+        ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
+	switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
 	case -1:
              ostr << std::setw(16) << "N/A" << std::endl;
 	     break;
@@ -801,52 +801,52 @@ public:
         ostr << "Temperature(C)\n";
         // use get_pretty for Temperature and Electrical since the driver may rail unsupported values high
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.pcb.top_front" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.pcb.top_rear"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.pcb.btm_front" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_front" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_rear"  )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
         ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed(RPM)" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.fpga_temp")
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.tcrit_temp")
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.fan_speed" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fpga_temp")
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.tcrit_temp")
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
         ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.cage.temp0" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.cage.temp1" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.cage.temp2" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.thermal.cage.temp3" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp0" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp1" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp2" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp3" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.12v_pex.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.12v_aux.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "card.physical.electrical.12v_pex.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "card.physical.electrical.12v_aux.current" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.3v3_pex.voltage"        )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.3v3_aux.voltage"        )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.ddr_vpp_bottom.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.sys_5v5.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.1v2_top.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.1v8_top.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.0v85.voltage"    ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.sys_5v5.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_top.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v8_top.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.voltage"    ) << std::endl;
         ostr << std::setw(16) << "MGT 0V9" << std::setw(16) << "12V SW" << std::setw(16) << "MGT VTT" << std::setw(16) << "1V2 BTM" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.mgt_0v9.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.12v_sw.voltage"  )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.mgt_vtt.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.1v2_btm.voltage" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_0v9.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "card.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "card.info.dna", "N/A" ) << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
-        ostr << sensor_tree::get_pretty<unsigned>( "card.physical.power" ) << " W" << std::endl;
+        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << " Level " << std::setw(2) << sensor_tree::get( "card.error.firewall.firewall_level", -1 ) << ": 0x0"
-             << sensor_tree::get<std::string>( "card.error.firewall.status", "N/A" ) << std::endl;
+        ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+             << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
         ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
@@ -854,7 +854,7 @@ public:
         ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
         try {
-          for (auto& v : sensor_tree::get_child("card.memory")) {
+          for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "mem" ) {
               std::string mem_usage, tag, size, type, temp;
               int index = 0;
@@ -895,7 +895,7 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "DMA Transfer Metrics" << std::endl;
         try {
-          for (auto& v : sensor_tree::get_child( "card.pcie_dma.transfer_metrics" )) {
+          for (auto& v : sensor_tree::get_child( "board.pcie_dma.transfer_metrics" )) {
             if( v.first == "chan" ) {
               std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
               for (auto& subv : v.second ) {
@@ -922,7 +922,7 @@ public:
              << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
         ostr << std::setw(16) << "Total (B/#)" << std::setw(10)  << "Pending (B/#)" << std::endl;
 	try {
-          for (auto& v : sensor_tree::get_child("card.memory")) {
+          for (auto& v : sensor_tree::get_child("board.memory")) {
             if( v.first == "stream" ) {
               std::string status, tag, total, pending;
               int index = 0;
@@ -961,11 +961,11 @@ public:
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Xclbin UUID\n"
-             << sensor_tree::get<std::string>( "card.xclbin.uuid", "N/A" ) << std::endl;
+             << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status\n";
         try {
-          for (auto& v : sensor_tree::get_child( "card.compute_unit" )) {
+          for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             if( v.first == "cu" ) {
               std::string cu_n, cu_s, cu_ba;
               int cu_i = 0;
