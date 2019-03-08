@@ -651,7 +651,7 @@ int main(int argc, char *argv[])
 
 void xcldev::printHelp(const std::string& exe)
 {
-    std::cout << "Running xbutil for 4.0+ DSA's \n\n";
+    std::cout << "Running xbutil for 4.0+ shell's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
     std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
@@ -670,7 +670,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  validate [-d card]\n";
     std::cout << " Requires root privileges:\n";
     std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
     std::cout << "  p2p    [-d card] --enable\n";
@@ -699,9 +699,9 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
-    std::cout << "Flash all installed DSA for all cards, if not done\n";
+    std::cout << "Flash all installed shell for all cards, if not done\n";
     std::cout << "  sudo " << exe << " flash -a all\n";
-    std::cout << "Show DSA related information for all cards in the system\n";
+    std::cout << "Show shell related information for all cards in the system\n";
     std::cout << "  sudo " << exe << " flash scan\n";
     std::cout << "Validate installation on card 1\n";
     std::cout << "  " << exe << " validate -d 1\n";
@@ -959,7 +959,7 @@ int xcldev::device::runTestCase(const std::string& exe,
         output += exe;
         output += " or ";
         output += xclbin;
-        output += ", DSA package not installed properly.";
+        output += ", Shell package not installed properly.";
         return -ENOENT;
     }
 

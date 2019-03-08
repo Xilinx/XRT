@@ -199,12 +199,12 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
     {
         if (installedDSA.empty())
         {
-            std::cout << "no DSA installed" << std::endl;
+            std::cout << "no shell installed" << std::endl;
             return candidateDSAIndex;
         }
         else if (installedDSA.size() > 1)
         {
-            std::cout << "multiple DSA installed" << std::endl;
+            std::cout << "multiple shell installed" << std::endl;
             return candidateDSAIndex;
         }
         else
@@ -223,7 +223,7 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
                 continue;
             if (candidateDSAIndex != UINT_MAX)
             {
-                std::cout << "multiple DSA installed" << std::endl;
+                std::cout << "multiple shell installed" << std::endl;
                 return candidateDSAIndex;
             }
             candidateDSAIndex = i;
@@ -232,7 +232,7 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
 
     if (candidateDSAIndex == UINT_MAX)
     {
-        std::cout << "specified DSA not applicable" << std::endl;
+        std::cout << "specified shell not applicable" << std::endl;
         return candidateDSAIndex;
     }
 
@@ -250,10 +250,10 @@ unsigned selectDSA(unsigned idx, std::string& dsa, uint64_t ts)
     }
     if (same_dsa && same_bmc)
     {
-        std::cout << "DSA on FPGA is up-to-date" << std::endl;
+        std::cout << "Shell on FPGA is up-to-date" << std::endl;
         return UINT_MAX;
     }
-    std::cout << "DSA on FPGA needs updating" << std::endl;
+    std::cout << "Shell on FPGA needs updating" << std::endl;
     return candidateDSAIndex;
 }
 
@@ -301,11 +301,11 @@ int updateDSA(unsigned boardIdx, unsigned dsaIdx, bool& reboot)
 
     if (!same_dsa)
     {
-        std::cout << "Updating DSA on card[" << boardIdx << "]" << std::endl;
+        std::cout << "Updating shell on card[" << boardIdx << "]" << std::endl;
         int ret = flashDSA(flasher, candidate);
         if (ret != 0)
         {
-            std::cout << "ERROR: Failed to update DSA on card["
+            std::cout << "ERROR: Failed to update shell on card["
                 << boardIdx << "]" << std::endl;
         } else {
             updated_dsa = true;
@@ -531,7 +531,7 @@ int xcldev::flash_helper(int argc, char *argv[])
                 args.primary.get(), args.secondary.get());
             if (ret == 0)
             {
-                std::cout << "DSA image flashed succesfully" << std::endl;
+                std::cout << "Shell image flashed succesfully" << std::endl;
                 std::cout << "Cold reboot machine to load the new image on FPGA"
                     << std::endl;
             }
@@ -566,12 +566,12 @@ int xcldev::flash_helper(int argc, char *argv[])
         }
         if (!foundDSA)
         {
-            std::cout << "Specified DSA not installed." << std::endl;
+            std::cout << "Specified shell not installed." << std::endl;
             exit(-ENOENT);
         }
         if (multiDSA)
         {
-            std::cout << "Specified DSA matched more than one installed DSA"
+            std::cout << "Specified shell matched more than one installed shell"
                 << std::endl;
             exit (-ENOTUNIQ);
         }
@@ -608,10 +608,10 @@ int xcldev::flash_helper(int argc, char *argv[])
     bool needreboot = false;
     if (!boardsToUpdate.empty())
     {
-        std::cout << "DSA on below card(s) will be updated:" << std::endl;
+        std::cout << "Shell on below card(s) will be updated:" << std::endl;
         for (auto p : boardsToUpdate)
         {
-            std::cout << "Card [" << p.first << "]" << std::endl;
+            std::cout << "Card_ID[" << p.first << "]" << std::endl;
         }
 
         // Prompt user about what boards will be updated and ask for permission.
@@ -887,7 +887,7 @@ int main( int argc, char *argv[])
         if (index >= total)
             std::cout << "ERROR: Card index " << index << "is out of range";
         else
-            std::cout << "ERROR: Card [" << index << "] is not ready";
+            std::cout << "ERROR: Card_ID[" << index << "] is not ready";
         std::cout << std::endl;
         return 1;
     }
@@ -1064,7 +1064,7 @@ int xcldev::device::runTestCase(const std::string& exe,
         output += exe;
         output += " or ";
         output += xclbin;
-        output += ", DSA package not installed properly.";
+        output += ", Shell package not installed properly.";
         return -ENOENT;
     }
 
@@ -1246,7 +1246,7 @@ int scanDevices(int argc, char *argv[])
 
     for(unsigned i = 0; i < total; i++)
     {
-        std::cout << "Card [" << i << "]" << std::endl;
+        std::cout << "Card_ID[" << i << "]" << std::endl;
 
         Flasher f(i);
         if (!f.isValid())
@@ -1256,11 +1256,11 @@ int scanDevices(int argc, char *argv[])
         std::cout << "\tCard BDF:\t\t" << f.sGetDBDF() << std::endl;
         std::cout << "\tCard type:\t\t" << board.board << std::endl;
         std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-        std::cout << "\tDSA running on FPGA:" << std::endl;
+        std::cout << "\tShell running on FPGA:" << std::endl;
         std::cout << "\t\t" << board << std::endl;
 
         std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-        std::cout << "\tDSA package installed in system:\t";
+        std::cout << "\tShell package installed in system:\t";
         if (!installedDSA.empty())
         {
             for (auto& d : installedDSA)
