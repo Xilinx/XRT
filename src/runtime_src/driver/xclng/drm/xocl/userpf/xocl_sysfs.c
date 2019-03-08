@@ -35,9 +35,10 @@ static DEVICE_ATTR_RO(xclbinuuid);
 
 /* -userbar-- */
 static ssize_t userbar_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
+			    struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
@@ -66,19 +67,6 @@ static ssize_t kdsstat_show(struct device *dev,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),
 			   get_live_client_size(xdev));
-#if 0
-	buf += size;
-	if (xdev->layout == NULL)
-		return size;
-	// Enable in 2019.1
-	for (i = 0; i < xdev->layout->m_count; i++) {
-		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
-			continue;
-		size += sprintf(buf, "\t%s:\t%d\n", xdev->layout->m_ip_data[i].m_name,
-				xdev->ip_reference[i]);
-		buf += size;
-	}
-#endif
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -89,7 +77,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	ssize_t count = 0;
 	ssize_t size = 0;
 	size_t memory_usage = 0;
-	unsigned bo_count = 0;
+	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = NULL;
@@ -103,7 +91,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	mutex_lock(&xdev->ctx_list_lock);
 
 	topo = XOCL_MEM_TOPOLOGY(xdev);
-	if (!topo){
+	if (!topo) {
 		mutex_unlock(&xdev->ctx_list_lock);
 		return -EINVAL;
 	}
@@ -181,9 +169,8 @@ static ssize_t p2p_enable_store(struct device *dev,
 	u64 size;
 
 
-	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1) {
+	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
-	}
 
 	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
 	if (p2p_bar < 0) {
@@ -241,9 +228,8 @@ static ssize_t dev_offline_store(struct device *dev,
 	u32 offline;
 
 
-	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1)
 		return -EINVAL;
-	}
 
 	device_lock(dev);
 	if (offline) {

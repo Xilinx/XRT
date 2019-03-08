@@ -11,12 +11,12 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  */
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
@@ -30,9 +30,9 @@
 #endif
 
 #if defined(__PPC64__)
-#define XOCL_FILE_PAGE_OFFSET   0x10000
+#define XOCL_FILE_PAGE_OFFSET	0x10000
 #else
-#define XOCL_FILE_PAGE_OFFSET   0x100000
+#define XOCL_FILE_PAGE_OFFSET	0x100000
 #endif
 
 #ifndef VM_RESERVED
@@ -40,10 +40,10 @@
 #endif
 
 #ifdef _XOCL_DRM_DEBUG
-#define DRM_ENTER(fmt, args...)          \
-        printk(KERN_INFO "[DRM] Entering %s:"fmt"\n", __func__, ##args)
-#define DRM_DBG(fmt, args...)          \
-        printk(KERN_INFO "[DRM] %s:%d:"fmt"\n", __func__,__LINE__, ##args)
+#define DRM_ENTER(fmt, args...)		 \
+	printk(KERN_INFO "[DRM] Entering %s:"fmt"\n", __func__, ##args)
+#define DRM_DBG(fmt, args...)	       \
+	printk(KERN_INFO "[DRM] %s:%d:"fmt"\n", __func__, __LINE__, ##args)
 #else
 #define DRM_ENTER(fmt, args...)
 #define DRM_DBG(fmt, args...)
@@ -104,20 +104,20 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	DRM_ENTER("vm pgoff %lx", vma->vm_pgoff);
 
 	/*
- 	 * If the page offset is > than 4G, then let GEM handle that and do what
- 	 * it thinks is best,we will only handle page offsets less than 4G.
- 	 */
+	 * If the page offset is > than 4G, then let GEM handle that and do what
+	 * it thinks is best,we will only handle page offsets less than 4G.
+	 */
 	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET)) {
 		ret = drm_gem_mmap(filp, vma);
 		if (ret)
 			return ret;
 		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
- 		 * we have "struct page" for all backing pages for bo
+		 * we have "struct page" for all backing pages for bo
 		 */
 		vma->vm_flags &= ~VM_PFNMAP;
 		/* Clear VM_IO flag set by drm_gem_mmap()
- 		 * it prevents gdb from accessing mapped buffers
- 		 */
+		 * it prevents gdb from accessing mapped buffers
+		 */
 		vma->vm_flags &= ~VM_IO;
 		vma->vm_flags |= VM_MIXEDMAP;
 		vma->vm_flags |= mm->def_flags;
@@ -125,8 +125,8 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 
 		/* Override pgprot_writecombine() mapping setup by
 		 * drm_gem_mmap()
- 		 * which results in very poor read performance
- 		 */
+		 * which results in very poor read performance
+		 */
 		if (vma->vm_flags & (VM_READ | VM_MAYREAD))
 			vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
 		else
@@ -172,7 +172,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	pfn_t pfn;
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	unsigned long vmf_address = vmf->address;
 #else
 	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
@@ -188,17 +188,16 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if(xobj->type & XOCL_BO_P2P){
+	if (xobj->type & XOCL_BO_P2P) {
 #if RHEL_P2P_SUPPORT
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
-  }
-  else{
-  	ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
-  }
+	} else {
+		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
+	}
 	switch (ret) {
 	case -EAGAIN:
 	case 0:
@@ -219,7 +218,8 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	DRM_ENTER("");
 
 	/* We do not allow users to open PRIMARY node, /dev/dri/cardX node.
-	 * Users should only open RENDER, /dev/dri/renderX node */
+	 * Users should only open RENDER, /dev/dri/renderX node
+	 */
 	if (drm_is_primary_client(filp))
 		return -EPERM;
 
@@ -252,7 +252,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	BUG_ON(!priv->driver_priv);
 
 	DRM_ENTER("");
-	return xocl_exec_poll_client(drm_p->xdev, filp, wait,priv->driver_priv);
+	return xocl_exec_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
 }
 
 static const struct drm_ioctl_desc xocl_ioctls[] = {
@@ -287,9 +287,9 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_EXECBUF, xocl_execbuf_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_HOT_RESET, xocl_hot_reset_ioctl,
-		  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_RECLOCK, xocl_reclock_ioctl,
-	  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static long xocl_drm_ioctl(struct file *filp,
@@ -318,8 +318,8 @@ static struct drm_driver mm_drm_driver = {
 	.driver_features		= DRIVER_GEM | DRIVER_PRIME |
 						DRIVER_RENDER,
 
-	.postclose                      = xocl_client_release,
-	.open                           = xocl_client_open,
+	.postclose			= xocl_client_release,
+	.open				= xocl_client_open,
 
 	.gem_free_object		= xocl_free_object,
 	.gem_vm_ops			= &xocl_vm_ops,
@@ -328,10 +328,10 @@ static struct drm_driver mm_drm_driver = {
 	.num_ioctls			= ARRAY_SIZE(xocl_ioctls),
 	.fops				= &xocl_driver_fops,
 
-	.gem_prime_get_sg_table         = xocl_gem_prime_get_sg_table,
-	.gem_prime_import_sg_table      = xocl_gem_prime_import_sg_table,
-	.gem_prime_vmap                 = xocl_gem_prime_vmap,
-	.gem_prime_vunmap               = xocl_gem_prime_vunmap,
+	.gem_prime_get_sg_table		= xocl_gem_prime_get_sg_table,
+	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
+	.gem_prime_vmap			= xocl_gem_prime_vmap,
+	.gem_prime_vunmap		= xocl_gem_prime_vunmap,
 	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
@@ -339,7 +339,7 @@ static struct drm_driver mm_drm_driver = {
 	.gem_prime_import		= drm_gem_prime_import,
 	.gem_prime_export		= drm_gem_prime_export,
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
-	.set_busid                      = drm_pci_set_busid,
+	.set_busid			= drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
@@ -388,7 +388,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 
 	drm_p->ddev = ddev;
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,4,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 4, 0)
 	ret = drm_dev_set_unique(ddev, dev_name(ddev->dev));
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "set unique name failed 0x%x", ret);
@@ -444,7 +444,7 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 }
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
-                struct drm_mm_node *node, u64 size)
+			struct drm_mm_node *node, u64 size)
 {
 	return drm_mm_insert_node_generic(drm_p->mm[ddr], node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
@@ -457,8 +457,8 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *topology;
-	u16     i;
-	int     err = 0;
+	u16	i;
+	int	err = 0;
 
 	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
 	if (topology == NULL)
@@ -474,9 +474,8 @@ int xocl_check_topology(struct xocl_drm *drm_p)
 		if (drm_p->mm_usage_stat[i]->bo_count != 0) {
 			err = -EPERM;
 			xocl_err(drm_p->ddev->dev,
-				       	"The ddr %d has pre-existing buffer "
-					"allocations, please exit and re-run.",
-					i);
+				 "The ddr %d has pre-existing buffer allocations, please exit and re-run.",
+				 i);
 		}
 	}
 
