@@ -276,12 +276,11 @@ struct mailbox_channel {
 	/*
 	 * Software channel settings
 	 */
-	bool			sw_chan_ready;
-	size_t			sw_chan_buf_sz;
 	struct completion	sw_chan_complete;
 	struct mutex		sw_chan_mutex;
-	struct sw_chan		*sw_chan_from_ioctl;
 	void			*sw_chan_buf;
+	size_t			sw_chan_buf_sz;
+	uint64_t		sw_chan_msg_id;
 };
 
 /*
@@ -336,8 +335,6 @@ struct mailbox {
 	uint32_t mbx_prot_ver;
 
 	void *mbx_kaddr;
-
-	bool sw_mbx_enabled;
 
 	uint64_t mbx_ch_state;
 	uint64_t mbx_ch_switch;
@@ -720,12 +717,12 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	queue_work(ch->mbc_wq, &ch->mbc_work);
 
 	mutex_init(&ch->sw_chan_mutex);
-	ch->sw_chan_ready = false;
 	init_completion(&ch->sw_chan_complete);
 
 	mutex_lock(&ch->sw_chan_mutex);
-	ch->sw_chan_buf = vmalloc(PAGE_SIZE);
+	ch->sw_chan_buf = NULL;
 	ch->sw_chan_buf_sz = 0;
+	ch->sw_chan_msg_id = 0;
 	mutex_unlock(&ch->sw_chan_mutex);
 
 	/* One timer for one channel. */
@@ -864,9 +861,6 @@ static int chan_pkt2msg(struct mailbox_channel *ch)
 	return 0;
 }
 
-/*
- * SW Channel worker's meat.
- */
 static void do_sw_rx(struct mailbox_channel *ch)
 {
 	void *ptr = NULL;
@@ -964,6 +958,9 @@ static void do_hw_rx(struct mailbox_channel *ch)
 	}
 }
 
+/*
+ * Worker for RX channel.
+ */
 static void chan_do_rx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
@@ -1409,11 +1406,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 
 	free_msg(respmsg);
 
-	/* Sleep so the next request doesn't come before the response.
-	 * 10 ms was too little, 20 ms works.
-	 */
-	msleep_interruptible(20);
-
 	return rv;
 
 fail:
@@ -1692,114 +1684,88 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 {
 	struct mailbox *mbx;
 	struct mailbox_channel *ch;
-	struct sw_chan *p_sw_chan_st;
-	int retVal = 1;
+	struct sw_chan *sw_chan_args;
+	int ret = 0;
 	mbx = platform_get_drvdata(pdev);
-	mbx->sw_mbx_enabled = true;
-MBX_DBG(mbx, "RFR: START");
 
-	p_sw_chan_st = (struct sw_chan *)args;
-MBX_DBG(mbx, "RFR: is_tx: %d", p_sw_chan_st->is_tx);
+	sw_chan_args = (struct sw_chan *)args;
 
-	if (p_sw_chan_st->is_tx)
+	if (sw_chan_args->is_tx)
 		ch = &mbx->mbx_tx;
 	else
 		ch = &mbx->mbx_rx;
 
-	ch->sw_chan_from_ioctl = p_sw_chan_st;
-
-	if (ch->sw_chan_from_ioctl->is_tx) {
-		ch->sw_chan_ready = true;
-
+	if (sw_chan_args->is_tx) {
 		/* must wake the worker thread */
 		complete(&ch->mbc_worker);
 
-MBX_DBG(mbx, "RFR: TX: going to sleep");
-		/* sleep until chan_send_pkt copies to sw_chan_buf */
+		/* sleep until do_hw_tx copies to sw_chan_buf */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
-			ch->sw_chan_ready = false;
-			mutex_lock(&ch->sw_chan_mutex);
-			ch->sw_chan_buf = NULL;
-			ch->sw_chan_buf_sz = 0;
-			mutex_unlock(&ch->sw_chan_mutex);
-			retVal = -ERESTARTSYS;
+			ret = -ERESTARTSYS;
 			goto end;
 		}
 
-MBX_DBG(mbx, "RFR: TX: woken up, mbm_len: %li, userspace_sz: %li", ch->mbc_cur_msg->mbm_len, ch->sw_chan_from_ioctl->sz);
-MBX_ERR(mbx, "RFR: WOKEN");
 		/* if mbm_len > userspace buf size (chan_from_ioctl.sz), then don't
 		 * attempt a copy, instead set the size and return -EMSGSIZE. This will
 		 * initiate a resize of userspace buffer and attempt the ioctl again from
 		 * userspace.
-		 *
-		 * if mbm_len !> userspace buf, procede with copy_to_user.
 		 */
-		if (ch->mbc_cur_msg->mbm_len > ch->sw_chan_from_ioctl->sz) {
-			ch->sw_chan_from_ioctl->sz = ch->mbc_cur_msg->mbm_len;
-MBX_DBG(mbx, "RFR: TX unsuccessful, userspace buf too small.");
-			retVal = -EMSGSIZE;
-		} else {
-			ch->sw_chan_from_ioctl->sz = ch->mbc_cur_msg->mbm_len;
-			ch->sw_chan_from_ioctl->id = ch->mbc_cur_msg->mbm_req_id;
-			/* verify this data in ioctl */
-			retVal = copy_to_user(ch->sw_chan_from_ioctl->data,
-						ch->mbc_cur_msg->mbm_data,
-						ch->mbc_cur_msg->mbm_len);
-		}
-MBX_DBG(mbx, "RFR: TX: copy_to_user: %i", retVal);
-		if (retVal == 0) {
-MBX_DBG(mbx, "RFR: all bytes copied successfully, marking bytes done.");
-			ch->mbc_bytes_done = ch->mbc_cur_msg->mbm_len;
-		}
 
-		/* signal worker that copy is complete */
-		complete(&ch->mbc_worker);
+		mutex_lock(&ch->sw_chan_mutex);
+		if (ch->sw_chan_buf_sz > sw_chan_args->sz) {
+			sw_chan_args->sz = ch->sw_chan_buf_sz;
+			mutex_unlock(&ch->sw_chan_mutex);
+			return -EMSGSIZE;
+		}
+		ret = copy_to_user(sw_chan_args->data,
+					ch->sw_chan_buf,
+					ch->sw_chan_buf_sz);
+		mutex_unlock(&ch->sw_chan_mutex);
+
+		if (ret != 0) {
+			MBX_ERR(mbx, "Software channel TX copy_to_user failed.");
+			ret = -EBADMSG;
+			goto end;
+		}
 	} else {
 		/* copy into sw_chan_buf */
 		mutex_lock(&ch->sw_chan_mutex);
-		if (ch->sw_chan_from_ioctl->sz > ch->sw_chan_buf_sz) {
-			vfree(ch->sw_chan_buf);
-			ch->sw_chan_buf = vmalloc(ch->sw_chan_from_ioctl->sz);
+		if (ch->sw_chan_buf == NULL) {
+			ch->sw_chan_buf = vmalloc(sw_chan_args->sz);
+			ch->sw_chan_buf_sz = sw_chan_args->sz;
+			ch->sw_chan_msg_id = sw_chan_args->id;
+			ret = copy_from_user(ch->sw_chan_buf,
+						sw_chan_args->data,
+						sw_chan_args->sz);
 		}
-		ch->sw_chan_buf_sz = ch->sw_chan_from_ioctl->sz;
-		retVal = copy_from_user(ch->sw_chan_buf,
-					ch->sw_chan_from_ioctl->data,
-					ch->sw_chan_from_ioctl->sz);
 		mutex_unlock(&ch->sw_chan_mutex);
-MBX_DBG(mbx, "RFR: RX: copy_from_user ret=%i, sz=%li, id=0x%llx.", retVal, ch->sw_chan_from_ioctl->sz, ch->sw_chan_from_ioctl->id);
 
-		if (retVal != 0) {
-MBX_ERR(mbx, "Failed to copy_from_user.");
-			retVal = -EBADMSG;
+		if (ret != 0) {
+			MBX_ERR(mbx, "Software channel RX copy_from_user failed.");
+			ret = -EBADMSG;
 			goto end;
 		}
-		ch->sw_chan_ready = true;
 
 		/* signal channel worker that we are here and the packet is ready to take */
-MBX_DBG(mbx, "mbc_worker complete called.");
 		complete(&ch->mbc_worker);
 
-MBX_DBG(mbx, "RFR: RX: going to sleep");
 		/* sleep until chan_do_rx dequeues */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
-			ch->sw_chan_ready = false;
-			mutex_lock(&ch->sw_chan_mutex);
-			ch->sw_chan_buf = NULL;
-			ch->sw_chan_buf_sz = 0;
-			mutex_unlock(&ch->sw_chan_mutex);
-			retVal = -ERESTARTSYS;
+			ret = -ERESTARTSYS;
 			goto end;
 		}
-MBX_DBG(mbx, "RFR: RX: woken up");
 	}
 
 end:
-	ch->sw_chan_ready = false;
-MBX_DBG(mbx, "RFR: FINISH, returning : %i", retVal);
-	return retVal;
+	mutex_lock(&ch->sw_chan_mutex);
+	vfree(ch->sw_chan_buf);
+	ch->sw_chan_buf = NULL;
+	ch->sw_chan_msg_id = 0;
+	ch->sw_chan_buf_sz = 0;
+	mutex_unlock(&ch->sw_chan_mutex);
+	return ret;
 }
 
 /* Kernel APIs exported from this sub-device driver. */
