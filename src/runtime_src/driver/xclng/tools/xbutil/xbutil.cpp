@@ -989,7 +989,7 @@ int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
-    bool warning = true;
+    bool warning = false;
 
     // Check pcie training
     std::cout << "INFO: Checking PCIE link status: " << std::flush;
@@ -1170,6 +1170,7 @@ int xcldev::xclValidate(int argc, char *argv[])
         std::cout << "INFO: All cards validated successfully but with warnings." << std::endl;
     else
         std::cout << "INFO: All cards validated successfully." << std::endl;
+
     return 0;
 }
 
