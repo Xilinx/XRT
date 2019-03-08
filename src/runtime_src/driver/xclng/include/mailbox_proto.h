@@ -179,8 +179,8 @@ struct mailbox_req {
  *	MAILBOX_REQ_CONN_EXPL response
  *	MB_PEER_SAME_DOM
  */
-#define MB_PEER_CONNECTED				 (0x1 << 0)
-#define MB_PEER_SAME_DOM					(0x1 << 1)
+#define MB_PEER_CONNECTED				(0x1 << 0)
+#define MB_PEER_SAME_DOM				(0x1 << 1)
 #define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
