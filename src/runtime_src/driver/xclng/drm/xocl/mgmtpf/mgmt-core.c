@@ -881,15 +881,15 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->ready = false;
 
 	rc = pcie_get_readrq(pdev);
-		if (rc < 0) {
-			dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+	if (rc < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto err_alloc;
+	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
 			goto err_alloc;
-		}
-		if (rc > 512) {
-			rc = pcie_set_readrq(pdev, 512);
-			if (rc) {
-				dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
-				goto err_alloc;
 		}
 	}
 

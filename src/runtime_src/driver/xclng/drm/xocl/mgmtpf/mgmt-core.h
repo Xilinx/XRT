@@ -58,7 +58,7 @@ struct xclmgmt_ioc_info;
 struct proc_list {
 
 	struct list_head head;
-	struct pid *pid;
+	struct pid		*pid;
 	bool		signaled;
 };
 
