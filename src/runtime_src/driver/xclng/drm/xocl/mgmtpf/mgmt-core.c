@@ -124,7 +124,7 @@ static void unmap_bars(struct xclmgmt_dev *lro)
 
 static int identify_bar(struct xocl_dev_core *core, int bar)
 {
-	void *__iomem bar_addr;
+	void __iomem *bar_addr;
 	resource_size_t bar_len;
 
 	bar_len = pci_resource_len(core->pdev, bar);
