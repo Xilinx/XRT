@@ -510,6 +510,17 @@ static void chan_msg_done(struct mailbox_channel *ch, int err)
 	ch->mbc_bytes_done = 0;
 }
 
+static void clean_sw_buf(struct mailbox_channel *ch)
+{
+	if (!ch->sw_chan_buf)
+		return;
+	
+	vfree(ch->sw_chan_buf);
+	ch->sw_chan_buf = NULL;
+
+}
+
+
 void timeout_msg(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
@@ -525,6 +536,10 @@ void timeout_msg(struct mailbox_channel *ch)
 		if (msg->mbm_ttl == 0) {
 			MBX_ERR(mbx, "found active msg time'd out");
 			chan_msg_done(ch, -ETIME);
+			mutex_lock(&ch->sw_chan_mutex);
+			clean_sw_buf(ch);
+			mutex_unlock(&ch->sw_chan_mutex);
+
 		} else {
 			if (msg->mbm_timer_on) {
 				msg->mbm_ttl--;
@@ -849,12 +864,11 @@ static int chan_pkt2msg(struct mailbox_channel *ch)
 
 static void do_sw_rx(struct mailbox_channel *ch)
 {
-	struct mailbox *mbx = ch->mbc_parent;
 	int err = 0;
 	struct mailbox_msg *msg = NULL;
 	
 	mutex_lock(&ch->sw_chan_mutex);
-	if(!ch->sw_chan_buf)
+	if (!ch->sw_chan_buf)
 		goto done;
 	if (ch->mbc_cur_msg)
 		goto done;
@@ -867,10 +881,9 @@ static void do_sw_rx(struct mailbox_channel *ch)
 		msg->mbm_chan_sw = true;
 	}
 	memcpy(msg->mbm_data, ch->sw_chan_buf, ch->sw_chan_buf_sz);
-	vfree(ch->sw_chan_buf);
-	ch->sw_chan_buf = NULL;
 	ch->mbc_cur_msg = msg;
 	chan_msg_done(ch, err);
+	ch->sw_chan_msg_id = 0;
 	complete(&ch->sw_chan_complete);
 
 done:
@@ -1073,7 +1086,13 @@ static void do_sw_tx(struct mailbox_channel *ch)
 	struct mailbox *mbx = ch->mbc_parent;
 	mutex_lock(&ch->sw_chan_mutex);
 
-	if(!ch->mbc_cur_msg) {
+
+	if (ch->sw_chan_buf && !ch->sw_chan_msg_id) {
+		clean_sw_buf(ch);
+		chan_msg_done(ch, 0);
+	}
+
+	if (!ch->mbc_cur_msg) {
 		ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
 		if (ch->mbc_cur_msg)
 			ch->mbc_cur_msg->mbm_timer_on = true;
@@ -1091,8 +1110,9 @@ static void do_sw_tx(struct mailbox_channel *ch)
 		ch->sw_chan_msg_id = ch->mbc_cur_msg->mbm_req_id;
 		(void) memcpy(ch->sw_chan_buf, ch->mbc_cur_msg->mbm_data, ch->sw_chan_buf_sz);
 		rx_enqueued_msg_timer_on(mbx, ch->mbc_cur_msg->mbm_req_id);
-		chan_msg_done(ch, 0);
+		mutex_unlock(&ch->sw_chan_mutex);
 		complete(&ch->sw_chan_complete);
+		return;
 	}
 done:
 	mutex_unlock(&ch->sw_chan_mutex);
@@ -1699,7 +1719,6 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 	if (sw_chan_args->is_tx) {
 		/* must wake the worker thread */
-		complete(&ch->mbc_worker);
 
 		/* sleep until do_hw_tx copies to sw_chan_buf */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
