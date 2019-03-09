@@ -884,7 +884,9 @@ static void do_sw_rx(struct mailbox_channel *ch)
 	ch->mbc_cur_msg = msg;
 	chan_msg_done(ch, err);
 	ch->sw_chan_msg_id = 0;
+	mutex_unlock(&ch->sw_chan_mutex);
 	complete(&ch->sw_chan_complete);
+	return;
 
 done:
 	mutex_unlock(&ch->sw_chan_mutex);
@@ -1102,9 +1104,11 @@ static void do_sw_tx(struct mailbox_channel *ch)
 			ch->mbc_cur_msg->mbm_timer_on = true;
 	}
 
-	if (ch->mbc_cur_msg) {
-		if (ch->sw_chan_buf)
+	if (ch->mbc_cur_msg){
+		if(ch->sw_chan_buf) {
+			complete(&ch->sw_chan_complete);
 			goto done;
+		}
 		if (!ch->mbc_cur_msg->mbm_chan_sw)
 			goto done;
 		ch->sw_chan_buf = vmalloc(ch->mbc_cur_msg->mbm_len);
@@ -1720,20 +1724,19 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 	sw_chan_args = (struct sw_chan *)args;
 
-	MBX_ERR(mbx, "#1   %i", sw_chan_args->is_tx);
 	if (sw_chan_args->is_tx)
 		ch = &mbx->mbx_tx;
 	else
 		ch = &mbx->mbx_rx;
 
 	if (sw_chan_args->is_tx) {
-		MBX_ERR(mbx, "#1   %i", sw_chan_args->is_tx);
+		/* wake tx worker */
+		complete(&ch->mbc_worker);
 
 		/* sleep until do_hw_tx copies to sw_chan_buf */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			return -ERESTARTSYS;
 		}
-		MBX_ERR(mbx, "#2   %i", sw_chan_args->is_tx);
 
 		/* if mbm_len > userspace buf size (chan_from_ioctl.sz), then don't
 		 * attempt a copy, instead set the size and return -EMSGSIZE. This will
@@ -1747,13 +1750,13 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 			mutex_unlock(&ch->sw_chan_mutex);
 			return -EMSGSIZE;
 		}
-		MBX_ERR(mbx, "#4   %i", sw_chan_args->is_tx);
 
 		ret = copy_to_user(sw_chan_args->data,
 					ch->sw_chan_buf,
 					ch->sw_chan_buf_sz);
+		sw_chan_args->id = ch->sw_chan_msg_id;
+		sw_chan_args->sz = ch->sw_chan_buf_sz;
 
-		MBX_ERR(mbx, "#5 sz=%i  %i", ch->sw_chan_buf_sz, sw_chan_args->is_tx);
 		ch->sw_chan_msg_id = 0;
 		mutex_unlock(&ch->sw_chan_mutex);
 		complete(&ch->mbc_worker);
@@ -1763,53 +1766,45 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 		return ret;
 	} else {
-		MBX_ERR(mbx, "#1b   %i", sw_chan_args->is_tx);
 		/* copy into sw_chan_buf */
 		mutex_lock(&ch->sw_chan_mutex);
 		if (ch->sw_chan_buf == NULL) {
-		    MBX_ERR(mbx, "#2b   %i", sw_chan_args->is_tx);
 			ch->sw_chan_buf = vmalloc(sw_chan_args->sz);
 			ch->sw_chan_buf_sz = sw_chan_args->sz;
 			ch->sw_chan_msg_id = sw_chan_args->id;
 			ret = copy_from_user(ch->sw_chan_buf,
 						sw_chan_args->data,
 						sw_chan_args->sz);
-			MBX_ERR(mbx, "#3b   %i", sw_chan_args->is_tx);
 		}
 		mutex_unlock(&ch->sw_chan_mutex);
 
-		MBX_ERR(mbx, "#3b   %i", sw_chan_args->is_tx);
 		if (ret != 0) {
 			ret = -EBADMSG;
 			goto end;
 		}
 
-
-		MBX_ERR(mbx, "#4b   %i", sw_chan_args->is_tx);
 		/* signal channel worker that we are here and the packet is ready to take */
 		complete(&ch->mbc_worker);
 
-
-		MBX_ERR(mbx, "#5b   %i", sw_chan_args->is_tx);
 		/* sleep until chan_do_rx dequeues */
 		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
 			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
 			ret = -ERESTARTSYS;
 			goto end;
 		}
-		MBX_ERR(mbx, "#5b   %i", sw_chan_args->is_tx);
 	}
 
 end:
-	MBX_ERR(mbx, "end #1   %i", sw_chan_args->is_tx);
 	mutex_lock(&ch->sw_chan_mutex);
+<<<<<<< 5c5273df7cc5916d121096ed0a717207da6a793c
 	MBX_ERR(mbx, "end #2   %i", sw_chan_args->is_tx);
 	if (ch->sw_chan_msg_id == 0) {
 		MBX_ERR(mbx, "end #3   %i", sw_chan_args->is_tx);
+=======
+	if ( ch->sw_chan_msg_id == 0 )
+>>>>>>> Fixes to mailbox sw channel
 		clean_sw_buf(ch);
-	}
 	mutex_unlock(&ch->sw_chan_mutex);
-	MBX_ERR(mbx, "end #4   %i", sw_chan_args->is_tx);
 	return ret;
 }
 
