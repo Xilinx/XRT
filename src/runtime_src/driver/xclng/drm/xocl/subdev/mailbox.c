@@ -977,17 +977,13 @@ static void do_hw_rx(struct mailbox_channel *ch)
  */
 static void chan_do_rx(struct mailbox_channel *ch)
 {
-	MBX_INFO(ch->mbc_parent, "#1");
 	do_sw_rx(ch);
-	MBX_INFO(ch->mbc_parent, "#2");
 	do_hw_rx(ch);
-	MBX_INFO(ch->mbc_parent, "#3");
 	/* Handle timer event. */
 	if (test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
 		timeout_msg(ch);
 		clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	}
-	MBX_INFO(ch->mbc_parent, "#4");
 }
 
 static void chan_msg2pkt(struct mailbox_channel *ch)
@@ -1176,13 +1172,9 @@ static void do_hw_tx(struct mailbox_channel *ch)
  */
 static void chan_do_tx(struct mailbox_channel *ch)
 {
-	MBX_INFO(ch->mbc_parent, "#1");
 	do_sw_tx(ch);
-	MBX_INFO(ch->mbc_parent, "#2");
 	do_hw_tx(ch);
-	MBX_INFO(ch->mbc_parent, "#3");
 	handle_tx_timer_event(ch);
-	MBX_INFO(ch->mbc_parent, "#4");
 }
 
 static int mailbox_connect_status(struct platform_device *pdev)
