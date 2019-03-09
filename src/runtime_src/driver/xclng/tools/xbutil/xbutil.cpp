@@ -989,7 +989,7 @@ int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
-    bool warning = false;
+    int retVal = 0;
 
     // Check pcie training
     std::cout << "INFO: Checking PCIE link status: " << std::flush;
@@ -1002,7 +1002,7 @@ int xcldev::device::validate(bool quick)
             << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x"
             << m_devinfo.mPCIeLinkWidth
             << std::endl;
-        warning = true;
+        retVal = 1;
         // Non-fatal, continue validating.
     }
     else
@@ -1036,10 +1036,8 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: verify kernel test PASSED" << std::endl;
 
     // Skip the rest of test cases for quicker turn around.
-    if (quick && warning)
-        return 1;
     if (quick)
-        return 0;
+        return retVal;
 
     // Perform DMA test
     std::cout << "INFO: Starting DMA test" << std::endl;
@@ -1050,10 +1048,8 @@ int xcldev::device::validate(bool quick)
     }
     std::cout << "INFO: DMA test PASSED" << std::endl;
 
-    if (!testKernelBW && warning)
-        return 1;
     if (!testKernelBW)
-        return 0;
+        return retVal;
 
 
     // Test kernel bandwidth kernel
@@ -1083,9 +1079,7 @@ int xcldev::device::validate(bool quick)
     }
     std::cout << "INFO: P2P test PASSED" << std::endl;
 
-    if(warning)
-        return 1;
-    return 0;
+    return retVal;
 }
 
 int xcldev::xclValidate(int argc, char *argv[])
