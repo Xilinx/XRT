@@ -1104,8 +1104,8 @@ static void do_sw_tx(struct mailbox_channel *ch)
 			ch->mbc_cur_msg->mbm_timer_on = true;
 	}
 
-	if (ch->mbc_cur_msg){
-		if(ch->sw_chan_buf) {
+	if (ch->mbc_cur_msg) {
+		if (ch->sw_chan_buf) {
 			complete(&ch->sw_chan_complete);
 			goto done;
 		}
@@ -1796,13 +1796,7 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 end:
 	mutex_lock(&ch->sw_chan_mutex);
-<<<<<<< 5c5273df7cc5916d121096ed0a717207da6a793c
-	MBX_ERR(mbx, "end #2   %i", sw_chan_args->is_tx);
-	if (ch->sw_chan_msg_id == 0) {
-		MBX_ERR(mbx, "end #3   %i", sw_chan_args->is_tx);
-=======
-	if ( ch->sw_chan_msg_id == 0 )
->>>>>>> Fixes to mailbox sw channel
+	if (ch->sw_chan_msg_id == 0)
 		clean_sw_buf(ch);
 	mutex_unlock(&ch->sw_chan_mutex);
 	return ret;
