@@ -29,7 +29,6 @@ enum mailbox_request {
 	MAILBOX_REQ_UNLOCK_BITSTREAM,
 	MAILBOX_REQ_HOT_RESET,
 	MAILBOX_REQ_FIREWALL,
-	MAILBOX_REQ_GPCTL,
 	MAILBOX_REQ_LOAD_XCLBIN_KADDR,
 	MAILBOX_REQ_LOAD_XCLBIN,
 	MAILBOX_REQ_RECLOCK,
@@ -37,19 +36,6 @@ enum mailbox_request {
 	MAILBOX_REQ_CONN_EXPL,
 	MAILBOX_REQ_CHAN_SWITCH,
 };
-
-/**
- *	MAILBOX_REQ_GPCTL sub command
- */
-enum mb_cmd_type {
-	MB_CMD_DEFAULT = 0,
-	MB_CMD_LOAD_XCLBIN,
-	MB_CMD_RECLOCK,
-	MB_CMD_CONN_EXPL,
-	MB_CMD_LOAD_XCLBIN_KADDR,
-	MB_CMD_READ_FROM_PEER,
-};
-
 
 /**
  *	MAILBOX_REQ_LOCK_BITSTREAM &
@@ -135,16 +121,6 @@ struct mailbox_conn {
  */
 struct mailbox_bitstream_kaddr {
 	uint64_t addr;
-};
-
-/**
- *	MAILBOX_REQ_GPCTL payload type
- */
-struct mailbox_gpctl {
-	enum mb_cmd_type cmd_type;
-	uint32_t data_total_len;
-	uint64_t priv_data;
-	void *data_ptr;
 };
 
 /**
