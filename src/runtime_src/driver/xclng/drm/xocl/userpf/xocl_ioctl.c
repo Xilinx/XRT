@@ -232,7 +232,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EINVAL;
 
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
-		// Legacy xclbin, convert legacy id to new id
+		/* Legacy xclbin, convert legacy id to new id */
 		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
@@ -256,7 +256,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		}
 	}
 
-	//Ignore timestamp matching for AWS platform
+	/* Ignore timestamp matching for AWS platform */
 	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		printk(KERN_ERR "TimeStamp of ROM did not match Xclbin\n");
@@ -270,7 +270,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	//Copy from user space and proceed.
+	/* Copy from user space and proceed. */
 	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
 		DRM_ERROR("Unable to create axlf\n");
@@ -410,3 +410,19 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	printk(KERN_INFO "%s err: %d\n", __func__, err);
 	return err;
 }
+
+int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp)
+{
+	int ret = 0;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	struct drm_xocl_sw_mailbox *args;
+	args = (struct drm_xocl_sw_mailbox *)data;
+
+	/* 0 is a successful transfer */
+	ret = xocl_mailbox_sw_transfer(xdev, args);
+	return ret;
+}
+

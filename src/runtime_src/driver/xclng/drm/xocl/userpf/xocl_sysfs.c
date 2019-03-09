@@ -16,8 +16,7 @@
  */
 #include "common.h"
 
-//Attributes followed by bin_attributes.
-//
+/* Attributes followed by bin_attributes. */
 /* -Attributes -- */
 
 /* -xclbinuuid-- (supersedes xclbinid) */
@@ -47,7 +46,7 @@ static DEVICE_ATTR_RO(userbar);
 static ssize_t user_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	// The existence of entry indicates user function.
+	/* The existence of entry indicates user function. */
 	return sprintf(buf, "%s", "");
 }
 static DEVICE_ATTR_RO(user_pf);
@@ -302,8 +301,34 @@ static ssize_t link_speed_max_show(struct device *dev,
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed_max);
-/* - End attributes-- */
 
+static ssize_t sw_chan_state_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	uint64_t ret;
+	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
+
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(sw_chan_state, 0444, sw_chan_state_show, NULL);
+
+static ssize_t sw_chan_switch_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	uint64_t ret;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
+
+
+/* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
@@ -318,6 +343,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_speed.attr,
 	&dev_attr_link_speed_max.attr,
 	&dev_attr_link_width_max.attr,
+	&dev_attr_sw_chan_state.attr,
+	&dev_attr_sw_chan_switch.attr,
 	NULL,
 };
 
@@ -325,7 +352,6 @@ static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
 };
 
-//---
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;

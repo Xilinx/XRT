@@ -850,14 +850,13 @@ int main( int argc, char *argv[])
    std::vector<std::unique_ptr<xcldev::device>> deviceVec;
 
     unsigned int total = pcidev::get_dev_total();
-    unsigned int count = pcidev::get_dev_ready();
     if (total == 0) {
         std::cout << "ERROR: No card found\n";
         return 1;
     }
     if (cmd != xcldev::DUMP)
-        std::cout << "INFO: Found total " << total << " card(s), "
-                  << count << " are usable" << std::endl;
+        std::cout << "INFO: Found total " << total << " card(s) "
+                  << std::endl;
 
     if (cmd == xcldev::SCAN) {
         print_pci_info();
@@ -885,10 +884,15 @@ int main( int argc, char *argv[])
 
     if (index >= deviceVec.size()) {
         if (index >= total)
-            std::cout << "ERROR: Card index " << index << "is out of range";
+            std::cout << "ERROR: Card index " << index << " is out of range";
         else
             std::cout << "ERROR: Card_ID[" << index << "] is not ready";
         std::cout << std::endl;
+        return 1;
+    }
+
+    if(pcidev::get_dev(index)->mgmt == NULL){
+        std::cout << "ERROR: Card index " << index << " is not usable\n";
         return 1;
     }
 
@@ -953,12 +957,12 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  help\n";
     std::cout << "  list\n";
     std::cout << "  mem --query-ecc [-d card]\n";
-    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card] [-h | -r region]\n";
     std::cout << "  scan\n";
     std::cout << " Requires root privileges:\n";
+    std::cout << "  mem --reset-ecc [-d card]\n";
     std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
     std::cout << "  flash   [-d card] -a <all | dsa> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
