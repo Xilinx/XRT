@@ -200,7 +200,7 @@ SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
 
-post_inst_msg="DSA package installed successfully.
+post_inst_msg="DSA package installed successfully."
 
 createEntityAttributeArray ()
 {
