@@ -431,29 +431,51 @@ namespace xdp {
 
       // Get results
       xclCounterResults counterResults = iter->second;
-      std::string cuPortName = "";
       uint32_t numSlots = mDeviceBinaryStrSlotsMap.at(key).size();
 
+      std::string cuPortName;
+      std::string masterPortName;
+      std::string slavePortName;
+      std::string masterArgNames = FIELD_NOT_APPLICABLE;
+      std::string slaveArgNames = FIELD_NOT_APPLICABLE;
+      std::size_t cuFound = 0;
+      std::size_t masterSlaveFound = 0;
+      double totalCUTimeMsec = 0.0;
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = mDeviceBinaryStrSlotsMap.at(key)[s];
-        std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
-        std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
-        //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
-
-        std::string memoryName;
-        std::string argNames;
-        mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+        masterSlaveFound = cuPortName.find(IP_LAYOUT_SEP);
+        // Debug IP format : "MasterName-SlaveName"
+        if (masterSlaveFound == std::string::npos)
+          return;
+        masterPortName = cuPortName.substr(0, masterSlaveFound);
+        slavePortName = cuPortName.substr(masterSlaveFound + 1);
+        cuFound = masterPortName.find_first_of("/");
+        // Look for arguments if not HOST or PIPE
+        if (cuFound != std::string::npos) {
+          auto cu = masterPortName.substr(0, cuFound);
+          auto port = masterPortName.substr(cuFound+1);
+          std::string placeholder;
+          mPluginHandle->getArgumentsBank(deviceName, cu, port, masterArgNames, placeholder);
+          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
+        }
+        cuFound = slavePortName.find_first_of("/");
+        if (cuFound != std::string::npos) {
+          auto cu = slavePortName.substr(0, cuFound);
+          auto port = slavePortName.substr(cuFound+1);
+          std::string placeholder;
+          mPluginHandle->getArgumentsBank(deviceName, cu, port, slaveArgNames, placeholder);
+          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
+        }
 
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
         uint64_t strBusyCycles =   counterResults.StrBusyCycles[s];
-        uint64_t strDataBytes =   counterResults.StrDataBytes[s];
-        uint64_t strStallCycles =   counterResults.StrStallCycles[s];
-        uint64_t strStarveCycles =  counterResults.StrStarveCycles[s];
+        uint64_t strDataBytes =    counterResults.StrDataBytes[s];
+        uint64_t strStallCycles =  counterResults.StrStallCycles[s];
+        uint64_t strStarveCycles = counterResults.StrStarveCycles[s];
         // Skip ports without activity
         if (strBusyCycles <= 0 || strNumTranx == 0)
           continue;
 
-        double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
         double transferRateMBps = (totalCUTimeMsec == 0) ? 0.0 :
             (strDataBytes / (1000.0 * totalCUTimeMsec));
 
@@ -461,8 +483,10 @@ namespace xdp {
         double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
         double linkStall =  (double) strStallCycles / (double) strBusyCycles * 100.0;
         double linkUtil =  100.0 - linkStarve - linkStall;
-        writer->writeKernelStreamSummary(deviceName, cuPortName, argNames, strNumTranx, transferRateMBps,
-                                         avgSize, linkUtil, linkStarve, linkStall);
+        writer->writeKernelStreamSummary(deviceName, masterPortName, masterArgNames,
+                                         slavePortName, slaveArgNames, strNumTranx,
+                                         transferRateMBps, avgSize, linkUtil, linkStarve,
+                                         linkStall);
       }
     }
   }

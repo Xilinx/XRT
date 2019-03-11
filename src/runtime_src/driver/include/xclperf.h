@@ -40,6 +40,11 @@
 #define DSA_MAJOR_VERSION 1
 #define DSA_MINOR_VERSION 1
 
+/************************ DEBUG IP LAYOUT ************************************/
+
+#define IP_LAYOUT_HOST_NAME "HOST"
+#define IP_LAYOUT_SEP "-"
+
 /************************ APM 0: Monitor MIG Ports ****************************/
 
 #define XPAR_AXI_PERF_MON_0_NUMBER_SLOTS                2

@@ -295,6 +295,14 @@ namespace xdp {
         else {
           if (tr.Kind == DeviceTrace::DEVICE_STREAM){
             mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, tr.SlotNum, cuPortName);
+            size_t sepIndex = cuPortName.find(IP_LAYOUT_SEP);
+            // New format : "MasterName-SlaveName"
+            if (sepIndex != std::string::npos) {
+              auto slaveName = cuPortName.substr(sepIndex + 1);
+              auto masterName = cuPortName.substr(0, sepIndex);
+              auto cuFound = masterName.find_first_of("/");
+              cuPortName = (cuFound == std::string::npos) ? slaveName : masterName;
+            }
           }
           else {
             mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, tr.SlotNum, cuPortName);
