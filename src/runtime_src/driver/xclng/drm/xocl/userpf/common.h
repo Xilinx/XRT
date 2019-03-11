@@ -34,23 +34,23 @@
 #define XOCL_MAX_CONCURRENT_CLIENTS 32
 
 #define XOCL_DRIVER_VERSION                             \
-        __stringify(XOCL_DRIVER_MAJOR) "."              \
-        __stringify(XOCL_DRIVER_MINOR) "."              \
-        __stringify(XOCL_DRIVER_PATCHLEVEL)
+	__stringify(XOCL_DRIVER_MAJOR) "."              \
+	__stringify(XOCL_DRIVER_MINOR) "."              \
+	__stringify(XOCL_DRIVER_PATCHLEVEL)
 
 #define XOCL_DRIVER_VERSION_NUMBER                              \
-        ((XOCL_DRIVER_MAJOR)*1000 + (XOCL_DRIVER_MINOR)*100 +   \
-        XOCL_DRIVER_PATCHLEVEL)
+	((XOCL_DRIVER_MAJOR)*1000 + (XOCL_DRIVER_MINOR)*100 +   \
+	XOCL_DRIVER_PATCHLEVEL)
 
 #define userpf_err(d, args...)                     \
-        xocl_err(&XDEV(d)->pdev->dev, ##args)
+	xocl_err(&XDEV(d)->pdev->dev, ##args)
 #define userpf_info(d, args...)                    \
-        xocl_info(&XDEV(d)->pdev->dev, ##args)
+	xocl_info(&XDEV(d)->pdev->dev, ##args)
 #define userpf_dbg(d, args...)                     \
-        xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+	xocl_dbg(&XDEV(d)->pdev->dev, ##args)
 
 #define xocl_get_root_dev(dev, root)		\
-        for (root = dev; root->bus && root->bus->self; root = root->bus->self)
+	for (root = dev; root->bus && root->bus->self; root = root->bus->self)
 
 #define	XOCL_USER_PROC_HASH_SZ		256
 
@@ -65,7 +65,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 #define XOCL_DRM_FREE_MALLOC
 #elif defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_DRM_FREE_MALLOC
 #endif
 #endif
@@ -78,12 +78,12 @@ struct xocl_dev	{
 	bool			offline;
 
 	/* health thread */
-	struct task_struct	       *health_thread;
+	struct task_struct		*health_thread;
 	struct xocl_health_thread_arg	thread_arg;
 
 	u32			p2p_bar_idx;
 	resource_size_t		p2p_bar_len;
-	void * __iomem		p2p_bar_addr;
+	void __iomem		*p2p_bar_addr;
 
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
@@ -139,27 +139,31 @@ struct xocl_mm_wrapper {
 };
 
 /* ioctl functions */
-int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_info_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
-                         struct drm_file *filp);
+	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
-  struct drm_file *filp);
+	struct drm_file *filp);
+int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
 /* helper functions */
-int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force);
+int xocl_hot_reset(struct xocl_dev *xdev, bool force);
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
-int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
+int xocl_p2p_mem_reserve(struct xocl_dev *xdev);
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);

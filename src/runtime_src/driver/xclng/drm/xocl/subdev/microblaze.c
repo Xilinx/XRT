@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  */
 
@@ -115,20 +115,18 @@ static int mb_start(struct xocl_mb *mb);
 static void safe_read32(struct xocl_mb *mb, u32 reg, u32 *val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state == MB_STATE_RUN) {
+	if (mb->enabled && mb->state == MB_STATE_RUN)
 		*val = READ_REG32(mb, reg);
-	} else {
+	else
 		*val = 0;
-	}
 	mutex_unlock(&mb->mb_lock);
 }
 
 static void safe_write32(struct xocl_mb *mb, u32 reg, u32 val)
 {
 	mutex_lock(&mb->mb_lock);
-	if (mb->enabled && mb->state == MB_STATE_RUN) {
+	if (mb->enabled && mb->state == MB_STATE_RUN)
 		WRITE_REG32(mb, val, reg);
-	}
 	mutex_unlock(&mb->mb_lock);
 }
 
@@ -221,9 +219,8 @@ static ssize_t pause_store(struct device *dev,
 	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 1) {
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 1)
 		return -EINVAL;
-	}
 
 	val = val ? CTL_MASK_PAUSE : 0;
 	safe_write32(mb, REG_CTL, val);
@@ -238,9 +235,8 @@ static ssize_t reset_store(struct device *dev,
 	struct xocl_mb *mb = platform_get_drvdata(to_platform_device(dev));
 	u32 val;
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 1) {
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 1)
 		return -EINVAL;
-	}
 
 	if (val) {
 		mb_stop(mb);
@@ -324,13 +320,13 @@ static const struct attribute_group hwmon_mb_attrgroup = {
 };
 
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
-        char *buf)
+			 char *buf)
 {
-        return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
+	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
 }
 
 static struct sensor_device_attribute name_attr =
-        SENSOR_ATTR(name, 0444, show_name, NULL, 0);
+	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
 
 static void mgmt_sysfs_destroy_mb(struct platform_device *pdev)
 {
@@ -338,9 +334,8 @@ static void mgmt_sysfs_destroy_mb(struct platform_device *pdev)
 
 	mb = platform_get_drvdata(pdev);
 
-	if (!mb->enabled) {
+	if (!mb->enabled)
 		return;
-	}
 
 	if (mb->hwmon_dev) {
 		device_remove_file(mb->hwmon_dev, &name_attr.dev_attr);
@@ -362,9 +357,8 @@ static int mgmt_sysfs_create_mb(struct platform_device *pdev)
 	mb = platform_get_drvdata(pdev);
 	core = XDEV(xocl_get_xdev(pdev));
 
-	if (!mb->enabled) {
+	if (!mb->enabled)
 		return 0;
-	}
 	err = sysfs_create_group(&pdev->dev.kobj, &mb_attr_group);
 	if (err) {
 		xocl_err(&pdev->dev, "create mb attrs failed: 0x%x", err);
@@ -411,9 +405,8 @@ static int mb_stop(struct xocl_mb *mb)
 	int ret = 0;
 	u32 reg_val = 0;
 
-	if (!mb->enabled) {
+	if (!mb->enabled)
 		return 0;
-	}
 
 	mutex_lock(&mb->mb_lock);
 	reg_val = READ_GPIO(mb, 0);
@@ -473,18 +466,16 @@ static int mb_start(struct xocl_mb *mb)
 	int ret = 0;
 	void *xdev_hdl;
 
-	if (!mb->enabled) {
+	if (!mb->enabled)
 		return 0;
-	}
 
 	xdev_hdl = xocl_get_xdev(mb->pdev);
 
 	mutex_lock(&mb->mb_lock);
 	reg_val = READ_GPIO(mb, 0);
 	xocl_info(&mb->pdev->dev, "Reset GPIO 0x%x", reg_val);
-	if (reg_val == GPIO_ENABLED) {
+	if (reg_val == GPIO_ENABLED)
 		goto out;
-	}
 
 	xocl_info(&mb->pdev->dev, "Start Microblaze...");
 	xocl_info(&mb->pdev->dev, "MGMT Image magic word, 0x%x",
@@ -567,9 +558,8 @@ static int load_mgmt_image(struct platform_device *pdev, const char *image,
 
 	binary = mb->mgmt_binary;
 	mb->mgmt_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
-	if (!mb->mgmt_binary) {
+	if (!mb->mgmt_binary)
 		return -ENOMEM;
-	}
 
 	if (binary)
 		devm_kfree(&pdev->dev, binary);
@@ -594,9 +584,8 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 
 	binary = mb->sche_binary;
 	mb->sche_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
-	if (!mb->sche_binary) {
+	if (!mb->sche_binary)
 		return -ENOMEM;
-	}
 
 	if (binary)
 		devm_kfree(&pdev->dev, binary);
@@ -607,7 +596,8 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 }
 
 //Have a function stub but don't actually do anything when this is called
-static int mb_ignore(struct platform_device *pdev) {
+static int mb_ignore(struct platform_device *pdev)
+{
 	return 0;
 }
 
@@ -626,9 +616,8 @@ static int mb_remove(struct platform_device *pdev)
 	int	i;
 
 	mb = platform_get_drvdata(pdev);
-	if (!mb) {
+	if (!mb)
 		return 0;
-	}
 
 	if (mb->mgmt_binary)
 		devm_kfree(&pdev->dev, mb->mgmt_binary);

@@ -43,21 +43,14 @@ find_package(Curses REQUIRED)
 
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC
-  include/1_2/CL/cl_ext_xilinx.h
-  include/1_2/CL/cl_ext.h)
+  include/1_2/CL/cl_ext_xilinx.h)
 install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
 message("-- XRT CL extension header files")
 foreach (header ${XRT_CL_EXT_SRC})
   message("-- ${header}")
 endforeach()
 
-# Release eula (EA temporary)
-file(GLOB XRT_EULA
-  "license/*.txt"
-  )
-#install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
-message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
+# Let yocto handle license files in the standard way
 
 include (CMake/version.cmake)
 

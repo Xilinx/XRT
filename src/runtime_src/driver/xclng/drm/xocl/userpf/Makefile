@@ -45,7 +45,7 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include -I${ROOT}/../../xrt/user_gem -I${ROOT}/../../../../
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX
+ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX -D__XRT__
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif
@@ -66,5 +66,6 @@ clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
 	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 	\
+	../lib/libqdma/*.o.ur-safe \
 	.tmp_versions *.symvers modules.order
 	#* *.save *.bak Modules.* modules.order Module.markers *.bin

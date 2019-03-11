@@ -26,6 +26,10 @@
 #include <mutex>
 #include <algorithm>
 
+// Opaque handle to xrt::device
+// The handle can be static_cast to xrt::device
+struct xrt_device {};
+
 namespace xrt {
 
 /**
@@ -35,7 +39,7 @@ namespace xrt {
  * layer functionality from clients.
  *
  */
-class device
+class device : public xrt_device
 {
 public:
   using verbosity_level = hal::verbosity_level;
