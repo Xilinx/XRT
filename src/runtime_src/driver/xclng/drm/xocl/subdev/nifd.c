@@ -429,18 +429,18 @@ static long add_breakpoints(void __user *arg)
         return -EFAULT;
 
     total_data_size = (num_breakpoints * 3 + 1 + 1) * sizeof(unsigned int);
-    kernel_memory = (unsigned int *)(kmalloc(total_data_size, GFP_KERNEL));
+    kernel_memory = (unsigned int *)(vmalloc(total_data_size));
     if (!kernel_memory)
         return -ENOMEM;
 
     if (copy_from_user(kernel_memory, arg, total_data_size))
     {
-        kfree(kernel_memory);
+        vfree(kernel_memory);
         return -EFAULT;
     }
 
     result = add_breakpoints_core(kernel_memory);
-    kfree(kernel_memory);
+    vfree(kernel_memory);
 
     if (result)
         return result;
