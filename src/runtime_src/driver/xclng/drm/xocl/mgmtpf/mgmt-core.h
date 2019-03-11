@@ -45,17 +45,20 @@
 	dev_err(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
 #define	mgmt_info(lro, fmt, args...)	\
 	dev_info(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
+#define	mgmt_dbg(lro, fmt, args...)	\
+	dev_dbg(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
 
 #define	MGMT_PROC_TABLE_HASH_SZ		256
 
 struct xclmgmt_ioc_info;
 
-// List of processes that are using the mgmt driver
-// also saving the task
+/* List of processes that are using the mgmt driver
+ * also saving the task
+ */
 struct proc_list {
 
 	struct list_head head;
-	struct pid 	 *pid;
+	struct pid	*pid;
 	bool		signaled;
 };
 
@@ -86,12 +89,6 @@ struct xclmgmt_char {
 	struct device *sys_device;
 };
 
-struct xclmgmt_data_buf {
-	enum mb_cmd_type cmd_type;
-	uint64_t priv_data;
-	char *data_buf;
-};
-
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -107,13 +104,12 @@ struct xclmgmt_dev {
 	struct mutex busy_mutex;
 	struct mgmt_power power;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	/* msi-x vector/entry table */
 	struct msix_entry msix_irq_entries[XCLMGMT_MAX_INTR_NUM];
 #endif
 	int msix_user_start_vector;
 	bool ready;
-
 };
 
 extern int health_check;
@@ -126,8 +122,9 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj);
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 void get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *width, unsigned short *speed, bool is_cap);
+void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro);
 
-// utils.c
+/* utils.c */
 unsigned compute_unit_busy(struct xclmgmt_dev *lro);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
@@ -135,7 +132,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 
-// firewall.c
+/* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
 void xclmgmt_killall_processes(struct xclmgmt_dev *lro);
 void xclmgmt_list_add(struct xclmgmt_dev *lro, struct pid *new_pid);
@@ -143,14 +140,14 @@ void xclmgmt_list_remove(struct xclmgmt_dev *lro, struct pid *remove_pid);
 void xclmgmt_list_del(struct xclmgmt_dev *lro);
 bool xclmgmt_check_proc(struct xclmgmt_dev *lro, struct pid *pid);
 
-// mgmt-xvc.c
+/* mgmt-xvc.c */
 long xvc_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
 
-//mgmt-sysfs.c
+/* mgmt-sysfs.c */
 int mgmt_init_sysfs(struct device *dev);
 void mgmt_fini_sysfs(struct device *dev);
 
-//mgmt-mb.c
+/* mgmt-mb.c */
 int mgmt_init_mb(struct xclmgmt_dev *lro);
 void mgmt_fini_mb(struct xclmgmt_dev *lro);
 int mgmt_start_mb(struct xclmgmt_dev *lro);

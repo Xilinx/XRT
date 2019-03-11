@@ -66,5 +66,6 @@ clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
 	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 	\
+	../lib/libqdma/*.o.ur-safe \
 	.tmp_versions *.symvers modules.order
 	#* *.save *.bak Modules.* modules.order Module.markers *.bin

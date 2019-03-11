@@ -37,6 +37,7 @@ static ssize_t error_show(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	ssize_t count;
+
 	count = sprintf(buf, "%s\n", lro->core.ebuf);
 	lro->core.ebuf[0] = 0;
 	return count;
@@ -47,6 +48,7 @@ static ssize_t userbar_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", lro->core.bar_idx);
 }
 static DEVICE_ATTR_RO(userbar);
@@ -55,6 +57,7 @@ static ssize_t flash_type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%s\n",
 		lro->core.priv.flash_type ? lro->core.priv.flash_type : "");
 }
@@ -64,6 +67,7 @@ static ssize_t board_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%s\n",
 		lro->core.priv.board_name ? lro->core.priv.board_name : "");
 }
@@ -73,6 +77,7 @@ static ssize_t mfg_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", (lro->core.priv.flags & XOCL_DSAFLAG_MFG) != 0);
 }
 static DEVICE_ATTR_RO(mfg);
@@ -81,6 +86,7 @@ static ssize_t feature_rom_offset_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%llu\n", lro->core.feature_rom_offset);
 }
 static DEVICE_ATTR_RO(feature_rom_offset);
@@ -88,7 +94,7 @@ static DEVICE_ATTR_RO(feature_rom_offset);
 static ssize_t mgmt_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	// The existence of entry indicates mgmt function.
+	/* The existence of entry indicates mgmt function. */
 	return sprintf(buf, "%s", "");
 }
 static DEVICE_ATTR_RO(mgmt_pf);
@@ -107,6 +113,7 @@ static ssize_t slot_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", PCI_SLOT(lro->core.pdev->devfn));
 }
 static DEVICE_ATTR_RO(slot);
@@ -159,6 +166,7 @@ static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n",
 		lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0);
 }
@@ -168,6 +176,7 @@ static ssize_t xpr_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", XOCL_DSA_XPR_ON(lro));
 }
 static DEVICE_ATTR_RO(xpr);
@@ -176,6 +185,7 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", lro->ready);
 }
 static DEVICE_ATTR_RO(ready);
@@ -197,9 +207,8 @@ static ssize_t dev_offline_store(struct device *dev,
 	int ret;
 	u32 offline;
 
-	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1)
 		return -EINVAL;
-	}
 
 	device_lock(dev);
 	if (offline) {
@@ -240,9 +249,9 @@ static ssize_t subdev_online_store(struct device *dev,
 
 	device_lock(dev);
 	ret = xocl_subdev_create_by_name(lro, name);
-	if (ret) {
+	if (ret)
 		xocl_err(dev, "create subdev by name failed");
-	} else
+	else
 		ret = count;
 	device_unlock(dev);
 
@@ -260,9 +269,9 @@ static ssize_t subdev_offline_store(struct device *dev,
 
 	device_lock(dev);
 	ret = xocl_subdev_destroy_by_name(lro, name);
-	if (ret) {
+	if (ret)
 		xocl_err(dev, "destroy subdev by name failed");
-	} else
+	else
 		ret = count;
 	device_unlock(dev);
 
@@ -270,6 +279,52 @@ static ssize_t subdev_offline_store(struct device *dev,
 }
 
 static DEVICE_ATTR(subdev_offline, 0200, NULL, subdev_offline_store);
+
+static ssize_t sw_chan_en_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	uint64_t val, ch_switch;
+
+	if (kstrtoull(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	if (val & 0x1) {
+		mgmt_err(lro, "can only set BIT1 to BIT63");
+		return -EINVAL;
+	}
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+	ch_switch |= val;
+	xocl_mailbox_set(lro, CHAN_SWITCH, &ch_switch);
+	xclmgmt_chan_switch_notify(lro);
+
+	return count;
+}
+static ssize_t sw_chan_en_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	uint64_t ch_switch = 0;
+
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+
+	return sprintf(buf, "0x%llx\n", ch_switch);
+}
+
+static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
+
+static ssize_t sw_chan_reset_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	xocl_mailbox_set(lro, CH_SWITCH_RST, NULL);
+	xclmgmt_chan_switch_notify(lro);
+	return count;
+}
+
+static DEVICE_ATTR(sw_chan_reset, 0200, NULL, sw_chan_reset_store);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -292,6 +347,8 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_dev_offline.attr,
 	&dev_attr_subdev_online.attr,
 	&dev_attr_subdev_offline.attr,
+	&dev_attr_sw_chan_en.attr,
+	&dev_attr_sw_chan_reset.attr,
 	NULL,
 };
 
