@@ -437,7 +437,7 @@ enum DeviceType {
  * nifd driver.
  */
 typedef struct {
-  DeviceType device_type;
+  enum DeviceType device_type;
   unsigned int device_index;
   unsigned int mgmt_instance;
   unsigned int user_instance;
