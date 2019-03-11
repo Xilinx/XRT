@@ -104,7 +104,7 @@ namespace xdp {
     void writeStallSummary(ProfileWriterI* writer) const;
     void writeKernelStreamSummary(ProfileWriterI* writer);
     void writeComputeUnitSummary(ProfileWriterI* writer) const;
-    void writeHostTransferSummary(ProfileWriterI* writer) const;
+    void writeTransferSummary(ProfileWriterI* writer, RTUtil::e_monitor_type monitorType) const;
     void writeKernelTransferSummary(ProfileWriterI* writer);
     void writeDeviceTransferSummary(ProfileWriterI* writer) const;
     // Top offenders lists

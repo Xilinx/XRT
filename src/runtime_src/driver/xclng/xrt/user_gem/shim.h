@@ -158,7 +158,7 @@ public:
     XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
-    static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1);
+    static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -273,6 +273,9 @@ public:
     // Temporary hack for xbflash use only
     char *xclMapMgmt(void) { return mMgtMap; }
     xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
+
+    int xclMPD(struct drm_xocl_sw_mailbox *args);
+    int xclMSD(struct drm_xocl_sw_mailbox *args);
 
 private:
     xclVerbosityLevel mVerbosity;

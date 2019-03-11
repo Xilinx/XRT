@@ -1475,6 +1475,8 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
     case IP_KERNEL: return "IP_KERNEL";
     case IP_DNASC: return "IP_DNASC";
     case IP_DDR4_CONTROLLER: return "IP_DDR4_CONTROLLER";
+    case IP_MEM_DDR4: return "IP_MEM_DDR4";
+    case IP_MEM_HBM: return "IP_MEM_DDR4";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);

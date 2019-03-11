@@ -257,6 +257,8 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
         if (unlikely(!fl_used))
                 return 0;
 
+	descq->stat.complete_bytes += copied;
+
 	if (xdev->stm_en) {
 		unsigned int last = ring_idx_incr(pidx, fl_used - 1, flq->size);
 		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);

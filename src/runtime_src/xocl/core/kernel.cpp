@@ -428,6 +428,13 @@ validate_cus(unsigned long argidx, int memidx) const
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
+      xrt::message::send
+        (xrt::message::severity_level::WARNING
+         , "Argument '" + std::to_string(argidx)
+         + "' of kernel '" + get_name()
+         + "' is allocated in memory bank '" + std::to_string(memidx)
+         + "'; compute unit '" + cu->get_name()
+         + "' cannot be used with this argument and is ignored.");
       XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
       itr = m_cus.erase(itr);
       end = m_cus.end();
@@ -501,10 +508,10 @@ assign_buffer_to_argidx(memory* buf, unsigned long argidx)
   }
 
   if (m_cus.empty())
+    //connectivity_debug();
     throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
                       "kernel '" + get_name() + "' "
-                      + "has no compute units to support required connectivity.\n"
-                      + connectivity_debug());
+                      + "has no compute units to support required argument connectivity.");
 }
 
 context*

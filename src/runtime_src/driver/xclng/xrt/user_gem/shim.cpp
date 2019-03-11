@@ -36,8 +36,9 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
-#include "driver/xclng/xrt/util/message.h"
-#include "driver/xclng/xrt/util/scheduler.h"
+#include <ert.h>
+#include "driver/common/message.h"
+#include "driver/common/scheduler.h"
 #include <cstdio>
 #include <stdarg.h>
 
@@ -367,7 +368,7 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, va_list args1)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 
@@ -375,7 +376,7 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         //illegal arguments
         std::string err_str = "ERROR: Illegal arguments in log format string. ";
         err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
     len++; //To include null terminator
@@ -387,10 +388,10 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         //error processing arguments
         std::string err_str = "ERROR: When processing arguments in log format string. ";
         err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, err_str.c_str());
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
-    xrt_core::message::send((xrt_core::message::severity_level)level, buf.data());
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
 
     return 0;
 }
@@ -585,14 +586,30 @@ int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, siz
 }
 
 /*
- * xclCopyBO()
+ * xclCopyBO() - TO BE REMOVED
  */
-int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle,
+    unsigned int src_boHandle, size_t size, size_t dst_offset,
+    size_t src_offset)
 {
     int ret;
-    drm_xocl_copy_bo copyInfo = {dst_boHandle, src_boHandle, 0, size, dst_offset, src_offset};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
-    return ret ? -errno : ret;
+    unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
+        xclBOKind(0), (1<<31));
+    struct ert_start_copybo_cmd *execData =
+        reinterpret_cast<struct ert_start_copybo_cmd *>(
+        xclMapBO(execHandle, true));
+
+    ert_fill_copybo_cmd(execData, src_boHandle, dst_boHandle,
+        src_offset, dst_offset, size);
+
+    ret = xclExecBuf(execHandle);
+    if (ret == 0)
+        while (xclExecWait(1000) == 0);
+
+    (void) munmap(execData, sizeof (ert_start_copybo_cmd));
+    xclFreeBO(execHandle);
+
+    return ret;
 }
 
 /*
@@ -673,8 +690,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("", "xpr", errmsg, info->mIsXPR);
         dev->mgmt->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
 
-        dev->mgmt->sysfs_get("sysmon", "temp", errmsg, info->mOnChipTemp);
-
         dev->mgmt->sysfs_get("sysmon", "vcc_int", errmsg, info->mVInt);
         dev->mgmt->sysfs_get("sysmon", "vcc_aux", errmsg, info->mVAux);
         dev->mgmt->sysfs_get("sysmon", "vcc_bram", errmsg, info->mVBram);
@@ -709,6 +724,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
+        dev->mgmt->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
 
         std::vector<uint64_t> freqs;
         dev->mgmt->sysfs_get("icap", "clock_freqs", errmsg, freqs);
@@ -719,8 +735,34 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         }
     }
     // Below info from user pf.
-    if(dev->user)
-      dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
+    if(dev->user){
+        dev->user->sysfs_get("", "vendor", errmsg, info->mVendorId);
+        dev->user->sysfs_get("", "device", errmsg, info->mDeviceId);
+        dev->user->sysfs_get("", "subsystem_device", errmsg, info->mSubsystemId);
+        info->mDeviceVersion = info->mSubsystemId & 0xff;
+        dev->user->sysfs_get("", "subsystem_vendor", errmsg, info->mSubsystemVendorId);
+        info->mDataAlignment = getpagesize();
+        dev->user->sysfs_get("rom", "ddr_bank_size", errmsg, info->mDDRSize);
+        info->mDDRSize = GB(info->mDDRSize);
+
+        dev->user->sysfs_get("rom", "VBNV", errmsg, s);
+        snprintf(info->mName, sizeof (info->mName), "%s", s.c_str());
+        dev->user->sysfs_get("rom", "FPGA", errmsg, s);
+        snprintf(info->mFpga, sizeof (info->mFpga), "%s", s.c_str());
+        dev->user->sysfs_get("rom", "timestamp", errmsg, info->mTimeStamp);
+        dev->user->sysfs_get("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount);
+        info->mDDRSize *= info->mDDRBankCount;
+
+        info->mNumClocks = numClocks(info->mName);
+
+        dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
+        dev->user->sysfs_get("xmc", "xmc_12v_pex_vol", errmsg, info->m12VPex);
+        dev->user->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
+        dev->user->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
+        dev->user->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
+        dev->user->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+
+    }
 
 }
 
@@ -1721,8 +1763,19 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
+int xocl::XOCLShim::xclMPD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
+    return ret ? -errno : ret;
+}
 
-
+int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
+    return ret ? -errno : ret;
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -1820,12 +1873,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return ret;
 }
 
-int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...)
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
 {
     va_list args;
     va_start(args, format);
 
-    int ret = xocl::XOCLShim::xclLogMsg(handle, level, format, args);
+    int ret = xocl::XOCLShim::xclLogMsg(handle, level, tag, format, args);
     va_end(args);
 
     return ret;
@@ -2210,4 +2263,16 @@ char *xclMapMgmt(xclDeviceHandle handle)
 {
   xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
   return drv ? drv->xclMapMgmt() :   nullptr;
+}
+
+int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMPD(args) : -ENODEV;
+}
+
+int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMSD(args) : -ENODEV;
 }

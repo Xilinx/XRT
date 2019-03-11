@@ -2,7 +2,7 @@
  * Compute unit execution, interrupt management and
  * client context core data structures.
  *
- * Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -233,6 +233,8 @@ struct sched_client_ctx {
  * @num_slot_masks: Number of slots status masks used
  * @cu_status: Status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
+ * @cu_addr_phy: Physical address of CUs.
+ * @cu_usage: How many times the CUs are excecuted.
  * @ops: Scheduler operations vtable
  */
 struct sched_exec_core {
@@ -262,6 +264,9 @@ struct sched_exec_core {
 	u32                        cu_status[MAX_U32_CU_MASKS];
 	unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
 
+	u32                        cu_addr_phy[MAX_CUS];
+	u32                        cu_usage[MAX_CUS];
+
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
@@ -276,6 +281,7 @@ struct sched_exec_core {
  * @error: set to 1 to indicate scheduler error
  * @stop: set to 1 to indicate scheduler should stop
  * @cq: list of command objects managed by scheduler
+ * @intc: set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
  */
 struct scheduler {
@@ -287,6 +293,7 @@ struct scheduler {
 	unsigned int               stop;
 
 	struct list_head           cq;
+	unsigned int               intc; /* pending intr shared with isr*/
 	unsigned int               poll; /* number of cmds to poll */
 };
 
@@ -305,6 +312,7 @@ struct sched_cmd {
 	struct list_head list;
 	struct drm_device *ddev;
 	struct scheduler *sched;
+	struct sched_exec_core *exec;
 	enum cmd_state state;
 	int cu_idx; /* running cu, initialized to -1 */
 	int slot_idx;

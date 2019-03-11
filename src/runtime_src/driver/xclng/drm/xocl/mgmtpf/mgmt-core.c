@@ -26,10 +26,9 @@
 #include <linux/fs.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/crc32c.h>
 #include "../xocl_drv.h"
 #include "version.h"
-
-//#define USE_FEATURE_ROM
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -48,7 +47,7 @@ module_param(health_check, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(health_check,
 	"Enable health thread that checks the status of AXI Firewall and SYSMON. (0 = disable, 1 = enable)");
 
-int minimum_initialization = 0;
+int minimum_initialization;
 module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
@@ -60,7 +59,7 @@ MODULE_PARM_DESC(minimum_initialization,
 
 
 static dev_t xclmgmt_devnode;
-struct class *xrt_class = NULL;
+struct class *xrt_class;
 
 /*
  * Called when the device goes from unused to used.
@@ -123,7 +122,7 @@ static void unmap_bars(struct xclmgmt_dev *lro)
 
 static int identify_bar(struct xocl_dev_core *core, int bar)
 {
-	void *__iomem bar_addr;
+	void __iomem *bar_addr;
 	resource_size_t bar_len;
 
 	bar_len = pci_resource_len(core->pdev, bar);
@@ -348,7 +347,7 @@ static int create_char(struct xclmgmt_dev *lro)
 	lro_char->sys_device = device_create(xrt_class,
 				&lro->core.pdev->dev,
 				lro_char->cdev->dev, NULL,
-			 	DRV_NAME "%d", lro->instance);
+				DRV_NAME "%d", lro->instance);
 
 	if (IS_ERR(lro_char->sys_device)) {
 		rc = PTR_ERR(lro_char->sys_device);
@@ -404,7 +403,7 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
-	if(temp < LOW_TEMP || temp > HI_TEMP) {
+	if (temp < LOW_TEMP || temp > HI_TEMP) {
 		mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
 			LOW_TEMP, HI_TEMP, temp);
 	}
@@ -412,7 +411,7 @@ inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 {
-	if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
+	if (volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
 		mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
 			LOW_MILLVOLT, HI_MILLVOLT, volt);
 	}
@@ -437,20 +436,21 @@ static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
-	bool tripped;
+	bool tripped, is_sw;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
 	if (!health_check)
 		return 0;
 
-	mutex_lock(&lro->busy_mutex);
 	tripped = xocl_af_check(lro, NULL);
-	mutex_unlock(&lro->busy_mutex);
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_FIREWALL)) != 0;
 
 	if (!tripped) {
 		check_sysmon(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq);
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req), is_sw);
 	}
 
 	return 0;
@@ -487,8 +487,9 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 		XCLMGMT_INTR_USER_VECTOR) & 0x0f;
 	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
-	i = 0; // Suppress warning about unused variable
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	/* Suppress warning about unused variable */
+	i = 0;
 	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
 	if (rv == total)
 		rv = 0;
@@ -528,7 +529,7 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	vec = pci_irq_vector(lro->core.pdev,
 		lro->msix_user_start_vector + intr);
 #else
@@ -543,115 +544,200 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	return 0;
 }
 
+static int xclmgmt_reset(xdev_handle_t xdev_hdl)
+{
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+
+	return reset_hot_ioctl(lro);
+}
+
 struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_config = xclmgmt_intr_config,
 	.intr_register = xclmgmt_intr_register,
+	.reset = xclmgmt_reset,
 };
 
-static int xclmgmt_xclbin_download(struct xclmgmt_dev *lro ,void *data)
+static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	struct mailbox_req *req = (struct mailbox_req *)data;
-
-	/* is magic number*/
-	if(memcmp(req->u.xclbin_reg.data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
-		return -EINVAL;
-
-	return xocl_icap_download_axlf(lro, req->u.xclbin_reg.data);
-}
-
-static int xbmgmt_mb_peer_data_broker(struct xclmgmt_dev *lro)
-{
-	int ret = -EINVAL;
-
-	switch(lro->data_buf.cmd_type){
-		case MB_CMD_LOAD_XCLBIN:
-			ret = xocl_icap_download_axlf(lro, lro->data_buf.data_buf);
-			break;
-		case MB_CMD_RECLOCK:
-			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling*)lro->data_buf.data_buf);
-			break;
-		default:
-			printk(KERN_ERR "Can't recognize data_type : %u\n", lro->data_buf.cmd_type);
-		  break;
+	uint64_t val = 0;
+	size_t resp_sz = 0;
+	void *ptr = NULL;
+	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	switch (subdev_req->kind) {
+	case VOL_12V_PEX:
+		val = xocl_xmc_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(u32);
+		ptr = (void *)&val;
+		break;
+	case IDCODE:
+		val = xocl_icap_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(u32);
+		ptr = (void *)&val;
+		break;
+	case XCLBIN_UUID:
+		ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(xuid_t);
+		break;
+	default:
+		break;
 	}
 
-	return ret;
+	if (!resp_sz) {
+		return -EINVAL;
+	}
+
+	*resp = vmalloc(resp_sz);
+	if (*resp == NULL) {
+		return -ENOMEM;
+	}
+	memcpy(*resp, ptr, resp_sz);
+	*sz = resp_sz;
+	return 0;
 }
-
-
-static int xclmgmt_mb_data_alloc_and_recv(struct xclmgmt_dev *lro ,void *data)
+static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, struct mailbox_conn *mb_conn)
 {
 	int ret = 0;
-	struct mailbox_req *req = (struct mailbox_req *)data;
-	uint32_t data_total_len = req->u.data_buf.data_total_len;
-	uint32_t len = req->u.data_buf.len;
-	uint32_t offset = req->u.data_buf.offset;
-	char *data_ptr = req->u.data_buf.data;
+	uint32_t crc_chk;
+	phys_addr_t paddr;
 
-	if(lro->data_buf.data_buf == NULL){
-		printk(KERN_INFO "lro->data_buf.data_buf init ...\n");
-
-		lro->data_buf.data_buf = vmalloc(data_total_len);
-		if(lro->data_buf.data_buf == NULL){
-			printk(KERN_ERR "fail to alloc lro->data_buf.data_buf  ...\n");
-			ret = -ENOMEM;
-			return ret;
-		}
-		lro->data_buf.cmd_type = req->u.data_buf.cmd_type;
-		lro->data_buf.priv_data = req->u.data_buf.priv_data;
+	paddr = virt_to_phys((void *)mb_conn->kaddr);
+	if (paddr != (phys_addr_t)mb_conn->paddr) {
+		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
+		mgmt_info(lro, "Failed to get the same physical addr, running in VMs?\n");
+		ret = -EFAULT;
+		goto done;
 	}
+	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
 
-	memcpy(lro->data_buf.data_buf+offset, data_ptr, len);
-
-	if(offset+len == data_total_len){
-		printk(KERN_INFO "Get whole data ...\n");
-		ret = xbmgmt_mb_peer_data_broker(lro);
-		vfree(lro->data_buf.data_buf);
-		lro->data_buf.data_buf = NULL;
+	if (crc_chk != mb_conn->crc32) {
+		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
+		mgmt_info(lro, "failed to get the same CRC\n");
+		ret = -EFAULT;
+		goto done;
 	}
-	else if ((offset+len) > data_total_len){
-		vfree(lro->data_buf.data_buf);
-		lro->data_buf.data_buf = NULL;
-		ret = -ENOMEM;
-	}
-
+	ret |= MB_PEER_SAME_DOM;
+done:
 	return ret;
 }
-
-static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
-	u64 msgid, int err)
+void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro)
 {
-	int ret;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+	bool is_sw = false;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if (!mb_req) {
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CHAN_SWITCH;
+
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CHAN_SWITCH)) != 0;
+	mb_conn.flag = ch_switch;
+
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
+	return;
+}
+static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err, bool sw_ch)
+{
+	int ret = 0;
+	uint64_t ch_switch = 0;
+	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
+	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	struct mailbox_bitstream_kaddr *mb_kaddr = NULL;
+	void *resp = NULL;
+	bool is_sw = false;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+
+	bitstm_lock = (struct mailbox_req_bitstream_lock *)req->data;
 
 	if (err != 0)
 		return;
 
-	printk(KERN_INFO "%s received request (%d) from peer\n", __func__, req->req);
+	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
-		ret = xocl_icap_lock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOCK_BITSTREAM)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
+				0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_UNLOCK_BITSTREAM:
-		ret = xocl_icap_unlock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		if ((ch_switch & (1ULL<<MAILBOX_REQ_UNLOCK_BITSTREAM))^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
+			0);
 		break;
 	case MAILBOX_REQ_HOT_RESET:
-		ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_HOT_RESET)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = (int) reset_hot_ioctl(lro);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
-	case MAILBOX_REQ_DOWNLOAD_XCLBIN:
-		ret = xclmgmt_xclbin_download(lro, data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN_KADDR)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else{
+			mb_kaddr = (struct mailbox_bitstream_kaddr *)req->data;
+			ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
+		}
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
-	case MAILBOX_REQ_SEND_DATA:
-		ret = xclmgmt_mb_data_alloc_and_recv(lro, data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+	case MAILBOX_REQ_LOAD_XCLBIN:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_download_axlf(lro, req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_RECLOCK:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_RECLOCK)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_PEER_DATA:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		if (ret) {
+			/* if can't get data, return 0 as response */
+			ret = 0;
+			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
+		} else
+			(void) xocl_peer_response(lro, msgid, resp, sz, is_sw);
+		vfree(resp);
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xclmgmt_connection_explore(lro, (struct mailbox_conn *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		(void) xclmgmt_chan_switch_notify(lro);
 		break;
 	default:
 		break;
@@ -688,7 +774,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		xocl_err(&pdev->dev, "failed to register firewall\n");
 		goto fail_firewall;
 	}
-	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
@@ -722,6 +808,35 @@ fail_firewall:
 	xclmgmt_teardown_msix(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
+}
+
+
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+	void *kaddr = NULL;
+	bool is_sw = false;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if (!mb_req) {
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CONN_EXPL;
+	mb_conn.flag = online;
+	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!kaddr) {
+		return;
+	}
+	memcpy(mb_req->data, &mb_conn, data_len);
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
+	kfree(kaddr);
+	vfree(mb_req);
 }
 
 /*
@@ -764,28 +879,21 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->ready = false;
 
 	rc = pcie_get_readrq(pdev);
-        if (rc < 0) {
-                dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
-                goto err_alloc;
-        }
-        if (rc > 512) {
-                rc = pcie_set_readrq(pdev, 512);
-                if (rc) {
-                        dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
-                        goto err_alloc;
-                }
-        }
+	if (rc < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto err_alloc;
+	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+			goto err_alloc;
+		}
+	}
 
 	rc = xocl_alloc_dev_minor(lro);
 	if (rc)
 		goto err_alloc_minor;
-
-	rc = pci_request_regions(pdev, DRV_NAME);
-	/* could not request all regions? */
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_request_regions() = %d\n", rc);
-		goto err_regions;
-	}
 
 	dev_info = (struct xocl_board_private *)id->driver_data;
 	xocl_fill_dsa_priv(lro, dev_info);
@@ -797,7 +905,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
-	lro->data_buf.data_buf = NULL;
 	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
 		goto err_cdev;
@@ -820,13 +927,13 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xclmgmt_extended_probe(lro);
 
+	xclmgmt_connect_notify(lro, true);
+
 	return 0;
 
 err_cdev:
 	unmap_bars(lro);
 err_map:
-	pci_release_regions(pdev);
-err_regions:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	dev_set_drvdata(&pdev->dev, NULL);
@@ -850,6 +957,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	xclmgmt_connect_notify(lro, false);
+
 	health_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
@@ -863,7 +972,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	/* unmap the BARs */
 	unmap_bars(lro);
 	pci_disable_device(pdev);
-	pci_release_regions(pdev);
 
 	xocl_free_dev_minor(lro);
 
@@ -918,6 +1026,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_xmc,
 	xocl_init_dna,
+	xocl_init_fmgr,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -933,6 +1042,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_xmc,
 	xocl_fini_dna,
+	xocl_fini_fmgr,
 };
 
 static int __init xclmgmt_init(void)

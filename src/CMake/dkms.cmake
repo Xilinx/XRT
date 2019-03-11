@@ -108,12 +108,14 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/subdev/mig.c
   driver/xclng/drm/xocl/subdev/xmc.c
   driver/xclng/drm/xocl/subdev/dna.c
+  driver/xclng/drm/xocl/subdev/fmgr.c
   driver/xclng/drm/xocl/Makefile
   driver/xclng/drm/.dir-locals.el
   driver/xclng/include/xocl_ioctl.h
   driver/xclng/include/mgmt-reg.h
   driver/xclng/include/mgmt-ioctl.h
   driver/xclng/include/qdma_ioctl.h
+  driver/xclng/include/mailbox_proto.h
   driver/include/ert.h
   driver/include/xclfeatures.h
   driver/include/xclbin.h

@@ -207,15 +207,14 @@ enum xclAddressSpace {
  */
 
 enum xclLogMsgLevel {
-    ALERT = 0,
-    CRITICAL = 1,
-    DEBUG = 2,
-    EMERGENCY = 3,
-    ERROR = 4,
-    INFO = 5,
-    INTERNAL = 6,
-    NOTICE = 7,
-    WARNING = 8
+     EMERGENCY = 0,
+     ALERT = 1,
+     CRITICAL = 2,
+     ERROR = 3,
+     WARNING = 4,
+     NOTICE = 5,
+     INFO = 6,
+     DEBUG = 7
 };
 
 /**
@@ -496,12 +495,13 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * @handle:        Device handle
  * @level:         Severity level of the msg
+ * @tag:           Tag supplied by the client, like "OCL", "XMA", etc.
  * @format:        Format of Msg string to write to log file
  * @...:           All other arguments as per the format
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
@@ -1260,6 +1260,45 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
+/**
+  * xclMPD - Management Proxy Daemon API
+  *
+  * @handle:           Device handle
+  * @args:             software mailbox struct
+  *
+  * This API passes messages through the software channel of the userpf mailbox. The software mailbox struct
+  * has the following members:
+  * uint64_t flags:    reserved
+  * uint32_t *data:    message payload
+  * bool is_tx:        direction bit
+  * size_t sz:         when called, this indicates the size of the userspace buffer, upon return, it will
+  *                    be filled with the message payload size
+  * uint64_t id:       message id
+  *
+  * Returns 0 on success and nonzero on failure. errno will be set to EMSGSIZE when the passed userspace
+  * buffer is too small for the outbound message. This should only happen in the is_tx=true condition.
+  */
+XCL_DRIVER_DLLESPEC int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+
+/**
+  * xclMPD - Management Service Daemon API
+  *
+  * @handle:           Device handle
+  * @args:             software mailbox struct
+  *
+  * This API passes messages through the software channel of the mgmtpf mailbox. The software mailbox struct
+  * has the following members:
+  * uint64_t flags:    reserved
+  * uint32_t *data:    message payload
+  * bool is_tx:        direction bit
+  * size_t sz:         when called, this indicates the size of the userspace buffer, upon return, it will
+  *                    be filled with the message payload size
+  * uint64_t id:       message id
+  *
+  * Returns 0 on success and nonzero on failure. errno will be set to EMSGSIZE when the passed userspace
+  * buffer is too small for the outbound message. This should only happen in the is_tx=true condition.
+  */
+XCL_DRIVER_DLLESPEC int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);

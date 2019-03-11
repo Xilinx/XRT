@@ -27,6 +27,8 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/spinlock.h>
 #include "zocl_drv.h"
 #include "sched_exec.h"
 
@@ -163,8 +165,13 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_free_userptr_bo(obj);
 		else if (zocl_obj->flags & XCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
-		else
+		else {
 			drm_gem_cma_free_object(obj);
+
+			/* Update memory usage statistics */
+			zocl_update_mem_stat(zdev, obj->size, -1);
+		}
+
 		return;
 	}
 
@@ -184,8 +191,12 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			release_pages(zocl_obj->pages, npages, 0);
 #endif
 			kvfree(zocl_obj->pages);
-		} else
+		} else {
 			drm_gem_put_pages(obj, zocl_obj->pages, false, false);
+
+			/* Update memory usage statistics */
+			zocl_update_mem_stat(zdev, obj->size, -1);
+		}
 	}
 	if (zocl_obj->sgt)
 		sg_free_table(zocl_obj->sgt);
@@ -477,6 +488,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct resource res_mem;
 	void __iomem *map;
+	int index;
+	int irq;
 	int ret;
 
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
@@ -498,6 +511,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	zdev->regs       = map;
 	zdev->res_start  = res->start;
 	zdev->res_len    = resource_size(res);
+
+	/* Record and get IRQ number */
+	for (index = 0; index < MAX_CU_NUM; index++) {
+		irq = platform_get_irq(pdev, index);
+		if (irq < 0)
+			break;
+		DRM_INFO("CU(%d) IRQ %d\n", index, irq);
+		zdev->irq[index] = irq;
+	}
+	zdev->cu_num = index;
 
 	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
 	zdev->host_mem_len = 0;
@@ -564,19 +587,26 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	ret = drm_dev_register(drm, 0);
 	if (ret)
-		goto err;
+		goto err0;
 
 	drm->dev_private = zdev;
 	zdev->ddev       = drm;
 
 	/* Initial sysfs */
-	zocl_init_sysfs(drm->dev);
+	rwlock_init(&zdev->attr_rwlock);
+	ret = zocl_init_sysfs(drm->dev);
+	if (ret)
+		goto err0;
 
 	/* Now initial kds */
-	sched_init_exec(drm);
+	ret = sched_init_exec(drm);
+	if (ret)
+		goto err1;
 
 	return 0;
-err:
+err1:
+	zocl_fini_sysfs(drm->dev);
+err0:
 	drm_dev_unref(drm);
 	return ret;
 }
