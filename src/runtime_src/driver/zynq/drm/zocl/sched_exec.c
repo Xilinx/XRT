@@ -377,6 +377,28 @@ void setup_ert_hw(struct drm_zocl_dev *zdev)
 		iowrite32(0x0, ert_hw + ERT_HOST_INT_ENABLE);
 }
 
+inline void
+disable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
+{
+	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	virt_addr[1] = virt_addr[1] & 0x0;
+	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
+	virt_addr[2] = virt_addr[2] & 0x0;
+}
+
+inline void
+enable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
+{
+	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
+
+	/* 0x04 and 0x08 -- Interrupt Enable Registers */
+	virt_addr[1] = virt_addr[1] | 0x1;
+	/* bit 0 is ap_done, bit 1 is ap_ready, enable both of interrupts */
+	virt_addr[2] = virt_addr[2] | 0x3;
+}
+
 static irqreturn_t sched_exec_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
@@ -493,7 +515,7 @@ configure(struct sched_cmd *cmd)
 	exec->num_cus         = cfg->num_cus;
 	exec->cu_shift_offset = cfg->cu_shift;
 	exec->cu_base_addr    = cfg->cu_base_addr;
-	exec->num_cu_masks    = ((exec->num_cus-1)>>5) + 1;
+	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
 
 	write_lock(&zdev->attr_rwlock);
 
@@ -526,7 +548,7 @@ configure(struct sched_cmd *cmd)
 		    exec->cu_addr_phy[i]);
 	}
 
-	if (zdev->ert || exec->polling_mode)
+	if (zdev->ert)
 		goto print_and_out;
 
 	/* Right now only support 32 CUs interrupts
@@ -537,10 +559,15 @@ configure(struct sched_cmd *cmd)
 		    "request %d CUs. Fall back to polling mode\n",
 		    exec->num_cus);
 		exec->polling_mode = 1;
-		goto print_and_out;
 	}
 
-	/* If re-config KDS is supported, should free old irq */
+	/* If user prefer polling_mode, skip interrupt setup */
+	if (exec->polling_mode)
+		goto set_cu_and_print;
+
+	/* If re-config KDS is supported, should free old irq and disable cu
+	 * interrupt according to the command
+	 */
 	for (i = 0; i < exec->num_cus; i++) {
 		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
 		    "zocl", zdev);
@@ -559,14 +586,24 @@ configure(struct sched_cmd *cmd)
 		}
 	}
 
+set_cu_and_print:
+	/* Do not trust user's interrupt enable setting in the start cu cmd */
+	if (exec->polling_mode)
+		for (i = 0; i < exec->num_cus; i++)
+			disable_interrupts(cmd->ddev, zdev->regs, i);
+	else
+		for (i = 0; i < exec->num_cus; i++)
+			enable_interrupts(cmd->ddev, zdev->regs, i);
+
 print_and_out:
 	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("scheduler config ert(%d)", is_ert(cmd->ddev));
 	DRM_INFO("  cus(%d)", exec->num_cus);
 	DRM_INFO("  slots(%d)", exec->num_slots);
-	DRM_INFO("  cu_masks(%d)", exec->num_cu_masks);
+	DRM_INFO("  num_cu_masks(%d)", exec->num_cu_masks);
 	DRM_INFO("  cu_shift(%d)", exec->cu_shift_offset);
 	DRM_INFO("  cu_base(0x%x)", exec->cu_base_addr);
+	DRM_INFO("  polling(%d)", exec->polling_mode);
 	return 0;
 }
 
@@ -1063,7 +1100,14 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 
 	SCHED_DEBUG("-> configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
 		    cu_idx, virt_addr, size);
-	for (i = 1; i < size; ++i)
+	/* Write register map, starting at base_address + 0x10 (byte)
+	 * This based on the fact that kernel used
+	 *	0x00 -- Control Register
+	 *	0x04 and 0x08 -- Interrupt Enable Registers
+	 *	0x0C -- Interrupt Status Register
+	 * Skip the first 4 words in user regmap.
+	 */
+	for (i = 4; i < size; ++i)
 		virt_addr[i] = *(sk->data + sk->extra_cu_masks + i);
 
 	/* start CU at base + 0x0 */
