@@ -787,7 +787,6 @@ enum subdev_id {
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
 			XOCL_DEVINFO_XVC_PRI,				\
-			XOCL_DEVINFO_NIFD_PRI,				\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,      			\
 		})
