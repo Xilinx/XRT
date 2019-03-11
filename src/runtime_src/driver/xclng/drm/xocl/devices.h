@@ -807,6 +807,7 @@ enum subdev_id {
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_XVC_PRI,                           \
+		XOCL_DEVINFO_NIFD_PRI,							\
 		XOCL_DEVINFO_ICAP_MGMT,                         \
 	})
 
