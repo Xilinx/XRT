@@ -341,8 +341,7 @@ static int xvc_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct xocl_dev_core *core;
 	int err;
-
-	xvc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xvc));
+	xvc = devm_kzalloc(&pdev->dev, sizeof(*xvc), GFP_KERNEL);
 	if (!xvc)
 		return -ENOMEM;
 
@@ -444,7 +443,6 @@ static struct platform_driver	xvc_driver = {
 int __init xocl_init_xvc(void)
 {
 	int err = 0;
-
 	err = alloc_chrdev_region(&xvc_dev, 0, XOCL_MAX_DEVICES, XVC_DEV_NAME);
 	if (err < 0)
 		goto err_register_chrdev;
