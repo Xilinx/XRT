@@ -566,10 +566,14 @@ static int nifd_probe(struct platform_device *pdev)
     if (!core)
     {
         xocl_err(&pdev->dev, "core is NULL in NIFD probe");
+        goto failed;
     }
     xocl_get_raw_header(core, &rom);
     xocl_info(&pdev->dev, "NIFD: looking from NIFD in FeatureBitMap: %lx\n", (long)rom.FeatureBitMap);
     nifd_valid = (long)rom.FeatureBitMap & 0x40000000;
+    if (!nifd_valid) {
+        return 0;
+    }
 
     cdev_init(&nifd->sys_cdev, &nifd_fops);
     nifd->sys_cdev.owner = THIS_MODULE;
@@ -599,8 +603,10 @@ static int nifd_probe(struct platform_device *pdev)
     platform_set_drvdata(pdev, nifd);
     xocl_info(&pdev->dev, "NIFD device instance %d initialized\n",
               nifd->instance);
+    return 0;
 
 failed:
+    xocl_drvinst_free(nifd);
     return err;
 }
 
@@ -627,7 +633,8 @@ static int nifd_remove(struct platform_device *pdev)
         iounmap(nifd->nifd_base);
 
     platform_set_drvdata(pdev, NULL);
-    devm_kfree(&pdev->dev, nifd);
+    // devm_kfree(&pdev->dev, nifd);
+    xocl_drvinst_free(nifd);
 
     return 0;
 }
