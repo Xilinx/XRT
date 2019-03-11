@@ -309,14 +309,14 @@ static long readback_variable(void __user *arg)
     total_data_size = (1 + (num_bits * 2) + num_words) * sizeof(unsigned int);
 
     //total_data_size = (num_bits * 3 + 1) * sizeof(unsigned int) ;
-    kernel_memory = (unsigned int *)(kmalloc(total_data_size, GFP_KERNEL));
+    kernel_memory = (unsigned int *)(vmalloc(total_data_size));
 
     if (!kernel_memory)
         return -ENOMEM;
 
     if (copy_from_user(kernel_memory, arg, total_data_size))
     {
-        kfree(kernel_memory);
+        vfree(kernel_memory);
         return -EFAULT;
     }
 
@@ -324,17 +324,17 @@ static long readback_variable(void __user *arg)
 
     if (core_result)
     {
-        kfree(kernel_memory);
+        vfree(kernel_memory);
         return core_result;
     }
 
     if (copy_to_user(arg, kernel_memory, total_data_size))
     {
-        kfree(kernel_memory);
+        vfree(kernel_memory);
         return -EFAULT;
     }
 
-    kfree(kernel_memory);
+    vfree(kernel_memory);
     return 0; // Success
 }
 
