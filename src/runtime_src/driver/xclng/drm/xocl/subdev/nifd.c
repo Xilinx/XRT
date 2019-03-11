@@ -528,10 +528,10 @@ static int nifd_probe(struct platform_device *pdev) {
 
 	core = xocl_get_xdev(pdev);
 	if (!core) {
-		printk("NIFD: probe => core is null");
+		xocl_err(&pdev->dev, "core is NULL in NIFD probe");
 	}
 	xocl_get_raw_header(core, &rom);
-	printk("NIFD: looking from NIFD in FeatureBitMap: %lx", (long)rom.FeatureBitMap);
+    xocl_info(&pdev->dev, "NIFD: looking from NIFD in FeatureBitMap: %lx\n", (long)rom.FeatureBitMap);
 	nifd_valid = (long)rom.FeatureBitMap & 0x40000000;
 
 	cdev_init(&nifd->sys_cdev, &nifd_fops);
@@ -572,7 +572,7 @@ static int nifd_remove(struct platform_device *pdev) {
 
 	core = xocl_get_xdev(pdev);
 	if (!core) {
-		printk("NIFD: remove => core is null");
+		xocl_err(&pdev->dev, "core is NULL in NIFD remove");
 	}
 
 	nifd = platform_get_drvdata(pdev);
