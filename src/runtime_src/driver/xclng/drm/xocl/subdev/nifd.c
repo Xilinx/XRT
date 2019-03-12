@@ -512,6 +512,12 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static int char_open(struct inode *inode, struct file *file)
 {
+    struct xocl_nifd *nifd = NULL;
+    nifd = xocl_drvinst_open(inode->i_cdev);
+    if (!nifd) 
+    {
+        return -ENXIO;
+    }
     if (!nifd_valid)
     {
         return -1;
