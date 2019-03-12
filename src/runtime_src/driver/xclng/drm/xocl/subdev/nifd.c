@@ -530,6 +530,8 @@ static int char_open(struct inode *inode, struct file *file)
  */
 static int char_close(struct inode *inode, struct file *file)
 {
+    struct xocl_nifd *nifd = file->private_data;
+    xocl_drvinst_close(nifd);
     return 0;
 }
 
