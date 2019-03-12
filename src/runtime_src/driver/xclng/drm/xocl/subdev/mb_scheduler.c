@@ -1183,7 +1183,6 @@ static int
 exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	struct client_ctx *client = xcmd->client;
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = exec->ert_cfg_priv;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
@@ -1237,7 +1236,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (cdma) {
 		uint32_t *addr = 0;
 
-		mutex_lock(&client->lock); /* for modification to client cu_bitmap */
 		for (addr = cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
 			if (*addr) {
 				struct xocl_cu *xcu = exec->cus[cuidx];
@@ -1259,7 +1257,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 				++cuidx;
 			}
 		}
-		mutex_unlock(&client->lock);
 	}
 
 	if ((ert_full || ert_poll) && !exec->ert)
@@ -1663,12 +1660,12 @@ exec_notify_host(struct exec_core *exec)
 	SCHED_DEBUGF("-> %s(%d)\n", __func__, exec->uid);
 
 	/* now for each client update the trigger counter in the context */
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
 		atomic_inc(&entry->trigger);
 	}
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	/* wake up all the clients */
 	wake_up_interruptible(&exec->poll_wait_queue);
 	SCHED_DEBUGF("<- %s\n", __func__);
@@ -2731,11 +2728,10 @@ create_client(struct platform_device *pdev, void **priv)
 	if (!client)
 		return -ENOMEM;
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	if (!xdev->offline) {
 		client->pid = task_tgid(current);
-		mutex_init(&client->lock);
 		client->abort = false;
 		atomic_set(&client->trigger, 0);
 		atomic_set(&client->outstanding_execs, 0);
@@ -2749,7 +2745,7 @@ create_client(struct platform_device *pdev, void **priv)
 		ret = -EBUSY;
 	}
 
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
 	DRM_INFO("creating scheduler client for pid(%d), ret: %d\n",
 		 pid_nr(task_tgid(current)), ret);
@@ -2763,13 +2759,45 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	struct xocl_scheduler *xs = exec_scheduler(exec);
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
-	unsigned int	outstanding = atomic_read(&client->outstanding_execs);
+	unsigned int	outstanding;
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
-	int pid = pid_nr(task_tgid(current));
+	int pid;
 	unsigned int bit;
-	struct ip_layout *layout = XOCL_IP_LAYOUT(xdev);
-	xuid_t *xclbin_id = XOCL_XCLBIN_ID(xdev);
+	struct ip_layout *layout;
+	xuid_t *xclbin_id;
+
+	// force scheduler to abort execs for this client
+	client->abort = true;
+	// wait for outstanding execs to finish
+	outstanding = atomic_read(&client->outstanding_execs);
+	while (outstanding) {
+		unsigned int new;
+
+		userpf_info(xdev, "waiting for %d outstanding execs to finish",
+			outstanding);
+		msleep(500);
+		new = atomic_read(&client->outstanding_execs);
+		loops = (new == outstanding ? (loops + 1) : 0);
+		if (loops == timeout_loops) {
+			userpf_err(xdev,
+				   "Giving up with %d outstanding execs.\n",
+				   outstanding);
+			userpf_err(xdev,
+				   "Please reset device with 'xbutil reset'\n");
+			xdev->needs_reset = true;
+			// reset the scheduler loop
+			xs->reset = true;
+			break;
+		}
+		outstanding = new;
+	}
+
+	mutex_lock(&xdev->dev_lock);
+
+	pid = pid_nr(client->pid);
+	layout = XOCL_IP_LAYOUT(xdev);
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
@@ -2789,43 +2817,19 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
 
+	/* Unlock xclbin */
 	if (CLIENT_NUM_CU_CTX(client) != 0)
-		xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
+		(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
 
 	client->virt_cu_ref = 0;
 	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
-	// force scheduler to abort execs for this client
-	client->abort = true;
-
-	// wait for outstanding execs to finish
-	while (outstanding) {
-		unsigned int new;
-
-		userpf_info(xdev, "waiting for %d outstanding execs to finish", outstanding);
-		msleep(500);
-		new = atomic_read(&client->outstanding_execs);
-		loops = (new == outstanding ? (loops + 1) : 0);
-		if (loops == timeout_loops) {
-			userpf_err(xdev,
-				   "Giving up with %d outstanding execs, please reset device with 'xbutil reset'\n",
-				   outstanding);
-			xdev->needs_reset = true;
-			// reset the scheduler loop
-			xs->reset = true;
-			break;
-		}
-		outstanding = new;
-	}
-
+	list_del(&client->link);
 	DRM_INFO("client exits pid(%d)\n", pid);
 
-	mutex_lock(&xdev->ctx_list_lock);
-	list_del(&client->link);
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
-	mutex_destroy(&client->lock);
 	devm_kfree(&pdev->dev, client);
 	*priv = NULL;
 }
@@ -2834,31 +2838,14 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 	poll_table *wait, void *priv)
 {
 	struct client_ctx	*client = (struct client_ctx *)priv;
-	struct exec_core	*exec;
+	struct exec_core	*exec = platform_get_drvdata(pdev);
 	int			counter;
-	uint			ret = 0;
-
-	exec = platform_get_drvdata(pdev);
 
 	poll_wait(filp, &exec->poll_wait_queue, wait);
-
-	/*
-	 * Mutex lock protects from two threads from the same application
-	 * calling poll concurrently using the same file handle
-	 */
-	mutex_lock(&client->lock);
-	counter = atomic_read(&client->trigger);
-	if (counter > 0) {
-		/*
-		 * Use atomic here since the trigger may be incremented by
-		 * interrupt handler running concurrently.
-		 */
-		atomic_dec(&client->trigger);
-		ret = POLLIN;
-	}
-	mutex_unlock(&client->lock);
-
-	return ret;
+	counter = atomic_dec_if_positive(&client->trigger);
+	if (counter == -1)
+		return 0;
+	return POLLIN;
 }
 
 static int client_ioctl_ctx(struct platform_device *pdev,
@@ -2872,8 +2859,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	xuid_t *xclbin_id;
 	u32 cu_idx = args->cu_index;
 
-	mutex_lock(&client->lock);
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
@@ -2961,8 +2947,7 @@ out:
 		args->op == XOCL_CTX_OP_FREE_CTX ? "del" : "add",
 		xclbin_id, pid, cu_idx, ret, CLIENT_NUM_CU_CTX(client));
 
-	mutex_unlock(&xdev->ctx_list_lock);
-	mutex_unlock(&client->lock);
+	mutex_unlock(&xdev->dev_lock);
 	return ret;
 }
 
@@ -3237,7 +3222,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		return 0; /* ok */
 
 	/* client context cu bitmap may not change while validating */
-	mutex_lock(&client->lock);
+	mutex_lock(&client->xdev->dev_lock);
 
 	/* no specific CUs selected, maybe ctx is not used by client */
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
@@ -3263,7 +3248,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 
 out:
-	mutex_unlock(&client->lock);
+	mutex_unlock(&client->xdev->dev_lock);
 	SCHED_DEBUGF("<- %s(%d) cmd and ctx CUs match\n", __func__, err);
 	return err;
 
@@ -3333,7 +3318,6 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	// minimum required initialization of client
 	client.abort = false;
 	client.xdev = xdev;
-	atomic_set(&client.trigger, 0);
 	atomic_set(&client.outstanding_execs, 0);
 
 	packet.opcode = ERT_CU_STAT;

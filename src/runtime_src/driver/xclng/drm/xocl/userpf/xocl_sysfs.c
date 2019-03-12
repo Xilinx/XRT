@@ -87,11 +87,11 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	if (!drm_hdl)
 		return -EINVAL;
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	topo = XOCL_MEM_TOPOLOGY(xdev);
 	if (!topo) {
-		mutex_unlock(&xdev->ctx_list_lock);
+		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
 	}
 
@@ -120,7 +120,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		buf += count;
 		size += count;
 	}
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
 

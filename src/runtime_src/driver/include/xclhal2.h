@@ -934,6 +934,8 @@ XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned 
  * Wait for notification from the hardware. The function essentially calls "poll" system
  * call on the driver file handle. The return value has same semantics as poll system call.
  * If return value is > 0 caller should check the status of submitted exec buffers
+ * Note that if you perform wait for the same handle from multiple threads, you
+ * may lose wakeup for some of them. So, use different handle in different threads.
  */
 XCL_DRIVER_DLLESPEC int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 
