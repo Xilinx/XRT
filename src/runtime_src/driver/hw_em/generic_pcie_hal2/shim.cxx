@@ -472,7 +472,7 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-        cmdLineOption << " --gui --wdb " << wdbFileName << ".wdb"
+        cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
                       << " --protoinst " << protoFileName;
 
         launcherArgs = launcherArgs + cmdLineOption.str();
