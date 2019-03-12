@@ -197,7 +197,7 @@ namespace xocl {
     for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
       if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {
         std::string slotName = mPerfMonSlotName[i];
-        if (slotName.find("HOST") == std::string::npos)
+        if (slotName.find(IP_LAYOUT_HOST_NAME) == std::string::npos)
           count++;
       }
     }
