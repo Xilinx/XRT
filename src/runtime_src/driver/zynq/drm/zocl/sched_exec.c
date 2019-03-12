@@ -554,7 +554,7 @@ configure(struct sched_cmd *cmd)
 	/* Right now only support 32 CUs interrupts
 	 * If there are more than 32 CUs, fall back to polling mode
 	 */
-	if (exec->num_cus > 32) {
+	if (!exec->polling_mode && exec->num_cus > 32) {
 		DRM_WARN("Only support up to 32 CUs interrupts, "
 		    "request %d CUs. Fall back to polling mode\n",
 		    exec->num_cus);
