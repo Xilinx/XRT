@@ -1144,11 +1144,12 @@ int xcldev::xclValidate(int argc, char *argv[])
 
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
-
-        if (dev->validate(quick) == 1) {
+        
+        int v = dev->validate(quick);
+        if (v == 1) {
             warning = true;
             std::cout << "INFO: Card[" << i << "] validated with warnings." << std::endl;
-        } else if (dev->validate(quick) != 0) {
+        } else if (v != 0) {
             validated = false;
             std::cout << "INFO: Card[" << i << "] failed to validate." << std::endl;
         } else {
