@@ -77,7 +77,7 @@ struct xocl_nifd
     void *__iomem nifd_base;
     void *__iomem icap_base;
     unsigned int instance;
-    struct cdev sys_cdev;
+    struct cdev *sys_cdev;
     struct device *sys_device;
 };
 
@@ -581,11 +581,13 @@ static int nifd_probe(struct platform_device *pdev)
         return 0;
     }
 
-    cdev_init(&nifd->sys_cdev, &nifd_fops);
-    nifd->sys_cdev.owner = THIS_MODULE;
+    // cdev_init(&nifd->sys_cdev, &nifd_fops);
+    nifd->sys_cdev = cdev_alloc();
+    nifd->sys_cdev->ops = &nifd_fops;
+    nifd->sys_cdev->owner = THIS_MODULE;
     nifd->instance = XOCL_DEV_ID(core->pdev) | platform_get_device_id(pdev)->driver_data;
-    nifd->sys_cdev.dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
-    err = cdev_add(&nifd->sys_cdev, nifd->sys_cdev.dev, 1);
+    nifd->sys_cdev->dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
+    err = cdev_add(&nifd->sys_cdev, nifd->sys_cdev->dev, 1);
     if (err)
     {
         xocl_err(&pdev->dev, "cdev_add failed, %d", err);
@@ -594,7 +596,7 @@ static int nifd_probe(struct platform_device *pdev)
 
     nifd->sys_device = device_create(xrt_class,
                                      &pdev->dev,
-                                     nifd->sys_cdev.dev,
+                                     nifd->sys_cdev->dev,
                                      NULL,
                                      "%s%d",
                                      platform_get_device_id(pdev)->name,
@@ -605,6 +607,8 @@ static int nifd_probe(struct platform_device *pdev)
         cdev_del(&nifd->sys_cdev);
         goto failed;
     }
+
+    xocl_drvinst_set_filedev(nifd, nifd->sys_cdev);
 
     platform_set_drvdata(pdev, nifd);
     xocl_info(&pdev->dev, "NIFD device instance %d initialized\n",
@@ -633,7 +637,7 @@ static int nifd_remove(struct platform_device *pdev)
         xocl_err(&pdev->dev, "driver data is NULL");
         return -EINVAL;
     }
-    device_destroy(xrt_class, nifd->sys_cdev.dev);
+    device_destroy(xrt_class, nifd->sys_cdev->dev);
     cdev_del(&nifd->sys_cdev);
     if (nifd->nifd_base)
         iounmap(nifd->nifd_base);
