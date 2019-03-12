@@ -1777,24 +1777,12 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		need_download = (icap->icap_bitstream_id != xclbin->m_uniqueId);
 
-		if (!need_download) {
-			/*
-			 * No need to download, if xclbin exists already.
-			 * But, still need to reset CUs.
-			 */
-			if (!icap_bitstream_in_use(icap, 0)) {
-				icap_freeze_axi_gate(icap);
-				msleep(50);
-				icap_free_axi_gate(icap);
-				msleep(50);
-			}
-			ICAP_INFO(icap, "bitstream already exists, skip downloading");
-		}
-
 		mutex_unlock(&icap->icap_lock);
 
-		if (!need_download)
+		if(!need_download) {
+			ICAP_INFO(icap, "bitstream exists, skip downloading");
 			return 0;
+		}
 
 		/*
 		 * Find sections in xclbin.

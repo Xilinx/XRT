@@ -411,11 +411,11 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)					\
-	xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)						\
-	xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+#define XOCL_XCLBIN_ID(xdev)						\
+	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
