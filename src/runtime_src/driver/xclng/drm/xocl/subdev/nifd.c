@@ -442,9 +442,7 @@ static long add_breakpoints(void __user *arg)
     result = add_breakpoints_core(kernel_memory);
     vfree(kernel_memory);
 
-    if (result)
-        return result;
-    return 0;
+    return result;
 }
 
 static long remove_breakpoints(void)
