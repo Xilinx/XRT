@@ -90,7 +90,8 @@ static bool nifd_valid;
 /**
  * helper functions
  */
-static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset);
+static long write_nifd_register(unsigned int value, 
+                                enum NIFD_register_offset reg_offset);
 static long read_nifd_register(enum NIFD_register_offset reg_offset);
 static void write_icap_mux_register(unsigned int value);
 static long start_controlled_clock_free_running(void);
@@ -98,10 +99,12 @@ static long stop_controlled_clock(void);
 static void restart_controlled_clock(unsigned int previousMode);
 static void start_controlled_clock_stepping(void);
 
-static long write_nifd_register(unsigned int value, enum NIFD_register_offset reg_offset)
+static long write_nifd_register(unsigned int value, 
+                                enum NIFD_register_offset reg_offset)
 {
     unsigned int offset_value = (unsigned int)(reg_offset);
-    unsigned long long int full_addr = (unsigned long long int)(nifd_global->nifd_base) + offset_value;
+    unsigned long long int full_addr = 
+    (unsigned long long int)(nifd_global->nifd_base) + offset_value;
     void *ptr = (void *)(full_addr);
 
     iowrite32(value, ptr);
@@ -111,7 +114,9 @@ static long write_nifd_register(unsigned int value, enum NIFD_register_offset re
 static long read_nifd_register(enum NIFD_register_offset reg_offset)
 {
     unsigned int offset_value = (unsigned int)(reg_offset);
-    unsigned long long int full_addr = (unsigned long long int)(nifd_global->nifd_base) + offset_value;
+    unsigned long long int full_addr = 
+                        (unsigned long long int)(nifd_global->nifd_base) 
+                        + offset_value;
     void *ptr = (void *)(full_addr);
 
     return ioread32(ptr);
@@ -242,8 +247,9 @@ static long readback_variable_core(unsigned int *arg)
     // Check the current status of the clock and record if it is running
     clock_status = (read_nifd_status() & 0x3);
     // If the clock was running in free running mode, we have to
-    //  put it into stepping mode for a little bit in order to get
-    //  this to work.  This is a bug in the hardware that needs to be fixed.
+    // put it into stepping mode for a little bit in order to get
+    // this to work.  This is a bug in the hardware that needs to 
+    // be fixed.
     if (clock_status == 1)
     {
         stop_controlled_clock();
@@ -274,8 +280,10 @@ static long readback_variable_core(unsigned int *arg)
         readback_status = (read_nifd_status() & 0x8);
     }
 
-    // The readback is ready, so we need to figure out how many words to read
-    readback_data_word_cnt = read_nifd_register(NIFD_READBACK_DATA_WORD_CNT);
+    // The readback is ready, so we need to figure out how many 
+    // words to read
+    readback_data_word_cnt = 
+    read_nifd_register(NIFD_READBACK_DATA_WORD_CNT);
 
     for (i = 0; i < readback_data_word_cnt; ++i)
     {
@@ -290,8 +298,8 @@ static long readback_variable_core(unsigned int *arg)
 static long readback_variable(void __user *arg)
 {
     // Allocate memory in kernel space, copy over all the information
-    //  from user space at once, call the core implemenation,
-    //  and finally write back the result.
+    // from user space at once, call the core implementaion,
+    // and finally write back the result.
 
     // The information will be passed in this format:
     //  [numBits][frame][offset][frame][offset]...[space for result]
@@ -306,7 +314,8 @@ static long readback_variable(void __user *arg)
 
     num_words = num_bits % 32 ? num_bits / 32 + 1 : num_bits / 32;
 
-    total_data_size = (1 + (num_bits * 2) + num_words) * sizeof(unsigned int);
+    total_data_size = (1 + (num_bits * 2) + num_words) 
+                        * sizeof(unsigned int);
 
     //total_data_size = (num_bits * 3 + 1) * sizeof(unsigned int) ;
     kernel_memory = (unsigned int *)(vmalloc(total_data_size));
@@ -345,7 +354,8 @@ static long switch_clock_mode(void __user *arg)
 }
 
 static void add_breakpoint_data(unsigned int bank, unsigned int frame,
-                                unsigned int offset, unsigned int constraint)
+                                unsigned int offset, 
+                                unsigned int constraint)
 {
     enum NIFD_register_offset register_offset;
     switch (bank)
@@ -377,7 +387,10 @@ static void add_breakpoint_data(unsigned int bank, unsigned int frame,
 static long add_breakpoints_core(unsigned int *arg)
 {
     // Format of user data:
-    //  [numBreakpoints][frameAddress][frameOffset][constraint]...[condition]
+    // [numBreakpoints]
+    // [frameAddress]
+    // [frameOffset]
+    // [constraint]...[condition]
 
     unsigned int num_breakpoints;
     unsigned int i;
@@ -419,7 +432,9 @@ static long add_breakpoints_core(unsigned int *arg)
 
 static long add_breakpoints(void __user *arg)
 {
-    // Format of user data: [numBreakpoints][frameAddress][frameOffset][constraint]...[condition]
+    // Format of user data: 
+    // [numBreakpoints][frameAddress]
+    // [frameOffset][constraint]...[condition]
     unsigned int num_breakpoints;
     unsigned int total_data_size;
     unsigned int *kernel_memory;
@@ -428,7 +443,8 @@ static long add_breakpoints(void __user *arg)
     if (copy_from_user(&num_breakpoints, arg, sizeof(unsigned int)))
         return -EFAULT;
 
-    total_data_size = (num_breakpoints * 3 + 1 + 1) * sizeof(unsigned int);
+    total_data_size = (num_breakpoints * 3 + 1 + 1) 
+                        * sizeof(unsigned int);
     kernel_memory = (unsigned int *)(vmalloc(total_data_size));
     if (!kernel_memory)
         return -ENOMEM;
@@ -466,7 +482,8 @@ static long check_status(void __user *arg)
     return 0; // Success
 }
 
-static long nifd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long nifd_ioctl(struct file *filp, unsigned int cmd, 
+                        unsigned long arg)
 {
     // struct xocl_nifd *nifd = filp->private_data;
     long status = 0;
@@ -558,7 +575,8 @@ static int nifd_probe(struct platform_device *pdev)
         return -ENOMEM;
 
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    nifd->nifd_base = ioremap_nocache(res->start, res->end - res->start + 1);
+    nifd->nifd_base = ioremap_nocache(res->start, 
+                        res->end - res->start + 1);
     if (!nifd->nifd_base)
     {
         err = -EIO;
@@ -575,7 +593,9 @@ static int nifd_probe(struct platform_device *pdev)
         goto failed;
     }
     xocl_get_raw_header(core, &rom);
-    xocl_info(&pdev->dev, "NIFD: looking from NIFD in FeatureBitMap: %lx\n", (long)rom.FeatureBitMap);
+    xocl_info(&pdev->dev, 
+            "NIFD: looking from NIFD in FeatureBitMap: %lx\n", 
+            (long)rom.FeatureBitMap);
     nifd_valid = (long)rom.FeatureBitMap & 0x40000000;
     if (!nifd_valid) {
         return 0;
@@ -585,7 +605,8 @@ static int nifd_probe(struct platform_device *pdev)
     nifd->sys_cdev = cdev_alloc();
     nifd->sys_cdev->ops = &nifd_fops;
     nifd->sys_cdev->owner = THIS_MODULE;
-    nifd->instance = XOCL_DEV_ID(core->pdev) | platform_get_device_id(pdev)->driver_data;
+    nifd->instance = XOCL_DEV_ID(core->pdev) 
+                | platform_get_device_id(pdev)->driver_data;
     nifd->sys_cdev->dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
     err = cdev_add(&nifd->sys_cdev, nifd->sys_cdev->dev, 1);
     if (err)
@@ -666,7 +687,10 @@ static struct platform_driver nifd_driver = {
 int __init xocl_init_nifd(void)
 {
     int err = 0;
-    err = alloc_chrdev_region(&nifd_dev, 0, XOCL_MAX_DEVICES, NIFD_DEV_NAME);
+    err = alloc_chrdev_region(&nifd_dev, 
+                            0, 
+                            XOCL_MAX_DEVICES, 
+                            NIFD_DEV_NAME);
     if (err < 0)
         goto err_register_chrdev;
 
