@@ -964,6 +964,7 @@ struct exec_core {
 	void __iomem		   *base;
 	u32			   intr_base;
 	u32			   intr_num;
+	char			   ert_cfg_priv;
 
 	wait_queue_head_t	   poll_wait_queue;
 
@@ -1080,7 +1081,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	struct client_ctx *client = xcmd->client;
 	bool ert = xocl_mb_sched_on(xdev);
 	uint32_t *cdma = xocl_cdma_addr(xdev);
-	unsigned int dsa = xocl_dsa_version(xdev);
+	unsigned int dsa = exec->ert_cfg_priv;
 	bool dataflow = false; // TBD to be configured
 	struct ert_configure_cmd *cfg;
 	int cuidx = 0;
@@ -1092,7 +1093,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	DRM_INFO("ert per feature rom = %d\n", ert);
-	DRM_INFO("dsa per feature rom = %d\n", dsa);
+	DRM_INFO("dsa52 = %d\n", dsa);
 
 	cfg = (struct ert_configure_cmd *)(xcmd->ecmd);
 
@@ -1152,7 +1153,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		exec->ops = &ert_ops;
 		exec->polling_mode = cfg->polling;
 		exec->cq_interrupt = cfg->cq_int;
-		cfg->dsa52 = (dsa >= 52) ? 1 : 0;
+		cfg->dsa52 = dsa;
 		cfg->cdma = cdma ? 1 : 0;
 	} else {
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
@@ -1340,6 +1341,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	exec->intr_base = res->start;
 	exec->intr_num = res->end - res->start + 1;
 	exec->pdev = pdev;
+	exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 
 	init_waitqueue_head(&exec->poll_wait_queue);
 	exec->scheduler = xs;

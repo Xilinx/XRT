@@ -25,7 +25,6 @@ struct feature_rom {
 	void __iomem		*base;
 
 	struct FeatureRomHeader	header;
-	unsigned int            dsa_version;
 	bool			unified;
 	bool			mb_mgmt_enabled;
 	bool			mb_sche_enabled;
@@ -104,16 +103,6 @@ static struct attribute *rom_attrs[] = {
 static struct attribute_group rom_attr_group = {
 	.attrs = rom_attrs,
 };
-
-static unsigned int dsa_version(struct platform_device *pdev)
-{
-	struct feature_rom *rom;
-
-	rom = platform_get_drvdata(pdev);
-	BUG_ON(!rom);
-
-	return rom->dsa_version;
-}
 
 static bool is_unified(struct platform_device *pdev)
 {
@@ -229,7 +218,6 @@ static void get_raw_header(struct platform_device *pdev, void *header)
 }
 
 static struct xocl_rom_funcs rom_ops = {
-	.dsa_version = dsa_version,
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
 	.mb_sched_on = mb_sched_on,
@@ -316,20 +304,6 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->header.DDRChannelCount = rom->header.DDRChannelCount - 1;
 		rom->are_dev = true;
 	}
-
-	rom->dsa_version = 0;
-	if (strstr(rom->header.VBNVName,"5_0"))
-		rom->dsa_version = 50;
-	else if (strstr(rom->header.VBNVName,"5_1")
-		 || strstr(rom->header.VBNVName,"u200_xdma_201820_1"))
-		rom->dsa_version = 51;
-	else if (strstr(rom->header.VBNVName,"5_2")
-		 || strstr(rom->header.VBNVName,"u200_xdma_201820_2")
-		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1")
-		 || strstr(rom->header.VBNVName,"201830"))
-		rom->dsa_version = 52;
-	else if (strstr(rom->header.VBNVName,"5_3"))
-		rom->dsa_version = 53;
 
 	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM)
 		rom->unified = true;

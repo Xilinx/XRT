@@ -275,7 +275,6 @@ struct xocl_dev_core {
 
 /* rom callbacks */
 struct xocl_rom_funcs {
-	unsigned int (*dsa_version)(struct platform_device *pdev);
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
@@ -292,8 +291,6 @@ struct xocl_rom_funcs {
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
 	((struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).ops)
-#define	xocl_dsa_version(xdev)		\
-	(ROM_DEV(xdev) ? ROM_OPS(xdev)->dsa_version(ROM_DEV(xdev)) : 0)
 #define	xocl_is_unified(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->is_unified(ROM_DEV(xdev)) : true)
 #define	xocl_mb_mgmt_on(xdev)		\
