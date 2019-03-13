@@ -90,111 +90,119 @@ static bool nifd_valid;
 /**
  * helper functions
  */
-static long write_nifd_register(unsigned int value, 
+static long write_nifd_register(struct xocl_nifd* nifd, 
+                                unsigned int value, 
                                 enum NIFD_register_offset reg_offset);
-static long read_nifd_register(enum NIFD_register_offset reg_offset);
-static void write_icap_mux_register(unsigned int value);
-static long start_controlled_clock_free_running(void);
-static long stop_controlled_clock(void);
-static void restart_controlled_clock(unsigned int previousMode);
-static void start_controlled_clock_stepping(void);
+static long read_nifd_register(struct xocl_nifd* nifd, 
+                                enum NIFD_register_offset reg_offset);
+static void write_icap_mux_register(struct xocl_nifd* nifd,
+                                unsigned int value);
+static long start_controlled_clock_free_running(struct xocl_nifd* nifd);
+static long stop_controlled_clock(struct xocl_nifd* nifd);
+static void restart_controlled_clock(struct xocl_nifd* nifd, 
+                                    unsigned int previousMode);
+static void start_controlled_clock_stepping(struct xocl_nifd* nifd);
 
-static long write_nifd_register(unsigned int value, 
+static long write_nifd_register(struct xocl_nifd* nifd, 
+                                unsigned int value, 
                                 enum NIFD_register_offset reg_offset)
 {
     unsigned int offset_value = (unsigned int)(reg_offset);
     unsigned long long int full_addr = 
-    (unsigned long long int)(nifd_global->nifd_base) + offset_value;
+    (unsigned long long int)(nifd->nifd_base) + offset_value;
     void *ptr = (void *)(full_addr);
 
     iowrite32(value, ptr);
     return 0;
 }
 
-static long read_nifd_register(enum NIFD_register_offset reg_offset)
+static long read_nifd_register(struct xocl_nifd* nifd, 
+                            enum NIFD_register_offset reg_offset)
 {
     unsigned int offset_value = (unsigned int)(reg_offset);
     unsigned long long int full_addr = 
-                        (unsigned long long int)(nifd_global->nifd_base) 
+                        (unsigned long long int)(nifd->nifd_base) 
                         + offset_value;
     void *ptr = (void *)(full_addr);
 
     return ioread32(ptr);
 }
 
-static void write_icap_mux_register(unsigned int value)
+static void write_icap_mux_register(struct xocl_nifd* nifd, 
+                                    unsigned int value)
 {
-    iowrite32(value, nifd_global->icap_base);
+    iowrite32(value, nifd->icap_base);
 }
 
-static long start_controlled_clock_free_running(void)
+static long start_controlled_clock_free_running(struct xocl_nifd* nifd)
 {
-    write_nifd_register(0x1, NIFD_STOP_APP);
+    write_nifd_register(nifd, 0x1, NIFD_STOP_APP);
     return 0;
 }
 
-static long stop_controlled_clock(void)
+static long stop_controlled_clock(struct xocl_nifd* nifd)
 {
-    write_nifd_register(0x1, NIFD_STOP_APP);
+    write_nifd_register(nifd, 0x1, NIFD_STOP_APP);
     return 0;
 }
 
-static void start_controlled_clock_stepping(void)
+static void start_controlled_clock_stepping(struct xocl_nifd* nifd)
 {
-    write_nifd_register(0x0, NIFD_START_APP);
+    write_nifd_register(nifd, 0x0, NIFD_START_APP);
 }
 
-static void restart_controlled_clock(unsigned int previousMode)
+static void restart_controlled_clock(struct xocl_nifd* nifd,
+                                    unsigned int previousMode)
 {
     if (previousMode == 0x1)
-        start_controlled_clock_free_running();
+        start_controlled_clock_free_running(nifd);
     else if (previousMode == 0x2)
-        start_controlled_clock_stepping();
+        start_controlled_clock_stepping(nifd);
 }
 
-static long start_controlled_clock(void __user *arg)
+static long start_controlled_clock(struct xocl_nifd* nifd, void __user *arg)
 {
     unsigned int mode = 0;
     if (copy_from_user(&mode, arg, sizeof(unsigned int)))
     {
         return -EFAULT;
     }
-    restart_controlled_clock(mode);
+    restart_controlled_clock(nifd, mode);
     if (mode == 1 || mode == 2)
         return 0;
     return -EINVAL; // Improper input
 }
 
-static long switch_icap_to_nifd(void)
+static long switch_icap_to_nifd(struct xocl_nifd* nifd)
 {
-    write_icap_mux_register(0x1);
+    write_icap_mux_register(nifd, 0x1);
     return 0;
 }
 
-static long switch_icap_to_pr(void)
+static long switch_icap_to_pr(struct xocl_nifd* nifd)
 {
-    write_icap_mux_register(0x0);
+    write_icap_mux_register(nifd, 0x0);
     return 0;
 }
 
-static void clear_configuration_memory(unsigned int bank)
+static void clear_configuration_memory(struct xocl_nifd* nifd, unsigned int bank)
 {
     switch (bank)
     {
     case 1:
-        write_nifd_register(0x1, NIFD_CLEAR_CFG);
+        write_nifd_register(nifd, 0x1, NIFD_CLEAR_CFG);
         break;
     case 2:
-        write_nifd_register(0x1, NIFD_CLEAR_CFG_M2);
+        write_nifd_register(nifd, 0x1, NIFD_CLEAR_CFG_M2);
         break;
     default:
         // Clear both memories
-        write_nifd_register(0x1, NIFD_CLEAR);
+        write_nifd_register(nifd, 0x1, NIFD_CLEAR);
         break;
     }
 }
 
-static void perform_readback(unsigned int bank)
+static void perform_readback(struct xocl_nifd* nifd, unsigned int bank)
 {
     unsigned int commandWord;
     if (bank == 1)
@@ -209,15 +217,15 @@ static void perform_readback(unsigned int bank)
     {
         return;
     }
-    write_nifd_register(commandWord, NIFD_START_READBACK);
+    write_nifd_register(nifd, commandWord, NIFD_START_READBACK);
 }
 
-static unsigned int read_nifd_status(void)
+static unsigned int read_nifd_status(struct xocl_nifd* nifd)
 {
-    return read_nifd_register(NIFD_STATUS);
+    return read_nifd_register(nifd, NIFD_STATUS);
 }
 
-static void add_readback_data(unsigned int frame, unsigned int offset)
+static void add_readback_data(struct xocl_nifd* nifd, unsigned int frame, unsigned int offset)
 {
     frame &= 0x3fffffff;  // Top two bits of frames must be 00
     offset &= 0x3fffffff; // Set the top two bits to 0 first
@@ -225,11 +233,11 @@ static void add_readback_data(unsigned int frame, unsigned int offset)
 
     //printk("NIFD: Frame: %x Offset: %x\n", frame, offset);
 
-    write_nifd_register(frame, NIFD_CONFIG_DATA_M2);
-    write_nifd_register(offset, NIFD_CONFIG_DATA_M2);
+    write_nifd_register(nifd, frame, NIFD_CONFIG_DATA_M2);
+    write_nifd_register(nifd, offset, NIFD_CONFIG_DATA_M2);
 }
 
-static long readback_variable_core(unsigned int *arg)
+static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
 {
     // This function performs the readback operation.  The argument
     //  input data and the result storage is completely located
@@ -245,20 +253,20 @@ static long readback_variable_core(unsigned int *arg)
     unsigned int readback_data_word_cnt = 0;
 
     // Check the current status of the clock and record if it is running
-    clock_status = (read_nifd_status() & 0x3);
+    clock_status = (read_nifd_status(nifd) & 0x3);
     // If the clock was running in free running mode, we have to
     // put it into stepping mode for a little bit in order to get
     // this to work.  This is a bug in the hardware that needs to 
     // be fixed.
     if (clock_status == 1)
     {
-        stop_controlled_clock();
-        start_controlled_clock_stepping();
+        stop_controlled_clock(nifd);
+        start_controlled_clock_stepping(nifd);
     }
     // Stop the clock no matter what
-    stop_controlled_clock();
+    stop_controlled_clock(nifd);
     // Clear Memory-2
-    clear_configuration_memory(2);
+    clear_configuration_memory(nifd, 2);
     // Fill up Memory-2 with all the frames and offsets passed in.
     //  The data is passed in the format of:
     //  [num_bits][frame][offset][frame][offset]...[space for result]
@@ -270,32 +278,32 @@ static long readback_variable_core(unsigned int *arg)
         ++arg;
         offset = *arg;
         ++arg;
-        add_readback_data(frame, offset);
+        add_readback_data(nifd, frame, offset);
     }
-    perform_readback(2);
+    perform_readback(nifd, 2);
     // I should be reading 32-bit words at a time
     readback_status = 0;
     while (readback_status == 0)
     {
-        readback_status = (read_nifd_status() & 0x8);
+        readback_status = (read_nifd_status(nifd) & 0x8);
     }
 
     // The readback is ready, so we need to figure out how many 
     // words to read
     readback_data_word_cnt = 
-    read_nifd_register(NIFD_READBACK_DATA_WORD_CNT);
+    read_nifd_register(nifd, NIFD_READBACK_DATA_WORD_CNT);
 
     for (i = 0; i < readback_data_word_cnt; ++i)
     {
-        next_word = read_nifd_register(NIFD_READBACK_DATA);
+        next_word = read_nifd_register(nifd, NIFD_READBACK_DATA);
         (*arg) = next_word;
         ++arg;
     }
-    restart_controlled_clock(clock_status);
+    restart_controlled_clock(nifd, clock_status);
     return 0;
 }
 
-static long readback_variable(void __user *arg)
+static long readback_variable(struct xocl_nifd* nifd, void __user *arg)
 {
     // Allocate memory in kernel space, copy over all the information
     // from user space at once, call the core implementaion,
@@ -329,7 +337,7 @@ static long readback_variable(void __user *arg)
         return -EFAULT;
     }
 
-    core_result = readback_variable_core(kernel_memory);
+    core_result = readback_variable_core(nifd, kernel_memory);
 
     if (core_result)
     {
@@ -347,13 +355,15 @@ static long readback_variable(void __user *arg)
     return 0; // Success
 }
 
-static long switch_clock_mode(void __user *arg)
+static long switch_clock_mode(struct xocl_nifd* nifd, void __user *arg)
 {
-    write_nifd_register(0x04, NIFD_CLK_MODES);
+    write_nifd_register(nifd, 0x04, NIFD_CLK_MODES);
     return 0;
 }
 
-static void add_breakpoint_data(unsigned int bank, unsigned int frame,
+static void add_breakpoint_data(struct xocl_nifd* nifd, 
+                                unsigned int bank, 
+                                unsigned int frame,
                                 unsigned int offset, 
                                 unsigned int constraint)
 {
@@ -377,14 +387,14 @@ static void add_breakpoint_data(unsigned int bank, unsigned int frame,
     offset |= 0x80000000;     // Top two bits of offsets must be 10
     constraint |= 0x40000000; // Top two bits of constraints must be 01
 
-    write_nifd_register(frame, register_offset);
+    write_nifd_register(nifd, frame, register_offset);
 
     // Switching to match Mahesh's test
-    write_nifd_register(constraint, register_offset);
-    write_nifd_register(offset, register_offset);
+    write_nifd_register(nifd, constraint, register_offset);
+    write_nifd_register(nifd, offset, register_offset);
 }
 
-static long add_breakpoints_core(unsigned int *arg)
+static long add_breakpoints_core(struct xocl_nifd* nifd, unsigned int *arg)
 {
     // Format of user data:
     // [numBreakpoints]
@@ -400,12 +410,12 @@ static long add_breakpoints_core(unsigned int *arg)
     unsigned int breakpoint_condition;
 
     // When adding breakpoints, the clock should be stopped
-    unsigned int clock_status = (read_nifd_status() & 0x3);
+    unsigned int clock_status = (read_nifd_status(nifd) & 0x3);
     if (clock_status != 0x3)
         return -EINVAL;
 
     // All breakpoints need to be set at the same time
-    clear_configuration_memory(1);
+    clear_configuration_memory(nifd, 1);
 
     num_breakpoints = (*arg);
 
@@ -420,17 +430,17 @@ static long add_breakpoints_core(unsigned int *arg)
         constraint = (*arg);
         ++arg;
 
-        add_breakpoint_data(1, frame_address, frame_offset, constraint);
+        add_breakpoint_data(nifd, 1, frame_address, frame_offset, constraint);
     }
 
     breakpoint_condition = (*arg);
 
-    write_nifd_register(breakpoint_condition, NIFD_BREAKPOINT_CONDITION);
+    write_nifd_register(nifd, breakpoint_condition, NIFD_BREAKPOINT_CONDITION);
 
     return 0; // Success
 }
 
-static long add_breakpoints(void __user *arg)
+static long add_breakpoints(struct xocl_nifd* nifd, void __user *arg)
 {
     // Format of user data: 
     // [numBreakpoints][frameAddress]
@@ -455,26 +465,26 @@ static long add_breakpoints(void __user *arg)
         return -EFAULT;
     }
 
-    result = add_breakpoints_core(kernel_memory);
+    result = add_breakpoints_core(nifd, kernel_memory);
     vfree(kernel_memory);
 
     return result;
 }
 
-static long remove_breakpoints(void)
+static long remove_breakpoints(struct xocl_nifd* nifd)
 {
-    unsigned int clock_status = (read_nifd_status() & 0x3);
-    stop_controlled_clock();
-    clear_configuration_memory(0);
-    write_nifd_register(0x1, NIFD_CLEAR);
-    restart_controlled_clock(clock_status);
+    unsigned int clock_status = (read_nifd_status(nifd) & 0x3);
+    stop_controlled_clock(nifd);
+    clear_configuration_memory(nifd, 0);
+    write_nifd_register(nifd, 0x1, NIFD_CLEAR);
+    restart_controlled_clock(nifd, clock_status);
 
     return 0;
 }
 
-static long check_status(void __user *arg)
+static long check_status(struct xocl_nifd* nifd, void __user *arg)
 {
-    unsigned int status = read_nifd_status();
+    unsigned int status = read_nifd_status(nifd);
     if (copy_to_user(arg, &status, sizeof(unsigned int)))
     {
         return -EFAULT;
@@ -485,7 +495,7 @@ static long check_status(void __user *arg)
 static long nifd_ioctl(struct file *filp, unsigned int cmd, 
                         unsigned long arg)
 {
-    // struct xocl_nifd *nifd = filp->private_data;
+    struct xocl_nifd *nifd = file->private_data;
     long status = 0;
 
     void __user *data = (void __user *)(arg);
@@ -493,31 +503,31 @@ static long nifd_ioctl(struct file *filp, unsigned int cmd,
     switch (cmd)
     {
     case NIFD_STOP_CONTROLLED_CLOCK:
-        status = stop_controlled_clock();
+        status = stop_controlled_clock(nifd);
         break;
     case NIFD_START_CONTROLLED_CLOCK:
-        status = start_controlled_clock(data);
+        status = start_controlled_clock(nifd, data);
         break;
     case NIFD_SWITCH_ICAP_TO_NIFD:
-        status = switch_icap_to_nifd();
+        status = switch_icap_to_nifd(nifd);
         break;
     case NIFD_SWITCH_ICAP_TO_PR:
-        status = switch_icap_to_pr();
+        status = switch_icap_to_pr(nifd);
         break;
     case NIFD_READBACK_VARIABLE:
-        status = readback_variable(data);
+        status = readback_variable(nifd, data);
         break;
     case NIFD_SWITCH_CLOCK_MODE:
-        status = switch_clock_mode(data);
+        status = switch_clock_mode(nifd, data);
         break;
     case NIFD_ADD_BREAKPOINTS:
-        status = add_breakpoints(data);
+        status = add_breakpoints(nifd, data);
         break;
     case NIFD_REMOVE_BREAKPOINTS:
-        status = remove_breakpoints();
+        status = remove_breakpoints(nifd);
         break;
     case NIFD_CHECK_STATUS:
-        status = check_status(data);
+        status = check_status(nifd, data);
         break;
     default:
         status = -ENOIOCTLCMD;
