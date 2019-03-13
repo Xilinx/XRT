@@ -245,9 +245,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
 
             /* Always attempt download xclbin */
             rc = load_xclbin_to_device(hal->dev_handle, buffer);
-            free(buffer);
             if (rc != 0)
             {
+                free(buffer);
                 xma_logmsg("Could not download xclbin file %s to device %d\n",
                            xclfullname.c_str(),
                            systemcfg->imagecfg[i].device_id_map[d]);
@@ -257,7 +257,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
             /* Create all kernel contexts on the device */
             rc = create_contexts(hal->dev_handle, info);
             if (rc != XMA_SUCCESS)
+            {
+                free(buffer);
                 return false;
+	    }
 
             //Setup execbo for use with kernel commands
             for (int32_t k = 0, t = 0;
@@ -282,11 +285,13 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                     }
                     if (!found) 
                     {
+                        free(buffer);
                         xma_logmsg("ERROR: CU not found. Couldn't create cu_cmd execbo\n");
                         return false;
                     }
                     if (cu_bit_mask == 0) 
                     {
+                        free(buffer);
                         xma_logmsg("ERROR: XMA library doesn't support more than 32 CUs\n");
                         return false;
                     }
@@ -302,6 +307,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                                                execBO_flags);
                         if (!bo_handle || bo_handle == mNullBO) 
                         {
+                            free(buffer);
                             xma_logmsg("ERROR: Unable to create bo for cu start\n");
                             return false;
                         }
@@ -321,6 +327,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 }
             }
         }
+        free(buffer);
     }
     return true;
 }
