@@ -1469,6 +1469,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       return 52;
     if (vbnv.find("5_0") != std::string::npos)
       return 50;
+    else if (vbnv.find("qdma") != std::string::npos)
+      return 60;
     else if ( (vbnv.find("5_1") != std::string::npos)
         || (vbnv.find("u200_xdma_201820_1") != std::string::npos))
       return 51;
