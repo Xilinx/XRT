@@ -21,7 +21,6 @@ target_link_libraries(xbutil
   rt
   boost_filesystem
   boost_system
-  uuid
   ${CURSES_LIBRARIES}
   )
 
