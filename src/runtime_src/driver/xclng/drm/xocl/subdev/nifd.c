@@ -495,7 +495,7 @@ static long check_status(struct xocl_nifd* nifd, void __user *arg)
 static long nifd_ioctl(struct file *filp, unsigned int cmd, 
                         unsigned long arg)
 {
-    struct xocl_nifd *nifd = file->private_data;
+    struct xocl_nifd *nifd = filp->private_data;
     long status = 0;
 
     void __user *data = (void __user *)(arg);
@@ -578,7 +578,7 @@ static int nifd_probe(struct platform_device *pdev)
     struct resource *res;
     struct xocl_dev_core *core;
     struct FeatureRomHeader rom;
-    int err;
+    int err = 0;
 
     nifd = devm_kzalloc(&pdev->dev, sizeof(*nifd), GFP_KERNEL);
     if (!nifd)
@@ -618,7 +618,7 @@ static int nifd_probe(struct platform_device *pdev)
     nifd->instance = XOCL_DEV_ID(core->pdev) 
                 | platform_get_device_id(pdev)->driver_data;
     nifd->sys_cdev->dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
-    err = cdev_add(&nifd->sys_cdev, nifd->sys_cdev->dev, 1);
+    err = cdev_add(nifd->sys_cdev, nifd->sys_cdev->dev, 1);
     if (err)
     {
         xocl_err(&pdev->dev, "cdev_add failed, %d", err);
@@ -635,7 +635,7 @@ static int nifd_probe(struct platform_device *pdev)
     if (IS_ERR(nifd->sys_device))
     {
         err = PTR_ERR(nifd->sys_device);
-        cdev_del(&nifd->sys_cdev);
+        cdev_del(nifd->sys_cdev);
         goto failed;
     }
 
@@ -669,7 +669,7 @@ static int nifd_remove(struct platform_device *pdev)
         return -EINVAL;
     }
     device_destroy(xrt_class, nifd->sys_cdev->dev);
-    cdev_del(&nifd->sys_cdev);
+    cdev_del(nifd->sys_cdev);
     if (nifd->nifd_base)
         iounmap(nifd->nifd_base);
 
