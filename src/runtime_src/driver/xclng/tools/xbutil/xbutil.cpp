@@ -970,17 +970,13 @@ int xcldev::device::runTestCase(const std::string& exe,
     }
 
     // Program xclbin first.
-#if 0
-    // Workaround auto configure locking issues where the process which
-    // downloads xclbin auto acquires xclbin lock and only gives up at
-    // process exit time
     int ret = program(xclbinPath, 0);
     if (ret != 0) {
         output += "ERROR: Failed to download xclbin: ";
         output += xclbin;
         return -EINVAL;
     }
-#endif
+
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 
@@ -995,6 +991,7 @@ int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
+    int retVal = 0;
 
     // Check pcie training
     std::cout << "INFO: Checking PCIE link status: " << std::flush;
@@ -1007,6 +1004,7 @@ int xcldev::device::validate(bool quick)
             << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x"
             << m_devinfo.mPCIeLinkWidth
             << std::endl;
+        retVal = 1;
         // Non-fatal, continue validating.
     }
     else
@@ -1041,7 +1039,7 @@ int xcldev::device::validate(bool quick)
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
-        return 0;
+        return retVal;
 
     // Perform DMA test
     std::cout << "INFO: Starting DMA test" << std::endl;
@@ -1053,7 +1051,7 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: DMA test PASSED" << std::endl;
 
     if (!testKernelBW)
-        return 0;
+        return retVal;
 
 
     // Test kernel bandwidth kernel
@@ -1083,7 +1081,7 @@ int xcldev::device::validate(bool quick)
     }
     std::cout << "INFO: P2P test PASSED" << std::endl;
 
-    return 0;
+    return retVal;
 }
 
 int xcldev::xclValidate(int argc, char *argv[])
@@ -1134,6 +1132,7 @@ int xcldev::xclValidate(int argc, char *argv[])
 
     std::cout << "INFO: Found " << boards.size() << " cards" << std::endl;
 
+    bool warning = false;
     bool validated = true;
     for (unsigned i : boards) {
         std::unique_ptr<device> dev = xclGetDevice(i);
@@ -1146,7 +1145,10 @@ int xcldev::xclValidate(int argc, char *argv[])
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
 
-        if (dev->validate(quick) != 0) {
+        if (dev->validate(quick) == 1) {
+            warning = true;
+            std::cout << "INFO: Card[" << i << "] validated with warnings." << std::endl;
+        } else if (dev->validate(quick) != 0) {
             validated = false;
             std::cout << "INFO: Card[" << i << "] failed to validate." << std::endl;
         } else {
@@ -1160,7 +1162,11 @@ int xcldev::xclValidate(int argc, char *argv[])
         return -EINVAL;
     }
 
-    std::cout << "INFO: All cards validated successfully." << std::endl;
+    if(warning)
+        std::cout << "INFO: All cards validated successfully but with warnings." << std::endl;
+    else
+        std::cout << "INFO: All cards validated successfully." << std::endl;
+
     return 0;
 }
 

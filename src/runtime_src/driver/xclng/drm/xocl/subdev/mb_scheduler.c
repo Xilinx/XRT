@@ -585,6 +585,8 @@ cmd_abort(struct xocl_cmd *xcmd)
 	mutex_lock(&free_cmds_mutex);
 	list_add_tail(&xcmd->cq_list, &free_cmds);
 	mutex_unlock(&free_cmds_mutex);
+
+	atomic_dec(&xcmd->client->outstanding_execs);
 	SCHED_DEBUGF("xcmd(%lu) [-> abort]\n", xcmd->uid);
 }
 
@@ -1133,8 +1135,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 				++cfg->num_cus;
 				++cfg->count;
 				cfg->data[cuidx] = *addr;
-				set_bit(cuidx, client->cu_bitmap); /* cdma is shared */
-				userpf_info(xdev, "configure cdma as cu(%d) at 0x%x\n", cuidx, *addr);
+				userpf_info(xdev,
+					"configure cdma as cu(%d) at 0x%x\n",
+					cuidx, *addr);
 				++cuidx;
 			}
 		}
@@ -1188,14 +1191,13 @@ exec_reset(struct exec_core *exec)
 
 	mutex_lock(&exec->exec_lock);
 
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
 	userpf_info(xdev, "%s(%d) cfg(%d)\n", __func__, exec->uid, exec->configured);
 
 	// only reconfigure the scheduler on new xclbin
 	if (!xclbin_id || (uuid_equal(&exec->xclbin_id, xclbin_id) && exec->configured)) {
 		exec->stopped = false;
-		exec->configured = false;  // TODO: remove, but hangs ERT because of in between AXI resets
 		goto out;
 	}
 
@@ -2326,6 +2328,24 @@ fini_scheduler_thread(struct xocl_scheduler *xs)
 	return retval;
 }
 
+static void client_release_implicit_cus(struct exec_core *exec,
+	struct client_ctx *client)
+{
+	int i;
+
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+		clear_bit(i, client->cu_bitmap);
+}
+
+static void client_reserve_implicit_cus(struct exec_core *exec,
+	struct client_ctx *client)
+{
+	int i;
+
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+		set_bit(i, client->cu_bitmap);
+}
+
 /**
  * Entry point for exec buffer.
  *
@@ -2339,47 +2359,6 @@ add_exec_buffer(struct platform_device *pdev, struct client_ctx *client, void *b
 	// Add the command to pending list
 	return add_bo_cmd(exec, client, buf, numdeps, deps);
 }
-
-static int
-xocl_client_lock_bitstream_nolock(struct xocl_dev *xdev, struct client_ctx *client)
-{
-	int pid = pid_nr(task_tgid(current));
-	xuid_t *xclbin_id;
-
-	if (client->xclbin_locked)
-		return 0;
-
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
-	if (!xclbin_id || !uuid_equal(xclbin_id, &client->xclbin_id)) {
-		userpf_err(xdev,
-			   "device xclbin does not match context xclbin, cannot obtain lock for process %d",
-			   pid);
-		return 1;
-	}
-
-	if (xocl_icap_lock_bitstream(xdev, &client->xclbin_id, pid) < 0) {
-		userpf_err(xdev, "could not lock bitstream for process %d", pid);
-		return 1;
-	}
-
-	client->xclbin_locked = true;
-	userpf_info(xdev, "process %d successfully locked xcblin", pid);
-	return 0;
-}
-
-static int
-xocl_client_lock_bitstream(struct xocl_dev *xdev, struct client_ctx *client)
-{
-	int ret = 0;
-
-	mutex_lock(&client->lock);	   // protect current client
-	mutex_lock(&xdev->ctx_list_lock);  // protect xdev->xclbin_id
-	ret = xocl_client_lock_bitstream_nolock(xdev, client);
-	mutex_unlock(&xdev->ctx_list_lock);
-	mutex_unlock(&client->lock);
-	return ret;
-}
-
 
 static int
 create_client(struct platform_device *pdev, void **priv)
@@ -2397,7 +2376,6 @@ create_client(struct platform_device *pdev, void **priv)
 	if (!xdev->offline) {
 		client->pid = task_tgid(current);
 		mutex_init(&client->lock);
-		client->xclbin_locked = false;
 		client->abort = false;
 		atomic_set(&client->trigger, 0);
 		atomic_set(&client->outstanding_execs, 0);
@@ -2431,6 +2409,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	int pid = pid_nr(task_tgid(current));
 	unsigned int bit;
 	struct ip_layout *layout = XOCL_IP_LAYOUT(xdev);
+	xuid_t *xclbin_id = XOCL_XCLBIN_ID(xdev);
 
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
@@ -2444,11 +2423,17 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	while (layout && (bit < layout->m_count)) {
 		if (exec->ip_reference[bit]) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
-				&client->xclbin_id, pid, bit);
+				xclbin_id, pid, bit);
 			exec->ip_reference[bit]--;
 		}
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
+
+	if (CLIENT_NUM_CU_CTX(client) != 0)
+		xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
+
+	client->virt_cu_ref = 0;
+	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	// force scheduler to abort execs for this client
@@ -2480,8 +2465,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	list_del(&client->link);
 	mutex_unlock(&xdev->ctx_list_lock);
 
-	if (client->xclbin_locked)
-		xocl_icap_unlock_bitstream(xdev, &client->xclbin_id, pid);
 	mutex_destroy(&client->lock);
 	devm_kfree(&pdev->dev, client);
 	*priv = NULL;
@@ -2521,43 +2504,53 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 static int client_ioctl_ctx(struct platform_device *pdev,
 			    struct client_ctx *client, void *data)
 {
-	bool acquire_lock = false;
 	struct drm_xocl_ctx *args = data;
 	int ret = 0;
 	int pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	xuid_t *xclbin_id;
+	u32 cu_idx = args->cu_index;
 
 	mutex_lock(&client->lock);
 	mutex_lock(&xdev->ctx_list_lock);
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
 		ret = -EBUSY;
 		goto out;
 	}
 
-	if (args->cu_index >= XOCL_IP_LAYOUT(xdev)->m_count) {
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX &&
+		cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
 		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
-			   args->cu_index, XOCL_IP_LAYOUT(xdev)->m_count);
+			cu_idx, XOCL_IP_LAYOUT(xdev)->m_count);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
-		ret = test_and_clear_bit(args->cu_index, client->cu_bitmap) ? 0 : -EINVAL;
-		if (ret) // No context was previously allocated for this CU
-			goto out;
-
-		// CU unlocked explicitly
-		--exec->ip_reference[args->cu_index];
-		if (!--client->num_cus) {
-			// We just gave up the last context, unlock the xclbin
-			ret = xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
-			client->xclbin_locked = false;
+		if (cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
+			if (client->virt_cu_ref == 0) {
+				ret = -EINVAL;
+				goto out;
+			}
+			--client->virt_cu_ref;
+			if (client->virt_cu_ref == 0)
+				client_release_implicit_cus(exec, client);
+		} else {
+			ret = test_and_clear_bit(cu_idx, client->cu_bitmap) ?
+				0 : -EINVAL;
+			if (ret) // Try to release unreserved CU
+				goto out;
+			--client->num_cus;
+			--exec->ip_reference[cu_idx];
 		}
-		userpf_info(xdev, "CTX del(%pUb, %d, %u)",
-			    xclbin_id, pid, args->cu_index);
+
+		// We just gave up the last context, unlock the xclbin
+		if (CLIENT_NUM_CU_CTX(client) == 0)
+			(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
+
 		goto out;
 	}
 
@@ -2566,44 +2559,48 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
-	if (args->flags != XOCL_CTX_SHARED) {
-		userpf_err(xdev, "Only shared contexts are supported in this release");
-		ret = -EPERM;
+	if ((args->flags != XOCL_CTX_SHARED)) {
+		userpf_err(xdev,"only support shared contexts");
+		ret = -EOPNOTSUPP;
 		goto out;
 	}
 
-	if (!client->num_cus && !client->xclbin_locked)
-		// Process has no other context on any CU yet, hence we need to
-		// lock the xclbin A process uses just one lock for all its ctxs
-		acquire_lock = true;
-
-	if (test_and_set_bit(args->cu_index, client->cu_bitmap)) {
-		userpf_info(xdev, "CTX already allocated by this process");
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX &&
+		test_and_set_bit(cu_idx, client->cu_bitmap)) {
 		// Context was previously allocated for the same CU,
-		// cannot allocate again
-		ret = 0;
+		// cannot allocate again. Need to implement per CU ref
+		// counter to make it work.
+		userpf_info(xdev, "CTX already allocated by this process");
+		ret = -EINVAL;
 		goto out;
 	}
 
-	if (acquire_lock) {
+	if (CLIENT_NUM_CU_CTX(client) == 0) {
 		// This is the first context on any CU for this process,
 		// lock the xclbin
-		ret = xocl_client_lock_bitstream_nolock(xdev, client);
+		ret = xocl_icap_lock_bitstream(xdev, xclbin_id, pid);
 		if (ret) {
-			// Locking of xclbin failed, give up our context
-			clear_bit(args->cu_index, client->cu_bitmap);
+			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX)
+				clear_bit(cu_idx, client->cu_bitmap);
 			goto out;
-		} else {
-			uuid_copy(&client->xclbin_id, xclbin_id);
 		}
 	}
 
-	// Everything is good so far, hence increment the CU reference count
-	++client->num_cus; // explicitly acquired
-	++exec->ip_reference[args->cu_index];
-	xocl_info(&pdev->dev, "CTX add(%pUb, %d, %u, %d)",
-		  xclbin_id, pid, args->cu_index, acquire_lock);
+	if (cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
+		if (client->virt_cu_ref == 0)
+			client_reserve_implicit_cus(exec, client);
+		++client->virt_cu_ref;
+	} else {
+		++client->num_cus;
+		++exec->ip_reference[cu_idx];
+	}
+
 out:
+	xocl_info(&pdev->dev,
+		"CTX %s(%pUb, pid %d, cu_idx 0x%x) = %d, ctx=%d",
+		args->op == XOCL_CTX_OP_FREE_CTX ? "del" : "add",
+		xclbin_id, pid, cu_idx, ret, CLIENT_NUM_CU_CTX(client));
+
 	mutex_unlock(&xdev->ctx_list_lock);
 	mutex_unlock(&client->lock);
 	return ret;
@@ -2757,14 +2754,6 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		deps[numdeps] = xbo;
 	}
 
-	/* acquire lock on xclbin if necessary */
-	ret = xocl_client_lock_bitstream(xdev, client);
-	if (ret) {
-		userpf_err(xdev, "Failed to lock xclbin\n");
-		ret = -EINVAL;
-		goto out;
-	}
-
 	/* Add exec buffer to scheduler (kds).	The scheduler manages the
 	 * drm object references acquired by xobj and deps.  It is vital
 	 * that the references are released properly.
@@ -2893,7 +2882,8 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	/* no specific CUs selected, maybe ctx is not used by client */
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
 		userpf_err(xocl_get_xdev(pdev), "%s found no CUs in ctx\n", __func__);
-		goto out; /* ok */
+		err = 1;
+		goto out;
 	}
 
 	/* Check CUs in cmd BO against CUs in context */
