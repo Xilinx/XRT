@@ -83,7 +83,7 @@ struct xocl_nifd
 
 static dev_t nifd_dev;
 
-struct xocl_nifd *nifd_global;
+// struct xocl_nifd *nifd_global;
 
 static bool nifd_valid;
 
@@ -593,7 +593,7 @@ static int nifd_probe(struct platform_device *pdev)
         xocl_err(&pdev->dev, "Map iomem failed");
         goto failed;
     }
-    nifd_global = nifd;
+    // nifd_global = nifd;
     nifd->icap_base = nifd->nifd_base + 0x4000;
 
     core = xocl_get_xdev(pdev);
