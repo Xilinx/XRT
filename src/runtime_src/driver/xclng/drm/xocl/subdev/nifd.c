@@ -83,10 +83,6 @@ struct xocl_nifd
 
 static dev_t nifd_dev;
 
-// struct xocl_nifd *nifd_global;
-
-static bool nifd_valid;
-
 /**
  * helper functions
  */
@@ -545,10 +541,6 @@ static int char_open(struct inode *inode, struct file *file)
     {
         return -ENXIO;
     }
-    if (!nifd_valid)
-    {
-        return -1;
-    }
     return 0;
 }
 
@@ -578,9 +570,10 @@ static int nifd_probe(struct platform_device *pdev)
     struct resource *res;
     struct xocl_dev_core *core;
     struct FeatureRomHeader rom;
+    bool nifd_valid = false;
     int err = 0;
 
-    nifd = devm_kzalloc(&pdev->dev, sizeof(*nifd), GFP_KERNEL);
+    nifd = xocl_drvinst_alloc(&pdev->dev, sizeof(*nifd));
     if (!nifd)
         return -ENOMEM;
 
@@ -593,7 +586,6 @@ static int nifd_probe(struct platform_device *pdev)
         xocl_err(&pdev->dev, "Map iomem failed");
         goto failed;
     }
-    // nifd_global = nifd;
     nifd->icap_base = nifd->nifd_base + 0x4000;
 
     core = xocl_get_xdev(pdev);
