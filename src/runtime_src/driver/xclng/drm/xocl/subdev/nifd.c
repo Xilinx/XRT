@@ -541,6 +541,7 @@ static int char_open(struct inode *inode, struct file *file)
     {
         return -ENXIO;
     }
+    file->private_data = nifd;
     return 0;
 }
 
