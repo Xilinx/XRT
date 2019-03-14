@@ -352,7 +352,7 @@ public:
   {
   public:
     stream_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
+      : argument(kernel), m_arg_info(arg) { m_set = true; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual argtype get_argtype() const { return m_arg_info->atype; }

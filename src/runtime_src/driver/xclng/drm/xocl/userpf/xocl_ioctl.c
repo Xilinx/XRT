@@ -211,7 +211,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	struct axlf bin_obj;
 	size_t size;
 	int preserve_mem = 0;
-	struct mem_topology *new_topology, *topology;
+	struct mem_topology *new_topology = NULL, *topology;
 	struct xocl_dev *xdev = drm_p->xdev;
 	xuid_t *xclbin_id;
 
