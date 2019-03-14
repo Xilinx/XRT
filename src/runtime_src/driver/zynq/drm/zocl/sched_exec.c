@@ -383,9 +383,9 @@ disable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
 	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	virt_addr[1] = virt_addr[1] & 0x0;
+	iowrite32(0x0, virt_addr + 1);
 	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
-	virt_addr[2] = virt_addr[2] & 0x0;
+	iowrite32(0x0, virt_addr + 2);
 }
 
 inline void
@@ -394,9 +394,9 @@ enable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
 	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	virt_addr[1] = virt_addr[1] | 0x1;
+	iowrite32(0x1, virt_addr + 1);
 	/* bit 0 is ap_done, bit 1 is ap_ready, enable both of interrupts */
-	virt_addr[2] = virt_addr[2] | 0x3;
+	iowrite32(0x3, virt_addr + 2);
 }
 
 static irqreturn_t sched_exec_isr(int irq, void *arg)
@@ -404,6 +404,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	struct drm_zocl_dev *zdev = arg;
 	int cu_idx;
 	volatile u32 __iomem *virt_addr;
+	u32 isr;
 
 	SCHED_DEBUG("-> sched_exe_isr irq %d", irq);
 	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
@@ -441,7 +442,8 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	 * is 0, write 1 to this register will trigger interrupt.
 	 *
 	 */
-	virt_addr[3] = virt_addr[3];
+	isr = ioread32(virt_addr + 3);
+	iowrite32(isr, virt_addr + 3);
 
 	/* wake up all scheduler ... currently one only
 	 *
@@ -712,6 +714,7 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	u32 *virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+	u32 status;
 
 	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
 		    cu_idx, virt_addr);
@@ -719,7 +722,8 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
 	 * checking for 0x10 is sufficient.
 	 */
-	if (*virt_addr & 2) {
+	status = ioread32(virt_addr);
+	if (status & 2) {
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
@@ -746,10 +750,12 @@ ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	u32 *virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+	u32 status;
 
 	SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n",
 		    cu_idx, virt_addr);
-	if (*virt_addr & 2) {
+	status = ioread32(virt_addr);
+	if (status & 2) {
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
@@ -1108,10 +1114,10 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	 * Skip the first 4 words in user regmap.
 	 */
 	for (i = 4; i < size; ++i)
-		virt_addr[i] = *(sk->data + sk->extra_cu_masks + i);
+		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
 
 	/* start CU at base + 0x0 */
-	virt_addr[0] = 0x1;
+	iowrite32(0x1, virt_addr);
 
 	SCHED_DEBUG("<- configure_cu\n");
 }
@@ -1138,10 +1144,10 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 		    cu_idx, virt_addr, size);
 
 	for (i = 1; i < size; ++i)
-		virt_addr[i] = *(sk->data + sk->extra_cu_masks + i);
+		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
 
 	/* start CU at base + 0x0 */
-	virt_addr[0] = 0x1;
+	iowrite32(0x1, virt_addr);
 
 	SCHED_DEBUG("<- ert_configure_cu\n");
 }
