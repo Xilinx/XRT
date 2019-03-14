@@ -48,6 +48,7 @@ namespace xclemulation{
     mVerbosity = 0; 
     mServerPort = 0; 
     mKeepRunDir=false; 
+    mLauncherArgs = "";
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -149,6 +150,10 @@ namespace xclemulation{
         unsigned int paddingFactor = atoi(value.c_str());
         if(paddingFactor > 0)
           setPaddingFactor(paddingFactor);
+      }
+      else if (name == "launcher_args")
+      {
+        setLauncherArgs(value);
       }
       else if(name == "launch_waveform")
       {
@@ -533,6 +538,22 @@ namespace xclemulation{
       {
         unsigned long long featureBitMap = prop.second.get_value<unsigned long long>();
         fRomHeader.FeatureBitMap= featureBitMap; 
+      }
+      else if(name == "Cdma_Base_Address0")
+      {
+        fRomHeader.CDMABaseAddress[0] = prop.second.get_value<unsigned long long>();
+      }
+      else if(name == "Cdma_Base_Address1")
+      {
+        fRomHeader.CDMABaseAddress[1] = prop.second.get_value<unsigned long long>();
+      }
+      else if(name == "Cdma_Base_Address2")
+      {
+        fRomHeader.CDMABaseAddress[2] = prop.second.get_value<unsigned long long>();
+      }
+      else if(name == "Cdma_Base_Address3")
+      {
+        fRomHeader.CDMABaseAddress[3] = prop.second.get_value<unsigned long long>();
       }
     }
   }

@@ -142,6 +142,21 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
   return drv->xclExecBuf(cmdBO);
 }
 
+
+//defining following two functions as they gets called in scheduler init call
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+  
+{
+  return 0;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  return 0;
+}
+
+
+
 int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);

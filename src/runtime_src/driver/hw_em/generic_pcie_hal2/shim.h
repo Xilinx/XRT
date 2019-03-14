@@ -191,6 +191,8 @@ using addr_type = uint64_t;
 
       bool isMBSchedulerEnabled();
       unsigned int getDsaVersion();
+      bool isCdmaEnabled();
+      uint64_t getCdmaBaseAddress(unsigned int index);
 
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
