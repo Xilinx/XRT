@@ -274,6 +274,9 @@ public:
     char *xclMapMgmt(void) { return mMgtMap; }
     xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
 
+    int xclMPD(struct drm_xocl_sw_mailbox *args);
+    int xclMSD(struct drm_xocl_sw_mailbox *args);
+
 private:
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;

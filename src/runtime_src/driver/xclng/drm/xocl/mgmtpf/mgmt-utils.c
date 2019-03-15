@@ -25,7 +25,7 @@
  * @returns: NULL if AER apability is not found walking up to the root port
  *         : pci_dev ptr to the port which is AER capable.
  */
-static struct pci_dev * find_aer_cap(struct pci_dev *bridge)
+static struct pci_dev *find_aer_cap(struct pci_dev *bridge)
 {
 	struct pci_dev *prev_bridge = bridge;
 	int cap;
@@ -68,7 +68,7 @@ static int pcie_mask_surprise_down(struct pci_dev *pdev, u32 *orig_mask)
 	printk(KERN_INFO "%s: pcie_mask_surprise_down \n", DRV_NAME);
 
 	bridge = find_aer_cap(bridge);
-	if(bridge) {
+	if (bridge) {
 		cap = pci_find_ext_capability(bridge, PCI_EXT_CAP_ID_ERR);
 		if (cap) {
 			pci_read_config_dword(bridge, cap + PCI_ERR_UNCOR_MASK, orig_mask);
@@ -90,7 +90,7 @@ static int pcie_unmask_surprise_down(struct pci_dev *pdev, u32 orig_mask)
 	printk(KERN_DEBUG "%s: pcie_unmask_surprise_down \n", DRV_NAME);
 
 	bridge = find_aer_cap(bridge);
-	if(bridge) {
+	if (bridge) {
 		cap = pci_find_ext_capability(bridge, PCI_EXT_CAP_ID_ERR);
 		if (cap) {
 			pci_write_config_dword(bridge, cap + PCI_ERR_UNCOR_MASK, orig_mask);
@@ -132,7 +132,7 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 		xocl_af_clear(lro);
 	}
 
-	//Can only read this safely if not in reset
+	/* Can only read this safely if not in reset */
 	if (gpio_val == 1) {
 		for (i = 0; i < 4; i++) {
 			val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
@@ -141,19 +141,19 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	}
 
 	for (i = 0; i < 4; i++) {
-                val = MGMT_READ_REG32(lro, XHWICAP_CR);
+		val = MGMT_READ_REG32(lro, XHWICAP_CR);
 		xocl_af_clear(lro);
-        }
+	}
 
-        for (i = 0; i < 4; i++) {
-                val = MGMT_READ_REG32(lro, GPIO_NULL_BASE);
+	for (i = 0; i < 4; i++) {
+		val = MGMT_READ_REG32(lro, GPIO_NULL_BASE);
 		xocl_af_clear(lro);
-        }
+	}
 
-        for (i = 0; i < 4; i++) {
-                val = MGMT_READ_REG32(lro, AXI_GATE_BASE);
+	for (i = 0; i < 4; i++) {
+		val = MGMT_READ_REG32(lro, AXI_GATE_BASE);
 		xocl_af_clear(lro);
-        }
+	}
 }
 
 /**
@@ -197,15 +197,15 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
-		(void) xocl_mailbox_reset(lro, false);
+		(void) xocl_mailbox_set(lro, PRE_RST, NULL);
 		xclmgmt_reset_pci(lro);
-		(void) xocl_mailbox_reset(lro, true);
+		(void) xocl_mailbox_set(lro, POST_RST, NULL);
 	} else {
 		mgmt_err(lro, "PCI Hot reset is not supported on this board.");
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
-	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	/*
@@ -217,17 +217,17 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	} while (retry++ < XCLMGMT_RESET_MAX_RETRY &&
 		xocl_af_check(lro, NULL));
 
-	if (retry >= XCLMGMT_RESET_MAX_RETRY){
+	if (retry >= XCLMGMT_RESET_MAX_RETRY) {
 		mgmt_err(lro, "Board is not able to recover by PCI Hot reset. "
 			"Please warm reboot");
 		return -EIO;
 	}
 
-	//Also freeze and free AXI gate to reset the OCL region.
+	/* Also freeze and free AXI gate to reset the OCL region. */
 	xocl_icap_reset_axi_gate(lro);
 
 	/* Workaround for some DSAs. Flush axilite busses */
-	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	/* restart XMC/ERT */
@@ -295,7 +295,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	u8 hot;
 	struct pci_dev *pci_dev = lro->pci_dev;
 
-	//freeze and free AXI gate to reset the OCL region before and after the pcie reset.
+	/* freeze and free AXI gate to reset the OCL region before and after the pcie reset. */
 	xocl_icap_reset_axi_gate(lro);
 
 	/*
@@ -304,7 +304,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	 */
 	printk(KERN_INFO "%s: pci_fundamental_reset \n", DRV_NAME);
 
-	// Save pci config space for botht the pf's
+	/* Save pci config space for botht the pf's */
 	xocl_pci_save_config_all(pci_dev);
 
 	rc = pcie_mask_surprise_down(pci_dev, &orig_mask);
@@ -344,11 +344,11 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 done:
 	printk(KERN_INFO "%s: pci_fundamental_reset done routine\n", DRV_NAME);
 
-	// restore pci config space for botht the pf's
+	/* restore pci config space for botht the pf's */
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
 	xocl_pci_restore_config_all(pci_dev);
 
-	//Also freeze and free AXI gate to reset the OCL region.
+	/* Also freeze and free AXI gate to reset the OCL region. */
 	xocl_icap_reset_axi_gate(lro);
 
 	return rc;

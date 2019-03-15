@@ -18,6 +18,7 @@
 #ifndef _XOCL_BO_H
 #define	_XOCL_BO_H
 
+#include <ert.h>
 #include "xocl_ioctl.h"
 #include "../xocl_drm.h"
 
@@ -103,8 +104,6 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_sync_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_copy_bo_ioctl(struct drm_device *dev, void *data,
-	struct drm_file *filp);
 int xocl_map_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_info_bo_ioctl(struct drm_device *dev, void *data,
@@ -128,5 +127,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
+int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
+	struct ert_start_copybo_cmd *cmd);
 
 #endif

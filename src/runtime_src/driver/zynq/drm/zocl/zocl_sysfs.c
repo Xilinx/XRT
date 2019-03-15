@@ -156,8 +156,10 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 
 	size = sizeof_section(zdev->debug_ip, m_debug_ip_data);
 
-	if (off >= size)
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
 		return 0;
+	}
 
 	if (count < size - off)
 		nread = count;
@@ -186,8 +188,10 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 
 	size = sizeof_section(zdev->ip, m_ip_data);
 
-	if (off > size)
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
 		return 0;
+	}
 
 	if (count < size - off)
 		nread = count;
@@ -216,8 +220,10 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 
 	size = sizeof_section(zdev->connectivity, m_connection);
 
-	if (off > size)
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
 		return 0;
+	}
 
 	if (count < size - off)
 		nread = count;
@@ -246,8 +252,10 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 
 	size = sizeof_section(zdev->topology, m_mem_data);
 
-	if (off > size)
+	if (off >= size) {
+		read_unlock(&zdev->attr_rwlock);
 		return 0;
+	}
 
 	if (count < size - off)
 		nread = count;

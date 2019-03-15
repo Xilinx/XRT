@@ -36,6 +36,7 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
+#include <ert.h>
 #include "driver/common/message.h"
 #include "driver/common/scheduler.h"
 #include <cstdio>
@@ -585,14 +586,30 @@ int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, siz
 }
 
 /*
- * xclCopyBO()
+ * xclCopyBO() - TO BE REMOVED
  */
-int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle,
+    unsigned int src_boHandle, size_t size, size_t dst_offset,
+    size_t src_offset)
 {
     int ret;
-    drm_xocl_copy_bo copyInfo = {dst_boHandle, src_boHandle, 0, size, dst_offset, src_offset};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
-    return ret ? -errno : ret;
+    unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
+        xclBOKind(0), (1<<31));
+    struct ert_start_copybo_cmd *execData =
+        reinterpret_cast<struct ert_start_copybo_cmd *>(
+        xclMapBO(execHandle, true));
+
+    ert_fill_copybo_cmd(execData, src_boHandle, dst_boHandle,
+        src_offset, dst_offset, size);
+
+    ret = xclExecBuf(execHandle);
+    if (ret == 0)
+        while (xclExecWait(1000) == 0);
+
+    (void) munmap(execData, sizeof (ert_start_copybo_cmd));
+    xclFreeBO(execHandle);
+
+    return ret;
 }
 
 /*
@@ -1746,8 +1763,19 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
+int xocl::XOCLShim::xclMPD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
+    return ret ? -errno : ret;
+}
 
-
+int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
+    return ret ? -errno : ret;
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -2235,4 +2263,16 @@ char *xclMapMgmt(xclDeviceHandle handle)
 {
   xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
   return drv ? drv->xclMapMgmt() :   nullptr;
+}
+
+int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMPD(args) : -ENODEV;
+}
+
+int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMSD(args) : -ENODEV;
 }

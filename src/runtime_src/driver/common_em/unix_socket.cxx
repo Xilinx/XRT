@@ -24,10 +24,12 @@ unix_socket::unix_socket()
   server_started = false;
   fd = -1;
   std::string sock_id = "";
-  if(getenv("USER") != NULL) {
-    std::string user = getenv("USER");
-    if(getenv("EMULATION_SOCKETID")) {
-      sock_id = getenv("EMULATION_SOCKETID");
+  char* cUser = getenv("USER");
+  if(cUser) {
+    std::string user = cUser;
+    char* c_sock_id = getenv("EMULATION_SOCKETID"); 
+    if(c_sock_id) {
+      sock_id = c_sock_id;
     } else {
       sock_id = "xcl_sock";
     }
@@ -81,8 +83,8 @@ void unix_socket::start_server(const std::string sk_desc)
 
 size_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
-  ssize_t r;
-  ssize_t wlen = 0;
+  size_t r;
+  size_t wlen = 0;
   const unsigned char *buf = (const unsigned char*)(wbuf);
   do {
     if ((r = write(fd, buf + wlen, count - wlen)) < 0) {
@@ -98,8 +100,8 @@ size_t unix_socket::sk_write(const void *wbuf, size_t count)
 
 size_t unix_socket::sk_read(void *rbuf, size_t count)
 {
-  ssize_t r;
-  ssize_t rlen = 0;
+  size_t r;
+  size_t rlen = 0;
   unsigned char *buf = (unsigned char*)(rbuf);
 
   do {

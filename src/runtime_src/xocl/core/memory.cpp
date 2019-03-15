@@ -156,7 +156,7 @@ get_buffer_object(device* device)
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
-  if (m_memidx==-1) {
+  if (boh && m_memidx==-1) {
     auto mset = device->get_boh_memidx(boh);
     for (size_t idx=0; idx<mset.size(); ++idx) {
       if (mset.test(idx)) {
@@ -275,6 +275,9 @@ get_memidx_nolock(const device* dev) const
   // already initialized
   if (m_memidx>=0)
     return m_memidx;
+
+  if (m_flags & CL_MEM_REGISTER_MAP)
+    return -1;
 
   // subbuffer case must be tested thoroughly
   if (auto parent = get_sub_buffer_parent()) {
