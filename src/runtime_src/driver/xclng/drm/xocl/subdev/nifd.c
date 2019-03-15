@@ -657,13 +657,15 @@ static int nifd_remove(struct platform_device *pdev)
 {
     struct xocl_nifd *nifd;
     struct xocl_dev_core *core;
-
+    if (nifd->sys_device == NULL) 
+    {
+        return 0;
+    }
     core = xocl_get_xdev(pdev);
     if (!core)
     {
         xocl_err(&pdev->dev, "core is NULL in NIFD remove");
     }
-
     nifd = platform_get_drvdata(pdev);
     if (!nifd)
     {
@@ -672,11 +674,11 @@ static int nifd_remove(struct platform_device *pdev)
     }
     device_destroy(xrt_class, nifd->sys_cdev->dev);
     cdev_del(nifd->sys_cdev);
-    if (nifd->nifd_base)
+    if (nifd->nifd_base) 
+    {
         iounmap(nifd->nifd_base);
-
+    }
     platform_set_drvdata(pdev, NULL);
-    // devm_kfree(&pdev->dev, nifd);
     xocl_drvinst_free(nifd);
 
     return 0;
