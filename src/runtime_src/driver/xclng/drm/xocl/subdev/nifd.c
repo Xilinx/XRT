@@ -247,6 +247,8 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     unsigned int next_word = 0;
     unsigned int readback_status = 0;
     unsigned int readback_data_word_cnt = 0;
+    unsigned int timeout_limit = 100;
+    unsigned int timeout_counter = 0;
 
     // Check the current status of the clock and record if it is running
     clock_status = (read_nifd_status(nifd) & 0x3);
@@ -279,9 +281,15 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     perform_readback(nifd, 2);
     // I should be reading 32-bit words at a time
     readback_status = 0;
-    while (readback_status == 0)
+    while (readback_status == 0 && timeout_counter < timeout_limit)
     {
+        msleep(100);
         readback_status = (read_nifd_status(nifd) & 0x8);
+        ++timeout_counter;
+    }
+
+    if (timeout_counter == timeout_limit) {
+        return -1;
     }
 
     // The readback is ready, so we need to figure out how many 
