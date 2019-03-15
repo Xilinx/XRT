@@ -204,7 +204,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     if (name == NULL)
         strncpy(log_name, "XMA-default", sizeof(log_name));
     else
-        strncpy(log_name, name, sizeof(log_name));
+        strncpy(log_name, name, sizeof(log_name) - 1);
+    log_name[sizeof(log_name) - 1] = '\0';
 
     log_level = g_loglevel_tbl[level].lvl_str;
     
