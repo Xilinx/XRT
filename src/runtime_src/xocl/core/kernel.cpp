@@ -26,10 +26,6 @@
 #include <algorithm>
 #include <regex>
 
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
-
 namespace xocl {
 
 std::string
@@ -558,8 +554,10 @@ get_cu_names(const std::string& kname)
   const std::regex r("^(.+):\\{(([\\w]+)(,\\S+[^,\\s]*)*)\\}$");
   std::smatch match;
   if (std::regex_search(kname,match,r) && match[2].matched) {
-    std::string names = match[2];
-    boost::split(cus,names,boost::is_any_of(","));
+    std::istringstream is(match[2]);
+    std::string cu;
+    while (std::getline(is,cu,','))
+      cus.push_back(cu);
   }
   return cus;
 }
