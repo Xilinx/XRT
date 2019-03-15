@@ -210,6 +210,15 @@ get_binary_sizes() const
   return sizes;
 }
 
+bool
+program::
+has_kernel(const std::string& kname) const
+{
+  auto name = kernel_utils::normalize_kernel_name(kname);
+  auto kernels = get_kernel_names();
+  return range_find(kernels,[&name](const std::string& s){return s==name;})!=kernels.end();
+}
+
 std::unique_ptr<kernel,std::function<void(kernel*)>>
 program::
 create_kernel(const std::string& kernel_name)
@@ -226,8 +235,10 @@ create_kernel(const std::string& kernel_name)
   // Look up kernel symbol from arbitrary (first) xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
+
+  auto symbol_name = kernel_utils::normalize_kernel_name(kernel_name);
   auto& xclbin = m_binaries.begin()->second;
-  auto& symbol = xclbin.lookup_kernel(kernel_name);
+  auto& symbol = xclbin.lookup_kernel(symbol_name);
   auto k = std::make_unique<kernel>(this,kernel_name,symbol);
   return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
 }
