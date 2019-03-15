@@ -657,10 +657,6 @@ static int nifd_remove(struct platform_device *pdev)
 {
     struct xocl_nifd *nifd;
     struct xocl_dev_core *core;
-    if (nifd->sys_device == NULL) 
-    {
-        return 0;
-    }
     core = xocl_get_xdev(pdev);
     if (!core)
     {
@@ -672,8 +668,11 @@ static int nifd_remove(struct platform_device *pdev)
         xocl_err(&pdev->dev, "driver data is NULL");
         return -EINVAL;
     }
-    device_destroy(xrt_class, nifd->sys_cdev->dev);
-    cdev_del(nifd->sys_cdev);
+    if (nifd->sys_device != NULL) 
+    {
+        device_destroy(xrt_class, nifd->sys_cdev->dev);
+        cdev_del(nifd->sys_cdev);
+    }
     if (nifd->nifd_base) 
     {
         iounmap(nifd->nifd_base);
