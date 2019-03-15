@@ -803,9 +803,12 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	// past header, past cumasks
 	SCHED_DEBUG_PACKET(regmap, size);
 
-	// write register map, starting at base + 0xC
-	// 0x4, 0x8 used for interrupt, which is initialized in setu
-	for (i = 1; i < size; ++i)
+	/* write register map, starting at base + 0x10
+	 * 0x0 used for control register
+	 * 0x4, 0x8 used for interrupt, which is initialized in setup of ERT
+	 * 0xC used for interrupt status, which is set by hardware
+	 */
+	for (i = 4; i < size; ++i)
 		iowrite32(*(regmap + i), xcu->base + xcu->addr + (i << 2));
 
 	// start cu.  update local state as we may not be polling prior
