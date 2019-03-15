@@ -342,7 +342,11 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		return -EINVAL;
 	}
 
-	if (pdev->device == STM_ENABLED_DEVICE) {
+	xdev->stm_en = 0;
+#ifndef __XRT__
+	if (IS_STM_ENABLED_DEVICE(pdev)) 
+#endif
+	{
 		u32 rev;
 
 		map_len = pci_resource_len(pdev, STM_BAR);
@@ -354,19 +358,28 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		}
 
 		rev = readl(xdev->stm_regs + STM_REG_BASE + STM_REG_REV);
-		if (!(((rev >> 24) == 'S') && (((rev >> 16) & 0xFF) == 'T') &&
-		      (((rev >> 8) & 0xFF) == 'M') &&
-		      ((rev & 0xFF) >= STM_SUPPORTED_REV_MIN))) {
-			pr_err("%s: Unsupported STM Rev found, rev 0x%x\n",
-			       xdev->conf.name, rev);
+		if ((((rev >> 24) & 0xFF)!= 'S') ||
+			(((rev >> 16) & 0xFF) != 'T') ||
+			(((rev >> 8) & 0xFF) != 'M')) {
+			pr_err("%s: Uknown STM %c%c%c.\n",
+				xdev->conf.name, (rev >> 24) & 0xFF,
+				(rev >> 16) & 0xFF, (rev >> 8) & 0xFF);
 			xdev_unmap_bars(xdev, pdev);
 			return -EINVAL;
 		}
-		pr_info("%s: STM enabled, rev 0x%x\n", xdev->conf.name, rev);
-		xdev->stm_en = 1;
 		xdev->stm_rev = rev & 0xFF;
-	} else {
-		xdev->stm_en = 0;
+
+		if (xdev->stm_rev < STM_SUPPORTED_REV_MIN) {
+			pr_err("%s: Unsupported STM rev 0x%x/0x%x < 0x%x.\n",
+				xdev->conf.name, xdev->stm_rev, rev,
+				STM_SUPPORTED_REV_MIN);
+			xdev_unmap_bars(xdev, pdev);
+			return -EINVAL;
+		} else {
+			pr_info("%s: STM enabled, rev 0x%x, 0x%x\n",
+				xdev->conf.name, xdev->stm_rev, rev);
+			xdev->stm_en = 1;
+		}
 	}
 
 	return 0;
@@ -700,19 +713,6 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		return QDMA_ERR_PCI_DEVICE_ALREADY_ATTACHED;
 	}
 
-	rv = pci_request_regions(pdev, mod_name);
-	if (rv) {
-		/* Just info, some other driver may have claimed the device. */
-		dev_info(&pdev->dev, "cannot obtain PCI resources\n");
-		return rv;
-	}
-
-	rv = pci_enable_device(pdev);
-	if (rv) {
-		dev_err(&pdev->dev, "cannot enable PCI device\n");
-		goto release_regions;
-	}
-
 	/* enable relaxed ordering */
 	pci_enable_relaxed_ordering(pdev);
 
@@ -724,14 +724,14 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 
 	rv = pci_dma_mask_set(pdev);
 	if (rv)
-		goto disable_device;
+		return rv;
 
 	pcie_set_readrq(pdev, 512);
 
 	/* allocate zeroed device book keeping structure */
 	xdev = xdev_alloc(conf);
 	if (!xdev)
-		goto disable_device;
+		return -EFAULT;
 
 	strncpy(xdev->mod_name, mod_name, QDMA_DEV_NAME_MAXLEN - 1);
 
@@ -800,12 +800,6 @@ remove_xdev:
 	xdev_list_remove(xdev);
 	kfree(xdev);
 
-disable_device:
-	pci_disable_device(pdev);
-
-release_regions:
-	pci_release_regions(pdev);
-
 	return rv;
 }
 
@@ -837,9 +831,6 @@ void qdma_device_close(struct pci_dev *pdev, unsigned long dev_hndl)
 	qdma_device_offline(pdev, dev_hndl);
 
 	xdev_unmap_bars(xdev, pdev);
-
-	pci_release_regions(pdev);
-	pci_disable_device(pdev);
 
 #ifdef DEBUGFS
 	/** time to clean debugfs */

@@ -74,6 +74,7 @@ namespace xclhwemhal2 {
 
     unsigned int               num_slots;
     unsigned int               num_cus;
+    unsigned int               num_cdma;
     unsigned int               cu_shift_offset;
     uint32_t                   cu_base_addr;
     unsigned int               polling_mode;

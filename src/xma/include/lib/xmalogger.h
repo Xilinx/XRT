@@ -23,6 +23,10 @@
 #include <pthread.h>
 #include <limits.h>
 
+#if !defined (PATH_MAX) || !defined (NAME_MAX)
+#include <linux/limits.h>
+#endif
+
 #define XMA_MAX_LOGMSG_SIZE          255
 #define XMA_MAX_LOGMSG_Q_ENTRIES     128
 
@@ -99,6 +103,7 @@ typedef struct XmaLogger
 {
     bool      use_stdout;
     bool      use_fileout;
+    bool      use_syslog;
     char      filename[PATH_MAX];
     int32_t   fd;
     int32_t   log_level;

@@ -296,6 +296,9 @@ int main(int argc, char** argv)
             return 1;
         }
         munmap(bo, DATA_SIZE*4);
+        munmap(execData, DATA_SIZE*4);
+        xclFreeBO(handle, boHandle);
+        xclFreeBO(handle, execHandle);
     }
     catch (std::exception const& e)
     {

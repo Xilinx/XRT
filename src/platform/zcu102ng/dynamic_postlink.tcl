@@ -35,7 +35,8 @@ proc add_interrupt_ctrl_concat { __cu_num } {
   foreach __pair $__inst_intrs_list {
     lassign $__pair __intc_inst_num __intrs_num
     create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc axi_intc_${__intc_inst_num}
-    set_property -dict [list CONFIG.C_IRQ_IS_LEVEL {0} CONFIG.C_IRQ_CONNECTION {1}] [get_bd_cells axi_intc_${__intc_inst_num}]
+    set_property -dict [list CONFIG.C_KIND_OF_INTR.VALUE_SRC USER] [get_bd_cells axi_intc_${__intc_inst_num}]
+    set_property -dict [list CONFIG.C_KIND_OF_INTR {0xFFFFFFFF} CONFIG.C_IRQ_IS_LEVEL {0} CONFIG.C_IRQ_CONNECTION {1}] [get_bd_cells axi_intc_${__intc_inst_num}]
     create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat xlconcat_intc_${__intc_inst_num}
     set_property -dict [list CONFIG.NUM_PORTS ${__intrs_num}] [get_bd_cells xlconcat_intc_${__intc_inst_num}]
 
@@ -57,7 +58,7 @@ proc add_interrupt_ctrl_concat { __cu_num } {
       # Connect interrupt controlor to HPM0
       apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} Clk_xbar {Auto} Master {/ps_e/M_AXI_HPM0_FPD} Slave {/axi_intc_${__intc_inst_num}/s_axi} intc_ip {Auto} master_apm {0}}  [get_bd_intf_pins axi_intc_${__intc_inst_num}/s_axi]
       # Hard code address for now...
-      set offset [expr 0xA0800000 + ${__intc_inst_num} * 0x1000]
+      set offset [expr 0xA8000000 + ${__intc_inst_num} * 0x1000]
       set_property offset $offset [get_bd_addr_segs "ps_e/Data/SEG_axi_intc_${__intc_inst_num}_Reg"]
     } else {
       puts "(Post-linking DSA Tcl hook) No available xlconcat pins found"

@@ -52,6 +52,35 @@ unaligned_message(void* addr)
                      + "' detected, this leads to extra memcpy");
 }
 
+static void
+default_allocation_message(const xocl::device* device,const xocl::memory* mem,
+                           const xrt::device::BufferObjectHandle& boh, bool err=false)
+{
+  if (!boh)
+    return;
+
+  auto mask = device->get_boh_memidx(boh);
+  xocl::device::memidx_type memidx = 0;
+  for (size_t idx=0; idx<mask.size(); ++idx) {
+    if (mask.test(idx)) {
+      memidx = idx;
+      break;
+    }
+  }
+
+  std::stringstream str;
+  str << "Host buffer (" << mem->get_uid() << ") "
+      << "has no bank assignment and is not used as kernel argument "
+      << "before first enqueue operation; "
+      << "allocating in default memory bank '" << memidx << "'.";
+
+  if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
+    throw std::runtime_error(str.str());
+  else
+    xrt::message::send(xrt::message::severity_level::WARNING,str.str());
+}
+
+
 static inline unsigned
 myctz(unsigned val)
 {
@@ -135,12 +164,12 @@ is_sw_emulation()
   return swem;
 }
 
-static bool
-is_emulation_mode()
-{
-  static bool val = is_sw_emulation() || is_hw_emulation();
-  return val;
-}
+//static bool
+//is_emulation_mode()
+//{
+//  static bool val = is_sw_emulation() || is_hw_emulation();
+//  return val;
+//}
 
 static void
 init_scheduler(xocl::device* device)
@@ -150,26 +179,18 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  // cu base address offset from xclbin in current program
   auto xclbin = device->get_xclbin();
-  size_t cu_base_offset = xclbin.cu_base_offset();
-  size_t cu_shift = xclbin.cu_size();
-  bool cu_isr = xclbin.cu_interrupt();
-
-  auto cu2addr = xclbin.cu_base_address_map();
-
-  size_t regmap_size = xclbin.kernel_max_regmap_size();
-  XOCL_DEBUG(std::cout,"max regmap size:",regmap_size,"\n");
-
-  xrt::scheduler::init(device->get_xrt_device()
-                 ,regmap_size
-                 ,cu_isr
-                 ,device->get_num_cus()
-                 ,cu_shift // cu_offset in lsh value
-                 ,cu_base_offset
-                 ,cu2addr);
+  auto binary = xclbin.binary(); // ::xclbin::binary
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  if (is_sw_emulation()) {
+    auto cu2addr = xclbin.cu_base_address_map();
+    xrt::sws::init(device->get_xrt_device(),cu2addr);
+  }
+  else {
+    xrt::scheduler::init(device->get_xrt_device(),header);
+  }
 }
-
 
 }
 
@@ -542,20 +563,12 @@ allocate_buffer_object(memory* mem)
     return xdevice->alloc(boh,size,offset);
   }
 
-  if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
-    throw std::runtime_error
-      ("Cannot allocate device buffer for host buffer ("
-       + std::to_string(mem->get_uid())
-       + "). Host buffer has no bank assignment and is not used as kernel argument.");
-
-  xrt::message::send
-    (xrt::message::severity_level::WARNING
-     , "Host buffer (" + std::to_string(mem->get_uid())
-     + ") has no bank assignment and is not used as kernel argument; allocating in default device bank.");
-
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
-  return alloc(mem);
+
+  auto boh = alloc(mem);
+  default_allocation_message(this,mem,boh);
+  return boh;
 }
 
 xrt::device::BufferObjectHandle
@@ -860,7 +873,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 {
   auto xdevice = get_xrt_device();
 
-  if (!get_num_cdmas() || is_emulation_mode()) {
+  if (!get_num_cdmas() || is_sw_emulation()) {
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
       c->start();
       char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));

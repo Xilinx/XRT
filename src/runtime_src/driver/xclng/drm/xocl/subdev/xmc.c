@@ -23,9 +23,12 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-#define MAX_XMC_RETRY       150	//Retry is set to 15s for XMC
-#define MAX_ERT_RETRY       10	//Retry is set to 1s for ERT
-#define RETRY_INTERVAL  100       //100ms
+/* Retry is set to 15s for XMC */
+#define MAX_XMC_RETRY       150
+/* Retry is set to 1s for ERT */
+#define MAX_ERT_RETRY       10
+/* 100ms */
+#define RETRY_INTERVAL  100
 
 #define	MAX_IMAGE_LEN	0x20000
 
@@ -82,6 +85,7 @@
 #define	GPIO_ENABLED		0x1
 
 #define	SELF_JUMP(ins)		(((ins) & 0xfc00ffff) == 0xb8000000)
+#define	XMC_PRIVILEGED(xmc)	((xmc)->base_addrs[0] != NULL)
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
@@ -140,9 +144,9 @@ enum {
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_SCHED] + off)
 
 #define	COPY_MGMT(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_MGMT], buf, len)
 #define	COPY_SCHE(xmc, buf, len)		\
-	XOCL_COPY2IO(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
+	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;
@@ -163,6 +167,33 @@ struct xocl_xmc {
 
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
+
+static void xmc_read_from_peer(struct platform_device *pdev, enum data_kind kind, void *resp, size_t resplen)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	uint64_t chan_flag = 0;
+	bool sw_ch = false;
+
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
+	sw_ch = chan_flag & (1ULL<<MAILBOX_REQ_PEER_DATA);
+
+	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	if (!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+
+	subdev_peer.kind = kind;
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	(void) xocl_peer_request(xdev,
+		mb_req, reqlen, resp, &resplen, NULL, NULL, sw_ch);
+	vfree(mb_req);
+}
 
 /* sysfs support */
 static void safe_read32(struct xocl_xmc *xmc, u32 reg, u32 *val)
@@ -185,13 +216,44 @@ static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 	mutex_unlock(&xmc->xmc_lock);
 }
 
+static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pdev, enum data_kind kind, u32 *val)
+{
+	mutex_lock(&xmc->xmc_lock);
+	if (xmc->enabled) {
+		xmc_read_from_peer(pdev, kind, val, sizeof(u32));
+	} else {
+		*val = 0;
+	}
+	mutex_unlock(&xmc->xmc_lock);
+}
+
+static int xmc_get_data(struct platform_device *pdev, enum data_kind kind)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	int val;
+	if (XMC_PRIVILEGED(xmc)) {
+		switch (kind) {
+		case VOL_12V_PEX:
+			safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
+			break;
+		default:
+			break;
+		}
+	}
+	return val;
+}
+
 static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 pes_val;
+	u32 pes_val = 0;
 
-	safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+	if (XMC_PRIVILEGED(xmc))
+		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
+	else{
+		safe_read_from_peer(xmc, to_platform_device(dev), VOL_12V_PEX, &pes_val);
+	}
 
 	return sprintf(buf, "%d\n", pes_val);
 }
@@ -770,13 +832,13 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 	int ret = 0, digit_len = 0;
 	char temp[4];
 
-	if(!xmc)
+	if (!xmc)
 		return -ENODEV;
 
 
-	if(!strncmp(m_tag, "bank", 4)) {
+	if (!strncmp(m_tag, "bank", 4)) {
 		start = m_tag;
-		// bank0, no left parentness
+		/* bank0, no left parentness */
 		left_parentness = m_tag+3;
 		right_parentness = m_tag+strlen(m_tag)+1;
 		digit_len = right_parentness-(2+left_parentness);
@@ -788,17 +850,17 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		digit_len = right_parentness-(1+left_parentness);
 	}
 
-	if(!left_parentness || !right_parentness)
+	if (!left_parentness || !right_parentness)
 		return ret;
 
-	if(!strncmp(m_tag, "DDR", left_parentness-start) || !strncmp(m_tag, "bank", left_parentness-start)){
+	if (!strncmp(m_tag, "DDR", left_parentness-start) || !strncmp(m_tag, "bank", left_parentness-start)) {
 
 		strncpy(temp, left_parentness+1, digit_len);
-		//assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character
+		/* assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character */
 		temp[digit_len] = '\0';
-		//convert to signed long, decimal base
-		if(kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >=0)
-			safe_read32(xmc, XMC_DIMM_TEMP0_REG+ (3*sizeof(int32_t)) * idx +sizeof(u32)*VOLTAGE_INS, &ret);
+		/* convert to signed long, decimal base */
+		if (kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >= 0)
+			safe_read32(xmc, XMC_DIMM_TEMP0_REG + (3*sizeof(int32_t)) * idx + sizeof(u32)*VOLTAGE_INS, &ret);
 		else{
 			ret = 0;
 		}
@@ -864,17 +926,18 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	u32 nread = 0;
 	size_t size = 0;
 	u32 i;
-	struct mem_topology* memtopo = NULL;
+	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc;
 	uint32_t temp[MAX_M_COUNT] = {0};
 	struct xclmgmt_dev *lro;
 
+	/* xocl_icap_lock_bitstream */
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
 	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	memtopo = (struct mem_topology*)xocl_icap_get_axlf_section_data(lro, MEM_TOPOLOGY);
+	memtopo = (struct mem_topology *)xocl_icap_get_data(lro, MEMTOPO_AXLF);
 
-	if(!memtopo)
+	if (!memtopo)
 		return 0;
 
 	size = sizeof(u32)*(memtopo->m_count);
@@ -882,7 +945,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	if (offset >= size)
 		return 0;
 
-	for(i=0;i<memtopo->m_count;++i){
+	for (i = 0; i < memtopo->m_count; ++i) {
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 	}
 
@@ -892,6 +955,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 		nread = size - offset;
 
 	memcpy(buffer, temp, nread);
+	/* xocl_icap_unlock_bitstream */
 	return nread;
 }
 
@@ -972,13 +1036,13 @@ static const struct attribute_group hwmon_xmc_attrgroup = {
 };
 
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
-        char *buf)
+	char *buf)
 {
-        return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
+	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
 }
 
 static struct sensor_device_attribute name_attr =
-        SENSOR_ATTR(name, 0444, show_name, NULL, 0);
+	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
 
 static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 {
@@ -998,7 +1062,7 @@ static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 		xmc->hwmon_dev = NULL;
 	}
 
-  sysfs_remove_group(&pdev->dev.kobj, &xmc_attr_group);
+	sysfs_remove_group(&pdev->dev.kobj, &xmc_attr_group);
 }
 
 static int mgmt_sysfs_create_xmc(struct platform_device *pdev)
@@ -1046,14 +1110,15 @@ create_pw_failed:
 	device_remove_file(xmc->hwmon_dev, &name_attr.dev_attr);
 create_name_failed:
 	hwmon_device_unregister(xmc->hwmon_dev);
-	xmc ->hwmon_dev = NULL;
+	xmc->hwmon_dev = NULL;
 hwmon_reg_failed:
 	sysfs_remove_group(&pdev->dev.kobj, &xmc_attr_group);
 create_attr_failed:
 	return err;
 }
 
-static int stop_xmc_nolock(struct platform_device *pdev) {
+static int stop_xmc_nolock(struct platform_device *pdev)
+{
 	struct xocl_xmc *xmc;
 	int retry = 0;
 	u32 reg_val = 0;
@@ -1070,7 +1135,7 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
-	//Stop XMC and ERT if its currently running
+	/* Stop XMC and ERT if its currently running */
 	if (reg_val == GPIO_ENABLED) {
 		xocl_info(&xmc->pdev->dev,
 			"XMC info, version 0x%x, status 0x%x, id 0x%x",
@@ -1079,26 +1144,26 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 			READ_REG32(xmc, XMC_MAGIC_REG));
 
 		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-		if(!(reg_val & STATUS_MASK_STOPPED)) {
+		if (!(reg_val & STATUS_MASK_STOPPED)) {
 			xocl_info(&xmc->pdev->dev, "Stopping XMC...");
 			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
 			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
 		}
-		//Need to check if ERT is loaded before we attempt to stop it
+		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
 			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
-			if(!(reg_val & ERT_STOP_ACK)) {
+			if (!(reg_val & ERT_STOP_ACK)) {
 				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
 				XOCL_WRITE_REG32(ERT_STOP_CMD, xmc->base_addrs[IO_CQ]);
 			}
 		}
 
-		retry=0;
+		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
 			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
 			msleep(RETRY_INTERVAL);
 
-		//Wait for XMC to stop and then check that ERT has also finished
+		/* Wait for XMC to stop and then check that ERT has also finished */
 		if (retry >= MAX_XMC_RETRY) {
 			xocl_err(&xmc->pdev->dev,
 				"Failed to stop XMC");
@@ -1118,9 +1183,10 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 				xocl_err(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
-				//We don't exit if ERT doesn't stop since it can hang due to bad kernel
-				//xmc->state = XMC_STATE_ERROR;
-				//return -ETIMEDOUT;
+				/* We don't exit if ERT doesn't stop since it can hang due to bad kernel
+				 * xmc->state = XMC_STATE_ERROR;
+				 * return -ETIMEDOUT;
+				 */
 			}
 		}
 
@@ -1128,7 +1194,7 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 			retry);
 	}
 
-	// Hold XMC in reset now that its safely stopped
+	/* Hold XMC in reset now that its safely stopped */
 	xocl_info(&xmc->pdev->dev,
 		"XMC info, version 0x%x, status 0x%x, id 0x%x",
 		READ_REG32(xmc, XMC_VERSION_REG),
@@ -1138,9 +1204,10 @@ static int stop_xmc_nolock(struct platform_device *pdev) {
 	xmc->state = XMC_STATE_RESET;
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	if (reg_val != GPIO_RESET) {//Shouldnt make it here but if we do then exit
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_RESET) {
 		xmc->state = XMC_STATE_ERROR;
-        	return -EIO;
+		return -EIO;
 	}
 
 	return 0;
@@ -1181,9 +1248,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	mutex_lock(&xmc->xmc_lock);
 
-    	/* Stop XMC first */
+		/* Stop XMC first */
 	ret = stop_xmc_nolock(xmc->pdev);
-    	if(ret != 0)
+	if (ret != 0)
 		goto out;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
@@ -1205,7 +1272,8 @@ static int load_xmc(struct xocl_xmc *xmc)
 	WRITE_GPIO(xmc, GPIO_ENABLED, 0);
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	if (reg_val != GPIO_ENABLED) {//Shouldnt make it here but if we do then exit
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_ENABLED) {
 		xmc->state = XMC_STATE_ERROR;
 		goto out;
 	}
@@ -1213,9 +1281,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 	/* Wait for XMC to start
 	 * Note that ERT will start long before XMC so we don't check anything */
 	reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-	if(!(reg_val & STATUS_MASK_INIT_DONE)) {
+	if (!(reg_val & STATUS_MASK_INIT_DONE)) {
 		xocl_info(&xmc->pdev->dev, "Waiting for XMC to finish init...");
-		retry=0;
+		retry = 0;
 		while (retry++ < MAX_XMC_RETRY &&
 			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_INIT_DONE))
 			msleep(RETRY_INTERVAL);
@@ -1320,6 +1388,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
 	.stop			= stop_xmc,
+	.get_data     = xmc_get_data,
 };
 
 static int xmc_remove(struct platform_device *pdev)
@@ -1373,7 +1442,7 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
-		xocl_info(&pdev->dev, "Microblaze is not supported.");
+		xocl_err(&pdev->dev, "Microblaze is not supported.");
 		devm_kfree(&pdev->dev, xmc);
 		platform_set_drvdata(pdev, NULL);
 		return 0;
@@ -1381,15 +1450,18 @@ static int xmc_probe(struct platform_device *pdev)
 
 	for (i = 0; i < NUM_IOADDR; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
-			res->start, res->end);
-		xmc->base_addrs[i] =
-			ioremap_nocache(res->start, res->end - res->start + 1);
-		if (!xmc->base_addrs[i]) {
-			err = -EIO;
-			xocl_err(&pdev->dev, "Map iomem failed");
-			goto failed;
-		}
+		if (res) {
+			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
+				res->start, res->end);
+			xmc->base_addrs[i] =
+				ioremap_nocache(res->start, res->end - res->start + 1);
+			if (!xmc->base_addrs[i]) {
+				err = -EIO;
+				xocl_err(&pdev->dev, "Map iomem failed");
+				goto failed;
+			}
+		} else
+			break;
 	}
 
 	err = mgmt_sysfs_create_xmc(pdev);
@@ -1418,7 +1490,7 @@ static struct platform_driver	xmc_driver = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
-		.name = "xocl_xmc",
+		.name = XOCL_XMC,
 	},
 	.id_table = xmc_id_table,
 };

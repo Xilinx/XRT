@@ -76,6 +76,8 @@
  *      xclbin image
  * 14   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  *      buffer
+ * 15   SW Mailbox IOCTL                       DRM_IOCTL_XOCL_SW_MAILBOX      drm_xocl_sw_mailbox
+ *
  * ==== ====================================== ============================== ==================================
  */
 
@@ -146,15 +148,12 @@ enum drm_xocl_ops {
 	DRM_XOCL_USER_INTR,
 	/* Read xclbin/axlf */
 	DRM_XOCL_READ_AXLF,
-	/* Copy buffer to Destination buffer by using DMA */
-	DRM_XOCL_COPY_BO,
 	/* Hot reset request */
 	DRM_XOCL_HOT_RESET,
-	/* Enable P2P */
-	DRM_XOCL_P2P_ENABLE,
 	/* Reclock through userpf*/
 	DRM_XOCL_RECLOCK,
-
+	/* Mailbox Tx*/
+	DRM_XOCL_SW_MAILBOX,
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -172,6 +171,7 @@ enum drm_xocl_sync_bo_dir {
 #define DRM_XOCL_BO_BANK2   (0x1 << 2)
 #define DRM_XOCL_BO_BANK3   (0x1 << 3)
 
+#define DRM_XOCL_BO_IMPORT  (0x1 << 28)
 #define DRM_XOCL_BO_CMA     (0x1 << 29)
 #define DRM_XOCL_BO_P2P     (0x1 << 30)
 #define DRM_XOCL_BO_EXECBUF (0x1 << 31)
@@ -264,26 +264,6 @@ struct drm_xocl_info_bo {
 };
 
 /**
- * struct drm_xocl_copy_bo - copy source buffer to destination buffer
- * between device and device
- * used with DRM_IOCTL_XOCL_COPY_BO ioctl
- *
- * @dst_handle: destination bo handle
- * @src_handle: source bo handle
- * @flags:  Unused
- * @size: Number of bytes to synchronize
- * @dst_offset: Offset into the object to destination buffer to synchronize
- * @src_offset: Offset into the object to source buffer to synchronize
- */
-struct drm_xocl_copy_bo {
-  uint32_t dst_handle;
-  uint32_t src_handle;
-  uint32_t flags;
-  uint64_t size;
-  uint64_t dst_offset;
-  uint64_t src_offset;
-};
-/**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
  * NOTE: This ioctl will be removed in next release
@@ -335,9 +315,9 @@ enum drm_xocl_ctx_code {
         XOCL_CTX_OP_FREE_CTX
 };
 
-#define XOCL_CTX_SHARED    0x0
-#define XOCL_CTX_EXCLUSIVE 0x1
-
+#define	XOCL_CTX_SHARED		0x0
+#define	XOCL_CTX_EXCLUSIVE	0x1
+#define	XOCL_CTX_VIRT_CU_INDEX	0xffffffff
 /**
  * struct drm_xocl_ctx - Open or close a context on a compute unit on device
  * used with DRM_XOCL_CTX ioctl
@@ -351,11 +331,11 @@ enum drm_xocl_ctx_code {
  */
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
-        xuid_t   xclbin_id;
-        uint32_t cu_index;
-        uint32_t flags;
-        // unused, in future it would return context id
-        uint32_t handle;
+	xuid_t   xclbin_id;
+	uint32_t cu_index;
+	uint32_t flags;
+	// unused, in future it would return context id
+	uint32_t handle;
 };
 
 struct drm_xocl_info {
@@ -483,19 +463,20 @@ struct drm_xocl_user_intr {
         int msix;
 };
 
-/**
- * struct drm_xocl_p2p_enable - enable/disable P2P
- *
- * @enable:		0: disable, 1: enable
- */
-struct drm_xocl_p2p_enable {
-	int enable;
-};
-
-
 struct drm_xocl_reclock_info {
   unsigned region;
   unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
+};
+
+/*
+ * struct drm_xocl_sw_mailbox *args
+ */
+struct drm_xocl_sw_mailbox {
+	uint64_t flags;
+	uint32_t *data;
+	bool is_tx;
+	size_t sz;
+	uint64_t id;
 };
 
 /*
@@ -510,8 +491,6 @@ struct drm_xocl_reclock_info {
 					       DRM_XOCL_MAP_BO, struct drm_xocl_map_bo)
 #define DRM_IOCTL_XOCL_SYNC_BO	      DRM_IOW (DRM_COMMAND_BASE +       \
 					       DRM_XOCL_SYNC_BO, struct drm_xocl_sync_bo)
-#define DRM_IOCTL_XOCL_COPY_BO        DRM_IOW (DRM_COMMAND_BASE +       \
-                                               DRM_XOCL_COPY_BO, struct drm_xocl_copy_bo)
 #define DRM_IOCTL_XOCL_INFO_BO	      DRM_IOWR(DRM_COMMAND_BASE +       \
 					       DRM_XOCL_INFO_BO, struct drm_xocl_info_bo)
 #define DRM_IOCTL_XOCL_PWRITE_BO      DRM_IOW (DRM_COMMAND_BASE +       \
@@ -537,8 +516,8 @@ struct drm_xocl_reclock_info {
 #define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
 					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
 #define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
-#define DRM_IOCTL_XOCL_P2P_ENABLE     DRM_IOWR(DRM_COMMAND_BASE +	\
-						DRM_XOCL_P2P_ENABLE, struct drm_xocl_p2p_enable)
 #define DRM_IOCTL_XOCL_RECLOCK     DRM_IOWR(DRM_COMMAND_BASE + \
             DRM_XOCL_RECLOCK, struct drm_xocl_reclock_info)
+#define DRM_IOCTL_XOCL_SW_MAILBOX     DRM_IOWR(DRM_COMMAND_BASE +	\
+					       DRM_XOCL_SW_MAILBOX, struct drm_xocl_sw_mailbox)
 #endif

@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <sched.h>
 #include <errno.h>
+#include <syslog.h>
 #include <cstdlib>
 #include <string>
 #include <fstream>
@@ -92,13 +93,25 @@ int xma_logger_init(XmaLogger *logger)
         printf("XMA Logger: defaulting to stdout, loglevel INFO\n");
         logger->use_stdout = true;
         logger->use_fileout = false;
+        logger->use_syslog = false;
         logger->log_level = XMA_INFO_LOG;
+    }
+    else if (strcmp(g_xma_singleton->systemcfg.logfile,"syslog") >= 0)
+    {
+        printf("XMA Logger: using syslog\n");
+        logger->use_stdout = false;
+        logger->use_fileout = false;
+        logger->use_syslog = true;
+        strcpy(logger->filename, g_xma_singleton->systemcfg.logfile);
+        logger->log_level = g_xma_singleton->systemcfg.loglevel;
+        openlog("xma: ", LOG_PID|LOG_CONS, LOG_USER);
     }
     else
     {
         printf("XMA Logger: using configuration file settings\n");
         logger->use_stdout = false;
         logger->use_fileout = true;
+        logger->use_syslog = false;
         strcpy(logger->filename, g_xma_singleton->systemcfg.logfile);
         logger->log_level = g_xma_singleton->systemcfg.loglevel;
     } 
@@ -131,6 +144,9 @@ int xma_logger_close(XmaLogger *logger)
 {
     /* Verify parameters */
     assert(logger);
+    if(logger->use_syslog){
+        closelog();
+    }
     xma_actor_destroy(logger->actor);
 
     return 0;
@@ -188,13 +204,19 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     if (name == NULL)
         strncpy(log_name, "XMA-default", sizeof(log_name));
     else
-        strncpy(log_name, name, sizeof(log_name));
+        strncpy(log_name, name, sizeof(log_name) - 1);
+    log_name[sizeof(log_name) - 1] = '\0';
 
     log_level = g_loglevel_tbl[level].lvl_str;
     
     /* Format log message */
     //NOTE: Usage of program_invocation_short_name may hinder portability
-    sprintf(msg_buff, "%s.%03d %d %s %s %s ", log_time, millisec, getpid(), program_invocation_short_name, log_level, log_name);
+    if(logger->use_syslog){
+        sprintf(msg_buff, "%s %s %s ", program_invocation_short_name, log_level, log_name);
+    }
+    else{
+        sprintf(msg_buff, "%s.%03d %d %s %s %s ", log_time, millisec, getpid(), program_invocation_short_name, log_level, log_name);
+    }
     hdr_offset = strlen(msg_buff);
     va_start(ap, msg); 
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
@@ -315,7 +337,7 @@ void* xma_logger_actor(void *data)
                 sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
                 */
                 //rc = xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, logmsg);
-                xclLogMsg(NULL, xclLogMsgLevel::INFO, logmsg);
+                xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
             } else {
                 if (logger->fd != -1)
                 {
@@ -325,6 +347,16 @@ void* xma_logger_actor(void *data)
                         perror("XMA Logger: could not write to file: ");
                         break;
                     }
+                }
+                if (logger->use_syslog){
+                    uint8_t syslog_level = LOG_DEBUG;
+                    switch(logger->log_level){
+                        case XMA_CRITICAL_LOG: syslog_level = LOG_CRIT ; break;
+                        case XMA_ERROR_LOG   : syslog_level = LOG_ERR  ; break;
+                        case XMA_INFO_LOG    : syslog_level = LOG_INFO ; break;
+                        case XMA_DEBUG_LOG   : syslog_level = LOG_DEBUG; break;
+                    }
+                    syslog(syslog_level,"%s", logmsg);
                 }
                 if (logger->use_stdout)
                     printf("%s", logmsg);

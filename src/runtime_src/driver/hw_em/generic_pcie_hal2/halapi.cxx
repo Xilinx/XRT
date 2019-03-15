@@ -19,11 +19,12 @@
  */
 
 #include <shim.h>
+#include "driver/common/scheduler.h"
 
 //########################################## THESE HAS TO BE DEFINED START ##########################################
 
 
-int xclExportBO(xclDeviceHandle handle, unsigned int boHandle) 
+int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
@@ -31,7 +32,7 @@ int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
   return drv->xclExportBO(boHandle);
 }
 
-unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags) 
+unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned flags)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
@@ -101,7 +102,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   return drv->xclMapBO(boHandle, write);
 }
 
-int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) 
+int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
@@ -140,6 +141,21 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
     return -1;
   return drv->xclExecBuf(cmdBO);
 }
+
+
+//defining following two functions as they gets called in scheduler init call
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+  
+{
+  return 0;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  return 0;
+}
+
+
 
 int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
@@ -231,7 +247,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return mNullBO;
-  return drv->xclAllocUserPtrBO(userptr,size,flags); 
+  return drv->xclAllocUserPtrBO(userptr,size,flags);
 }
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
@@ -306,7 +322,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclLoadXclBin(buffer);
+  auto ret = drv->xclLoadXclBin(buffer);
+  if (!ret)
+      ret = xrt_core::scheduler::init(handle,buffer);
+  return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
@@ -495,4 +514,3 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
    xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
-

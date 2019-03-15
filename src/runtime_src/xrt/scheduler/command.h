@@ -181,6 +181,15 @@ public:
   }
 
   /**
+   * Check if command has completed
+   */
+  bool
+  completed() const
+  {
+    return m_done;
+  }
+
+  /**
    * Client call back for command start
    */
   virtual void

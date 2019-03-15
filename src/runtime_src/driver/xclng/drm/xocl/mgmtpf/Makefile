@@ -30,6 +30,7 @@ xclmgmt-y := \
 	../subdev/mig.o \
 	../subdev/xmc.o \
 	../subdev/dna.o \
+	../subdev/fmgr.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

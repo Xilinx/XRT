@@ -41,6 +41,8 @@
 #define	BO_DEBUG(fmt, args...)
 #endif
 
+#define	INVALID_BO_PADDR	0xffffffffffffffffull
+
 #if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)
 {
@@ -70,7 +72,7 @@ static inline void __user *to_user_ptr(u64 address)
 
 static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 {
-	uint64_t paddr = xobj->mm_node ? xobj->mm_node->start : 0xffffffffffffffffull;
+	uint64_t paddr = xobj->mm_node ? xobj->mm_node->start : INVALID_BO_PADDR;
 
 	//Sarab: Need to check for number of hops & size of DDRs
 	if (xobj->type & XOCL_BO_ARE)
@@ -93,29 +95,30 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
 {
 	struct drm_device *ddev = xobj->base.dev;
-	struct xocl_dev *xdev = ddev->dev_private;
+	struct xocl_drm *drm_p = ddev->dev_private;
 	unsigned ddr = xocl_bo_ddr_idx(xobj->flags);
 
-	mutex_lock(&xdev->mm_lock);
+	mutex_lock(&drm_p->mm_lock);
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (!xobj->mm_node)
 		goto end;
 
-	xocl_mm_update_usage_stat(xdev, ddr, xobj->base.size, -1);
+	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, -1);
 	BO_DEBUG("remove mm_node:%p, start:%llx size: %llx", xobj->mm_node,
 		xobj->mm_node->start, xobj->mm_node->size);
 	drm_mm_remove_node(xobj->mm_node);
 	kfree(xobj->mm_node);
 	xobj->mm_node = NULL;
 end:
-	mutex_unlock(&xdev->mm_lock);
+	mutex_unlock(&drm_p->mm_lock);
 }
 
-void xocl_free_bo(struct drm_gem_object *obj)
+static void xocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 	struct drm_device *ddev = xobj->base.dev;
-	struct xocl_dev *xdev = ddev->dev_private;
+	struct xocl_drm *drm_p = ddev->dev_private;
+	struct xocl_dev *xdev= drm_p->xdev;
 	int npages = obj->size >> PAGE_SHIFT;
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
@@ -145,12 +148,10 @@ void xocl_free_bo(struct drm_gem_object *obj)
 			drm_free_large(xobj->pages);
 		}
 #endif
-		else if(xocl_bo_p2p(xobj)){
+		else if(xocl_bo_p2p(xobj) || xocl_bo_import(xobj)){
 			drm_free_large(xobj->pages);
-			/*devm_* will release all the pages while unload xocl driver*/
-			xobj->bar_vmapping = NULL;
 		}
-		else if (!xocl_bo_import(xobj)) {
+		else {
 			drm_gem_put_pages(obj, xobj->pages, false, false);
 		}
 	}
@@ -167,12 +168,10 @@ void xocl_free_bo(struct drm_gem_object *obj)
 	}
 	else {
 		DRM_DEBUG("Freeing imported buffer\n");
-		if (!(xobj->type & XOCL_BO_ARE))
-			xocl_free_mm_node(xobj);
-
 		if (obj->import_attach) {
 			DRM_DEBUG("Unnmapping attached dma buf\n");
-			dma_buf_unmap_attachment(obj->import_attach, xobj->sgt, DMA_TO_DEVICE);
+			dma_buf_unmap_attachment(obj->import_attach,
+				xobj->sgt, DMA_TO_DEVICE);
 			drm_prime_gem_destroy(obj, NULL);
 		}
 	}
@@ -198,16 +197,23 @@ void xocl_free_bo(struct drm_gem_object *obj)
 	kfree(xobj);
 }
 
+void xocl_drm_free_bo(struct drm_gem_object *obj)
+{
+	xocl_free_bo(obj);
+}
 
 static inline int check_bo_user_reqs(const struct drm_device *dev,
 	unsigned flags , unsigned type)
 {
-	struct xocl_dev	*xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev= drm_p->xdev;
 	u16 ddr_count;
 	unsigned ddr;
 
+#if 0
 	if (flags == 0xffffff)
 		return 0;
+#endif
 	if (type == DRM_XOCL_BO_EXECBUF)
 		return 0;
 #ifdef XOCL_CMA_ALLOC
@@ -217,6 +223,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (type == DRM_XOCL_BO_CMA)
 		return -EINVAL;
 #endif
+
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
 	ddr_count = XOCL_DDR_COUNT(xdev);
@@ -224,46 +231,29 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if(ddr_count == 0)
 		return -EINVAL;
 	ddr = xocl_bo_ddr_idx(flags);
-	if (ddr == 0xffffff)
-		return 0;
 	if (ddr >= ddr_count)
 		return -EINVAL;
-	if  (!XOCL_IS_DDR_USED(xdev, ddr)) {
+	if (XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_type == MEM_STREAMING)
+		return -EINVAL;
+	if (!XOCL_IS_DDR_USED(xdev, ddr)) {
 		userpf_err(xdev, "Bank %d is marked as unused in axlf", ddr);
 		return -EINVAL;
 	}
 	return 0;
 }
 
-static int xocl_check_p2p_mem_bank(struct xocl_dev *xdev, unsigned ddr)
-{
-	struct mem_topology *topology;
-	uint64_t check_len = 0;
-	int i;
-	topology = xdev->topology;
-#if 1
-	for (i = 0; i < ddr; ++i)
-		check_len += (topology->m_mem_data[ddr].m_size);
-	/*m_data[ddr].m_size KB*/
-	if (check_len > (xdev->bypass_bar_len >> 10)) {
-		userpf_err(xdev, "Bank %d is not a p2p memory bank", ddr);
-		return -EINVAL;
-	}
-#endif
-	return 0;
-}
-
-
-struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
+static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 					  uint64_t unaligned_size,
 					  unsigned user_flags,
 					  unsigned user_type)
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
 	struct drm_xocl_bo *xobj;
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	unsigned ddr = xocl_bo_ddr_idx(user_flags);
 	u16 ddr_count = 0;
+	bool xobj_inited = false;
 	int err = 0;
 
 	BO_DEBUG("New create bo flags:%u type:%u", user_flags, user_type);
@@ -282,11 +272,16 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	BO_ENTER("xobj %p", xobj);
 	err = drm_gem_object_init(dev, &xobj->base, size);
 	if (err)
-		goto out3;
+		goto failed;
+	xobj_inited = true;
 
 	if (user_type == DRM_XOCL_BO_EXECBUF) {
 		xobj->type = XOCL_BO_EXECBUF;
 		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
+		return xobj;
+	}
+	if (user_type == DRM_XOCL_BO_IMPORT) {
+		xobj->type = XOCL_BO_IMPORT;
 		return xobj;
 	}
 
@@ -303,67 +298,47 @@ struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xobj->mm_node = kzalloc(sizeof(*xobj->mm_node), GFP_KERNEL);
 	if (!xobj->mm_node) {
 		err = -ENOMEM;
-		goto out3;
+		goto failed;
 	}
 
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
-	mutex_lock(&xdev->mm_lock);
-	if (ddr != 0xffffff) {
-		/* Attempt to allocate buffer on the requested DDR */
-		DRM_DEBUG("%s:%s:%d: %u\n", __FILE__, __func__, __LINE__, ddr);
-		if (user_type & DRM_XOCL_BO_P2P){
-			err = xocl_check_p2p_mem_bank(xdev, ddr);
-			if (err)
-				goto out2;
-		}
-		err = xocl_mm_insert_node(xdev, ddr, xobj->mm_node,
-			xobj->base.size);
-		BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
-			xobj->mm_node, xobj->mm_node->start,
-			xobj->mm_node->size);
-		if (err)
-			goto out2;
-	}
-	else {
-		/* Attempt to allocate buffer on any DDR */
-		for (ddr = 0; ddr < ddr_count; ddr++) {
-			if  (!XOCL_IS_DDR_USED(xdev, ddr))
-				continue;
-			if (user_type & DRM_XOCL_BO_P2P){
-				err = xocl_check_p2p_mem_bank(xdev, ddr);
-				if (err)
-					goto out2;
-			}
-			err = xocl_mm_insert_node(xdev, ddr,
-				xobj->mm_node, xobj->base.size);
-			BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
-				xobj->mm_node, xobj->mm_node->start,
-				xobj->mm_node->size);
-			if (err == 0)
-				break;
-		}
-		if (err)
-			goto out2;
-		if (ddr == ddr_count) {
-			err = -ENOENT;
-			goto out2;
-		}
-	}
-	xocl_mm_update_usage_stat(xdev, ddr, xobj->base.size, 1);
-	mutex_unlock(&xdev->mm_lock);
+	mutex_lock(&drm_p->mm_lock);
+	/* Attempt to allocate buffer on the requested DDR */
+	xocl_xdev_dbg(xdev, "alloc bo from bank%u", ddr);
+	err = xocl_mm_insert_node(drm_p, ddr, xobj->mm_node,
+		xobj->base.size);
+	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
+		xobj->mm_node, xobj->mm_node->start,
+		xobj->mm_node->size);
+	if (err)
+		goto failed;
+
+	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, 1);
+	mutex_unlock(&drm_p->mm_lock);
 	/* Record the DDR we allocated the buffer on */
 	//xobj->flags |= (1 << ddr);
 	xobj->flags = ddr;
 
 	return xobj;
-out2:
-	mutex_unlock(&xdev->mm_lock);
-	kfree(xobj->mm_node);
-	drm_gem_object_release(&xobj->base);
-out3:
-	kfree(xobj);
+failed:
+	mutex_unlock(&drm_p->mm_lock);
+	if (xobj->mm_node)
+		kfree(xobj->mm_node);
+	if (xobj_inited)
+		drm_gem_object_release(&xobj->base);
+	if (xobj)
+		kfree(xobj);
 	return ERR_PTR(err);
+}
+
+struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
+					  uint64_t unaligned_size,
+					  unsigned user_flags,
+					  unsigned user_type)
+{
+	return xocl_create_bo(drm_p->ddev, unaligned_size, user_flags,
+			user_type);
 }
 
 static struct page** xocl_p2p_get_pages(void *bar_vaddr, int npages)
@@ -393,76 +368,27 @@ fail:
 	return ERR_CAST(p);
 }
 
-/*
- * For ARE device do not reserve DDR space
- * In below import it will reuse the mm_node which is already created by other application
- */
-
-static struct drm_xocl_bo *xocl_create_bo_forARE(struct drm_device *dev,
-						 uint64_t unaligned_size,
-						 struct drm_mm_node   *exporting_mm_node)
-{
-	struct drm_xocl_bo *xobj;
-	size_t size = PAGE_ALIGN(unaligned_size);
-	int err = 0;
-
-	if (!size)
-		return ERR_PTR(-EINVAL);
-
-	xobj = kzalloc(sizeof(*xobj), GFP_KERNEL);
-	if (!xobj)
-		return ERR_PTR(-ENOMEM);
-
-	BO_ENTER("xobj %p", xobj);
-	err = drm_gem_object_init(dev, &xobj->base, size);
-	if (err)
-		goto out3;
-
-	xobj->mm_node = exporting_mm_node;
-	if (!xobj->mm_node) {
-		err = -ENOMEM;
-		goto out3;
-	}
-
-	/* Record that this buffer is on remote device to be access over ARE*/
-	//xobj->flags = XOCL_BO_ARE;
-	xobj->type |= XOCL_BO_ARE;
-	return xobj;
-out3:
-	kfree(xobj);
-	return ERR_PTR(err);
-}
-
-
 int xocl_create_bo_ioctl(struct drm_device *dev,
 			 void *data,
 			 struct drm_file *filp)
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 #ifdef XOCL_CMA_ALLOC
 	unsigned int page_count;
 	int j;
 	struct page *cpages;
 #endif
 	struct drm_xocl_create_bo *args = data;
-	//unsigned ddr = args->flags & XOCL_MEM_BANK_MSK;
 	unsigned ddr = args->flags;
-	//unsigned bar_mapped = (args->flags & DRM_XOCL_BO_P2P) ? 1 : 0;
 	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
 
-//	//Only one bit should be set in ddr. Other bits are now in "type"
-//	if (hweight_long(ddr) > 1)
-//		return -EINVAL;
-////	if (args->flags && (args->flags != DRM_XOCL_BO_EXECBUF)) {
-//		if (hweight_long(ddr) > 1)
-//			return -EINVAL;
-//	}
-
 	if(bar_mapped){
-		if(!xdev->bypass_bar_addr){
-			DRM_ERROR("No P2P mem region available, Can't create p2p BO\n");
+		if(!xdev->p2p_bar_addr){
+			xocl_xdev_err(xdev, "No P2P mem region available, "
+					"Can't create p2p BO");
 			return -EINVAL;
 		}
 	}
@@ -477,14 +403,16 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	if(bar_mapped){
 		ddr = xocl_bo_ddr_idx(xobj->flags);
-		/* DRM allocate contiguous pages, shift the vmapping with bar address offset*/
-		xobj->bar_vmapping = xdev->bypass_bar_addr +
-			xdev->mm_p2p_off[ddr] + xobj->mm_node->start -
-			xdev->topology->m_mem_data[ddr].m_base_address;
+		/*
+		 * DRM allocate contiguous pages, shift the vmapping with
+		 * bar address offset
+		 */
+		xobj->bar_vmapping = xdev->p2p_bar_addr +
+			drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
+			XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
 	}
 
 #ifdef XOCL_CMA_ALLOC
-	//if (args->flags == DRM_XOCL_BO_CMA) {
 	if (args->type == DRM_XOCL_BO_CMA) {
 		page_count = xobj->base.size >> PAGE_SHIFT;
 		xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
@@ -686,7 +614,8 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	int channel = 0;
 	ssize_t ret = 0;
 	const struct drm_xocl_sync_bo *args = data;
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 
 	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
@@ -893,105 +822,129 @@ out:
 	return ret;
 }
 
-int xocl_copy_bo_ioctl(struct drm_device *dev,
-			 void *data,
-			 struct drm_file *filp)
+int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
+	struct ert_start_copybo_cmd *cmd)
 {
 	const struct drm_xocl_bo *dst_xobj, *src_xobj;
-	struct sg_table *sgt;
-	u64 paddr = 0;
+	const struct drm_xocl_bo *import_xobj, *local_xobj;
+	struct sg_table *sgt = NULL;
+	struct sg_table *tmp_sgt = NULL;
 	int channel = 0;
 	ssize_t ret = 0;
-	const struct drm_xocl_copy_bo *args = data;
-	struct xocl_dev *xdev = dev->dev_private;
-	u32 dir = 0; //always write data from source to destination
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	u32 dir = 0;
+	struct drm_gem_object *dst_gem_obj = NULL;
+	struct drm_gem_object *src_gem_obj = NULL;
+	u64 local_pa = 0;
+	u64 local_offset = 0;
+	u64 import_offset = 0;
+	u64 cp_size = ert_copybo_size(cmd);
 
+	if (cmd->opcode != ERT_START_COPYBO)
+		return -EINVAL;
 
-	struct drm_gem_object *dst_gem_obj, *src_gem_obj;
-	dst_gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->dst_handle);
+	/* Sanity check against inputs */
+	dst_gem_obj = xocl_gem_object_lookup(dev, filp, cmd->dst_bo_hdl);
 	if (!dst_gem_obj) {
-		DRM_ERROR("Failed to look up Destination GEM BO %d\n", args->dst_handle);
-		return -ENOENT;
-	}
-	src_gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->src_handle);
-	if (!src_gem_obj) {
-		DRM_ERROR("Failed to look up Source GEM BO %d\n", args->src_handle);
+		DRM_ERROR("invalid destination BO %d\n", cmd->dst_bo_hdl);
 		ret = -ENOENT;
-		goto src_lookup_fail;
+		goto out;
+	}
+	src_gem_obj = xocl_gem_object_lookup(dev, filp, cmd->src_bo_hdl);
+	if (!src_gem_obj) {
+		DRM_ERROR("invalid source BO %d\n", cmd->src_bo_hdl);
+		ret = -ENOENT;
+		goto out;
+	}
+	if (((ert_copybo_src_offset(cmd) + cp_size) > src_gem_obj->size) ||
+		((ert_copybo_dst_offset(cmd) + cp_size) > dst_gem_obj->size)) {
+		DRM_ERROR("offsize + sizes out of boundary, copy_bo aborted");
+		ret = -EINVAL;
+		goto out;
 	}
 
 	dst_xobj = to_xocl_bo(dst_gem_obj);
 	src_xobj = to_xocl_bo(src_gem_obj);
-
-	if(!xocl_bo_p2p(src_xobj)){
-		DRM_ERROR("src_bo must be p2p bo, copy_bo aborted");
+	DRM_DEBUG("dst_xobj %p, src_xobj %p", dst_xobj, src_xobj);
+	if(xocl_bo_import(src_xobj) == xocl_bo_import(dst_xobj)){
+		DRM_ERROR("invalid src or dst BO type, copy_bo aborted");
+		DRM_ERROR("expecting one local and one imported BO");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	DRM_DEBUG("dst_xobj %p, src_xobj %p", dst_xobj, src_xobj);
-	DRM_DEBUG("dst_xobj->sgt %p, src_xobj->sgt %p", dst_xobj->sgt, src_xobj->sgt);
-	sgt = dst_xobj->sgt;
-
-	paddr = xocl_bo_physical_addr(src_xobj);
-
-	if (paddr == 0xffffffffffffffffull){
-		ret =  -EINVAL;
-		goto out;
-	}
 	/* If device is offline (due to error), reject all DMA requests */
 	if (xdev->offline){
+		DRM_ERROR("DMA engine is offline, copy_bo aborted");
 		ret = -ENODEV;
 		goto out;
 	}
 
-	if (((args->src_offset + args->size) > src_gem_obj->size) ||
-			((args->dst_offset + args->size) > dst_gem_obj->size)) {
-		DRM_ERROR("offsize + sizes out of boundary, copy_bo abort");
+	if (!xocl_bo_import(src_xobj)) {
+		/* src is local */
+		local_xobj = src_xobj;
+		local_offset = ert_copybo_src_offset(cmd);
+		import_xobj = dst_xobj;
+		import_offset = ert_copybo_dst_offset(cmd);
+		dir = 0;
+	} else {
+		/* dst is local */
+		DRM_ERROR("reading from remote BO, performance degraded");
+		local_xobj = dst_xobj;
+		local_offset = ert_copybo_dst_offset(cmd);
+		import_xobj = src_xobj;
+		import_offset = ert_copybo_src_offset(cmd);
+		dir = 1;
+	}
+
+	local_pa = xocl_bo_physical_addr(local_xobj);
+	if (local_pa == INVALID_BO_PADDR) {
+		DRM_ERROR("local BO has no dev mem, copy_bo aborted");
 		ret = -EINVAL;
 		goto out;
 	}
-	paddr += args->src_offset;
+	local_pa += local_offset;
 
-	DRM_DEBUG("%s, xobj->pages = %p\n", __func__, dst_xobj->pages);
-
-
-	if (args->dst_offset || (args->size != dst_xobj->base.size)) {
-		sgt = alloc_onetime_sg_table(dst_xobj->pages, args->dst_offset, args->size);
-		if (IS_ERR(sgt)) {
-			ret = PTR_ERR(sgt);
+	if (import_offset || (cp_size != import_xobj->base.size)) {
+		tmp_sgt = alloc_onetime_sg_table(import_xobj->pages,
+			import_offset, cp_size);
+		if (IS_ERR(tmp_sgt)) {
+			DRM_ERROR("failed to alloc tmp sgt, copy_bo aborted");
+			ret = PTR_ERR(tmp_sgt);
 			goto out;
 		}
+		sgt = tmp_sgt;
+	} else {
+		sgt = import_xobj->sgt;
 	}
+
+	DRM_DEBUG("sgt=0x%p, dir=%d, pa=0x%llx, size=0x%llx",
+		sgt, dir, local_pa, cp_size);
 
 	channel = xocl_acquire_channel(xdev, dir);
-
 	if (channel < 0) {
-		ret = -EINVAL;
-		goto clear;
+		DRM_ERROR("DMA channel not available, copy_bo aborted");
+		ret = -ENODEV;
+		goto out;
 	}
-	/* Now perform DMA */
-	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel,
-		args->size);
 
+	/* Now perform the copy via DMA engine */
+	ret = xocl_migrate_bo(xdev, sgt, dir, local_pa, channel, cp_size);
 	if (ret >= 0)
-		ret = (ret == args->size) ? 0 : -EIO;
+		ret = (ret == cp_size) ? 0 : -EIO;
 	xocl_release_channel(xdev, dir, channel);
 
-
-clear:
-	if (args->dst_offset || (args->size != dst_xobj->base.size)) {
-		sg_free_table(sgt);
-		kfree(sgt);
-	}
 out:
-	drm_gem_object_unreference_unlocked(src_gem_obj);
-src_lookup_fail:
-	drm_gem_object_unreference_unlocked(dst_gem_obj);
+	if (tmp_sgt) {
+		sg_free_table(tmp_sgt);
+		kfree(tmp_sgt);
+	}
+	if (src_gem_obj)
+		drm_gem_object_unreference_unlocked(src_gem_obj);
+	if (dst_gem_obj)
+		drm_gem_object_unreference_unlocked(dst_gem_obj);
 	return ret;
-
 }
 
 
@@ -1002,61 +955,14 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	return drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
 }
 
-
-static struct drm_xocl_bo *xocl_is_exporting_xare(struct drm_device *dev, struct dma_buf_attachment *attach)
-{
-	struct drm_gem_object *exporting_gem_obj;
-	struct drm_device *exporting_drm_dev;
-	struct xocl_dev *exporting_xdev;
-
-	struct device_driver *importing_dma_driver = dev->dev->driver;
-	struct dma_buf *exporting_dma_buf = attach->dmabuf;
-	struct device_driver *exporting_dma_driver = attach->dev->driver;
-	struct xocl_dev *xdev = dev->dev_private;
-
-	if (xocl_is_are(xdev))
-		return NULL;
-
-	//We don't know yet if the exporting device is Xilinx/XOCL or third party or USB device
-	//So checking it in below code
-	if (importing_dma_driver != exporting_dma_driver)
-		return NULL;
-
-	//Exporting devices have same driver as us. So this is Xilinx device
-	//So now we can get gem_object, drm_device & xocl_dev
-	exporting_gem_obj = exporting_dma_buf->priv;
-	exporting_drm_dev = exporting_gem_obj->dev;
-	exporting_xdev = exporting_drm_dev->dev_private;
-	//exporting_xdev->header;//This has FeatureROM header
-	if (xocl_is_are(exporting_xdev))
-		return to_xocl_bo(exporting_gem_obj);
-
-	return NULL;
-}
-
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
-						      struct dma_buf_attachment *attach, struct sg_table *sgt)
+      struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
-	struct xocl_dev *xdev = dev->dev_private;
 	int ret = 0;
-	// This is exporting device
-	struct drm_xocl_bo *exporting_xobj;
-
-	// For ARE device resue the mm node from exporting xobj
-
-	// For non ARE devices we need to create a full BO but share the SG table
-        // ???? add flags to create_bo.. for DDR bank??
-
 	struct drm_xocl_bo *importing_xobj;
 
-	if (xocl_drv_released(xdev))
-		return 0;
-
-	exporting_xobj = xocl_is_exporting_xare(dev, attach);
-	importing_xobj = exporting_xobj ?
-	       	xocl_create_bo_forARE(dev, attach->dmabuf->size,
-				exporting_xobj->mm_node) :
-		xocl_create_bo(dev, attach->dmabuf->size, 0, 0);
+	importing_xobj = xocl_create_bo(dev, attach->dmabuf->size, 0,
+		DRM_XOCL_BO_IMPORT);
 
 	BO_ENTER("xobj %p", importing_xobj);
 
@@ -1065,22 +971,20 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		return (struct drm_gem_object *)importing_xobj;
 	}
 
-	importing_xobj->type |= XOCL_BO_IMPORT;
 	importing_xobj->sgt = sgt;
-	importing_xobj->pages = drm_malloc_ab(attach->dmabuf->size >> PAGE_SHIFT, sizeof(*importing_xobj->pages));
+	importing_xobj->pages = drm_malloc_ab(attach->dmabuf->size >> PAGE_SHIFT,
+		sizeof(*importing_xobj->pages));
 	if (!importing_xobj->pages) {
 		ret = -ENOMEM;
 		goto out_free;
 	}
-
 	ret = drm_prime_sg_to_page_addr_arrays(sgt, importing_xobj->pages,
-					       NULL, attach->dmabuf->size >> PAGE_SHIFT);
+	       NULL, attach->dmabuf->size >> PAGE_SHIFT);
 	if (ret)
 		goto out_free;
 
-	importing_xobj->vmapping = vmap(importing_xobj->pages, importing_xobj->base.size >> PAGE_SHIFT, VM_MAP,
-					PAGE_KERNEL);
-
+	importing_xobj->vmapping = vmap(importing_xobj->pages,
+		importing_xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
 	if (!importing_xobj->vmapping) {
 		ret = -ENOMEM;
 		goto out_free;
@@ -1196,8 +1100,8 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 	bool start_check = false;
 	bool end_check = false;
 
-	for (i = 0; i < xdev->topology->m_count; i++) {
-		mem_data = &xdev->topology->m_mem_data[i];
+	for (i = 0; i < XOCL_MEM_TOPOLOGY(xdev)->m_count; i++) {
+		mem_data = &XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[i];
 		addr = mem_data->m_base_address;
 		start_check = (paddr >= addr);
 		end_check = (paddr + size <= addr + mem_data->m_size * 1024);
@@ -1214,7 +1118,8 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	const struct drm_xocl_pwrite_unmgd *args = data;
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	u32 dir = 1;
 	ssize_t ret = 0;
 
@@ -1265,7 +1170,8 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	const struct drm_xocl_pwrite_unmgd *args = data;
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	u32 dir = 0;  /* read */
 	ssize_t ret = 0;
 
@@ -1315,7 +1221,8 @@ clear:
 int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 			  struct drm_file *filp)
 {
-	struct xocl_dev *xdev = dev->dev_private;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_xocl_usage_stat *args = data;
 	int	i;
 
@@ -1323,7 +1230,7 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	if (args->mm_channel_count > 8)
 		args->mm_channel_count = 8;
 	for (i = 0; i < args->mm_channel_count; i++) {
-		xocl_mm_get_usage_stat(xdev, i, args->mm + i);
+		xocl_mm_get_usage_stat(drm_p, i, args->mm + i);
 	}
 
 	args->dma_channel_count = xocl_get_chan_count(xdev);

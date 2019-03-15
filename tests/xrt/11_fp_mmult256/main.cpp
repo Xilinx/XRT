@@ -256,6 +256,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
         munmap(bo1, DATA_SIZE*sizeof(float));
         munmap(bo2, DATA_SIZE*sizeof(float));
+        munmap(execData, DATA_SIZE*sizeof(float));
         xclFreeBO(handle,boHandle1);
         xclFreeBO(handle,boHandle2);
         xclFreeBO(handle,execHandle);

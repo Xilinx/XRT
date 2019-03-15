@@ -111,12 +111,23 @@ fi
 cp -r ${XRT_REPO_DIR}/src/platform/mnt-sd recipes-apps/
 
 echo " * Adding XRT, HAL, Driver recipes"
-cp recipes-core/images/petalinux-image.bbappend{,.orig}
-echo 'IMAGE_INSTALL_append = " xrt-dev"' >> recipes-core/images/petalinux-image.bbappend
-echo 'IMAGE_INSTALL_append = " mnt-sd"' >> recipes-core/images/petalinux-image.bbappend
-echo 'IMAGE_INSTALL_append = " xrt"' >> recipes-core/images/petalinux-image.bbappend
-echo 'IMAGE_INSTALL_append = " zocl"' >> recipes-core/images/petalinux-image.bbappend 
-echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> recipes-core/images/petalinux-image.bbappend 
+
+# In 2018.3 Petalinux the name of this file changed..
+PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
+if [[ $PETALINUX_VER == "2018.2" ]]; then
+	cp recipes-core/images/petalinux-image.bbappend{,.orig}
+	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
+else
+	cp recipes-core/images/petalinux-image-full.bbappend{,.orig}
+	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image-full.bbappend
+fi
+
+echo 'IMAGE_INSTALL_append = " xrt-dev"'            >> $PETALINUX_IMAGE_BBAPPEND
+echo 'IMAGE_INSTALL_append = " mnt-sd"'             >> $PETALINUX_IMAGE_BBAPPEND
+echo 'IMAGE_INSTALL_append = " xrt"'                >> $PETALINUX_IMAGE_BBAPPEND
+echo 'IMAGE_INSTALL_append = " zocl"'               >> $PETALINUX_IMAGE_BBAPPEND
+echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $PETALINUX_IMAGE_BBAPPEND
+echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $PETALINUX_IMAGE_BBAPPEND
 
 echo " * Adding XRT Kernel Node to Device Tree"
 echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
@@ -135,6 +146,7 @@ echo " * Configuring rootfs"
 #   menu -> "user packages" -> xrt-dev
 #   menu -> "user packages" -> zocl
 #   menu -> "user packages" -> opencl-headers-dev
+#   menu -> "user packages" -> opencl-clhpp-dev
 # Saves to: ${PETALINUX_NAME}/project-spec/configs/rootfs_config
 cp ../configs/rootfs_config{,.orig}
 echo 'CONFIG_xrt=y' >> ../configs/rootfs_config
@@ -142,6 +154,7 @@ echo 'CONFIG_mnt-sd=y' >> ../configs/rootfs_config
 echo 'CONFIG_xrt-dev=y' >> ../configs/rootfs_config
 echo 'CONFIG_zocl=y' >> ../configs/rootfs_config
 echo 'CONFIG_opencl-headers-dev=y' >> ../configs/rootfs_config
+echo 'CONFIG_opencl-clhpp-dev=y' >> ../configs/rootfs_config
 petalinux-config -c rootfs --oldconfig
 
 # Build package
