@@ -281,6 +281,7 @@ static long readback_variable_core(struct xocl_nifd* nifd, unsigned int *arg)
     perform_readback(nifd, 2);
     // I should be reading 32-bit words at a time
     readback_status = 0;
+    timeout_limit = timeout_limit * num_bits;
     while (readback_status == 0 && timeout_counter < timeout_limit)
     {
         msleep(100);
