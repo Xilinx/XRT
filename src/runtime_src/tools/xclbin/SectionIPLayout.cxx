@@ -66,6 +66,16 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   throw std::runtime_error(errMsg);
 }
 
+enum IP_CONTROL
+SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
+  if (_sIPControlType == "AP_CTRL_HS") return AP_CTRL_HS;
+  if (_sIPControlType == "AP_CTRL_CHAIN") return AP_CTRL_CHAIN;
+  if (_sIPControlType == "AP_CTRL_NONE") return AP_CTRL_NONE;
+
+  std::string errMsg = "ERROR: Unknown IP Control type: '" + _sIPControlType + "'";
+  throw std::runtime_error(errMsg);
+}
+
 
 void
 SectionIPLayout::marshalToJSON(char* _pDataSection,
@@ -189,13 +199,61 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       ipDataHdr.indices.m_index = ptIPData.get<uint16_t>("m_index");
       ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
     } else {
-        std::string sProperties = ptIPData.get<std::string>("properties");
-        ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+      // Get the properties value (if one is defined)
+      std::string sProperties = ptIPData.get<std::string>("properties", "0");
+      ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+      
+      { // m_int_enable
+        boost::optional<bool> bIntEnable;
+        bIntEnable = ptIPData.get_optional<bool>("m_int_enable");
+        if (bIntEnable.is_initialized()) {
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_INT_ENABLE_MASK);  // Clear existing bit
+          if (bIntEnable.get()) {
+            ipDataHdr.properties = ipDataHdr.properties | ((uint32_t) IP_INT_ENABLE_MASK); // Set bit
+          }
+        }
+      }
+  
+      { // m_interrupt_id
+        boost::optional<uint8_t> bInterruptID;
+        bInterruptID = ptIPData.get_optional<uint8_t>("m_interrupt_id");
+        if (bInterruptID.is_initialized()) {
+          unsigned int maxValue = ((unsigned int) IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
+          if (bInterruptID.get() > maxValue) {
+            std::string errMsg = XUtil::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).",
+                                               (unsigned int)bInterruptID.get(), maxValue);
+            throw std::runtime_error(errMsg);
+          }
+  
+          unsigned int shiftValue = ((unsigned int) bInterruptID.get()) << IP_INTERRUPT_ID_SHIFT;
+          shiftValue = shiftValue & ((uint32_t) IP_INTERRUPT_ID_MASK);
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_INTERRUPT_ID_MASK);  // Clear existing bits
+          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+        }
+      }
+  
+      { // m_ip_control
+        boost::optional<std::string> bIPControl;
+        bIPControl = ptIPData.get_optional<std::string>("m_ip_control");
+        if (bIPControl.is_initialized()) {
+          unsigned int ipControl = (unsigned int) getIPControlType(bIPControl.get());
+  
+          unsigned int maxValue = ((unsigned int) IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+          if (ipControl > maxValue) {
+            std::string errMsg = XUtil::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).",
+                                               (unsigned int) ipControl, maxValue);
+            throw std::runtime_error(errMsg);
+          }
+  
+          unsigned int shiftValue = ipControl << IP_CONTROL_SHIFT;
+          shiftValue = shiftValue & ((uint32_t) IP_CONTROL_MASK);
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_CONTROL_MASK);  // Clear existing bits
+          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+        }
+      }
     }
 
-
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
-    ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
 
     if ( sBaseAddress != "not_used" ) {
       ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
@@ -207,7 +265,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(ip_data::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(ip_data::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 

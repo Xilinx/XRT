@@ -246,12 +246,31 @@ extern "C" {
 
 
     /****   IP_LAYOUT SECTION ****/
+
+    // IP Kernel 
+    #define IP_INT_ENABLE_MASK    0x0001
+    #define IP_INTERRUPT_ID_MASK  0x00FE
+    #define IP_INTERRUPT_ID_SHIFT 0x1
+        
+    enum IP_CONTROL {
+        AP_CTRL_HS = 0,
+        AP_CTRL_CHAIN = 1,
+        AP_CTRL_NONE = 2
+    };
+
+    #define IP_CONTROL_MASK  0xFF00
+    #define IP_CONTROL_SHIFT 0x8
+
     /* IPs on AXI lite - their types, names, and base addresses.*/
     struct ip_data {
         uint32_t m_type; //map to IP_TYPE enum
         union {
-            uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
-            struct {     // Used by IP_MEM_* types
+            uint32_t properties; // Default: 32-bits to indicate ip specific property. 
+                                 // m_type: IP_KERNEL
+                                 //         m_int_enable   : Bit  - 0x0000_0001;
+                                 //         m_interrupt_id : Bits - 0x0000_00FE; 
+                                 //         m_ip_control   : Bits = 0x0000_FF00;
+            struct {             // m_type: IP_MEM_*
                uint16_t m_index;
                uint8_t m_pc_index;
                uint8_t unused;
