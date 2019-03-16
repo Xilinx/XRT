@@ -657,6 +657,16 @@ private:
   argument_vector_type m_rtinfo_args;
 };
 
+namespace kernel_utils {
+
+std::string
+normalize_kernel_name(const std::string& kernel_name);
+
+std::vector<std::string>
+get_cu_names(const std::string& kernel_name);
+
+} // kernel_utils
+
 } // xocl
 
 #endif
