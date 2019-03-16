@@ -210,7 +210,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     std::string sm_name = ptDebugIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(debug_ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 
