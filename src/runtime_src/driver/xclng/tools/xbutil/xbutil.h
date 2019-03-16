@@ -401,7 +401,7 @@ public:
         }
 
         const mem_topology *map = (mem_topology *)buf.data();
-        unsigned numDDR = 0;
+        int numDDR = 0;
 
         if(!buf.empty())
             numDDR = map->m_count;
@@ -420,7 +420,7 @@ public:
                 << "\n";
         }
 
-        for(unsigned i = 0; i < numDDR; i++) {
+        for(unsigned i = 0; i < (unsigned)numDDR; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
 
@@ -503,7 +503,7 @@ public:
         }
 
         const mem_topology *map = (mem_topology *)buf.data();
-        unsigned num = 0;
+        int num = 0;
 
         if(!buf.empty())
             num = map->m_count;
@@ -522,7 +522,7 @@ public:
                << std::setw(10) << "Pending(B/#)" << "\n";
         }
 
-        for(unsigned i = 0; i < num; i++) {
+        for(int i = 0; i < num; i++) {
             std::string lname;
             bool flag = false;
             std::map<std::string, std::string> stat_map;

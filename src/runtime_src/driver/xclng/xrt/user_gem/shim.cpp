@@ -730,7 +730,7 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
     obj.enable = enable ? 1 : 0;
     ioctl(mUserHandle, DRM_IOCTL_XOCL_P2P_ENABLE, &obj);
     if (errno == ENOSPC)
-	    return errno;
+	    return -errno;
     else if (errno == EALREADY && !force)
 	    return 0;
 
@@ -747,7 +747,7 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
         std::ofstream rescanFile(rescan_path);
         if(!rescanFile.is_open()) {
             perror(rescan_path.c_str());
-            return errno;
+            return -errno;
         }
         rescanFile << input;
     }
@@ -756,7 +756,7 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
     std::string err;
     pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "p2p_enable", err, p2p_enable);
     if (p2p_enable == 2)
-	    return EBUSY;
+	    return -EBUSY;
 
     return 0;
 }
@@ -884,9 +884,8 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
     const unsigned cmd = XCLMGMT_IOCICAPDOWNLOAD_AXLF;
     xclmgmt_ioc_bitstream_axlf obj = {const_cast<axlf *>(buffer)};
     int ret = ioctl(mMgtHandle, cmd, &obj);
-    if(ret) {
-        return ret ? -errno : ret;
-    }
+    if(ret)
+        return -errno;
 
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
     // reinitializes the DDR and results in ECC error.
@@ -1617,16 +1616,16 @@ static int findMgmtDeviceID(int user_slot)
 
     for(int i = 0; i < 16; ++i) {
         std::string mgmtFile = "/dev/xclmgmt"+ std::to_string(i);
+
         int mgmt_fd = open(mgmtFile.c_str(), O_RDWR | O_SYNC);
         if(mgmt_fd < 0) {
             std::cout << "Could not open " << mgmtFile << std::endl;
             continue;
         }
-
         mgmt_slot = getMgmtSlotNo(mgmt_fd);
-        if(mgmt_slot == user_slot) {
+	(void) close(mgmt_fd);
+        if(mgmt_slot == user_slot)
             return i;
-        }
     }
 
     return -1;

@@ -18,9 +18,9 @@
 
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
 
-	struct xclmgmt_err_info obj;
-	u32	val, level;
-	u64	t;
+	struct xclmgmt_err_info obj = { 0 };
+	u32	val = 0, level = 0;
+	u64	t = 0;
 	int	i;
 
 	mgmt_info(lro, "Enter error_info IOCTL");

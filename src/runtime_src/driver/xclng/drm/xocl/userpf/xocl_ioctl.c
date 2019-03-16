@@ -408,7 +408,10 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 
 	offset = memHeader->m_sectionOffset;
 	size = memHeader->m_sectionSize;
+	if (size == 0 || size > 1024 * 1024 * 1024)
+		return -EINVAL;
 	*sect_tmp = vmalloc(size);
+
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
 	if (err) {
 		vfree(*sect_tmp);
@@ -572,16 +575,15 @@ failed:
 static int
 xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 {
-	long err = 0;
+	int err = 0;
 	uint64_t axlf_size = 0;
-	struct axlf *axlf = 0;
+	struct axlf *axlf = NULL;
 	char __user *buf = 0;
 	struct axlf bin_obj;
 	size_t size_of_header;
 	size_t num_of_sections;
-	size_t size;
 	int preserve_mem = 0;
-	struct mem_topology *new_topology;
+	struct mem_topology *new_topology = NULL;
 
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
@@ -668,19 +670,18 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	/* Populating MEM_TOPOLOGY sections. */
-	size = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
-			goto done;
-	} else if (sizeof_sect(new_topology, m_mem_data) != size) {
+	err = xocl_read_sect(MEM_TOPOLOGY, &new_topology, axlf, buf);
+	if (err < 0)
+		goto done;
+	if (sizeof_sect(new_topology, m_mem_data) != err) {
 		err = -EINVAL;
 		goto done;
 	}
 
 	/* Compare MEM_TOPOLOGY previous vs new. Ignore this and keep disable preserve_mem if not for aws.*/
 	if (xocl_is_aws(xdev) && (xdev->topology != NULL)) {
-		if ( (size == sizeof_sect(xdev->topology, m_mem_data)) &&
-		    !memcmp(new_topology, xdev->topology, size) ) {
+		if ( (err == sizeof_sect(xdev->topology, m_mem_data)) &&
+		    !memcmp(new_topology, xdev->topology, err) ) {
 			printk(KERN_INFO "XOCL: MEM_TOPOLOGY match, preserve mem_topology.\n");
 			preserve_mem = 1;
 		} else {
@@ -698,38 +699,34 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	xocl_cleanup_connectivity(xdev);
 
 	/* Copy MEM_TOPOLOGY from new_toplogy if not preserving memory. */
-	if (!preserve_mem)
+	if (!preserve_mem) {
 		xdev->topology = new_topology;
-	else
-		vfree(new_topology);
+		new_topology = NULL;
+	}
 
 	/* Populating IP_LAYOUT sections */
-	/* zocl_read_sect return size of section when successfully find it */
-	size = xocl_read_sect(IP_LAYOUT, &xdev->layout, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
-			goto done;
-	} else if (sizeof_sect(xdev->layout, m_ip_data) != size) {
+	err = xocl_read_sect(IP_LAYOUT, &xdev->layout, axlf, buf);
+	if (err < 0)
+		goto done;
+	if (sizeof_sect(xdev->layout, m_ip_data) != err) {
 		err = -EINVAL;
 		goto done;
 	}
 
 	/* Populating DEBUG_IP_LAYOUT sections */
-	size = xocl_read_sect(DEBUG_IP_LAYOUT, &xdev->debug_layout, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
-			goto done;
-	} else if (sizeof_sect(xdev->debug_layout, m_debug_ip_data) != size) {
+	err = xocl_read_sect(DEBUG_IP_LAYOUT, &xdev->debug_layout, axlf, buf);
+	if (err < 0)
+		goto done;
+	if (sizeof_sect(xdev->debug_layout, m_debug_ip_data) != err) {
 		err = -EINVAL;
 		goto done;
 	}
 
 	/* Populating CONNECTIVITY sections */
-	size = xocl_read_sect(CONNECTIVITY, &xdev->connectivity, axlf, buf);
-	if (size <= 0) {
-		if (size != 0)
-			goto done;
-	} else if (sizeof_sect(xdev->connectivity, m_connection) != size) {
+	err = xocl_read_sect(CONNECTIVITY, &xdev->connectivity, axlf, buf);
+	if (err < 0)
+		goto done;
+	if (sizeof_sect(xdev->connectivity, m_connection) != err) {
 		err = -EINVAL;
 		goto done;
 	}
@@ -745,16 +742,15 @@ xocl_read_axlf_helper(struct xocl_dev *xdev, struct drm_xocl_axlf *axlf_ptr)
 	userpf_info(xdev, "Loaded xclbin %pUb", &xdev->xclbin_id);
 
 done:
-	if (size < 0)
-		err = size;
 	/*
 	 * Always give up ownership for multi process use case; the real locking
 	 * is done by context creation API or by execbuf
 	 */
 	(void) xocl_icap_unlock_bitstream(xdev, &bin_obj.m_header.uuid,
 					  pid_nr(task_tgid(current)));
-	printk(KERN_INFO "%s err: %ld\n", __FUNCTION__, err);
+	printk(KERN_INFO "%s err: %d\n", __FUNCTION__, err);
 	vfree(axlf);
+	vfree(new_topology);
 	return err;
 }
 

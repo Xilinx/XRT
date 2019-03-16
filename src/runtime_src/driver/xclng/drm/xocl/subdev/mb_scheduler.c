@@ -1138,7 +1138,12 @@ get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
 static inline bool
 cu_done(struct exec_core *exec, unsigned int cu_idx)
 {
-	u32 cu_addr = cu_idx_to_addr(exec,cu_idx);
+	u32 cu_addr;
+
+	if (cu_idx == (unsigned int)-1)
+		return false;
+
+	cu_addr = cu_idx_to_addr(exec,cu_idx);
 	SCHED_DEBUGF("-> cu_done(%d) checks cu at address 0x%x\n",cu_idx,cu_addr);
 	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
 	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110

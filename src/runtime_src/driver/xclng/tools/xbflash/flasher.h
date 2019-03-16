@@ -93,14 +93,14 @@ private:
     };
     const char *E_FlasherTypeStrings[3] = { "UNKNOWN", "SPI", "BPI" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
-    unsigned int mIdx;
+    unsigned int mIdx = -1;
 
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
 
-    char *mMgmtMap;
-    FeatureRomHeader mFRHeader;
-    xclDeviceHandle mHandle;
-    struct stat mSb;
+    char *mMgmtMap = nullptr;
+    FeatureRomHeader mFRHeader{};
+    xclDeviceHandle mHandle = nullptr;
+    struct stat mSb = { 0 };
     unsigned int mGoldenVer = UINT_MAX;
 
     const std::vector<std::pair<std::string, E_FlasherType>> flashPairs = {
