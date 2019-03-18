@@ -182,8 +182,8 @@ namespace xdp {
   }
 
   void ProfileWriterI::writeKernelStreamSummary(
-    std::string& deviceName, std::string& MasterPort, std::string& MasterArgs,
-    std::string& SlavePort, std::string& SlaveArgs, uint64_t strNumTranx,
+    const std::string& deviceName, const std::string& MasterPort, const std::string& MasterArgs,
+    const std::string& SlavePort, const std::string& SlaveArgs, uint64_t strNumTranx,
     double transferRateMBps, double avgSize, double avgUtil,
     double linkStarve, double linkStall)
   {

@@ -107,7 +107,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-std::pair<size_t, size_t> xcldev::device::getStreamName (std::vector<std::string>& aSlotNames,
+std::pair<size_t, size_t> xcldev::device::getStreamName (const std::vector<std::string>& aSlotNames,
     std::vector< std::pair<std::string, std::string> >& aStreamNames) {
     //Slotnames are of the format "Master-Slave", split them and return in separate vector
     //return max length of the Master and Slave port names
@@ -285,15 +285,16 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
             std::cout << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second
-                << "  " << std::setw(16) << std::hex << debugResults.OverallStatus[i]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][0]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][1]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][2]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][3]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][0]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][1]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][2]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][3]
+                << std::hex
+                << "  " << std::setw(16) << debugResults.OverallStatus[i]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][0]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][1]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][2]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][3]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][0]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][1]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][2]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][3]
                 << std::dec << std::endl;
         }
     }

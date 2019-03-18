@@ -1271,7 +1271,7 @@ public:
 
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
-    std::pair<size_t, size_t> getStreamName (std::vector<std::string>& aSlotNames,
+    std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
     int readSPMCounters();
     int readSSPMCounters();

@@ -1150,9 +1150,9 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
          sstr << quotes << "ReadTranx" << quotes << " : " << quotes <<  ReadTranx[i] << quotes << ",";
          sstr << quotes << "OutstandingCnt" << quotes << " : " << quotes <<  OutStandCnts[i] << quotes << ",";
          sstr << quotes << "LastWrAddr" << quotes << " : " << quotes << "0x" << std::hex << LastWriteAddr[i] << quotes << ",";
-         sstr << quotes << "LastWrData" << quotes << " : " << quotes << "0x" << std::hex << LastWriteData[i] << quotes << ",";
-         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << "0x" << std::hex << LastReadAddr[i]  << quotes << ",";
-         sstr << quotes << "LastRdData" << quotes << " : " << quotes << "0x" << std::hex << LastReadData[i]  << quotes << std::dec ;
+         sstr << quotes << "LastWrData" << quotes << " : " << quotes << "0x" << LastWriteData[i] << quotes << ",";
+         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << "0x" << LastReadAddr[i]  << quotes << ",";
+         sstr << quotes << "LastRdData" << quotes << " : " << quotes << "0x" << LastReadData[i]  << quotes << std::dec ;
          sstr << "}";
       }
     sstr << "]";
@@ -1554,16 +1554,17 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
         sstr << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second
-                << "  " << std::setw(16) << std::hex << OverallStatus[i]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][0]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][1]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][2]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][3]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][0]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][1]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][2]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][3]
-                << std::endl;
+                << std::hex
+                << "  " << std::setw(16) << OverallStatus[i]
+                << "  " << std::setw(16) << SnapshotStatus[i][0]
+                << "  " << std::setw(16) << SnapshotStatus[i][1]
+                << "  " << std::setw(16) << SnapshotStatus[i][2]
+                << "  " << std::setw(16) << SnapshotStatus[i][3]
+                << "  " << std::setw(16) << CumulativeStatus[i][0]
+                << "  " << std::setw(16) << CumulativeStatus[i][1]
+                << "  " << std::setw(16) << CumulativeStatus[i][2]
+                << "  " << std::setw(16) << CumulativeStatus[i][3]
+                << std::dec << std::endl;
       }
     }
   }

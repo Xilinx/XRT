@@ -82,9 +82,9 @@ namespace xdp {
           double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
       void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
           double cuStallExt, double cuStallStr, double cuStallInt);
-      void writeKernelStreamSummary(std::string& deviceName,
-                                    std::string& MasterPort, std::string& MasterArgs,
-                                    std::string& SlavePort, std::string& SlaveArgs,
+      void writeKernelStreamSummary(const std::string& deviceName,
+                                    const std::string& MasterPort, const std::string& MasterArgs,
+                                    const std::string& SlavePort, const std::string& SlaveArgs,
                                     uint64_t strNumTranx, double transferRateMBps,
                                     double avgSize, double avgUtil,
                                     double linkStarve, double linkStall);
