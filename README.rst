@@ -1,13 +1,19 @@
+.. raw:: html
+
+    <a href="https://scan.coverity.com/projects/xilinx-xrt-5f9a8a18-9d52-4cb2-b2ac-2d8d1b59477f">
+     <img alt="Coverity Scan Build Status" src="https://scan.coverity.com/projects/17781/badge.svg?flat=1">
+    </a>
+
 ==============
 Xilinx Runtime
 ==============
 
-.. image:: docs/_images/XRT-Layers.svg
+.. image:: src/runtime_src/doc/toc/XRT-Layers.svg
    :align: center
-   
+
 Xilinx Runtime (XRT) is implemented as as a combination of userspace and kernel
 driver components. XRT supports both PCIe based boards like U200, U250 and MPSoC
-base embedded platforms. XRT provides a standardized software interface to Xilinx 
+base embedded platforms. XRT provides a standardized software interface to Xilinx
 FPGA. The key user APIs are defined in
 `xclhal2.h <src/runtime_src/driver/include/xclhal2.h>`_ header file.
 

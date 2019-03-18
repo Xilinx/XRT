@@ -30,8 +30,8 @@ set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_swemu
-  ${BOOST_FILESYSTEM_LIBRARY}
-  ${BOOST_SYSTEM_LIBRARY}
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
   common_em
   rt

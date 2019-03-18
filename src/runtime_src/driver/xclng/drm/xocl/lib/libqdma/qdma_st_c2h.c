@@ -261,9 +261,10 @@ int descq_st_c2h_read(struct qdma_descq *descq, struct qdma_request *req,
 		unsigned int last = ring_idx_incr(pidx, fl_used - 1, flq->size);
 		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
 
-		pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
-			descq->conf.name, req, cb->offset, req->count);
 		req->eot_rcved = flq->sdesc_info[last].f.stm_eot;
+		if (req->eot_rcved)
+			pr_debug("%s, req 0x%p, %u/%u rcv EOT.\n",
+				descq->conf.name, req, cb->offset, req->count);
 	}
 
 	incr_cmpl_desc_cnt(descq, fl_used);
