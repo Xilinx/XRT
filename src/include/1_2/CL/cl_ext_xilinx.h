@@ -443,6 +443,11 @@ typedef cl_uint cl_program_target_type;
 #define CL_PROGRAM_TARGET_TYPE_SW_EMU   0x2
 #define CL_PROGRAM_TARGET_TYPE_HW_EMU   0x4
 
+// K2K kernel argument sentinel
+// XCL_HW_STREAM is a global sentinel value that XRT knows to
+// represent an argument transferred via a hardware stream connection.
+// Such arguments require no direct software intervention.
+#define XCL_HW_STREAM NULL
 
 #ifdef __cplusplus
 }
