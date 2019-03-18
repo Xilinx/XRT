@@ -62,18 +62,28 @@ completed() const
 
 write_command::
 write_command(xrt_device* device)
-  : command(device,ERT_WRITE)
+  : command(device,ERT_EXEC_WRITE)
 {
   m_impl->ecmd->type = ERT_KDS_LOCAL;
+  m_impl->ecmd->count = 1+4; // cumask + 4 ctrl
+}
+
+void
+write_command::
+add_cu(value_type cuidx)
+{
+  if (cuidx>=32)
+    throw std::runtime_error("write_command supports at most 32 CUs");
+  auto wcmd = static_cast<ert_start_kernel_cmd *>(m_impl->ecmd);
+  wcmd->cumask |= 1<<cuidx;
 }
 
 void
 write_command::
 add(addr_type addr, value_type value)
 {
-  (*m_impl)[offset++] = addr;
-  (*m_impl)[offset++] = value;
-  m_impl->ecmd->count += 2;
+  (*m_impl)[++m_impl->ecmd->count] = addr;
+  (*m_impl)[++m_impl->ecmd->count] = value;
 }
 
 }} // exec,xrt

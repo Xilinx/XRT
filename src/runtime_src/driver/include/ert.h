@@ -231,7 +231,7 @@ enum ert_cmd_state {
  * @ERT_START_CU:       start a workgroup on a CU
  * @ERT_START_KERNEL:   currently aliased to ERT_START_CU
  * @ERT_CONFIGURE:      configure command scheduler
- * @ERT_WRITE:          write pairs of addr and value
+ * @ERT_EXEC_WRITE:     execute a specified CU after writing
  * @ERT_CU_STAT:        get stats about CU execution
  * @ERT_START_COPYBO:   start KDMA CU or P2P, may be converted to ERT_START_CU
  *                      before cmd reach to scheduler, short-term hack
@@ -242,7 +242,7 @@ enum ert_cmd_opcode {
   ERT_CONFIGURE    = 2,
   ERT_EXIT         = 3,
   ERT_ABORT        = 4,
-  ERT_WRITE        = 5,
+  ERT_EXEC_WRITE   = 5,
   ERT_CU_STAT      = 6,
   ERT_START_COPYBO = 7,
 };

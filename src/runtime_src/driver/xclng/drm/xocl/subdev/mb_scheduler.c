@@ -843,6 +843,37 @@ cu_pop_done(struct xocl_cu *xcu)
 		     xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
 }
 
+static void
+cu_write_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	unsigned int size = cmd_regmap_size(xcmd);
+	u32 *regmap = cmd_regmap(xcmd);
+	unsigned int idx;
+
+	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
+	for (idx = 4; idx < size - 1; idx += 2) {
+		u32 offset = ecmd->data[idx];
+		u32 val = ecmd->data[idx+1];
+
+		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
+		iowrite32(val, xcu->base + offset);
+	}
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+static void
+cu_write_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	unsigned int size = cmd_regmap_size(xcmd);
+	u32 *regmap = cmd_regmap(xcmd);
+	unsigned int idx;
+
+	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
+	for (idx = 4; idx < size; ++idx)
+		iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
 /**
  * cu_start() - Start the CU with a new command.
  *
@@ -868,8 +899,10 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	 * 0x4, 0x8 used for interrupt, which is initialized in setup of ERT
 	 * 0xC used for interrupt status, which is set by hardware
 	 */
-	for (i = 4; i < size; ++i)
-		iowrite32(*(regmap + i), xcu->base + xcu->addr + (i << 2));
+	if (cmd_opcode(xcmd) == ERT_EXEC_WRITE)
+		cu_write_ooo(xcu,cmd);
+	else
+		cu_write_ino(xcu,cmd);
 
 	// start cu.  update local state as we may not be polling prior
 	// to next ready check.
@@ -1608,27 +1641,6 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 }
 
 /*
- * execute_write_cmd() - Execute ERT_WRITE commands
- */
-static int
-exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
-{
-	struct ert_packet *ecmd = xcmd->ert_pkt;
-	unsigned int idx = 0;
-
-	SCHED_DEBUGF("-> %s(%d,%lu)\n", __func__, exec->uid, xcmd->uid);
-	for (idx = 0; idx < ecmd->count - 1; idx += 2) {
-		u32 addr = ecmd->data[idx];
-		u32 val = ecmd->data[idx+1];
-
-		SCHED_DEBUGF("+ exec_write_cmd base[0x%x] = 0x%x\n", addr, val);
-		iowrite32(val, exec->base + addr);
-	}
-	SCHED_DEBUG("<- exec_write\n");
-	return 0;
-}
-
-/*
  * execute_copbo_cmd() - Execute ERT_START_COPYBO commands
  *
  * This is special case for copying P2P
@@ -1791,20 +1803,16 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	unsigned int cuidx;
 	u32 opcode = cmd_opcode(xcmd);
+	struct xocl_cu *xcu;
 
 	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d)\n", __func__, xcmd->uid, opcode);
-
-	if (opcode == ERT_WRITE && exec_execute_write_cmd(exec, xcmd)) {
-		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
-		return false;
-	}
 
 	if (opcode == ERT_START_COPYBO && exec_execute_copybo_cmd(exec, xcmd)) {
 		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
 		return false;
 	}
 
-	if (opcode != ERT_START_CU) {
+	if (opcode != ERT_START_CU && opcode != ERT_EXEC_WRITE) {
 		SCHED_DEBUGF("<- %s not ERT_START_CU -> true\n", __func__);
 		return true;
 	}
