@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <uuid/uuid.h>
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler
 // when XRT C++ code is refactored.
@@ -146,6 +147,7 @@ namespace xrt_core { namespace scheduler {
 int
 init(xclDeviceHandle handle, const axlf* top)
 {
+  uuid_t uuid;
   auto execbo = create_exec_bo(handle,0x1000);
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
@@ -162,10 +164,15 @@ init(xclDeviceHandle handle, const axlf* top)
   ecmd->cu_dma  = xrt_core::config::get_ert_cudma();
   ecmd->cu_isr  = xrt_core::config::get_ert_cuisr() && get_cuisr(top);
   ecmd->cq_int  = xrt_core::config::get_ert_cqint();
+  ecmd->dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow");
 
   // cu addr map
   std::copy(cus.begin(), cus.end(), ecmd->data);
   ecmd->count = 5 + cus.size();
+
+  uuid_copy(uuid, top->m_header.uuid);
+  if (xclOpenContext(handle,uuid,-1,true))
+    throw std::runtime_error("unable to reserve virtual CU");
 
   if (xclExecBuf(handle,execbo->bo))
     throw std::runtime_error("unable to issue xclExecBuf");
@@ -173,6 +180,8 @@ init(xclDeviceHandle handle, const axlf* top)
   // wait for command to complete
   while (ecmd->state < ERT_CMD_STATE_COMPLETED)
     while (xclExecWait(handle,1000)==0) ;
+
+  (void) xclCloseContext(handle,uuid,-1);
 
   return 0;
 }

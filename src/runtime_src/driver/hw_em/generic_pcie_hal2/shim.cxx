@@ -450,7 +450,7 @@ namespace xclhwemhal2 {
 
     set_simulator_started(true);
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    char* simMode = NULL;
+    std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs(); 
     std::string wdbFileName("");
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
@@ -472,10 +472,10 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-        cmdLineOption << " --gui --wdb " << wdbFileName << ".wdb"
+        cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
                       << " --protoinst " << protoFileName;
 
-        simMode = strdup(cmdLineOption.str().c_str());
+        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
         struct stat statBuf;
         if ( stat(sim_path.c_str(), &statBuf) != 0 )
@@ -495,7 +495,7 @@ namespace xclhwemhal2 {
         cmdLineOption << " --wdb " << wdbFileName << ".wdb"
                       << " --protoinst " << protoFileName;
 
-        simMode = strdup(cmdLineOption.str().c_str());
+        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
         struct stat statBuf;
         if ( stat(sim_path.c_str(), &statBuf) != 0 )
@@ -584,8 +584,12 @@ namespace xclhwemhal2 {
           setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1) ;
         }
 
-        if (mLogStream.is_open() && simMode)
-          mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
+        if (mLogStream.is_open() && launcherArgs.empty() == false)
+          mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
+
+        const char* simMode = NULL;
+        if(!launcherArgs.empty())
+          simMode = launcherArgs.c_str();
 
         struct stat statBuf;
         if ( stat(sim_file.c_str(), &statBuf) == -1 )
@@ -616,10 +620,6 @@ namespace xclhwemhal2 {
       }
     }
 
-    if(simMode)
-    {
-      free(simMode);
-    }
     return 0;
   }
 
@@ -1371,6 +1371,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     dest->mDDRSize            =    src->mDDRSize;
     dest->mDataAlignment      =    src->mDataAlignment;
     dest->mDDRBankCount       =    src->mDDRBankCount;
+    dest->mNumCDMA = 1;
     for(unsigned int i = 0; i < 4 ;i++)
       dest->mOCLFrequency[i]       =    src->mOCLFrequency[i];
 
@@ -1450,6 +1451,16 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return mbSchEnabled && !QDMAPlatform;
   }
 
+  bool HwEmShim::isCdmaEnabled()
+  {
+    return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
+  }
+
+  uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
+  {
+    return mFeatureRom.CDMABaseAddress[index];
+  }
+
   //following code is copied from driver/xclng/drm/xocl/subdev/feature_rom.c
   unsigned int HwEmShim::getDsaVersion()
   {
@@ -1458,6 +1469,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       return 52;
     if (vbnv.find("5_0") != std::string::npos)
       return 50;
+    else if (vbnv.find("qdma") != std::string::npos)
+      return 60;
     else if ( (vbnv.find("5_1") != std::string::npos)
         || (vbnv.find("u200_xdma_201820_1") != std::string::npos))
       return 51;

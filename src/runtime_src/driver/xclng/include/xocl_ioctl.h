@@ -315,9 +315,9 @@ enum drm_xocl_ctx_code {
         XOCL_CTX_OP_FREE_CTX
 };
 
-#define XOCL_CTX_SHARED    0x0
-#define XOCL_CTX_EXCLUSIVE 0x1
-
+#define	XOCL_CTX_SHARED		0x0
+#define	XOCL_CTX_EXCLUSIVE	0x1
+#define	XOCL_CTX_VIRT_CU_INDEX	0xffffffff
 /**
  * struct drm_xocl_ctx - Open or close a context on a compute unit on device
  * used with DRM_XOCL_CTX ioctl
@@ -331,11 +331,11 @@ enum drm_xocl_ctx_code {
  */
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
-        xuid_t   xclbin_id;
-        uint32_t cu_index;
-        uint32_t flags;
-        // unused, in future it would return context id
-        uint32_t handle;
+	xuid_t   xclbin_id;
+	uint32_t cu_index;
+	uint32_t flags;
+	// unused, in future it would return context id
+	uint32_t handle;
 };
 
 struct drm_xocl_info {

@@ -108,7 +108,7 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
     XUtil::TRACE(XUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'",
                                index,
                                (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz,
-                               getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type),
+                               getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str(),
                                pHdr->m_clock_freq[index].m_name));
 
     // Write out the entire structure
@@ -166,7 +166,7 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
     std::string sm_name = ptClockFreq.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(clock_freq::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(clock_freq::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(clock_freq::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 

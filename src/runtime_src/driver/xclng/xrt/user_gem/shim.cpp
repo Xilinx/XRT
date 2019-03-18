@@ -723,7 +723,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("xmc", "xmc_mgtavtt", errmsg, info->mMgtVtt);
         dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
-        dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
         dev->mgmt->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
 
         std::vector<uint64_t> freqs;

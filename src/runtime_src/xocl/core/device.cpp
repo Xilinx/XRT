@@ -164,12 +164,12 @@ is_sw_emulation()
   return swem;
 }
 
-static bool
-is_emulation_mode()
-{
-  static bool val = is_sw_emulation() || is_hw_emulation();
-  return val;
-}
+//static bool
+//is_emulation_mode()
+//{
+//  static bool val = is_sw_emulation() || is_hw_emulation();
+//  return val;
+//}
 
 static void
 init_scheduler(xocl::device* device)
@@ -873,7 +873,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 {
   auto xdevice = get_xrt_device();
 
-  if (!get_num_cdmas() || is_emulation_mode()) {
+  if (!get_num_cdmas() || is_sw_emulation()) {
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
       c->start();
       char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));

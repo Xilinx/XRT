@@ -13,12 +13,12 @@ file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-set(KERNELDOC "./kernel-doc")
+set(KERNELDOC "kernel-doc")
 set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52")
 MESSAGE(STATUS "${KERNELDOC} downloading")
-file(DOWNLOAD ${KERNELDOC_URL} ${KERNELDOC})
+file(DOWNLOAD ${KERNELDOC_URL} "./${KERNELDOC}")
 execute_process(COMMAND chmod +x ${KERNELDOC})
-find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS "./")
+find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS ${CMAKE_BINARY_DIR})
 
 find_program(SPHINX_EXECUTABLE sphinx-build)
 

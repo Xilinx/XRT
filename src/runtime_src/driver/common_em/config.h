@@ -112,6 +112,7 @@ namespace xclemulation{
       inline void setVerbosityLevel(unsigned int verbosity)     { mVerbosity        = verbosity;     }
       inline void setServerPort(unsigned int serverPort)        { mServerPort       = serverPort;    }
       inline void setKeepRunDir(bool _mKeepRundir)              { mKeepRunDir = _mKeepRundir;        }    
+      inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }    
       
       inline bool isDiagnosticsEnabled()        const { return mDiagnostics;    }
       inline bool isUMRChecksEnabled()          const { return mUMRChecks;      }
@@ -132,6 +133,7 @@ namespace xclemulation{
       inline unsigned int getServerPort()       const { return mServerPort;      }
       inline bool isErrorsToBePrintedOnConsole()   const { return mPrintErrorsInConsole;  }
       inline bool isWarningsToBePrintedOnConsole() const { return mPrintWarningsInConsole;}
+      inline std::string getLauncherArgs() const { return mLauncherArgs;}
       
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
@@ -156,6 +158,7 @@ namespace xclemulation{
       bool mVerbosity;
       unsigned int mServerPort;
       bool mKeepRunDir;
+      std::string mLauncherArgs;
       
      
       config();
