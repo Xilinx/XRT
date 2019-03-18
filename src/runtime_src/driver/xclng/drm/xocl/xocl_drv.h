@@ -249,12 +249,17 @@ struct xocl_dev_core {
 	struct task_struct      *health_thread;
 	struct xocl_health_thread_arg thread_arg;
 
+	struct xocl_drm		*drm;
+
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
 
 	bool			offline;
 };
+
+#define XOCL_DRM(xdev_hdl)					\
+	((struct xocl_dev_core *)xdev_hdl)->drm
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -331,7 +336,6 @@ struct xocl_dma_funcs {
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
 					irq_handler_t handler, void *arg, int event_fd);
 	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
-	void *(*get_drm_handle)(struct platform_device *pdev);
 };
 
 #define DMA_DEV(xdev)	\
@@ -362,9 +366,6 @@ struct xocl_dma_funcs {
 #define xocl_dma_intr_unreg(xdev, irq)				\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_unreg(DMA_DEV(xdev),	\
 	irq) : -ENODEV)
-#define	xocl_dma_get_drm_handle(xdev)				\
-	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_drm_handle(DMA_DEV(xdev)) : \
-	NULL)
 
 /* mb_scheduler callbacks */
 struct xocl_mb_scheduler_funcs {
@@ -672,7 +673,7 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
-int xocl_subdev_get_devinfo(uint32_t subdev_id,
+int xocl_subdev_get_devinfo(xdev_handle_t xdev_hdl, uint32_t subdev_id,
 	struct xocl_subdev_info *subdev_info, struct resource *res);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,

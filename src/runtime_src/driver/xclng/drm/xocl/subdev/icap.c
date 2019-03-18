@@ -2014,7 +2014,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
+			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
 				&subdev_info, &res);
 			if (err) {
 				ICAP_ERR(icap, "can't get MIG subdev info");
@@ -2034,7 +2034,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		}
 		if (ip->m_type == IP_DNASC) {
 			dna_check = true;
-			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_DNA,
+			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_DNA,
 				&subdev_info, &res);
 			if (err) {
 				ICAP_ERR(icap, "can't get DNA subdev info");

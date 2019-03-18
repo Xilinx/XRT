@@ -1618,8 +1618,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-        comps[i].nbytes = ((struct io_event *)comps)[i].res;
-        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	if (((struct io_event *)comps)[i].res < 0){
+            /* error returned by AIO framework */
+            comps[i].nbytes = 0;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res;
+	} else {
+            comps[i].nbytes = ((struct io_event *)comps)[i].res;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	}
     }
     num_evt = 0;
 

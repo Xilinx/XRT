@@ -1835,6 +1835,7 @@ static int mailbox_probe(struct platform_device *pdev)
 {
 	struct mailbox *mbx = NULL;
 	struct resource *res;
+	char *priv, no_intr = 0;
 	int ret;
 
 	mbx = kzalloc(sizeof(struct mailbox), GFP_KERNEL);
@@ -1855,6 +1856,10 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_established = false;
 	mbx->mbx_conn_id = 0;
 	mbx->mbx_kaddr = NULL;
+
+	priv = (char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		no_intr = *priv;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
@@ -1893,7 +1898,7 @@ static int mailbox_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (mailbox_no_intr) {
+	if (mailbox_no_intr || no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
 		mailbox_disable_intr_mode(mbx);
 	} else {

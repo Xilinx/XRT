@@ -76,15 +76,30 @@ struct xocl_pci_funcs userpf_pci_ops = {
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
+	struct xocl_subdev_info mbox;
+	char mbox_priv = 1;
+	int ret;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
-	xocl_mailbox_set(xdev, PRE_RST, NULL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DMA);
+	ret = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MAILBOX, &mbox, NULL);
+	if (ret) {
+		xocl_err(&pdev->dev, "can not get mailbox subdev");
+		return;
+	}
+	xocl_subdev_destroy_all(xdev);
+	mbox.priv_data = &mbox_priv;
+	mbox.data_len = 1;
+	ret = xocl_subdev_create_one(xdev, &mbox);
+	if (ret)
+		xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
 	} else {
 	reset_notify_client_ctx(xdev);
-	xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
+	ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+			                        xdev->core.priv.subdev_num);
+	if (ret)
+		xocl_err(&pdev->dev, "Create subdevices failed %d", ret);
 	xocl_mailbox_set(xdev, POST_RST, NULL);
 	xocl_exec_reset(xdev);
 	}
@@ -678,6 +693,13 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	if (ret)
 		goto failed_alloc_minor;
 
+	xdev->core.drm = xocl_drm_init(xdev);
+        if (!xdev->core.drm) {
+		ret = -EFAULT;
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed_drm_init;
+	}
+
 	ret = xocl_subdev_create_all(xdev, dev_info->subdev_info,
 			dev_info->subdev_num);
 	if (ret) {
@@ -713,6 +735,9 @@ failed_init_sysfs:
 	xocl_subdev_destroy_all(xdev);
 
 failed_create_subdev:
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
+failed_drm_init:
 	xocl_free_dev_minor(xdev);
 
 failed_alloc_minor:
@@ -740,6 +765,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_subdev_destroy_all(xdev);
 
 	xocl_fini_sysfs(&pdev->dev);
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
 	xocl_free_dev_minor(xdev);
 
 	pci_disable_device(pdev);

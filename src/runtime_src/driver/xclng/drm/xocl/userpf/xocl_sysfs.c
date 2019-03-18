@@ -81,11 +81,6 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = NULL;
 	struct drm_xocl_mm_stat stat;
-	void *drm_hdl;
-
-	drm_hdl = xocl_dma_get_drm_handle(xdev);
-	if (!drm_hdl)
-		return -EINVAL;
 
 	mutex_lock(&xdev->dev_lock);
 
@@ -96,7 +91,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
-		xocl_mm_get_usage_stat(drm_hdl, i, &stat);
+		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
 			memory_usage = 0;
