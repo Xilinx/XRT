@@ -31,8 +31,6 @@
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
 
-#define XOCL_MAX_CONCURRENT_CLIENTS 32
-
 #define XOCL_DRIVER_VERSION                             \
 	__stringify(XOCL_DRIVER_MAJOR) "."              \
 	__stringify(XOCL_DRIVER_MINOR) "."              \
@@ -95,7 +93,12 @@ struct xocl_dev	{
 	struct dev_pagemap pgmap;
 #endif
 	struct list_head                ctx_list;
-	struct mutex			ctx_list_lock;
+	/*
+	 * Per xdev lock protecting client list and all client contexts in the
+	 * list. Any operation which requires client status, such as xclbin
+	 * downloading or validating exec buf, should hold this lock.
+	 */
+	struct mutex			dev_lock;
 	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
@@ -118,9 +121,8 @@ struct client_ctx {
 	struct list_head	link;
 	unsigned int            abort;
 	unsigned int            num_cus;
-	atomic_t 		trigger;
+	atomic_t		trigger;
 	atomic_t                outstanding_execs;
-	struct mutex		lock;
 	struct xocl_dev        *xdev;
 	DECLARE_BITMAP		(cu_bitmap, MAX_CUS);
 	struct pid             *pid;
