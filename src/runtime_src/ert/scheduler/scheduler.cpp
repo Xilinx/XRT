@@ -83,6 +83,15 @@ using value_type = uint32_t;
 using bitmask_type = uint32_t;
 
 ////////////////////////////////////////////////////////////////
+// HLS AXI-lite
+////////////////////////////////////////////////////////////////
+static const u32 AP_START    = 0x1;
+static const u32 AP_DONE     = 0x2;
+static const u32 AP_IDLE     = 0x4;
+static const u32 AP_READY    = 0x8;
+static const u32 AP_CONTINUE = 0x10;
+
+////////////////////////////////////////////////////////////////
 // Extensions to driver/include/ert.h
 ////////////////////////////////////////////////////////////////
 const addr_type STATUS_REGISTER_ADDR[4] =
@@ -157,6 +166,13 @@ struct bitset_type
   }
 
   void
+  clear(size_type pos)
+  {
+    auto mask = pos >> 5;
+    bitmasks[mask] &= ~(1<<(pos - (mask << 5)));
+  }
+
+  void
   clear_and_set(size_type pos)
   {
     clear();
@@ -228,7 +244,7 @@ const size_type no_index = std::numeric_limits<size_type>::max();
 // there is not enough space for compiled firmware
 ////////////////////////////////////////////////////////////////
 #ifdef ERT_DEBUG
-const  size_type max_slots                  = 128;   // size of statically allocated array
+const  size_type max_slots                  = 32;   // size of statically allocated array
 #else
 const  size_type max_slots                  = 128;  // size of statically allocated array
 #endif
@@ -263,6 +279,7 @@ static value_type cq_status_enabled         = 0;
 static value_type mb_host_interrupt_enabled = 0;
 static value_type cu_dma_52                 = 0;
 static value_type cdma_enabled              = 0;
+static value_type dataflow_enabled          = 0;
 
 // Struct slot_info is per command slot in command queue
 struct slot_info
@@ -438,7 +455,9 @@ setup()
 {
   CTRL_DEBUG("-> setup\n");
 
-  num_slots = ERT_CQ_SIZE / slot_size;
+  // In dataflow number of slots is number of CUs plus ctrl slot (0),
+  // otherwise its as many slots as possible per slot_size
+  num_slots = dataflow_enabled ? num_cus+1 : ERT_CQ_SIZE / slot_size;
   num_slot_masks = ((num_slots-1)>>5) + 1;
   num_cu_masks = ((num_cus-1)>>5) + 1;
 
@@ -455,6 +474,7 @@ setup()
   CTRL_DEBUGF("cu_isr_enabled=%d\n",cu_interrupt_enabled);
   CTRL_DEBUGF("cq_int_enabled=%d\n",cq_status_enabled);
   CTRL_DEBUGF("mb_host_int_enabled=%d\n",mb_host_interrupt_enabled);
+  CTRL_DEBUGF("dataflow_enabled=%d\n",dataflow_enabled);
 
   // Initialize command slots
   for (size_type i=0; i<num_slots; ++i) {
@@ -469,9 +489,9 @@ setup()
     write_reg(slot.slot_addr,0x0);
   }
 
-  //Clear CSR
+  // Clear CSR  (COR so read)
   for (size_type i=0; i<4; ++i)
- 	 write_reg(STATUS_REGISTER_ADDR[i],0);
+    ERT_UNUSED volatile auto val = read_reg(STATUS_REGISTER_ADDR[i]);
 
   cu_status.reset(num_cus);
 
@@ -760,9 +780,7 @@ check_cu(size_type cu_idx, bool wait=false)
   // check if done
   do {
     // done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-    // but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
-    // checking for 0x10 is sufficient.
-    if (read_reg(cu_addr) & 2) {
+    if (read_reg(cu_addr) & (AP_DONE|AP_IDLE)) {
       // toogle cu status bit, it is now free
       cu_status.toggle(cu_idx);
       cu_slot_usage[cu_idx] = no_index; // reset slot index
@@ -814,6 +832,7 @@ configure_mb(size_type slot_idx)
   cu_interrupt_enabled = (features & 0x8)!=0;
   cq_status_enabled = (features & 0x10)!=0;
   cdma_enabled = (features & 0x20)!=0;
+  dataflow_enabled = (features & 0x40)!=0;
   cu_dma_52 = (features & 0x80000000)!=0;
 
   // CU base address
@@ -836,10 +855,10 @@ configure_mb(size_type slot_idx)
 }
 
 static bool
-stop_mb(size_type slot_idx)
+exit_mb(size_type slot_idx)
 {
   auto& slot = command_slots[slot_idx];
-  CTRL_DEBUGF("stop_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
+  CTRL_DEBUGF("exit_mb slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
   // disable CUDMA module
   cu_dma_enabled = 0;
@@ -859,7 +878,7 @@ stop_mb(size_type slot_idx)
   // Update registers so mgmt driver knows ERT has exited
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
-  CTRL_DEBUGF("scheduler stopped slot(%d) header=0x%x\n",slot_idx,slot.header_value);
+  CTRL_DEBUGF("scheduler loop exits slot(%d) header=0x%x\n",slot_idx,slot.header_value);
   exit(0);
   return true;
 }
@@ -923,8 +942,8 @@ process_special_command(value_type opcode, size_type slot_idx)
     return configure_mb(slot_idx);
   if (opcode==ERT_CU_STAT)
     return cu_stat(slot_idx);
-  if (opcode==ERT_STOP)
-    return stop_mb(slot_idx);
+  if (opcode==ERT_EXIT)
+    return exit_mb(slot_idx);
   if (opcode==ERT_ABORT)
     return abort_mb(slot_idx);
   return false;
@@ -1065,7 +1084,6 @@ running_to_free(size_type slot_idx)
  *     Status remains running (0x4) if CU is still running, or
  *     transitions to free if CU is done
  */
-ERT_UNUSED // don't warn when unused
 static void
 scheduler_loop()
 {
@@ -1078,6 +1096,7 @@ scheduler_loop()
   while (1) {
     for (size_type slot_idx=0; slot_idx<num_slots; ++slot_idx) {
       auto& slot = command_slots[slot_idx];
+
 #ifdef ERT_HW_EMU
       if(sim_embedded_scheduler_sw_imp::getSchedularPtr()!=nullptr) {
       sim_embedded_scheduler_sw_imp* sch=sim_embedded_scheduler_sw_imp::getSchedularPtr();
@@ -1087,6 +1106,38 @@ scheduler_loop()
         wait(t);
       }
 #endif
+
+      // In dataflow mode ERT is polling CUs for completion after
+      // host has started CU or acknowleged completion.  Ctrl cmds
+      // are processed in normal flow.
+      if (dataflow_enabled && slot_idx>0) {
+        size_type cuidx = slot_idx-1;  // compensate for reserved slot (0)
+
+        // Check if host has started or continued this CU
+        if (!cu_status.test(cuidx)) {
+          auto cqvalue = read_reg(slot.slot_addr);
+          if (cqvalue & (AP_START|AP_CONTINUE)) {
+            write_reg(slot.slot_addr,0x0); // clear
+            ERT_DEBUGF("enable cu(%d) cqvalue(0x%x)\n",cuidx,cqvalue);
+            cu_status.toggle(cuidx); // enable polling of this CU
+          }
+        }
+
+        if (!cu_status.test(cuidx))
+          continue; // CU is not used
+
+        auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
+        if (!(cuvalue & (AP_DONE | AP_IDLE)))
+          continue;
+
+        cu_status.toggle(cuidx); // disable polling until host re-enables
+        ERT_DEBUGF("polled cu(%d) cuvalue(0x%x)\n",cuidx,cuvalue);
+
+        // wake up host
+        notify_host(slot_idx);
+        continue;
+      }
+
       // CQ_STATUS_ENABLED CHECK WON'T WORK IF HOST TRANSITIONS
       // FROM ENABLED -> DISABLED IN CONFIGURE COMMAND
       if (!cq_status_enabled && ((slot.header_value & 0xF) == 0x4)) { // free

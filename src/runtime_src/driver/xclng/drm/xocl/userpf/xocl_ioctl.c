@@ -186,19 +186,21 @@ xocl_read_sect(enum axlf_section_kind kind, void **sect, struct axlf *axlf_full)
 }
 
 /*
- * Should be called with xdev->ctx_list_lock held
+ * Return number of client with open ("live") contexts on CUs.
+ * If this number > 0, xclbin is locked down
  */
-static uint live_client_size(struct xocl_dev *xdev)
+uint get_live_client_size(struct xocl_dev *xdev)
 {
 	const struct list_head *ptr;
 	const struct client_ctx *entry;
 	uint count = 0;
 
-	BUG_ON(!mutex_is_locked(&xdev->ctx_list_lock));
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
-		count++;
+		if (CLIENT_NUM_CU_CTX(entry) > 0)
+			count++;
 	}
 	return count;
 }
@@ -239,18 +241,22 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id)
 		return -EINVAL;
+
 	/*
 	 * Support for multiple processes
-	 * 1. We lock &xdev->ctx_list_lock so no new contexts can be opened and no live contexts
-	 *    can be closed
-	 * 2. If more than one context exists -- more than one clients are connected -- we cannot
-	 *    swap the xclbin return -EPERM
-	 * 3. If no live contexts exist there may still be sumbitted exec BOs from a
-	 *    previous context (which was subsequently closed), hence we check for exec BO count.
-	 *    If exec BO are outstanding we return -EBUSY
+	 * 1. We lock &xdev->dev_lock so no new contexts can be opened and no
+	 *    live contexts can be closed
+	 * 2. If more than one live context exists, we cannot swap xclbin
+	 * 3. If no live contexts exists, there may still be sumbitted exec
+	 *    BOs from a previous context (which was subsequently closed, but
+	 *    the BOs were stuck). If exec BO count > 0, we cannot swap xclbin
+	 *
+	 * Note that icap subdevice also maintains xclbin ref count, which is
+	 * used to lock down xclbin on mgmt pf side.
 	 */
 	if (!uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
-		if (atomic_read(&xdev->outstanding_execs)) {
+		if (get_live_client_size(xdev) ||
+			atomic_read(&xdev->outstanding_execs)) {
 			printk(KERN_ERR "Current xclbin is busy, can't change\n");
 			return -EBUSY;
 		}
@@ -313,10 +319,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
-		err = xocl_check_topology(drm_p);
+		err = xocl_cleanup_mem(drm_p);
 		if (err)
 			goto done;
-		xocl_cleanup_mem(drm_p);
 	}
 
 	err = xocl_icap_download_axlf(xdev, axlf);
@@ -330,7 +335,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	if (!preserve_mem) {
 		int rc = xocl_init_mem(drm_p);
-
 		if (err == 0)
 			err = rc;
 	}
@@ -355,20 +359,10 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err = 0;
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr);
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	return err;
-}
-
-uint get_live_client_size(struct xocl_dev *xdev)
-{
-	uint count;
-
-	mutex_lock(&xdev->ctx_list_lock);
-	count = live_client_size(xdev);
-	mutex_unlock(&xdev->ctx_list_lock);
-	return count;
 }
 
 void reset_notify_client_ctx(struct xocl_dev *xdev)

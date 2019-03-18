@@ -196,7 +196,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     std::string sm_tag = ptMemData.get<std::string>("m_tag");
     if (sm_tag.length() >= sizeof(mem_data::m_tag)) {
       std::string errMsg = XUtil::format("ERROR: The m_tag entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_tag.length(), (unsigned int)sizeof(mem_data::m_tag), sm_tag);
+                                         (unsigned int)sm_tag.length(), (unsigned int)sizeof(mem_data::m_tag), sm_tag.c_str());
       throw std::runtime_error(errMsg);
     }
 
@@ -220,8 +220,8 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
       boost::optional<std::string> sizeKB = ptMemData.get_optional<std::string>("m_sizeKB");
       if (sizeBytes.is_initialized() && sizeKB.is_initialized())
         throw std::runtime_error(XUtil::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.",
-                                               static_cast<std::string>(sizeBytes.get()),
-                                               static_cast<std::string>(sizeKB.get())));
+                                               static_cast<std::string>(sizeBytes.get()).c_str(),
+                                               static_cast<std::string>(sizeKB.get()).c_str()));
 
       if (sizeKB.is_initialized())
         memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeKB.get()));

@@ -1152,9 +1152,9 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
 			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
-			if (!(reg_val & ERT_STOP_ACK)) {
+			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
-				XOCL_WRITE_REG32(ERT_STOP_CMD, xmc->base_addrs[IO_CQ]);
+				XOCL_WRITE_REG32(ERT_EXIT_CMD, xmc->base_addrs[IO_CQ]);
 			}
 		}
 
@@ -1173,9 +1173,9 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK)) {
+			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_STOP_ACK))
+				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
 				xocl_err(&xmc->pdev->dev,

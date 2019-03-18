@@ -673,7 +673,14 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        sensor_tree::put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
+        {
+            unsigned cur = 0;
+            std::string errmsg;
+            if(pcidev::get_dev(m_idx)->mgmt){
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
+            }
+            sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
+        }
 
         // powerm_devinfo_power
         sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
