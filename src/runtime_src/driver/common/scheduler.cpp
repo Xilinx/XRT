@@ -84,7 +84,7 @@ get_axlf_section(const axlf* top, axlf_section_kind kind)
   return nullptr;
 }
 
-std::vector<uint64_t>
+static std::vector<uint64_t>
 get_cus(const axlf* top)
 {
   std::vector<uint64_t> cus;
@@ -101,7 +101,7 @@ get_cus(const axlf* top)
   return cus;
 }
 
-uint64_t
+static uint64_t
 get_cu_base_offset(const axlf* top)
 {
   std::vector<uint64_t> cus;
@@ -118,7 +118,7 @@ get_cu_base_offset(const axlf* top)
   return base;
 }
 
-bool
+static bool
 get_cuisr(const axlf* top)
 {
   auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
@@ -133,7 +133,7 @@ get_cuisr(const axlf* top)
   return true;
 }
 
-bool
+static bool
 get_dataflow(const axlf* top)
 {
   auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
