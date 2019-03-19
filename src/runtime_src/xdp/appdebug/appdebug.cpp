@@ -1075,8 +1075,11 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
         }
-        max1 = std::max(aCUNamePortNames.back().first.length(), max1);
-        max2 = std::max(aCUNamePortNames.back().second.length(), max2);
+
+        // Use strlen() instead of length() because the strings taken from debug_ip_layout
+        // are always 128 in length, where the end is full of null characters
+        max1 = std::max(strlen(aCUNamePortNames.back().first.c_str()), max1);
+        max2 = std::max(strlen(aCUNamePortNames.back().second.c_str()), max2);
     }
     return std::pair<size_t, size_t>(max1, max2);
 }
@@ -1139,29 +1142,29 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     sstr << "["; //spm list
       for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
-         sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
-         sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
+         sstr << quotes << "RegionCU" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
+         sstr << quotes << "TypePort" << quotes << " : " << quotes << cuNameportNames[i].second.c_str() << quotes << ",";
          sstr << quotes << "WriteBytes" << quotes << " : " << quotes <<  WriteBytes[i] << quotes << ",";
          sstr << quotes << "WriteTranx" << quotes << " : " << quotes <<  WriteTranx[i] << quotes << ",";
          sstr << quotes << "ReadBytes" << quotes << " : " << quotes <<  ReadBytes[i] << quotes << ",";
          sstr << quotes << "ReadTranx" << quotes << " : " << quotes <<  ReadTranx[i] << quotes << ",";
          sstr << quotes << "OutstandingCnt" << quotes << " : " << quotes <<  OutStandCnts[i] << quotes << ",";
-         sstr << quotes << "LastWrAddr" << quotes << " : " << quotes << std::hex << "0x" <<  LastWriteAddr[i] << std::dec << quotes << ",";
-         sstr << quotes << "LastWrData" << quotes << " : " << quotes <<  LastWriteData[i] << quotes << ",";
-         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << std::hex << "0x" <<  LastReadAddr[i] << std::dec << quotes << ",";
-         sstr << quotes << "LastRdData" << quotes << " : " << quotes <<  LastReadData[i] << quotes ;
+         sstr << quotes << "LastWrAddr" << quotes << " : " << quotes << "0x" << std::hex << LastWriteAddr[i] << quotes << ",";
+         sstr << quotes << "LastWrData" << quotes << " : " << quotes << "0x" << LastWriteData[i] << quotes << ",";
+         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << "0x" << LastReadAddr[i]  << quotes << ",";
+         sstr << quotes << "LastRdData" << quotes << " : " << quotes << "0x" << LastReadData[i]  << quotes << std::dec ;
          sstr << "}";
       }
     sstr << "]";
   }
   else {
     sstr<< "SDx Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
+    int col2 = std::max(widths.second, strlen("Type or Port"));
 
     sstr << std::left
-              << std::setw(col1) << "CU Name"
-              << " " << std::setw(col2) << "AXI Portname"
+              << std::setw(col1) << "Region or CU"
+              << " " << std::setw(col2) << "Type or Port"
               << "  " << std::setw(16)  << "Write Bytes"
               << "  " << std::setw(16)  << "Write Tranx."
               << "  " << std::setw(16)  << "Read Bytes"
@@ -1175,17 +1178,18 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     for (unsigned int i = 0; i<NumSlots; ++i) {
       sstr << std::left
               << std::setw(col1) << cuNameportNames[i].first
-              << " " << std::setw(col2) << cuNameportNames[i].second
+              << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
               << "  " << std::setw(16) << WriteBytes[i]
               << "  " << std::setw(16) << WriteTranx[i]
               << "  " << std::setw(16) << ReadBytes[i]
               << "  " << std::setw(16) << ReadTranx[i]
               << "  " << std::setw(16) << OutStandCnts[i]
-              << "  " << std::hex << "0x" << std::setw(16) << LastWriteAddr[i] << std::dec
-              << "  " << std::setw(16) << LastWriteData[i]
-              << "  " << std::hex << "0x" << std::setw(16) << LastReadAddr[i] << std::dec
-              << "  " << std::setw(16) << LastReadData[i]
-              << std::endl;
+              << std::hex
+              << "  " << "0x" << std::setw(14) << LastWriteAddr[i]
+              << "  " << "0x" << std::setw(14) << LastWriteData[i]
+              << "  " << "0x" << std::setw(14) << LastReadAddr[i]
+              << "  " << "0x" << std::setw(14) << LastReadData[i]
+              << std::dec << std::endl;
     }
   }
   return sstr.str();
@@ -1550,16 +1554,17 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
         sstr << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second
-                << "  " << std::setw(16) << std::hex << OverallStatus[i]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][0]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][1]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][2]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][3]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][0]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][1]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][2]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][3]
-                << std::endl;
+                << std::hex
+                << "  " << std::setw(16) << OverallStatus[i]
+                << "  " << std::setw(16) << SnapshotStatus[i][0]
+                << "  " << std::setw(16) << SnapshotStatus[i][1]
+                << "  " << std::setw(16) << SnapshotStatus[i][2]
+                << "  " << std::setw(16) << SnapshotStatus[i][3]
+                << "  " << std::setw(16) << CumulativeStatus[i][0]
+                << "  " << std::setw(16) << CumulativeStatus[i][1]
+                << "  " << std::setw(16) << CumulativeStatus[i][2]
+                << "  " << std::setw(16) << CumulativeStatus[i][3]
+                << std::dec << std::endl;
       }
     }
   }
