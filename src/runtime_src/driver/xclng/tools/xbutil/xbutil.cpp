@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     size_t blockSize = 0;
     bool hot = false;
     int c;
-    dd::ddArgs_t ddArgs;
+    dd::ddArgs_t ddArgs{};
 
     const char* exe = argv[ 0 ];
     if (argc == 1) {
@@ -608,20 +608,24 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->program(xclbin, regionIndex);
         break;
     case xcldev::QUERY:
-        try
-        {
+        try {
             if(subcmd == xcldev::STREAM) {
                 result = deviceVec[index]->printStreamInfo(std::cout);
             } else {
                 result = deviceVec[index]->dump(std::cout);
             }
-        }
-        catch (...) {
+        } catch (...) {
+            result = -1;
             std::cout << "ERROR: query failed" << std::endl;
         }
         break;
     case xcldev::DUMP:
-        result = deviceVec[index]->dumpJson(std::cout);
+        try {
+            result = deviceVec[index]->dumpJson(std::cout);
+        } catch (...) {
+            result = -1;
+            std::cout << "ERROR: dump failed" << std::endl;
+        }
         break;
     case xcldev::RESET:
         if (hot) regionIndex = 0xffffffff;
@@ -1257,6 +1261,7 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
         return err;
 
     // Report ECC status
+    std::ios_base::fmtflags f(ostr.flags());
     ostr << std::endl;
     ostr << std::left << std::setw(16) << "Tag" << std::setw(12) << "Errors"
         << std::setw(12) << "CE Count" << std::setw(20) << "CE FFA"
@@ -1280,6 +1285,7 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
             << ce_ffa << "0x" << std::setw(18) << ue_ffa << std::endl;
     }
     ostr << std::endl;
+    ostr.flags(f);
     return 0;
 }
 
@@ -1363,13 +1369,13 @@ int xcldev::xclSetP2p(int argc, char *argv[])
         return -EINVAL;
 
     ret = d->setP2p(p2p_enable, force);
-    if (ret == ENOSPC) {
+    if (ret == -ENOSPC) {
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
-    } else if (ret == EBUSY) {
+    } else if (ret == -EBUSY) {
         std::cout << "ERROR: resoure busy, please try warm reboot" << std::endl;
     } else if (ret)
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(-ret) << std::endl;
 
     return ret;
 }

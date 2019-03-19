@@ -83,7 +83,7 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val) {
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
 
-	check_firewall(pdev, NULL);
+	(void) check_firewall(pdev, NULL);
 	switch (prop) {
 	case XOCL_AF_PROP_TOTAL_LEVEL:
 		*(u32 *)val = fw->max_level;

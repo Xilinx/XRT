@@ -963,6 +963,8 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Design Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
+	if (Len > 2048)
+		return -1;
 
 	/* allocate space for design name and final null character. */
 	Header->DesignName = kmalloc(Len, GFP_KERNEL);
@@ -1168,7 +1170,7 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	const struct axlf_section_header* hdr =
 		get_axlf_section_hdr(icap, top, kind);
 
-	if (hdr == NULL)
+	if (hdr == NULL || hdr->m_sectionSize > 1024 * 1024 * 1024)
 		return -EINVAL;
 
 	section = vmalloc(hdr->m_sectionSize);
@@ -1466,9 +1468,9 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 	}
 
 	freqs = (struct clock_freq_topology*)buffer;
-	if(freqs->m_count > 4) {
+	if(freqs->m_count > 4 || freqs->m_count <= 0) {
 		err = -EDOM;
-		ICAP_ERR(icap, "More than 4 clocks found in clock topology");
+		ICAP_ERR(icap, "Invalid num of clocks found in clock topology");
 		goto free_buffers;
 	}
 
@@ -1673,7 +1675,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	copy_buffer = (struct axlf *)vmalloc(copy_buffer_size);
 	if(!copy_buffer) {
 		ICAP_ERR(icap, "unable to alloc copy buffer for headers");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto done;
 	}
 	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
 		err = -EFAULT;
@@ -1682,7 +1685,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		ICAP_ERR(icap, "XRT version does not match");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	/* Match the xclbin with the hardware. */
@@ -1690,7 +1694,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "timestamp of ROM did not match Xclbin\n");
 		xocl_sysfs_error(xdev, "timestamp of ROM did not match Xclbin\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	ICAP_INFO(icap,
@@ -1718,7 +1723,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	mutex_unlock(&icap->icap_lock);
 
 	if(!need_download)
-		return 0;
+		goto done;
 
 	/*
 	 * Find sections in xclbin.

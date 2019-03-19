@@ -127,7 +127,7 @@ namespace xcldev {
             std::cout << "Error writing to file at offset " << aSize-count << "\n";
           }
         }
-        std::cout << "INFO: Read size 0x" << std::hex << incr << " B. Total Read so far 0x" << aSize-count << std::endl;
+        std::cout << "INFO: Read size 0x" << std::hex << incr << " B. Total Read so far 0x" << aSize-count << std::dec << std::endl;
       }
       free(buf);
       if (count != 0) {
@@ -538,6 +538,7 @@ namespace xcldev {
           if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
             //error
             std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR at offset 0x" << std::hex << phy << std::dec << "\n";
+	    free(buf);
             return -1;
           }
           count -= incr;
@@ -545,6 +546,7 @@ namespace xcldev {
 
         if (count != 0) {
           std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
+	  free(buf);
           return -1;
         }
         return count;

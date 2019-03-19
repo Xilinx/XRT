@@ -171,8 +171,7 @@ int Flasher::getBoardInfo(BoardInfo& board)
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index) :
-    mIdx(index), mMgmtMap(nullptr), mFRHeader{}
+Flasher::Flasher(unsigned int index) : mIdx(index)
 {
     if(mIdx >= pcidev::get_dev_total()) {
         std::cout << "ERROR: Invalid card index." << std::endl;
