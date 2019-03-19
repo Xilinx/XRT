@@ -49,6 +49,7 @@ public:
 
  protected:
   const std::string getIPTypeStr(enum IP_TYPE _ipType) const;
+  const std::string getIPControlTypeStr(enum IP_CONTROL _ipControlType) const;
   enum IP_TYPE getIPType(std::string& _sIPType) const;
   enum IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
 

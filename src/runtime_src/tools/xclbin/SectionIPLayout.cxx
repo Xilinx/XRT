@@ -66,6 +66,21 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   throw std::runtime_error(errMsg);
 }
 
+const std::string
+SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
+  switch (_ipControlType) {
+    case AP_CTRL_HS:
+      return "AP_CTRL_HS";
+    case AP_CTRL_CHAIN:
+      return "AP_CTRL_CHAIN";
+    case AP_CTRL_NONE:
+      return "AP_CTRL_NONE";
+  }
+
+  return XUtil::format("UNKNOWN (%d)", (unsigned int) _ipControlType);
+}
+
+
 enum IP_CONTROL
 SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
   if (_sIPControlType == "AP_CTRL_HS") return AP_CTRL_HS;
@@ -114,13 +129,24 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
-                               index,
-                               getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
-                               pHdr->m_ip_data[index].indices.m_index,
-                               pHdr->m_ip_data[index].indices.m_pc_index,
-                               pHdr->m_ip_data[index].m_base_address,
-                               pHdr->m_ip_data[index].m_name));
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
+                                 index,
+                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
+                                 pHdr->m_ip_data[index].indices.m_index,
+                                 pHdr->m_ip_data[index].indices.m_pc_index,
+                                 pHdr->m_ip_data[index].m_base_address,
+                                 pHdr->m_ip_data[index].m_name));
+    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x {m_ip_control: %s, m_interrupt_id: %d, m_int_enable: %d}, m_base_address: 0x%lx, m_name: '%s'",
+                                 index,
+                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
+                                 pHdr->m_ip_data[index].properties,
+                                 sIPControlType.c_str(),
+                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT,
+                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK)),
+                                 pHdr->m_ip_data[index].m_base_address,
+                                 pHdr->m_ip_data[index].m_name));
     } else {
       XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
                                  index,
@@ -139,6 +165,11 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
       ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_index).c_str());
       ip_data.put("m_pc_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).c_str());
+    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+      ip_data.put("m_int_enable", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK))).c_str());
+      ip_data.put("m_interrupt_id", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT).c_str());
+      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+      ip_data.put("m_ip_control", sIPControlType.c_str());
     } else {
       ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
     }

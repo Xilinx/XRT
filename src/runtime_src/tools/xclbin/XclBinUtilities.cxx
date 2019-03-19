@@ -307,7 +307,6 @@ XclBinUtilities::getUUIDAsString( const unsigned char (&_uuid)[16] )
 
 bool
 XclBinUtilities::findBytesInStream(std::fstream& _istream, const std::string& _searchString, unsigned int& _foundOffset) {
-  XUtil::TRACE(XUtil::format("Searching for: %s", _searchString.c_str()));
   _foundOffset = 0;
 
   unsigned int savedLocation = _istream.tellg();
