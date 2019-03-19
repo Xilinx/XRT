@@ -31,8 +31,6 @@
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
 
-#define XOCL_MAX_CONCURRENT_CLIENTS 32
-
 #define XOCL_DRIVER_VERSION                             \
 	__stringify(XOCL_DRIVER_MAJOR) "."              \
 	__stringify(XOCL_DRIVER_MINOR) "."              \
@@ -95,7 +93,12 @@ struct xocl_dev	{
 	struct dev_pagemap pgmap;
 #endif
 	struct list_head                ctx_list;
-	struct mutex			ctx_list_lock;
+	/*
+	 * Per xdev lock protecting client list and all client contexts in the
+	 * list. Any operation which requires client status, such as xclbin
+	 * downloading or validating exec buf, should hold this lock.
+	 */
+	struct mutex			dev_lock;
 	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
@@ -106,28 +109,26 @@ struct xocl_dev	{
  * struct client_ctx: Manage user space client attached to device
  *
  * @link: Client context is added to list in device
- * @xclbin_id: UUID for xclbin loaded by client, or nullid if no xclbin loaded
- * @xclbin_locked: Flag to denote that this context locked the xclbin
  * @trigger: Poll wait counter for number of completed exec buffers
  * @outstanding_execs: Counter for number outstanding exec buffers
  * @abort: Flag to indicate that this context has detached from user space (ctrl-c)
  * @num_cus: Number of resources (CUs) explcitly aquired
  * @lock: Mutex lock for exclusive access
  * @cu_bitmap: CUs reserved by this context, may contain implicit resources
+ * @virt_cu_ref: ref count for implicit resources reserved by this context.
  */
 struct client_ctx {
 	struct list_head	link;
-	xuid_t                  xclbin_id;
-	unsigned int            xclbin_locked;
 	unsigned int            abort;
-	unsigned int            num_cus;     /* number of resource locked explicitly by client */
-	atomic_t 		trigger;     /* count of poll notification to acknowledge */
+	unsigned int            num_cus;
+	atomic_t		trigger;
 	atomic_t                outstanding_execs;
-	struct mutex		lock;
 	struct xocl_dev        *xdev;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */
+	DECLARE_BITMAP		(cu_bitmap, MAX_CUS);
 	struct pid             *pid;
+	unsigned int		virt_cu_ref;
 };
+#define	CLIENT_NUM_CU_CTX(client) ((client)->num_cus + (client)->virt_cu_ref)
 
 struct xocl_mm_wrapper {
   struct drm_mm *mm;

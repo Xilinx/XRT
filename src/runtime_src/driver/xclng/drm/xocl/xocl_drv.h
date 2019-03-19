@@ -275,7 +275,6 @@ struct xocl_dev_core {
 
 /* rom callbacks */
 struct xocl_rom_funcs {
-	unsigned int (*dsa_version)(struct platform_device *pdev);
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
@@ -292,8 +291,6 @@ struct xocl_rom_funcs {
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
 	((struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).ops)
-#define	xocl_dsa_version(xdev)		\
-	(ROM_DEV(xdev) ? ROM_OPS(xdev)->dsa_version(ROM_DEV(xdev)) : 0)
 #define	xocl_is_unified(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->is_unified(ROM_DEV(xdev)) : true)
 #define	xocl_mb_mgmt_on(xdev)		\
@@ -411,11 +408,11 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)					\
-	xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)						\
-	xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+#define XOCL_XCLBIN_ID(xdev)						\
+	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)

@@ -217,12 +217,7 @@ public:
   }
 
   bool
-  has_kernel(const std::string& kname) const
-  {
-    auto kernels = get_kernel_names();
-    return range_find(kernels,[&kname](const std::string& s){return s==kname;})!=kernels.end();
-
-  }
+  has_kernel(const std::string& kname) const;
 
   /**
    * Create a kernel.

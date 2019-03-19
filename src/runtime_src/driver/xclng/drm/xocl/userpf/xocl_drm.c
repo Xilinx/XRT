@@ -223,9 +223,6 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	if (drm_is_primary_client(filp))
 		return -EPERM;
 
-	if (get_live_client_size(drm_p->xdev) > XOCL_MAX_CONCURRENT_CLIENTS)
-		return -EBUSY;
-
 	ret = xocl_exec_create_client(drm_p->xdev, &filp->driver_priv);
 	if (ret)
 		goto failed;
@@ -448,6 +445,10 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 			struct drm_mm_node *node, u64 size)
 {
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+	if (drm_p->mm == NULL || drm_p->mm[ddr] == NULL)
+		return -EINVAL;
+
 	return drm_mm_insert_node_generic(drm_p->mm[ddr], node, size, PAGE_SIZE,
 #if defined(XOCL_DRM_FREE_MALLOC)
 		0, 0);
@@ -456,7 +457,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 #endif
 }
 
-int xocl_check_topology(struct xocl_drm *drm_p)
+static int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *topology;
 	u16	i;
@@ -506,8 +507,9 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 	return 0xffffffff;
 }
 
-void xocl_cleanup_mem(struct xocl_drm *drm_p)
+int xocl_cleanup_mem(struct xocl_drm *drm_p)
 {
+	int err;
 	struct mem_topology *topology;
 	u16 i, ddr;
 	uint64_t addr;
@@ -515,6 +517,14 @@ void xocl_cleanup_mem(struct xocl_drm *drm_p)
 	struct xocl_mm_wrapper *wrapper;
 	struct hlist_node *tmp;
 #endif
+
+	mutex_lock(&drm_p->mm_lock);
+
+	err = xocl_check_topology(drm_p);
+	if (err) {
+		mutex_unlock(&drm_p->mm_lock);
+		return err;
+	}
 
 	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
 	if (topology) {
@@ -531,13 +541,13 @@ void xocl_cleanup_mem(struct xocl_drm *drm_p)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 			hash_for_each_possible_safe(drm_p->mm_range, wrapper,
 					tmp, node, addr) {
-				if (wrapper->ddr == i) {
-					hash_del(&wrapper->node);
-					vfree(wrapper);
-					drm_mm_takedown(drm_p->mm[i]);
-					vfree(drm_p->mm[i]);
-					vfree(drm_p->mm_usage_stat[i]);
-				}
+				if (wrapper->ddr != i)
+					continue;
+				hash_del(&wrapper->node);
+				vfree(wrapper);
+				drm_mm_takedown(drm_p->mm[i]);
+				vfree(drm_p->mm[i]);
+				vfree(drm_p->mm_usage_stat[i]);
 			}
 #endif
 			drm_p->mm[i] = NULL;
@@ -550,6 +560,10 @@ void xocl_cleanup_mem(struct xocl_drm *drm_p)
 	drm_p->mm_usage_stat = NULL;
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
+
+	mutex_unlock(&drm_p->mm_lock);
+
+	return 0;
 }
 
 int xocl_init_mem(struct xocl_drm *drm_p)
@@ -587,6 +601,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
 		topo->m_count, length);
+
+	mutex_lock(&drm_p->mm_lock);
 
 	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
@@ -665,6 +681,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
 
+	mutex_unlock(&drm_p->mm_lock);
 	return 0;
 
 failed:
@@ -683,5 +700,6 @@ failed:
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
 
+	mutex_unlock(&drm_p->mm_lock);
 	return err;
 }

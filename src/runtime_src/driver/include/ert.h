@@ -178,7 +178,8 @@ struct ert_configure_cmd {
   uint32_t cu_isr:1;
   uint32_t cq_int:1;
   uint32_t cdma:1;
-  uint32_t unusedf:25;
+  uint32_t dataflow:1;
+  uint32_t unusedf:24;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
@@ -239,7 +240,7 @@ enum ert_cmd_opcode {
   ERT_START_CU     = 0,
   ERT_START_KERNEL = 0,
   ERT_CONFIGURE    = 2,
-  ERT_STOP         = 3,
+  ERT_EXIT         = 3,
   ERT_ABORT        = 4,
   ERT_WRITE        = 5,
   ERT_CU_STAT      = 6,
@@ -374,10 +375,10 @@ enum ert_cmd_type {
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)
 
 /**
- * ERT stop command/ack
+ * ERT exit command/ack
  */
-#define	ERT_STOP_CMD			  ((ERT_STOP << 23) | ERT_CMD_STATE_NEW)
-#define	ERT_STOP_ACK			  (ERT_CMD_STATE_COMPLETED)
+#define	ERT_EXIT_CMD			  ((ERT_EXIT << 23) | ERT_CMD_STATE_NEW)
+#define	ERT_EXIT_ACK			  (ERT_CMD_STATE_COMPLETED)
 
 /**
  * State machine for both CUDMA and CUISR modules

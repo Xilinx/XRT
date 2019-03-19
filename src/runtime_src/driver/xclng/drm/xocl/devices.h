@@ -578,6 +578,18 @@ enum subdev_id {
 		XOCL_MB_SCHEDULER,			\
 		XOCL_RES_SCHEDULER,			\
 		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
+		&(char []){1},				\
+		1					\
+	}
+
+#define	XOCL_DEVINFO_SCHEDULER_51				\
+	{						\
+		XOCL_SUBDEV_MB_SCHEDULER,		\
+		XOCL_MB_SCHEDULER,			\
+		XOCL_RES_SCHEDULER,			\
+		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
+		&(char []){0},				\
+		1					\
 	}
 
 #define	XOCL_DEVINFO_FMGR				\
@@ -610,7 +622,7 @@ enum subdev_id {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER,				\
+			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -618,18 +630,18 @@ enum subdev_id {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER,				\
+			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
-#define USER_RES_AWS                            \
-       ((struct xocl_subdev_info []) {             \
-           XOCL_DEVINFO_FEATURE_ROM,           \
-           XOCL_DEVINFO_XDMA,              \
-           XOCL_DEVINFO_SCHEDULER,             \
-           XOCL_DEVINFO_ICAP_USER,             \
-       })
+#define USER_RES_AWS							\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_XDMA,				\
+			XOCL_DEVINFO_SCHEDULER_51,			\
+			XOCL_DEVINFO_ICAP_USER,				\
+		})
 
 #define	USER_RES_DSA52							\
 		((struct xocl_subdev_info []) {				\

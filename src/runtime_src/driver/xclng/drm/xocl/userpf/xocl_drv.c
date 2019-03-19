@@ -101,7 +101,7 @@ static void kill_all_clients(struct xocl_dev *xdev)
 	int wait_interval = 100;
 	int retry = total_wait_secs * 1000 / wait_interval;
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
@@ -112,7 +112,7 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		}
 	}
 
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
 	while (!list_empty(&xdev->ctx_list) && retry--)
 		msleep(wait_interval);
@@ -131,7 +131,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	bool sw_ch = false;
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	if (xdev->offline) {
 		skip = true;
 	} else if (!force && !list_is_singular(&xdev->ctx_list)) {
@@ -142,7 +142,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	} else {
 		xdev->offline = true;
 	}
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	if (ret < 0 || skip)
 		return ret;
 
@@ -158,9 +158,9 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	xdev->offline = false;
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
 	return ret;
 }
@@ -696,7 +696,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed_init_sysfs;
 	}
 
-	mutex_init(&xdev->ctx_list_lock);
+	mutex_init(&xdev->dev_lock);
 	xdev->needs_reset = false;
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
@@ -746,7 +746,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
-	mutex_destroy(&xdev->ctx_list_lock);
+	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xdev);

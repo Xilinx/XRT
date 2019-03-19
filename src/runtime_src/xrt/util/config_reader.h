@@ -289,7 +289,7 @@ get_cdma()
 inline bool
 get_feature_toggle(const std::string& feature)
 {
-  return detail::get_bool_value(feature.c_str(),false) || detail::get_env_value(feature.c_str());
+  return detail::get_bool_value(feature.c_str(),false);
 }
 
 inline std::string

@@ -451,7 +451,7 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 
 	qdma = platform_get_drvdata(pdev);
 
-	if (down_interruptible(&qdma->channel_sem[dir])) {
+	if (down_killable(&qdma->channel_sem[dir])) {
 		channel = -ERESTARTSYS;
 		goto out;
 	}

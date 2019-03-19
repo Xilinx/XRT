@@ -37,7 +37,7 @@ struct xocl_drm {
 	xdev_handle_t		xdev;
 	/* memory management */
 	struct drm_device       *ddev;
-	/* Memory manager array, one per DDR channel */
+	/* Memory manager array, one per DDR channel, protected by mm_lock */
 	struct drm_mm           **mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
@@ -87,8 +87,7 @@ void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
-void xocl_cleanup_mem(struct xocl_drm *drm_p);
-int xocl_check_topology(struct xocl_drm *drm_p);
+int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf);
