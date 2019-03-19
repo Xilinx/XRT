@@ -237,14 +237,14 @@ enum ert_cmd_state {
  *                      before cmd reach to scheduler, short-term hack
  */
 enum ert_cmd_opcode {
-  ERT_START_CU     = 0,
-  ERT_START_KERNEL = 0,
-  ERT_CONFIGURE    = 2,
-  ERT_EXIT         = 3,
-  ERT_ABORT        = 4,
-  ERT_EXEC_WRITE   = 5,
-  ERT_CU_STAT      = 6,
-  ERT_START_COPYBO = 7,
+  ERT_START_CU      = 0,
+  ERT_START_KERNEL  = 0,
+  ERT_CONFIGURE     = 2,
+  ERT_EXIT          = 3,
+  ERT_ABORT         = 4,
+  ERT_EXEC_WRITE    = 5,
+  ERT_CU_STAT       = 6,
+  ERT_START_COPYBO  = 7,
 };
 
 /**
@@ -253,11 +253,13 @@ enum ert_cmd_opcode {
  * @ERT_DEFAULT:        default command type
  * @ERT_KDS_LOCAL:      command processed by KDS locally
  * @ERT_CTRL:           control command uses reserved command queue slot
+ * @ERT_CU:             compute unit command
  */
 enum ert_cmd_type {
   ERT_DEFAULT = 0,
   ERT_KDS_LOCAL = 1,
   ERT_CTRL = 2,
+  ERT_CU = 3,
 };
 
 /**
