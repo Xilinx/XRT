@@ -132,7 +132,7 @@ static void write_icap_mux_register(struct xocl_nifd* nifd,
 
 static long start_controlled_clock_free_running(struct xocl_nifd* nifd)
 {
-    write_nifd_register(nifd, 0x1, NIFD_STOP_APP);
+    write_nifd_register(nifd, 0x3, NIFD_START_APP) ;
     return 0;
 }
 
