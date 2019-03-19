@@ -945,7 +945,7 @@ static void do_hw_rx(struct mailbox_channel *ch)
 			msg->mbm_flags |= MSG_FLAG_REQUEST;
 			ch->mbc_cur_msg = msg;
 
-		}	else if (pkt->body.msg_start.msg_size >
+		} else if (pkt->body.msg_start.msg_size >
 			ch->mbc_cur_msg->mbm_len) {
 			chan_msg_done(ch, -EMSGSIZE);
 			MBX_ERR(mbx, "received msg is too big");
@@ -1384,7 +1384,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 
-	MBX_DBG(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
+	MBX_INFO(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -1506,7 +1506,7 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
 	} else if (mbx->mbx_listen_cb) {
 		/* Call client's registered callback to process request. */
-		MBX_DBG(mbx, "%s: %d, passed on", recvstr, req->req);
+		MBX_INFO(mbx, "%s: %d, passed on", recvstr, req->req);
 		mbx->mbx_listen_cb(mbx->mbx_listen_cb_arg, msg->mbm_data,
 			msg->mbm_len, msg->mbm_req_id, msg->mbm_error, msg->mbm_chan_sw);
 	} else {
