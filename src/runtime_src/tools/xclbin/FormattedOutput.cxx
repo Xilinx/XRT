@@ -636,10 +636,10 @@ reportKernels( std::ostream & _ostream,
       throw std::runtime_error(errMsg);
     }
 
-    if (connectivity.empty()) {
-      std::string errMsg = "ERROR: Missing CONNECTIVTY section.  This usually is an indication of a malformed xclbin archive.";
-      throw std::runtime_error(errMsg);
-    }
+//    if (connectivity.empty()) {
+//      std::string errMsg = "ERROR: Missing CONNECTIVITY section.  This usually is an indication of a malformed xclbin archive.";
+//      throw std::runtime_error(errMsg);
+//    }
 
     if (ipLayout.empty()) {
       std::string errMsg = "ERROR: Missing IP_LAYOUT section.  This usually is an indication of a malformed xclbin archive.";
