@@ -17,6 +17,11 @@
 #include <linux/platform_device.h>
 #include "xocl_drv.h"
 
+struct offline_arg {
+	xdev_handle_t	xdev_hdl;
+	bool		offline;
+};
+
 /*
  * helper functions to protect driver private data
  */
@@ -106,6 +111,70 @@ void xocl_drvinst_free(void *data)
 	kfree(drvinstp);
 }
 
+static int match_offline_subdev(struct device *dev, void *data)
+{
+	struct offline_arg	*arg = data;
+	struct xocl_dev_core	*core = arg->xdev_hdl;
+	struct xocl_drvinst	*drvinstp;
+	int			inst;
+	void			*drv_data;
+
+	if (dev->parent == &core->pdev->dev) {
+		drv_data = platform_get_drvdata(to_platform_device(dev));
+		if (!data)
+			return 0;
+
+		drvinstp = container_of(drv_data, struct xocl_drvinst, data);
+		for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+			if (drvinstp == xocl_drvinst_array[inst])
+				break;
+		}
+
+		if (inst == ARRAY_SIZE(xocl_drvinst_array))
+			return 0;
+
+		drvinstp->offline = arg->offline;
+	}
+
+	return 0;
+}
+
+void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline)
+{
+	struct xocl_drvinst	*drvinstp;
+	int			inst;
+	struct offline_arg	arg;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(xdev_hdl, struct xocl_drvinst, data);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
+	}
+
+	if (inst < ARRAY_SIZE(xocl_drvinst_array))
+		drvinstp->offline = offline;
+
+	arg.xdev_hdl = xdev_hdl;
+	arg.offline = offline;
+	bus_for_each_dev(&platform_bus_type, NULL, &arg, 
+			match_offline_subdev);
+	mutex_unlock(&xocl_drvinst_lock);
+}
+
+bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl)
+{
+	struct xocl_drvinst	*drvinstp;
+	bool offline;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(xdev_hdl, struct xocl_drvinst, data);
+	offline = drvinstp->offline;
+	mutex_unlock(&xocl_drvinst_lock);
+
+	return offline;
+}
+
 void xocl_drvinst_set_filedev(void *data, void *file_dev)
 {
 	struct xocl_drvinst	*drvinstp;
@@ -139,6 +208,11 @@ void *xocl_drvinst_open(void *file_dev)
 	}
 
 	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		mutex_unlock(&xocl_drvinst_lock);
+		return NULL;
+	}
+
+	if (drvinstp->offline) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}

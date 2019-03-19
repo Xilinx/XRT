@@ -227,6 +227,7 @@ struct xocl_drvinst {
 	struct completion	comp;
 	struct list_head	open_procs;
 	void			*file_dev;
+	bool			offline;
 	char			data[1];
 };
 
@@ -250,12 +251,11 @@ struct xocl_dev_core {
 	struct xocl_health_thread_arg thread_arg;
 
 	struct xocl_drm		*drm;
+	struct delayed_work	reset_work;
 
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
-
-	bool			offline;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -693,6 +693,8 @@ void xocl_drvinst_free(void *data);
 void *xocl_drvinst_open(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
+void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);
+bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
 
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);

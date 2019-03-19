@@ -188,6 +188,16 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
+static void xocl_reset_work(struct work_struct *work)
+{
+	struct xocl_dev *xdev = container_of(to_delayed_work(work),
+			struct xocl_dev, core.reset_work);
+
+	xocl_drvinst_offline(xdev, true);
+	(void) xocl_hot_reset(xdev, true);
+	xocl_drvinst_offline(xdev, false);
+}
+
 static void xocl_mb_connect(struct xocl_dev *xdev)
 {
 	struct mailbox_req *mb_req = NULL;
@@ -671,7 +681,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	struct xocl_board_private	*dev_info;
 	int				ret;
 
-	xdev = devm_kzalloc(&pdev->dev, sizeof(*xdev), GFP_KERNEL);
+	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
 		return -ENOMEM;
@@ -683,6 +693,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
+	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
 	xocl_fill_dsa_priv(xdev, dev_info);
 
 	ret = identify_bar(xdev);
@@ -753,7 +764,7 @@ failed_alloc_minor:
 failed_to_enable:
 	unmap_bar(xdev);
 failed_to_bar:
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 	pci_set_drvdata(pdev, NULL);
 
 	return ret;
@@ -784,7 +795,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,

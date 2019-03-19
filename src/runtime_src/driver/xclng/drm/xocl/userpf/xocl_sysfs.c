@@ -210,7 +210,7 @@ static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int val = xdev->core.offline ? 1 : 0;
+	int val = xocl_drvinst_get_offline(xdev) ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -227,8 +227,8 @@ static ssize_t dev_offline_store(struct device *dev,
 
 	device_lock(dev);
 	if (offline) {
+		xocl_drvinst_offline(xdev, true);
 		xocl_subdev_destroy_all(xdev);
-		xdev->core.offline = true;
 	} else {
 		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
 				xdev->core.priv.subdev_num);
@@ -236,7 +236,7 @@ static ssize_t dev_offline_store(struct device *dev,
 			xocl_err(dev, "Online subdevices failed");
 			return -EIO;
 		}
-		xdev->core.offline = false;
+		xocl_drvinst_offline(xdev, false);
 	}
 	device_unlock(dev);
 
@@ -321,7 +321,6 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 }
 
 static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
-
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {

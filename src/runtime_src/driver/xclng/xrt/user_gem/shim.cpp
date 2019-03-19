@@ -786,14 +786,25 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
+    std::string err;
 
     if (kind == XCL_RESET_FULL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
     else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-    else if (kind == XCL_USER_RESET)
+    else if (kind == XCL_USER_RESET) {
+        int dev_offline;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
-    else
+        if (ret)
+		return errno;
+
+        dev_fini();
+	while (dev_offline) {
+            pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "dev_offline", err, dev_offline);
+	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
+	dev_init();
+    } else
         return -EINVAL;
 
     return ret ? errno : 0;

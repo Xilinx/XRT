@@ -195,7 +195,7 @@ static ssize_t dev_offline_show(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	int val = lro->core.offline ? 1 : 0;
+	int val = xocl_drvinst_get_offline(lro) ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -212,13 +212,13 @@ static ssize_t dev_offline_store(struct device *dev,
 
 	device_lock(dev);
 	if (offline) {
+		xocl_drvinst_offline(lro, true);
 		ret = health_thread_stop(lro);
 		if (ret) {
 			xocl_err(dev, "stop health thread failed");
 			return -EIO;
 		}
 		xocl_subdev_destroy_all(lro);
-		lro->core.offline = true;
 	} else {
 		ret = xocl_subdev_create_all(lro, lro->core.priv.subdev_info,
 			lro->core.priv.subdev_num);
@@ -231,7 +231,7 @@ static ssize_t dev_offline_store(struct device *dev,
 			xocl_err(dev, "start health thread failed");
 			return -EIO;
 		}
-		lro->core.offline = false;
+		xocl_drvinst_offline(lro, false);
 	}
 	device_unlock(dev);
 
