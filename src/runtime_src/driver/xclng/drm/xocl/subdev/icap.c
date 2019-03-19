@@ -2677,15 +2677,12 @@ static struct attribute_group icap_attr_group = {
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i;
 
 	BUG_ON(icap == NULL);
 
 	del_all_users(icap);
-	/* cleanup drm if there is any topo metadata */
-	if (!ICAP_PRIVILEGED(icap))
-		xocl_cleanup_mem(XOCL_DRM(xdev));
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, NULL);
 
 	if (ICAP_PRIVILEGED(icap))

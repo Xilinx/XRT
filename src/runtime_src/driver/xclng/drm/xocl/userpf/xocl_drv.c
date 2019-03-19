@@ -55,6 +55,10 @@ struct class *xrt_class;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+static void xocl_mb_connect(struct xocl_dev *xdev);
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err, bool sw_ch);
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	return xocl_dma_intr_config(xdev_hdl, intr, en);
@@ -88,6 +92,8 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_err(&pdev->dev, "can not get mailbox subdev");
 		return;
 	}
+	/* clean up mem topology */
+	xocl_cleanup_mem(XOCL_DRM(xdev));
 	xocl_subdev_destroy_all(xdev);
 	mbox.priv_data = &mbox_priv;
 	mbox.data_len = 1;
@@ -95,13 +101,15 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	if (ret)
 		xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
 	} else {
-	reset_notify_client_ctx(xdev);
-	ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+		reset_notify_client_ctx(xdev);
+		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
 			                        xdev->core.priv.subdev_num);
-	if (ret)
-		xocl_err(&pdev->dev, "Create subdevices failed %d", ret);
-	xocl_mailbox_set(xdev, POST_RST, NULL);
-	xocl_exec_reset(xdev);
+		if (ret)
+			xocl_err(&pdev->dev, "Create subdevs failed %d", ret);
+		xocl_mailbox_set(xdev, POST_RST, NULL);
+		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+		(void) xocl_mb_connect(xdev);
+		xocl_exec_reset(xdev);
 	}
 }
 
@@ -180,7 +188,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
-void xocl_mb_connect(struct xocl_dev *xdev)
+static void xocl_mb_connect(struct xocl_dev *xdev)
 {
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_conn mb_conn = { 0 };
