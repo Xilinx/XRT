@@ -80,19 +80,21 @@ throw_if_error(cl_int errcode, const std::string& msg)
 }
 
 static int
-run_kernel(xrt_device* xdev, uint32_t cubase, uint64_t bo_dev_addr)
+run_kernel(xrt_device* xdev, uint32_t cuidx, uint64_t bo_dev_addr)
 {
-  auto cmd = xrtcpp::exec::write_command(xdev);
-  cmd.add(cubase + XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,bo_dev_addr); // low
-  cmd.add(cubase + XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
-  cmd.add(cubase,AP_START);
+  auto cmd = xrtcpp::exec::exec_write_command(xdev);
+  cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,bo_dev_addr); // low
+  cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
+  cmd.add_cu(cuidx);
   cmd.execute();
   cmd.wait();
 
-  // Kernel is started but may not have completed yet.  The write
-  // command has no knowledge of what the AXI writes are doing.
-  // Caller must wait for CU completion.
 
+  // execute same command again demo completed() API busy wait
+  int count = 0;
+  cmd.execute();
+  while (!cmd.completed()) ++count;
+  std::cout << "wait count: " << count << "\n";
   return 0;
 }
 
@@ -113,29 +115,14 @@ run_test(cl_device_id device, cl_program program, cl_context context, cl_command
   throw_if_error(err,"failed to create hello kernel");
   cl_uint numcus = 0;
   clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&numcus,nullptr);
-  std::vector<size_t> cuaddrvec;
-  cuaddrvec.reserve(numcus);
-  clGetKernelInfo(kernel,CL_KERNEL_INSTANCE_BASE_ADDRESS,sizeof(size_t)*numcus,cuaddrvec.data(),nullptr);
-  clReleaseKernel(kernel);
+  throw_if_error(numcus==0,"no cus in program");
 
   // Get handle to underlying xrt_device
   auto xdev = xclGetXrtDevice(device,&err);
   throw_if_error(err,"failed to get xrt_device");
 
   // Now run the kernel using the low level write command interface
-  auto cuaddr = cuaddrvec.front();
-  auto ret = run_kernel(xdev,cuaddr,dbuf);
-
-  // Wait for the kernel to complete.  Since exec write is unaware of CU
-  // we need to poll CU completion.
-  auto cubuf = clCreateBuffer(context,CL_MEM_REGISTER_MAP,4,nullptr,&err);
-  throw_if_error(err,"failed to create kernel control buffer");
-  uint32_t cuctrlreg = 0;
-  while (!(cuctrlreg & (AP_DONE|AP_IDLE))) {
-    err = clEnqueueReadBuffer(queue,cubuf,CL_TRUE,cuaddr,4,&cuctrlreg,0,nullptr,nullptr);
-    throw_if_error(err,"failed to read kernel control register");
-  }
-  clReleaseMemObject(cubuf);
+  auto ret = run_kernel(xdev,0,dbuf);
 
   // Verify the result
   char hbuf[LENGTH] = {0};

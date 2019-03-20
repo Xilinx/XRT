@@ -19,6 +19,7 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
+#include "driver/include/xclbin.h"
 
 #include <set>
 #include <vector>
@@ -173,6 +174,14 @@ public:
   void
   release_cu_context(const uuid& uuid,size_t cuidx)
   { m_hal->release_cu_context(uuid,cuidx); }
+
+  void
+  acquire_cu_context(size_t cuidx,bool shared)
+  { acquire_cu_context(m_uuid,cuidx,shared); }
+
+  void
+  release_cu_context(size_t cuidx)
+  { release_cu_context(m_uuid,cuidx); }
 
   ExecBufferObjectHandle
   allocExecBuffer(size_t sz)
@@ -594,6 +603,7 @@ public:
   hal::operations_result<int>
   loadXclBin(const axlf* xclbin)
   {
+    m_uuid = xclbin->m_header.uuid;
     return m_hal->loadXclBin(xclbin);
   }
 
@@ -857,6 +867,7 @@ private:
   std::unique_ptr<hal::device> m_hal;
   std::vector<BufferObjectHandle> m_buffers;
   mutable std::mutex m_buffers_mutex;
+  xrt::uuid m_uuid;
   bool m_setup_done;
 };
 

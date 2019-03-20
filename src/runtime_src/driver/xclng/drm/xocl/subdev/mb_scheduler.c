@@ -608,7 +608,7 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	xcmd->ert_pkt = (struct ert_packet *)bo->vmapping;
 
 	// in kds mode copy pkt cus to command object cu bitmap
-	if (penguin && cmd_opcode(xcmd) == ERT_START_CU) {
+	if (penguin && cmd_type(xcmd) == ERT_CU) {
 		unsigned int i = 0;
 		u32 cumasks[4] = {0};
 
@@ -844,6 +844,43 @@ cu_pop_done(struct xocl_cu *xcu)
 }
 
 /**
+ * cu_configure_ooo() - Configure a CU with {addr,val} pairs
+ */
+static void
+cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	unsigned int size = cmd_regmap_size(xcmd);
+	u32 *regmap = cmd_regmap(xcmd);
+	unsigned int idx;
+
+	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
+	for (idx = 4; idx < size - 1; idx += 2) {
+		u32 offset = *(regmap + idx);
+		u32 val = *(regmap + idx + 1);
+
+		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
+		iowrite32(val, xcu->base + offset);
+	}
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+/**
+ * cu_configure_ino() - Configure a CU with consecutive layout
+ */
+static void
+cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	unsigned int size = cmd_regmap_size(xcmd);
+	u32 *regmap = cmd_regmap(xcmd);
+	unsigned int idx;
+
+	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
+	for (idx = 4; idx < size; ++idx)
+		iowrite32(*(regmap + idx), xcu->base + xcu->addr + (idx << 2));
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+/**
  * cu_start() - Start the CU with a new command.
  *
  * The command is pushed onto the running queue
@@ -852,24 +889,20 @@ static bool
 cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 {
 	// assert(!(ctrlreg & AP_START), "cu not ready");
-
-	// data past header and cu_masks
-	unsigned int size = cmd_regmap_size(xcmd);
-	u32 *regmap = cmd_regmap(xcmd);
-	unsigned int i;
-
 	SCHED_DEBUGF("-> %s cu(%d) cmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
 
 	// past header, past cumasks
-	SCHED_DEBUG_PACKET(regmap, size);
+	SCHED_DEBUG_PACKET(cmd_regmap(xcmd), cmd_regmap_size(xcmd));
 
 	/* write register map, starting at base + 0x10
 	 * 0x0 used for control register
 	 * 0x4, 0x8 used for interrupt, which is initialized in setup of ERT
 	 * 0xC used for interrupt status, which is set by hardware
 	 */
-	for (i = 4; i < size; ++i)
-		iowrite32(*(regmap + i), xcu->base + xcu->addr + (i << 2));
+	if (cmd_opcode(xcmd) == ERT_EXEC_WRITE)
+		cu_configure_ooo(xcu, xcmd);
+	else
+		cu_configure_ino(xcu, xcmd);
 
 	// start cu.  update local state as we may not be polling prior
 	// to next ready check.
@@ -1608,27 +1641,6 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 }
 
 /*
- * execute_write_cmd() - Execute ERT_WRITE commands
- */
-static int
-exec_execute_write_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
-{
-	struct ert_packet *ecmd = xcmd->ert_pkt;
-	unsigned int idx = 0;
-
-	SCHED_DEBUGF("-> %s(%d,%lu)\n", __func__, exec->uid, xcmd->uid);
-	for (idx = 0; idx < ecmd->count - 1; idx += 2) {
-		u32 addr = ecmd->data[idx];
-		u32 val = ecmd->data[idx+1];
-
-		SCHED_DEBUGF("+ exec_write_cmd base[0x%x] = 0x%x\n", addr, val);
-		iowrite32(val, exec->base + addr);
-	}
-	SCHED_DEBUG("<- exec_write\n");
-	return 0;
-}
-
-/*
  * execute_copbo_cmd() - Execute ERT_START_COPYBO commands
  *
  * This is special case for copying P2P
@@ -1794,18 +1806,13 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d)\n", __func__, xcmd->uid, opcode);
 
-	if (opcode == ERT_WRITE && exec_execute_write_cmd(exec, xcmd)) {
-		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
-		return false;
-	}
-
 	if (opcode == ERT_START_COPYBO && exec_execute_copybo_cmd(exec, xcmd)) {
 		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
 		return false;
 	}
 
-	if (opcode != ERT_START_CU) {
-		SCHED_DEBUGF("<- %s not ERT_START_CU -> true\n", __func__);
+	if (cmd_type(xcmd) != ERT_CU) {
+		SCHED_DEBUGF("<- %s not a CU style command -> true\n", __func__);
 		return true;
 	}
 
@@ -1839,7 +1846,6 @@ exec_penguin_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 static void
 exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	u32 cmdopcode = cmd_opcode(xcmd);
 	u32 cmdtype = cmd_type(xcmd);
 
 	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d) type(%d) slot_idx=%d\n",
@@ -1847,7 +1853,7 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (cmdtype == ERT_KDS_LOCAL || cmdtype == ERT_CTRL)
 		exec_mark_cmd_complete(exec, xcmd);
-	else if (cmdopcode == ERT_START_CU) {
+	else if (cmdtype == ERT_CU) {
 		struct xocl_cu *xcu = exec->cus[xcmd->cu_idx];
 
 		if (cu_first_done(xcu) == xcmd) {
@@ -2995,6 +3001,10 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	uint64_t dst_addr;
 	struct ert_start_copybo_cmd *scmd = (struct ert_start_copybo_cmd *)xobj->vmapping;
 
+	/* CU style commands must specify CU type */
+	if (scmd->opcode == ERT_START_CU || scmd->opcode == ERT_EXEC_WRITE)
+		scmd->type = ERT_CU;
+
 	/* Only convert COPYBO cmd for now. */
 	if (scmd->opcode != ERT_START_COPYBO)
 		return 0;
@@ -3030,6 +3040,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 		scmd->cu_mask[i / 32] |= 1 << (i % 32);
 
 	scmd->opcode = ERT_START_CU;
+	scmd->type = ERT_CU;
 
 	return 0;
 }
@@ -3218,7 +3229,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	SCHED_DEBUGF("-> %s(%d)\n", __func__, ecmd->opcode);
 
 	/* cus for start kernel commands only */
-	if (ecmd->opcode != ERT_START_CU)
+	if (ecmd->type != ERT_CU)
 		return 0; /* ok */
 
 	/* client context cu bitmap may not change while validating */

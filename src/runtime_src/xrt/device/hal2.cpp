@@ -122,7 +122,6 @@ void
 device::
 acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
 {
-#if 1
   if (m_handle && m_ops->mOpenContext) {
     if (m_ops->mOpenContext(m_handle,uuid.get(),cuidx,shared))
       throw std::runtime_error(std::string("failed to acquire CU(")
@@ -131,14 +130,12 @@ acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
                                + std::strerror(errno)
                                + "'");
   }
-#endif
 }
 
 void
 device::
 release_cu_context(const uuid& uuid,size_t cuidx)
 {
-#if 1
   if (m_handle && m_ops->mCloseContext) {
     if (m_ops->mCloseContext(m_handle,uuid.get(),cuidx))
       throw std::runtime_error(std::string("failed to release CU(")
@@ -147,7 +144,6 @@ release_cu_context(const uuid& uuid,size_t cuidx)
                                + std::strerror(errno)
                                + "'");
   }
-#endif
 }
 
 ExecBufferObjectHandle
