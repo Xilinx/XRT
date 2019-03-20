@@ -98,11 +98,11 @@ typedef struct {
  * XMA_ERROR_NO_CHAN_CAP if the channel exceeds available capacity of available
  * channel
 */
-typedef int32_t (*xma_plg_alloc_chan_mp)(XmaSession *pending_sess,
-                                      const uint16_t    curr_kern_load,
-                                      const int32_t    *chan_ids,
-                                      const uint8_t     chan_ids_cnt,
-                                      XmaChannel *new_channel);
+typedef int32_t (*xma_plg_alloc_chan_mp)(const XmaSession *pending_sess,
+										 const uint16_t    curr_kern_load,
+										 const int32_t    *chan_ids,
+										 const uint8_t     chan_ids_cnt,
+										 XmaChannel *new_channel);
 /**
  * xma_plg_alloc_chan() - Optional plugin callback called when app calls xma_enc_session_create()
  * Common to all core plugin kernel types (encoder, decoder, filter, scaler)
