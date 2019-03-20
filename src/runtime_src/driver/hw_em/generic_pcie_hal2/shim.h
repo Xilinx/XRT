@@ -90,6 +90,8 @@ using addr_type = uint64_t;
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
+      ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
+      ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
 
       //P2P Support
       int xclExportBO(unsigned int boHandle); 
