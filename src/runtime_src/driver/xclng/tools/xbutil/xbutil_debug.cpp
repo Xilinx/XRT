@@ -384,13 +384,9 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
                 << "  " << std::setw(16) << std::hex << debugResults.SnapshotPC[i]
                 << "  " << std::setw(16) << std::hex << debugResults.CurrentPC[i]
                 << std::dec << std::endl;
-<<<<<<< HEAD
     }
     // Restore formatting
     std::cout.copyfmt(saveFormat);
-=======
-    }      
->>>>>>> Adding support to xbutil to print out the values read from streaming AXI protocol checkers
   }
   return 0;
 }
