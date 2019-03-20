@@ -111,7 +111,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mBoardNumber(index),
     mVerbosity(verbosity)
 {
-  profiline = new ZYNQShimProfiline(this);
+  profiling = new ZYNQShimProfiling(this);
   //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if(mKernelFD) {
@@ -744,7 +744,7 @@ uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
 void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type,
                              uint32_t slotnum, char* slotName, uint32_t length)
 {
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShime::handleCheck(handle);
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return;
   if (!(drv->profiling))
