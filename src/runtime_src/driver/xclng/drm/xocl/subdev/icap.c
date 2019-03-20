@@ -66,7 +66,7 @@ typedef struct {
 	unsigned char *Time;           /* Bitstream creation time read from header */
 	unsigned int MagicLength;      /* Length of the magic numbers in header */
 } XHwIcap_Bit_Header;
-#define XHI_BIT_HEADER_FAILURE 	-1
+#define XHI_BIT_HEADER_FAILURE	-1
 /* Used for parsing bitstream header */
 #define XHI_EVEN_MAGIC_BYTE	0x0f
 #define XHI_ODD_MAGIC_BYTE	0xf0
@@ -242,6 +242,7 @@ static struct icap_bitstream_user *obtain_user(struct icap *icap, pid_t pid)
 
 	list_for_each_safe(pos, n, &icap->icap_bitstream_users) {
 		struct icap_bitstream_user *u = list_entry(pos, struct icap_bitstream_user, ibu_list);
+
 		if (u->ibu_pid == pid)
 			return u;
 	}
@@ -258,10 +259,11 @@ static void icap_read_from_peer(struct platform_device *pdev, enum data_kind kin
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	uint64_t ch_switch = 0;
 	bool sw_ch = false;
+
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
 	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA);
 
-	mb_req = (struct mailbox_req *)vmalloc(reqlen);
+	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return;
 
@@ -418,18 +420,15 @@ static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 
 static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap, int idx)
 {
-	u32 freq, status;
+	u32 freq = 0, status;
 	char *base = icap->icap_clock_freq_counter;
-	int times;
-	times = 10;
-	freq = 0;
+	int times = 10;
 	/*
 	 * reset and wait until done
 	 */
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid)) {
-			ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region."
-				"frequencies counter cannot be determine");
+			ICAP_ERR(icap, "ERROR: There isn't a xclbin loaded in the dynamic region. frequencies counter cannot be determine");
 			return freq;
 		}
 		reg_wr(base, 0x1);
@@ -484,7 +483,7 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 		if (val != 1) {
 			ICAP_ERR(icap, "clockwiz %d is busy", i);
 			err = -EBUSY;
-			break;;
+			break;
 		}
 
 		config = frequency_table[idx].config0;
@@ -780,15 +779,12 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 		num_clocks = topology->m_count;
 		ICAP_INFO(icap, "Num clocks is %d", num_clocks);
 		for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
-			ICAP_INFO(icap, "requested frequency is : "
-				"%d xclbin freq is: %d",
+			ICAP_INFO(icap, "requested frequency is : %d xclbin freq is: %d",
 				freq_obj->ocl_target_freq[i],
 				topology->m_clock_freq[i].m_freq_Mhz);
 			if (freq_obj->ocl_target_freq[i] >
 				topology->m_clock_freq[i].m_freq_Mhz) {
-				ICAP_ERR(icap, "Unable to set frequency as "
-					"requested frequency %d is greater "
-					"than set by xclbin %d",
+				ICAP_ERR(icap, "Unable to set frequency as requested frequency %d is greater than set by xclbin %d",
 					freq_obj->ocl_target_freq[i],
 					topology->m_clock_freq[i].m_freq_Mhz);
 				err = -EDOM;
@@ -963,141 +959,141 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 	return size;
 }
 
-static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
-	unsigned int Size, XHwIcap_Bit_Header *Header)
+static int bitstream_parse_header(struct icap *icap, const unsigned char *data,
+	unsigned int size, XHwIcap_Bit_Header *header)
 {
-	unsigned int I;
-	unsigned int Len;
-	unsigned int Tmp;
-	unsigned int Index;
+	unsigned int i;
+	unsigned int len;
+	unsigned int tmp;
+	unsigned int index;
 
 	/* Start Index at start of bitstream */
-	Index = 0;
+	index = 0;
 
 	/* Initialize HeaderLength.  If header returned early inidicates
 	 * failure.
 	 */
-	Header->HeaderLength = XHI_BIT_HEADER_FAILURE;
+	header->HeaderLength = XHI_BIT_HEADER_FAILURE;
 
 	/* Get "Magic" length */
-	Header->MagicLength = Data[Index++];
-	Header->MagicLength = (Header->MagicLength << 8) | Data[Index++];
+	header->MagicLength = data[index++];
+	header->MagicLength = (header->MagicLength << 8) | data[index++];
 
 	/* Read in "magic" */
-	for (I = 0; I < Header->MagicLength - 1; I++) {
-		Tmp = Data[Index++];
-		if (I%2 == 0 && Tmp != XHI_EVEN_MAGIC_BYTE)
+	for (i = 0; i < header->MagicLength - 1; i++) {
+		tmp = data[index++];
+		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
 			return -1;   /* INVALID_FILE_HEADER_ERROR */
 
-		if (I%2 == 1 && Tmp != XHI_ODD_MAGIC_BYTE)
+		if (i%2 == 1 && tmp != XHI_ODD_MAGIC_BYTE)
 			return -1;   /* INVALID_FILE_HEADER_ERROR */
 
 	}
 
 	/* Read null end of magic data. */
-	Tmp = Data[Index++];
+	tmp = data[index++];
 
 	/* Read 0x01 (short) */
-	Tmp = Data[Index++];
-	Tmp = (Tmp << 8) | Data[Index++];
+	tmp = data[index++];
+	tmp = (tmp << 8) | data[index++];
 
 	/* Check the "0x01" half word */
-	if (Tmp != 0x01)
+	if (tmp != 0x01)
 		return -1;	 /* INVALID_FILE_HEADER_ERROR */
 
 	/* Read 'a' */
-	Tmp = Data[Index++];
-	if (Tmp != 'a')
+	tmp = data[index++];
+	if (tmp != 'a')
 		return -1;	  /* INVALID_FILE_HEADER_ERROR	*/
 
 	/* Get Design Name length */
-	Len = Data[Index++];
-	Len = (Len << 8) | Data[Index++];
+	len = data[index++];
+	len = (len << 8) | data[index++];
 
 	/* allocate space for design name and final null character. */
-	Header->DesignName = kmalloc(Len, GFP_KERNEL);
+	header->DesignName = kmalloc(len, GFP_KERNEL);
 
 	/* Read in Design Name */
-	for (I = 0; I < Len; I++)
-		Header->DesignName[I] = Data[Index++];
+	for (i = 0; i < len; i++)
+		header->DesignName[i] = data[index++];
 
 
-	if (Header->DesignName[Len-1] != '\0')
+	if (header->DesignName[len-1] != '\0')
 		return -1;
 
 	/* Read 'b' */
-	Tmp = Data[Index++];
-	if (Tmp != 'b')
+	tmp = data[index++];
+	if (tmp != 'b')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
 
 	/* Get Part Name length */
-	Len = Data[Index++];
-	Len = (Len << 8) | Data[Index++];
+	len = data[index++];
+	len = (len << 8) | data[index++];
 
 	/* allocate space for part name and final null character. */
-	Header->PartName = kmalloc(Len, GFP_KERNEL);
+	header->PartName = kmalloc(len, GFP_KERNEL);
 
 	/* Read in part name */
-	for (I = 0; I < Len; I++)
-		Header->PartName[I] = Data[Index++];
+	for (i = 0; i < len; i++)
+		header->PartName[i] = data[index++];
 
-	if (Header->PartName[Len-1] != '\0')
+	if (header->PartName[len-1] != '\0')
 		return -1;
 
 	/* Read 'c' */
-	Tmp = Data[Index++];
-	if (Tmp != 'c')
+	tmp = data[index++];
+	if (tmp != 'c')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
 
 	/* Get date length */
-	Len = Data[Index++];
-	Len = (Len << 8) | Data[Index++];
+	len = data[index++];
+	len = (len << 8) | data[index++];
 
 	/* allocate space for date and final null character. */
-	Header->Date = kmalloc(Len, GFP_KERNEL);
+	header->Date = kmalloc(len, GFP_KERNEL);
 
 	/* Read in date name */
-	for (I = 0; I < Len; I++)
-		Header->Date[I] = Data[Index++];
+	for (i = 0; i < len; i++)
+		header->Date[i] = data[index++];
 
-	if (Header->Date[Len - 1] != '\0')
+	if (header->Date[len - 1] != '\0')
 		return -1;
 
 	/* Read 'd' */
-	Tmp = Data[Index++];
-	if (Tmp != 'd')
+	tmp = data[index++];
+	if (tmp != 'd')
 		return -1;	/* INVALID_FILE_HEADER_ERROR  */
 
 	/* Get time length */
-	Len = Data[Index++];
-	Len = (Len << 8) | Data[Index++];
+	len = data[index++];
+	len = (len << 8) | data[index++];
 
 	/* allocate space for time and final null character. */
-	Header->Time = kmalloc(Len, GFP_KERNEL);
+	header->Time = kmalloc(len, GFP_KERNEL);
 
 	/* Read in time name */
-	for (I = 0; I < Len; I++)
-		Header->Time[I] = Data[Index++];
+	for (i = 0; i < len; i++)
+		header->Time[i] = data[index++];
 
-	if (Header->Time[Len - 1] != '\0')
+	if (header->Time[len - 1] != '\0')
 		return -1;
 
 	/* Read 'e' */
-	Tmp = Data[Index++];
-	if (Tmp != 'e')
+	tmp = data[index++];
+	if (tmp != 'e')
 		return -1;	/* INVALID_FILE_HEADER_ERROR */
 
 	/* Get byte length of bitstream */
-	Header->BitstreamLength = Data[Index++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[Index++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[Index++];
-	Header->BitstreamLength = (Header->BitstreamLength << 8) | Data[Index++];
-	Header->HeaderLength = Index;
+	header->BitstreamLength = data[index++];
+	header->BitstreamLength = (header->BitstreamLength << 8) | data[index++];
+	header->BitstreamLength = (header->BitstreamLength << 8) | data[index++];
+	header->BitstreamLength = (header->BitstreamLength << 8) | data[index++];
+	header->HeaderLength = index;
 
-	ICAP_INFO(icap, "Design \"%s\"", Header->DesignName);
-	ICAP_INFO(icap, "Part \"%s\"", Header->PartName);
-	ICAP_INFO(icap, "Timestamp \"%s %s\"", Header->Time, Header->Date);
-	ICAP_INFO(icap, "Raw data size 0x%x", Header->BitstreamLength);
+	ICAP_INFO(icap, "Design \"%s\"", header->DesignName);
+	ICAP_INFO(icap, "Part \"%s\"", header->PartName);
+	ICAP_INFO(icap, "Timestamp \"%s %s\"", header->Time, header->Date);
+	ICAP_INFO(icap, "Raw data size 0x%x", header->BitstreamLength);
 	return 0;
 }
 
@@ -1159,7 +1155,7 @@ static long icap_download(struct icap *icap, const char *buffer,
 			numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
 
 		err = bitstream_helper(icap, (u32 *)buffer,
-			numCharsRead / sizeof (u32));
+			numCharsRead / sizeof(u32));
 		if (err)
 			goto free_buffers;
 		buffer += numCharsRead;
@@ -1347,7 +1343,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		xocl_mb_reset(xdev);
 
 
-	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof (ICAP_XCLBIN_V2)) != 0) {
+	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
 		goto done;
@@ -1459,7 +1455,7 @@ done:
 	kfree(bit_header.PartName);
 	kfree(bit_header.Date);
 	kfree(bit_header.Time);
-	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
+	ICAP_INFO(icap, "%s err: %ld", __func__, err);
 	return err;
 }
 
@@ -1510,15 +1506,12 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 
 	for (i = 0; i < freqs->m_count; i++) {
 		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA) {
+		if (freq->m_type == CT_DATA)
 			data_clk_count++;
-		}
-		if (freq->m_type == CT_KERNEL) {
+		if (freq->m_type == CT_KERNEL)
 			kernel_clk_count++;
-		}
-		if (freq->m_type == CT_SYSTEM) {
+		if (freq->m_type == CT_SYSTEM)
 			system_clk_count++;
-		}
 	}
 
 	if (data_clk_count != 1) {
@@ -1537,30 +1530,25 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 
 	for (i = 0; i < freqs->m_count; i++) {
 		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA) {
+		if (freq->m_type == CT_DATA)
 			target_freqs[0] = freq->m_freq_Mhz;
-		}
 	}
 
 	for (i = 0; i < freqs->m_count; i++) {
 		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_KERNEL) {
+		if (freq->m_type == CT_KERNEL)
 			target_freqs[1] = freq->m_freq_Mhz;
-		}
 	}
 
 	clock_type_count = 2;
 	for (i = 0; i < freqs->m_count; i++) {
 		freq = &(freqs->m_clock_freq[i]);
-		if (freq->m_type == CT_SYSTEM) {
+		if (freq->m_type == CT_SYSTEM)
 			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
-		}
 	}
 
 
-	ICAP_INFO(icap, "setting clock freq, "
-		"num: %lu, data_freq: %d , clk_freq: %d, "
-		"sys_freq[0]: %d, sys_freq[1]: %d",
+	ICAP_INFO(icap, "setting clock freq, num: %lu, data_freq: %d , clk_freq: %d, sys_freq[0]: %d, sys_freq[1]: %d",
 		ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
 		target_freqs[2], target_freqs[3]);
 	return set_freqs(icap, target_freqs, 4);
@@ -1601,7 +1589,7 @@ static int icap_download_user(struct icap *icap, const char *bit_buf,
 			numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
 
 		err = bitstream_helper(icap, (u32 *)bit_buf,
-			numCharsRead / sizeof (u32));
+			numCharsRead / sizeof(u32));
 		if (err)
 			goto free_buffers;
 
@@ -1645,13 +1633,14 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	uint64_t ch_switch = 0;
 	bool sw_ch = false;
+
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
 	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_LOCK_BITSTREAM);
 	/* if there is no user there
 	 * ask mgmt to lock the bitstream
 	 */
 	if (icap->icap_bitstream_ref == 0) {
-		mb_req = (struct mailbox_req *)vmalloc(reqlen);
+		mb_req = vmalloc(reqlen);
 		if (!mb_req) {
 			err = -ENOMEM;
 			goto done;
@@ -1692,6 +1681,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	uint64_t ch_switch = 0;
 	bool sw_ch = false;
+
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
 	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_UNLOCK_BITSTREAM);
 
@@ -1699,7 +1689,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	 * ask mgmt to unlock the bitstream
 	 */
 	if (icap->icap_bitstream_ref == 0) {
-		mb_req = (struct mailbox_req *)vmalloc(reqlen);
+		mb_req = vmalloc(reqlen);
 		if (!mb_req) {
 			err = -ENOMEM;
 			goto done;
@@ -1739,7 +1729,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
 	int msg = -ETIMEDOUT;
-	size_t resplen = sizeof (msg);
+	size_t resplen = sizeof(msg);
 	int pid = pid_nr(task_tgid(current));
 	uint32_t data_len = 0;
 	struct mailbox_req *mb_req = NULL;
@@ -1779,7 +1769,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		mutex_unlock(&icap->icap_lock);
 
-		if(!need_download) {
+		if (!need_download) {
 			ICAP_INFO(icap, "bitstream exists, skip downloading");
 			return 0;
 		}
@@ -1828,6 +1818,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (clockHeader != NULL) {
 			uint64_t clockFirmwareOffset = clockHeader->m_sectionOffset;
 			uint64_t clockFirmwareLength = clockHeader->m_sectionSize;
+
 			buffer = (char *)xclbin;
 			buffer += clockFirmwareOffset;
 			err = axlf_set_freqscaling(icap, pdev, buffer, clockFirmwareLength);
@@ -1857,7 +1848,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			err = calibrate_mig(icap);
 		if (err)
 			goto done;
-
 		/* Remember "this" bitstream, so avoid redownload the next time. */
 		icap->icap_bitstream_id = xclbin->m_uniqueId;
 		if (!uuid_is_null(&xclbin->m_header.uuid)) {
@@ -1881,9 +1871,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_read_from_peer(pdev, XCLBIN_UUID, &peer_uuid, sizeof(xuid_t));
 
 		if (!uuid_equal(&peer_uuid, &xclbin->m_header.uuid)) {
-			/*
-			 *  should replace with userpf download flow
-			 */
+	
 			if (!(ch_state & MB_PEER_CONNECTED)) {
 				ICAP_ERR(icap, "%s fail to find peer, abort!",
 					__func__);
@@ -1893,7 +1881,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 			if ((ch_state & 0xF) == MB_PEER_SAMEDOM_CONNECTED) {
 				data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
-				mb_req = (struct mailbox_req *)vmalloc(data_len);
+				mb_req = vmalloc(data_len);
 				if (!mb_req) {
 					ICAP_ERR(icap, "Unable to create mb_req\n");
 					err = -ENOMEM;
@@ -1907,7 +1895,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			} else if ((ch_state & 0xF) == MB_PEER_CONNECTED) {
 				data_len = sizeof(struct mailbox_req) +
 					xclbin->m_header.m_length;
-				mb_req = (struct mailbox_req *)vmalloc(data_len);
+				mb_req = vmalloc(data_len);
 				if (!mb_req) {
 					ICAP_ERR(icap, "Unable to create mb_req\n");
 					err = -ENOMEM;
@@ -1939,7 +1927,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			memcpy(&icap->icap_bitstream_uuid,
 				&xclbin->m_header.m_timeStamp, 8);
 		}
-
 	}
 
 	if (ICAP_PRIVILEGED(icap)) {
@@ -1955,10 +1942,16 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	if (ICAP_PRIVILEGED(icap))
 		err = icap_verify_bitstream_axlf(pdev, xclbin);
 
+	/* if verify failed */
+	if (err) {
+		icap->icap_bitstream_id = 0;
+		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
+	}
+
 done:
 	mutex_unlock(&icap->icap_lock);
 	vfree(mb_req);
-	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
+	ICAP_INFO(icap, "%s err: %ld", __func__, err);
 	return err;
 }
 
@@ -2025,7 +2018,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
-				sizeof (icap->mem_topo->m_mem_data[memidx].m_tag);
+				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
 			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
@@ -2074,19 +2067,18 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 			}
 
 			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
-			if (section_size % 64 || section_size < 576) {
+			if (section_size % 64 || section_size < 576)
 				ICAP_ERR(icap, "Invalid certificate size");
-			} else {
+			else
 				xocl_dna_write_cert(xdev, cert, section_size);
-			}
 
 			vfree(cert);
 		}
 
 		/* Check DNA validation result. */
-		if (0x1 & xocl_dna_status(xdev)) {
+		if (0x1 & xocl_dna_status(xdev))
 			err = 0; /* xclbin is valid */
-		} else {
+		else {
 			ICAP_ERR(icap, "DNA inside xclbin is invalid");
 			goto dna_cert_fail;
 		}
@@ -2158,6 +2150,7 @@ static int icap_reset_bitstream(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(fpga_boot_seq); i++) {
 		unsigned value = be32_to_cpu(fpga_boot_seq[i]);
+
 		reg_wr(&icap->icap_regs->ir_wfv, value);
 	}
 	reg_wr(&icap->icap_regs->ir_cr, 0x1);
@@ -2223,16 +2216,15 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id,
 	mutex_lock(&icap->icap_lock);
 
 	/* Force unlock. */
-	if (uuid_is_null(id)) {
+	if (uuid_is_null(id))
 		del_all_users(icap);
-	} else if (uuid_equal(id, &icap->icap_bitstream_uuid)) {
+	else if (uuid_equal(id, &icap->icap_bitstream_uuid))
 		err = del_user(icap, pid);
-	} else
+	else
 		err = -EINVAL;
 
-	if (!ICAP_PRIVILEGED(icap)) {
+	if (!ICAP_PRIVILEGED(icap))
 		__icap_unlock_peer(pdev, id);
-	}
 
 	if (err >= 0)
 		err = icap->icap_bitstream_ref;
@@ -2296,7 +2288,7 @@ done:
 		vfree(*target);
 		*target = NULL;
 	}
-	ICAP_INFO(icap, "%s kind %d, err: %ld", __FUNCTION__, kind, err);
+	ICAP_INFO(icap, "%s kind %d, err: %ld", __func__, kind, err);
 	return err;
 }
 
@@ -2475,6 +2467,7 @@ static ssize_t idcode_show(struct device *dev,
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 	uint32_t val;
+
 	mutex_lock(&icap->icap_lock);
 	if (ICAP_PRIVILEGED(icap)) {
 		cnt = sprintf(buf, "0x%x\n", icap->idcode);

@@ -30,9 +30,6 @@
 #include <iostream>
 #include <memory>
 
-// Separator used for CU port and memory resource (must match HW linker)
-#define PORT_MEM_SEP "-"
-
 namespace xdp {
   class SummaryWriter;
   class TraceLogger;

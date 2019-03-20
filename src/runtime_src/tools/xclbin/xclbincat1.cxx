@@ -454,6 +454,7 @@ namespace xclbincat1 {
       case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
       case PDI: return "PDI";
       case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
+      case DTC: return "DTC";
 
         break;
     }

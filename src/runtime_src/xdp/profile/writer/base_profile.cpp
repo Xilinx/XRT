@@ -98,9 +98,9 @@ namespace xdp {
 
     // Table 6: Data Transfer: Kernels to Global Memory
     std::vector<std::string> KernelDataTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
-		"Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
-		"Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
+      "Device", "Compute Unit/Port Name", "Kernel Arguments", "Memory Resources",
+		  "Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
+		  "Average Bandwidth Utilization (%)", "Average Size (KB)", "Average Latency (ns)"
     };
     writeTableHeader(getStream(), "Data Transfer: Kernels to Global Memory",
         KernelDataTransferSummaryColumnLabels);
@@ -109,12 +109,14 @@ namespace xdp {
     }
     writeTableFooter(getStream());
 
-    // Table 7: Stream Data Transfers
-    if (mEnStallTable) {
+    // Table 7 : Stream Data Transfers
+    if (mEnStreamTable) {
       std::vector<std::string> StreamTransferSummaryColumnLabels = {
-        "Device", "Compute Unit/Port Name", "Kernel Arguments", "Number Of Transfers", "Transfer Rate (MB/s)",
-        "Average Size (KB)", "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
-        };
+        "Device", "Master Port", "Master Kernel Arguments",
+        "Slave Port", "Slave Kernel Arguments",
+        "Number Of Transfers", "Transfer Rate (MB/s)", "Average Size (KB)",
+        "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
+      };
       writeTableHeader(getStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getStream());
@@ -165,8 +167,8 @@ namespace xdp {
   {
     writeTableRowStart(getStream());
     writeTableCells(getStream(), name, stats.getNoOfCalls(),
-        stats.getTotalTime(), stats.getMinTime(),
-        stats.getAveTime(), stats.getMaxTime());
+                    stats.getTotalTime(), stats.getMinTime(),
+                    stats.getAveTime(), stats.getMaxTime());
     writeTableRowEnd(getStream());
   }
 
@@ -175,17 +177,20 @@ namespace xdp {
   {
     writeTableRowStart(getStream());
     writeTableCells(getStream(),cuName,cuRunCount, cuRunTimeMsec,
-     cuStallInt, cuStallExt, cuStallStr);
+                    cuStallInt, cuStallExt, cuStallStr);
     writeTableRowEnd(getStream());
   }
 
-  void ProfileWriterI::writeKernelStreamSummary(std::string& deviceName, std::string& cuPortName, std::string& argNames,
-      uint64_t strNumTranx, double transferRateMBps, double avgSize, double avgUtil,
-      double linkStarve, double linkStall)
+  void ProfileWriterI::writeKernelStreamSummary(
+    const std::string& deviceName, const std::string& MasterPort, const std::string& MasterArgs,
+    const std::string& SlavePort, const std::string& SlaveArgs, uint64_t strNumTranx,
+    double transferRateMBps, double avgSize, double avgUtil,
+    double linkStarve, double linkStall)
   {
     writeTableRowStart(getStream());
-    writeTableCells(getStream(), deviceName , cuPortName, argNames,
-        strNumTranx, transferRateMBps, avgSize, avgUtil, linkStarve, linkStall);
+    writeTableCells(getStream(), deviceName , MasterPort, MasterArgs,
+                    SlavePort, SlaveArgs, strNumTranx, transferRateMBps,
+                    avgSize, avgUtil, linkStarve, linkStall);
     writeTableRowEnd(getStream());
   }
 
@@ -312,7 +317,7 @@ namespace xdp {
     // Get memory name from CU port name string (if found)
     std::string cuPortName2 = cuPortName;
     std::string memoryName2 = memoryName;
-    size_t index = cuPortName.find_last_of(PORT_MEM_SEP);
+    size_t index = cuPortName.find_last_of(IP_LAYOUT_SEP);
     if (index != std::string::npos) {
       cuPortName2 = cuPortName.substr(0, index);
       memoryName2 = cuPortName.substr(index+1);
