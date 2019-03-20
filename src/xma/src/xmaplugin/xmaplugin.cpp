@@ -233,7 +233,7 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
         ert_start_kernel_cmd *cu_cmd = 
             (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[bo_idx];
         cu_cmd->state = ERT_CMD_STATE_NEW;
-        cu_cmd->opcode = ERT_START_CU; 
+        cu_cmd->opcode = ERT_START_CU;
 
         // Copy reg_map into execBO buffer 
         memcpy(cu_cmd->data, src, size);
@@ -289,8 +289,6 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
     {
         current_count--;
         s_handle.kernel_info->kernel_complete_count = current_count;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                    "Sarab: For debug. Not error. Ignore\n");
         return XMA_SUCCESS;
     }
     else
