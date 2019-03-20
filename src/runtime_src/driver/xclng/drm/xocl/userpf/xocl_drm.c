@@ -368,7 +368,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 		goto failed;
 	}
 
-	drm_p = xocl_drvinst_alloc(ddev->dev, sizeof(*drm_p));
+	drm_p = xocl_drvinst_alloc(&XDEV(xdev_hdl)->pdev->dev, sizeof(*drm_p));
 	if (!drm_p) {
 		xocl_xdev_err(xdev_hdl, "alloc drm inst failed");
 		ret = -ENOMEM;

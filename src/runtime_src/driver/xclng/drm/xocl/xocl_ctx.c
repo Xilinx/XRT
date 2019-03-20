@@ -17,11 +17,6 @@
 #include <linux/platform_device.h>
 #include "xocl_drv.h"
 
-struct offline_arg {
-	xdev_handle_t	xdev_hdl;
-	bool		offline;
-};
-
 /*
  * helper functions to protect driver private data
  */
@@ -111,54 +106,23 @@ void xocl_drvinst_free(void *data)
 	kfree(drvinstp);
 }
 
-static int match_offline_subdev(struct device *dev, void *data)
-{
-	struct offline_arg	*arg = data;
-	struct xocl_dev_core	*core = arg->xdev_hdl;
-	struct xocl_drvinst	*drvinstp;
-	int			inst;
-	void			*drv_data;
-
-	if (dev->parent == &core->pdev->dev) {
-		drv_data = platform_get_drvdata(to_platform_device(dev));
-		if (!data)
-			return 0;
-
-		drvinstp = container_of(drv_data, struct xocl_drvinst, data);
-		for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
-			if (drvinstp == xocl_drvinst_array[inst])
-				break;
-		}
-
-		if (inst == ARRAY_SIZE(xocl_drvinst_array))
-			return 0;
-
-		drvinstp->offline = arg->offline;
-	}
-
-	return 0;
-}
-
 void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline)
 {
 	struct xocl_drvinst	*drvinstp;
+	struct device		*dev = &XDEV(xdev_hdl)->pdev->dev;
 	int			inst;
-	struct offline_arg	arg;
 
 	mutex_lock(&xocl_drvinst_lock);
-	drvinstp = container_of(xdev_hdl, struct xocl_drvinst, data);
 	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
-		if (drvinstp == xocl_drvinst_array[inst])
-			break;
+		drvinstp = xocl_drvinst_array[inst];
+		if (!drvinstp)
+			continue;
+		if (drvinstp->dev &&
+			(drvinstp->dev == dev || drvinstp->dev->parent == dev))
+			drvinstp->offline = offline;
 	}
 
-	if (inst < ARRAY_SIZE(xocl_drvinst_array))
-		drvinstp->offline = offline;
 
-	arg.xdev_hdl = xdev_hdl;
-	arg.offline = offline;
-	bus_for_each_dev(&platform_bus_type, NULL, &arg, 
-			match_offline_subdev);
 	mutex_unlock(&xocl_drvinst_lock);
 }
 
