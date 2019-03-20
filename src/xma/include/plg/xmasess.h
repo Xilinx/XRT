@@ -99,9 +99,9 @@ typedef struct {
  * channel
 */
 typedef int32_t (*xma_plg_alloc_chan_mp)(XmaSession *pending_sess,
-                                      uint16_t    curr_kern_load,
-                                      int32_t    *chan_ids,
-                                      uint8_t     chan_ids_cnt,
+                                      const uint16_t    curr_kern_load,
+                                      const int32_t    *chan_ids,
+                                      const uint8_t     chan_ids_cnt,
                                       XmaChannel *new_channel);
 /**
  * xma_plg_alloc_chan() - Optional plugin callback called when app calls xma_enc_session_create()
