@@ -231,6 +231,7 @@ int main(int argc, char *argv[])
         {"spm", no_argument, 0, xcldev::STATUS_SPM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
         {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -294,6 +295,15 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
             break ;
         }
+	case xcldev::STATUS_SPC: {
+	  //--spc
+	  if (cmd != xcldev::STATUS) {
+	    std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+	    return -1;
+	  }
+	  ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPC_MASK);
+	  break;
+	}
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
@@ -640,6 +650,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
             result = deviceVec[index]->readSSPMCounters() ;
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
+	  result = deviceVec[index]->readStreamingCheckers(1);
+	}
         break;
 
     default:

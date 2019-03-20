@@ -83,6 +83,7 @@ enum subcommand {
     STATUS_SPM,
     STATUS_LAPC,
     STATUS_SSPM,
+    STATUS_SPC, 
     STREAM,
     STATUS_UNSUPPORTED,
 };
@@ -90,7 +91,8 @@ enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
-    STATUS_SSPM_MASK = 0x4
+    STATUS_SSPM_MASK = 0x4,
+    STATUS_SPC_MASK = 0x8
 };
 enum p2pcommand {
     P2P_ENABLE = 0x0,
@@ -1283,6 +1285,7 @@ public:
     int readSPMCounters();
     int readSSPMCounters();
     int readLAPCheckers(int aVerbose);
+    int readStreamingCheckers(int aVerbose);
     int print_debug_ip_list (int aVerbose);
 
     /*

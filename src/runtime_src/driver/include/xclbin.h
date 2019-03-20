@@ -296,7 +296,8 @@ extern "C" {
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
-        AXI_STREAM_MONITOR
+        AXI_STREAM_MONITOR,
+	AXI_STREAM_PROTOCOL_CHECKER
     };
 
     struct debug_ip_data {

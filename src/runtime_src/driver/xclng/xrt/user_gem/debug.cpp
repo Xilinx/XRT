@@ -353,6 +353,51 @@ namespace xocl {
     return size;
   } 
 
+  size_t XOCLShim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
+
+    size_t size = 0; // The amount of data read from the hardware
+
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id()
+      << ", " << XCL_PERF_MON_MEMORY << ", " << aStreamingCheckerResults
+      << ", Read streaming protocol checkers..." << std::endl;
+    }
+
+    // Get the base addresses of all the SPC IPs in the debug IP layout
+    uint64_t baseAddress[XSPC_MAX_NUMBER_SLOTS];
+    uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+					    baseAddress,
+					    nullptr, nullptr, nullptr, nullptr,
+					    XSPC_MAX_NUMBER_SLOTS);
+
+    // Fill up the portions of the return struct that are known by the runtime
+    aStreamingCheckerResults->NumSlots = numSlots ;
+    snprintf(aStreamingCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
+
+    // Fill up the return structure with the values read from the hardware
+    for (unsigned int i = 0 ; i < numSlots ; ++i)
+    {
+      uint32_t pc_asserted ;
+      uint32_t current_pc ;
+      uint32_t snapshot_pc ;
+      
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+		      baseAddress[i] + XSPC_PC_ASSERTED_OFFSET,
+		      &pc_asserted, sizeof(uint32_t));
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+		      baseAddress[i] + XSPC_CURRENT_PC_OFFSET,
+		      &current_pc, sizeof(uint32_t));
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
+		      baseAddress[i] + XSPC_SNAPSHOT_PC_OFFSET,
+		      &snapshot_pc, sizeof(uint32_t));
+
+      aStreamingCheckerResults->PCAsserted[i] = pc_asserted;
+      aStreamingCheckerResults->CurrentPC[i] = current_pc;
+      aStreamingCheckerResults->SnapshotPC[i] = snapshot_pc;
+    }
+    return size;
+  }
+
   size_t XOCLShim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
     size_t size = 0;
 
@@ -438,8 +483,8 @@ namespace xocl {
     return size;
   }
 
-} 
-// namespace xocl_gem
+} // namespace xocl_gem
+
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
@@ -455,6 +500,8 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
       return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_SSPM :
     return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
+  case XCL_DEBUG_READ_TYPE_SPC:
+    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
     default:
       ;
   };

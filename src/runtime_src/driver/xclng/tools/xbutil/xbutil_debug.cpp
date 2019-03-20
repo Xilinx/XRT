@@ -267,6 +267,9 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
         std::cout << "No AXI violations found \n";
     }
     if (violations_found && aVerbose && !invalid_codes) {
+        std::ofstream saveFormat;
+        saveFormat.copyfmt(std::cout);
+
         std::cout << "\n";
         std::cout << std::left
                 << std::setw(col1) << "CU Name"
@@ -297,8 +300,95 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
                 << "  " << std::setw(16) << debugResults.CumulativeStatus[i][3]
                 << std::dec << std::endl;
         }
+	// Restore formatting
+	std::cout.copyfmt(saveFormat);
     }
     return 0;
+}
+
+int xcldev::device::readStreamingCheckers(int aVerbose) {
+
+  std::vector<std::string> streamingCheckerSlotNames ;
+  unsigned int numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+						 nullptr,
+						 &streamingCheckerSlotNames);
+  if (numCheckers == 0) {
+    std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
+    return 0 ;
+  }
+
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+
+  std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
+
+  xclDebugStreamingCheckersResults debugResults = {0};
+  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+
+  // Now print out all of the values (and their interpretations)
+
+  std::cout << "AXI Streaming Protocol Checkers codes\n";
+  bool invalid_codes = false ;
+  bool violations_found = false ;
+
+  for (size_t i = 0 ; i < debugResults.NumSlots; ++i) {
+    std::cout << "CU Name: " << cuNameportNames[i].first 
+	      << " AXI Port: " << cuNameportNames[i].second << "\n";
+
+    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(debugResults.PCAsserted[i], debugResults.CurrentPC[i], debugResults.SnapshotPC[i]))
+    {
+      std::cout << "  Invalid codes read, skip decoding\n";
+      invalid_codes = true ;
+    }
+    else
+    {
+      std::cout << "  First violation: \n";
+      std::cout << "    " << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.SnapshotPC[i]);
+      std::cout << "  Other violations: \n";
+      std::string tstr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.CurrentPC[i]);
+      if (tstr == "") 
+      {
+	std::cout << "    None";
+      }
+      else 
+      {
+	std::cout << "    " <<  tstr;
+      }
+      violations_found = true;
+    }
+  }
+  if (!violations_found && !invalid_codes)
+  {
+    std::cout << "No AXI violations found \n";
+  }
+  if (violations_found && aVerbose && !invalid_codes) 
+  {
+    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    int col2 = std::max(widths.second, strlen("AXI Portname"));
+
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(std::cout);
+
+    std::cout << "\n";
+    std::cout << std::left
+	      << std::setw(col1) << "CU Name"
+	      << " " << std::setw(col2) << "AXI Portname"
+	      << "  " << std::setw(16) << "Overall Status"
+	      << "  " << std::setw(16) << "Snapshot"
+	      << "  " << std::setw(16) << "Current"
+	      << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+      std::cout << std::left
+                << std::setw(col1) << cuNameportNames[i].first
+                << " " << std::setw(col2) << cuNameportNames[i].second
+                << "  " << std::setw(16) << std::hex << debugResults.PCAsserted[i]
+                << "  " << std::setw(16) << std::hex << debugResults.SnapshotPC[i]
+                << "  " << std::setw(16) << std::hex << debugResults.CurrentPC[i]
+                << std::dec << std::endl;
+    }
+    // Restore formatting
+    std::cout.copyfmt(saveFormat);
+  }
+  return 0;
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
