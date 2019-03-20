@@ -84,7 +84,7 @@ get_axlf_section(const axlf* top, axlf_section_kind kind)
   return nullptr;
 }
 
-std::vector<uint64_t>
+static std::vector<uint64_t>
 get_cus(const axlf* top)
 {
   std::vector<uint64_t> cus;
@@ -101,7 +101,7 @@ get_cus(const axlf* top)
   return cus;
 }
 
-uint64_t
+static uint64_t
 get_cu_base_offset(const axlf* top)
 {
   std::vector<uint64_t> cus;
@@ -118,7 +118,7 @@ get_cu_base_offset(const axlf* top)
   return base;
 }
 
-bool
+static bool
 get_cuisr(const axlf* top)
 {
   auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
@@ -132,6 +132,22 @@ get_cuisr(const axlf* top)
   }
   return true;
 }
+
+static bool
+get_dataflow(const axlf* top)
+{
+  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  if (!ip_layout)
+    return false;
+
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    if (ip_data.m_type==IP_TYPE::IP_KERNEL && ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN))
+        return true;
+  }
+  return false;
+}
+
 
 } // unnamed
 
@@ -164,7 +180,7 @@ init(xclDeviceHandle handle, const axlf* top)
   ecmd->cu_dma  = xrt_core::config::get_ert_cudma();
   ecmd->cu_isr  = xrt_core::config::get_ert_cuisr() && get_cuisr(top);
   ecmd->cq_int  = xrt_core::config::get_ert_cqint();
-  ecmd->dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow");
+  ecmd->dataflow = get_dataflow(top) || xrt_core::config::get_feature_toggle("Runtime.dataflow");
 
   // cu addr map
   std::copy(cus.begin(), cus.end(), ecmd->data);
