@@ -2724,7 +2724,7 @@ create_client(struct platform_device *pdev, void **priv)
 	struct xocl_dev		*xdev = xocl_get_xdev(pdev);
 	int			ret = 0;
 
-	client = devm_kzalloc(&pdev->dev, sizeof(*client), GFP_KERNEL);
+	client = devm_kzalloc(XDEV2DEV(xdev), sizeof(*client), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
 
@@ -2741,7 +2741,7 @@ create_client(struct platform_device *pdev, void **priv)
 		*priv =	client;
 	} else {
 		/* Do not allow new client to come in while being offline. */
-		devm_kfree(&pdev->dev, client);
+		devm_kfree(XDEV2DEV(xdev), client);
 		ret = -EBUSY;
 	}
 
@@ -2830,7 +2830,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 
 	mutex_unlock(&xdev->dev_lock);
 
-	devm_kfree(&pdev->dev, client);
+	devm_kfree(XDEV2DEV(xdev), client);
 	*priv = NULL;
 }
 
