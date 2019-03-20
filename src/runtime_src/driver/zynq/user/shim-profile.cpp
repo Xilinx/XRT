@@ -26,7 +26,7 @@
 #include "shim-profile.h"
 
 #include "xclperf.h"
-#include "zynq_perfmon_parameters.h"
+#include "zynq_perfmon_params.h"
 
 namespace ZYNQ {
 
