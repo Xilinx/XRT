@@ -247,6 +247,9 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
         std::cout << "No AXI violations found \n";
     }
     if (violations_found && aVerbose && !invalid_codes) {
+        std::ofstream saveFormat;
+        saveFormat.copyfmt(std::cout);
+
         std::cout << "\n";
         std::cout << std::left
                 << std::setw(col1) << "CU Name"
@@ -276,6 +279,8 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
                 << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][3]
                 << std::dec << std::endl;
         }
+	// Restore formatting
+	std::cout.copyfmt(saveFormat);
     }
     return 0;
 }
@@ -339,6 +344,9 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(std::cout);
+
     std::cout << "\n";
     std::cout << std::left
 	      << std::setw(col1) << "CU Name"
@@ -355,7 +363,9 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
                 << "  " << std::setw(16) << std::hex << debugResults.SnapshotPC[i]
                 << "  " << std::setw(16) << std::hex << debugResults.CurrentPC[i]
                 << std::dec << std::endl;
-    }      
+    }
+    // Restore formatting
+    std::cout.copyfmt(saveFormat);
   }
   return 0;
 }
