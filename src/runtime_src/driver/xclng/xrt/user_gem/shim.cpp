@@ -793,7 +793,7 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
     else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
     else if (kind == XCL_USER_RESET) {
-        int dev_offline;
+        int dev_offline = 1;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
         if (ret)
 		return errno;
