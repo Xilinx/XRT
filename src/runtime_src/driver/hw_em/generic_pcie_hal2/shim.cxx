@@ -2268,7 +2268,8 @@ ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     std::map<uint64_t,uint64_t> vaLenMap;
     for (unsigned i = 0; i < wr->buf_num; i++) 
     {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      //vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      vaLenMap[wr->bufs[i].va] = 0;//for write we should not read the data back
     }
     mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
     nonBlocking = true;
