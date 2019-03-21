@@ -2694,8 +2694,12 @@ static void client_release_implicit_cus(struct exec_core *exec,
 {
 	int i;
 
-	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+	SCHED_DEBUGF("-> %s", __func__);
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++) {
+		SCHED_DEBUGF("+ cu(%d)", i);
 		clear_bit(i, client->cu_bitmap);
+	}
+	SCHED_DEBUGF("<- %s", __func__);
 }
 
 static void client_reserve_implicit_cus(struct exec_core *exec,
@@ -2703,8 +2707,12 @@ static void client_reserve_implicit_cus(struct exec_core *exec,
 {
 	int i;
 
-	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+	SCHED_DEBUGF("-> %s", __func__);
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++) {
+		SCHED_DEBUGF("+ cu(%d)", i);
 		set_bit(i, client->cu_bitmap);
+	}
+	SCHED_DEBUGF("<- %s", __func__);
 }
 
 /**
