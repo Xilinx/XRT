@@ -61,7 +61,7 @@ fi
 
 mkdir -p coverity
 cd coverity
-/bin/rm xrt.tgz
+/bin/rm -f xrt.tgz
 imed=$PWD/cov-int
 $CMAKE -DCMAKE_BUILD_TYPE=Release ../../src
 $COVBIN/cov-build --dir $imed make -j4
