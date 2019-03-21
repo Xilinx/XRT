@@ -229,7 +229,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. This flow does not use cycle accurate models and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;
@@ -1371,7 +1371,18 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     dest->mDDRSize            =    src->mDDRSize;
     dest->mDataAlignment      =    src->mDataAlignment;
     dest->mDDRBankCount       =    src->mDDRBankCount;
-    dest->mNumCDMA = 1;
+    uint32_t numCdma = 0;
+    if(isCdmaEnabled())
+    {
+      for(unsigned int i =0  ; i < 4; i++)
+      {
+        if ( getCdmaBaseAddress(i) != 0)
+        {
+          numCdma++;
+        }
+      }
+    }
+    dest->mNumCDMA = numCdma;
     for(unsigned int i = 0; i < 4 ;i++)
       dest->mOCLFrequency[i]       =    src->mOCLFrequency[i];
 
@@ -2150,6 +2161,19 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
   return 1;
 }
 
+ssize_t HwEmShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
+{
+  if (flags)
+    return -EINVAL;
+  return xclCopyBufferHost2Device(offset, buf, count, 0 ,0);
+}
+
+ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+  if (flags)
+    return -EINVAL;
+  return xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
+}
 
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
 
@@ -2244,7 +2268,8 @@ ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     std::map<uint64_t,uint64_t> vaLenMap;
     for (unsigned i = 0; i < wr->buf_num; i++) 
     {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      //vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      vaLenMap[wr->bufs[i].va] = 0;//for write we should not read the data back
     }
     mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
     nonBlocking = true;
