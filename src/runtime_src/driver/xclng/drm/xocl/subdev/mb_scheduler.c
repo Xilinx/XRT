@@ -667,6 +667,7 @@ cmd_has_cu(struct xocl_cmd *xcmd, unsigned int cuidx)
  */
 struct xocl_cu {
 	struct list_head   running_queue;
+	struct xocl_dev    *xdev;
 	unsigned int       idx;
 	unsigned int       uid;
 	bool               dataflow;
@@ -682,29 +683,30 @@ struct xocl_cu {
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr, bool dataflow)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
 {
 	xcu->idx = idx;
-	xcu->dataflow = dataflow;
+	xcu->dataflow = addr & AP_CTRL_CHAIN;
 	xcu->base = base;
-	xcu->addr = addr;
+	xcu->addr = addr & ~(AP_CTRL_CHAIN | AP_CTRL_HS | AP_CTRL_NONE);
 	xcu->polladdr = polladdr;
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
-	SCHED_DEBUGF("%s(uid:%d,idx:%d) base@0x%x poll@x%x\n", __func__,
-		     xcu->uid, xcu->idx, xcu->addr, xcu->polladdr);
+	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%x dataflow(%d)\n",
+		    xcu->idx, xcu->addr, xcu->polladdr, xcu->dataflow);
 }
 
 /**
  */
 struct xocl_cu *
-cu_create(void)
+cu_create(struct xocl_dev *xdev)
 {
 	struct xocl_cu *xcu = kmalloc(sizeof(struct xocl_cu), GFP_KERNEL);
 	static unsigned int uid;
 
 	INIT_LIST_HEAD(&xcu->running_queue);
+	xcu->xdev = xdev;
 	xcu->uid = uid++;
 	SCHED_DEBUGF("%s(uid:%d)\n", __func__, xcu->uid);
 	return xcu;
@@ -1260,9 +1262,8 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 			: 0;
 
 		if (!xcu)
-			xcu = exec->cus[cuidx] = cu_create();
-		cu_reset(xcu, cuidx, exec->base, cfg->data[cuidx], polladdr, cfg->dataflow);
-		userpf_info(xdev, "%s cu(%d) at 0x%x\n", __func__, xcu->idx, xcu->addr);
+			xcu = exec->cus[cuidx] = cu_create(xdev);
+		cu_reset(xcu, cuidx, exec->base, cfg->data[cuidx], polladdr);
 	}
 
 	// Create KDMA CUs
@@ -1277,16 +1278,13 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 					: 0;
 
 				if (!xcu)
-					xcu = exec->cus[cuidx] = cu_create();
-				cu_reset(xcu, cuidx, exec->base, *addr, polladdr, cfg->dataflow);
+					xcu = exec->cus[cuidx] = cu_create(xdev);
+				cu_reset(xcu, cuidx, exec->base, *addr, polladdr);
 				++exec->num_cus;
 				++exec->num_cdma;
 				++cfg->num_cus;
 				++cfg->count;
 				cfg->data[cuidx] = *addr;
-				userpf_info(xdev,
-					"configure cdma as cu(%d) at 0x%x\n",
-					cuidx, *addr);
 				++cuidx;
 			}
 		}
@@ -1849,7 +1847,7 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	u32 cmdtype = cmd_type(xcmd);
 
 	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d) type(%d) slot_idx=%d\n",
-		     __func__, xcmd->uid, cmdopcode, cmdtype, xcmd->slot_idx);
+		     __func__, xcmd->uid, cmd_opcode(xcmd), cmdtype, xcmd->slot_idx);
 
 	if (cmdtype == ERT_KDS_LOCAL || cmdtype == ERT_CTRL)
 		exec_mark_cmd_complete(exec, xcmd);

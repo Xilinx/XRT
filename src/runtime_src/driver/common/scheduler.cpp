@@ -94,8 +94,12 @@ get_cus(const axlf* top)
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type == IP_TYPE::IP_KERNEL)
-      cus.push_back(ip_data.m_base_address);
+    if (ip_data.m_type == IP_TYPE::IP_KERNEL) {
+      // encode handshaking control in lower unused address bits
+      uint64_t addr = ip_data.m_base_address;
+      addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+      cus.push_back(addr);
+    }
   }
   std::sort(cus.begin(),cus.end());
   return cus;
