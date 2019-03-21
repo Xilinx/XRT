@@ -137,7 +137,7 @@ typedef int32_t (*xma_plg_alloc_chan)(XmaSession *pending_sess,
  *
  * RETURN: next available channel id
 */
-static inline int32_t xma_plg_find_next_chan_id(int32_t *chan_ids, uint8_t cnt)
+static inline int32_t xma_plg_find_next_chan_id(const int32_t *chan_ids, const uint8_t cnt)
 {
     int i;
 
