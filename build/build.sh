@@ -23,7 +23,7 @@ usage()
     echo "[clean|-clean]             Remove build directories"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
-    echo "[-nodriver]                Do not build driver code"
+    echo "[-driver]                  Include building driver code"
     echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
     echo ""
@@ -36,7 +36,7 @@ clean=0
 ccache=0
 docs=0
 verbose=""
-driver=1
+driver=0
 checkpatch=0
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -65,8 +65,8 @@ while [ $# -gt 0 ]; do
             docs=1
             shift
             ;;
-        -nodriver)
-            driver=0
+        -driver)
+            driver=1
             shift
             ;;
         -verbose)
