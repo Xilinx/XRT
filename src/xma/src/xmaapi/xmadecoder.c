@@ -175,6 +175,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
 
     // Call the plugins initialization function with this session data
     if (dec_session->decoder_plugin->init(dec_session)) {
+        free(dec_session->base.plugin_data);
         free(dec_session);
         return NULL;
     }
