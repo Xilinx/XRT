@@ -83,6 +83,7 @@ enum subcommand {
     STATUS_SPM,
     STATUS_LAPC,
     STATUS_SSPM,
+    STATUS_SPC, 
     STREAM,
     STATUS_UNSUPPORTED,
 };
@@ -90,7 +91,8 @@ enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
-    STATUS_SSPM_MASK = 0x4
+    STATUS_SSPM_MASK = 0x4,
+    STATUS_SPC_MASK = 0x8
 };
 enum p2pcommand {
     P2P_ENABLE = 0x0,
@@ -673,7 +675,14 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        sensor_tree::put( "board.physical.electrical.vccint.current",            m_devinfo.mVccIntCurr );
+        {
+            unsigned cur = 0;
+            std::string errmsg;
+            if(pcidev::get_dev(m_idx)->mgmt){
+                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
+            }
+            sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
+        }
 
         // powerm_devinfo_power
         sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
@@ -761,7 +770,7 @@ public:
              <<    "\nGit Branch: " << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
              <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << std::setw(32) << "DSA" << std::setw(28) << "FPGA" << "IDCode" << std::endl;
+        ostr << std::setw(32) << "Shell" << std::setw(28) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
              << std::setw(28) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
@@ -841,7 +850,7 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Board Power\n";
+        ostr << "Card Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
@@ -1271,11 +1280,12 @@ public:
 
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
-    std::pair<size_t, size_t> getStreamName (std::vector<std::string>& aSlotNames,
+    std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
     int readSPMCounters();
     int readSSPMCounters();
     int readLAPCheckers(int aVerbose);
+    int readStreamingCheckers(int aVerbose);
     int print_debug_ip_list (int aVerbose);
 
     /*

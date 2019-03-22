@@ -16,8 +16,7 @@
  */
 #include "common.h"
 
-//Attributes followed by bin_attributes.
-//
+/* Attributes followed by bin_attributes. */
 /* -Attributes -- */
 
 /* -xclbinuuid-- (supersedes xclbinid) */
@@ -27,7 +26,7 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	xuid_t *xclbin_id;
 
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	return sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
 }
 
@@ -35,9 +34,10 @@ static DEVICE_ATTR_RO(xclbinuuid);
 
 /* -userbar-- */
 static ssize_t userbar_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
+			    struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
 	return sprintf(buf, "%d\n", xdev->core.bar_idx);
 }
 
@@ -46,7 +46,7 @@ static DEVICE_ATTR_RO(userbar);
 static ssize_t user_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	// The existence of entry indicates user function.
+	/* The existence of entry indicates user function. */
 	return sprintf(buf, "%s", "");
 }
 static DEVICE_ATTR_RO(user_pf);
@@ -59,26 +59,13 @@ static ssize_t kdsstat_show(struct device *dev,
 	int size;
 	xuid_t *xclbin_id;
 
-	xclbin_id = (xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID);
+	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	size = sprintf(buf,
 			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
 			   xclbin_id ? xclbin_id : 0,
 			   atomic_read(&xdev->outstanding_execs),
 			   atomic64_read(&xdev->total_execs),
 			   get_live_client_size(xdev));
-#if 0
-	buf += size;
-	if (xdev->layout == NULL)
-		return size;
-	// Enable in 2019.1
-	for (i = 0; i < xdev->layout->m_count; i++) {
-		if (xdev->layout->m_ip_data[i].m_type != IP_KERNEL)
-			continue;
-		size += sprintf(buf, "\t%s:\t%d\n", xdev->layout->m_ip_data[i].m_name,
-				xdev->ip_reference[i]);
-		buf += size;
-	}
-#endif
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -89,27 +76,22 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	ssize_t count = 0;
 	ssize_t size = 0;
 	size_t memory_usage = 0;
-	unsigned bo_count = 0;
+	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
 	struct mem_topology *topo = NULL;
 	struct drm_xocl_mm_stat stat;
-	void *drm_hdl;
 
-	drm_hdl = xocl_dma_get_drm_handle(xdev);
-	if (!drm_hdl)
-		return -EINVAL;
-
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	topo = XOCL_MEM_TOPOLOGY(xdev);
-	if (!topo){
-		mutex_unlock(&xdev->ctx_list_lock);
+	if (!topo) {
+		mutex_unlock(&xdev->dev_lock);
 		return -EINVAL;
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
-		xocl_mm_get_usage_stat(drm_hdl, i, &stat);
+		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
 			memory_usage = 0;
@@ -133,7 +115,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		buf += count;
 		size += count;
 	}
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
 
@@ -181,9 +163,8 @@ static ssize_t p2p_enable_store(struct device *dev,
 	u64 size;
 
 
-	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1) {
+	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
-	}
 
 	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
 	if (p2p_bar < 0) {
@@ -229,7 +210,7 @@ static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int val = xdev->core.offline ? 1 : 0;
+	int val = xocl_drvinst_get_offline(xdev) ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -241,14 +222,13 @@ static ssize_t dev_offline_store(struct device *dev,
 	u32 offline;
 
 
-	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1) {
+	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1)
 		return -EINVAL;
-	}
 
 	device_lock(dev);
 	if (offline) {
+		xocl_drvinst_offline(xdev, true);
 		xocl_subdev_destroy_all(xdev);
-		xdev->core.offline = true;
 	} else {
 		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
 				xdev->core.priv.subdev_num);
@@ -256,7 +236,7 @@ static ssize_t dev_offline_store(struct device *dev,
 			xocl_err(dev, "Online subdevices failed");
 			return -EIO;
 		}
-		xdev->core.offline = false;
+		xocl_drvinst_offline(xdev, false);
 	}
 	device_unlock(dev);
 
@@ -316,8 +296,33 @@ static ssize_t link_speed_max_show(struct device *dev,
 	return sprintf(buf, "%d\n", speed);
 }
 static DEVICE_ATTR_RO(link_speed_max);
-/* - End attributes-- */
 
+static ssize_t sw_chan_state_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	uint64_t ret;
+	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
+
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(sw_chan_state, 0444, sw_chan_state_show, NULL);
+
+static ssize_t sw_chan_switch_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	uint64_t ret;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
+
+/* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
@@ -332,6 +337,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_speed.attr,
 	&dev_attr_link_speed_max.attr,
 	&dev_attr_link_width_max.attr,
+	&dev_attr_sw_chan_state.attr,
+	&dev_attr_sw_chan_switch.attr,
 	NULL,
 };
 
@@ -339,7 +346,6 @@ static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
 };
 
-//---
 int xocl_init_sysfs(struct device *dev)
 {
 	int ret;

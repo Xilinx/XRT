@@ -44,6 +44,10 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_DNASC";
     case IP_DDR4_CONTROLLER:
       return "IP_DDR4_CONTROLLER";
+    case IP_MEM_DDR4:
+      return "IP_MEM_DDR4";
+    case IP_MEM_HBM:
+      return "IP_MEM_HBM";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);
@@ -55,8 +59,35 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   if (_sIPType == "IP_KERNEL") return IP_KERNEL;
   if (_sIPType == "IP_DNASC") return IP_DNASC;
   if (_sIPType == "IP_DDR4_CONTROLLER") return IP_DDR4_CONTROLLER;
+  if (_sIPType == "IP_MEM_DDR4") return IP_MEM_DDR4;
+  if (_sIPType == "IP_MEM_HBM") return IP_MEM_HBM;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
+  throw std::runtime_error(errMsg);
+}
+
+const std::string
+SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
+  switch (_ipControlType) {
+    case AP_CTRL_HS:
+      return "AP_CTRL_HS";
+    case AP_CTRL_CHAIN:
+      return "AP_CTRL_CHAIN";
+    case AP_CTRL_NONE:
+      return "AP_CTRL_NONE";
+  }
+
+  return XUtil::format("UNKNOWN (%d)", (unsigned int) _ipControlType);
+}
+
+
+enum IP_CONTROL
+SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
+  if (_sIPControlType == "AP_CTRL_HS") return AP_CTRL_HS;
+  if (_sIPControlType == "AP_CTRL_CHAIN") return AP_CTRL_CHAIN;
+  if (_sIPControlType == "AP_CTRL_NONE") return AP_CTRL_NONE;
+
+  std::string errMsg = "ERROR: Unknown IP Control type: '" + _sIPControlType + "'";
   throw std::runtime_error(errMsg);
 }
 
@@ -95,18 +126,53 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree ip_data;
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
-                               index,
-                               getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
-                               pHdr->m_ip_data[index].properties,
-                               pHdr->m_ip_data[index].m_base_address,
-                               pHdr->m_ip_data[index].m_name));
+    if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
+
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
+                                 index,
+                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
+                                 pHdr->m_ip_data[index].indices.m_index,
+                                 pHdr->m_ip_data[index].indices.m_pc_index,
+                                 pHdr->m_ip_data[index].m_base_address,
+                                 pHdr->m_ip_data[index].m_name));
+    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x {m_ip_control: %s, m_interrupt_id: %d, m_int_enable: %d}, m_base_address: 0x%lx, m_name: '%s'",
+                                 index,
+                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
+                                 pHdr->m_ip_data[index].properties,
+                                 sIPControlType.c_str(),
+                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT,
+                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK)),
+                                 pHdr->m_ip_data[index].m_base_address,
+                                 pHdr->m_ip_data[index].m_name));
+    } else {
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
+                                 index,
+                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
+                                 pHdr->m_ip_data[index].properties,
+                                 pHdr->m_ip_data[index].m_base_address,
+                                 pHdr->m_ip_data[index].m_name));
+    }
 
     // Write out the entire structure
     XUtil::TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
-    ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
+
+    if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
+      ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_index).c_str());
+      ip_data.put("m_pc_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).c_str());
+    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+      ip_data.put("m_int_enable", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK))).c_str());
+      ip_data.put("m_interrupt_id", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT).c_str());
+      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+      ip_data.put("m_ip_control", sIPControlType.c_str());
+    } else {
+      ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
+    }
     if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
       ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
     } else {
@@ -157,11 +223,68 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     std::string sm_type = ptIPData.get<std::string>("m_type");
     ipDataHdr.m_type = getIPType(sm_type);
 
-    std::string sProperties = ptIPData.get<std::string>("properties");
-    ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+    // For these IPs, the struct indices needs to be initialized
+    if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
+        (ipDataHdr.m_type == IP_MEM_HBM))
+    {
+      ipDataHdr.indices.m_index = ptIPData.get<uint16_t>("m_index");
+      ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
+    } else {
+      // Get the properties value (if one is defined)
+      std::string sProperties = ptIPData.get<std::string>("properties", "0");
+      ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+      
+      { // m_int_enable
+        boost::optional<bool> bIntEnable;
+        bIntEnable = ptIPData.get_optional<bool>("m_int_enable");
+        if (bIntEnable.is_initialized()) {
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_INT_ENABLE_MASK);  // Clear existing bit
+          if (bIntEnable.get()) {
+            ipDataHdr.properties = ipDataHdr.properties | ((uint32_t) IP_INT_ENABLE_MASK); // Set bit
+          }
+        }
+      }
+  
+      { // m_interrupt_id
+        boost::optional<uint8_t> bInterruptID;
+        bInterruptID = ptIPData.get_optional<uint8_t>("m_interrupt_id");
+        if (bInterruptID.is_initialized()) {
+          unsigned int maxValue = ((unsigned int) IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
+          if (bInterruptID.get() > maxValue) {
+            std::string errMsg = XUtil::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).",
+                                               (unsigned int)bInterruptID.get(), maxValue);
+            throw std::runtime_error(errMsg);
+          }
+  
+          unsigned int shiftValue = ((unsigned int) bInterruptID.get()) << IP_INTERRUPT_ID_SHIFT;
+          shiftValue = shiftValue & ((uint32_t) IP_INTERRUPT_ID_MASK);
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_INTERRUPT_ID_MASK);  // Clear existing bits
+          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+        }
+      }
+  
+      { // m_ip_control
+        boost::optional<std::string> bIPControl;
+        bIPControl = ptIPData.get_optional<std::string>("m_ip_control");
+        if (bIPControl.is_initialized()) {
+          unsigned int ipControl = (unsigned int) getIPControlType(bIPControl.get());
+  
+          unsigned int maxValue = ((unsigned int) IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+          if (ipControl > maxValue) {
+            std::string errMsg = XUtil::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).",
+                                               (unsigned int) ipControl, maxValue);
+            throw std::runtime_error(errMsg);
+          }
+  
+          unsigned int shiftValue = ipControl << IP_CONTROL_SHIFT;
+          shiftValue = shiftValue & ((uint32_t) IP_CONTROL_MASK);
+          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t) IP_CONTROL_MASK);  // Clear existing bits
+          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+        }
+      }
+    }
 
     std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
-    ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
 
     if ( sBaseAddress != "not_used" ) {
       ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
@@ -173,19 +296,30 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(ip_data::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(ip_data::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 
     // We already know that there is enough room for this string
     memcpy(ipDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
-                               count,
-                               (unsigned int)ipDataHdr.m_type,
-                               (unsigned int)ipDataHdr.properties,
-                               ipDataHdr.m_base_address,
-                               ipDataHdr.m_name));
+    if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
+        (ipDataHdr.m_type == IP_MEM_HBM)) {
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
+                                 count,
+                                 (unsigned int)ipDataHdr.m_type,
+                                 (unsigned int)ipDataHdr.indices.m_index,
+                                 (unsigned int)ipDataHdr.indices.m_pc_index,
+                                 ipDataHdr.m_base_address,
+                                 ipDataHdr.m_name));
+    } else {
+      XUtil::TRACE(XUtil::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
+                                 count,
+                                 (unsigned int)ipDataHdr.m_type,
+                                 (unsigned int)ipDataHdr.properties,
+                                 ipDataHdr.m_base_address,
+                                 ipDataHdr.m_name));
+    }
 
     // Write out the entire structure
     XUtil::TRACE_BUF("ip_data", reinterpret_cast<const char*>(&ipDataHdr), sizeof(ip_data));
@@ -273,8 +407,16 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
 
   for (auto ip_data : ip_datas) {
     boost::property_tree::ptree new_ip_data;
-    new_ip_data.put("m_type", ip_data.get<std::string>("m_type"));
-    new_ip_data.put("properties", ip_data.get<std::string>("properties"));
+    std::string sm_type = ip_data.get<std::string>("m_type");
+    new_ip_data.put("m_type", sm_type);
+
+    if ((getIPType(sm_type) == IP_MEM_DDR4) ||
+        (getIPType(sm_type) == IP_MEM_HBM)) {
+      new_ip_data.put("m_index", ip_data.get<std::string>("m_index"));
+      new_ip_data.put("m_pc_index", ip_data.get<std::string>("m_pc_index", "0"));
+    } else {
+      new_ip_data.put("properties", ip_data.get<std::string>("properties"));
+    }
     new_ip_data.put("m_base_address", ip_data.get<std::string>("m_base_address"));
     new_ip_data.put("m_name", ip_data.get<std::string>("m_name"));
 

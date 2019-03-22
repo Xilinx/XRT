@@ -36,6 +36,7 @@
 #include <linux/aio_abi.h>
 #include "driver/include/xclbin.h"
 #include "scan.h"
+#include <ert.h>
 #include "driver/common/message.h"
 #include "driver/common/scheduler.h"
 #include <cstdio>
@@ -585,14 +586,30 @@ int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, siz
 }
 
 /*
- * xclCopyBO()
+ * xclCopyBO() - TO BE REMOVED
  */
-int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle,
+    unsigned int src_boHandle, size_t size, size_t dst_offset,
+    size_t src_offset)
 {
     int ret;
-    drm_xocl_copy_bo copyInfo = {dst_boHandle, src_boHandle, 0, size, dst_offset, src_offset};
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &copyInfo);
-    return ret ? -errno : ret;
+    unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
+        xclBOKind(0), (1<<31));
+    struct ert_start_copybo_cmd *execData =
+        reinterpret_cast<struct ert_start_copybo_cmd *>(
+        xclMapBO(execHandle, true));
+
+    ert_fill_copybo_cmd(execData, src_boHandle, dst_boHandle,
+        src_offset, dst_offset, size);
+
+    ret = xclExecBuf(execHandle);
+    if (ret == 0)
+        while (xclExecWait(1000) == 0);
+
+    (void) munmap(execData, sizeof (ert_start_copybo_cmd));
+    xclFreeBO(execHandle);
+
+    return ret;
 }
 
 /*
@@ -706,7 +723,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("xmc", "xmc_mgtavtt", errmsg, info->mMgtVtt);
         dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
-        dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
         dev->mgmt->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
 
         std::vector<uint64_t> freqs;
@@ -770,14 +786,25 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
+    std::string err;
 
     if (kind == XCL_RESET_FULL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
     else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-    else if (kind == XCL_USER_RESET)
+    else if (kind == XCL_USER_RESET) {
+        int dev_offline = 1;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
-    else
+        if (ret)
+		return errno;
+
+        dev_fini();
+	while (dev_offline) {
+            pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "dev_offline", err, dev_offline);
+	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
+	dev_init();
+    } else
         return -EINVAL;
 
     return ret ? errno : 0;
@@ -1602,8 +1629,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-        comps[i].nbytes = ((struct io_event *)comps)[i].res;
-        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	if (((struct io_event *)comps)[i].res < 0){
+            /* error returned by AIO framework */
+            comps[i].nbytes = 0;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res;
+	} else {
+            comps[i].nbytes = ((struct io_event *)comps)[i].res;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	}
     }
     num_evt = 0;
 
@@ -1746,8 +1779,19 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
+int xocl::XOCLShim::xclMPD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
+    return ret ? -errno : ret;
+}
 
-
+int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
+{
+    int ret;
+    ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
+    return ret ? -errno : ret;
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -2235,4 +2279,16 @@ char *xclMapMgmt(xclDeviceHandle handle)
 {
   xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
   return drv ? drv->xclMapMgmt() :   nullptr;
+}
+
+int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMPD(args) : -ENODEV;
+}
+
+int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclMSD(args) : -ENODEV;
 }

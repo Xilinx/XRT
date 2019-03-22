@@ -31,26 +31,26 @@
 #define XOCL_DRIVER_MINOR       2
 #define XOCL_DRIVER_PATCHLEVEL  8
 
-#define XOCL_MAX_CONCURRENT_CLIENTS 32
-
 #define XOCL_DRIVER_VERSION                             \
-        __stringify(XOCL_DRIVER_MAJOR) "."              \
-        __stringify(XOCL_DRIVER_MINOR) "."              \
-        __stringify(XOCL_DRIVER_PATCHLEVEL)
+	__stringify(XOCL_DRIVER_MAJOR) "."              \
+	__stringify(XOCL_DRIVER_MINOR) "."              \
+	__stringify(XOCL_DRIVER_PATCHLEVEL)
 
 #define XOCL_DRIVER_VERSION_NUMBER                              \
-        ((XOCL_DRIVER_MAJOR)*1000 + (XOCL_DRIVER_MINOR)*100 +   \
-        XOCL_DRIVER_PATCHLEVEL)
+	((XOCL_DRIVER_MAJOR)*1000 + (XOCL_DRIVER_MINOR)*100 +   \
+	XOCL_DRIVER_PATCHLEVEL)
 
 #define userpf_err(d, args...)                     \
-        xocl_err(&XDEV(d)->pdev->dev, ##args)
+	xocl_err(&XDEV(d)->pdev->dev, ##args)
 #define userpf_info(d, args...)                    \
-        xocl_info(&XDEV(d)->pdev->dev, ##args)
+	xocl_info(&XDEV(d)->pdev->dev, ##args)
 #define userpf_dbg(d, args...)                     \
-        xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+	xocl_dbg(&XDEV(d)->pdev->dev, ##args)
 
 #define xocl_get_root_dev(dev, root)		\
-        for (root = dev; root->bus && root->bus->self; root = root->bus->self)
+	for (root = dev; root->bus && root->bus->self; root = root->bus->self)
+
+#define	XOCL_RESET_DELAY		2000
 
 #define	XOCL_USER_PROC_HASH_SZ		256
 
@@ -65,7 +65,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 #define XOCL_DRM_FREE_MALLOC
 #elif defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_DRM_FREE_MALLOC
 #endif
 #endif
@@ -78,12 +78,12 @@ struct xocl_dev	{
 	bool			offline;
 
 	/* health thread */
-	struct task_struct	       *health_thread;
+	struct task_struct		*health_thread;
 	struct xocl_health_thread_arg	thread_arg;
 
 	u32			p2p_bar_idx;
 	resource_size_t		p2p_bar_len;
-	void * __iomem		p2p_bar_addr;
+	void __iomem		*p2p_bar_addr;
 
 	/*should be removed after mailbox is supported */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
@@ -95,7 +95,12 @@ struct xocl_dev	{
 	struct dev_pagemap pgmap;
 #endif
 	struct list_head                ctx_list;
-	struct mutex			ctx_list_lock;
+	/*
+	 * Per xdev lock protecting client list and all client contexts in the
+	 * list. Any operation which requires client status, such as xclbin
+	 * downloading or validating exec buf, should hold this lock.
+	 */
+	struct mutex			dev_lock;
 	unsigned int                    needs_reset; /* bool aligned */
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
@@ -106,28 +111,26 @@ struct xocl_dev	{
  * struct client_ctx: Manage user space client attached to device
  *
  * @link: Client context is added to list in device
- * @xclbin_id: UUID for xclbin loaded by client, or nullid if no xclbin loaded
- * @xclbin_locked: Flag to denote that this context locked the xclbin
  * @trigger: Poll wait counter for number of completed exec buffers
  * @outstanding_execs: Counter for number outstanding exec buffers
  * @abort: Flag to indicate that this context has detached from user space (ctrl-c)
  * @num_cus: Number of resources (CUs) explcitly aquired
  * @lock: Mutex lock for exclusive access
  * @cu_bitmap: CUs reserved by this context, may contain implicit resources
+ * @virt_cu_ref: ref count for implicit resources reserved by this context.
  */
 struct client_ctx {
 	struct list_head	link;
-	xuid_t                  xclbin_id;
-	unsigned int            xclbin_locked;
 	unsigned int            abort;
-	unsigned int            num_cus;     /* number of resource locked explicitly by client */
-	atomic_t 		trigger;     /* count of poll notification to acknowledge */
+	unsigned int            num_cus;
+	atomic_t		trigger;
 	atomic_t                outstanding_execs;
-	struct mutex		lock;
 	struct xocl_dev        *xdev;
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);  /* may contain implicitly aquired resources such as CDMA */
+	DECLARE_BITMAP		(cu_bitmap, MAX_CUS);
 	struct pid             *pid;
+	unsigned int		virt_cu_ref;
 };
+#define	CLIENT_NUM_CU_CTX(client) ((client)->num_cus + (client)->virt_cu_ref)
 
 struct xocl_mm_wrapper {
   struct drm_mm *mm;
@@ -139,27 +142,31 @@ struct xocl_mm_wrapper {
 };
 
 /* ioctl functions */
-int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_info_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_ctx_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
+int xocl_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
-                         struct drm_file *filp);
+	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
-  struct drm_file *filp);
+	struct drm_file *filp);
+int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
 void xocl_fini_sysfs(struct device *dev);
 
 /* helper functions */
-int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force);
+int xocl_hot_reset(struct xocl_dev *xdev, bool force);
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
-int xocl_p2p_mem_reserve(struct xocl_dev * xdev);
+int xocl_p2p_mem_reserve(struct xocl_dev *xdev);
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);

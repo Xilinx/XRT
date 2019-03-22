@@ -17,7 +17,7 @@
 #define	_XOCL_DRV_H_
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
@@ -27,12 +27,14 @@
 #include "devices.h"
 #include "xocl_ioctl.h"
 #include "mgmt-ioctl.h"
+#include "mailbox_proto.h"
+
 
 #if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7,4)
+#if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_UUID
 #endif
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4,13,0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 #define XOCL_UUID
 #endif
 /* UUID helper functions not present in older kernels */
@@ -60,8 +62,8 @@ static inline void xocl_memcpy_fromio(void *buf, void *iomem, u32 size)
 
 	BUG_ON(size & 0x3);
 
-        for (i = 0; i < size / 4; i++)
-                ((u32 *)buf)[i] = ioread32((char *)(iomem) + sizeof(u32) * i);
+	for (i = 0; i < size / 4; i++)
+		((u32 *)buf)[i] = ioread32((char *)(iomem) + sizeof(u32) * i);
 }
 
 static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
@@ -70,7 +72,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 	BUG_ON(size & 0x3);
 
-        for (i = 0; i < size / 4; i++)
+	for (i = 0; i < size / 4; i++)
 		iowrite32(((u32 *)buf)[i], ((char *)(iomem) + sizeof(u32) * i));
 }
 
@@ -81,8 +83,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
 #define xocl_sysfs_error(xdev, fmt, args...)     \
-        snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
-		 fmt, ##args)
+		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
+		fmt, ##args)
 #define MAX_M_COUNT      64
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
@@ -143,10 +145,10 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #ifdef RHEL_RELEASE_VERSION
 
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
 #define RHEL_P2P_SUPPORT_74  0
 #define RHEL_P2P_SUPPORT_76  1
-#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7,6)
+#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
 #define RHEL_P2P_SUPPORT_74  1
 #define RHEL_P2P_SUPPORT_76  0
 #endif
@@ -179,7 +181,7 @@ struct xocl_subdev_private {
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
-	((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data
+	(((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data)
 
 typedef	void *	xdev_handle_t;
 
@@ -200,6 +202,10 @@ struct xocl_pci_funcs {
 #define xocl_reset(xdev)			\
 	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
 	-ENODEV)
+#define xocl_get_data(xdev, kind)			\
+	(XDEV_PCIOPS(xdev)->get_data ? XDEV_PCIOPS(xdev)->get_data(xdev, kind) : \
+	-ENODEV)
+
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
@@ -221,6 +227,7 @@ struct xocl_drvinst {
 	struct completion	comp;
 	struct list_head	open_procs;
 	void			*file_dev;
+	bool			offline;
 	char			data[1];
 };
 
@@ -232,67 +239,27 @@ struct xocl_dev_core {
 	struct xocl_pci_funcs	*pci_ops;
 
 	u32			bar_idx;
-        void *__iomem		bar_addr;
+	void __iomem		*bar_addr;
 	resource_size_t		bar_size;
 	resource_size_t		feature_rom_offset;
 
 	u32			intr_bar_idx;
-        void *__iomem		intr_bar_addr;
+	void __iomem		*intr_bar_addr;
 	resource_size_t		intr_bar_size;
 
 	struct task_struct      *health_thread;
 	struct xocl_health_thread_arg thread_arg;
 
+	struct xocl_drm		*drm;
+	struct delayed_work	reset_work;
+
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
-
-	bool			offline;
 };
 
-enum data_kind {
-	MIG_CALIB,
-	DIMM0_TEMP,
-	DIMM1_TEMP,
-	DIMM2_TEMP,
-	DIMM3_TEMP,
-	FPGA_TEMP,
-	VCC_BRAM,
-	CLOCK_FREQ_0,
-	CLOCK_FREQ_1,
-	FREQ_COUNTER_0,
-	FREQ_COUNTER_1,
-	VOL_12V_PEX,
-	VOL_12V_AUX,
-	CUR_12V_PEX,
-	CUR_12V_AUX,
-	SE98_TEMP0,
-	SE98_TEMP1,
-	SE98_TEMP2,
-	FAN_TEMP,
-	FAN_RPM,
-	VOL_3V3_PEX,
-	VOL_3V3_AUX,
-	VPP_BTM,
-	VPP_TOP,
-	VOL_5V5_SYS,
-	VOL_1V2_TOP,
-	VOL_1V2_BTM,
-	VOL_1V8,
-	VCC_0V9A,
-	VOL_12V_SW,
-	VTT_MGTA,
-	VOL_VCC_INT,
-	CUR_VCC_INT,
-	IDCODE,
-	IPLAYOUT_AXLF,
-	MEMTOPO_AXLF,
-	CONNECTIVITY_AXLF,
-	DEBUG_IPLAYOUT_AXLF,
-	PEER_CONN,
-	XCLBIN_UUID,
-};
-
+#define XOCL_DRM(xdev_hdl)					\
+	((struct xocl_dev_core *)xdev_hdl)->drm
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -313,7 +280,6 @@ enum data_kind {
 
 /* rom callbacks */
 struct xocl_rom_funcs {
-	unsigned int (*dsa_version)(struct platform_device *pdev);
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
@@ -330,8 +296,6 @@ struct xocl_rom_funcs {
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
 	((struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).ops)
-#define	xocl_dsa_version(xdev)		\
-	(ROM_DEV(xdev) ? ROM_OPS(xdev)->dsa_version(ROM_DEV(xdev)) : 0)
 #define	xocl_is_unified(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->is_unified(ROM_DEV(xdev)) : true)
 #define	xocl_mb_mgmt_on(xdev)		\
@@ -370,18 +334,17 @@ struct xocl_dma_funcs {
 	u64 (*get_str_stat)(struct platform_device *pdev, u32 q_idx);
 	int (*user_intr_config)(struct platform_device *pdev, u32 intr, bool en);
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
-			        irq_handler_t handler, void *arg, int event_fd);
+					irq_handler_t handler, void *arg, int event_fd);
 	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
-	void *(*get_drm_handle)(struct platform_device *pdev);
 };
 
 #define DMA_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_DMA).pldev
 #define	DMA_OPS(xdev)	\
 	((struct xocl_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_DMA).ops)
-#define	xocl_migrate_bo(xdev, sgt, write, paddr, chan, len)	\
+#define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->migrate_bo(DMA_DEV(xdev), \
-	sgt, write, paddr, chan, len) : 0)
+	sgt, to_dev, paddr, chan, len) : 0)
 #define	xocl_acquire_channel(xdev, dir)		\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->ac_chan(DMA_DEV(xdev), dir) : \
 	-ENODEV)
@@ -403,9 +366,6 @@ struct xocl_dma_funcs {
 #define xocl_dma_intr_unreg(xdev, irq)				\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_unreg(DMA_DEV(xdev),	\
 	irq) : -ENODEV)
-#define	xocl_dma_get_drm_handle(xdev)				\
-	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_drm_handle(DMA_DEV(xdev)) : \
-	NULL)
 
 /* mb_scheduler callbacks */
 struct xocl_mb_scheduler_funcs {
@@ -442,18 +402,18 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_stop(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
-        -ENODEV)
+	-ENODEV)
 #define	xocl_exec_reset(xdev)		\
 	(MB_SCHEDULER_DEV(xdev) ? 				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
-        -ENODEV)
+	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)					\
-	 xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)						\
-	 xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+#define XOCL_XCLBIN_ID(xdev)						\
+	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -577,104 +537,59 @@ struct xocl_dna_funcs {
 #define xocl_xmc_get_data(xdev, cmd)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
 
-/*
- * mailbox callbacks
- */
-enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN = 0,
-	MAILBOX_REQ_TEST_READY,
-	MAILBOX_REQ_TEST_READ,
-	MAILBOX_REQ_LOCK_BITSTREAM,
-	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET,
-	MAILBOX_REQ_FIREWALL,
-	MAILBOX_REQ_GPCTL,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR,
-	MAILBOX_REQ_LOAD_XCLBIN,
-	MAILBOX_REQ_RECLOCK,
-	MAILBOX_REQ_PEER_DATA,
-	MAILBOX_REQ_CONN_EXPL,
+
+
+enum mb_kind {
+	POST_RST,
+	PRE_RST,
+	CHAN_STATE,
+	CHAN_SWITCH,
+	CH_STATE_RST,
+	CH_SWITCH_RST,
 };
-
-enum mb_cmd_type {
-	MB_CMD_DEFAULT = 0,
-	MB_CMD_LOAD_XCLBIN,
-	MB_CMD_RECLOCK,
-	MB_CMD_CONN_EXPL,
-	MB_CMD_LOAD_XCLBIN_KADDR,
-	MB_CMD_READ_FROM_PEER,
-};
-struct mailbox_req_bitstream_lock {
-	pid_t pid;
-	xuid_t uuid;
-};
-
-struct mailbox_subdev_peer {
-	enum data_kind kind;
-};
-
-struct mailbox_bitstream_kaddr {
-	uint64_t addr;
-};
-
-struct mailbox_gpctl {
-	enum mb_cmd_type cmd_type;
-	uint32_t data_total_len;
-	uint64_t priv_data;
-	void *data_ptr;
-};
-
-
-struct mailbox_req {
-	enum mailbox_request req;
-	uint32_t data_total_len;
-	uint64_t flags;
-	char data[0];
-};
-
-#define MB_PROT_VER_MAJOR 0
-#define MB_PROT_VER_MINOR 5
-#define MB_PROTOCOL_VER   ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
-
-#define MB_PEER_CONNECTED 0x1
-#define MB_PEER_SAME_DOM  0x2
-#define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
-	u64 msgid, int err);
+	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg);
+		mailbox_msg_cb_t cb, void *cbarg, bool sw_ch);
 	int (*post)(struct platform_device *pdev, u64 req_id,
-		void *resp, size_t len);
+		void *resp, size_t len, bool sw_ch);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*reset)(struct platform_device *pdev, bool end_of_reset);
-	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
+	int (*set)(struct platform_device *pdev, enum mb_kind kind, void *data);
+	int (*get)(struct platform_device *pdev, enum mb_kind kind, void *data);
+	int (*sw_transfer)(struct platform_device *pdev, void *args);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev)	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev))
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, sw_ch)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
-#define	xocl_peer_response(xdev, reqid, buf, len)			\
+	req, reqlen, resp, resplen, cb, cbarg, sw_ch) : -ENODEV)
+#define	xocl_peer_response(xdev, reqid, buf, len, sw_ch)			\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
-	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req, reqlen)					\
+	reqid, buf, len, sw_ch) : -ENODEV)
+#define	xocl_peer_notify(xdev, req, reqlen, sw_ch)					\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, reqlen) : -ENODEV)
+	req, reqlen, sw_ch) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
-#define	xocl_mailbox_reset(xdev, end)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->reset(MAILBOX_DEV(xdev), \
-	end) : -ENODEV)
+#define	xocl_mailbox_set(xdev, kind, data)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->set(MAILBOX_DEV(xdev), \
+	kind, data) : -ENODEV)
+#define	xocl_mailbox_get(xdev, kind, data)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
+	kind, data) : -ENODEV)
 #define	xocl_mailbox_get_data(xdev, kind)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
 		: -ENODEV)
+#define	xocl_mailbox_sw_transfer(xdev, args)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->sw_transfer(MAILBOX_DEV(xdev), \
+	args) : -ENODEV)
 
 struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
@@ -686,13 +601,14 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
-	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling* freqs);
+	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	int (*xclmgmt_mailbox_sw)(struct platform_device *pdev, struct xclmgmt_ioc_sw_mailbox *sw_chan);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -749,7 +665,7 @@ int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
-        struct xocl_subdev_info *sdev_info, u32 subdev_num);
+	struct xocl_subdev_info *sdev_info, u32 subdev_num);
 void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
@@ -757,14 +673,14 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
-int xocl_subdev_get_devinfo(uint32_t subdev_id,
+int xocl_subdev_get_devinfo(xdev_handle_t xdev_hdl, uint32_t subdev_id,
 	struct xocl_subdev_info *subdev_info, struct resource *res);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
-        struct axlf *bin_obj, bool major_only);
+	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
@@ -777,6 +693,8 @@ void xocl_drvinst_free(void *data);
 void *xocl_drvinst_open(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
+void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);
+bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
 
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);

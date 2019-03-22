@@ -53,6 +53,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "ACCEL_MONITOR";
     case AXI_STREAM_MONITOR:
       return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER:
+      return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
@@ -82,7 +84,10 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
     return ACCEL_MONITOR;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
-      return AXI_STREAM_MONITOR;
+    return AXI_STREAM_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" ) 
+    return AXI_STREAM_PROTOCOL_CHECKER;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
@@ -210,7 +215,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     std::string sm_name = ptDebugIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(debug_ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 

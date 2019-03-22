@@ -129,7 +129,8 @@ extern "C" {
         USER_METADATA,
         DNA_CERTIFICATE,
         PDI,
-        BITSTREAM_PARTIAL_PDI 
+        BITSTREAM_PARTIAL_PDI,
+        DTC
     };
 
     enum MEM_TYPE {
@@ -149,7 +150,9 @@ extern "C" {
         IP_MB = 0,
         IP_KERNEL, //kernel instance
         IP_DNASC,
-        IP_DDR4_CONTROLLER
+        IP_DDR4_CONTROLLER,
+        IP_MEM_DDR4,
+        IP_MEM_HBM
     };
 
     struct axlf_section_header {
@@ -244,10 +247,36 @@ extern "C" {
 
 
     /****   IP_LAYOUT SECTION ****/
+
+    // IP Kernel 
+    #define IP_INT_ENABLE_MASK    0x0001
+    #define IP_INTERRUPT_ID_MASK  0x00FE
+    #define IP_INTERRUPT_ID_SHIFT 0x1
+        
+    enum IP_CONTROL {
+        AP_CTRL_HS = 0,
+        AP_CTRL_CHAIN = 1,
+        AP_CTRL_NONE = 2
+    };
+
+    #define IP_CONTROL_MASK  0xFF00
+    #define IP_CONTROL_SHIFT 0x8
+
     /* IPs on AXI lite - their types, names, and base addresses.*/
     struct ip_data {
         uint32_t m_type; //map to IP_TYPE enum
-        uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
+        union {
+            uint32_t properties; // Default: 32-bits to indicate ip specific property. 
+                                 // m_type: IP_KERNEL
+                                 //         m_int_enable   : Bit  - 0x0000_0001;
+                                 //         m_interrupt_id : Bits - 0x0000_00FE; 
+                                 //         m_ip_control   : Bits = 0x0000_FF00;
+            struct {             // m_type: IP_MEM_*
+               uint16_t m_index;
+               uint8_t m_pc_index;
+               uint8_t unused;
+            } indices;
+        };
         uint64_t m_base_address;
         uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
     };
@@ -267,7 +296,8 @@ extern "C" {
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
-        AXI_STREAM_MONITOR
+        AXI_STREAM_MONITOR,
+	AXI_STREAM_PROTOCOL_CHECKER
     };
 
     struct debug_ip_data {

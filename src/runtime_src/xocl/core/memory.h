@@ -488,7 +488,7 @@ public:
       // allocate sufficiently aligned memory and reassign m_host_ptr
       if (posix_memalign(&m_host_ptr,alignment,sz))
         throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
-    if (flags & CL_MEM_COPY_HOST_PTR)
+    if (flags & CL_MEM_COPY_HOST_PTR && host_ptr)
       std::memcpy(m_host_ptr,host_ptr,sz);
 
     m_aligned = (reinterpret_cast<uintptr_t>(m_host_ptr) % alignment)==0;

@@ -14,8 +14,6 @@ INITSCRIPT_PARAMS = "defaults"
 
 S = "${WORKDIR}"
 
-inherit update-rc.d
-
 do_install() {
 	install -d ${D}${sysconfdir}/profile.d/
 	install -m 0755 mnt-sd.sh ${D}${sysconfdir}/profile.d/mnt-sd.sh

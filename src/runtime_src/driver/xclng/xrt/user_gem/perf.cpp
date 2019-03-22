@@ -1013,8 +1013,8 @@ namespace xocl {
     info->user_instance = user_instance;
     info->mgmt_instance = mgmt_instance;
     info->nifd_instance = nifd_instance;
-    strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN);
-    strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN);
+    strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
+    strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
     info->device_name[MAX_NAME_LEN-1] = '\0';
     info->nifd_name[MAX_NAME_LEN-1] = '\0';
     return 0;

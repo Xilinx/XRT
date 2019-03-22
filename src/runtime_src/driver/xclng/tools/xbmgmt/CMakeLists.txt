@@ -19,6 +19,7 @@ target_link_libraries(xbmgmt
   pthread
   boost_filesystem
   boost_system
+  uuid
   )
 
 install (TARGETS xbmgmt RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

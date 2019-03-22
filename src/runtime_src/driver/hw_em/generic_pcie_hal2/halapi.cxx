@@ -21,9 +21,6 @@
 #include <shim.h>
 #include "driver/common/scheduler.h"
 
-//########################################## THESE HAS TO BE DEFINED START ##########################################
-
-
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -45,9 +42,6 @@ int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int sr
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
 }
-
-
-//########################################## THESE HAS TO BE DEFINED END ##########################################
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
@@ -141,6 +135,21 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
     return -1;
   return drv->xclExecBuf(cmdBO);
 }
+
+
+//defining following two functions as they gets called in scheduler init call
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+  
+{
+  return 0;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  return 0;
+}
+
+
 
 int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
@@ -449,6 +458,19 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
     return -1;
   return drv->xclPerfMonReadTrace(type,traceVector);
 }
+
+ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
+}
+
+ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+}
+
 
 //QDMA Support
 //

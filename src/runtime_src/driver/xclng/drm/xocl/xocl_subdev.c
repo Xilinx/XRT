@@ -90,20 +90,20 @@ static struct platform_device *xocl_register_subdev(xdev_handle_t xdev_hdl,
 			goto error;
 		}
 
-		priv = vzalloc(sizeof(*priv) + sdev_info->data_len);
-		if (sdev_info->data_len > 0 && sdev_info->priv_data) {
-			memcpy(priv->priv_data, sdev_info->priv_data,
-				sdev_info->data_len);
-		}
-		priv->id = sdev_info->id;
-		priv->is_multi = multi_inst;
-		retval = platform_device_add_data(pldev,
-			priv, sizeof(*priv) + sdev_info->data_len);
-		vfree(priv);
-		if (retval) {
-			xocl_err(&pldev->dev, "failed to add data");
-			goto error;
-		}
+	}
+	priv = vzalloc(sizeof(*priv) + sdev_info->data_len);
+	if (sdev_info->data_len > 0 && sdev_info->priv_data) {
+		memcpy(priv->priv_data, sdev_info->priv_data,
+			sdev_info->data_len);
+	}
+	priv->id = sdev_info->id;
+	priv->is_multi = multi_inst;
+	retval = platform_device_add_data(pldev,
+		priv, sizeof(*priv) + sdev_info->data_len);
+	vfree(priv);
+	if (retval) {
+		xocl_err(&pldev->dev, "failed to add data");
+		goto error;
 	}
 
 	pldev->dev.parent = &core->pdev->dev;
@@ -121,9 +121,12 @@ error:
 	return NULL;
 }
 
-int xocl_subdev_get_devinfo(uint32_t subdev_id,
+int xocl_subdev_get_devinfo(xdev_handle_t xdev_hdl, uint32_t subdev_id,
 	struct xocl_subdev_info *info, struct resource *res)
 {
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i;
+
 	switch(subdev_id) {
 		case XOCL_SUBDEV_DNA:
 			*info = (struct xocl_subdev_info)XOCL_DEVINFO_DNA;
@@ -132,8 +135,18 @@ int xocl_subdev_get_devinfo(uint32_t subdev_id,
 			*info = (struct xocl_subdev_info)XOCL_DEVINFO_MIG;
 			break;
 		default:
-			return -ENODEV;
+			for (i = 0; i < core->priv.subdev_num; i++)
+				if (core->priv.subdev_info[i].id == subdev_id)
+					break;
+			if (i == core->priv.subdev_num)
+				return -ENOENT;
+
+			*info = core->priv.subdev_info[i];
+			break;
 	}
+
+	if (!res)
+		return 0;
 	/* Only support retrieving subdev info with 1 base address and no irq */
 	if(info->num_res > 1)
 		return -EINVAL;
@@ -408,6 +421,7 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id)
 		match_subdev_by_id, &subdevs);
 	device_unlock(&core->pdev->dev);
 }
+
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;

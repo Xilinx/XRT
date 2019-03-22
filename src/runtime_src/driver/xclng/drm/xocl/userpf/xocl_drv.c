@@ -18,6 +18,8 @@
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/crc32c.h>
+#include <linux/random.h>
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
@@ -49,9 +51,13 @@ static const struct pci_device_id pciidlist[] = {
 	{ 0, }
 };
 
-struct class *xrt_class = NULL;
+struct class *xrt_class;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
+
+static void xocl_mb_connect(struct xocl_dev *xdev);
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err, bool sw_ch);
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
@@ -73,19 +79,38 @@ struct xocl_pci_funcs userpf_pci_ops = {
 
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
-        struct xocl_dev *xdev = pci_get_drvdata(pdev);
+	struct xocl_dev *xdev = pci_get_drvdata(pdev);
+	struct xocl_subdev_info mbox;
+	char mbox_priv = 1;
+	int ret;
 
-        xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
+	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
-        if (prepare) {
-		xocl_mailbox_reset(xdev, false);
-		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DMA);
-        } else {
+	if (prepare) {
+	ret = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MAILBOX, &mbox, NULL);
+	if (ret) {
+		xocl_err(&pdev->dev, "can not get mailbox subdev");
+		return;
+	}
+	/* clean up mem topology */
+	xocl_cleanup_mem(XOCL_DRM(xdev));
+	xocl_subdev_destroy_all(xdev);
+	mbox.priv_data = &mbox_priv;
+	mbox.data_len = 1;
+	ret = xocl_subdev_create_one(xdev, &mbox);
+	if (ret)
+		xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
+	} else {
 		reset_notify_client_ctx(xdev);
-		xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
-		xocl_mailbox_reset(xdev, true);
+		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+			                        xdev->core.priv.subdev_num);
+		if (ret)
+			xocl_err(&pdev->dev, "Create subdevs failed %d", ret);
+		xocl_mailbox_set(xdev, POST_RST, NULL);
+		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+		(void) xocl_mb_connect(xdev);
 		xocl_exec_reset(xdev);
-        }
+	}
 }
 
 static void kill_all_clients(struct xocl_dev *xdev)
@@ -93,11 +118,13 @@ static void kill_all_clients(struct xocl_dev *xdev)
 	struct list_head *ptr;
 	struct client_ctx *entry;
 	int ret;
-	int total_wait_secs = 10; // sec
-	int wait_interval = 100; // millisec
+	/* in sec */
+	int total_wait_secs = 10;
+	/* in millisec */
+	int wait_interval = 100;
 	int retry = total_wait_secs * 1000 / wait_interval;
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
@@ -108,7 +135,7 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		}
 	}
 
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
 	while (!list_empty(&xdev->ctx_list) && retry--)
 		msleep(wait_interval);
@@ -117,14 +144,17 @@ static void kill_all_clients(struct xocl_dev *xdev)
 		userpf_err(xdev, "failed to kill all clients");
 }
 
-int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
+int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	bool skip = false;
-	int64_t ret = 0, mbret = 0;
+	int ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
 	size_t resplen = sizeof (ret);
+	uint64_t chan_flag = 0;
+	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	if (xdev->offline) {
 		skip = true;
 	} else if (!force && !list_is_singular(&xdev->ctx_list)) {
@@ -135,7 +165,7 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	} else {
 		xdev->offline = true;
 	}
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 	if (ret < 0 || skip)
 		return ret;
 
@@ -145,35 +175,108 @@ int64_t xocl_hot_reset(struct xocl_dev *xdev, bool force)
 		kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL);
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_HOT_RESET)) != 0;
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), &ret, &resplen, NULL, NULL, sw_ch);
 	if (mbret)
 		ret = mbret;
 	xocl_reset_notify(xdev->core.pdev, false);
 
-	mutex_lock(&xdev->ctx_list_lock);
+	mutex_lock(&xdev->dev_lock);
 	xdev->offline = false;
-	mutex_unlock(&xdev->ctx_list_lock);
+	mutex_unlock(&xdev->dev_lock);
 
 	return ret;
 }
 
+static void xocl_reset_work(struct work_struct *work)
+{
+	struct xocl_dev *xdev = container_of(to_delayed_work(work),
+			struct xocl_dev, core.reset_work);
+
+	xocl_drvinst_offline(xdev, true);
+	(void) xocl_hot_reset(xdev, true);
+	xocl_drvinst_offline(xdev, false);
+}
+
+static void xocl_mb_connect(struct xocl_dev *xdev)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	int ret = 0;
+	int resp = 0;
+	size_t data_len = 0, reqlen = 0, resplen = sizeof(resp);
+	void *kaddr = NULL;
+	uint64_t chan_flag = 0, ch_state = 0;
+	bool sw_ch = false;
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
+
+
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if (!mb_req) {
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CONN_EXPL;
+	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!kaddr) {
+		return;
+	}
+	mb_conn.kaddr = (uint64_t)kaddr;
+	mb_conn.paddr = (uint64_t)virt_to_phys(kaddr);
+	get_random_bytes(kaddr, PAGE_SIZE);
+	mb_conn.crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
+
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &resp, &resplen,
+		NULL, NULL, sw_ch);
+	if (!ret) {
+
+		ch_state = MB_PEER_CONNECTED;
+		if (resp > 0) {
+			ch_state |= resp;
+		}
+
+		xocl_mailbox_set(xdev, CHAN_STATE, &ch_state);
+
+		userpf_info(xdev, "ch_state 0x%llx\n", ch_state);
+	}
+	kfree(kaddr);
+	vfree(mb_req);
+}
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
-	int err = 0;
-	int64_t msg = -ENODEV;
+	int err = 0, i = 0;
+	int msg = -ENODEV;
 	struct mailbox_req *req = NULL;
 	size_t resplen = sizeof (msg);
-	size_t reqlen = sizeof(struct mailbox_req)+sizeof(struct drm_xocl_reclock_info);
+	size_t data_len = sizeof(struct mailbox_clock_freqscaling);
+	size_t reqlen = sizeof(struct mailbox_req)+data_len;
+	uint64_t chan_flag = 0;
+	bool sw_ch = false;
+	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
+	struct mailbox_clock_freqscaling mb_freqs = {0};
+
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &chan_flag);
+
+
+	mb_freqs.region = freqs->region;
+	for (i = 0; i < 4; ++i) {
+		mb_freqs.target_freqs[i] = freqs->ocl_target_freq[i];
+	}
+
 	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
 	req->req = MAILBOX_REQ_RECLOCK;
-	req->data_total_len = sizeof(struct drm_xocl_reclock_info);
-	memcpy(req->data, data, sizeof(struct drm_xocl_reclock_info));
+	memcpy(req->data, data, data_len);
 
+	sw_ch = (chan_flag & (1ULL<<MAILBOX_REQ_RECLOCK)) != 0;
 	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL);
+		&msg, &resplen, NULL, NULL, sw_ch);
 
-	if(msg != 0){
+	if (msg != 0) {
 		err = -ENODEV;
 	}
 
@@ -181,11 +284,21 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
   return err;
 }
 
+static void xocl_ch_switch(struct xocl_dev *xdev, struct mailbox_conn *conn)
+{
+	userpf_info(xdev, "%s set channel switch 0x%llx\n", __func__, conn->flag);
+	if (!conn->flag)
+		xocl_mailbox_set(xdev, CH_SWITCH_RST, NULL);
+	else
+		xocl_mailbox_set(xdev, CHAN_SWITCH, &conn->flag);
+}
+
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
-	u64 msgid, int err)
+	u64 msgid, int err, bool sw_ch)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
+	struct mailbox_conn *conn = NULL;
 
 	if (err != 0)
 		return;
@@ -195,6 +308,18 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
 		(void) xocl_hot_reset(xdev, true);
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		conn = (struct mailbox_conn *)req->data;
+		if (conn->flag)
+			(void) xocl_mb_connect(xdev);
+		else {
+			xocl_mailbox_set(xdev, CH_STATE_RST, NULL);
+			xocl_mailbox_set(xdev, CH_SWITCH_RST, NULL);
+		}
+		break;
+	case MAILBOX_REQ_CHAN_SWITCH:
+		xocl_ch_switch(xdev, (struct mailbox_conn *)req->data);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
@@ -222,38 +347,38 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {
-        xocl_reset_notify(pdev, true);
+	xocl_reset_notify(pdev, true);
 }
 
 void user_pci_reset_done(struct pci_dev *pdev)
 {
-        xocl_reset_notify(pdev, false);
+	xocl_reset_notify(pdev, false);
 }
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 static void xocl_dev_percpu_release(struct percpu_ref *ref)
 {
-        struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
+	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
 
-        complete(&xdev->cmp);
+	complete(&xdev->cmp);
 }
 
 static void xocl_dev_percpu_exit(void *data)
 {
-        struct percpu_ref *ref = data;
-        struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
+	struct percpu_ref *ref = data;
+	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
 
-        wait_for_completion(&xdev->cmp);
-        percpu_ref_exit(ref);
+	wait_for_completion(&xdev->cmp);
+	percpu_ref_exit(ref);
 }
 
 
 static void xocl_dev_percpu_kill(void *data)
 {
-        struct percpu_ref *ref = data;
+	struct percpu_ref *ref = data;
 
-        percpu_ref_kill(ref);
+	percpu_ref_kill(ref);
 }
 
 #endif
@@ -275,7 +400,7 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 
 	if (recov_bar_sz) {
 		p2p_bar = xocl_get_p2p_bar(xdev, NULL);
-	        if (p2p_bar < 0) {
+		if (p2p_bar < 0) {
 			return;
 		}
 
@@ -289,7 +414,7 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 
 int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 {
-        resource_size_t p2p_bar_addr;
+	resource_size_t p2p_bar_addr;
 	resource_size_t p2p_bar_len;
 	struct resource res;
 	uint32_t p2p_bar_idx;
@@ -299,7 +424,7 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	xocl_info(&pdev->dev, "reserve p2p mem, bar %d, len %lld",
 			xdev->p2p_bar_idx, xdev->p2p_bar_len);
 
-	if(xdev->p2p_bar_idx < 0 ||
+	if (xdev->p2p_bar_idx < 0 ||
 		xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)) {
 		/* only p2p_bar_len > SECTION (256MB) */
 		xocl_info(&pdev->dev, "Did not find p2p BAR");
@@ -347,12 +472,12 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 /* Ubuntu 16.04 kernel_ver 4.4.0.116*/
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	xdev->p2p_bar_addr= devm_memremap_pages(&(pdev->dev), &res);
+	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &res);
 
 #elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || RHEL_P2P_SUPPORT_74
 	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &res
-						   , &xdev->ref, NULL);
+							, &xdev->ref, NULL);
 
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
 	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &xdev->pgmap);
@@ -360,7 +485,7 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
-	if(!xdev->p2p_bar_addr) {
+	if (!xdev->p2p_bar_addr) {
 		ret = -ENOMEM;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
 		percpu_ref_kill(&xdev->ref);
@@ -391,7 +516,7 @@ failed:
 
 static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {
-	        return 1ULL << (size + 20);
+	return 1ULL << (size + 20);
 }
 
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
@@ -402,7 +527,7 @@ int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
-		xocl_err(&dev->dev, "did not find rebar cap");
+		xocl_info(&dev->dev, "rebar cap does not exist");
 		return -ENOTSUPP;
 	}
 
@@ -448,7 +573,7 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
-		xocl_err(&dev->dev, "did not find rebar cap");
+		xocl_info(&dev->dev, "rebar cap does not exist");
 		return -ENOTSUPP;
 	}
 
@@ -556,7 +681,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	struct xocl_board_private	*dev_info;
 	int				ret;
 
-	xdev = devm_kzalloc(&pdev->dev, sizeof(*xdev), GFP_KERNEL);
+	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
 		return -ENOMEM;
@@ -568,6 +693,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
+	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
 	xocl_fill_dsa_priv(xdev, dev_info);
 
 	ret = identify_bar(xdev);
@@ -585,6 +711,13 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	ret = xocl_alloc_dev_minor(xdev);
 	if (ret)
 		goto failed_alloc_minor;
+
+	xdev->core.drm = xocl_drm_init(xdev);
+        if (!xdev->core.drm) {
+		ret = -EFAULT;
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed_drm_init;
+	}
 
 	ret = xocl_subdev_create_all(xdev, dev_info->subdev_info,
 			dev_info->subdev_num);
@@ -604,15 +737,16 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed_init_sysfs;
 	}
 
-	mutex_init(&xdev->ctx_list_lock);
-	xdev->needs_reset=false;
+	mutex_init(&xdev->dev_lock);
+	xdev->needs_reset = false;
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
-        /* Launch the mailbox server. */
-        (void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
+	(void) xocl_mb_connect(xdev);
 	return 0;
 
 failed_init_sysfs:
@@ -620,6 +754,9 @@ failed_init_sysfs:
 	xocl_subdev_destroy_all(xdev);
 
 failed_create_subdev:
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
+failed_drm_init:
 	xocl_free_dev_minor(xdev);
 
 failed_alloc_minor:
@@ -627,7 +764,7 @@ failed_alloc_minor:
 failed_to_enable:
 	unmap_bar(xdev);
 failed_to_bar:
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 	pci_set_drvdata(pdev, NULL);
 
 	return ret;
@@ -647,16 +784,18 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_subdev_destroy_all(xdev);
 
 	xocl_fini_sysfs(&pdev->dev);
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
 	xocl_free_dev_minor(xdev);
 
 	pci_disable_device(pdev);
 
 	unmap_bar(xdev);
 
-	mutex_destroy(&xdev->ctx_list_lock);
+	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,
@@ -701,7 +840,7 @@ static const struct pci_error_handlers xocl_err_handler = {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 	.reset_prepare	= user_pci_reset_prepare,
 	.reset_done	= user_pci_reset_done,
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 16, 0)
 	.reset_notify   = xocl_reset_notify,
 #endif
 };
