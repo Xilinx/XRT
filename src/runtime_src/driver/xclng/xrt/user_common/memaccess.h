@@ -549,6 +549,7 @@ namespace xcldev {
 	  free(buf);
           return -1;
         }
+	free(buf);
         return count;
       }
 

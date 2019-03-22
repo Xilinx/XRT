@@ -1272,7 +1272,7 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
         dev->mgmt->sysfs_get(tag, "ecc_status", errmsg, status);
         err = eccStatus2String(status, st);
         if (err)
-            return err;
+		break;
 
         unsigned ce_cnt = 0;
         dev->mgmt->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
@@ -1286,7 +1286,7 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
     }
     ostr << std::endl;
     ostr.flags(f);
-    return 0;
+    return err;
 }
 
 int xcldev::device::resetEccInfo()

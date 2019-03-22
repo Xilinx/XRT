@@ -55,6 +55,8 @@ static xuid_t uuid_null = NULL_UUID_LE;
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
 #define	ICAP_XCLBIN_V2			"xclbin2"
 
+#define MAX_SECTION_SIZE		(1024 * 1024 * 1024)
+
 /*
  * Bitstream header information.
  */
@@ -825,6 +827,8 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 
 	if (length == 0)
 		return 0;
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
 
 	free_clock_freq_topology(icap);
 
@@ -856,6 +860,8 @@ static int icap_setup_clear_bitstream(struct icap *icap,
 
 	if (length == 0)
 		return 0;
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
 
 	free_clear_bitstream(icap);
 
@@ -985,6 +991,8 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Part Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
+	if (Len > 2048)
+		return -1;
 
 	/* allocate space for part name and final null character. */
 	Header->PartName = kmalloc(Len, GFP_KERNEL);
@@ -1170,7 +1178,7 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	const struct axlf_section_header* hdr =
 		get_axlf_section_hdr(icap, top, kind);
 
-	if (hdr == NULL || hdr->m_sectionSize > 1024 * 1024 * 1024)
+	if (hdr == NULL || hdr->m_sectionSize > MAX_SECTION_SIZE)
 		return -EINVAL;
 
 	section = vmalloc(hdr->m_sectionSize);
@@ -1383,6 +1391,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	 */
 	if (secondaryFirmwareLength && (primaryFirmwareLength ||
 		!icap->icap_clear_bitstream)) {
+		if (secondaryFirmwareLength >= MAX_SECTION_SIZE) {
+			err = -EINVAL;
+			goto done;
+		}
 		free_clear_bitstream(icap);
 		icap->icap_clear_bitstream = vmalloc(secondaryFirmwareLength);
 		if (!icap->icap_clear_bitstream) {
@@ -1670,6 +1682,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 */
 	copy_buffer_size = bin_obj.m_header.m_numSections *
 		sizeof(struct axlf_section_header) + sizeof(struct axlf);
+	if (copy_buffer_size >= MAX_SECTION_SIZE) {
+		err = -EINVAL;
+		goto done;
+	}
 	ICAP_INFO(icap, "copy-in headers, num sections: %d, size: %llu",
 		bin_obj.m_header.m_numSections, copy_buffer_size);
 	copy_buffer = (struct axlf *)vmalloc(copy_buffer_size);

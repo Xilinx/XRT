@@ -377,12 +377,19 @@ xocl_check_section(const struct axlf_section_header *header, uint64_t len,
 
 	offset = header->m_sectionOffset;
 	size = header->m_sectionSize;
-	if (offset + size <= len)
-		return 0;
 
-	DRM_INFO("Section %s extends beyond xclbin boundary 0x%llx\n",
+	if (size == 0 || size > 1024 * 1024 * 1024) {
+		DRM_INFO("Section %s has invalid size\n", kind_to_string(kind));
+		return -EINVAL;
+	}
+
+	if (offset + size > len) {
+		DRM_INFO("Section %s extends beyond xclbin boundary 0x%llx\n",
 			kind_to_string(kind), len);
-	return -EINVAL;
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 /* Return value: Negative for error, or the size in bytes has been copied */
@@ -408,8 +415,6 @@ xocl_read_sect(enum axlf_section_kind kind, void *sect,
 
 	offset = memHeader->m_sectionOffset;
 	size = memHeader->m_sectionSize;
-	if (size == 0 || size > 1024 * 1024 * 1024)
-		return -EINVAL;
 	*sect_tmp = vmalloc(size);
 
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
