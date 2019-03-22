@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -56,6 +56,9 @@ public:
   unsigned int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+  int xclSKGetCmd(xclSKCmd *cmd);
+  int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
+  int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfPath, size_t size);
 
