@@ -644,9 +644,13 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 	/* Take the msg w/ specified ID. */
 	} else {
 		list_for_each(pos, &ch->mbc_msgs) {
-			msg = list_entry(pos, struct mailbox_msg, mbm_list);
-			if (msg->mbm_req_id == req_id)
+			struct mailbox_msg *temp;
+
+			temp = list_entry(pos, struct mailbox_msg, mbm_list);
+			if (temp->mbm_req_id == req_id) {
+				msg = temp;
 				break;
+			}
 		}
 	}
 
