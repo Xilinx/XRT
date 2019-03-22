@@ -183,7 +183,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           slotID = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
         else
           // SPM Trace IDs (Slots 0-30)
-          if (trace.TraceID >= MIN_TRACE_ID_SPM + 2 && trace.TraceID <= MAX_TRACE_ID_SPM)
+          if (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM)
             slotID = trace.TraceID/2;
           else
             if (!(trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM))
