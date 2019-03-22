@@ -34,6 +34,12 @@ namespace xdp {
     case WRITE_BUFFER:
       commandString = "WRITE_BUFFER";
       break;
+    case COPY_BUFFER:
+      commandString = "COPY_BUFFER";
+      break;
+    case COPY_BUFFER_P2P:
+      commandString = "COPY_BUFFER_P2P";
+      break;
     case EXECUTE_KERNEL:
       commandString = "KERNEL";
       break;

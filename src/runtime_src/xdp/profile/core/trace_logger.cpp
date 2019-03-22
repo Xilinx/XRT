@@ -244,20 +244,11 @@ namespace xdp {
     // We can safely discard those events
     if (objStage == RTUtil::END && (traceObject->getStart() > 0.0)) {
       // Collect performance counters
-      switch (objKind) {
-      case RTUtil::READ_BUFFER: {
-        mProfileCounters->logBufferRead(objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
-        mProfileCounters->pushToSortedTopUsage(traceObject, true);
-        break;
-      }
-      case RTUtil::WRITE_BUFFER: {
-        mProfileCounters->logBufferWrite(objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
-        mProfileCounters->pushToSortedTopUsage(traceObject, false);
-        break;
-      }
-      default:
-        assert(0);
-        break;
+      mProfileCounters->logBufferTransfer(objKind, objSize, (traceObject->End - traceObject->Start), contextId, numDevices);
+
+      if (objKind == RTUtil::READ_BUFFER || objKind == RTUtil::WRITE_BUFFER) {
+        bool isRead = (objKind == RTUtil::READ_BUFFER);
+        mProfileCounters->pushToSortedTopUsage(traceObject, isRead);
       }
 
       // Mark and keep top trace data
