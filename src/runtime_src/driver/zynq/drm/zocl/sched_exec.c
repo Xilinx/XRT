@@ -210,7 +210,6 @@ slot_idx_from_mask_idx(unsigned int slot_idx, unsigned int mask_idx)
 	return slot_idx + (mask_idx << 5);
 }
 
-
 /**
  * opcode() - Command opcode
  *
@@ -277,34 +276,38 @@ regmap_size(struct sched_cmd *cmd)
 }
 
 /**
- * cu_idx_to_addr() - Convert CU idx into it physical address.
+ * cu_idx_to_addr() - Convert CU idx into it virtual address.
  *
  * @dev: Device handle
  * @cu_idx: Global CU idx
- * Return: Address of CU relative to bar
+ * Return: Virturl address of the CU
  */
-inline u32
+inline void __iomem *
 cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	return (cu_idx << zdev->exec->cu_shift_offset)
-		     + zdev->exec->cu_base_addr;
+	return zdev->exec->cu_addr_virt[cu_idx];
 }
 
 /**
- * cu_idx_to_offset() - Convert CU idx into address offset
+ * addr_to_cu_idx - Find the CU idx by physical address
  *
- * @dev: Device handle
- * @cu_idx: Global CU idx
- * Return: Address of CU relative to bar
+ * @cu_list: CU physical address list
+ * @num_cus: The length of the address list
+ * @addr: The address of the CU we are looking for
+ * Return: The index of the CU. If return equals to num_cus, CU is not found
  */
-inline u32
-cu_idx_to_offset(struct drm_device *dev, unsigned int cu_idx)
+int addr_to_cu_idx(struct drm_device *dev, u32 addr)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
+	int i;
 
-	return cu_idx << zdev->exec->cu_shift_offset;
+	for (i = 0; i < zdev->exec->num_cus; i++) {
+		if (zdev->exec->cu_addr_phy[i] == addr)
+			break;
+	}
+	return i;
 }
 
 /**
@@ -379,9 +382,9 @@ void setup_ert_hw(struct drm_zocl_dev *zdev)
 }
 
 inline void
-disable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
+disable_interrupts(struct drm_device *dev, int cu_idx)
 {
-	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
+	u32 __iomem *virt_addr = cu_idx_to_addr(dev, cu_idx);
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
 	iowrite32(0x0, virt_addr + 1);
@@ -390,9 +393,9 @@ disable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
 }
 
 inline void
-enable_interrupts(struct drm_device *dev, u32 *base, int cu_idx)
+enable_interrupts(struct drm_device *dev, int cu_idx)
 {
-	u32 __iomem *virt_addr = base + cu_idx_to_offset(dev, cu_idx);
+	u32 __iomem *virt_addr = cu_idx_to_addr(dev, cu_idx);
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
 	iowrite32(0x1, virt_addr + 1);
@@ -421,7 +424,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 		return IRQ_NONE;
 	}
 
-	virt_addr = zdev->regs + cu_idx_to_offset(zdev->ddev, cu_idx);
+	virt_addr = cu_idx_to_addr(zdev->ddev, cu_idx);
 	/* Clear all interrupts of the CU
 	 *
 	 * HLS style kernel has Interrupt Status Register at offset 0x0C
@@ -509,7 +512,7 @@ configure(struct sched_cmd *cmd)
 	cfg = (struct configure_cmd *)(cmd->packet);
 
 	if (exec->configured != 0) {
-		DRM_ERROR("Reconfiguration not supported\n");
+		DRM_WARN("Reconfiguration not supported\n");
 		return 1;
 	}
 
@@ -546,9 +549,18 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
+		if (is_valid_apts(zdev, cfg->data[i]) == -EINVAL) {
+			write_unlock(&zdev->attr_rwlock);
+			return 1;
+		}
 		exec->cu_addr_phy[i] = cfg->data[i];
-		SCHED_DEBUG("++ configure cu(%d) at 0x%x\n", i,
-		    exec->cu_addr_phy[i]);
+		exec->cu_addr_virt[i] = ioremap(exec->cu_addr_phy[i], CU_SIZE);
+		if (!exec->cu_addr_virt[i]) {
+			write_unlock(&zdev->attr_rwlock);
+			return 1;
+		}
+		SCHED_DEBUG("++ configure cu(%d) at 0x%x map to 0x%x\n", i,
+		    exec->cu_addr_phy[i], exec->cu_addr_virt[i]);
 	}
 
 	if (zdev->ert)
@@ -593,10 +605,10 @@ set_cu_and_print:
 	/* Do not trust user's interrupt enable setting in the start cu cmd */
 	if (exec->polling_mode)
 		for (i = 0; i < exec->num_cus; i++)
-			disable_interrupts(cmd->ddev, zdev->regs, i);
+			disable_interrupts(cmd->ddev, i);
 	else
 		for (i = 0; i < exec->num_cus; i++)
-			enable_interrupts(cmd->ddev, zdev->regs, i);
+			enable_interrupts(cmd->ddev, i);
 
 print_and_out:
 	write_unlock(&zdev->attr_rwlock);
@@ -828,7 +840,7 @@ inline int
 cu_done(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
 	u32 status;
 
 	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
@@ -949,7 +961,7 @@ inline int
 ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = zdev->regs + cu_idx_to_offset(dev, cu_idx);
+	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
 	u32 status;
 
 	SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n",
@@ -1306,9 +1318,8 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 static void
 configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	u32 i, size = regmap_size(cmd);
-	u32 *virt_addr = zdev->regs + cu_idx_to_offset(cmd->ddev, cu_idx);
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
 
 	SCHED_DEBUG("-> configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
@@ -1341,9 +1352,8 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 static void
 ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	u32 i, size = regmap_size(cmd);
-	u32 *virt_addr = zdev->regs + cu_idx_to_offset(cmd->ddev, cu_idx);
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
 
 	SCHED_DEBUG("-> ert_configure_cu ");
@@ -2148,7 +2158,6 @@ sched_init_exec(struct drm_device *drm)
 	init_waitqueue_head(&exec_core->poll_wait_queue);
 
 	exec_core->scheduler = &g_sched0;
-	exec_core->base = zdev->regs;
 	exec_core->num_slots = 16;
 	exec_core->num_cus = 0;
 	exec_core->cu_base_addr = 0;

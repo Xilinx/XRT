@@ -340,6 +340,7 @@ struct sched_exec_core {
 	u32                        scu_status[MAX_U32_CU_MASKS];
 
 	u32                        cu_addr_phy[MAX_CUS];
+	void __iomem              *cu_addr_virt[MAX_CUS];
 	u32                        cu_usage[MAX_CUS];
 
 	struct sched_ops          *ops;
@@ -418,5 +419,7 @@ int sched_fini_exec(struct drm_device *drm);
 
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
+
+int addr_to_cu_idx(struct drm_device *dev, u32 addr);
 
 #endif

@@ -385,6 +385,46 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/* Record all of the hardware address apertures in the XCLBIN
+ * This could be used to verify if the configure command set wrong CU base
+ * address and allow user map one of the aperture to user space.
+ *
+ * The xclbin doesn't contain IP size. Use hardcoding size for now.
+ */
+void
+zocl_update_apertures(struct drm_zocl_dev *zdev)
+{
+	struct ip_data *ip;
+	struct debug_ip_data *dbg_ip;
+	int i;
+
+	if (zdev->ip) {
+		for (i = 0; i < zdev->ip->m_count; ++i) {
+			ip = &zdev->ip->m_ip_data[i];
+			zdev->apertures[zdev->num_apts].addr = ip->m_base_address;
+			zdev->apertures[zdev->num_apts].size = CU_SIZE;
+			zdev->num_apts++;
+		}
+	}
+
+	if (zdev->debug_ip) {
+		for (i = 0; i < zdev->debug_ip->m_count; ++i) {
+			dbg_ip = &zdev->debug_ip->m_debug_ip_data[i];
+			zdev->apertures[zdev->num_apts].addr = dbg_ip->m_base_address;
+			if (dbg_ip->m_type == AXI_MONITOR_FIFO_LITE
+			    || dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
+				/* FIFO_LITE has 4KB and FIFO FULL has 8KB
+				 * address range. Use both 8K is okay.
+				 */
+				zdev->apertures[zdev->num_apts].size = _8KB;
+			else
+				/* Others debug IPs have 64KB address range*/
+				zdev->apertures[zdev->num_apts].size = _64KB;
+			zdev->num_apts++;
+		}
+	}
+}
+
 int
 zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
@@ -457,6 +497,8 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		ret = -EINVAL;
 		goto out0;
 	}
+
+	zocl_update_apertures(zdev);
 
 	/* Populating CONNECTIVITY sections */
 	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
