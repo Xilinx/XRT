@@ -55,6 +55,10 @@ struct class *xrt_class;
 
 MODULE_DEVICE_TABLE(pci, pciidlist);
 
+static void xocl_mb_connect(struct xocl_dev *xdev);
+static void xocl_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err, bool sw_ch);
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	return xocl_dma_intr_config(xdev_hdl, intr, en);
@@ -76,17 +80,36 @@ struct xocl_pci_funcs userpf_pci_ops = {
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
+	struct xocl_subdev_info mbox;
+	char mbox_priv = 1;
+	int ret;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
-	xocl_mailbox_set(xdev, PRE_RST, NULL);
-	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DMA);
+	ret = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MAILBOX, &mbox, NULL);
+	if (ret) {
+		xocl_err(&pdev->dev, "can not get mailbox subdev");
+		return;
+	}
+	/* clean up mem topology */
+	xocl_cleanup_mem(XOCL_DRM(xdev));
+	xocl_subdev_destroy_all(xdev);
+	mbox.priv_data = &mbox_priv;
+	mbox.data_len = 1;
+	ret = xocl_subdev_create_one(xdev, &mbox);
+	if (ret)
+		xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
 	} else {
-	reset_notify_client_ctx(xdev);
-	xocl_subdev_create_by_id(xdev, XOCL_SUBDEV_DMA);
-	xocl_mailbox_set(xdev, POST_RST, NULL);
-	xocl_exec_reset(xdev);
+		reset_notify_client_ctx(xdev);
+		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
+			                        xdev->core.priv.subdev_num);
+		if (ret)
+			xocl_err(&pdev->dev, "Create subdevs failed %d", ret);
+		xocl_mailbox_set(xdev, POST_RST, NULL);
+		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+		(void) xocl_mb_connect(xdev);
+		xocl_exec_reset(xdev);
 	}
 }
 
@@ -165,7 +188,17 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
-void xocl_mb_connect(struct xocl_dev *xdev)
+static void xocl_reset_work(struct work_struct *work)
+{
+	struct xocl_dev *xdev = container_of(to_delayed_work(work),
+			struct xocl_dev, core.reset_work);
+
+	xocl_drvinst_offline(xdev, true);
+	(void) xocl_hot_reset(xdev, true);
+	xocl_drvinst_offline(xdev, false);
+}
+
+static void xocl_mb_connect(struct xocl_dev *xdev)
 {
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_conn mb_conn = { 0 };
@@ -648,7 +681,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	struct xocl_board_private	*dev_info;
 	int				ret;
 
-	xdev = devm_kzalloc(&pdev->dev, sizeof(*xdev), GFP_KERNEL);
+	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
 		return -ENOMEM;
@@ -660,6 +693,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
+	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
 	xocl_fill_dsa_priv(xdev, dev_info);
 
 	ret = identify_bar(xdev);
@@ -677,6 +711,13 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	ret = xocl_alloc_dev_minor(xdev);
 	if (ret)
 		goto failed_alloc_minor;
+
+	xdev->core.drm = xocl_drm_init(xdev);
+        if (!xdev->core.drm) {
+		ret = -EFAULT;
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed_drm_init;
+	}
 
 	ret = xocl_subdev_create_all(xdev, dev_info->subdev_info,
 			dev_info->subdev_num);
@@ -713,6 +754,9 @@ failed_init_sysfs:
 	xocl_subdev_destroy_all(xdev);
 
 failed_create_subdev:
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
+failed_drm_init:
 	xocl_free_dev_minor(xdev);
 
 failed_alloc_minor:
@@ -720,7 +764,7 @@ failed_alloc_minor:
 failed_to_enable:
 	unmap_bar(xdev);
 failed_to_bar:
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 	pci_set_drvdata(pdev, NULL);
 
 	return ret;
@@ -740,6 +784,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_subdev_destroy_all(xdev);
 
 	xocl_fini_sysfs(&pdev->dev);
+	if (xdev->core.drm)
+		xocl_drm_fini(xdev->core.drm);
 	xocl_free_dev_minor(xdev);
 
 	pci_disable_device(pdev);
@@ -749,7 +795,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xdev);
+	xocl_drvinst_free(xdev);
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,

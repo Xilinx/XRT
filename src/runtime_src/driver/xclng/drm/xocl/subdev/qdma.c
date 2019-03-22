@@ -99,7 +99,6 @@ struct xocl_qdma {
 	void			*dma_handle;
 
 	struct qdma_dev_conf	dev_conf;
-	struct xocl_drm		*drm;
 
 	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
@@ -628,15 +627,6 @@ static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
         return qdma->chans[write][channel].total_trans_bytes;
 }
 
-static void *get_drm_handle(struct platform_device *pdev)
-{
-	struct xocl_qdma *qdma;
-
-	qdma= platform_get_drvdata(pdev);
-
-	return qdma->drm;
-}
-
 static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
 {
 	struct xocl_qdma *qdma;
@@ -669,7 +659,6 @@ static struct xocl_dma_funcs qdma_ops = {
 	.rel_chan = release_channel,
 	.get_chan_count = get_channel_count,
 	.get_chan_stat = get_channel_stat,
-	.get_drm_handle = get_drm_handle,
 	.user_intr_register = user_intr_register,
 	.user_intr_config = user_intr_config,
 	.user_intr_unreg = user_intr_unreg,
@@ -1329,7 +1318,8 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	xdev = xocl_get_xdev(qdma->pdev);
 
-	xobj = xocl_drm_create_bo(qdma->drm, req.size, 0, DRM_XOCL_BO_EXECBUF);
+	xobj = xocl_drm_create_bo(XOCL_DRM(xdev), req.size, 0,
+			DRM_XOCL_BO_EXECBUF);
 	if (IS_ERR(xobj)) {
 		ret = PTR_ERR(xobj);
 		xocl_err(&qdma->pdev->dev, "create bo failed");
@@ -1372,7 +1362,7 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 	flags = O_CLOEXEC | O_RDWR;
 
 	drm_gem_object_reference(&xobj->base);
-	dmabuf = drm_gem_prime_export(((struct xocl_drm *)(qdma->drm))->ddev,
+	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
 		       	&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
@@ -1540,13 +1530,6 @@ static int qdma_probe(struct platform_device *pdev)
 
 	xocl_drvinst_set_filedev(qdma, qdma->cdev);
 
-	qdma->drm = xocl_drm_init(xdev);
-	if (!qdma->drm) {
-		ret = -EFAULT;
-		xocl_err(&pdev->dev, "failed to init drm mm");
-		goto failed;
-	}
-
 	ret = sysfs_create_group(&pdev->dev.kobj, &qdma_attrgroup);
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
@@ -1568,9 +1551,6 @@ static int qdma_probe(struct platform_device *pdev)
 
 failed:
 	if (qdma) {
-		if (qdma->drm)
-			xocl_drm_fini(qdma->drm);
-
 		if (qdma->sys_device)
 			device_destroy(xrt_class, qdma->cdev->dev);
 
@@ -1604,8 +1584,6 @@ static int qdma_remove(struct platform_device *pdev)
 	}
 
 	xdev = xocl_get_xdev(pdev);
-
-	xocl_drm_fini(qdma->drm);
 
 	device_destroy(xrt_class, qdma->cdev->dev);
 	cdev_del(qdma->cdev);

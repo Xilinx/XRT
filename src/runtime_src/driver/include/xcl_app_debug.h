@@ -68,13 +68,19 @@ extern "C" {
 #define XLAPC_SNAPSHOT_STATUS_2             7
 #define XLAPC_SNAPSHOT_STATUS_3             8
 
+/*
+ * AXI Streaming Protocol Checker related defs here
+ */
+#define XSPC_MAX_NUMBER_SLOTS 31
+
 /********************** Definitions: Enums, Structs ***************************/
 enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_APM  = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
   XCL_DEBUG_READ_TYPE_SPM  = 2,
   XCL_DEBUG_READ_TYPE_SSPM = 3,
-  XCL_DEBUG_READ_TYPE_SAM = 4
+  XCL_DEBUG_READ_TYPE_SAM  = 4,
+  XCL_DEBUG_READ_TYPE_SPC  = 5
 };
 
 /* Debug counter results */
@@ -120,6 +126,7 @@ typedef struct {
 
 enum xclCheckerType {
 XCL_CHECKER_MEMORY = 0,
+XCL_CHECKER_STREAM = 1
 };
 
 /* Debug checker results */
@@ -130,6 +137,14 @@ typedef struct {
   unsigned int   NumSlots;
   char DevUserName[256];
 } xclDebugCheckersResults;
+
+typedef struct {
+  unsigned int PCAsserted[XSPC_MAX_NUMBER_SLOTS];
+  unsigned int CurrentPC [XSPC_MAX_NUMBER_SLOTS];
+  unsigned int SnapshotPC[XSPC_MAX_NUMBER_SLOTS];
+  unsigned int NumSlots;
+  char DevUserName[256];
+} xclDebugStreamingCheckersResults;
 
 #ifdef __cplusplus
 }

@@ -23,7 +23,8 @@ usage()
     echo "[clean|-clean]             Remove build directories"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
-    echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
+    echo "[-nodriver]                Do not build driver code"
+    echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
@@ -32,10 +33,11 @@ usage()
 }
 
 clean=0
-covbuild=""
 ccache=0
 docs=0
 verbose=""
+driver=1
+checkpatch=0
 jcore=$CORE
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -55,30 +57,20 @@ while [ $# -gt 0 ]; do
             ccache=1
             shift
             ;;
-        coverity|-coverity)
-            covbuild=coverity
-            shift
-            ;;
-        coverity-all|-coverity-all)
-            covbuild=coverity-all
-            shift
-            ;;
-        -covuser)
-            shift
-            covuser=$1
-            shift
-            ;;
-        -covpw)
-            shift
-            covpw=$1
-            shift
-            ;;
-        -verbose)
-            verbose="VERBOSE=1"
+        -checkpatch)
+            checkpatch=1
             shift
             ;;
 	docs|-docs)
             docs=1
+            shift
+            ;;
+        -nodriver)
+            driver=0
+            shift
+            ;;
+        -verbose)
+            verbose="VERBOSE=1"
             shift
             ;;
         *)
@@ -111,23 +103,6 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
-if [[ "X$covbuild" != "X" ]]; then
-    if [[ -z ${covuser+x} ]]; then
-        echo -n "Enter coverity user name: "
-        read covuser
-    fi
-    if [[ -z ${covpw+x} ]]; then
-    echo -n "Enter coverity password: "
-    read covpw
-    fi
-    mkdir -p Coverity
-    cd Coverity
-    $CMAKE -DCMAKE_BUILD_TYPE=Release ../../src
-    make COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" $covbuild
-    cd $here
-    exit 0
-fi
-
 mkdir -p Debug Release
 cd Debug
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
@@ -141,8 +116,30 @@ time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPI
 time make -j $jcore $verbose DESTDIR=$PWD install
 time make package
 
+if [[ $driver == 1 ]]; then
+    make -C usr/src/xrt-2.2.0/driver/xclng/drm/xocl
+fi
+
 if [[ $docs == 1 ]]; then
     make xrt_docs
+fi
+
+if [[ $checkpatch == 1 ]]; then
+    # check only driver released files
+    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.2.0/driver`
+
+    # find corresponding source under src tree so errors can be fixed in place
+    XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/driver`
+    echo $XOCLROOT
+    for f in $(find $DRIVERROOT -type f -name *.c -o -name *.h); do
+        fsum=$(md5sum $f | cut -d ' ' -f 1)
+        for src in $(find $XOCLROOT -type f -name $(basename $f)); do
+            ssum=$(md5sum $src | cut -d ' ' -f 1)
+            if [[ "$fsum" == "$ssum" ]]; then
+                $BUILDDIR/checkpatch.sh $src | grep -v WARNING
+            fi
+        done
+    done
 fi
 
 cd $here

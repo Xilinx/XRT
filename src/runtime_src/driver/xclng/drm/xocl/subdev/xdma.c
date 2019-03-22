@@ -147,15 +147,6 @@ static u32 get_channel_count(struct platform_device *pdev)
         return xdma->channel;
 }
 
-static void *get_drm_handle(struct platform_device *pdev)
-{
-	struct xocl_xdma *xdma;
-
-	xdma= platform_get_drvdata(pdev);
-
-	return xdma->drm;
-}
-
 static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
 	u32 write)
 {
@@ -313,7 +304,6 @@ static struct xocl_dma_funcs xdma_ops = {
 	.user_intr_register = user_intr_register,
 	.user_intr_config = user_intr_config,
 	.user_intr_unreg = user_intr_unreg,
-	.get_drm_handle = get_drm_handle,
 };
 
 static ssize_t channel_stat_raw_show(struct device *dev,
@@ -405,13 +395,6 @@ static int xdma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xdma->drm = xocl_drm_init(xdev);
-	if (!xdma->drm) {
-		ret = -EFAULT;
-		xocl_err(&pdev->dev, "failed to init drm mm");
-		goto failed;
-	}
-
 	ret = sysfs_create_group(&pdev->dev.kobj, &xdma_attr_group);
 	if (ret) {
 		xocl_err(&pdev->dev, "create attrs failed: %d", ret);
@@ -428,8 +411,6 @@ static int xdma_probe(struct platform_device *pdev)
 
 failed:
 	if (xdma) {
-		if (xdma->drm)
-			xocl_drm_fini(xdma->drm);
 		if (xdma->dma_handle)
 			xdma_device_close(XDEV(xdev)->pdev, xdma->dma_handle);
 		if (xdma->channel_usage[0])
@@ -465,8 +446,6 @@ static int xdma_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &xdma_attr_group);
 
-	if (xdma->drm)
-		xocl_drm_fini(xdma->drm);
 	if (xdma->dma_handle)
 		xdma_device_close(XDEV(xdev)->pdev, xdma->dma_handle);
 

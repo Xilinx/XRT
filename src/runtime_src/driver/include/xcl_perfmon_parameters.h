@@ -137,6 +137,12 @@
 #define XSSPM_STALL_CYCLES_OFFSET      0x98
 #define XSSPM_STARVE_CYCLES_OFFSET     0xA0
 
+/********************* AXI Stream Protocol Checker (SPC) *********************/
+
+#define XSPC_PC_ASSERTED_OFFSET 0x0
+#define XSPC_CURRENT_PC_OFFSET  0x100
+#define XSPC_SNAPSHOT_PC_OFFSET 0x200
+
 /************************ APM Constant Definitions ****************************/
 
 /* Register offsets of AXIMONITOR in the Device Config */

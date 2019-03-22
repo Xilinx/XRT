@@ -32,6 +32,7 @@
 #include <linux/pid.h>
 #include "xclbin.h"
 #include "../xocl_drv.h"
+#include "../xocl_drm.h"
 #include "mgmt-ioctl.h"
 
 #if defined(XOCL_UUID)
@@ -2007,7 +2008,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_MIG,
+			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
 				&subdev_info, &res);
 			if (err) {
 				ICAP_ERR(icap, "can't get MIG subdev info");
@@ -2027,7 +2028,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		}
 		if (ip->m_type == IP_DNASC) {
 			dna_check = true;
-			err = xocl_subdev_get_devinfo(XOCL_SUBDEV_DNA,
+			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_DNA,
 				&subdev_info, &res);
 			if (err) {
 				ICAP_ERR(icap, "can't get DNA subdev info");
@@ -2674,6 +2675,7 @@ static int icap_remove(struct platform_device *pdev)
 	BUG_ON(icap == NULL);
 
 	del_all_users(icap);
+
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, NULL);
 
 	if (ICAP_PRIVILEGED(icap))
