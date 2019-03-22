@@ -115,6 +115,9 @@ init(xrt::device* device, const axlf* top)
 {
   emu_50_disable_kds(device);
 
+  // In order to use virtual CUs (KDMA) we must open a virtual context
+  device->acquire_cu_context(-1,true);
+
   if (kds_enabled())
     kds::init(device,top);
   else
