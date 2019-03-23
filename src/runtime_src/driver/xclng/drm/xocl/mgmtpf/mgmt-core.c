@@ -458,11 +458,15 @@ static int health_check_cb(void *data)
 
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
 {
-	return lro->core.intr_bar_addr != NULL;
+	struct xocl_board_private *dev_info = &lro->core.priv;
+
+	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
+	       	lro->core.intr_bar_addr != NULL;
 }
 
 static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 {
+	struct xocl_board_private *dev_info = &lro->core.priv;
 	int total, rv, i;
 
 	if (!xclmgmt_support_intr(lro))
@@ -483,9 +487,15 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 	 * cover its own usr vectors. So, only the last chunk of the table will
 	 * ever be used for mgmt pf.
 	 */
-	lro->msix_user_start_vector = XOCL_READ_REG32(lro->core.intr_bar_addr +
-		XCLMGMT_INTR_USER_VECTOR) & 0x0f;
-	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
+		lro->msix_user_start_vector = 0;
+		total = 8;
+	} else {
+		lro->msix_user_start_vector =
+			XOCL_READ_REG32(lro->core.intr_bar_addr +
+			XCLMGMT_INTR_USER_VECTOR) & 0x0f;
+		total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	/* Suppress warning about unused variable */
@@ -498,25 +508,29 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 		lro->msix_irq_entries[i].entry = i;
 	rv = pci_enable_msix(lro->core.pdev, lro->msix_irq_entries, total);
 #endif
-	printk(KERN_INFO "setting up msix, total irqs: %d, rv=%d\n", total, rv);
+	mgmt_info(lro, "setting up msix, total irqs: %d, rv=%d\n", total, rv);
 	return rv;
 }
 
 static void xclmgmt_teardown_msix(struct xclmgmt_dev *lro)
 {
-	if (xclmgmt_support_intr(lro))
+	if (xclmgmt_support_intr(lro)) {
 		pci_disable_msix(lro->core.pdev);
+	}
 }
 
 static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+	struct xocl_board_private *dev_info = &lro->core.priv;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-	XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
-		(en ? XCLMGMT_INTR_USER_ENABLE : XCLMGMT_INTR_USER_DISABLE));
+	if (!(dev_info->flags & XOCL_DSAFLAG_FIXED_INTR))
+		XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
+			(en ? XCLMGMT_INTR_USER_ENABLE :
+			XCLMGMT_INTR_USER_DISABLE));
 	return 0;
 }
 
@@ -529,6 +543,7 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	vec = pci_irq_vector(lro->core.pdev,
 		lro->msix_user_start_vector + intr);
@@ -537,10 +552,12 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		lro->msix_user_start_vector + intr].vector;
 #endif
 
-	if (handler)
-		return request_irq(vec, handler, 0, DRV_NAME, arg);
+	if (handler) {
+		request_irq(vec, handler, 0, DRV_NAME, arg);
+	} else {
+		free_irq(vec, arg);
+	}
 
-	free_irq(vec, arg);
 	return 0;
 }
 
@@ -863,6 +880,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return rc;
 	}
 
+	pci_set_master(pdev);
+
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
 	if (!lro) {
@@ -971,6 +990,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	/* unmap the BARs */
 	unmap_bars(lro);
+
 	pci_disable_device(pdev);
 
 	xocl_free_dev_minor(lro);

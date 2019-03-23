@@ -1458,6 +1458,7 @@ exec_isr(int irq, void *arg)
 	SCHED_DEBUGF("-> xocl_user_event %d\n", irq);
 	if (exec && !exec->polling_mode) {
 
+		irq -= exec->intr_base;
 		if (irq == 0)
 			atomic_set(&exec->sr0, 1);
 		else if (irq == 1)
