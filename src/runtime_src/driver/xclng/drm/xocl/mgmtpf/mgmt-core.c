@@ -461,7 +461,7 @@ static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
 	struct xocl_board_private *dev_info = &lro->core.priv;
 
 	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
-	       	lro->core.intr_bar_addr != NULL;
+		lro->core.intr_bar_addr != NULL;
 }
 
 static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
@@ -514,9 +514,8 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 
 static void xclmgmt_teardown_msix(struct xclmgmt_dev *lro)
 {
-	if (xclmgmt_support_intr(lro)) {
+	if (xclmgmt_support_intr(lro))
 		pci_disable_msix(lro->core.pdev);
-	}
 }
 
 static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
@@ -552,11 +551,10 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		lro->msix_user_start_vector + intr].vector;
 #endif
 
-	if (handler) {
-		request_irq(vec, handler, 0, DRV_NAME, arg);
-	} else {
-		free_irq(vec, arg);
-	}
+	if (handler)
+		return request_irq(vec, handler, 0, DRV_NAME, arg);
+
+	free_irq(vec, arg);
 
 	return 0;
 }
