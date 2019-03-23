@@ -73,6 +73,8 @@ SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
       return "AP_CTRL_HS";
     case AP_CTRL_CHAIN:
       return "AP_CTRL_CHAIN";
+    case AP_CTRL_ME:
+      return "AP_CTRL_ME";
     case AP_CTRL_NONE:
       return "AP_CTRL_NONE";
   }
@@ -85,6 +87,7 @@ enum IP_CONTROL
 SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
   if (_sIPControlType == "AP_CTRL_HS") return AP_CTRL_HS;
   if (_sIPControlType == "AP_CTRL_CHAIN") return AP_CTRL_CHAIN;
+  if (_sIPControlType == "AP_CTRL_ME") return AP_CTRL_ME;
   if (_sIPControlType == "AP_CTRL_NONE") return AP_CTRL_NONE;
 
   std::string errMsg = "ERROR: Unknown IP Control type: '" + _sIPControlType + "'";

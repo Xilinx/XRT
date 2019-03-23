@@ -256,7 +256,8 @@ extern "C" {
     enum IP_CONTROL {
         AP_CTRL_HS = 0,
         AP_CTRL_CHAIN = 1,
-        AP_CTRL_NONE = 2
+        AP_CTRL_NONE = 2,
+        AP_CTRL_ME = 3
     };
 
     #define IP_CONTROL_MASK  0xFF00
