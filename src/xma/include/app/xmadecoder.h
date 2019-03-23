@@ -223,6 +223,14 @@ typedef struct XmaDecoderProperties
     XmaParameter    *params;
     /** count of custom parameters for port */
     uint32_t        param_cnt;
+    /** bits per pixel for primary plane of input video */
+    int32_t         bits_per_pixel;
+    /** width width in pixels of incoming video stream/data */
+    int32_t         width;
+    /** height height in pixels of incoming video stream/data */
+    int32_t         height;
+    /** framerate data structure specifying frame rate per second */
+    XmaFraction     framerate;
 } XmaDecoderProperties;
 
 /* Forward declaration */
