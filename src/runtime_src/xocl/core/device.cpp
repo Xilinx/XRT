@@ -1183,6 +1183,9 @@ load_program(program* program)
   m_active = program;
   profile::add_to_active_devices(get_unique_name());
 
+  // In order to use virtual CUs (KDMA) we must open a virtual context
+  m_xdevice->acquire_cu_context(-1,true);
+
   init_scheduler(this);
 }
 
@@ -1192,6 +1195,7 @@ unload_program(const program* program)
 {
   if (m_active == program) {
     clear_cus();
+    m_xdevice->release_cu_context(-1); // release virtual CU context
     m_active = nullptr;
   }
 }
