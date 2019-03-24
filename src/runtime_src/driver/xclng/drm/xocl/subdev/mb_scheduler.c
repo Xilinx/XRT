@@ -686,9 +686,9 @@ void
 cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
 {
 	xcu->idx = idx;
-	xcu->dataflow = addr & AP_CTRL_CHAIN;
+	xcu->dataflow = (addr & 0xFF) == AP_CTRL_CHAIN;
 	xcu->base = base;
-	xcu->addr = addr & ~(AP_CTRL_CHAIN | AP_CTRL_HS | AP_CTRL_NONE);
+	xcu->addr = addr & ~(0xFF); // clear encoded handshake
 	xcu->polladdr = polladdr;
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
