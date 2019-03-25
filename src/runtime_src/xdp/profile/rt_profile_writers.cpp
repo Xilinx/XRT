@@ -1281,15 +1281,9 @@ namespace XCL {
       size_t ddrSize = device_id->get_ddr_size();
       size_t bankSize = ddrSize / ddrBanks;
       ofs << "DDR Banks,begin\n";
-      for (unsigned int b=0; b < ddrBanks; ++b) {
-        ofs << "Bank," << std::dec << b << ",";
-        try {
-          ofs << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
-        } catch (std::exception &err) {
-          // If there is a boost::format_error while writing address of DDR Bank, then write out a default value
-          ofs << "0X000000000" << std::endl;
-        }
-      }
+      for (unsigned int b=0; b < ddrBanks; ++b)
+        ofs << "Bank," << std::dec << b << ","
+		    << (boost::format("0X%09x") % (b * bankSize)) << std::endl;
       ofs << "DDR Banks,end\n";
 
 #if 0

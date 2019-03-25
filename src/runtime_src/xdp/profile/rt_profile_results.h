@@ -258,7 +258,7 @@ namespace XCL {
 
   class DeviceTrace: public TimeTrace {
   public:
-    DeviceTrace() : Next(nullptr), Size(0)
+    DeviceTrace()
       {};
     ~DeviceTrace() {};
   public:

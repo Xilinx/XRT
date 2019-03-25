@@ -688,13 +688,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     
     // Create unique name for device since currently all devices are called fpga0
     std::string device_name = device->get_unique_name();
-    std::string binary_name;
-    try {
-      binary_name = device->get_xclbin().project_name();
-    } catch (...) {
-      std::cout << " Error while retrieving project name from xclbin for use in logCounters. Using default name \"binary\" ." << std::endl;
-      binary_name = "binary";
-    }
+    std::string binary_name = device->get_xclbin().project_name();
 
     XCL::RTSingleton::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
                                                                          timeNsec, firstReadAfterProgram);

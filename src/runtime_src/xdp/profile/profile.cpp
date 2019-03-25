@@ -562,7 +562,7 @@ void cb_reset (const xocl::xclbin& xclbin)
 void
 cb_init()
 {
-  (void)XCL::RTSingleton::Instance();
+  XCL::RTSingleton::Instance()->getStatus();
 }
 
 void register_xocl_profile_callbacks() {

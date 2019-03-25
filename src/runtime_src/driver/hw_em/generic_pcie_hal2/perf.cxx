@@ -313,7 +313,6 @@ namespace xclhwemhal2 {
 
     // TODO: support other profiling
     if (type != XCL_PERF_MON_MEMORY && type != XCL_PERF_MON_ACCEL && type != XCL_PERF_MON_STR) {
-      std::cout << "Unknown IP type" << std::endl;
       traceVector.mLength = 0;
       return 0;
     }
@@ -323,8 +322,11 @@ namespace xclhwemhal2 {
       iptype = 1;
     } else if (type == XCL_PERF_MON_ACCEL) {
       iptype = 2;
-    } else { /*if (type == XCL_PERF_MON_STR) */
+    } else if (type == XCL_PERF_MON_STR) {
       iptype = 3;
+    } else {
+      std::cout << "Unknown IP type" << std::endl;
+      return 0;
     }
 
     uint32_t counter = 0;
@@ -356,9 +358,11 @@ namespace xclhwemhal2 {
             result.TraceID = counter * 2;
           } else if (iptype == 2) {
             result.TraceID = counter + 64;
-          } else { /* if (iptype == 3) */
+          } else if (iptype == 3) {
             result.TraceID = counter + 576;
-          } 
+          } else {
+            return 0;
+          }
           result.Timestamp = currentEvent.timestamp;
           result.Overflow = (currentEvent.timestamp >> 17) & 0x1;
           result.EventFlags = currentEvent.eventflags;
@@ -399,8 +403,10 @@ namespace xclhwemhal2 {
               result.TraceID = counter * 2;
             } else if (iptype == 2) {
               result.TraceID = counter + 64;
-            } else { /* if (iptype == 3) */
+            } else if (iptype == 3) {
               result.TraceID = counter + 576;
+            } else {
+              return 0;
             }
             result.Timestamp = event.timestamp();
             result.Overflow = (event.timestamp() >> 17) & 0x1;
@@ -448,8 +454,10 @@ namespace xclhwemhal2 {
               result.TraceID = counter * 2;
             } else if (iptype == 2) {
               result.TraceID = counter + 64;
-            } else { /* if (iptype == 3) */
+            } else if (iptype == 3) {
               result.TraceID = counter + 576;
+            } else {
+              return 0;
             }
             result.Timestamp = event.timestamp();
             result.Overflow = (event.timestamp() >> 17) & 0x1;
