@@ -144,7 +144,8 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_handle = xma_res_plugin_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"filter_handle = %d\n",
                filter_handle);
-    if (filter_handle < 0) {
+    if (filter_handle < 0) 
+    {
         free(filter_session);
         return NULL;
     }
