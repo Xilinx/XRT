@@ -64,11 +64,14 @@ find_package(Boost REQUIRED COMPONENTS system filesystem )
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
 
+set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
+set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include")
+
 # Release OpenCL extension headers
 set(XRT_CL_EXT_SRC
   include/1_2/CL/cl_ext_xilinx.h
   include/1_2/CL/cl_ext.h)
-install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/CL)
+install (FILES ${XRT_CL_EXT_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL)
 message("-- XRT CL extension header files")
 foreach (header ${XRT_CL_EXT_SRC})
   message("-- ${header}")
