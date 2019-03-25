@@ -52,6 +52,8 @@ public:
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
 
+  uint xclGetNumLiveProcesses();
+
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfPath, size_t size);
 
   // Bitstream/bin download
