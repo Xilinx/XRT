@@ -35,6 +35,8 @@
 #define	MINOR_PRI_HIGH_BIT	0x10000
 #define MINOR_NAME_MASK		0xffffffff
 
+#define MAX_INPUT_LEN	(1 << 30) 
+
 enum xvc_algo_type {
 	XVC_ALGO_NULL,
 	XVC_ALGO_CFG,
@@ -174,6 +176,11 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	/* Invalid operation type, no operation performed */
 	if (opcode != 0x01 && opcode != 0x02) {
 		pr_info("UNKNOWN opcode 0x%x.\n", opcode);
+		return -EINVAL;
+	}
+
+	if (total_bits > MAX_INPUT_LEN) {
+		pr_err("Input totoal bits beyond 1GB\n");
 		return -EINVAL;
 	}
 

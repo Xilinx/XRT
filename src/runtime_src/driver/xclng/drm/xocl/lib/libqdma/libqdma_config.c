@@ -256,7 +256,7 @@ unsigned int qdma_get_intr_rngsz(unsigned long dev_hndl)
 int qdma_set_buf_sz(unsigned long dev_hndl, u32 *buf_sz)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
 
 	/**<b> Detailed Description </b>*/
@@ -264,9 +264,12 @@ int qdma_set_buf_sz(unsigned long dev_hndl, u32 *buf_sz)
 	 *  If xdev is NULL or qdev is NULL,
 	 *  return error as Invalid parameter
 	 */
-	if (!xdev || !qdev)
+	if (!xdev)
 		return -EINVAL;
 
+	qdev = xdev_2_qdev(xdev);
+	if (!qdev)
+		return -EINVAL;
 
 	/** If qdev->init_qrange is set,
 	 *  it indicates that FMAP programming is done
@@ -328,7 +331,7 @@ unsigned int qdma_get_buf_sz(unsigned long dev_hndl, u32 *buf_sz)
 int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
 
 	/**<b> Detailed Description </b>*/
@@ -336,9 +339,12 @@ int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz)
 	 *  If xdev is NULL or qdev is NULL,
 	 *  return error as Invalid parameter
 	 */
-	if (!xdev || !qdev)
+	if (!xdev)
 		return -EINVAL;
 
+	qdev = xdev_2_qdev(xdev);
+	if (!qdev)
+		return -EINVAL;
 
 	/** If qdev->init_qrange is set,
 	 *  it indicates that FMAP programming is done
@@ -400,12 +406,15 @@ unsigned int qdma_get_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz)
 int qdma_set_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
 
-	if (!xdev || !qdev)
+	if (!xdev)
 		return -EINVAL;
 
+	qdev = xdev_2_qdev(xdev);
+	if (!qdev)
+		return -EINVAL;
    /**  If qdev->init_qrange is set,
     *  it indicates that FMAP programming is done
     *      That meansat least one queue is added in the system.
@@ -463,10 +472,14 @@ unsigned int qdma_get_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt)
 int qdma_set_cnt_thresh(unsigned long dev_hndl, unsigned int *cnt_th)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	int rv = -1;
 
-	if (!xdev || !qdev)
+	if (!xdev)
+		return -EINVAL;
+
+	qdev = xdev_2_qdev(xdev);
+	if (!qdev)
 		return -EINVAL;
 
    /** If qdev->init_qrange is set,
@@ -528,7 +541,7 @@ unsigned int qdma_get_cnt_thresh(unsigned long dev_hndl, u32 *cnt_th)
 int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_dev *qdev = xdev_2_qdev(xdev);
+	struct qdma_dev *qdev;
 	unsigned int reg;
 
 	/**<b> Detailed Description </b>*/
@@ -537,6 +550,8 @@ int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc)
 	 */
 	if (!xdev)
 		return -EINVAL;
+
+	qdev = xdev_2_qdev(xdev);
 
 	if (qdev->init_qrange) {
 		pr_err("xdev 0x%p, FMAP prog done, cannot modify cmpt acc\n",

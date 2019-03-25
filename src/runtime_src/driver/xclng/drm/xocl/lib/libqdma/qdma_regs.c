@@ -469,6 +469,12 @@ void qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 	unsigned int v1 =  __read_reg(xdev, QDMA_REG_GLBL_QMAX);
 	int v2 = qdma_device_num_pfs_get(xdev);
 
+	if (v2 == 0) {
+		/* It should never hit here */
+		pr_err("num pfs is 0");
+		return;
+	}
+
 	xdev->conf.qsets_max = v1 / v2;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
