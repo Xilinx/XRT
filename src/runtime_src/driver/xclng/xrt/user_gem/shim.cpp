@@ -1787,7 +1787,8 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses()
     std::vector<std::string> stringVec;
     dev->user->sysfs_get("", "kdsstat", errmsg, stringVec);
     // Dependent on message format built in kdsstat_show. Checking number of "context" in kdsstat.
-    if(stringVec.size() == 4) {
+    // kdsstat has "context: <number_of_live_processes>"
+    if(stringVec.size() >= 4) {
         std::size_t p = stringVec[3].find_first_of("0123456789");
         std::string subStr = stringVec[3].substr(p);
         uint number = std::stoul(subStr);
