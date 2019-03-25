@@ -692,8 +692,8 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     try {
       binary_name = device->get_xclbin().project_name();
     } catch (...) {
-      std::cout << " Error while retrieving project name from xclbin for use in logCounters. Using default name \"binary\" ." << std::endl;
-      binary_name = "binary";
+      // Exception while retrieving project name from xclbin. Use default name \"binary\" with pid 
+      binary_name = "binary" + std::to_string(getpid());
     }
 
     XCL::RTSingleton::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
