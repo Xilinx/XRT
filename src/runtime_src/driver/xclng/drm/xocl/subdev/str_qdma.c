@@ -913,9 +913,9 @@ failed:
 		devm_kfree(&sdev->pdev->dev, queue);
 	}
 
-	ret = qdma_queue_stop((unsigned long)xdev->dma_handle, queue->queue,
+	qdma_queue_stop((unsigned long)xdev->dma_handle, queue->queue,
 			NULL, 0);
-	ret = qdma_queue_remove((unsigned long)xdev->dma_handle, queue->queue,
+	qdma_queue_remove((unsigned long)xdev->dma_handle, queue->queue,
 			NULL, 0);
 	queue->queue = 0UL;
 
@@ -941,8 +941,8 @@ static long stream_ioctl_alloc_buffer(struct str_device *sdev,
 	xdev = xocl_get_xdev(sdev->pdev);
 
 	xobj = xocl_create_bo(xdev->ddev, req.size, 0, DRM_XOCL_BO_EXECBUF);
-	if (IS_ERR(xobj)) {
-		ret = PTR_ERR(xobj);
+	if (IS_ERR_OR_NULL(xobj)) {
+		ret = -EFAULT;
 		xocl_err(&sdev->pdev->dev, "create bo failed");
 		return ret;
 	}
@@ -1013,9 +1013,7 @@ failed:
 		dma_buf_put(dmabuf);
 	}
 
-	if (xobj) {
-		xocl_free_bo(&xobj->base);
-	}
+	xocl_free_bo(&xobj->base);
 
 	return ret;
 }

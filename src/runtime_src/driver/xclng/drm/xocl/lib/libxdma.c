@@ -1612,9 +1612,6 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 		bar_len = map_single_bar(xdev, dev, i);
 		if (bar_len == 0) {
 			continue;
-		} else if (bar_len < 0) {
-			rv = -EINVAL;
-			goto fail;
 		}
 
 		/* Try to identify BAR as XDMA control BAR */
@@ -3984,7 +3981,6 @@ static int transfer_monitor_cyclic(struct xdma_engine *engine,
 			if (rc) {
 				pr_info("%s service_poll failed %d.\n",
 					engine->name, rc);
-				rc = -ERESTARTSYS;
 			}
 			if (result[engine->rx_head].status)
 				return 0;
