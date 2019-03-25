@@ -88,8 +88,9 @@ XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
     XmaFilterSession *filter_session = malloc(sizeof(XmaFilterSession));
-    if (filter_session == NULL)
+    if (filter_session == NULL) {
         return NULL;
+    }
 	XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     XmaKernelRes kern_res;
 	int rc, dev_handle, kern_handle, filter_handle;
