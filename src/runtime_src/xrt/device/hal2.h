@@ -580,6 +580,14 @@ public:
     return m_handle;
   }
 
+  virtual hal::operations_result<uint>
+  getNumLiveProcesses()
+  {
+    if (!m_ops->mGetNumLiveProcesses)
+      return hal::operations_result<uint>();
+    return m_ops->mGetNumLiveProcesses(m_handle);
+  }
+
   virtual hal::operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {

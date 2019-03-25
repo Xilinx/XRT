@@ -241,6 +241,8 @@ public:
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+    uint xclGetNumLiveProcesses();
+
     // Experimental sysfs API
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 

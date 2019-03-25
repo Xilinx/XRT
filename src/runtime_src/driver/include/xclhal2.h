@@ -1235,6 +1235,13 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclP
                                                        xclTraceResultsVector& traceVector);
 #endif
 
+/*
+ * API to get number of live processes on the given device.
+ */
+
+XCL_DRIVER_DLLESPEC uint xclGetNumLiveProcesses(xclDeviceHandle handle);
+
+
 /**
  * Experimental sysfs API
  * (For debug and profile usage only for now)

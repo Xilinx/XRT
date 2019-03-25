@@ -126,6 +126,8 @@ private:
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 
+  typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
+
   //xdp experimental apis
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
@@ -213,6 +215,7 @@ public:
   pollQueuesFuncType mPollQueues;
 //End Streaming
 
+  xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
 //Experimental xdp apis
   xclGetSysfsPathFuncType mGetSysfsPath;
 
