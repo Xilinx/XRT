@@ -472,25 +472,25 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-	/*
-	 * Get start vector (index into msi-x table) of msi-x usr intr on this
-	 * device.
-	 *
-	 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs, the last
-	 * half of them belongs to mgmt pf, and the first half to user pf. All
-	 * vectors are hard-wired.
-	 *
-	 * The device also has some number of DMA intrs whose vectors come
-	 * before usr ones.
-	 *
-	 * This means that mgmt pf needs to allocate msi-x table big enough to
-	 * cover its own usr vectors. So, only the last chunk of the table will
-	 * ever be used for mgmt pf.
-	 */
 	if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
 		lro->msix_user_start_vector = 0;
 		total = 8;
 	} else {
+		/*
+		 * Get start vector (index into msi-x table) of msi-x usr intr
+		 * on this device.
+		 *
+		 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs,
+		 * the last half of them belongs to mgmt pf, and the first
+		 * half to user pf. All vectors are hard-wired.
+		 *
+		 * The device also has some number of DMA intrs whose vectors
+		 * come before usr ones.
+		 *
+		 * This means that mgmt pf needs to allocate msi-x table big
+		 * enough to cover its own usr vectors. So, only the last
+		 * chunk of the table will ever be used for mgmt pf.
+		 */
 		lro->msix_user_start_vector =
 			XOCL_READ_REG32(lro->core.intr_bar_addr +
 			XCLMGMT_INTR_USER_VECTOR) & 0x0f;
