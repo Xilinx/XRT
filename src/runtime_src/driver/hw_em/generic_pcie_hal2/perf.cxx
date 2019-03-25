@@ -313,7 +313,6 @@ namespace xclhwemhal2 {
 
     // TODO: support other profiling
     if (type != XCL_PERF_MON_MEMORY && type != XCL_PERF_MON_ACCEL && type != XCL_PERF_MON_STR) {
-      std::cout << "Unknown IP type" << std::endl;
       traceVector.mLength = 0;
       return 0;
     }
