@@ -272,7 +272,7 @@ void configSoftKernel(xclSKCmd *cmd)
 
   if (createSoftKernelFile(cmd->xclbin_paddr, cmd->xclbin_size,
           cmd->start_cuidx) != 0)
-  return;
+    return;
 
   for (i = cmd->start_cuidx; i < cmd->start_cuidx + cmd->cu_nums; i++) {
     /*

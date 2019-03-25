@@ -55,12 +55,8 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		kdata->cu_nums = cmd->num_cus;
 		kdata->size = cmd->sk_size;
 
-		/*
-		 * packet data[0] is the low 32 bits address
-		 * data[1] is the high 32 bits address
-		 */
-		kdata->paddr = cmd->data[0] |
-		    (((uint64_t)(cmd->data[1])) << 32);
+		/* soft kernel's physical address (little endian) */
+		kdata->paddr = cmd->sk_addr;
 
 		snprintf(kdata->name, ZOCL_MAX_NAME_LENGTH, "%s",
 		    (char *)cmd->sk_name);
@@ -188,7 +184,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 }
 
 int
-zocl_init_soft_kenel(struct drm_device *drm)
+zocl_init_soft_kernel(struct drm_device *drm)
 {
         struct drm_zocl_dev *zdev = drm->dev_private;
         struct soft_kernel *sk;

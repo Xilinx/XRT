@@ -2176,7 +2176,7 @@ sched_init_exec(struct drm_device *drm)
 			exec_core->scu_status[i] = 0;
 
 		 /* Initialize soft kernel */
-		zocl_init_soft_kenel(drm);
+		zocl_init_soft_kernel(drm);
 
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
 	}

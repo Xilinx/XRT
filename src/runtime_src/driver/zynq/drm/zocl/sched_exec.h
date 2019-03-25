@@ -206,10 +206,9 @@ struct configure_cmd {
  *
  * @start_cuidx:     start index of compute units
  * @num_cus:         number of compute units in program
- * @sk_size:         size in byts of soft kernel image
+ * @sk_size:         size in bytes of soft kernel image
  * @sk_name:         symbol name of soft kernel
- * @data[0]:         the low 32 bits of soft kernel image's physical address
- * @data[1]:         the high 32 bits of soft kernel image's physical address
+ * @sk_addr:         soft kernel image's physical address (little endian)
  */
 struct configure_sk_cmd {
 	union {
@@ -228,8 +227,7 @@ struct configure_sk_cmd {
 	uint32_t num_cus;
 	uint32_t sk_size;
 	uint32_t sk_name[8];
-
-	uint32_t data[1];
+	uint64_t sk_addr;
 };
 
 /**
@@ -258,8 +256,6 @@ struct unconfigure_sk_cmd {
 	/* payload */
 	uint32_t start_cuidx;
 	uint32_t num_cus;
-
-	uint32_t data[1];
 };
 
 /**

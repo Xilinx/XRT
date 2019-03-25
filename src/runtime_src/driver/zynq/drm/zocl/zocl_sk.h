@@ -57,6 +57,6 @@ struct soft_kernel_cmd {
 	struct sched_packet	*skc_packet;
 };
 
-int zocl_init_soft_kenel(struct drm_device *drm);
+int zocl_init_soft_kernel(struct drm_device *drm);
 
 #endif
