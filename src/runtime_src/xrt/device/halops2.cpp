@@ -163,9 +163,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
 
+  // APIs using sysfs
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
-
-  // Experimental xdp apis
   mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
 }
 
