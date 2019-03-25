@@ -244,7 +244,7 @@ struct qdma_dev_conf {
 	u8 tm_one_cdh_en;
 
 	/** user interrupt, if null, default libqdma handler is used */
-	void (*fp_user_isr_handler)(unsigned long dev_hndl, unsigned long uld);
+	void (*fp_user_isr_handler)(unsigned long dev_hndl, int irq, unsigned long uld);
 
 	/**
 	 * example flow of ST C2H:
