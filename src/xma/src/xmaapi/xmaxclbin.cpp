@@ -37,9 +37,13 @@ char *xma_xclbin_file_open(const char *xclbin_name)
     file.seekg(0, std::ios::beg);
 
     char *buffer = (char*)malloc(size);
+    if (buffer == NULL) {
+        xma_logmsg("ERROR: Could not allocate buffer for file %s\n", xclbin_name);
+        return NULL;
+    }
     if (!file.read(buffer, size))
     {
-        xma_logmsg("Could not read file %s\n", xclbin_name);
+        xma_logmsg("ERROR: Could not read file %s\n", xclbin_name);
         free(buffer);
         buffer = NULL;
     }
