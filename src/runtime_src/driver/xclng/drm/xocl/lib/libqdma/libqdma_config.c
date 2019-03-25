@@ -552,6 +552,8 @@ int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc)
 		return -EINVAL;
 
 	qdev = xdev_2_qdev(xdev);
+	if (!qdev)
+		return -EINVAL;
 
 	if (qdev->init_qrange) {
 		pr_err("xdev 0x%p, FMAP prog done, cannot modify cmpt acc\n",

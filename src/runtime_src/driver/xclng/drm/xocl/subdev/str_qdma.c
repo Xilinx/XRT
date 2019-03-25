@@ -942,7 +942,7 @@ static long stream_ioctl_alloc_buffer(struct str_device *sdev,
 
 	xobj = xocl_create_bo(xdev->ddev, req.size, 0, DRM_XOCL_BO_EXECBUF);
 	if (IS_ERR_OR_NULL(xobj)) {
-		ret = PTR_ERR(xobj);
+		ret = -EFAULT;
 		xocl_err(&sdev->pdev->dev, "create bo failed");
 		return ret;
 	}
