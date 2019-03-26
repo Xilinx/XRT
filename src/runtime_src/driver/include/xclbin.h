@@ -129,7 +129,8 @@ extern "C" {
         USER_METADATA,
         DNA_CERTIFICATE,
         PDI,
-        BITSTREAM_PARTIAL_PDI 
+        BITSTREAM_PARTIAL_PDI,
+        DTC
     };
 
     enum MEM_TYPE {
@@ -255,7 +256,8 @@ extern "C" {
     enum IP_CONTROL {
         AP_CTRL_HS = 0,
         AP_CTRL_CHAIN = 1,
-        AP_CTRL_NONE = 2
+        AP_CTRL_NONE = 2,
+        AP_CTRL_ME = 3
     };
 
     #define IP_CONTROL_MASK  0xFF00
@@ -295,7 +297,8 @@ extern "C" {
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
-        AXI_STREAM_MONITOR
+        AXI_STREAM_MONITOR,
+	AXI_STREAM_PROTOCOL_CHECKER
     };
 
     struct debug_ip_data {

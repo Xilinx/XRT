@@ -92,6 +92,14 @@ static const u32 AP_READY    = 0x8;
 static const u32 AP_CONTINUE = 0x10;
 
 ////////////////////////////////////////////////////////////////
+// HLS AXI protocol (from xclbin.h)
+////////////////////////////////////////////////////////////////
+static const u32 AP_CTRL_HS    = 0;
+static const u32 AP_CTRL_CHAIN = 1;
+static const u32 AP_CTRL_NONE  = 2;
+static const u32 AP_CTRL_ME    = 3;
+
+////////////////////////////////////////////////////////////////
 // Extensions to driver/include/ert.h
 ////////////////////////////////////////////////////////////////
 const addr_type STATUS_REGISTER_ADDR[4] =
@@ -837,8 +845,9 @@ configure_mb(size_type slot_idx)
 
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
-    cu_addr_map[i] = read_reg(slot.slot_addr + 0x18 + (i<<2));
-    CTRL_DEBUGF("cu(%d) at 0x%x\n",i,cu_addr_map[i]);
+    u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
+    cu_addr_map[i] = addr & ~(0xFF); // clear encoded handshake
+    CTRL_DEBUGF("cu(%d) @0x%x (0x%x)\n",i,cu_addr_map[i],addr);
   }
 
   // (Re)initilize MB

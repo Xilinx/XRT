@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef __SectionIPLayout_h_
-#define __SectionIPLayout_h_
+#ifndef __SectionDTC_h_
+#define __SectionDTC_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 
@@ -33,36 +33,21 @@
  *    archive.  
 */
 
-class SectionIPLayout : public Section {
+class SectionDTC : public Section {
  public:
-  SectionIPLayout();
-  virtual ~SectionIPLayout();
-
-public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
-  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
-
- protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
-
- protected:
-  const std::string getIPTypeStr(enum IP_TYPE _ipType) const;
-  const std::string getIPControlTypeStr(enum IP_CONTROL _ipControlType) const;
-  enum IP_TYPE getIPType(std::string& _sIPType) const;
-  enum IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
+  SectionDTC();
+  virtual ~SectionDTC();
 
  private:
   // Purposefully private and undefined ctors...
-  SectionIPLayout(const SectionIPLayout& obj);
-  SectionIPLayout& operator=(const SectionIPLayout& obj);
+  SectionDTC(const SectionDTC& obj);
+  SectionDTC& operator=(const SectionDTC& obj);
 
  private:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, boost::factory<SectionIPLayout*>()); }
+    _init() { registerSectionCtor(DTC, "DTC", "", false, boost::factory<SectionDTC*>()); }
   } _initializer;
 };
 

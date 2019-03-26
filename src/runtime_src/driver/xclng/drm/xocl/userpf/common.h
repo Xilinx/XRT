@@ -50,6 +50,8 @@
 #define xocl_get_root_dev(dev, root)		\
 	for (root = dev; root->bus && root->bus->self; root = root->bus->self)
 
+#define	XOCL_RESET_DELAY		2000
+
 #define	XOCL_USER_PROC_HASH_SZ		256
 
 #define XOCL_U32_MASK 0xFFFFFFFF

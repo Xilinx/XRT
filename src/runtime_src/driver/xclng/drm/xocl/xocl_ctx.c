@@ -106,6 +106,39 @@ void xocl_drvinst_free(void *data)
 	kfree(drvinstp);
 }
 
+void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline)
+{
+	struct xocl_drvinst	*drvinstp;
+	struct device		*dev = &XDEV(xdev_hdl)->pdev->dev;
+	int			inst;
+
+	mutex_lock(&xocl_drvinst_lock);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		drvinstp = xocl_drvinst_array[inst];
+		if (!drvinstp)
+			continue;
+		if (drvinstp->dev &&
+			(drvinstp->dev == dev || drvinstp->dev->parent == dev))
+			drvinstp->offline = offline;
+	}
+
+
+	mutex_unlock(&xocl_drvinst_lock);
+}
+
+bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl)
+{
+	struct xocl_drvinst	*drvinstp;
+	bool offline;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(xdev_hdl, struct xocl_drvinst, data);
+	offline = drvinstp->offline;
+	mutex_unlock(&xocl_drvinst_lock);
+
+	return offline;
+}
+
 void xocl_drvinst_set_filedev(void *data, void *file_dev)
 {
 	struct xocl_drvinst	*drvinstp;
@@ -139,6 +172,11 @@ void *xocl_drvinst_open(void *file_dev)
 	}
 
 	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		mutex_unlock(&xocl_drvinst_lock);
+		return NULL;
+	}
+
+	if (drvinstp->offline) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}

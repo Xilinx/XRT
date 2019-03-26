@@ -387,4 +387,114 @@ public:
   }
 };
 
+class xclStreamingAXICheckerCodes
+{
+ private:
+
+  enum StreamingAXICheckerCodes {
+    AXI4STREAM_ERRM_TVALID_RESET    = 0x001,
+    AXI4STREAM_ERRM_TID_STABLE      = 0x002,
+    AXI4STREAM_ERRM_TDEST_STABLE    = 0x004,
+    AXI4STREAM_ERRM_TKEEP_STABLE    = 0x008,
+    AXI4STREAM_ERRM_TDATA_STABLE    = 0x010,
+    AXI4STREAM_ERRM_TLAST_STABLE    = 0x020,
+    AXI4STREAM_ERRM_TSTRB_STABLE    = 0x040,
+    AXI4STREAM_ERRM_TVALID_STABLE   = 0x080,
+    AXI4STREAM_RECS_TREADY_MAX_WAIT = 0x100,
+    AXI4STREAM_ERRM_TUSER_STABLE    = 0x200,
+    AXI4STREAM_ERRM_TKEEP_TSTRB     = 0x400,
+    XILINX_ARESETN_PULSE_WIDTH      = 0x800
+  } ;
+
+ public:
+
+  static bool isValidStreamingAXICheckerCodes(unsigned int pc_asserted,
+					      unsigned int current_pc,
+					      unsigned int snapshot_pc) 
+  {
+    if (pc_asserted) 
+    {
+      // The snapshot PC register should only be one of the valid error codes
+      switch ((StreamingAXICheckerCodes)(snapshot_pc))
+      {
+      case AXI4STREAM_ERRM_TVALID_RESET:
+      case AXI4STREAM_ERRM_TID_STABLE:
+      case AXI4STREAM_ERRM_TDEST_STABLE:
+      case AXI4STREAM_ERRM_TKEEP_STABLE:
+      case AXI4STREAM_ERRM_TDATA_STABLE:
+      case AXI4STREAM_ERRM_TLAST_STABLE:
+      case AXI4STREAM_ERRM_TSTRB_STABLE:
+      case AXI4STREAM_ERRM_TVALID_STABLE:
+      case AXI4STREAM_RECS_TREADY_MAX_WAIT:
+      case AXI4STREAM_ERRM_TUSER_STABLE:
+      case AXI4STREAM_ERRM_TKEEP_TSTRB:
+      case XILINX_ARESETN_PULSE_WIDTH:
+	break ;
+      default:
+	return false ; 
+      }
+
+      // The current_pc can have any combination of the low-order 12 bits set
+      if ((current_pc >> 12) != 0) return false ;
+      if ((current_pc & 0xfff) == 0) return false ;
+
+      return true ;
+    }
+    else
+    {
+      // If pc_asserted is false, then there should be nothing on
+      //  the other registers.
+      return (current_pc == 0 && snapshot_pc == 0) ;
+    }
+  }
+
+  static std::string decodeStreamingAXICheckerCodes(unsigned int aWord) {
+    static const char* StreamingAXICheckerStrings[12] = {
+      "AXI4STREAM_ERRM_TVALID_RESET",
+      "AXI4STREAM_ERRM_TID_STABLE",
+      "AXI4STREAM_ERRM_TDEST_STABLE",
+      "AXI4STREAM_ERRM_TKEEP_STABLE",
+      "AXI4STREAM_ERRM_TDATA_STABLE",
+      "AXI4STREAM_ERRM_TLAST_STABLE",
+      "AXI4STREAM_ERRM_TSTRB_STABLE",
+      "AXI4STREAM_ERRM_TVALID_STABLE",
+      "AXI4STREAM_RECS_TREADY_MAX_WAIT",
+      "AXI4STREAM_ERRM_TUSER_STABLE",
+      "AXI4STREAM_ERRM_TKEEP_TSTRB",
+      "XILINX_ARESETN_PULSE_WIDTH"
+    };
+    static const char* StreamingAXICheckerExplanations[12] = {
+      "TVALID is low for the first cycle after aresetn goes high",
+      "TID remains stable when TVALID is asserted and TREADY is low",
+      "TDEST remains stable when TVALID is asserted and TREADY is low",
+      "TKEEP remains stable when TVALID is asserted and TREADY is low",
+      "TDATA reamins stable when TVALID is asserted and TREADY is low",
+      "TLAST reamins stable when TVALID is asserted and TREADY is low",
+      "TSTRB reamins stable when TVALID is asserted and TREADY is low",
+      "When TVALID is asserted, it must remain asserted until TREADY is high",
+      "It is recommended that TREADY is asserted within MAXWAITS cycles of TVALID being asserted",
+      "TUSER reamins stable when TVALID is asserted and TREADY is low",
+      "If TKEEP is de-asserted, then TSTRB must also be de-asserted",
+      "ARESETn must be low for at least 16 ACLKn cycles"
+    };
+    std::string s = "" ;
+    unsigned int w = aWord;
+    unsigned int i = 0 ;
+    while (w)
+    {
+      if (w & (unsigned int)(0x1))
+      {
+	s.append(StreamingAXICheckerStrings[i]);
+	s.append(":");
+	s.append(StreamingAXICheckerExplanations[i]);
+	s.append("\n");
+      }
+      w = w >> 1;
+      ++i;
+    }
+    return s;
+  }
+
+};
+
 #endif

@@ -28,6 +28,8 @@
 #include <thread>
 #include <queue>
 
+#define FIELD_NOT_APPLICABLE "N/A"
+
 namespace xdp {
   class TimeTrace;
 

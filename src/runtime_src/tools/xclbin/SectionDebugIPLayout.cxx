@@ -53,6 +53,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "ACCEL_MONITOR";
     case AXI_STREAM_MONITOR:
       return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER:
+      return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
@@ -82,7 +84,10 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
     return ACCEL_MONITOR;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
-      return AXI_STREAM_MONITOR;
+    return AXI_STREAM_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" ) 
+    return AXI_STREAM_PROTOCOL_CHECKER;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
