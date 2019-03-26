@@ -70,6 +70,20 @@ void unix_socket::start_server(const std::string sk_desc)
   int status = listen(sock, 5);
   (void) status; // For Coverity
 
+  //wait for the timeout. Exit from the process if simulation process is not connected
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(sock,&rfds);
+  struct timeval tv;
+  tv.tv_sec = 300;
+  tv.tv_usec = 0;
+  int r = select(sock+1,&rfds, NULL, NULL, &tv);
+  if(r <= 0)
+  {
+    std::cout<<"ERROR: [SDx-EM 08-0] Failed to connect to device process"<<std::endl;
+    exit(1);
+  }
+
   fd = accept(sock, 0, 0);
   close(sock);
   if (fd == -1){
