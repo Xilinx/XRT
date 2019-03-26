@@ -154,6 +154,8 @@ enum intr_type_list {
 	INTR_TYPE_MAX		/**< max interrupt */
 };
 
+#define QDMA_USER_INTR_NUM	7
+
 /**
  * @struct - intr_vec_map_type
  * @brief	interrupt vector map details

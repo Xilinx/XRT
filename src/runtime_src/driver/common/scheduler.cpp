@@ -146,7 +146,8 @@ get_dataflow(const axlf* top)
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type==IP_TYPE::IP_KERNEL && ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN))
+    if (ip_data.m_type == IP_TYPE::IP_KERNEL &&
+        ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN)
         return true;
   }
   return false;

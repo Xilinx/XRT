@@ -644,9 +644,13 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 	/* Take the msg w/ specified ID. */
 	} else {
 		list_for_each(pos, &ch->mbc_msgs) {
-			msg = list_entry(pos, struct mailbox_msg, mbm_list);
-			if (msg->mbm_req_id == req_id)
+			struct mailbox_msg *temp;
+
+			temp = list_entry(pos, struct mailbox_msg, mbm_list);
+			if (temp->mbm_req_id == req_id) {
+				msg = temp;
 				break;
+			}
 		}
 	}
 
@@ -1575,6 +1579,7 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	int ret;
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u32 is;
 
 	if (mbx->mbx_irq != -1)
 		return 0;
@@ -1596,6 +1601,10 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	/* Only see intr when we have full packet sent or received. */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_rit, PACKET_SIZE - 1);
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_sit, 0);
+
+	/* clear interrupt */
+	is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, is);
 
 	/* Finally, enable TX / RX intr. */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0x3);

@@ -686,9 +686,9 @@ void
 cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
 {
 	xcu->idx = idx;
-	xcu->dataflow = addr & AP_CTRL_CHAIN;
+	xcu->dataflow = (addr & 0xFF) == AP_CTRL_CHAIN;
 	xcu->base = base;
-	xcu->addr = addr & ~(AP_CTRL_CHAIN | AP_CTRL_HS | AP_CTRL_NONE);
+	xcu->addr = addr & ~(0xFF); // clear encoded handshake
 	xcu->polladdr = polladdr;
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
@@ -1458,6 +1458,7 @@ exec_isr(int irq, void *arg)
 	SCHED_DEBUGF("-> xocl_user_event %d\n", irq);
 	if (exec && !exec->polling_mode) {
 
+		irq -= exec->intr_base;
 		if (irq == 0)
 			atomic_set(&exec->sr0, 1);
 		else if (irq == 1)
@@ -2694,8 +2695,12 @@ static void client_release_implicit_cus(struct exec_core *exec,
 {
 	int i;
 
-	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+	SCHED_DEBUGF("-> %s", __func__);
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++) {
+		SCHED_DEBUGF("+ cu(%d)", i);
 		clear_bit(i, client->cu_bitmap);
+	}
+	SCHED_DEBUGF("<- %s", __func__);
 }
 
 static void client_reserve_implicit_cus(struct exec_core *exec,
@@ -2703,8 +2708,12 @@ static void client_reserve_implicit_cus(struct exec_core *exec,
 {
 	int i;
 
-	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+	SCHED_DEBUGF("-> %s", __func__);
+	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++) {
+		SCHED_DEBUGF("+ cu(%d)", i);
 		set_bit(i, client->cu_bitmap);
+	}
+	SCHED_DEBUGF("<- %s", __func__);
 }
 
 /**

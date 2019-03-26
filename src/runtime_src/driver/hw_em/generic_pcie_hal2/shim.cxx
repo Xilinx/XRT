@@ -1342,6 +1342,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mMBSch;
       mMBSch = NULL;
     }
+    if(mDataSpace)
+    {
+      delete mDataSpace;
+      mDataSpace = NULL;
+    }
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -1452,7 +1457,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
-
+    mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -1775,7 +1780,15 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   bool p2pBuffer = xocl_bo_p2p(xobj); 
   std::string sFileName("");
   
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
+  {
+    uint64_t result = mDataSpace->alloc(size,1);
+    xobj->base = result;
+  }
+  else
+  {
+    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  }
   xobj->filename = sFileName;
   xobj->size = size;
   xobj->userptr = NULL;
