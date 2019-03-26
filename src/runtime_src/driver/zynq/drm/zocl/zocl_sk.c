@@ -115,7 +115,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 int
 zocl_sk_report_ioctl(struct drm_device *dev, void *data,
-    struct drm_file *filp)
+   		struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
@@ -189,7 +189,7 @@ zocl_init_soft_kernel(struct drm_device *drm)
         struct drm_zocl_dev *zdev = drm->dev_private;
         struct soft_kernel *sk;
 
-        sk = devm_kzalloc(drm->dev, sizeof (*sk), GFP_KERNEL);
+	sk = devm_kzalloc(drm->dev, sizeof (*sk), GFP_KERNEL);
 	if (!sk)
 		return -ENOMEM;
 

@@ -1,5 +1,4 @@
-/**
- * Compute unit execution, interrupt management and
+/** * Compute unit execution, interrupt management and
  * client context core data structures.
  *
  * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
@@ -40,6 +39,11 @@
 #define CQ_SIZE                       0x10000    /* 64K */
 #define CQ_BASE_ADDR                  0x190000
 #define CSR_ADDR                      0x180000
+
+enum zocl_cu_type {
+	ZOCL_HARD_CU,
+	ZOCL_SOFT_CU,
+};
 
 struct sched_dev;
 struct sched_ops;

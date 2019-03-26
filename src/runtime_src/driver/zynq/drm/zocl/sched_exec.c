@@ -1266,7 +1266,7 @@ reset_all(void)
  * Return: Index of free CU, -1 of no CU is available.
  */
 static int
-get_free_cu(struct sched_cmd *cmd, int is_scu)
+get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 {
 	int mask_idx = 0;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
@@ -1275,12 +1275,13 @@ get_free_cu(struct sched_cmd *cmd, int is_scu)
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmd->packet->data[mask_idx]; /* skip header */
-		u32 busy_mask = is_scu ? zdev->exec->scu_status[mask_idx]
+		u32 busy_mask = cu_type == ZOCL_SOFT_CU ?
+		    zdev->exec->scu_status[mask_idx]
 		    : zdev->exec->cu_status[mask_idx];
 		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
 
 		if (cu_idx >= 0) {
-			if (is_scu)
+			if (cu_type == ZOCL_SOFT_CU)
 				zdev->exec->scu_status[mask_idx] ^= 1 << cu_idx;
 			else
 				zdev->exec->cu_status[mask_idx] ^= 1 << cu_idx;
@@ -1720,7 +1721,7 @@ penguin_submit(struct sched_cmd *cmd)
 		return false;
 
 	/* extract cu list */
-	cmd->cu_idx = get_free_cu(cmd, 0);
+	cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 	if (cmd->cu_idx < 0)
 		return false;
 
@@ -1836,7 +1837,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		break;
 
 	case OP_START_SKERNEL:
-		cmd->cu_idx = get_free_cu(cmd, 1);
+		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
 			DRM_ERROR("Can not find free soft kernel slot.");
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
@@ -1853,7 +1854,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 
 	case OP_START_CU:
 		/* extract cu list */
-		cmd->cu_idx = get_free_cu(cmd, 0);
+		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
 			return false;
