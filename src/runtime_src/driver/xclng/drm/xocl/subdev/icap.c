@@ -63,10 +63,10 @@ static xuid_t uuid_null = NULL_UUID_LE;
 typedef struct {
 	unsigned int HeaderLength;     /* Length of header in 32 bit words */
 	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
-	unsigned char *DesignName;     /* Design name read from bitstream header */
-	unsigned char *PartName;       /* Part name read from bitstream header */
-	unsigned char *Date;           /* Date read from bitstream header */
-	unsigned char *Time;           /* Bitstream creation time read from header */
+	unsigned char DesignName[256]; /* Design name read from bitstream header */
+	unsigned char PartName[128];   /* Part name read from bitstream header */
+	unsigned char Date[32];        /* Date read from bitstream header */
+	unsigned char Time[32];        /* Bitstream creation time read from header */
 	unsigned int MagicLength;      /* Length of the magic numbers in header */
 } XHwIcap_Bit_Header;
 #define XHI_BIT_HEADER_FAILURE 	-1
@@ -969,17 +969,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Design Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-	if (Len > 2048)
+	if (Len >= sizeof(Header->DesignName)) {
+		ICAP_ERR(icap, "Design name too long: %d", Len);
 		return -1;
-
-	/* allocate space for design name and final null character. */
-	Header->DesignName = kmalloc(Len, GFP_KERNEL);
-
+	}
 	/* Read in Design Name */
 	for (I = 0; I < Len; I++)
 		Header->DesignName[I] = Data[Index++];
-
-
 	if (Header->DesignName[Len-1] != '\0')
 		return -1;
 
@@ -991,16 +987,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Part Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-	if (Len > 2048)
+	if (Len >= sizeof(Header->DesignName)) {
+		ICAP_ERR(icap, "Part name too long: %d", Len);
 		return -1;
-
-	/* allocate space for part name and final null character. */
-	Header->PartName = kmalloc(Len, GFP_KERNEL);
-
+	}
 	/* Read in part name */
 	for (I = 0; I < Len; I++)
 		Header->PartName[I] = Data[Index++];
-
 	if (Header->PartName[Len-1] != '\0')
 		return -1;
 
@@ -1012,14 +1005,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get date length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for date and final null character. */
-	Header->Date = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->Date)) {
+		ICAP_ERR(icap, "Date too long: %d", Len);
+		return -1;
+	}
 	/* Read in date name */
 	for (I = 0; I < Len; I++)
 		Header->Date[I] = Data[Index++];
-
 	if (Header->Date[Len - 1] != '\0')
 		return -1;
 
@@ -1031,14 +1023,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get time length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for time and final null character. */
-	Header->Time = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->Time)) {
+		ICAP_ERR(icap, "Time too long: %d", Len);
+		return -1;
+	}
 	/* Read in time name */
 	for (I = 0; I < Len; I++)
 		Header->Time[I] = Data[Index++];
-
 	if (Header->Time[Len - 1] != '\0')
 		return -1;
 
@@ -1101,13 +1092,11 @@ static long icap_download(struct icap *icap, const char *buffer,
 
 	if (bitstream_parse_header(icap, buffer,
 		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
+		return -EINVAL;
 	}
 
 	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
+		return -EINVAL;
 	}
 
 	buffer += bit_header.HeaderLength;
@@ -1121,17 +1110,11 @@ static long icap_download(struct icap *icap, const char *buffer,
 		err = bitstream_helper(icap, (u32 *)buffer,
 			numCharsRead / sizeof (u32));
 		if (err)
-			goto free_buffers;
+			return err;
 		buffer += numCharsRead;
 	}
 
 	err = wait_for_done(icap);
-
-free_buffers:
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -1423,10 +1406,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 done:
 	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	return err;
 }
@@ -1465,6 +1444,9 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 	int kernel_clk_count = 0;
 	int system_clk_count = 0;
 	unsigned short target_freqs[4] = {0};
+
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
 
 	buffer = kmalloc(length, GFP_KERNEL);
 	if (!buffer) {
@@ -1631,10 +1613,6 @@ static int icap_download_user(struct icap *icap, const char __user *bit_buf,
 free_buffers:
 	icap_free_axi_gate(icap);
 	kfree(buffer);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
