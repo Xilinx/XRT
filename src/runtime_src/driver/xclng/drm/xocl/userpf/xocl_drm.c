@@ -616,7 +616,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		mem_data = &topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
 
-		xocl_info(drm_p->ddev->dev, "  Mem Index %d", i);
+		xocl_info(drm_p->ddev->dev, "  Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "  Base Address:0x%llx",
 			mem_data->m_base_address);
 		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
@@ -636,7 +636,8 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 			continue;
 
 		ddr_bank_size = mem_data->m_size * 1024;
-		xocl_info(drm_p->ddev->dev, "Allocating DDR bank%d", i);
+
+		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
 			mem_data->m_base_address, ddr_bank_size);
 
