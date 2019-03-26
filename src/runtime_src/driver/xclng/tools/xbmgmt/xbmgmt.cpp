@@ -1282,7 +1282,9 @@ int scanDevices(int argc, char *argv[])
         if (verbose && f.getBoardInfo(info) == 0)
         {
             std::cout << "\tCard name\t\t" << info.mName << std::endl;
+#if 0	// Do not print out rev until further notice
             std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
+#endif
             std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
             std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
             std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
