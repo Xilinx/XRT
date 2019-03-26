@@ -122,6 +122,7 @@ enum {
 #define XOCL_MB_SCHEDULER	"mb_scheduler" SUBDEV_SUFFIX
 #define XOCL_XVC_PUB		"xvc_pub" SUBDEV_SUFFIX
 #define XOCL_XVC_PRI		"xvc_pri" SUBDEV_SUFFIX
+#define XOCL_NIFD_PRI		"nifd_pri" SUBDEV_SUFFIX
 #define XOCL_SYSMON		"sysmon" SUBDEV_SUFFIX
 #define XOCL_FIREWALL		"firewall" SUBDEV_SUFFIX
 #define	XOCL_MB			"microblaze" SUBDEV_SUFFIX
@@ -139,6 +140,7 @@ enum subdev_id {
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
 	XOCL_SUBDEV_XVC_PRI,
+	XOCL_SUBDEV_NIFD_PRI,
 	XOCL_SUBDEV_SYSMON,
 	XOCL_SUBDEV_AF,
 	XOCL_SUBDEV_MIG,
@@ -307,6 +309,23 @@ enum subdev_id {
 		XOCL_XVC_PRI,				\
 		XOCL_RES_XVC_PRI,			\
 		ARRAY_SIZE(XOCL_RES_XVC_PRI),		\
+	}
+
+#define	XOCL_RES_NIFD_PRI				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x28000,		\
+			.end	= 0x2cfff,		\
+			.flags	= IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_NIFD_PRI				\
+	{						\
+		XOCL_SUBDEV_NIFD_PRI,			\
+		XOCL_NIFD_PRI,				\
+		XOCL_RES_NIFD_PRI,			\
+		ARRAY_SIZE(XOCL_RES_NIFD_PRI),		\
 	}
 
 #define	XOCL_RES_XIIC					\
@@ -867,6 +886,7 @@ enum subdev_id {
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_XVC_PRI,                           \
+		XOCL_DEVINFO_NIFD_PRI,							\
 		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,			\
 		XOCL_DEVINFO_ICAP_MGMT,                         \
 		XOCL_DEVINFO_FMGR,      			\
@@ -908,6 +928,7 @@ enum subdev_id {
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_NIFD_PRI,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,      			\
