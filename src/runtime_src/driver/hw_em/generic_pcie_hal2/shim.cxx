@@ -314,6 +314,7 @@ namespace xclhwemhal2 {
     const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
     if(m_mem)
     {
+      mMembanks.clear();
       for (int32_t i=0; i<m_mem->m_count; ++i)
       {
         if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
