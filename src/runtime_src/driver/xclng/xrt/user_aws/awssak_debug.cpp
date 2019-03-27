@@ -112,6 +112,8 @@ int xcldev::device::readSPMCounters() {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
+    std::ios_base::fmtflags coutFlags = std::cout.flags();  // save format flags
+
     std::cout << std::left
             << std::setw(col1) << "CU Name"
             << " " << std::setw(col2) << "AXI Portname"
@@ -140,6 +142,8 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16) << debugResults.LastReadData[i]
             << std::endl;
     }
+
+    std::cout.flags(coutFlags); // restore format flags
     return 0;
 }
 
