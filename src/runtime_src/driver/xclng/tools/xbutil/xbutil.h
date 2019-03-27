@@ -235,16 +235,21 @@ public:
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
+	char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
+
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             boost::property_tree::ptree ptCu;
-            unsigned statusBuf;
+            unsigned statusBuf = 0;
             if (computeUnits.at( i ).m_type != IP_KERNEL)
                 continue;
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+ 
+            if (!skip_cu) {
+                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+            }
+            ptCu.put( "status",       parseCUStatus( statusBuf ) );
             ptCu.put( "index",        i );
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
             sensor_tree::add_child( "board.compute_unit.cu", ptCu );
         }
         return 0;
