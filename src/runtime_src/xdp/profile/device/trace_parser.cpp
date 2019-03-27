@@ -93,6 +93,9 @@ namespace xdp {
       mStreamStallStartsHostTime[i] = std::queue<uint64_t>();
       mStreamStarveStartsHostTime[i] = std::queue<uint64_t>();
     }
+    for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
+      mAccelMonCuStarts[i] = std::queue<uint64_t>();
+    }
   }
 
   // Log device trace results: store in queues and report events as they are completed
@@ -446,16 +449,19 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           kernelTrace.NumBytes = 0;
           kernelTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
           if (cuEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
+            if (!(trace.EventFlags & XSAM_TRACE_CU_MASK)) {
               kernelTrace.Type = "Kernel";
-              startTime = mAccelMonCuTime[s];
-              kernelTrace.StartTime = startTime;
-              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              kernelTrace.TraceStart = kernelTrace.Start;
-              resultVector.insert(resultVector.begin(), kernelTrace);
+              if (!mAccelMonCuStarts[s].empty()) {
+                startTime = mAccelMonCuStarts[s].front();
+                mAccelMonCuStarts[s].pop();
+                kernelTrace.StartTime = startTime;
+                kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+                kernelTrace.TraceStart = kernelTrace.Start;
+                resultVector.insert(resultVector.begin(), kernelTrace);
+              }
             }
             else {
-              mAccelMonCuTime[s] = timestamp;
+              mAccelMonCuStarts[s].push(timestamp);
             }
           }
           if (stallIntEvent) {
@@ -566,12 +572,12 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     if(!isHwEmu) {
       std::string cuPortName, cuNameSAM, cuNameSPM;
       for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
-        if (mAccelMonStartedEvents[i] & XSAM_TRACE_CU_MASK) {
+        if (!mAccelMonCuStarts[i].empty()) {
           kernelTrace.SlotNum = i;
           kernelTrace.Name = "OCL Region";
           kernelTrace.Type = "Kernel";
           kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
-          kernelTrace.StartTime = mAccelMonCuTime[i];
+          kernelTrace.StartTime = mAccelMonCuStarts[i].front();
           kernelTrace.Start = convertDeviceToHostTimestamp(kernelTrace.StartTime, type, deviceName);
           kernelTrace.BurstLength = 0;
           kernelTrace.NumBytes = 0;

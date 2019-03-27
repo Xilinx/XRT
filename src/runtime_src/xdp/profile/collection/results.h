@@ -122,14 +122,16 @@ namespace xdp {
   public:
     void logStart(double timePoint);
     void logEnd(double timePoint);
-    void logStats(double totalTimeStat, double maxTimeStat, 
-                  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz);
+    void logStats(double totalTimeStat, double avgTimeStat, double maxTimeStat,
+                  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
+                  uint64_t metadata);
     inline double getTotalTime() const { return TotalTime; }
     inline double getAveTime() const {return AveTime; }
     inline double getMaxTime() const {return MaxTime; }
     inline double getMinTime() const {return MinTime; }
     inline uint32_t getNoOfCalls() const {return NoOfCalls; }
     inline uint32_t getClockFreqMhz() const { return ClockFreqMhz; }
+    inline uint64_t getMetadata() const { return StatMetadata; }
   private:
     double TotalTime;
     double StartTime;
@@ -139,6 +141,7 @@ namespace xdp {
     double MinTime;
     uint32_t NoOfCalls;
     uint32_t ClockFreqMhz;
+    uint64_t StatMetadata;
   };
 
   // Class to store time trace of kernel execution, buffer read, or buffer write

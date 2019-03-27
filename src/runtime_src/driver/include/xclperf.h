@@ -383,6 +383,8 @@ typedef struct {
   // Sdx Accel Mon
   unsigned long long CuExecCount[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallExtCycles[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallIntCycles[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallStrCycles[XSAM_MAX_NUMBER_SLOTS];

@@ -129,6 +129,9 @@ isValidPerfMonTypeTrace(key k, xclPerfMonType type);
 bool 
 isValidPerfMonTypeCounters(key k, xclPerfMonType type);
 
+bool
+is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu);
+
 //
 // Device
 //
@@ -196,6 +199,9 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
 
 cl_int
 debugReadIPStatus(key k, xclDebugReadType type, void*  aDebugResults);
+
+bool
+isAPCtrlChain(key k, const std::string& cu);
 
 } // device
 } // platform

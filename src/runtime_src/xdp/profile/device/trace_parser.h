@@ -152,6 +152,7 @@ namespace xdp {
       std::queue<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
+      std::queue<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
 
     private:
       XDPPluginI* mPluginHandle;

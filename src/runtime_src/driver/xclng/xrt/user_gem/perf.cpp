@@ -46,7 +46,6 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include <cstdio>
 #include <cstring>
 #include <cassert>
@@ -579,7 +578,6 @@ namespace xocl {
       if (mLogStream.is_open()) {
         mLogStream << "SAM Sample Interval : " << sampleInterval << std::endl;
       }
-
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 
                       &counterResults.CuExecCount[s], 4); 
@@ -592,10 +590,16 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuMaxExecCycles[s], 4);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      baseAddress + XSAM_BUSY_CYCLES_OFFSET,
+                      &counterResults.CuBusyCycles[s], 4);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_OFFSET,
+                        &counterResults.CuMaxParallelIter[s], 4);
 
       // Read upper 32 bits (if available)
       if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
-        uint64_t upper[4] = {};
+        uint64_t upper[6] = {};
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                         baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
                         &upper[0], 4);
@@ -608,12 +612,19 @@ namespace xocl {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                         baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
                         &upper[3], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_BUSY_CYCLES_UPPER_OFFSET,
+                        &upper[4], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
+                        &upper[5], 4);
 
-        counterResults.CuExecCount[s]     += (upper[0] << 32);
-        counterResults.CuExecCycles[s]    += (upper[1] << 32);
-        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
-        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
-
+        counterResults.CuExecCount[s]       += (upper[0] << 32);
+        counterResults.CuExecCycles[s]      += (upper[1] << 32);
+        counterResults.CuMinExecCycles[s]   += (upper[2] << 32);
+        counterResults.CuMaxExecCycles[s]   += (upper[3] << 32);
+        counterResults.CuBusyCycles[s]      += (upper[4] << 32);
+        counterResults.CuMaxParallelIter[s] += (upper[5] << 32);
         if (mLogStream.is_open()) {
           mLogStream << "SAM Upper 32, slot " << s << std::endl;
           mLogStream << "  CuExecCount : " << upper[0] << std::endl;
@@ -629,6 +640,8 @@ namespace xocl {
         mLogStream << "Reading SAM ...CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
         mLogStream << "Reading SAM ...CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
         mLogStream << "Reading SAM ...CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
+        mLogStream << "Reading SAM ...CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl;
+        mLogStream << "Reading SAM ...CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
       }
 
       // Check Stall bit
@@ -915,6 +928,7 @@ namespace xocl {
     // ******************************
     static unsigned long long firstTimestamp;
     xclTraceResults results = {};
+    uint64_t previousTs = 0;
     for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
       uint64_t temp = 0;
@@ -967,9 +981,8 @@ namespace xocl {
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
-
       if (mLogStream.is_open()) {
-        mLogStream << "  Trace sample " << std::dec << wordnum << ": ";
+        mLogStream << "  Trace sample " << std::dec << std::setw(5) << wordnum << ": ";
         mLogStream << dec2bin(uint32_t(temp>>32)) << " " << dec2bin(uint32_t(temp&0xFFFFFFFF));
         mLogStream << std::endl;
         mLogStream << " Timestamp : " << results.Timestamp << "   ";
@@ -979,8 +992,10 @@ namespace xocl {
         mLogStream << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
         mLogStream << "Error : " << static_cast<int>(results.Error) << "   ";
         mLogStream << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
+        mLogStream << "Interval : " << results.Timestamp - previousTs << "   ";
         mLogStream << std::endl;
       }
+      previousTs = results.Timestamp;
     }
 
     return size;

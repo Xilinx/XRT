@@ -84,6 +84,7 @@ namespace xdp {
       void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
                             unsigned slotnum, std::string& slotName) override;
       unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) override;
+      bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) override;
       void sendMessage(const std::string &msg) override;
     };
 
