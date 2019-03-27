@@ -239,10 +239,7 @@ for f in ${tests[*]}; do
   # this is required for dsv.onbrd suite
   if [ "X$cmd" == "X" ]; then
       cmd=`grep -e 'args.*:' sdainfo.yml | awk -F: '{print $2}'`
-<<<<<<< HEAD
       cmd=`echo $cmd | sed 's/${DSA}/__DSA__/g' | sed "s/__DSA__/${DSA}/g"`
-=======
->>>>>>> 2018.3
   fi
 
   echo "Running $cmd"
