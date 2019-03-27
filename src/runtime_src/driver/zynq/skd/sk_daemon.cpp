@@ -95,18 +95,6 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
   return(xclOpen(deviceIndex, NULL, XCL_QUIET));
 }
 
-int initXRT(unsigned deviceIndex)
-{
-  if (deviceIndex >= xclProbe()) {
-    syslog(LOG_ERR, "Cannot find device index %d specified.\n", deviceIndex);
-    return -1;
-  }
-
-  devHdl = xclOpen(deviceIndex, NULL, XCL_QUIET);
-
-  return 0;
-}
-
 /*
  * This is the main loop for a soft kernel CU.
  * name   : soft kernel function name to run it.
@@ -122,7 +110,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   unsigned int boh;
   int ret;
  
-  initXRT(0);
+  devHdl = initXRTHandle(0);
 
   ret = createSoftKernel(&boh, cu_idx);
   if (ret) {
