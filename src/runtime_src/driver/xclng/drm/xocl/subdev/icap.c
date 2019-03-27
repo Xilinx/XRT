@@ -2168,8 +2168,10 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					ip->properties);
 				continue;
 			}
-			if (!icap->mem_topo->m_mem_data[memidx].m_used ||
-			     icap->mem_topo->m_mem_data[memidx].m_type != MEM_DDR4) {
+
+			if (icap->mem_topo->m_mem_data[memidx].m_type != MEM_DDR4)
+				continue;
+			if (!icap->mem_topo->m_mem_data[memidx].m_used) {
 				ICAP_INFO(icap,
 					"ignore ECC controller for: %s",
 					icap->mem_topo->m_mem_data[memidx].m_tag);

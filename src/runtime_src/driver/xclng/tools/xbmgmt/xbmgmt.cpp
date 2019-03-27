@@ -955,7 +955,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbmgmt\n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
+    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  list\n";

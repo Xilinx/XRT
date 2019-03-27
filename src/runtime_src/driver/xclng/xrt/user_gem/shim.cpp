@@ -887,7 +887,6 @@ int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *tar
     obj.ocl_target_freq[0] = targetFreqMHz[0];
     obj.ocl_target_freq[1] = targetFreqMHz[1];
     obj.ocl_target_freq[2] = targetFreqMHz[2];
-    std::cout << "targetFreqMHz[2]:" << targetFreqMHz[2] << std::endl;
     ret = ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
     return ret ? -errno : ret;
 }
