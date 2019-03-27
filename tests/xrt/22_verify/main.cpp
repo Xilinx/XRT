@@ -193,11 +193,14 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         return 1;
     }
 
+<<<<<<< HEAD
     // Clean up stuff
     munmap(bo, 1024);
     munmap(execData, 1024);
     xclFreeBO(handle, boHandle);
     xclFreeBO(handle, execHandle);
+=======
+>>>>>>> 2018.3
     xclCloseContext(handle, xclbinId, cu_index);
 
     return 0;

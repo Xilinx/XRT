@@ -93,6 +93,8 @@ XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props)
 {
     XmaDecoderSession *dec_session = malloc(sizeof(XmaDecoderSession));
+    if (dec_session == NULL)
+        return NULL;
     XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     XmaKernelRes kern_res;
     int rc, dev_handle, kern_handle, dec_handle;
@@ -123,6 +125,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "Failed to allocate free decoder kernel. Return code %d\n",
                    rc);
+        free(dec_session);
         return NULL;
     }
 
@@ -131,20 +134,26 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     dev_handle = xma_res_dev_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
                "dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0)
+    if (dev_handle < 0) {
+        free(dec_session);
         return NULL;
+    }
 
     kern_handle = xma_res_kern_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
                "kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0)
+    if (kern_handle < 0) {
+        free(dec_session);
         return NULL;
+    }
 
     dec_handle = xma_res_plugin_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
               "dec_handle = %d\n", dec_handle);
-    if (dec_handle < 0)
+    if (dec_handle < 0) {
+        free(dec_session);
         return NULL;
+    }
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -155,7 +164,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     dec_session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
     //For execbo:
-    dec_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    dec_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
     dec_session->base.hw_session.dev_index = hal->dev_index;
 
     dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
@@ -165,8 +174,11 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         calloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
-    if (dec_session->decoder_plugin->init(dec_session))
+    if (dec_session->decoder_plugin->init(dec_session)) {
+        free(dec_session->base.plugin_data);
+        free(dec_session);
         return NULL;
+    }
 
     return dec_session;
 }

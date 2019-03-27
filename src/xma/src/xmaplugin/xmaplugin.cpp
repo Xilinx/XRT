@@ -25,6 +25,8 @@
 #include "ert.h"
 using namespace std;
 
+#define XMAPLUGIN_MOD "xmapluginlib"
+
 XmaBufferHandle
 xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
 {
@@ -125,118 +127,190 @@ xma_plg_buffer_read(XmaHwSession s_handle,
 }
 
 int32_t
+xma_plg_register_prep_write(XmaHwSession  s_handle,
+                       void         *src,
+                       size_t        size,
+                       size_t        offset)
+{
+    uint32_t *src_array = (uint32_t*)src;
+    size_t   cur_min = offset; 
+    size_t   cur_max = offset + size; 
+    int32_t  entries = size / sizeof(uint32_t);
+    int32_t  start = offset / sizeof(uint32_t);
+
+    for (int32_t i = 0; i < entries; i++)
+        s_handle.context->reg_map[start + i] = src_array[i];
+
+    if (cur_max > s_handle.context->max_offset)
+        s_handle.context->max_offset = cur_max;
+
+    if (cur_min < s_handle.context->min_offset)
+        s_handle.context->min_offset = cur_min;
+
+    return 0;
+}
+
+void xma_plg_kernel_lock(XmaHwSession s_handle)
+{
+    /* Only acquire the lock if we don't already own it */
+    if (s_handle.context->have_lock)
+        return;
+
+    xma_res_kernel_lock(s_handle.context->lock);
+    s_handle.context->have_lock = true;
+}
+
+void xma_plg_kernel_unlock(XmaHwSession s_handle)
+{
+    if (s_handle.context->have_lock)
+    {
+        xma_res_kernel_unlock(s_handle.context->lock);
+        s_handle.context->have_lock = false;
+    }
+}
+
+int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
+{
+    int32_t i;
+    int32_t rc = -1;
+    bool    found = false;
+
+    for (i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
+    {
+        ert_start_kernel_cmd *cu_cmd = 
+            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
+        if (s_handle.kernel_info->kernel_execbo_inuse[i])
+        {
+            switch(cu_cmd->state)
+            {
+                case ERT_CMD_STATE_NEW:
+                case ERT_CMD_STATE_QUEUED:
+                case ERT_CMD_STATE_RUNNING:
+                    continue;
+                break;
+                case ERT_CMD_STATE_COMPLETED:
+                    found = true;
+                    // Update count of completed work items
+                    s_handle.kernel_info->kernel_complete_count++;
+                break;
+                case ERT_CMD_STATE_ERROR:
+                case ERT_CMD_STATE_ABORT:
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                               "Could not find free execBO cmd buffer\n");
+                break;
+            }
+        }
+        else
+            found = true;
+
+        if (found)
+            break;
+    }
+    if (found)
+    {
+        s_handle.kernel_info->kernel_execbo_inuse[i] = true;
+        rc = i;
+    }
+
+    return rc;
+}
+
+int32_t
+xma_plg_schedule_work_item(XmaHwSession s_handle)
+{
+    uint8_t *src = (uint8_t*)s_handle.context->reg_map;
+    size_t  size = s_handle.context->max_offset;
+    int32_t bo_idx;
+    int32_t rc = XMA_SUCCESS;
+    
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1)
+        rc = XMA_ERROR;
+    else
+    {
+        // Setup ert_start_kernel_cmd 
+        ert_start_kernel_cmd *cu_cmd = 
+            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[bo_idx];
+        cu_cmd->state = ERT_CMD_STATE_NEW;
+        cu_cmd->opcode = ERT_START_CU;
+
+        // Copy reg_map into execBO buffer 
+        memcpy(cu_cmd->data, src, size);
+
+        // Set count to size in 32-bit words + 1 
+        cu_cmd->count = (size >> 2) + 1;
+     
+        if (xclExecBuf(s_handle.dev_handle, 
+                       s_handle.kernel_info->kernel_execbo_handle[bo_idx]) != 0)
+        {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                       "Failed to submit kernel start with xclExecBuf\n");
+            rc = XMA_ERROR;
+        }
+    }
+         
+    return rc;
+}
+
+int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
+{
+    int32_t current_count = s_handle.kernel_info->kernel_complete_count;
+    int32_t count = 0;
+
+    // Keep track of the number of kernel completions
+    while (count == 0)
+    {
+        // Look for inuse commands that have completed and increment the count
+        for (int32_t i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
+        {
+            if (s_handle.kernel_info->kernel_execbo_inuse[i])
+            {
+                ert_start_kernel_cmd *cu_cmd = 
+                    (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
+                if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+                {
+                    // Increment completed kernel count and make BO buffer available
+                    count++;
+                    s_handle.kernel_info->kernel_execbo_inuse[i] = false;
+                } 
+            }
+        }
+
+        if (count)
+            break;
+
+        // Wait for a notification
+        if (xclExecWait(s_handle.dev_handle, timeout_ms) <= 0)
+            break;
+    }
+    current_count += count;
+    if (current_count)
+    {
+        current_count--;
+        s_handle.kernel_info->kernel_complete_count = current_count;
+        return XMA_SUCCESS;
+    }
+    else
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Could not find completed work item\n");
+        return XMA_ERROR;
+    }
+}
+    
+int32_t
 xma_plg_register_write(XmaHwSession  s_handle,
                        void         *src,
                        size_t        size,
                        size_t        offset)
 {
-    cout << "ERROR: Replace xma_plg_register_write api with:" << endl;
-    cout << "  - xma_plg_ebo_kernel_start and" << endl;
-    cout << "  - xma_plg_ebo_kernel_done" << endl;
-    return -1;
+    xclDeviceHandle dev_handle = s_handle.dev_handle;
+    uint64_t        dev_offset = s_handle.base_address;
+    //printf("xma_plg_register_write dev_handle=%p,base_addr=0x%lx,src=%p,size=%lu,offset=0x%lx\n", dev_handle, dev_offset, src, size, offset);
+    return xclWrite(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset,
+                    src, size);
 }
-
-/**
- *  @brief execBO based kernel APIs
- *  xma_plg_register_write should NOT be used.
- *  Please use below APIs instead
- *  xma_plg_ebo_kernel_start
- *  xma_plg_ebo_kernel_done: Wait for all pending kernel commands to finish
- *  
- */
-int32_t xma_plg_ebo_kernel_start(XmaHwSession  s_handle, uint32_t* args, uint32_t args_size) {
-  int loop_idx = 0;
-  bool start_done = false;
-  if (args_size > 2048) {
-    cout << "ERROR: arg_size for kernel is too large" << endl;
-    exit(1);
-  }
-  /*
-  cout << "Kernel to start: " << string((char*)s_handle.kernel_info.name) << endl;
-  cout << "Kernel instance: " << dec << s_handle.kernel_info.instance << endl;
-  cout << "Kernel ddr bank: " << dec << s_handle.kernel_info.ddr_bank << endl;
-  cout << "Kernel base_addr: 0x" << hex << s_handle.kernel_info.base_address << endl;
-  */
-  while (loop_idx < 10 && !start_done) {
-    for (int i = 0; i < MAX_EXECBO_POOL_SIZE; i++) {
-      //cout << "ExecBO pool idx: " << dec << i << endl;
-      //cout << "ExecBO handle: 0x" << hex << s_handle.kernel_info.kernel_execbo_handle[i] << endl;
-      //cout << "ExecBO data: 0x" << hex << (void*)s_handle.kernel_info.kernel_execbo_data[i] << endl;
-      ert_start_kernel_cmd* cu_cmd = (ert_start_kernel_cmd*) s_handle.kernel_info.kernel_execbo_data[i];
-      if (s_handle.kernel_info.kernel_execbo_inuse[i]) {
-        //cout << "Check if previous kernel cmds have finished" << endl;
-        if (cu_cmd->state >= 4) {
-          if (cu_cmd->state != 4) {
-            cout << "ERROR: CU DONE failed" << endl;
-            exit(1);
-          }
-          s_handle.kernel_info.kernel_execbo_inuse[i] = false;
-          cu_cmd->state = ERT_CMD_STATE_NEW;
-          cu_cmd->opcode = ERT_START_CU;
-          memset((void*)cu_cmd->data, 0, (cu_cmd->count - 1) * 4);
-        }
-      } else if (!start_done) {
-        //cout << "Will start kernel now" << endl;
-        memcpy((void*)cu_cmd->data, (char*) args, args_size);
-        cu_cmd->count = 1 + (args_size >> 2);//cu_args_size is in bytes => convert to 32 bit words
-        s_handle.kernel_info.kernel_execbo_inuse[i] = true;
-        if (xclExecBuf(s_handle.dev_handle, s_handle.kernel_info.kernel_execbo_handle[i]) != 0) {
-          cout << "ERROR: Failed to submit Kernel start" << endl;
-          exit(1);
-        }
-        start_done = true;
-      }
-    }
-    if (!start_done) {
-      loop_idx++;
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  }
-  if (!start_done) {
-    cout << "ERROR: Kernel may be hung. Failed to submit Kernel start" << endl;
-    exit(1);
-  }
-  return 0;
-}
-
-
-//Wait for all pending kernel commands to finish
-int32_t xma_plg_ebo_kernel_done(XmaHwSession  s_handle) {
-  //cout << "kernel_done start" << endl;
-  int loop_idx = 0;
-  bool all_idle = false;
-  while (loop_idx <= MAX_EXECBO_POOL_SIZE && !all_idle) {
-    all_idle = true;
-    for (int i = 0; i < MAX_EXECBO_POOL_SIZE; i++) {
-      if (s_handle.kernel_info.kernel_execbo_inuse[i]) {
-        all_idle = false;
-        ert_start_kernel_cmd* cu_cmd = (ert_start_kernel_cmd*) s_handle.kernel_info.kernel_execbo_data[i];
-        if (cu_cmd->state >= 4) {
-          if (cu_cmd->state != 4) {
-            cout << "ERROR: CU DONE failed" << endl;
-            exit(1);
-          }
-          s_handle.kernel_info.kernel_execbo_inuse[i] = false;
-          cu_cmd->state = ERT_CMD_STATE_NEW;
-          cu_cmd->opcode = ERT_START_CU;
-        } else {
-          //cout << "Testing: ..." << endl;
-          if (xclExecWait(s_handle.dev_handle, 7000) < 0) {//With zero keep waiting. > 0 go and check status..
-            cout << "ERROR: Failed to wait for Kernel done" << endl;
-            exit(1);
-          }
-        }
-      }
-    }
-  }
-  if (!all_idle) {
-    cout << "ERROR: With XMA multiple threads not allowed to share a kernel." << endl;
-    exit(1);
-  }
-  return 0;
-}
-
-
 
 int32_t
 xma_plg_register_read(XmaHwSession  s_handle,

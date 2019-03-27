@@ -275,7 +275,10 @@ int main(int argc, char** argv)
         //Clean up stuff
         munmap(bo1, DATA_SIZE);
         munmap(bo2, DATA_SIZE);
+<<<<<<< HEAD
         munmap(execData, DATA_SIZE);
+=======
+>>>>>>> 2018.3
         xclFreeBO(handle,boHandle1);
         xclFreeBO(handle,boHandle2);
         xclFreeBO(handle,execHandle);

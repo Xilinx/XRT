@@ -1,4 +1,5 @@
 XRT ChangeLog
+<<<<<<< HEAD
 -------------
 
 2.1.0 (201830.2.1 unreleased)
@@ -6,6 +7,15 @@ XRT ChangeLog
 
 Added
 .....
+=======
+*************
+
+2.1.0 (201830.2.1)
+==================
+
+Added
+-----
+>>>>>>> 2018.3
 
 * xbutil can now generate output in JSON format for easy parsing by other tools. Use ``xbutil dump`` to generate JSON output on stdout.
 * Initial support for PCIe peer-to-peer transactions has been added. Please consult https://xilinx.github.io/XRT/2018.3/html/p2p.html for details.
@@ -15,7 +25,11 @@ Added
 * Yocto recipes to build XRT for embedded platforms. Please consult https://xilinx.github.io/XRT/2018.3/html/yocto.html for details.
 
 Fixed
+<<<<<<< HEAD
 .....
+=======
+-----
+>>>>>>> 2018.3
 
 * ``xbutil flash -a`` PROM corruption issue with multiple Alveo boards.
 * XRT scheduling bug with multiple boards on AWS F1 when scheduler was serializing board access.
@@ -26,7 +40,11 @@ Fixed
 * Several Coverity/Fortify code scan fixes.
 
 Deprecated
+<<<<<<< HEAD
 ..........
+=======
+----------
+>>>>>>> 2018.3
 
 * XMA plugin API xma_plg_register_write has been marked for deprecation. It will be removed in a future release.
 * XMA plugin API xma_plg_register_read has been marked for deprecation. It will be removed in a future release.

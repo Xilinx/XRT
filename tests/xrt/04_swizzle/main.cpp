@@ -296,9 +296,12 @@ int main(int argc, char** argv)
             return 1;
         }
         munmap(bo, DATA_SIZE*4);
+<<<<<<< HEAD
         munmap(execData, DATA_SIZE*4);
         xclFreeBO(handle, boHandle);
         xclFreeBO(handle, execHandle);
+=======
+>>>>>>> 2018.3
     }
     catch (std::exception const& e)
     {
