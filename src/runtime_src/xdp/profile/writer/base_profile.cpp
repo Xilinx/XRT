@@ -117,7 +117,7 @@ namespace xdp {
         "Number Of Transfers", "Transfer Rate (MB/s)", "Average Size (KB)",
         "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
       };
-      writeTableHeader(getStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getStream(), "Data Transfer: Streams", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getStream());
     }
