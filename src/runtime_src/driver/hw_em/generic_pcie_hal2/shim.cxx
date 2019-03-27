@@ -163,27 +163,23 @@ namespace xclhwemhal2 {
       auto top = reinterpret_cast<const axlf*>(header);
       if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
         xmlFileSize = sec->m_sectionSize;
-        xmlFile = new char[xmlFileSize+1];
+        xmlFile = new char[xmlFileSize];
         memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-        xmlFile[xmlFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
         zipFileSize = sec->m_sectionSize;
-        zipFile = new char[zipFileSize+1];
+        zipFile = new char[zipFileSize];
         memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-        zipFile[zipFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
         debugFileSize = sec->m_sectionSize;
-        debugFile = new char[debugFileSize+1];
+        debugFile = new char[debugFileSize];
         memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
-        debugFile[debugFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
         memTopologySize = sec->m_sectionSize;
-        memTopology = new char[memTopologySize+1];
+        memTopology = new char[memTopologySize];
         memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-        memTopology[memTopologySize] = 0;
       }
     }
     else
@@ -221,7 +217,7 @@ namespace xclhwemhal2 {
 
       return -1;
     }
-    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize+1,xmlFile,xmlFileSize+1,debugFile,debugFileSize+1, memTopology, memTopologySize+1);
+    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
     if(returnValue >=0 && mFirstBinary )
@@ -333,37 +329,12 @@ namespace xclhwemhal2 {
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
       }
     }
-    // Write XML metadata from xclbin
-    std::string xmlFileName("");
-    xmlFileName = binaryDirectory + "/xmltmp";
-    bool xmlFileCreated=false;
-
-    while(!xmlFileCreated)
-    {
-      FILE *fp=fopen(xmlFileName.c_str(),"rb");
-      if(fp==NULL) xmlFileCreated=true;
-      else
-      {
-        fclose(fp);
-        xmlFileName += std::string("_");
-      }
-    }
-    FILE *fp=fopen(xmlFileName.c_str(),"wb");
-    if(fp==NULL)
-    {
-      if (mLogStream.is_open())
-      {
-        mLogStream << __func__ << " failed to create temporary xml file " << std::endl;
-      }
-      return -1;
-    }
-    fwrite(xmlfile,xmlFileSize,1,fp);
-    fflush(fp);
-    fclose(fp);
-
+  
     pt::ptree xml_project;
+    std::string sXmlFile;
+    sXmlFile.assign(xmlfile,xmlFileSize);
     std::stringstream xml_stream;
-    xml_stream << xmlfile;
+    xml_stream<<sXmlFile;
     pt::read_xml(xml_stream,xml_project);
 
      // iterate platforms
@@ -2093,7 +2064,7 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferHost2Device(bo->base, src, size, seek, bo->topology) != size)
   {
     returnVal = EIO;
@@ -2117,7 +2088,7 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology) != size)
   {
     returnVal = EIO;
