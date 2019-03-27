@@ -200,7 +200,11 @@ SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
 
-post_inst_msg="DSA package installed successfully."
+
+XBUTIL=/opt/xilinx/xrt/bin/xbutil
+post_inst_msg="DSA package installed successfully.
+Please flash card manually by running below command:
+sudo ${XBUTIL} flash -a ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
