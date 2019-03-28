@@ -1647,6 +1647,38 @@ int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
   return 0;//TODO
 }
 
+/*
+ * xclLogMsg()
+ */
+int CpuemShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+{
+    int len = std::vsnprintf(nullptr, 0, format, args1);
+
+    if (len < 0) 
+    {
+        //illegal arguments
+        std::string err_str = "ERROR: Illegal arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+
+    if (len < 0) 
+    {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
+    return 0;
+}
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }
