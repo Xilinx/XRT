@@ -58,6 +58,8 @@ int32_t xma_initialize(char *cfgfile)
     }
 
     g_xma_singleton = malloc(sizeof(*g_xma_singleton));
+    if (g_xma_singleton  == NULL)
+        return XMA_ERROR;
     memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));
 
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
