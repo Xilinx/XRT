@@ -81,7 +81,9 @@ namespace xdp {
       }
 
       // log trace results
-      void logTrace(std::string deviceName, xclPerfMonType type,
+      void logTrace(std::string& deviceName, xclPerfMonType type,
+          xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
+      void logTraceHWEmu(std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
 
       // Get slot name and kind
@@ -126,7 +128,6 @@ namespace xdp {
       double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainProgramStart[XCL_PERF_MON_TOTAL_PROFILE];
-      uint32_t mPrevTimestamp[XCL_PERF_MON_TOTAL_PROFILE];
       uint64_t mAccelMonCuTime[XSAM_MAX_NUMBER_SLOTS]       = { 0 };
       uint64_t mAccelMonCuHostTime[XSAM_MAX_NUMBER_SLOTS]   = { 0 };
       uint64_t mAccelMonStallIntTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
