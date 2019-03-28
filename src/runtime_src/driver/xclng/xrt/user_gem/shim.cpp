@@ -886,6 +886,7 @@ int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *tar
     obj.ocl_region = region;
     obj.ocl_target_freq[0] = targetFreqMHz[0];
     obj.ocl_target_freq[1] = targetFreqMHz[1];
+    obj.ocl_target_freq[2] = targetFreqMHz[2];
     ret = ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
     return ret ? -errno : ret;
 }
@@ -1775,6 +1776,7 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     reClockInfo.region = region;
     reClockInfo.ocl_target_freq[0] = targetFreqMHz[0];
     reClockInfo.ocl_target_freq[1] = targetFreqMHz[1];
+    reClockInfo.ocl_target_freq[2] = targetFreqMHz[2];
     ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_RECLOCK, &reClockInfo);
     return ret ? -errno : ret;
 }

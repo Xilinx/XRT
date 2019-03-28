@@ -302,7 +302,7 @@ static ssize_t sw_chan_state_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
-	uint64_t ret;
+	uint64_t ret = 0;
 	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
 
 	return sprintf(buf, "0x%llx\n", ret);
@@ -315,7 +315,7 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
-	uint64_t ret;
+	uint64_t ret = 0;
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
