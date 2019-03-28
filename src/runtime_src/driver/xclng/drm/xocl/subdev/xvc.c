@@ -179,12 +179,12 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 		return -EINVAL;
 	}
 
+	total_bits = xvc_obj.length;
 	if (total_bits > MAX_INPUT_LEN) {
 		pr_err("Input totoal bits beyond 1GB\n");
 		return -EINVAL;
 	}
 
-	total_bits = xvc_obj.length;
 	total_bytes = (total_bits + 7) >> 3;
 
 	buffer = (char *)kmalloc(total_bytes * 3, GFP_KERNEL);

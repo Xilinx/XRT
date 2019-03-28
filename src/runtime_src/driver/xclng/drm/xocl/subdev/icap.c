@@ -987,7 +987,7 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Part Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-	if (Len >= sizeof(Header->DesignName)) {
+	if (Len >= sizeof(Header->PartName)) {
 		ICAP_ERR(icap, "Part name too long: %d", Len);
 		return -1;
 	}
