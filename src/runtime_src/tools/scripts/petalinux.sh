@@ -113,13 +113,13 @@ cp -r ${XRT_REPO_DIR}/src/platform/mnt-sd recipes-apps/
 echo " * Adding XRT, HAL, Driver recipes"
 
 # In 2018.3 Petalinux the name of this file changed..
-PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
-if [[ $PETALINUX_VER == "2018.2" ]]; then
-	cp recipes-core/images/petalinux-image.bbappend{,.orig}
+if [ -f recipes-core/images/petalinux-image.bbappend ]; then
 	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
-else
-	cp recipes-core/images/petalinux-image-full.bbappend{,.orig}
+elif [ -f recipes-core/images/petalinux-image-full.bbappend ]; then
 	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image-full.bbappend
+else
+	echo "Not petalinux image .bbappend file in project-spec/meta-user/recipes-core/images/"
+	exit 1;
 fi
 
 echo 'IMAGE_INSTALL_append = " xrt-dev"'            >> $PETALINUX_IMAGE_BBAPPEND
