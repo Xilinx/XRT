@@ -443,11 +443,7 @@ namespace xclhwemhal2 {
             xclTraceResults result;
             memset(&result, 0, sizeof(xclTraceResults));
             // result.TraceID = accel ? counter + 64 : counter * 2;
-            if (iptype == 1) {
-              result.TraceID = counter * 2;
-            } else if (iptype == 2) {
-              result.TraceID = counter + 64;
-            } else { /* if (iptype == 3) */
+            if (iptype == 3) {
               result.TraceID = counter + 576;
             }
             result.Timestamp = event.timestamp();

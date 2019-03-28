@@ -441,7 +441,7 @@ namespace xclcpuemhal2 {
     //  environment variable
     bool debuggable = false ;
     if (getenv("SDA_SKIP_KERNEL_DEBUG") == NULL ||
-	strcmp("true", getenv("SDA_SKIP_KERNEL_DEBUG")) != 0) 
+	        strcmp("true", getenv("SDA_SKIP_KERNEL_DEBUG")) != 0) 
     {
       char* xclbininmemory = 
         reinterpret_cast<char*>(const_cast<xclBin*>(header)) ;
@@ -492,9 +492,8 @@ namespace xclcpuemhal2 {
         }
         if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
-          memTopology = new char[memTopologySize+1];
+          memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
-          memTopology[memTopologySize] = 0;
         }
       }
       else
@@ -531,6 +530,12 @@ namespace xclcpuemhal2 {
         if( !fp ) 
         {
           if(mLogStream.is_open()) mLogStream << __func__ << " failed to create temporary dlopen file" << std::endl;
+          
+          if(memTopology)
+          {
+            delete []memTopology;
+            memTopology = NULL;
+          }
           return -1;
         }
         fwrite(sharedlib,sharedliblength,1,fp);
@@ -1366,7 +1371,7 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferHost2Device( bo->base, src, size,seek);
+  size_t returnVal = xclCopyBufferHost2Device( bo->base, src, size,seek);
   PRINTENDFUNC;
   return returnVal;
 }
@@ -1386,7 +1391,7 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = xclCopyBufferDevice2Host(dst, bo->base, size, skip);
+  size_t returnVal = xclCopyBufferDevice2Host(dst, bo->base, size, skip);
   PRINTENDFUNC;
   return returnVal;
 }
