@@ -187,22 +187,57 @@ xocl_read_sect(enum axlf_section_kind kind, void **sect, struct axlf *axlf_full)
 
 /*
  * Return number of client with open ("live") contexts on CUs.
- * If this number > 0, xclbin is locked down
+ * If this number > 0, xclbin is locked down.
+ * If plist is non-NULL, the list of PIDs of live clients will also be returned.
+ * Note that plist should be freed by caller.
  */
-uint get_live_client_size(struct xocl_dev *xdev)
+static uint live_clients(struct xocl_dev *xdev, pid_t **plist)
 {
 	const struct list_head *ptr;
 	const struct client_ctx *entry;
 	uint count = 0;
+	uint i = 0;
+	pid_t *pl = NULL;
 
 	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
 
+	/* Find out number of active client */
 	list_for_each(ptr, &xdev->ctx_list) {
 		entry = list_entry(ptr, struct client_ctx, link);
 		if (CLIENT_NUM_CU_CTX(entry) > 0)
 			count++;
 	}
+	if (count == 0 || plist == NULL)
+		goto out;
+
+	/* Collect list of PIDs of active client */
+	pl = (pid_t *)vmalloc(sizeof(pid_t) * count);
+	if (pl == NULL)
+		goto out;
+
+	list_for_each(ptr, &xdev->ctx_list) {
+		entry = list_entry(ptr, struct client_ctx, link);
+		if (CLIENT_NUM_CU_CTX(entry) > 0) {
+			pl[i] = pid_nr(entry->pid);
+			i++;
+		}
+	}
+
+	*plist = pl;
+
+out:
 	return count;
+}
+
+u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
+{
+	u32 c;
+
+	mutex_lock(&xdev->dev_lock);
+	c = live_clients(xdev, plist);
+	mutex_unlock(&xdev->dev_lock);
+
+	return c;
 }
 
 static int
@@ -255,7 +290,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * used to lock down xclbin on mgmt pf side.
 	 */
 	if (!uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
-		if (get_live_client_size(xdev) ||
+		if (live_clients(xdev, NULL) ||
 			atomic_read(&xdev->outstanding_execs)) {
 			printk(KERN_ERR "Current xclbin is busy, can't change\n");
 			return -EBUSY;
