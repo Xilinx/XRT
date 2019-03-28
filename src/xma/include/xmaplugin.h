@@ -157,7 +157,8 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
- *  xma_plg_register_write() - Write kernel register(s)
+ *  
+ * xma_plg_register_write() - Write kernel register(s)
  *
  *  This function writes the data provided and sets the specified AXI_Lite
  *  register(s) exposed by a kernel. The base offset of 0 is the beginning
@@ -182,7 +183,8 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                size_t           offset) __attribute__ ((deprecated));
 
 /**
- *  xma_plg_ebo_kernel_start() - execBO based kernel APIs
+ *  
+ * xma_plg_ebo_kernel_start() - execBO based kernel APIs
  *  xma_plg_register_write should NOT be used.
  *  Please use below APIs instead
  *  
@@ -190,7 +192,8 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
 int32_t xma_plg_ebo_kernel_start(XmaHwSession  s_handle, uint32_t* args, uint32_t args_size);
 
 /**
- *  xma_plg_ebo_kernel_done() - execBO based kernel APIs. Wait for all pending kernel commands to finish
+ *  
+ * xma_plg_ebo_kernel_done() - execBO based kernel APIs. Wait for all pending kernel commands to finish
  *  xma_plg_register_write should NOT be used.
  *  Please use below APIs instead
  *
@@ -200,7 +203,8 @@ int32_t xma_plg_ebo_kernel_done(XmaHwSession  s_handle);//Wait for all pending k
 
 
 /**
- *  xma_plg_register_read() - Read kernel registers
+ *  
+ * xma_plg_register_read() - Read kernel registers
  *
  *  This function reads the register(s) exposed by the kernel. The base offset
  *  of 0 is the beginning of the kernels AXI_Lite memory map as this function
@@ -222,7 +226,8 @@ int32_t xma_plg_register_read(XmaHwSession     s_handle,
                               size_t           offset) __attribute__ ((deprecated));
 
 /**
- *  xma_plg_register_dump() - Dump kernel registers
+ *  
+ * xma_plg_register_dump() - Dump kernel registers
  *
  *  This function dumps the registers for a kernel up to the number of words
  *  specified and prints them with the offset and value.
