@@ -63,7 +63,7 @@ static ssize_t kdsstat_show(struct device *dev,
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
-		xclbin_id ? xclbin_id : &uuid_null);
+		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
 	size += sprintf(buf + size, "total execs:\t\t%ld\n",
