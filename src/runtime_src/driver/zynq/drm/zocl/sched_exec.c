@@ -291,26 +291,6 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
 }
 
 /**
- * addr_to_cu_idx - Find the CU idx by physical address
- *
- * @cu_list: CU physical address list
- * @num_cus: The length of the address list
- * @addr: The address of the CU we are looking for
- * Return: The index of the CU. If return equals to num_cus, CU is not found
- */
-int addr_to_cu_idx(struct drm_device *dev, u32 addr)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	int i;
-
-	for (i = 0; i < zdev->exec->num_cus; i++) {
-		if (zdev->exec->cu_addr_phy[i] == addr)
-			break;
-	}
-	return i;
-}
-
-/**
  * set_cmd_int_state() - Set internal command state used by scheduler only
  *
  * @xcmd: command to change internal state on
