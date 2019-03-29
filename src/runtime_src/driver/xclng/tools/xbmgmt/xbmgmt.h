@@ -200,7 +200,7 @@ public:
      */
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
-        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], 0, 0};
+        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 

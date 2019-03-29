@@ -243,7 +243,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
-    sc_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
     sc_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first scaler plugin for now

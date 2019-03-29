@@ -151,6 +151,7 @@ enum subdev_id {
 	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
+	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_NUM
 };
 
@@ -207,6 +208,23 @@ enum subdev_id {
 		ARRAY_SIZE(XOCL_RES_MIG),		\
 	}
 
+
+#define	XOCL_RES_MIG_HBM				\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x5800,		\
+			.end 	= 0x58FF,		\
+			.flags  = IORESOURCE_MEM,	\
+			}				\
+		})
+
+#define	XOCL_DEVINFO_MIG_HBM				\
+	{						\
+		XOCL_SUBDEV_MIG_HBM,			\
+		XOCL_MIG,				\
+		XOCL_RES_MIG_HBM,			\
+		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
+	}
 
 #define	XOCL_RES_AF					\
 		((struct resource []) {			\
@@ -500,6 +518,66 @@ enum subdev_id {
 		XOCL_ICAP,				\
 		XOCL_RES_ICAP_MGMT,			\
 		ARRAY_SIZE(XOCL_RES_ICAP_MGMT),		\
+	}
+
+#define	XOCL_RES_ICAP_MGMT_U280				\
+	((struct resource []) {				\
+		/* HWICAP registers */			\
+		{					\
+			.start	= 0x020000,		\
+			.end	= 0x020119,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* GENERAL_STATUS_BASE */		\
+		{					\
+			.start	= 0x032000,		\
+			.end	= 0x032003,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* AXI Gate registers */		\
+		{					\
+			.start	= 0x030000,		\
+			.end	= 0x03000b,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKWIZ0_BASE */			\
+		{					\
+			.start	= 0x050000,		\
+			.end	= 0x050fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKWIZ1_BASE */			\
+		{					\
+			.start	= 0x051000,		\
+			.end	= 0x051fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.start	= 0x052000,		\
+			.end	= 0x052fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKWIZ2_BASE */			\
+		{					\
+			.start	= 0x053000,		\
+			.end	= 0x053fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.start	= 0x055000,		\
+			.end	= 0x055fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_ICAP_MGMT_U280			\
+	{						\
+		XOCL_SUBDEV_ICAP,			\
+		XOCL_ICAP,				\
+		XOCL_RES_ICAP_MGMT_U280,		\
+		ARRAY_SIZE(XOCL_RES_ICAP_MGMT_U280),	\
 	}
 
 #define	XOCL_DEVINFO_ICAP_USER				\
@@ -942,6 +1020,27 @@ enum subdev_id {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+
+#define	MGMT_RES_XBB_DSA52_U280						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_AF_DSA52,				\
+			XOCL_DEVINFO_XMC,				\
+			XOCL_DEVINFO_XVC_PRI,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT_U280,			\
+			XOCL_DEVINFO_FMGR,      			\
+		})
+
+#define	XOCL_BOARD_MGMT_XBB_DSA52_U280					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_XBB_DSA52_U280,		\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52_U280),	\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -1028,7 +1127,7 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4353, MGMT_6A8F_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5000, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5004, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\

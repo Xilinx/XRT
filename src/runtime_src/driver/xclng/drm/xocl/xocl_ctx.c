@@ -224,7 +224,7 @@ void xocl_drvinst_close(void *data)
 			break;
 	}
 
-	if (proc) {
+	if (&proc->link != &drvinstp->open_procs) {
 		proc->count--;
 		if (!proc->count) {
 			list_del(&proc->link);
