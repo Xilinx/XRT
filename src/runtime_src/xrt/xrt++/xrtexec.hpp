@@ -59,15 +59,26 @@ public:
 };
 
 /**
- * class write_command : concrete class for ERT_WRITE
+ * class exec_write_command : concrete class for ERT_EXEC_WRITE
  *
- * The write command allows XRT to values to specific
- * addresses exposed over AXI-lite.
+ * The exec write command allows XRT to values to specific
+ * addresses exposed over AXI-lite.  The command value pairs
+ * are written to offset associated with selected CU.  After
+ * writing, the CU itself is started.
  */
-class write_command : public command
+class exec_write_command : public command
 {
 public:
-  write_command(xrt_device* dev);
+  exec_write_command(xrt_device* dev);
+
+  /**
+   * Add cu to command package pair to the command
+   *
+   * @cuidx: index of cu to execute
+   * @value: the value to write to @addr
+   */
+  void
+  add_cu(value_type cuidx);
 
   /**
    * Add {addr,value} pair to the command
@@ -77,9 +88,6 @@ public:
    */
   void
   add(addr_type addr, value_type value);
-
-private:
-  size_t offset = 1;
 };
 
 }} //exec, xrtcpp

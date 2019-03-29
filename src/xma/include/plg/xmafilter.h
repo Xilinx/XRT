@@ -17,12 +17,6 @@
 #ifndef _XMAPLG_FILTER_H_
 #define _XMAPLG_FILTER_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmafilter.h
- * XMA plugin interface for video filer kernels
- */
-
 #include "xma.h"
 #include "plg/xmasess.h"
 
@@ -30,26 +24,11 @@
 extern "C" {
 #endif
 
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgfilter xmafilter.h
- * @{
-*/
-
-/**
- * @typedef XmaFilterPlugin
- * Plugin interface for XmaFilter type kernels
- *
- * @typedef XmaFilterSession
- * Data structure representing a session instance for a filter kernel
-*/
-
 /* Forward declaration */
 typedef struct XmaFilterSession XmaFilterSession;
 
 /**
- * @struct XmaFilterPlugin
- * Plugin interface for XmaFilter type kernels
+ * struct XmaFilterPlugin - Plugin interface for XmaFilter type kernels
 */
 typedef struct XmaFilterPlugin
 {
@@ -66,15 +45,22 @@ typedef struct XmaFilterPlugin
                                   XmaFrame          *frame);
     /** Callback called when application calls xma_filter_session_destroy() */
     int32_t         (*close)(XmaFilterSession *session);
-    /** Optional callback called when app calls xma_filter_session_create() */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
 } XmaFilterPlugin;
 
 /**
- * @struct XmaFilterSession
- * Data structure representing a session instance for a filter kernel
+ * struct XmaFilterSession - Data structure representing a session instance for a filter kernel
 */
 typedef struct XmaFilterSession
 {
@@ -88,23 +74,21 @@ typedef struct XmaFilterSession
 } XmaFilterSession;
 
 /**
- * @brief Unpack an abstract XmaSession into an filter session
+ * to_xma_filter() - Use to case a session object to an filter session.
  *
- * Use to case a session object to an filter session.
- *
- * @param s Address of XmaSession member of enclosing XmaEncoderSession
+ * @s: Address of XmaSession member of enclosing XmaEncoderSession
  *  instance.
  *
- * @return Pointer to XmaEncoderSession
+ * RETURN: Pointer to XmaEncoderSession
  *
- * @note Should call is_xma_filter() on pointer first to ensure this
+ * Note: Should call is_xma_filter() on pointer first to ensure this
  * converstion is safe.
 */
 static inline XmaFilterSession *to_xma_filter(XmaSession *s)
 {
     return (XmaFilterSession *)s;
 }
-/** @} */
+
 #ifdef __cplusplus
 }
 #endif

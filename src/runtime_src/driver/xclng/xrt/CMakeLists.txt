@@ -33,6 +33,7 @@ target_link_libraries(xrt_core
   rt
   boost_filesystem
   boost_system
+  uuid
   )
 
 install(TARGETS xrt_core

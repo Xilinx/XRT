@@ -88,6 +88,9 @@ XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
     XmaFilterSession *filter_session = malloc(sizeof(XmaFilterSession));
+    if (filter_session == NULL) {
+        return NULL;
+    }
 	XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     XmaKernelRes kern_res;
 	int rc, dev_handle, kern_handle, filter_handle;
@@ -119,6 +122,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Failed to allocate free filter kernel. Return code %d\n", rc);
+        free(filter_session);
         return NULL;
     }
 
@@ -126,19 +130,26 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 
     dev_handle = xma_res_dev_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0)
+    if (dev_handle < 0) {
+        free(filter_session);
         return NULL;
+    }
 
     kern_handle = xma_res_kern_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0)
+    if (kern_handle < 0) {
+        free(filter_session);
         return NULL;
+    }
 
     filter_handle = xma_res_plugin_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"filter_handle = %d\n",
                filter_handle);
-    if (filter_handle < 0)
+    if (filter_handle < 0) 
+    {
+        free(filter_session);
         return NULL;
+    }
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -149,7 +160,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
-    filter_session->base.hw_session.kernel_info = hwcfg->devices[dev_handle].kernels[kern_handle];
+    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first filter plugin for now
@@ -188,6 +199,9 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Initalization of filter plugin failed. Return code %d\n",
                    rc);
+        free(filter_session->base.plugin_data);
+        xma_connect_free(filter_session->conn_send_handle, XMA_CONNECT_SENDER);
+        free(filter_session);
         return NULL;
     }
 

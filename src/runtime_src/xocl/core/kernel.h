@@ -352,7 +352,7 @@ public:
   {
   public:
     stream_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
+      : argument(kernel), m_arg_info(arg) { m_set = true; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual argtype get_argtype() const { return m_arg_info->atype; }
@@ -656,6 +656,16 @@ private:
   argument_vector_type m_progvar_args;
   argument_vector_type m_rtinfo_args;
 };
+
+namespace kernel_utils {
+
+std::string
+normalize_kernel_name(const std::string& kernel_name);
+
+std::vector<std::string>
+get_cu_names(const std::string& kernel_name);
+
+} // kernel_utils
 
 } // xocl
 

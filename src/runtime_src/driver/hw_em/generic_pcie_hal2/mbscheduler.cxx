@@ -57,6 +57,7 @@ namespace xclhwemhal2 {
 
     num_slots = 0;
     num_cus = 0;
+    num_cdma = 0;
     cu_shift_offset = 0;
     cu_base_addr = 0;
     polling_mode = 1;
@@ -148,8 +149,8 @@ namespace xclhwemhal2 {
 
   int MBScheduler::get_free_cu(struct xocl_cmd *xcmd)
   {
-    int mask_idx=0;
-    int num_masks = cu_masks(xcmd);
+    uint32_t mask_idx=0;
+    uint32_t num_masks = cu_masks(xcmd);
     for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
       uint32_t busy_mask = xcmd->exec->cu_status[mask_idx];
@@ -350,9 +351,31 @@ namespace xclhwemhal2 {
       exec->cu_base_addr = cfg->cu_base_addr;
       exec->num_cu_masks = ((exec->num_cus-1)>>5) + 1;
 
-      for (unsigned i=0; i<exec->num_cus; ++i) 
+      unsigned int cuidx = 0;
+      for ( cuidx=0; cuidx<exec->num_cus; cuidx++) 
       {
-        exec->cu_addr_map[i] = cfg->data[i];
+        exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+      }
+
+      bool cdmaEnabled = false;
+      if (mParent->isCdmaEnabled()) 
+      {
+        uint32_t addr=0;
+        for (unsigned int i = 0 ; i < 4; i++) 
+        { /* 4 is from xclfeatures.h */
+          addr = mParent->getCdmaBaseAddress(i);
+          if (addr)
+          {
+            cdmaEnabled = true;
+            ++exec->num_cus;
+            ++exec->num_cdma;
+            ++cfg->num_cus;
+            ++cfg->count;
+            cfg->data[cuidx] = addr;
+            exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+            ++cuidx;
+          }
+        }
       }
 
       if (cfg->ert && mParent->isMBSchedulerEnabled())
@@ -360,6 +383,7 @@ namespace xclhwemhal2 {
         exec->ert=true;
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
+        cfg->cdma = cdmaEnabled ? 1 : 0;
       }
       else 
       {

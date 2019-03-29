@@ -644,9 +644,13 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 	/* Take the msg w/ specified ID. */
 	} else {
 		list_for_each(pos, &ch->mbc_msgs) {
-			msg = list_entry(pos, struct mailbox_msg, mbm_list);
-			if (msg->mbm_req_id == req_id)
+			struct mailbox_msg *temp;
+
+			temp = list_entry(pos, struct mailbox_msg, mbm_list);
+			if (temp->mbm_req_id == req_id) {
+				msg = temp;
 				break;
+			}
 		}
 	}
 
@@ -945,7 +949,7 @@ static void do_hw_rx(struct mailbox_channel *ch)
 			msg->mbm_flags |= MSG_FLAG_REQUEST;
 			ch->mbc_cur_msg = msg;
 
-		}	else if (pkt->body.msg_start.msg_size >
+		} else if (pkt->body.msg_start.msg_size >
 			ch->mbc_cur_msg->mbm_len) {
 			chan_msg_done(ch, -EMSGSIZE);
 			MBX_ERR(mbx, "received msg is too big");
@@ -1384,7 +1388,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
 
-	MBX_DBG(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
+	MBX_INFO(mbx, "sending request: %d go %s", ((struct mailbox_req *)req)->req, (sw_ch ? "SW":"HW"));
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -1506,7 +1510,7 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
 	} else if (mbx->mbx_listen_cb) {
 		/* Call client's registered callback to process request. */
-		MBX_DBG(mbx, "%s: %d, passed on", recvstr, req->req);
+		MBX_INFO(mbx, "%s: %d, passed on", recvstr, req->req);
 		mbx->mbx_listen_cb(mbx->mbx_listen_cb_arg, msg->mbm_data,
 			msg->mbm_len, msg->mbm_req_id, msg->mbm_error, msg->mbm_chan_sw);
 	} else {
@@ -1575,6 +1579,7 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	int ret;
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u32 is;
 
 	if (mbx->mbx_irq != -1)
 		return 0;
@@ -1596,6 +1601,10 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	/* Only see intr when we have full packet sent or received. */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_rit, PACKET_SIZE - 1);
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_sit, 0);
+
+	/* clear interrupt */
+	is = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_is);
+	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_is, is);
 
 	/* Finally, enable TX / RX intr. */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ie, 0x3);
@@ -1835,6 +1844,7 @@ static int mailbox_probe(struct platform_device *pdev)
 {
 	struct mailbox *mbx = NULL;
 	struct resource *res;
+	char *priv, no_intr = 0;
 	int ret;
 
 	mbx = kzalloc(sizeof(struct mailbox), GFP_KERNEL);
@@ -1855,6 +1865,10 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_established = false;
 	mbx->mbx_conn_id = 0;
 	mbx->mbx_kaddr = NULL;
+
+	priv = (char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (priv)
+		no_intr = *priv;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
@@ -1893,7 +1907,7 @@ static int mailbox_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	if (mailbox_no_intr) {
+	if (mailbox_no_intr || no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
 		mailbox_disable_intr_mode(mbx);
 	} else {

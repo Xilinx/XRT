@@ -54,8 +54,8 @@ RH_LIST=(\
      gnuplot \
      gnutls-devel \
      gtest-devel \
-     kernel-devel \
-     kernel-headers \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
      libpng12-devel \

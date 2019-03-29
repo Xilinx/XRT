@@ -163,27 +163,23 @@ namespace xclhwemhal2 {
       auto top = reinterpret_cast<const axlf*>(header);
       if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
         xmlFileSize = sec->m_sectionSize;
-        xmlFile = new char[xmlFileSize+1];
+        xmlFile = new char[xmlFileSize];
         memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-        xmlFile[xmlFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
         zipFileSize = sec->m_sectionSize;
-        zipFile = new char[zipFileSize+1];
+        zipFile = new char[zipFileSize];
         memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-        zipFile[zipFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
         debugFileSize = sec->m_sectionSize;
-        debugFile = new char[debugFileSize+1];
+        debugFile = new char[debugFileSize];
         memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
-        debugFile[debugFileSize] = 0;
       }
       if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
         memTopologySize = sec->m_sectionSize;
-        memTopology = new char[memTopologySize+1];
+        memTopology = new char[memTopologySize];
         memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-        memTopology[memTopologySize] = 0;
       }
     }
     else
@@ -221,7 +217,7 @@ namespace xclhwemhal2 {
 
       return -1;
     }
-    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize+1,xmlFile,xmlFileSize+1,debugFile,debugFileSize+1, memTopology, memTopologySize+1);
+    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
     if(returnValue >=0 && mFirstBinary )
@@ -229,7 +225,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. This flow does not use cycle accurate models and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;
@@ -314,6 +310,7 @@ namespace xclhwemhal2 {
     const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
     if(m_mem)
     {
+      mMembanks.clear();
       for (int32_t i=0; i<m_mem->m_count; ++i)
       {
         if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
@@ -332,37 +329,12 @@ namespace xclhwemhal2 {
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
       }
     }
-    // Write XML metadata from xclbin
-    std::string xmlFileName("");
-    xmlFileName = binaryDirectory + "/xmltmp";
-    bool xmlFileCreated=false;
-
-    while(!xmlFileCreated)
-    {
-      FILE *fp=fopen(xmlFileName.c_str(),"rb");
-      if(fp==NULL) xmlFileCreated=true;
-      else
-      {
-        fclose(fp);
-        xmlFileName += std::string("_");
-      }
-    }
-    FILE *fp=fopen(xmlFileName.c_str(),"wb");
-    if(fp==NULL)
-    {
-      if (mLogStream.is_open())
-      {
-        mLogStream << __func__ << " failed to create temporary xml file " << std::endl;
-      }
-      return -1;
-    }
-    fwrite(xmlfile,xmlFileSize,1,fp);
-    fflush(fp);
-    fclose(fp);
-
+  
     pt::ptree xml_project;
+    std::string sXmlFile;
+    sXmlFile.assign(xmlfile,xmlFileSize);
     std::stringstream xml_stream;
-    xml_stream << xmlfile;
+    xml_stream<<sXmlFile;
     pt::read_xml(xml_stream,xml_project);
 
      // iterate platforms
@@ -450,7 +422,7 @@ namespace xclhwemhal2 {
 
     set_simulator_started(true);
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    char* simMode = NULL;
+    std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs(); 
     std::string wdbFileName("");
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
@@ -472,10 +444,10 @@ namespace xclhwemhal2 {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
-        cmdLineOption << " --gui --wdb " << wdbFileName << ".wdb"
+        cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
                       << " --protoinst " << protoFileName;
 
-        simMode = strdup(cmdLineOption.str().c_str());
+        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
         struct stat statBuf;
         if ( stat(sim_path.c_str(), &statBuf) != 0 )
@@ -495,7 +467,7 @@ namespace xclhwemhal2 {
         cmdLineOption << " --wdb " << wdbFileName << ".wdb"
                       << " --protoinst " << protoFileName;
 
-        simMode = strdup(cmdLineOption.str().c_str());
+        launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
         struct stat statBuf;
         if ( stat(sim_path.c_str(), &statBuf) != 0 )
@@ -584,8 +556,12 @@ namespace xclhwemhal2 {
           setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1) ;
         }
 
-        if (mLogStream.is_open() && simMode)
-          mLogStream << __func__ << " xocc command line: " << simMode << std::endl;
+        if (mLogStream.is_open() && launcherArgs.empty() == false)
+          mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
+
+        const char* simMode = NULL;
+        if(!launcherArgs.empty())
+          simMode = launcherArgs.c_str();
 
         struct stat statBuf;
         if ( stat(sim_file.c_str(), &statBuf) == -1 )
@@ -616,10 +592,6 @@ namespace xclhwemhal2 {
       }
     }
 
-    if(simMode)
-    {
-      free(simMode);
-    }
     return 0;
   }
 
@@ -1342,6 +1314,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mMBSch;
       mMBSch = NULL;
     }
+    if(mDataSpace)
+    {
+      delete mDataSpace;
+      mDataSpace = NULL;
+    }
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -1371,6 +1348,18 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     dest->mDDRSize            =    src->mDDRSize;
     dest->mDataAlignment      =    src->mDataAlignment;
     dest->mDDRBankCount       =    src->mDDRBankCount;
+    uint32_t numCdma = 0;
+    if(isCdmaEnabled())
+    {
+      for(unsigned int i =0  ; i < 4; i++)
+      {
+        if ( getCdmaBaseAddress(i) != 0)
+        {
+          numCdma++;
+        }
+      }
+    }
+    dest->mNumCDMA = numCdma;
     for(unsigned int i = 0; i < 4 ;i++)
       dest->mOCLFrequency[i]       =    src->mOCLFrequency[i];
 
@@ -1440,7 +1429,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
-
+    mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -1448,6 +1437,16 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool mbSchEnabled = mFeatureRom.FeatureBitMap & FeatureBitMask::MB_SCHEDULER;
     bool QDMAPlatform = (getDsaVersion() == 60)? true: false;
     return mbSchEnabled && !QDMAPlatform;
+  }
+
+  bool HwEmShim::isCdmaEnabled()
+  {
+    return mFeatureRom.FeatureBitMap & FeatureBitMask::CDMA;
+  }
+
+  uint64_t HwEmShim::getCdmaBaseAddress(unsigned int index)
+  {
+    return mFeatureRom.CDMABaseAddress[index];
   }
 
   //following code is copied from driver/xclng/drm/xocl/subdev/feature_rom.c
@@ -1458,6 +1457,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       return 52;
     if (vbnv.find("5_0") != std::string::npos)
       return 50;
+    else if (vbnv.find("qdma") != std::string::npos)
+      return 60;
     else if ( (vbnv.find("5_1") != std::string::npos)
         || (vbnv.find("u200_xdma_201820_1") != std::string::npos))
       return 51;
@@ -1751,7 +1752,15 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   bool p2pBuffer = xocl_bo_p2p(xobj); 
   std::string sFileName("");
   
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
+  {
+    uint64_t result = mDataSpace->alloc(size,1);
+    xobj->base = result;
+  }
+  else
+  {
+    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  }
   xobj->filename = sFileName;
   xobj->size = size;
   xobj->userptr = NULL;
@@ -2055,7 +2064,7 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferHost2Device(bo->base, src, size, seek, bo->topology) != size)
   {
     returnVal = EIO;
@@ -2079,7 +2088,7 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferDevice2Host(dst, bo->base, size, skip, bo->topology) != size)
   {
     returnVal = EIO;
@@ -2137,6 +2146,19 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
   return 1;
 }
 
+ssize_t HwEmShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
+{
+  if (flags)
+    return -EINVAL;
+  return xclCopyBufferHost2Device(offset, buf, count, 0 ,0);
+}
+
+ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+  if (flags)
+    return -EINVAL;
+  return xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
+}
 
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
 
@@ -2231,7 +2253,8 @@ ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     std::map<uint64_t,uint64_t> vaLenMap;
     for (unsigned i = 0; i < wr->buf_num; i++) 
     {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      //vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
+      vaLenMap[wr->bufs[i].va] = 0;//for write we should not read the data back
     }
     mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
     nonBlocking = true;
@@ -2370,6 +2393,38 @@ int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
   }
   PRINTENDFUNC;
   return 0;//TODO
+}
+
+/*
+ * xclLogMsg()
+ */
+int HwEmShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+{
+    int len = std::vsnprintf(nullptr, 0, format, args1);
+
+    if (len < 0) 
+    {
+        //illegal arguments
+        std::string err_str = "ERROR: Illegal arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+
+    if (len < 0) 
+    {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
+    return 0;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

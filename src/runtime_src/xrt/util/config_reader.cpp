@@ -32,9 +32,15 @@
 namespace {
 
 static const char*
-valueOrEmpty(const char* cstr)
+value_or_empty(const char* cstr)
 {
   return cstr ? cstr : "";
+}
+
+static bool
+is_true(const std::string& str)
+{
+  return str=="true";
 }
 
 static std::string
@@ -52,7 +58,7 @@ get_self_path()
 static std::string
 get_ini_path()
 {
-  auto ini_path = boost::filesystem::path(valueOrEmpty(std::getenv("SDACCEL_INI_PATH")));
+  auto ini_path = boost::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
   if (ini_path.empty()) {
     auto self_path = boost::filesystem::path(get_self_path());
     if (self_path.empty())
@@ -129,6 +135,9 @@ get_env_value(const char* env)
 bool
 get_bool_value(const char* key, bool default_value)
 {
+  if (auto env = get_env_value(key))
+    return is_true(env);
+
   return s_tree.m_tree.get<bool>(key,default_value);
 }
 

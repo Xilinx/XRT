@@ -49,7 +49,7 @@ namespace xclhwemhal2 {
       xclemulation::drm_xocl_bo *bo;
       exec_core *exec;
       enum ert_cmd_state state;
-      int cu_idx;
+      unsigned int cu_idx;
       int slot_idx;
       /* The actual cmd object representation */
       struct ert_packet *packet;
@@ -74,6 +74,7 @@ namespace xclhwemhal2 {
 
     unsigned int               num_slots;
     unsigned int               num_cus;
+    unsigned int               num_cdma;
     unsigned int               cu_shift_offset;
     uint32_t                   cu_base_addr;
     unsigned int               polling_mode;

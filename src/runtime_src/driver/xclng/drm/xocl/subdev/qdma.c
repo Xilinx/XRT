@@ -16,6 +16,7 @@
  */
 
 #include <linux/version.h>
+#include <linux/eventfd.h>
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
 #include <drm/drm_backport.h>
 #endif
@@ -56,10 +57,20 @@
 #define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
 
 #define	QUEUE_POST_TIMEOUT	10000
+#define QDMA_MAX_INTR		16
+#define QDMA_USER_INTR_MASK	0xfe
 
 static dev_t	str_dev;
 
 struct stream_async_req;
+
+struct qdma_irq {
+	struct eventfd_ctx	*event_ctx;
+	bool			in_use;
+	bool			enabled;
+	irq_handler_t		handler;
+	void			*arg;
+};
 
 struct stream_async_arg {
 	struct stream_queue	*queue;
@@ -99,7 +110,6 @@ struct xocl_qdma {
 	void			*dma_handle;
 
 	struct qdma_dev_conf	dev_conf;
-	struct xocl_drm		*drm;
 
 	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
@@ -126,6 +136,10 @@ struct xocl_qdma {
 	struct mutex		str_dev_lock;
 
 	u16			instance;
+
+	struct qdma_irq		user_msix_table[QDMA_MAX_INTR];
+	u32			user_msix_mask;
+	spinlock_t		user_msix_table_lock;
 };
 
 struct mm_channel {
@@ -451,7 +465,7 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 
 	qdma = platform_get_drvdata(pdev);
 
-	if (down_interruptible(&qdma->channel_sem[dir])) {
+	if (down_killable(&qdma->channel_sem[dir])) {
 		channel = -ERESTARTSYS;
 		goto out;
 	}
@@ -628,15 +642,6 @@ static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
         return qdma->chans[write][channel].total_trans_bytes;
 }
 
-static void *get_drm_handle(struct platform_device *pdev)
-{
-	struct xocl_qdma *qdma;
-
-	qdma= platform_get_drvdata(pdev);
-
-	return qdma->drm;
-}
-
 static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
 {
 	struct xocl_qdma *qdma;
@@ -650,17 +655,98 @@ static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
 static int user_intr_register(struct platform_device *pdev, u32 intr,
 	irq_handler_t handler, void *arg, int event_fd)
 {
+	struct xocl_qdma *qdma;
+	struct eventfd_ctx *trigger = ERR_PTR(-EINVAL);
+	unsigned long flags;
+	int ret;
+
+	qdma = platform_get_drvdata(pdev);
+
+	if (!((1 << intr) & qdma->user_msix_mask)) {
+		xocl_err(&pdev->dev, "Invalid intr %d, user intr mask %x",
+				intr, qdma->user_msix_mask);
+		return -EINVAL;
+	}
+
+	if (event_fd >= 0) {
+		trigger = eventfd_ctx_fdget(event_fd);
+		if (IS_ERR(trigger)) {
+			xocl_err(&pdev->dev, "get event ctx failed");
+			return -EFAULT;
+		}
+	}
+
+	spin_lock_irqsave(&qdma->user_msix_table_lock, flags);
+	if (qdma->user_msix_table[intr].in_use) {
+		xocl_err(&pdev->dev, "IRQ %d is in use", intr);
+		ret = -EPERM;
+		goto failed;
+	}
+
+	qdma->user_msix_table[intr].event_ctx = trigger;
+	qdma->user_msix_table[intr].handler = handler;
+	qdma->user_msix_table[intr].arg = arg;
+	qdma->user_msix_table[intr].in_use = true;
+
+	spin_unlock_irqrestore(&qdma->user_msix_table_lock, flags);
+
+
 	return 0;
+
+failed:
+	spin_unlock_irqrestore(&qdma->user_msix_table_lock, flags);
+	if (!IS_ERR(trigger))
+		eventfd_ctx_put(trigger);
+
+	return ret;
 }
 
 static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 {
+	struct xocl_qdma *qdma;
+	unsigned long flags;
+	int ret;
+
+	qdma= platform_get_drvdata(pdev);
+
+	if (!((1 << intr) & qdma->user_msix_mask)) {
+		xocl_err(&pdev->dev, "Invalid intr %d, user intr mask %x",
+				intr, qdma->user_msix_mask);
+		return -EINVAL;
+	}
+
+	spin_lock_irqsave(&qdma->user_msix_table_lock, flags);
+	if (!qdma->user_msix_table[intr].in_use) {
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	qdma->user_msix_table[intr].handler = NULL;
+	qdma->user_msix_table[intr].arg = NULL;
+	qdma->user_msix_table[intr].in_use = false;
+
+	spin_unlock_irqrestore(&qdma->user_msix_table_lock, flags);
 	return 0;
+failed:
+	spin_unlock_irqrestore(&qdma->user_msix_table_lock, flags);
+
+
+	return ret;
 }
 
 static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 {
 	return 0;
+}
+
+static void qdma_isr(unsigned long dma_handle, int irq, unsigned long arg)
+{
+	struct xocl_qdma *qdma = (struct xocl_qdma *)arg;
+	struct qdma_irq *irq_entry;
+
+	irq_entry = &qdma->user_msix_table[irq];
+	if (irq_entry->in_use)
+		irq_entry->handler(irq, irq_entry->arg);
 }
 
 static struct xocl_dma_funcs qdma_ops = {
@@ -669,7 +755,6 @@ static struct xocl_dma_funcs qdma_ops = {
 	.rel_chan = release_channel,
 	.get_chan_count = get_channel_count,
 	.get_chan_stat = get_channel_stat,
-	.get_drm_handle = get_drm_handle,
 	.user_intr_register = user_intr_register,
 	.user_intr_config = user_intr_config,
 	.user_intr_unreg = user_intr_unreg,
@@ -1329,7 +1414,8 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	xdev = xocl_get_xdev(qdma->pdev);
 
-	xobj = xocl_drm_create_bo(qdma->drm, req.size, 0, DRM_XOCL_BO_EXECBUF);
+	xobj = xocl_drm_create_bo(XOCL_DRM(xdev), req.size, 0,
+			DRM_XOCL_BO_EXECBUF);
 	if (IS_ERR(xobj)) {
 		ret = PTR_ERR(xobj);
 		xocl_err(&qdma->pdev->dev, "create bo failed");
@@ -1372,7 +1458,7 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 	flags = O_CLOEXEC | O_RDWR;
 
 	drm_gem_object_reference(&xobj->base);
-	dmabuf = drm_gem_prime_export(((struct xocl_drm *)(qdma->drm))->ddev,
+	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
 		       	&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
@@ -1498,6 +1584,9 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->master_pf = 1;
 	conf->qsets_max = 2048;
 
+	conf->fp_user_isr_handler = qdma_isr;
+	conf->uld = (unsigned long)qdma;
+
 	ret = qdma_device_open(XOCL_MODULE_NAME, conf, (unsigned long *)
 			(&qdma->dma_handle));
 	if (ret < 0) {
@@ -1540,13 +1629,6 @@ static int qdma_probe(struct platform_device *pdev)
 
 	xocl_drvinst_set_filedev(qdma, qdma->cdev);
 
-	qdma->drm = xocl_drm_init(xdev);
-	if (!qdma->drm) {
-		ret = -EFAULT;
-		xocl_err(&pdev->dev, "failed to init drm mm");
-		goto failed;
-	}
-
 	ret = sysfs_create_group(&pdev->dev.kobj, &qdma_attrgroup);
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
@@ -1557,8 +1639,11 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->c2h_ringsz_idx = STREAM_DEFAULT_C2H_RINGSZ_IDX;
 	qdma->wrb_ringsz_idx = STREAM_DEFAULT_WRB_RINGSZ_IDX;
 
+	qdma->user_msix_mask = QDMA_USER_INTR_MASK;
+
 	mutex_init(&qdma->str_dev_lock);
 	mutex_init(&qdma->stat_lock);
+	spin_lock_init(&qdma->user_msix_table_lock);
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_DMA, &qdma_ops);
 
@@ -1568,9 +1653,6 @@ static int qdma_probe(struct platform_device *pdev)
 
 failed:
 	if (qdma) {
-		if (qdma->drm)
-			xocl_drm_fini(qdma->drm);
-
 		if (qdma->sys_device)
 			device_destroy(xrt_class, qdma->cdev->dev);
 
@@ -1595,6 +1677,8 @@ static int qdma_remove(struct platform_device *pdev)
 {
 	struct xocl_qdma *qdma= platform_get_drvdata(pdev);
 	xdev_handle_t xdev;
+	struct qdma_irq *irq_entry;
+	int i;
 
 	sysfs_remove_group(&pdev->dev.kobj, &qdma_attrgroup);
 
@@ -1605,14 +1689,24 @@ static int qdma_remove(struct platform_device *pdev)
 
 	xdev = xocl_get_xdev(pdev);
 
-	xocl_drm_fini(qdma->drm);
-
 	device_destroy(xrt_class, qdma->cdev->dev);
 	cdev_del(qdma->cdev);
 
 	free_channels(pdev);
 
 	qdma_device_close(XDEV(xdev)->pdev, (unsigned long)qdma->dma_handle);
+
+	for (i = 0; i < ARRAY_SIZE(qdma->user_msix_table); i++) {
+		irq_entry = &qdma->user_msix_table[i];
+		if (irq_entry->in_use) {
+			if (irq_entry->enabled)
+				xocl_err(&pdev->dev,
+					"ERROR: Interrupt %d is still on", i);
+			if(!IS_ERR_OR_NULL(irq_entry->event_ctx))
+				eventfd_ctx_put(irq_entry->event_ctx);
+		}
+	}
+
 
 	mutex_destroy(&qdma->stat_lock);
 	mutex_destroy(&qdma->str_dev_lock);

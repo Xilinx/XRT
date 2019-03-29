@@ -200,7 +200,11 @@ SatelliteControllerFamily=""
 CardMgmtControllerFamily=""
 SchedulerFamily=""
 
-post_inst_msg="DSA package installed successfully."
+
+XBUTIL=/opt/xilinx/xrt/bin/xbutil
+post_inst_msg="DSA package installed successfully.
+Please flash card manually by running below command:
+sudo ${XBUTIL} flash -a ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
@@ -692,7 +696,7 @@ Section: devel
 EOF
 
 cat <<EOF > $pkgdir/DEBIAN/postinst
-echo "${post_inst_msg} ${featureRomTimestamp}"
+echo "${post_inst_msg}"
 EOF
     chmod 755 $pkgdir/DEBIAN/postinst
 
@@ -809,7 +813,7 @@ Xilinx $dsa deployment DSA. Built on $build_date. This DSA depends on xrt >= $op
 %pre
 
 %post
-echo "${post_inst_msg} ${featureRomTimestamp}"
+echo "${post_inst_msg}"
 
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx

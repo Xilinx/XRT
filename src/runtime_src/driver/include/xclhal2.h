@@ -360,7 +360,7 @@ XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf 
  * xclbin as a section. xclbin may also contains other sections which are suitably
  * handled by the driver.
  */
-XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const axlf *buffer);
+XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const struct axlf *buffer);
 /**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *
@@ -501,7 +501,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xclLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
@@ -934,6 +934,8 @@ XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned 
  * Wait for notification from the hardware. The function essentially calls "poll" system
  * call on the driver file handle. The return value has same semantics as poll system call.
  * If return value is > 0 caller should check the status of submitted exec buffers
+ * Note that if you perform wait for the same handle from multiple threads, you
+ * may lose wakeup for some of them. So, use different handle in different threads.
  */
 XCL_DRIVER_DLLESPEC int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 
@@ -1309,7 +1311,7 @@ XCL_DRIVER_DLLESPEC int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbo
 
 /* Hack for xbflash only */
 XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, enum xclVerbosityLevel level);
 
 #ifdef __cplusplus
 }

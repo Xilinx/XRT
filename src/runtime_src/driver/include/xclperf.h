@@ -40,6 +40,11 @@
 #define DSA_MAJOR_VERSION 1
 #define DSA_MINOR_VERSION 1
 
+/************************ DEBUG IP LAYOUT ************************************/
+
+#define IP_LAYOUT_HOST_NAME "HOST"
+#define IP_LAYOUT_SEP "-"
+
 /************************ APM 0: Monitor MIG Ports ****************************/
 
 #define XPAR_AXI_PERF_MON_0_NUMBER_SLOTS                2
@@ -437,7 +442,7 @@ enum DeviceType {
  * nifd driver.
  */
 typedef struct {
-  DeviceType device_type;
+  enum DeviceType device_type;
   unsigned int device_index;
   unsigned int mgmt_instance;
   unsigned int user_instance;

@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
     unsigned computeIndex = 0xffffffff;
-    unsigned short targetFreq[2] = {0, 0};
+    unsigned short targetFreq[4] = {0, 0, 0, 0};
     unsigned fanSpeed = 0;
     unsigned long long startAddr = 0;
     unsigned int pattern_byte = 'J';//Rather than zero; writing char 'J' by default
@@ -231,6 +231,7 @@ int main(int argc, char *argv[])
         {"spm", no_argument, 0, xcldev::STATUS_SPM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
         {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -240,7 +241,7 @@ int main(int argc, char *argv[])
     };
 
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:i:m:n:o:p:r:s"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:h:i:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -294,6 +295,15 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
             break ;
         }
+	case xcldev::STATUS_SPC: {
+	  //--spc
+	  if (cmd != xcldev::STATUS) {
+	    std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+	    return -1;
+	  }
+	  ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPC_MASK);
+	  break;
+	}
         case xcldev::STATUS_UNSUPPORTED : {
             //Don't give ERROR for as yet unsupported IPs
             std::cout << "INFO: No Status information available for IP: " << long_options[long_index].name << "\n";
@@ -421,6 +431,13 @@ int main(int argc, char *argv[])
             }
             targetFreq[1] = std::atoi(optarg);
             break;
+        case 'h':
+            if (cmd != xcldev::CLOCK) {
+                std::cout << "ERROR: '-h' only allowed with 'clock' command\n";
+                return -1;
+            }
+            targetFreq[2] = std::atoi(optarg);
+            break;
         case 'm':
             if (cmd != xcldev::FLASH) {
                 std::cout << "ERROR: '-m' only allowed with 'flash' command\n";
@@ -510,8 +527,8 @@ int main(int argc, char *argv[])
     }
     case xcldev::CLOCK:
     {
-        if (!targetFreq[0] && !targetFreq[1]) {
-            std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' switch(es)\n";
+        if (!targetFreq[0] && !targetFreq[1] && !targetFreq[2]) {
+            std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' and or '-h' switch(es)\n";
             return -1;
         }
         break;
@@ -640,6 +657,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
             result = deviceVec[index]->readSSPMCounters() ;
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
+	  result = deviceVec[index]->readStreamingCheckers(1);
+	}
         break;
 
     default:
@@ -660,7 +680,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbutil for 4.0+ shell's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
+    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]\n";
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";
@@ -970,17 +990,13 @@ int xcldev::device::runTestCase(const std::string& exe,
     }
 
     // Program xclbin first.
-#if 0
-    // Workaround auto configure locking issues where the process which
-    // downloads xclbin auto acquires xclbin lock and only gives up at
-    // process exit time
     int ret = program(xclbinPath, 0);
     if (ret != 0) {
         output += "ERROR: Failed to download xclbin: ";
         output += xclbin;
         return -EINVAL;
     }
-#endif
+
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 
@@ -995,6 +1011,7 @@ int xcldev::device::validate(bool quick)
 {
     std::string output;
     bool testKernelBW = true;
+    int retVal = 0;
 
     // Check pcie training
     std::cout << "INFO: Checking PCIE link status: " << std::flush;
@@ -1007,6 +1024,7 @@ int xcldev::device::validate(bool quick)
             << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x"
             << m_devinfo.mPCIeLinkWidth
             << std::endl;
+        retVal = 1;
         // Non-fatal, continue validating.
     }
     else
@@ -1041,7 +1059,7 @@ int xcldev::device::validate(bool quick)
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
-        return 0;
+        return retVal;
 
     // Perform DMA test
     std::cout << "INFO: Starting DMA test" << std::endl;
@@ -1053,7 +1071,7 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: DMA test PASSED" << std::endl;
 
     if (!testKernelBW)
-        return 0;
+        return retVal;
 
 
     // Test kernel bandwidth kernel
@@ -1083,7 +1101,7 @@ int xcldev::device::validate(bool quick)
     }
     std::cout << "INFO: P2P test PASSED" << std::endl;
 
-    return 0;
+    return retVal;
 }
 
 int xcldev::xclValidate(int argc, char *argv[])
@@ -1134,6 +1152,7 @@ int xcldev::xclValidate(int argc, char *argv[])
 
     std::cout << "INFO: Found " << boards.size() << " cards" << std::endl;
 
+    bool warning = false;
     bool validated = true;
     for (unsigned i : boards) {
         std::unique_ptr<device> dev = xclGetDevice(i);
@@ -1145,8 +1164,12 @@ int xcldev::xclValidate(int argc, char *argv[])
 
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
-
-        if (dev->validate(quick) != 0) {
+        
+        int v = dev->validate(quick);
+        if (v == 1) {
+            warning = true;
+            std::cout << "INFO: Card[" << i << "] validated with warnings." << std::endl;
+        } else if (v != 0) {
             validated = false;
             std::cout << "INFO: Card[" << i << "] failed to validate." << std::endl;
         } else {
@@ -1160,7 +1183,11 @@ int xcldev::xclValidate(int argc, char *argv[])
         return -EINVAL;
     }
 
-    std::cout << "INFO: All cards validated successfully." << std::endl;
+    if(warning)
+        std::cout << "INFO: All cards validated successfully but with warnings." << std::endl;
+    else
+        std::cout << "INFO: All cards validated successfully." << std::endl;
+
     return 0;
 }
 

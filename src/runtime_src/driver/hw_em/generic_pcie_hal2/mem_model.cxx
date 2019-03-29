@@ -181,9 +181,10 @@ mem_model::mem_model(std::string deviceName):
  {
    std::string file_name("");
    std::string user("");
-   if(getenv("USER") != NULL)
+   char* cUser = getenv("USER");
+   if(cUser)
    {
-     user = getenv("USER");
+     user = cUser;
    }
    std::string file_path("");
    if(mDeviceName.empty() == false)

@@ -98,6 +98,7 @@ SET (XRT_DKMS_SRCS
   driver/xclng/drm/xocl/subdev/feature_rom.c
   driver/xclng/drm/xocl/subdev/mb_scheduler.c
   driver/xclng/drm/xocl/subdev/xvc.c
+  driver/xclng/drm/xocl/subdev/nifd.c
   driver/xclng/drm/xocl/subdev/sysmon.c
   driver/xclng/drm/xocl/subdev/firewall.c
   driver/xclng/drm/xocl/subdev/microblaze.c
