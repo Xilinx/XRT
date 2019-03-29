@@ -34,6 +34,7 @@ target_link_libraries(xrt_swemu
   ${PROTOBUF_LIBRARY}
   common_em
   rt
+  uuid
   )
 
 install (TARGETS xrt_swemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
