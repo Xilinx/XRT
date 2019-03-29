@@ -17,6 +17,7 @@
 #ifndef _XMA_HW_H_
 #define _XMA_HW_H_
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/xmacfg.h"
@@ -37,8 +38,6 @@ extern "C" {
  * @{
  */
 
-typedef void   *XmaHwHandle;
-
 typedef struct XmaHwKernel
 {
     uint8_t     name[MAX_KERNEL_NAME];
@@ -47,24 +46,37 @@ typedef struct XmaHwKernel
     uint64_t    base_address;
     uint32_t    ddr_bank;
     //For execbo:
+    int32_t     kernel_complete_count;
     void*       kernel_cmd_queue;
     void*       kernel_cmd_completion_queue;
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
     char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
-    uint32_t     reserved[16];
+    uint32_t    reserved[16];
 } XmaHwKernel;
+
+typedef struct XmaHwContext
+{
+    uint32_t         reg_map[1024];
+    size_t           min_offset;
+    size_t           max_offset;
+    pthread_mutex_t *lock;
+    bool             have_lock;
+} XmaHwContext;
 
 typedef struct XmaHwSession
 {
-    void    *dev_handle;
-    uint64_t base_address;
-    uint32_t ddr_bank;
+    void            *dev_handle;
+    uint64_t         base_address;
+    uint32_t         ddr_bank;
     //For execbo:
     uint32_t         dev_index;
-    XmaHwKernel      kernel_info;
+    XmaHwKernel     *kernel_info;
+    XmaHwContext    *context;
     uint32_t         reserved[16];
 } XmaHwSession;
+
+typedef void   *XmaHwHandle;
 
 typedef struct XmaHwDevice
 {

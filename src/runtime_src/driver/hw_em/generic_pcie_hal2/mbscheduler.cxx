@@ -149,8 +149,8 @@ namespace xclhwemhal2 {
 
   int MBScheduler::get_free_cu(struct xocl_cmd *xcmd)
   {
-    int mask_idx=0;
-    int num_masks = cu_masks(xcmd);
+    uint32_t mask_idx=0;
+    uint32_t num_masks = cu_masks(xcmd);
     for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
       uint32_t busy_mask = xcmd->exec->cu_status[mask_idx];

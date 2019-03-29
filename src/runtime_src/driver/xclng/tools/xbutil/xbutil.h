@@ -218,12 +218,12 @@ public:
     }
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
-        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], 0, 0};
+        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
     int reclockUser(unsigned regionIndex, const unsigned short *freq) {
-        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], 0, 0};
+        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         return xclReClockUser(m_handle, 0, targetFreqMHz);
     }
 
@@ -617,6 +617,7 @@ public:
         sensor_tree::put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
         sensor_tree::put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
         sensor_tree::put( "board.info.clock1", m_devinfo.mOCLFrequency[1] );
+        sensor_tree::put( "board.info.clock2", m_devinfo.mOCLFrequency[2] );
         sensor_tree::put( "board.info.pcie_speed", m_devinfo.mPCIeLinkSpeed );
         sensor_tree::put( "board.info.pcie_width", m_devinfo.mPCIeLinkWidth );
         sensor_tree::put( "board.info.dma_threads", m_devinfo.mDMAThreads );
@@ -764,15 +765,15 @@ public:
     int dump(std::ostream& ostr) const {
         readSensors();
         ostr << std::left;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "XRT\nVersion:    " << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
              <<    "\nGit Hash:   " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" )
              <<    "\nGit Branch: " << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
              <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << std::setw(32) << "Shell" << std::setw(28) << "FPGA" << "IDCode" << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
-             << std::setw(28) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
+             << std::setw(32) << sensor_tree::get<std::string>( "board.info.fpga_name", "N/A" )
              << sensor_tree::get<std::string>( "board.info.idcode",    "N/A" ) << std::endl;
         ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice" << std::setw(16) << "SubVendor" << std::endl;
         // get_pretty since we want these as hex
@@ -780,11 +781,12 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.device",    "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subdevice", "N/A", true )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.info.subvendor", "N/A", true ) << std::dec << std::endl;
-        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::endl;
+        ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
         ostr << std::setw(16) << unitConvert(sensor_tree::get<long long>( "board.info.ddr_size", -1 ))
              << std::setw(16) << sensor_tree::get( "board.info.ddr_count", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.clock0", -1 )
-             << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 ) << std::endl;
+             << std::setw(16) << sensor_tree::get( "board.info.clock1", -1 )
+             << std::setw(16) << sensor_tree::get( "board.info.clock2", -1 ) << std::endl;
         ostr << std::setw(16) << "PCIe"
              << std::setw(16) << "DMA chan(bidir)"
              << std::setw(16) << "MIG Calibrated"
@@ -792,21 +794,21 @@ public:
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) << sensor_tree::get( "board.info.pcie_width", -1 )
              << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
-	switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-	case -1:
-             ostr << std::setw(16) << "N/A" << std::endl;
-	     break;
-	case 0:
-             ostr << std::setw(16) << "false" << std::endl;
-	     break;
-	case 1:
-             ostr << std::setw(16) << "true" << std::endl;
-	     break;
-	case 2:
-             ostr << std::setw(16) << "no iomem" << std::endl;
-	     break;
-	}
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
+        case -1:
+                 ostr << std::setw(16) << "N/A" << std::endl;
+             break;
+        case 0:
+                 ostr << std::setw(16) << "false" << std::endl;
+             break;
+        case 1:
+                 ostr << std::setw(16) << "true" << std::endl;
+             break;
+        case 2:
+                 ostr << std::setw(16) << "no iomem" << std::endl;
+             break;
+        }
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         // use get_pretty for Temperature and Electrical since the driver may rail unsupported values high
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
@@ -822,7 +824,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp1" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp2" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp3" ) << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Electrical(mV|mA)\n";
         ostr << std::setw(16) << "12V PEX" << std::setw(16) << "12V AUX" << std::setw(16) << "12V PEX Current" << std::setw(16) << "12V AUX Current" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.voltage" )
@@ -849,14 +851,14 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
         ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
              << std::setw(9)  << "Temp(C)"   << std::setw(8)  << "Size";
@@ -901,7 +903,7 @@ public:
           // eat the exception, probably bad path
         }
 
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "DMA Transfer Metrics" << std::endl;
         try {
           for (auto& v : sensor_tree::get_child( "board.pcie_dma.transfer_metrics" )) {
@@ -925,7 +927,7 @@ public:
           // eat the exception, probably bad path
         }
 
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Streams" << std::endl;
         ostr << std::setw(17) << "     Tag"  << std::setw(9) << "Flow ID"
              << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
@@ -968,10 +970,10 @@ public:
           // eat the exception, probably bad path
         }
 
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Xclbin UUID\n"
              << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status\n";
         try {
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
@@ -998,7 +1000,7 @@ public:
         catch( std::exception const& e) {
             // eat the exception, probably bad path
         }
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         return 0;
     }
 

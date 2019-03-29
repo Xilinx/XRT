@@ -651,7 +651,7 @@ int main( int argc, char *argv[])
 
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
-    unsigned short targetFreq[2] = {0, 0};
+    unsigned short targetFreq[4] = {0, 0, 0, 0};
     std::string outMemReadFile = "memread.out";
     std::string flashType = ""; // unset and empty by default
     std::string mcsFile1, mcsFile2;
@@ -704,7 +704,7 @@ int main( int argc, char *argv[])
     };
 
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:hi:m:n:o:p:r:s"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:h:i:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -794,11 +794,14 @@ int main( int argc, char *argv[])
             break;
         case 'h':
         {
-            if (cmd != xcldev::RESET) {
-                std::cout << "ERROR: '-h' only allowed with 'reset' command\n";
+            if (cmd == xcldev::RESET)
+                hot = true;
+            else if (cmd == xcldev::CLOCK)
+                targetFreq[2] = std::atoi(optarg);
+            else {
+                std::cout << "ERROR: '-h' only allowed with 'reset' or 'clock' command\n";
                 return -1;
             }
-            hot = true;
             break;
         }
         case 'd': {
@@ -837,8 +840,8 @@ int main( int argc, char *argv[])
         }
         case xcldev::CLOCK:
         {
-            if (!targetFreq[0] && !targetFreq[1]) {
-                std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' switch(es)\n";
+            if (!targetFreq[0] && !targetFreq[1] && !targetFreq[2]) {
+                std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' and or '-h' switch(es)\n";
                 return -1;
             }
             break;
@@ -952,7 +955,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbmgmt\n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
+    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  list\n";
@@ -1167,8 +1170,8 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
 
     // Report ECC status
     ostr << std::endl;
-    ostr << std::left << std::setw(16) << "Tag" << std::setw(12) << "Errors"
-        << std::setw(12) << "CE Count" << std::setw(20) << "CE FFA"
+    ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
+        << std::setw(10) << "CE Count" << std::setw(10) << "UE Count" << std::setw(20) << "CE FFA"
         << std::setw(20) << "UE FFA" << std::endl;
     for (auto tag : tags) {
         unsigned status = 0;
@@ -1182,12 +1185,14 @@ int xcldev::device::printEccInfo(std::ostream& ostr) const
 
         unsigned ce_cnt = 0;
         dev->mgmt->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
+        unsigned ue_cnt = 0;
+        dev->mgmt->sysfs_get(tag, "ecc_ue_cnt", errmsg, ue_cnt);
         uint64_t ce_ffa = 0;
         dev->mgmt->sysfs_get(tag, "ecc_ce_ffa", errmsg, ce_ffa);
         uint64_t ue_ffa = 0;
         dev->mgmt->sysfs_get(tag, "ecc_ue_ffa", errmsg, ue_ffa);
-        ostr << std::left << std::setw(16) << tag << std::setw(12) << st
-            << std::setw(12) << ce_cnt << "0x" << std::setw(18) << std::hex
+        ostr << std::left << std::setw(8) << tag << std::setw(12) << st << std::dec
+            << std::setw(10) << ce_cnt << std::setw(10) << ue_cnt << "0x" << std::setw(18) << std::hex
             << ce_ffa << "0x" << std::setw(18) << ue_ffa << std::endl;
     }
     ostr << std::endl;

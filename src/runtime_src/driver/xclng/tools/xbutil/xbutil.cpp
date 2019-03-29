@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     unsigned index = 0xffffffff;
     unsigned regionIndex = 0xffffffff;
     unsigned computeIndex = 0xffffffff;
-    unsigned short targetFreq[2] = {0, 0};
+    unsigned short targetFreq[4] = {0, 0, 0, 0};
     unsigned fanSpeed = 0;
     unsigned long long startAddr = 0;
     unsigned int pattern_byte = 'J';//Rather than zero; writing char 'J' by default
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
     };
 
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:i:m:n:o:p:r:s"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:h:i:m:n:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -431,6 +431,13 @@ int main(int argc, char *argv[])
             }
             targetFreq[1] = std::atoi(optarg);
             break;
+        case 'h':
+            if (cmd != xcldev::CLOCK) {
+                std::cout << "ERROR: '-h' only allowed with 'clock' command\n";
+                return -1;
+            }
+            targetFreq[2] = std::atoi(optarg);
+            break;
         case 'm':
             if (cmd != xcldev::FLASH) {
                 std::cout << "ERROR: '-m' only allowed with 'flash' command\n";
@@ -520,8 +527,8 @@ int main(int argc, char *argv[])
     }
     case xcldev::CLOCK:
     {
-        if (!targetFreq[0] && !targetFreq[1]) {
-            std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' switch(es)\n";
+        if (!targetFreq[0] && !targetFreq[1] && !targetFreq[2]) {
+            std::cout << "ERROR: Please specify frequency(ies) with '-f' and or '-g' and or '-h' switch(es)\n";
             return -1;
         }
         break;
@@ -673,7 +680,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Running xbutil for 4.0+ shell's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz]\n";
+    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]\n";
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";

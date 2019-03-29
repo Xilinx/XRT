@@ -17,11 +17,6 @@
 #ifndef _XMAPLG_ENCODER_H_
 #define _XMAPLG_ENCODER_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmaencoder.h
- * XMA encoder plugin interface
- */
 
 #include "xma.h"
 #include "plg/xmasess.h"
@@ -30,42 +25,21 @@
 extern "C" {
 #endif
 
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgenc xmaencoder.h
- * The XMA plugin interface and related data structures
- * @{
-*/
-
-
-/**
- * @typedef XmaEncoderSession
- * Represents an instance of an encoder kernel
- *
- * @typedef XmaEncoderPlugin
- * Primary XMA encoder interface to be implemented to provide
- * application control of a given kernel.
-*/
-
 /* Forward declaration */
 typedef struct XmaEncoderSession XmaEncoderSession;
 
 /**
- * @struct XmaEncoderPlugin
- * Primary XMA encoder interface to be implemented to provide
+ * struct XmaEncoderPlugin - Primary XMA encoder interface to be implemented to provide
  * application control of a given kernel.
- *
  * The plugin code must statically allocate this structure
  * and provide values for all member except alloc_chan which is
  * an optional callback. This structure and its callbacks are
  * the primary link between the XMA application interface and
  * the hardware kernel.
- *
  * Additional notes on some members:
  * XmaEncoderPlugin::alloc_chan()
  * If kernel supports multiple channels, then this callback must be
  * implemented. If not, it will be treated as a single-channel kernel
- *
  * XmaEncoderPlugin::get_dev_input_paddr()
  * Plugin should return free buffer that upstream video kernel can fill
  * with video frame data to be encoded.
@@ -95,20 +69,26 @@ typedef struct XmaEncoderPlugin
                                  int32_t            *data_size);
     /** Callback called when application calls xma_enc_session_destroy() */
     int32_t         (*close)(XmaEncoderSession *session);
-    /** Optional callback called when app calls xma_enc_session_create() */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
+
     /** Callback called if this encoder supports zerocopy */
     uint64_t        (*get_dev_input_paddr)(XmaEncoderSession *enc_session);
 } XmaEncoderPlugin;
 
+
 /**
- * @struct XmaEncoderSession
-*/
-/**
- * @struct XmaEncoderSession
- * Represents an instance of an encoder kernel
+ * struct XmaEncoderSession - Represents an instance of an encoder kernel
  */
 typedef struct XmaEncoderSession
 {
@@ -120,16 +100,14 @@ typedef struct XmaEncoderSession
 } XmaEncoderSession;
 
 /**
- * @brief Unpack an abstract XmaSession into an encoder session
+ * to_xma_encoder() - Use to case a session object to an encoder session.
  *
- * Use to case a session object to an encoder session.
- *
- * @param s Address of XmaSession member of enclosing XmaEncoderSession
+ * @s: Address of XmaSession member of enclosing XmaEncoderSession
  *  instance.
  *
- * @return Pointer to XmaEncoderSession
+ * RETURN: Pointer to XmaEncoderSession
  *
- * @note Should call is_xma_encoder() on pointer first to ensure this
+ * Note: Should call is_xma_encoder() on pointer first to ensure this
  * converstion is safe.
 */
 static inline XmaEncoderSession *to_xma_encoder(XmaSession *s)
@@ -137,9 +115,6 @@ static inline XmaEncoderSession *to_xma_encoder(XmaSession *s)
     return (XmaEncoderSession *)s;
 }
 
-/**
- * @}
- */
 #ifdef __cplusplus
 }
 #endif
