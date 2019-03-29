@@ -324,10 +324,7 @@ namespace xclhwemhal2 {
       iptype = 2;
     } else if (type == XCL_PERF_MON_STR) {
       iptype = 3;
-    } else {
-      std::cout << "Unknown IP type" << std::endl;
-      return 0;
-    }
+    } 
 
     uint32_t counter = 0;
     uint32_t numSlots = getPerfMonNumberSlots(type);
@@ -450,14 +447,8 @@ namespace xclhwemhal2 {
             xclTraceResults result;
             memset(&result, 0, sizeof(xclTraceResults));
             // result.TraceID = accel ? counter + 64 : counter * 2;
-            if (iptype == 1) {
-              result.TraceID = counter * 2;
-            } else if (iptype == 2) {
-              result.TraceID = counter + 64;
-            } else if (iptype == 3) {
+            if (iptype == 3) {
               result.TraceID = counter + 576;
-            } else {
-              return 0;
             }
             result.Timestamp = event.timestamp();
             result.Overflow = (event.timestamp() >> 17) & 0x1;

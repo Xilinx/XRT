@@ -35,20 +35,8 @@ extern "C" {
 */
 
 /**
- * @ingroup xma_app_intf
- * @file xma.h
- * The primary header file that defines and provides access to the XMA
-*/
-
-/**
- * @ingroup xma_app_intf
- * @addtogroup xma xma.h
- * @{
-*/
-
-/**
  *  xma_initialize() - the system according to the layout specified in the
- *      YAML configuration file.
+ *  YAML configuration file.
  *
  *  This is the entry point routine for utilzing the XMA library and must be
  *  the first call within any application before calling any other XMA APIs.
@@ -81,12 +69,13 @@ extern "C" {
  *
  * RETURN: XMA_SUCCESS after successfully initializing the system and/or (if not the first process to invoke)
  * mapping in the currently active system configuration.
+ * 
  * XMA_ERROR_INVALID if the YAML file is incompatible with the system hardware.
+ * 
  * XMA_ERROR for all other errors.
 */
 int32_t xma_initialize(char *cfgfile);
 
-/* @} */
 #ifdef __cplusplus
 }
 #endif

@@ -134,6 +134,9 @@ int xocl_subdev_get_devinfo(xdev_handle_t xdev_hdl, uint32_t subdev_id,
 		case XOCL_SUBDEV_MIG:
 			*info = (struct xocl_subdev_info)XOCL_DEVINFO_MIG;
 			break;
+		case XOCL_SUBDEV_MIG_HBM:
+			*info = (struct xocl_subdev_info)XOCL_DEVINFO_MIG_HBM;
+			break;
 		default:
 			for (i = 0; i < core->priv.subdev_num; i++)
 				if (core->priv.subdev_info[i].id == subdev_id)

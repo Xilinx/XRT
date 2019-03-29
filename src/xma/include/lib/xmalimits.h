@@ -30,7 +30,7 @@
 #define MAX_PLUGIN_NAME         32
 #define MAX_VENDOR_NAME         32
 #define MAX_KERNEL_NAME         64
-#define MAX_DSA_NAME            64
+#define MAX_DSA_NAME            256
 #define XMA_MAX_PLANES           3
 #define MAX_PLUGINS             16
 #define MAX_CONNECTION_ENTRIES  64

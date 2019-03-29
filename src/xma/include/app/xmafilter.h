@@ -24,39 +24,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @ingroup xma_app_intf
- * @file app/xmafilter.h
- * Application interface for creating and controlling video filter kernels
-*/
+
 
 /**
- * @ingroup xma
- * @addtogroup xmafilter xmafilter.h
- * Application interface for creating and controlling video filter kernels
- * @{
-*/
-
-/**
- * @typedef XmaFilterType
- * Identifier specifying precise type of video filter during session creation
- *
- * @typedef XmaFilterPortProperties
- * Properties necessary for specifying how an input or output port
- * should be configured by the plugin.
- *
- * @typedef XmaFilterSession
- * Opaque pointer to a filter kernel instance. Used to specify the filter
- * instance for all filter application interface APIs
- *
- * @typedef XmaFilterProperties
- * Properties necessary for specifying which filter kernel to select and how
- * it should be configured by the plugin.
-*/
-
-/**
- * @enum XmaFilterType
- * Identifier specifying precise type of video filter during session creation
+ * enum XmaFilterType - Identifier specifying precise type of video filter during session creation
 */
 typedef enum XmaFilterType
 {
@@ -64,8 +35,7 @@ typedef enum XmaFilterType
 } XmaFilterType;
 
 /**
- * @struct XmaFilterPortProperties
- * Properties necessary for specifying how an input or output port
+ * struct XmaFilterPortProperties - Properties necessary for specifying how an input or output port
  * should be configured by the plugin.
 */
 typedef struct XmaFilterPortProperties
@@ -86,8 +56,7 @@ typedef struct XmaSession XmaSession;
 typedef struct XmaFilterSession XmaFilterSession;
 
 /**
- * @struct XmaFilterProperties
- * Properties necessary for specifying which filter kernel to select and how
+ * struct XmaFilterProperties - Properties necessary for specifying which filter kernel to select and how
  * it should be configured by the plugin.
 */
 typedef struct XmaFilterProperties
@@ -111,91 +80,86 @@ typedef struct XmaFilterProperties
 } XmaFilterProperties;
 
 /**
- *  @brief Create a filter session
- *
- *  This function creates a filter session and must be called prior to
+ *  xma_filter_session_create() - This function creates a filter session and must be called prior to
  *  filtering a frame.  A session reserves hardware resources for the
  *  duration of a video stream. The number of sessions allowed depends on
  *  a number of factors that include: resolution, frame rate, bit depth,
  *  and the capabilities of the hardware accelerator.
  *
- *  @param props Pointer to a XmaFilterProperties structure that
- *               contains the key configuration properties needed for
- *               finding available hardware resource.
+ *  @props: Pointer to a XmaFilterProperties structure that
+ * contains the key configuration properties needed for
+ * finding available hardware resource.
  *
- *  @return      Not NULL on success
- *  @return      NULL on failure
+ *  RETURN:      Not NULL on success
+ * 
+ * NULL on failure
  *
- *  @note Cannot be presumed to be thread safe.
+ *  Note: Cannot be presumed to be thread safe.
 */
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *props);
 
 /**
- *  @brief Destroy a filter session
- *
- *  This function destroys an filter session that was previously created
+ *  xma_filter_session_destroy() - This function destroys an filter session that was previously created
  *  with the @ref xma_filter_session_create function.
  *
- *  @param session  Pointer to XmaFilterSession created with
-                    xma_filter_session_create
+ *  @session:  Pointer to XmaFilterSession created with xma_filter_session_create
  *
- *  @return        XMA_SUCCESS on success
- *  @return        XMA_ERROR on failure.
+ * RETURN:        XMA_SUCCESS on success
+ *          
+ * XMA_ERROR on failure.
  *
- *  @note Cannot be presumed to be thread safe.
+ *  Note: Cannot be presumed to be thread safe.
 */
 int32_t
 xma_filter_session_destroy(XmaFilterSession *session);
 
 /**
- *  @brief Send a frame for filtering to the hardware accelerator
- *
- *  This function sends a frame to the hardware filter.  If a frame
+ *  xma_filter_session_send_frame() - This function sends a frame to the hardware filter.  If a frame
  *  buffer is not available and this interface will block.
  *
- *  @param session  Pointer to session created by xma_filter_session_create
- *  @param frame    Pointer to a frame to be filtered. If the filter is
- *      buffering input, then an XmaFrame with a NULL data buffer
- *      pointer to the first data buffer must be sent to flush the filter and
- *      to indicate that no more data will be sent:
- *      XmaFrame.data[0].buffer = NULL
- *      The application must then check for XMA_FLUSH_AGAIN for each such call
- *      when flushing the last few frames.  When XMA_EOS is returned, no new
- *      data may be collected from the filter.
+ *  @session:  Pointer to session created by xma_filter_session_create
+ *  @frame:    Pointer to a frame to be filtered. If the filter is
+ *  buffering input, then an XmaFrame with a NULL data buffer
+ *  pointer to the first data buffer must be sent to flush the filter and
+ *  to indicate that no more data will be sent:
+ *  XmaFrame.data[0].buffer = NULL
+ *  The application must then check for XMA_FLUSH_AGAIN for each such call
+ *  when flushing the last few frames.  When XMA_EOS is returned, no new
+ *  data may be collected from the filter.
  *
- *  @return        XMA_SUCCESS on success and the filter is ready to
- *                  produce output
- *  @return        XMA_SEND_MORE_DATA if the filter is buffering input frames
- *  @return        XMA_FLUSH_AGAIN when flushing filter with a null frame
- *  @return        XMA_EOS when the filter has been flushed of all residual
- *                  frames
- *  @return        XMA_ERROR on error
+ *  RETURN:        XMA_SUCCESS on success and the filter is ready to
+ * produce output
+ *          
+ * XMA_SEND_MORE_DATA if the filter is buffering input frames
+ *          
+ * XMA_FLUSH_AGAIN when flushing filter with a null frame
+ *          
+ * XMA_EOS when the filter has been flushed of all residual frames
+ *          
+ * XMA_ERROR on error
 */
 int32_t
 xma_filter_session_send_frame(XmaFilterSession *session,
                               XmaFrame         *frame);
 
 /**
- *  @brief Receive one or more frames from the hardware accelerator
- *
- *  This function populates a list of XmaFrame buffers with the filtered
+ *  xma_filter_session_recv_frame() - This function populates a list of XmaFrame buffers with the filtered
  *  data returned from the hardware accelerator. This function is called after
  *  calling the function xma_filter_session_send_frame.  If a data buffer is
  *  not ready to be returned, this function blocks.
  *
- *  @param session    Pointer to session created by xma_filter_session_create
- *  @param frame_list Pointer to a list of XmaFrame structures
+ *  @session:    Pointer to session created by xma_filter_session_create
+ *  @frame_list: Pointer to a list of XmaFrame structures
  *
- *  @return        XMA_SUCCESS on success.
- *  @return        XMA_ERROR on error.
+ *  RETURN:        XMA_SUCCESS on success.
+ *          
+ * XMA_ERROR on error.
 */
 int32_t
 xma_filter_session_recv_frame(XmaFilterSession *session,
                               XmaFrame         *frame);
-/**
- * @}
- */
+
 
 #ifdef __cplusplus
 }
