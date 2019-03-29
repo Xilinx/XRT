@@ -71,11 +71,13 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
-  // Write data transfer event to trace
-  void TraceWriterI::writeTransfer(double traceTime, const std::string& commandString,
-            const std::string& stageString, const std::string& eventString,
-            const std::string& dependString, size_t size, uint64_t address,
-            const std::string& bank, std::thread::id threadId)
+  // Write read/write/copy data transfer event to trace
+  void TraceWriterI::writeTransfer(double traceTime, RTUtil::e_profile_command_kind kind,
+  	        const std::string& commandString, const std::string& stageString,
+            const std::string& eventString, const std::string& dependString, size_t size,
+            uint64_t srcAddress, const std::string& srcBank,
+            uint64_t dstAddress, const std::string& dstBank,
+  			std::thread::id threadId)
   {
     if (!Trace_ofs.is_open())
       return;
@@ -83,14 +85,25 @@ namespace xdp {
     std::stringstream timeStr;
     timeStr << std::setprecision(10) << traceTime;
 
-    // Write out DDR physical address and bank
-    // NOTE: thread ID is only valid for START and END
+    // Write out DDR physical addresses, banks, etc.
+    //
+    // Field format:
+    //   Read/write:
+    //     QUEUE/SUBMIT: address|bank
+    //     START/END:    address|bank|threadID
+    //   Copy:
+    //     QUEUE/SUBMIT: srcAddress|srcBank
+    //     START/END:    srcAddress|srcBank|threadID|dstAddress|dstBank|p2p
     std::stringstream strAddress;
-    strAddress << (boost::format("0X%09x") % address) << "|" << std::dec << bank;
-    //strAddress << std::showbase << std::hex << std::uppercase << address
-    //		   << "|" << std::dec << bank;
-    if (stageString == "START" || stageString == "END")
-      strAddress << "|" << std::showbase << std::hex << std::uppercase << threadId;
+    strAddress << (boost::format("0X%09x") % srcAddress) << "|" << srcBank;
+    if (stageString == "START" || stageString == "END") {
+      strAddress << "|" << (boost::format("0X%x") % threadId);
+
+      if (kind == RTUtil::COPY_BUFFER || kind == RTUtil::COPY_BUFFER_P2P) {
+        int p2p = (kind == RTUtil::COPY_BUFFER_P2P) ? 1 : 0;
+        strAddress << "|" << (boost::format("0X%09x") % dstAddress) << "|" << dstBank << "|" << p2p;
+      }
+    }
 
     writeTableRowStart(getStream());
     writeTableCells(getStream(), timeStr.str(), commandString,

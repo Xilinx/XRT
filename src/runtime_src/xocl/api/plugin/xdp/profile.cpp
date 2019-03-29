@@ -387,16 +387,21 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
 xocl::event::action_profile_type
 action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
 {
-  std::string bank;
-  uint64_t address;
-  get_address_bank(src_buffer, address, bank);
-  address += src_offset;
+  std::string srcBank;
+  uint64_t srcAddress;
+  get_address_bank(src_buffer, srcAddress, srcBank);
+  srcAddress += src_offset;
+
+  std::string dstBank;
+  uint64_t dstAddress;
+  get_address_bank(dst_buffer, dstAddress, dstBank);
+  dstAddress += dst_offset;
 
   bool same_device = is_same_device(src_buffer, dst_buffer);
 
-  return [src_buffer,dst_buffer,same_device,size,address,bank](xocl::event* event,cl_int status,const std::string&) {
+  return [src_buffer,dst_buffer,same_device,size,srcAddress,srcBank,dstAddress,dstBank](xocl::event* event,cl_int status,const std::string&) {
   if (cb_action_copy)
-    cb_action_copy(event, status, src_buffer, dst_buffer, same_device, size, address, bank);
+    cb_action_copy(event, status, src_buffer, dst_buffer, same_device, size, srcAddress, srcBank, dstAddress, dstBank);
   };
 }
 

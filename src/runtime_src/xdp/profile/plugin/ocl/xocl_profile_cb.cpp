@@ -125,14 +125,14 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     timestampMsec = (status == CL_COMPLETE) ? (event->time_end()) / 1e6 : timestampMsec;
     timestampMsec = (status == CL_RUNNING) ? (event->time_start()) / 1e6 : timestampMsec;
     // Create and insert trace string in xdp plugin
-    std::string trace_cu_name = (cu_name.empty()) ? "_dummy" : cu_name;
     std::string uniqueDeviceName = deviceName + "-" + std::to_string(deviceId);
     std::string localSize = std::to_string(localWorkDim[0]) + ":" +
-        std::to_string(localWorkDim[1]) + ":" + std::to_string(localWorkDim[2]);
-    std::string CuInfo = kname + "|" + localSize + "|" + trace_cu_name;
+                            std::to_string(localWorkDim[1]) + ":" +
+                            std::to_string(localWorkDim[2]);
+    std::string CuInfo = kname + "|" + localSize;
     std::string uniqueName = "KERNEL|" + uniqueDeviceName + "|" + xname + "|" + CuInfo + "|";
     std::string traceString = uniqueName + std::to_string(workGroupSize);
-    OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(trace_cu_name, traceString);
+    OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(kname, traceString);
     // Finally log the execution
     OCLProfiler::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
@@ -195,6 +195,8 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
@@ -241,6 +243,8 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
        ,numDevices
        ,deviceName
        ,commandQueueId
+       ,address
+       ,bank
        ,address
        ,bank
        ,threadId
@@ -290,6 +294,8 @@ cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
@@ -335,6 +341,8 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
        ,numDevices
        ,deviceName
        ,commandQueueId
+       ,address
+       ,bank
        ,address
        ,bank
        ,threadId
@@ -404,6 +412,8 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
@@ -469,6 +479,8 @@ cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSi
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
@@ -477,7 +489,8 @@ cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSi
 
 void
 cb_action_copy(xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_buffer,
-               bool same_device, size_t size, uint64_t address, const std::string& bank)
+               bool same_device, size_t size, uint64_t srcAddress, const std::string& srcBank,
+               uint64_t dstAddress, const std::string& dstBank)
 {
     if (!isProfilingOn())
       return;
@@ -512,8 +525,10 @@ cb_action_copy(xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_
        ,numDevices
        ,deviceName
        ,commandQueueId
-       ,address
-       ,bank
+       ,srcAddress
+       ,srcBank
+       ,dstAddress
+       ,dstBank
        ,threadId
        ,eventStr
        ,dependStr

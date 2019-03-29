@@ -122,9 +122,10 @@ namespace xdp {
     void logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
         RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
         uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
-        uint64_t address, const std::string& bank, std::thread::id threadId,
-        const std::string eventString = "", const std::string dependString = "",
-        double timeStampMsec = 0.0);
+        uint64_t srcAddress, const std::string& srcBank,
+        uint64_t dstAddress, const std::string& dstBank,
+        std::thread::id threadId, const std::string eventString = "",
+        const std::string dependString = "", double timeStampMsec = 0.0);
 
     // Log Kernel execution
     void logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,

@@ -56,7 +56,8 @@ using cb_action_ndrange_migrate_type = std::function <void (xocl::event* event,c
 using cb_action_migrate_type = std::function< void (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
                                                     const std::string & bank, cl_mem_migration_flags flags)>;
 using cb_action_copy_type = std::function< void (xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_buffer,
-                                                 bool same_device, size_t size, uint64_t address, const std::string& bank)>;
+                                                 bool same_device, size_t size, uint64_t srcAddress, const std::string& srcBank,
+                                                 uint64_t dstAddress, const std::string& dstBank)>;
 
 /*
  * callback function types for function logging, dependency ...
