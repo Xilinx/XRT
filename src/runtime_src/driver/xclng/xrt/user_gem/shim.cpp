@@ -723,7 +723,6 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
         dev->mgmt->sysfs_get("xmc", "xmc_mgtavtt", errmsg, info->mMgtVtt);
         dev->mgmt->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
         dev->mgmt->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
-        dev->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, info->mVccIntCurr);
         dev->mgmt->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
 
         std::vector<uint64_t> freqs;
@@ -787,14 +786,25 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 int xocl::XOCLShim::resetDevice(xclResetKind kind)
 {
     int ret;
+    std::string err;
 
     if (kind == XCL_RESET_FULL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCHOTRESET);
     else if (kind == XCL_RESET_KERNEL)
         ret = ioctl(mMgtHandle, XCLMGMT_IOCOCLRESET);
-    else if (kind == XCL_USER_RESET)
+    else if (kind == XCL_USER_RESET) {
+        int dev_offline = 1;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
-    else
+        if (ret)
+		return errno;
+
+        dev_fini();
+	while (dev_offline) {
+            pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "dev_offline", err, dev_offline);
+	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
+	dev_init();
+    } else
         return -EINVAL;
 
     return ret ? errno : 0;
@@ -876,6 +886,7 @@ int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *tar
     obj.ocl_region = region;
     obj.ocl_target_freq[0] = targetFreqMHz[0];
     obj.ocl_target_freq[1] = targetFreqMHz[1];
+    obj.ocl_target_freq[2] = targetFreqMHz[2];
     ret = ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
     return ret ? -errno : ret;
 }
@@ -1619,8 +1630,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-        comps[i].nbytes = ((struct io_event *)comps)[i].res;
-        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	if (((struct io_event *)comps)[i].res < 0){
+            /* error returned by AIO framework */
+            comps[i].nbytes = 0;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res;
+	} else {
+            comps[i].nbytes = ((struct io_event *)comps)[i].res;
+	    comps[i].err_code = ((struct io_event *)comps)[i].res2;
+	}
     }
     num_evt = 0;
 
@@ -1759,6 +1776,7 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     reClockInfo.region = region;
     reClockInfo.ocl_target_freq[0] = targetFreqMHz[0];
     reClockInfo.ocl_target_freq[1] = targetFreqMHz[1];
+    reClockInfo.ocl_target_freq[2] = targetFreqMHz[2];
     ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_RECLOCK, &reClockInfo);
     return ret ? -errno : ret;
 }

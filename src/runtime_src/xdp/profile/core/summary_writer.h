@@ -73,7 +73,6 @@ namespace xdp {
     void writeTopHardwareSummary(ProfileWriterI* writer) const;
 
   private:
-    unsigned int HostSlotIndex;
     std::mutex mLogMutex;
     ProfileCounters* mProfileCounters;
     std::vector<ProfileWriterI*> mProfileWriters;
@@ -82,6 +81,7 @@ namespace xdp {
     std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
     std::map<std::string, xclCounterResults> mRolloverCountsMap;
     std::map<std::string, std::vector<std::string>> mDeviceBinaryDataSlotsMap;
+    std::map<std::string, std::vector<unsigned>> mDataSlotsPropertiesMap;
     std::map<std::string, std::vector<std::string>> mDeviceBinaryCuSlotsMap;
     std::map<std::string, std::vector<std::string>> mDeviceBinaryStrSlotsMap;
 

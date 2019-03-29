@@ -227,6 +227,7 @@ struct xocl_drvinst {
 	struct completion	comp;
 	struct list_head	open_procs;
 	void			*file_dev;
+	bool			offline;
 	char			data[1];
 };
 
@@ -249,12 +250,16 @@ struct xocl_dev_core {
 	struct task_struct      *health_thread;
 	struct xocl_health_thread_arg thread_arg;
 
+	struct xocl_drm		*drm;
+	struct delayed_work	reset_work;
+
 	struct xocl_board_private priv;
 
 	char			ebuf[XOCL_EBUF_LEN + 1];
-
-	bool			offline;
 };
+
+#define XOCL_DRM(xdev_hdl)					\
+	((struct xocl_dev_core *)xdev_hdl)->drm
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -275,7 +280,6 @@ struct xocl_dev_core {
 
 /* rom callbacks */
 struct xocl_rom_funcs {
-	unsigned int (*dsa_version)(struct platform_device *pdev);
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
@@ -292,8 +296,6 @@ struct xocl_rom_funcs {
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
 	((struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).ops)
-#define	xocl_dsa_version(xdev)		\
-	(ROM_DEV(xdev) ? ROM_OPS(xdev)->dsa_version(ROM_DEV(xdev)) : 0)
 #define	xocl_is_unified(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->is_unified(ROM_DEV(xdev)) : true)
 #define	xocl_mb_mgmt_on(xdev)		\
@@ -334,7 +336,6 @@ struct xocl_dma_funcs {
 	int (*user_intr_register)(struct platform_device *pdev, u32 intr,
 					irq_handler_t handler, void *arg, int event_fd);
 	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
-	void *(*get_drm_handle)(struct platform_device *pdev);
 };
 
 #define DMA_DEV(xdev)	\
@@ -365,9 +366,6 @@ struct xocl_dma_funcs {
 #define xocl_dma_intr_unreg(xdev, irq)				\
 	(DMA_DEV(xdev) ? DMA_OPS(xdev)->user_intr_unreg(DMA_DEV(xdev),	\
 	irq) : -ENODEV)
-#define	xocl_dma_get_drm_handle(xdev)				\
-	(DMA_DEV(xdev) ? DMA_OPS(xdev)->get_drm_handle(DMA_DEV(xdev)) : \
-	NULL)
 
 /* mb_scheduler callbacks */
 struct xocl_mb_scheduler_funcs {
@@ -411,11 +409,11 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)					\
-	xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
 #define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)						\
-	xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
+#define XOCL_XCLBIN_ID(xdev)						\
+	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
 #define	XOCL_IS_DDR_USED(xdev, ddr)					\
 	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
@@ -675,7 +673,7 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
-int xocl_subdev_get_devinfo(uint32_t subdev_id,
+int xocl_subdev_get_devinfo(xdev_handle_t xdev_hdl, uint32_t subdev_id,
 	struct xocl_subdev_info *subdev_info, struct resource *res);
 
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
@@ -695,6 +693,8 @@ void xocl_drvinst_free(void *data);
 void *xocl_drvinst_open(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
+void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);
+bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
 
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);

@@ -493,9 +493,8 @@ namespace xclcpuemhal2 {
         }
         if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
-          memTopology = new char[memTopologySize+1];
+          memTopology = new char[memTopologySize];
           memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
-          memTopology[memTopologySize] = 0;
         }
       }
       else
@@ -532,6 +531,12 @@ namespace xclcpuemhal2 {
         if( !fp ) 
         {
           if(mLogStream.is_open()) mLogStream << __func__ << " failed to create temporary dlopen file" << std::endl;
+          
+          if(memTopology)
+          {
+            delete []memTopology;
+            memTopology = NULL;
+          }
           return -1;
         }
         fwrite(sharedlib,sharedliblength,1,fp);
@@ -1372,7 +1377,7 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferHost2Device(bo->base, src, size, seek) != size) {
     returnVal = EIO;
   }
@@ -1395,7 +1400,7 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
     PRINTENDFUNC;
     return -1;
   }
-  int returnVal = 0;
+  size_t returnVal = 0;
   if (xclCopyBufferDevice2Host(dst, bo->base, size, skip) != size) {
     returnVal = EIO;
   }
@@ -1640,6 +1645,38 @@ int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
   }
   PRINTENDFUNC;
   return 0;//TODO
+}
+
+/*
+ * xclLogMsg()
+ */
+int CpuemShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+{
+    int len = std::vsnprintf(nullptr, 0, format, args1);
+
+    if (len < 0) 
+    {
+        //illegal arguments
+        std::string err_str = "ERROR: Illegal arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    len++; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args1);
+
+    if (len < 0) 
+    {
+        //error processing arguments
+        std::string err_str = "ERROR: When processing arguments in log format string. ";
+        err_str.append(std::string(format));
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+        return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
+    return 0;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

@@ -30,6 +30,7 @@
 #include <sys/file.h>
 
 #include "driver/include/xclbin.h"
+#include "driver/include/xclperf.h"
 #include "scan.h"
 #include "xbutil.h"
 
@@ -106,6 +107,24 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
     return std::pair<size_t, size_t>(max1, max2);
 }
 
+std::pair<size_t, size_t> xcldev::device::getStreamName (const std::vector<std::string>& aSlotNames,
+    std::vector< std::pair<std::string, std::string> >& aStreamNames) {
+    //Slotnames are of the format "Master-Slave", split them and return in separate vector
+    //return max length of the Master and Slave port names
+    size_t max1 = 0, max2 = 0;
+    for (auto &s: aSlotNames) {
+        size_t found;
+        found = s.find(IP_LAYOUT_SEP, 0);
+        if (found != std::string::npos)
+            aStreamNames.emplace_back(s.substr(0, found), s.substr(found+1));
+        else
+            aStreamNames.emplace_back("Unknown", "Unknown");
+        max1 = std::max(aStreamNames.back().first.length(), max1);
+        max2 = std::max(aStreamNames.back().second.length(), max2);
+    }
+    return std::pair<size_t, size_t>(max1, max2);
+}
+
 int xcldev::device::readSPMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
@@ -146,11 +165,12 @@ int xcldev::device::readSPMCounters() {
                   << "  " << std::setw(16) << debugResults.ReadBytes[i]
                   << "  " << std::setw(16) << debugResults.ReadTranx[i]
                   << "  " << std::setw(16) << debugResults.OutStandCnts[i]
-                  << "  " << std::hex << "0x" << std::setw(14) << debugResults.LastWriteAddr[i] << std::dec
-                  << "  " << std::setw(16) << debugResults.LastWriteData[i]
-                  << "  " << std::hex << "0x" << std::setw(14) <<  debugResults.LastReadAddr[i] << std::dec
-                  << "  " << std::setw(16) << debugResults.LastReadData[i]
-                  << std::endl;
+                  << std::hex
+                  << "  " << "0x" << std::setw(14) << debugResults.LastWriteAddr[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastWriteData[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastReadAddr[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.LastReadData[i]
+                  << std::dec << std::endl;
     }
     std::cout.flags(f);
     return 0;
@@ -165,17 +185,17 @@ int xcldev::device::readSSPMCounters() {
         std::cout << "ERROR: SSPM IP does not exist on the platform" << std::endl;
         return 0;
     }
-    std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
+    std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
 
     std::cout << "SDx Streaming Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("Port Name"));
+    int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
+    int col2 = std::max(widths.second, strlen("Stream Slave"));
 
     std::ios_base::fmtflags f(std::cout.flags());
     std::cout << std::left
-            << std::setw(col1) << "CU Name"
-            << " " << std::setw(col2) << "Port Name"
+            << std::setw(col1) << "Stream Master"
+            << " " << std::setw(col2) << "Stream Slave"
             << "  " << std::setw(16)  << "Num Trans."
             << "  " << std::setw(16)  << "Data Bytes"
             << "  " << std::setw(16)  << "Busy Cycles"
@@ -247,6 +267,9 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
         std::cout << "No AXI violations found \n";
     }
     if (violations_found && aVerbose && !invalid_codes) {
+        std::ofstream saveFormat;
+        saveFormat.copyfmt(std::cout);
+
         std::cout << "\n";
         std::cout << std::left
                 << std::setw(col1) << "CU Name"
@@ -265,19 +288,107 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
             std::cout << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second
-                << "  " << std::setw(16) << std::hex << debugResults.OverallStatus[i]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][0]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][1]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][2]
-                << "  " << std::setw(16) << std::hex << debugResults.SnapshotStatus[i][3]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][0]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][1]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][2]
-                << "  " << std::setw(16) << std::hex << debugResults.CumulativeStatus[i][3]
+                << std::hex
+                << "  " << std::setw(16) << debugResults.OverallStatus[i]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][0]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][1]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][2]
+                << "  " << std::setw(16) << debugResults.SnapshotStatus[i][3]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][0]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][1]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][2]
+                << "  " << std::setw(16) << debugResults.CumulativeStatus[i][3]
                 << std::dec << std::endl;
         }
+	// Restore formatting
+	std::cout.copyfmt(saveFormat);
     }
     return 0;
+}
+
+int xcldev::device::readStreamingCheckers(int aVerbose) {
+
+  std::vector<std::string> streamingCheckerSlotNames ;
+  unsigned int numCheckers = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
+						 nullptr,
+						 &streamingCheckerSlotNames);
+  if (numCheckers == 0) {
+    std::cout << "ERROR: AXI Streaming Protocol Checkers do not exist on the platform" << std::endl ;
+    return 0 ;
+  }
+
+  std::vector< std::pair<std::string, std::string> > cuNameportNames;
+
+  std::pair<size_t, size_t> widths = getCUNamePortName(streamingCheckerSlotNames, cuNameportNames);
+
+  xclDebugStreamingCheckersResults debugResults = {0};
+  xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPC, &debugResults);
+
+  // Now print out all of the values (and their interpretations)
+
+  std::cout << "AXI Streaming Protocol Checkers codes\n";
+  bool invalid_codes = false ;
+  bool violations_found = false ;
+
+  for (size_t i = 0 ; i < debugResults.NumSlots; ++i) {
+    std::cout << "CU Name: " << cuNameportNames[i].first 
+	      << " AXI Port: " << cuNameportNames[i].second << "\n";
+
+    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(debugResults.PCAsserted[i], debugResults.CurrentPC[i], debugResults.SnapshotPC[i]))
+    {
+      std::cout << "  Invalid codes read, skip decoding\n";
+      invalid_codes = true ;
+    }
+    else
+    {
+      std::cout << "  First violation: \n";
+      std::cout << "    " << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.SnapshotPC[i]);
+      std::cout << "  Other violations: \n";
+      std::string tstr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(debugResults.CurrentPC[i]);
+      if (tstr == "") 
+      {
+	std::cout << "    None";
+      }
+      else 
+      {
+	std::cout << "    " <<  tstr;
+      }
+      violations_found = true;
+    }
+  }
+  if (!violations_found && !invalid_codes)
+  {
+    std::cout << "No AXI violations found \n";
+  }
+  if (violations_found && aVerbose && !invalid_codes) 
+  {
+    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    int col2 = std::max(widths.second, strlen("AXI Portname"));
+
+    std::ofstream saveFormat;
+    saveFormat.copyfmt(std::cout);
+
+    std::cout << "\n";
+    std::cout << std::left
+	      << std::setw(col1) << "CU Name"
+	      << " " << std::setw(col2) << "AXI Portname"
+	      << "  " << std::setw(16) << "Overall Status"
+	      << "  " << std::setw(16) << "Snapshot"
+	      << "  " << std::setw(16) << "Current"
+	      << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+      std::cout << std::left
+                << std::setw(col1) << cuNameportNames[i].first
+                << " " << std::setw(col2) << cuNameportNames[i].second
+                << "  " << std::setw(16) << std::hex << debugResults.PCAsserted[i]
+                << "  " << std::setw(16) << std::hex << debugResults.SnapshotPC[i]
+                << "  " << std::setw(16) << std::hex << debugResults.CurrentPC[i]
+                << std::dec << std::endl;
+    }
+    // Restore formatting
+    std::cout.copyfmt(saveFormat);
+  }
+  return 0;
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {

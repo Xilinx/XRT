@@ -273,11 +273,11 @@ static irqreturn_t user_intr_handler(int irq_index, int irq, void *dev_id)
 {
 	struct xlnx_dma_dev *xdev = dev_id;
 
-	pr_info("User IRQ fired on PF#%d: index=%d, vector=%d\n",
+	pr_debug("User IRQ fired on PF#%d: index=%d, vector=%d\n",
 		xdev->func_id, irq_index, irq);
 
 	if (xdev->conf.fp_user_isr_handler)
-		xdev->conf.fp_user_isr_handler((unsigned long)xdev,
+		xdev->conf.fp_user_isr_handler((unsigned long)xdev, irq_index,
 						xdev->conf.uld);
 
 	return IRQ_HANDLED;
@@ -616,7 +616,7 @@ static int pci_msix_vec_count(struct pci_dev *dev)
 int intr_setup(struct xlnx_dma_dev *xdev)
 {
 	int rv = 0;
-	int i;
+	int i, tmp;
 
 	if ((xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(xdev->conf.qdma_drv_mode == LEGACY_INTR_MODE)) {
@@ -683,12 +683,15 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 #endif
 
 	/* user interrupt */
-	rv = intr_vector_setup(xdev, i, INTR_TYPE_USER, user_intr_handler);
-	if (rv)
-		goto cleanup_irq;
+	for (tmp = 0; tmp < QDMA_USER_INTR_NUM; tmp++) {
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_USER, user_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
 
 	/* data interrupt */
-	xdev->dvec_start_idx = ++i;
+	xdev->dvec_start_idx = i;
 	for (; i < xdev->num_vecs; i++) {
 		rv = intr_vector_setup(xdev, i, INTR_TYPE_DATA,
 					data_intr_handler);

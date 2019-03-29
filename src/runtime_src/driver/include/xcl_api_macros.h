@@ -637,7 +637,8 @@ mtx.unlock();
       const xclPollCompletion_response::request &oReq = r_msg.fullrequest(i); \
       uint64_t read_size = oReq.size();\
       numBytesProcessed  += read_size; \
-      memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
+      if((*vaLenMapItr).second != 0) \
+        memcpy((void*)(*vaLenMapItr).first,oReq.dest().c_str(),read_size);\
       vaLenMapItr++;\
     } \
   }\

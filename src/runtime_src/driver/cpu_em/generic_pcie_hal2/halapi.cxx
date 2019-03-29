@@ -506,3 +506,13 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
   return 0;
 }
+
+int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  int ret = xclcpuemhal2::CpuemShim::xclLogMsg(handle, level, tag, format, args);
+  va_end(args);
+  return ret;
+}
+

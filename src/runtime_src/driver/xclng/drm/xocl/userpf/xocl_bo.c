@@ -210,11 +210,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	u16 ddr_count;
 	unsigned ddr;
 
-#if 0
-	if (flags == 0xffffff)
-		return 0;
-#endif
-	if (type == DRM_XOCL_BO_EXECBUF)
+	if (type == DRM_XOCL_BO_EXECBUF || type == DRM_XOCL_BO_IMPORT)
 		return 0;
 #ifdef XOCL_CMA_ALLOC
 	if (type == DRM_XOCL_BO_CMA)

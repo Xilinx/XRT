@@ -16,7 +16,6 @@
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "xrt/scheduler/command.h"
-#include "xrt/scheduler/scheduler.h"
 
 namespace xrtcpp {
 
@@ -43,7 +42,7 @@ void
 command::
 execute()
 {
-  xrt::scheduler::schedule(m_impl);
+  m_impl->execute();
 }
 
 void
@@ -60,20 +59,33 @@ completed() const
   return m_impl->completed();
 }
 
-write_command::
-write_command(xrt_device* device)
-  : command(device,ERT_WRITE)
+exec_write_command::
+exec_write_command(xrt_device* device)
+  : command(device,ERT_EXEC_WRITE)
 {
-  m_impl->ecmd->type = ERT_KDS_LOCAL;
+  m_impl->ecmd->type = ERT_CU;
+  m_impl->ecmd->count = 1+4; // cumask + 4 ctrl
 }
 
 void
-write_command::
+exec_write_command::
+add_cu(value_type cuidx)
+{
+  if (cuidx>=32)
+    throw std::runtime_error("write_command supports at most 32 CUs");
+  auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
+  skcmd->cu_mask |= 1<<cuidx;
+
+  auto xdevice = m_impl->get_device();
+  xdevice->acquire_cu_context(cuidx,true);
+}
+
+void
+exec_write_command::
 add(addr_type addr, value_type value)
 {
-  (*m_impl)[offset++] = addr;
-  (*m_impl)[offset++] = value;
-  m_impl->ecmd->count += 2;
+  (*m_impl)[++m_impl->ecmd->count] = addr;
+  (*m_impl)[++m_impl->ecmd->count] = value;
 }
 
 }} // exec,xrt

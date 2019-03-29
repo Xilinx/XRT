@@ -245,7 +245,9 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   // Prepare the array
-  struct axlf_section_header sectionHeader[m_sections.size()] = { 0 };
+  struct axlf_section_header sectionHeader[m_sections.size()];
+  memset(&sectionHeader, 0, sizeof(sectionHeader));  // Zero out memory
+
 
   // Populate the array size and offsets
   unsigned int currentOffset = sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader);

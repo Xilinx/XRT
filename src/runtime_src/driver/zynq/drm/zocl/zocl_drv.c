@@ -517,7 +517,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		irq = platform_get_irq(pdev, index);
 		if (irq < 0)
 			break;
-		DRM_INFO("CU(%d) IRQ %d\n", index, irq);
+		DRM_DEBUG("CU(%d) IRQ %d\n", index, irq);
 		zdev->irq[index] = irq;
 	}
 	zdev->cu_num = index;
