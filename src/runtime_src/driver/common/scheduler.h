@@ -47,7 +47,7 @@ get_dbg_ips_pair(const axlf* top);
  * Check sdaccel.ini for default overrides.
  */
 int
-init(xclDeviceHandle handle, const axlf* top, int encode);
+init(xclDeviceHandle handle, const axlf* top, bool encode);
 
 }} // utils,xrt
 

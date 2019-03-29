@@ -212,7 +212,7 @@ get_dbg_ips_pair(const axlf* top)
  * Check sdaccel.ini for default overrides.
  */
 int
-init(xclDeviceHandle handle, const axlf* top, int encode)
+init(xclDeviceHandle handle, const axlf* top, bool encode)
 {
   uuid_t uuid;
   auto execbo = create_exec_bo(handle,0x1000);
