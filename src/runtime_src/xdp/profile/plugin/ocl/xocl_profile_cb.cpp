@@ -575,20 +575,6 @@ extern "C"
 void
 initXDPLib()
 {
-  // share ownership of the global platform
-  std::shared_ptr<xocl::platform> platform = xocl::get_shared_platform();
-  for(auto device : platform->get_device_range()) {
-    uint liveProcessesOnDevice = device->get_xrt_device()->getNumLiveProcesses().get();
-    if(liveProcessesOnDevice > 1) {
-      /* More than 1 process on device. Debug/Profiling for multi-process not supported yet.
-       * Skip constructing Debug/Profile infrastructure
-       */
-      std::string warnMsg = "Multiple live processes running on device. Profiling and Hardware Debug data will be unavailable for this process.";
-      xrt::message::send(xrt::message::severity_level::WARNING, warnMsg) ;
-      return;
-    }
-  }
-
   (void)xdp::RTSingleton::Instance();
   (void)xdp::OCLProfiler::Instance();
   if (xdp::OCLProfiler::Instance()->applicationProfilingOn())

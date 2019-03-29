@@ -36,6 +36,7 @@
 #include "scan.h"
 #include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/include/xclbin.h"
+#include "driver/common/message.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,6 +72,18 @@ namespace xocl {
   {
     if (mIsDebugIpLayoutRead)
       return;
+
+    uint liveProcessesOnDevice = xclGetNumLiveProcesses();
+    if(liveProcessesOnDevice > 1) {
+      /* More than 1 process on device. Device Profiling for multi-process not supported yet.
+       */
+      std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
+      std::cout << warnMsg << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", warnMsg) ;
+      mIsDeviceProfiling = false;
+      mIsDebugIpLayoutRead = true;
+      return;
+    }
 
     //
     // Profiling - addresses and names
