@@ -43,12 +43,16 @@ struct xocl_mig {
 	struct device	*mig_dev;
 };
 
+#define MIG_DEV2XDEV(d)	xocl_get_xdev(to_platform_device(d))
+
+
 static ssize_t ecc_ue_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint64_t val = ioread32(MIG_DEV2BASE(dev) + UE_ADDR_HI);
+	uint64_t val = xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + UE_ADDR_HI);
+
 	val <<= 32;
-	val |= ioread32(MIG_DEV2BASE(dev) + UE_ADDR_LO);
+	val |= xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + UE_ADDR_LO);
 	return sprintf(buf, "0x%llx\n", val);
 }
 static DEVICE_ATTR_RO(ecc_ue_ffa);
@@ -57,9 +61,10 @@ static DEVICE_ATTR_RO(ecc_ue_ffa);
 static ssize_t ecc_ce_ffa_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	uint64_t val = ioread32(MIG_DEV2BASE(dev) + CE_ADDR_HI);
+	uint64_t val = xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + CE_ADDR_HI);
+
 	val <<= 32;
-	val |= ioread32(MIG_DEV2BASE(dev) + CE_ADDR_LO);
+	val |= xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + CE_ADDR_LO);
 	return sprintf(buf, "0x%llx\n", val);
 }
 static DEVICE_ATTR_RO(ecc_ce_ffa);
@@ -68,7 +73,7 @@ static DEVICE_ATTR_RO(ecc_ce_ffa);
 static ssize_t ecc_ce_cnt_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + CE_CNT));
+	return sprintf(buf, "%u\n", xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + CE_CNT));
 }
 static DEVICE_ATTR_RO(ecc_ce_cnt);
 
@@ -76,7 +81,7 @@ static DEVICE_ATTR_RO(ecc_ce_cnt);
 static ssize_t ecc_status_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + ECC_STATUS));
+	return sprintf(buf, "%u\n", xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + ECC_STATUS));
 }
 static DEVICE_ATTR_RO(ecc_status);
 
@@ -84,8 +89,8 @@ static DEVICE_ATTR_RO(ecc_status);
 static ssize_t ecc_reset_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	iowrite32(0x3, MIG_DEV2BASE(dev) + ECC_STATUS);
-	iowrite32(0, MIG_DEV2BASE(dev) + CE_CNT);
+	xocl_dr_reg_write32(MIG_DEV2XDEV(dev), 0x3, MIG_DEV2BASE(dev) + ECC_STATUS);
+	xocl_dr_reg_write32(MIG_DEV2XDEV(dev), 0, MIG_DEV2BASE(dev) + CE_CNT);
 	return count;
 }
 static DEVICE_ATTR_WO(ecc_reset);
@@ -94,7 +99,7 @@ static DEVICE_ATTR_WO(ecc_reset);
 static ssize_t ecc_enabled_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%u\n", ioread32(MIG_DEV2BASE(dev) + ECC_ON_OFF));
+	return sprintf(buf, "%u\n", xocl_dr_reg_read32(MIG_DEV2XDEV(dev), MIG_DEV2BASE(dev) + ECC_ON_OFF));
 }
 static ssize_t ecc_enabled_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
@@ -107,7 +112,7 @@ static ssize_t ecc_enabled_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	iowrite32(val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
+	xocl_dr_reg_write32(MIG_DEV2XDEV(dev), val, MIG_DEV2BASE(dev) + ECC_ON_OFF);
 	return count;
 }
 static DEVICE_ATTR_RW(ecc_enabled);
@@ -117,7 +122,7 @@ static DEVICE_ATTR_RW(ecc_enabled);
 static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
 {
-	iowrite32(1, MIG_DEV2BASE(dev) + INJ_FAULT_REG);
+	xocl_dr_reg_write32(MIG_DEV2XDEV(dev), 1, MIG_DEV2BASE(dev) + INJ_FAULT_REG);
 	return count;
 }
 static DEVICE_ATTR_WO(ecc_inject);
