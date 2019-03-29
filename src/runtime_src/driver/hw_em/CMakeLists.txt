@@ -34,6 +34,7 @@ target_link_libraries(xrt_hwemu
   ${PROTOBUF_LIBRARY}
   common_em
   rt
+  uuid
   )
 
 install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
