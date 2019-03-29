@@ -1,5 +1,4 @@
-/**
- * Compute unit execution, interrupt management and
+/** * Compute unit execution, interrupt management and
  * client context core data structures.
  *
  * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
@@ -41,6 +40,11 @@
 #define CQ_BASE_ADDR                  0x190000
 #define CSR_ADDR                      0x180000
 
+enum zocl_cu_type {
+	ZOCL_HARD_CU,
+	ZOCL_SOFT_CU,
+};
+
 struct sched_dev;
 struct sched_ops;
 
@@ -69,13 +73,19 @@ enum cmd_state {
  * @OP_START_CU:       start a workgroup on a CU
  * @OP_START_KERNEL:   currently aliased to ERT_START_CU
  * @OP_CONFIGURE:      configure command scheduler
+ * @OP_CONFIG_SKERNEL: configure soft kernel
+ * @OP_START_SKERNEL:  start soft kernel
+ * @OP_SK_UNCONFIG:    unconfigure a soft kernel
  */
 enum cmd_opcode {
-	OP_START_CU     = 0,
-	OP_START_KERNEL = 0,
-	OP_CONFIGURE    = 2,
-	OP_STOP         = 3,
-	OP_ABORT        = 4,
+	OP_START_CU		= 0,
+	OP_START_KERNEL		= 0,
+	OP_CONFIGURE		= 2,
+	OP_STOP			= 3,
+	OP_ABORT		= 4,
+	OP_CONFIG_SKERNEL	= 8,
+	OP_START_SKERNEL	= 9,
+	OP_UNCONFIG_SKERNEL	= 10,
 };
 
 /**
@@ -191,6 +201,68 @@ struct configure_cmd {
 };
 
 /**
+ * struct configure_sk_cmd: configure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload (5 + num_cus)
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ * @sk_size:         size in bytes of soft kernel image
+ * @sk_name:         symbol name of soft kernel
+ * @sk_addr:         soft kernel image's physical address (little endian)
+ */
+struct configure_sk_cmd {
+	union {
+		struct {
+			uint32_t state:4;          /* [3-0]   */
+			uint32_t unused:8;         /* [11-4]  */
+			uint32_t count:11;         /* [22-12] */
+			uint32_t opcode:5;         /* [27-23] */
+			uint32_t type:4;           /* [31-27] */
+		};
+		uint32_t header;
+	};
+
+	/* payload */
+	uint32_t start_cuidx;
+	uint32_t num_cus;
+	uint32_t sk_size;
+	uint32_t sk_name[8];
+	uint64_t sk_addr;
+};
+
+/**
+ * struct unconfigure_sk_cmd: unconfigure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload (5 + num_cus)
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ */
+struct unconfigure_sk_cmd {
+	union {
+		struct {
+			uint32_t state:4;          /* [3-0]   */
+			uint32_t unused:8;         /* [11-4]  */
+			uint32_t count:11;         /* [22-12] */
+			uint32_t opcode:5;         /* [27-23] */
+			uint32_t type:4;           /* [31-27] */
+		};
+		uint32_t header;
+	};
+
+	/* payload */
+	uint32_t start_cuidx;
+	uint32_t num_cus;
+};
+
+/**
  * struct abort_cmd: abort command format.
  *
  * @idx: The slot index of command to abort
@@ -263,6 +335,9 @@ struct sched_exec_core {
 
 	u32                        cu_status[MAX_U32_CU_MASKS];
 	unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
+
+	/* Soft kernel definitions */
+	u32                        scu_status[MAX_U32_CU_MASKS];
 
 	u32                        cu_addr_phy[MAX_CUS];
 	u32                        cu_usage[MAX_CUS];

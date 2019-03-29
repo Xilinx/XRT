@@ -1,7 +1,7 @@
 /*
  * A GEM style CMA backed memory manager for ZynQ based OpenCL accelerators.
  *
- * Copyright (C) 2016 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -27,7 +27,6 @@
 #include <uapi/drm/drm_mode.h>
 #endif /* !__KERNEL__ */
 
-
 //#define XCLBIN_DOWNLOAD
 
 enum {
@@ -42,6 +41,9 @@ enum {
 	DRM_ZOCL_PCAP_DOWNLOAD,
 	DRM_ZOCL_EXECBUF,
 	DRM_ZOCL_READ_AXLF,
+	DRM_ZOCL_SK_GETCMD,
+	DRM_ZOCL_SK_CREATE,
+	DRM_ZOCL_SK_REPORT,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -110,7 +112,7 @@ struct drm_zocl_info_bo {
  */
 struct drm_zocl_host_bo {
 	uint64_t	paddr;
-	size_t      size;
+	size_t		size;
 	uint32_t	handle;
 };
 
@@ -191,6 +193,32 @@ struct drm_zocl_axlf {
 	struct axlf *xclbin;
 };
 
+#define	ZOCL_MAX_NAME_LENGTH		32
+#define	ZOCL_MAX_PATH_LENGTH		255
+
+struct drm_zocl_sk_getcmd {
+	uint32_t	opcode;
+	uint32_t	start_cuidx;
+	uint32_t	cu_nums;
+	size_t		size;
+	uint64_t	paddr;
+	char		name[ZOCL_MAX_NAME_LENGTH];
+};
+
+struct drm_zocl_sk_create {
+	uint32_t	cu_idx;
+	uint32_t	handle;
+};
+
+enum drm_zocl_scu_state {
+	ZOCL_SCU_STATE_DONE,
+};
+
+struct drm_zocl_sk_report {
+	uint32_t		cu_idx;
+	enum drm_zocl_scu_state	cu_state;
+};
+
 #define DRM_IOCTL_ZOCL_CREATE_BO       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_CREATE_BO,     \
                                        struct drm_zocl_create_bo)
@@ -217,5 +245,10 @@ struct drm_zocl_axlf {
                                        DRM_ZOCL_EXECBUF, struct drm_zocl_execbuf)
 #define DRM_IOCTL_ZOCL_READ_AXLF       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_READ_AXLF, struct drm_zocl_axlf)
-
+#define DRM_IOCTL_ZOCL_SK_GETCMD       DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_SK_GETCMD, struct drm_zocl_sk_getcmd)
+#define DRM_IOCTL_ZOCL_SK_CREATE       DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_SK_CREATE, struct drm_zocl_sk_create)
+#define	DRM_IOCTL_ZOCL_SK_REPORT       DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_SK_REPORT, struct drm_zocl_sk_report)
 #endif

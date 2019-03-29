@@ -37,7 +37,6 @@
 //#include "xclbin.h"
 #include <assert.h>
 
-
 #define GB(x)   ((size_t) (x) << 30)
 #ifdef __aarch64__
 #define BASE_ADDRESS 0xA0000000
@@ -471,6 +470,55 @@ int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfs
   return 0 ;
 }
 
+int ZYNQShim::xclSKGetCmd(xclSKCmd *cmd)
+{
+  int ret;
+  drm_zocl_sk_getcmd scmd;
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_GETCMD, &scmd);
+
+  if (!ret) {
+    cmd->opcode = scmd.opcode;
+    cmd->start_cuidx = scmd.start_cuidx;
+    cmd->cu_nums = scmd.cu_nums;
+    cmd->xclbin_paddr = scmd.paddr;
+    cmd->xclbin_size = scmd.size;
+    snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
+  }
+
+  return ret;
+}
+
+int ZYNQShim::xclSKCreate(unsigned int boHandle, uint32_t cu_idx)
+{
+  int ret;
+  drm_zocl_sk_create scmd = {cu_idx, boHandle};
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_CREATE, &scmd);
+
+  return ret;
+}
+
+int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
+{
+  int ret;
+  drm_zocl_sk_report scmd;
+
+  switch (state) {
+  case XRT_SCU_STATE_DONE:
+    scmd.cu_state = ZOCL_SCU_STATE_DONE;
+    break;
+  default:
+    return -EINVAL;
+  }
+
+  scmd.cu_idx = cu_idx;
+  
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
+
+  return ret;
+}
+
 }
 ;
 //end namespace ZYNQ
@@ -696,6 +744,31 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -EINVAL;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclSKGetCmd(cmd);
+}
+
+int xclSKCreate(xclDeviceHandle handle, unsigned int boHandle, uint32_t cu_idx)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclSKCreate(boHandle, cu_idx);
+}
+
+int xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+
+  return drv->xclSKReport(cu_idx, state);
 }
 
 //

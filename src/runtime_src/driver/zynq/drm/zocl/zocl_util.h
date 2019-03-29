@@ -73,6 +73,8 @@ struct drm_zocl_dev {
 	 * touch those attributes should hold write lock.
 	 */
 	rwlock_t		attr_rwlock;
+
+	struct soft_kernel	*soft_kernel;
 };
 
 #endif
