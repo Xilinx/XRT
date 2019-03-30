@@ -824,12 +824,6 @@ public:
     return m_hal->stopTrace(type);
   }
 
-  hal::operations_result<uint>
-  getNumLiveProcesses()
-  {
-    return m_hal->getNumLiveProcesses();
-  }
-
   hal::operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {

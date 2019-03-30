@@ -603,12 +603,6 @@ public:
     return operations_result<size_t>();
   }
 
-  virtual operations_result<uint>
-  getNumLiveProcesses()
-  {
-    return operations_result<uint>();
-  }
-
   virtual operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
