@@ -545,7 +545,7 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
     fchmod(fd, 0200);
     ret = ftruncate(fd, sizeof(XmaResConfig));
     if (ret) {
-        fchmod(fd, 0666);
+        //fchmod(fd, 0666);Don't change permission here. This is fatal error and protect it for other processes.
         close(fd);
         return NULL; /*JPM log proper error message */
     }
