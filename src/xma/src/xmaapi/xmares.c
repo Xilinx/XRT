@@ -298,8 +298,13 @@ int32_t xma_res_alloc_dec_kernel(XmaResources shm_cfg, XmaDecoderType type,
 
     kern_props =
         xma_res_create_kern_req(xma_res_decoder, vendor, dev_excl);
-    if (!kern_props || !shm_cfg)
+    if (!kern_props) {
         return XMA_ERROR;
+    }
+    if (!shm_cfg) {
+        free(kern_props);
+        return XMA_ERROR;
+    }
     kern_props->kernel_spec.dec_type = type;
 
     return xma_res_alloc_kernel(shm_cfg, session, kern_props, xma_res_decoder);
@@ -313,8 +318,13 @@ int32_t xma_res_alloc_filter_kernel(XmaResources shm_cfg, XmaFilterType type,
 
     kern_props =
         xma_res_create_kern_req(xma_res_filter, vendor, dev_excl);
-    if (!kern_props || !shm_cfg)
+    if (!kern_props) {
         return XMA_ERROR;
+    }
+    if (!shm_cfg) {
+        free(kern_props);
+        return XMA_ERROR;
+    }
     kern_props->kernel_spec.filter_type = type;
 
     return xma_res_alloc_kernel(shm_cfg, session, kern_props, xma_res_filter);
@@ -330,8 +340,13 @@ int32_t xma_res_alloc_kernel_kernel(XmaResources   shm_cfg,
 
     kern_props =
         xma_res_create_kern_req(xma_res_kernel, vendor, dev_excl);
-    if (!kern_props || !shm_cfg)
+    if (!kern_props) {
         return XMA_ERROR;
+    }
+    if (!shm_cfg) {
+        free(kern_props);
+        return XMA_ERROR;
+    }
     kern_props->kernel_spec.kernel_type = type;
 
     return xma_res_alloc_kernel(shm_cfg, session,
@@ -347,8 +362,13 @@ int32_t xma_res_alloc_enc_kernel(XmaResources shm_cfg, XmaEncoderType type,
 
     kern_props =
         xma_res_create_kern_req(xma_res_encoder, vendor, dev_excl);
-    if (!kern_props || !shm_cfg)
+    if (!kern_props) {
         return XMA_ERROR;
+    }
+    if (!shm_cfg) {
+        free(kern_props);
+        return XMA_ERROR;
+    }
     kern_props->kernel_spec.enc_type = type;
 
     return xma_res_alloc_kernel(shm_cfg, session, kern_props, xma_res_encoder);
@@ -362,8 +382,13 @@ int32_t xma_res_alloc_scal_kernel(XmaResources shm_cfg, XmaScalerType type,
 
     kern_props =
         xma_res_create_kern_req(xma_res_scaler, vendor, dev_excl);
-    if (!kern_props)
+    if (!kern_props) {
         return XMA_ERROR;
+    }
+    if (!shm_cfg) {
+        free(kern_props);
+        return XMA_ERROR;
+    }
     kern_props->kernel_spec.scal_type = type;
 
     return xma_res_alloc_kernel(shm_cfg, session, kern_props, xma_res_scaler);
@@ -519,8 +544,11 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
     /* Ensure other processes will fail to open properly until initialzied */
     fchmod(fd, 0200);
     ret = ftruncate(fd, sizeof(XmaResConfig));
-    if (ret)
+    if (ret) {
+        //fchmod(fd, 0666);Don't change permission here. This is fatal error and protect it for other processes.
+        close(fd);
         return NULL; /*JPM log proper error message */
+    }
 
     pthread_mutexattr_init(&proc_shared_lock);
     pthread_mutexattr_setpshared(&proc_shared_lock, PTHREAD_PROCESS_SHARED);
@@ -530,11 +558,13 @@ static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     pthread_mutex_init(&shm_map->lock, &proc_shared_lock);
     ret = xma_init_shm(shm_map, config);
-    if (ret)
-        return NULL;
     /* Permit other processes to open properly as shm is initalized */
     fchmod(fd, 0666);
     close(fd);
+    if (ret) {
+        munmap((void*)shm_map, sizeof(XmaResConfig));
+        return NULL;
+    }
 
     return shm_map;
 
@@ -578,6 +608,7 @@ eexist:
     if (ret < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
                    "Problem verifying clients of shared mem database\n");
+        munmap((void*)shm_map, sizeof(XmaResConfig));
         return NULL;
     }
 
@@ -1514,7 +1545,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
             xma_free_all_proc_res(xma_shm, dead_proc);
 
             /* defragment process list */
-            for (j = i; j < max_refs && xma_shm->clients[j + 1]; j++)
+            for (j = i; j < max_refs-1 && xma_shm->clients[j + 1]; j++)
                 xma_shm->clients[j] = xma_shm->clients[j + 1];
 
             /* if we had to defragment, clean up duplicate last entry */
@@ -1526,8 +1557,10 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
 
     if (xma_shm->ref_cnt == 0) {
         ret = xma_init_shm(xma_shm, config);
-        if (ret)
+        if (ret) {
+            xma_shm_unlock(xma_shm);
             return ret;
+        }
 
         shm_reinit = true;
     }
@@ -1560,7 +1593,7 @@ static void xma_dec_ref_shm(XmaResConfig *xma_shm)
         xma_shm->ref_cnt--;
 
         /* defragment process list */
-        for (j = i; j < max_refs && xma_shm->clients[j + 1]; j++)
+        for (j = i; j < max_refs-1 && xma_shm->clients[j + 1]; j++)
             xma_shm->clients[j] = xma_shm->clients[j + 1];
 
         /* if we had to defragment, clean up duplicate last entry */
