@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,6 +15,7 @@
  */
 
 #include "SectionDTC.h"
+#include "DTC.h"
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -30,6 +31,61 @@ SectionDTC::~SectionDTC() {
   // Empty
 }
 
+bool 
+SectionDTC::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (( _eFormatType == FT_JSON ) ||
+      ( _eFormatType == FT_RAW )) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionDTC::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
+}
+
+void
+SectionDTC::marshalToJSON(char* _pDataSection,
+                          unsigned int _sectionSize,
+                          boost::property_tree::ptree& _ptree) const 
+{
+  XUtil::TRACE("");
+  XUtil::TRACE("Extracting: DTC Image");
+
+  // Parse the DTC buffer
+  class DTC dtc(_pDataSection, _sectionSize);
+
+  // Create the JSON file
+  boost::property_tree::ptree dtcTree;
+  dtc.marshalToJSON(dtcTree);
+  _ptree.add_child("ip_shell_definitions", dtcTree);
+  XUtil::TRACE_PrintTree("Ptree", _ptree);
+}
 
 
+void
+SectionDTC::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
+                            std::ostringstream& _buf) const 
+{
+  const boost::property_tree::ptree& ptDTC = _ptSection.get_child("ip_shell_definitions");
+
+  // Parse the DTC JSON file
+  class DTC dtc(ptDTC);
+
+  dtc.marshalToDTC(_buf);
+
+  // Dump debug data
+  std::string sBuf = _buf.str();
+  XUtil::TRACE_BUF("DTC Buffer", sBuf.c_str(), sBuf.size());
+}
 
