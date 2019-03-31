@@ -68,8 +68,10 @@ static ssize_t kdsstat_show(struct device *dev,
 		atomic_read(&xdev->outstanding_execs));
 	size += sprintf(buf + size, "total execs:\t\t%ld\n",
 		atomic64_read(&xdev->total_execs));
-	size += sprintf(buf + size, "client PIDs:\n");
+
 	clients = get_live_clients(xdev, &plist);
+	size += sprintf(buf + size, "contexts:\t\t%d\n", clients);
+	size += sprintf(buf + size, "client pid:\n");
 	for (i = 0; i < clients; i++)
 		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
 	vfree(plist);
