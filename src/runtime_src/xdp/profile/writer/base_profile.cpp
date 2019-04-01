@@ -167,6 +167,11 @@ namespace xdp {
   // Total Time (ms), Minimum Time (ms), Average Time (ms), Maximum Time (ms)
   void ProfileWriterI::writeTimeStats(const std::string& name, const TimeStats& stats)
   {
+    // Don't show clCreateProgramWithBinary for emulation (not accurate)
+    if ((mPluginHandle->getFlowMode() != xdp::RTUtil::DEVICE)
+        && (name == "clCreateProgramWithBinary"))
+      return;
+
     writeTableRowStart(getStream());
     writeTableCells(getStream(), name, stats.getNoOfCalls(),
                     stats.getTotalTime(), stats.getMinTime(),
