@@ -6,10 +6,9 @@
 #include "xclhal2.h"
 #include "xclbin.h"
 
-void foo(int num, xclDeviceHandle handle){
-    char msg[50];
-    sprintf(msg, "(5) Running Thread number %d", num);
-    xclLogMsg(handle, NOTICE, "XRT",(char*) msg);
+void foo(int num, xclDeviceHandle handle)
+{
+    xclLogMsg(handle, NOTICE, "XRT", "(5) Running Thread number %d", num);
 }
 
 int main(int argc, char** argv) {
@@ -20,32 +19,27 @@ int main(int argc, char** argv) {
     bool debug_flag = false;
     int c;
 
-    while ((c = getopt(argc, argv, "k:d:v")) != -1)
-	{
-		switch (c) {
-		case 'k':
-			bitFile = optarg;
-			break;
+    while ((c = getopt(argc, argv, "k:d:v")) != -1) {
+        switch (c) {
+        case 'k':
+            bitFile = optarg;
+            break;
         case 'd':
             devIndex = std::atoi(optarg);
             break;
         case 'v':
             debug_flag = true;
             break;
-		default:
-			exit(EXIT_FAILURE);
-		}
-	}
-    handle = xclOpen(devIndex, "", XCL_INFO);
-    if(!handle){
-            char msg[20];
-            sprintf(msg, "(0) Unable to open device %d", devIndex);
-            xclLogMsg(handle, EMERGENCY, "XRT",(char*)msg);
+        default:
+            exit(EXIT_FAILURE);
+        }
     }
 
-    char msg[150];
-    sprintf(msg, "(6) %s was passed in as an argument", bitFile);
-    xclLogMsg(handle, INFO, "XRT",(char*)msg);
+    handle = xclOpen(devIndex, "", XCL_INFO);
+    if(!handle)
+        xclLogMsg(handle, EMERGENCY, "XRT", "(0) Unable to open device %d", devIndex);
+
+    xclLogMsg(handle, INFO, "XRT", "(6) %s was passed in as an argument", bitFile);
 
     if(debug_flag)
         xclLogMsg(handle, DEBUG, "XRT","(7) Debug flag was set");
