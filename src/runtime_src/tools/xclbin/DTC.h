@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,39 +14,45 @@
  * under the License.
  */
 
-#ifndef __SectionHeader_h_
-#define __SectionHeader_h_
+#ifndef __DTC_h_
+#define __DTC_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
-
-#include <string>
-#include <fstream>
-#include "xclbin.h"
+#include "DTCStringsBlock.h"
+#include "FDTNode.h"
+#include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 
-// ------------ C L A S S :   S e c t i o n H e a d e r ----------------------
+// ------------------- C L A S S :   S e c t i o n ---------------------------
 
-class SectionHeader {
- public:
-  SectionHeader();
-  virtual ~SectionHeader();
+class DTC {
 
  public:
-  void readXclBinBinarySection(std::fstream& _istream, unsigned int _section);
+  DTC(const char* _pBuffer, const unsigned int _size);
+  DTC(const boost::property_tree::ptree &_ptDTC);
+  virtual ~DTC();
 
- private:
-  enum axlf_section_kind m_eType;  /* Type of section */
-  std::string m_name;              /* Name of section (not really used in the xclbin anymore */
+ public:
+  void marshalToJSON(boost::property_tree::ptree &_dtcTree) const;
+  void marshalToDTC(std::ostringstream& _buf) const;
+
+ protected:
+  void marshalFromDTCImage( const char* _pBuffer, const unsigned int _size);
+  void marshalFromJSON(const boost::property_tree::ptree &_ptDTC);
 
  private:
   // Purposefully private and undefined ctors...
-  SectionHeader(const SectionHeader& obj);
-  SectionHeader& operator=(const SectionHeader& obj);
-};
+  DTC();
+  DTC(const DTC& obj);
+  DTC& operator=(const DTC& obj);
 
+ private:
+  DTCStringsBlock m_DTCStringsBlock;    // Block of property strings
+  FDTNode * m_pTopFDTNode;              // Top FDTNode
+};
 
 #endif
