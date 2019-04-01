@@ -24,26 +24,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @ingroup xma_app_intf
- * @file app/xmalogger.h
- * Logging facility used by XMA applications and plugins. 
-*/
 
 /**
- * @ingroup xma
- * @addtogroup xmalog xmalogger.h
- * @{
-*/
-
-/**
- * @typedef XmaLogLevelType
- * Describes the logging level associated with a log message.
-*/
-
-/**
- * @enum XmaLogLevelType
- * Describes the logging level associated with a log message.
+ * enum XmaLogLevelType - Describes the logging level associated with a log message.
 */
 typedef enum XmaLogLevelType
 {
@@ -54,39 +37,33 @@ typedef enum XmaLogLevelType
 } XmaLogLevelType;
 
 /**
- * @typedef XmaLoggerCallback
- * Describes the function signature for an XMA logger callback.
+ * typedef XmaLoggerCallback - Describes the function signature for an XMA logger callback.
 */
 typedef void (*XmaLoggerCallback)(char *msg); 
 
 /**
- * @brief Log a message
- *
- * This function logs a message to stdout, a file, or both depending on
+ * xma_logmsg() - This function logs a message to stdout, a file, or both depending on
  * how the logger is configured in the system configuration YAML file.
  * The log message includes the current time, logging level, a unique
  * name, and a message.
  *
- * @param level Logging level associated with the message
- * @param name  Pointer to a C string indicating the name of the entity
+ * @level: Logging level associated with the message
+ * @name:  Pointer to a C string indicating the name of the entity
  *              that is generating the log message
- * @param msg   Pointer to a compatible C format string
- * @param ...   Variable arguments used in conjunction with the
- *              C format string contained in the msg parameter
+ * @msg:   Pointer to a compatible C format string
+ * @...:   Variable arguments used in conjunction with the
+ * C format string contained in the msg parameter
  *
 */
 void
 xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
 
 /**
- * @brief Register a callback for XMA log msgs
- *
- * This function allows an XMA client to register a callback for all XMA log
+ * xma_logger_callback() - This function allows an XMA client to register a callback for all XMA log
  * messages that match the logging levels of equal or greater severity.  For
  * example, a level of XMA_INFO_LOG will match INFO, ERROR, and CRITICAL log
  * messages while a level of XMA_ERROR_LOG will match only ERROR and
  * CRITICAL messages.  
- *
  * The supplied callback is given a copy of the log message buffer.  This
  * means the client must free the buffer once the message has been consumed.
  * Failure to free the message will result in a memory-leak.  The log
@@ -97,15 +74,15 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
  * will impact performance.  To avoid performance impact, perform any output
  * in a separate thread or limit the log level to ERROR.
  *
- * @param callback Pointer to a callback function to receive log messages
- * @param level    The level of log messages to be sent to the callback
- *                 function.  All messages of equal or greater severity are 
- *                 forwarded to the callback function
+ * @callback: Pointer to a callback function to receive log messages
+ * @level:    The level of log messages to be sent to the callback
+ * function.  All messages of equal or greater severity are 
+ * forwarded to the callback function
 */
 void
 xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level);
 
-/** @} */
+
 #ifdef __cplusplus
 }
 #endif

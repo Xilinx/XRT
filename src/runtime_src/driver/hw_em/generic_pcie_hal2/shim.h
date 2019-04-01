@@ -28,6 +28,8 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
+#include "driver/common/scheduler.h"
+#include "driver/common/message.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -42,6 +44,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <tuple>
+#include <stdarg.h>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -92,6 +95,7 @@ using addr_type = uint64_t;
       void xclFreeBO(unsigned int boHandle);
       ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
       ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
+      static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
       //P2P Support
       int xclExportBO(unsigned int boHandle); 

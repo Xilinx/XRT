@@ -51,21 +51,30 @@ static ssize_t user_pf_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(user_pf);
 
-/* -live client contects-- */
+/* -live client contexts-- */
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int size;
+	int size = 0;
 	xuid_t *xclbin_id;
+	pid_t *plist = NULL;
+	u32 clients, i;
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	size = sprintf(buf,
-			   "xclbin:\t\t\t%pUb\noutstanding execs:\t%d\ntotal execs:\t\t%ld\ncontexts:\t\t%d\n",
-			   xclbin_id ? xclbin_id : 0,
-			   atomic_read(&xdev->outstanding_execs),
-			   atomic64_read(&xdev->total_execs),
-			   get_live_client_size(xdev));
+	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
+		xclbin_id ? xclbin_id : 0);
+	size += sprintf(buf + size, "outstanding execs:\t%d\n",
+		atomic_read(&xdev->outstanding_execs));
+	size += sprintf(buf + size, "total execs:\t\t%ld\n",
+		atomic64_read(&xdev->total_execs));
+
+	clients = get_live_clients(xdev, &plist);
+	size += sprintf(buf + size, "contexts:\t\t%d\n", clients);
+	size += sprintf(buf + size, "client pid:\n");
+	for (i = 0; i < clients; i++)
+		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
+	vfree(plist);
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -302,7 +311,7 @@ static ssize_t sw_chan_state_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
-	uint64_t ret;
+	uint64_t ret = 0;
 	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
 
 	return sprintf(buf, "0x%llx\n", ret);
@@ -315,7 +324,7 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
-	uint64_t ret;
+	uint64_t ret = 0;
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
