@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/sched.h>
 #include "sched_exec.h"
+#include "zocl_sk.h"
 
 /* #define SCHED_VERBOSE */
 
@@ -257,7 +258,7 @@ cu_masks(struct sched_cmd *cmd)
 {
 	struct start_kernel_cmd *sk;
 
-	if (opcode(cmd) != OP_START_KERNEL)
+	if (opcode(cmd) != OP_START_KERNEL && opcode(cmd) != OP_START_SKERNEL)
 		return 0;
 	sk = (struct start_kernel_cmd *)cmd->packet;
 	return 1 + sk->extra_cu_masks;
@@ -544,7 +545,7 @@ configure(struct sched_cmd *cmd)
 		exec->configured = 1;
 	}
 
-	for (i  = 0; i < exec->num_cus; i++) {
+	for (i = 0; i < exec->num_cus; i++) {
 		exec->cu_addr_phy[i] = cfg->data[i];
 		SCHED_DEBUG("++ configure cu(%d) at 0x%x\n", i,
 		    exec->cu_addr_phy[i]);
@@ -606,6 +607,120 @@ print_and_out:
 	DRM_INFO("  cu_shift(%d)", exec->cu_shift_offset);
 	DRM_INFO("  cu_base(0x%x)", exec->cu_base_addr);
 	DRM_INFO("  polling(%d)", exec->polling_mode);
+	return 0;
+}
+
+static int
+configure_soft_kernel(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	struct configure_sk_cmd *cfg;
+	u32 i;
+	struct soft_kernel_cmd *scmd;
+	int ret;
+
+	SCHED_DEBUG("-> configure_soft_kernel ");
+
+	cfg = (struct configure_sk_cmd *)(cmd->packet);
+
+	mutex_lock(&sk->sk_lock);
+
+	/* Check if the CU configuration exceeds maximum CU number */
+	if (cfg->start_cuidx + cfg->num_cus > MAX_CU_NUM) {
+		DRM_WARN("Soft kernel CU %d exceed maximum cu number %d.\n",
+		    cfg->start_cuidx + cfg->num_cus, MAX_CU_NUM);
+		mutex_unlock(&sk->sk_lock);
+		return -EINVAL;
+	}
+
+	/* Check if any CU is configured already */
+	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++)
+		if (sk->sk_cu[i]) {
+			DRM_WARN("Soft Kernel CU %d is configured already.\n",
+			    i);
+			mutex_unlock(&sk->sk_lock);
+			return -EINVAL;
+		}
+
+	sk->sk_ncus += cfg->num_cus;
+
+	mutex_unlock(&sk->sk_lock);
+
+	/* NOTE: any failure after this point needs to resume sk_ncus */
+
+	/* Fill up a soft kernel command and add to soft kernel command list */
+	scmd = kmalloc(sizeof (struct soft_kernel_cmd), GFP_KERNEL);
+	if (!scmd) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	scmd->skc_packet = (struct sched_packet *)cfg;
+
+	mutex_lock(&sk->sk_lock);
+	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
+	mutex_unlock(&sk->sk_lock);
+
+	/* start CU by waking up Soft Kernel handler */
+	wake_up_interruptible(&sk->sk_wait_queue);
+
+	SCHED_DEBUG("<- ert_configure_cu\n");
+
+	return 0;
+
+fail:
+	mutex_lock(&sk->sk_lock);
+	sk->sk_ncus -= cfg->num_cus;
+	mutex_unlock(&sk->sk_lock);
+	return ret;
+}
+
+static int
+unconfigure_soft_kernel(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_cu *scu;
+	struct unconfigure_sk_cmd *cfg;
+	u32 i;
+
+	SCHED_DEBUG("-> configure_soft_kernel ");
+
+	cfg = (struct unconfigure_sk_cmd *)(cmd->packet);
+
+	mutex_lock(&sk->sk_lock);
+
+	/* Check if the CU unconfiguration exceeds maximum CU number */
+	if (cfg->start_cuidx + cfg->num_cus > MAX_CU_NUM) {
+		DRM_WARN("Soft kernel CU %d exceed maximum cu number %d.\n",
+		    cfg->start_cuidx + cfg->num_cus, MAX_CU_NUM);
+		mutex_unlock(&sk->sk_lock);
+		return -EINVAL;
+	}
+
+	/* Check if any CU is not configured */
+	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++)
+		if (!sk->sk_cu[i]) {
+			DRM_WARN("Soft Kernel CU %d is not configured.\n", i);
+			mutex_unlock(&sk->sk_lock);
+			return -EINVAL;
+		}
+
+	sk->sk_ncus -= cfg->num_cus;
+
+	/*
+	 * For each soft kernel, we set the RELEASE flag and wake up
+	 * waiting thread to release soft kenel.
+	 */
+	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++) {
+		scu = sk->sk_cu[i];
+		scu->sc_flags |= ZOCL_SCU_FLAGS_RELEASE;
+		up(&scu->sc_sem);
+	}
+
+	mutex_unlock(&sk->sk_lock);
+
 	return 0;
 }
 
@@ -733,6 +848,91 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 	}
 	SCHED_DEBUG("<- cu_done returns 0\n");
 	return false;
+}
+
+inline int
+scu_done(struct drm_device *dev, unsigned int cu_idx)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
+
+	SCHED_DEBUG("-> scu_done(,%d) checks scu at address 0x%p\n",
+		    cu_idx, virt_addr);
+	/* We simulate hard CU here.
+	 * done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
+	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
+	 * checking for 0x10 is sufficient.
+	 */
+	mutex_lock(&sk->sk_lock);
+	if (*virt_addr & 2) {
+		unsigned int mask_idx = cu_mask_idx(cu_idx);
+		unsigned int pos = cu_idx_in_mask(cu_idx);
+
+		zdev->exec->scu_status[mask_idx] ^= 1 << pos;
+		*virt_addr &= ~2;
+		mutex_unlock(&sk->sk_lock);
+		SCHED_DEBUG("<- scu_done returns 1\n");
+		return true;
+	}
+	mutex_unlock(&sk->sk_lock);
+	SCHED_DEBUG("<- scu_done returns 0\n");
+	return false;
+}
+
+inline int
+scu_configure_done(struct sched_cmd *cmd)
+{
+	struct drm_device *dev = cmd->ddev;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	struct configure_sk_cmd *cfg;
+	int i;
+
+	cfg = (struct configure_sk_cmd *)(cmd->packet);
+
+	mutex_lock(&sk->sk_lock);
+
+	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++)
+		if (sk->sk_cu[i] == NULL) {
+			/*
+			 * If we have any unconfigured soft kernel CU, this
+			 * configure command is not completed yet.
+			 */
+			mutex_unlock(&sk->sk_lock);
+			return false;
+		}
+
+	mutex_unlock(&sk->sk_lock);
+
+	return true;
+}
+
+inline int
+scu_unconfig_done(struct sched_cmd *cmd)
+{
+	struct drm_device *dev = cmd->ddev;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	struct unconfigure_sk_cmd *cfg;
+	int i;
+
+	cfg = (struct unconfigure_sk_cmd *)(cmd->packet);
+
+	mutex_lock(&sk->sk_lock);
+	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++)
+		if (sk->sk_cu[i]) {
+			/*
+			 * If we have any configured soft kernel CU, this
+			 * unconfigure command is not completed yet.
+			 */
+			mutex_unlock(&sk->sk_lock);
+			return false;
+		}
+
+	mutex_unlock(&sk->sk_lock);
+
+	return true;
 }
 
 /**
@@ -1053,10 +1253,12 @@ reset_all(void)
 		recycle_cmd(cmd);
 	}
 }
+
 /**
  * get_free_cu() - get index of first available CU per command cu mask
  *
- * @cmd: command containing CUs to check for availability
+ * @cmd:    command containing CUs to check for availability
+ * @is_scu: 1 to get free soft CU, 0 to get free CU
  *
  * This function is called kernel software scheduler mode only, in embedded
  * scheduler mode, the hardware scheduler handles the commands directly.
@@ -1064,7 +1266,7 @@ reset_all(void)
  * Return: Index of free CU, -1 of no CU is available.
  */
 static int
-get_free_cu(struct sched_cmd *cmd)
+get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 {
 	int mask_idx = 0;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
@@ -1073,11 +1275,16 @@ get_free_cu(struct sched_cmd *cmd)
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmd->packet->data[mask_idx]; /* skip header */
-		u32 busy_mask = zdev->exec->cu_status[mask_idx];
+		u32 busy_mask = cu_type == ZOCL_SOFT_CU ?
+		    zdev->exec->scu_status[mask_idx]
+		    : zdev->exec->cu_status[mask_idx];
 		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
 
 		if (cu_idx >= 0) {
-			zdev->exec->cu_status[mask_idx] ^= 1 << cu_idx;
+			if (cu_type == ZOCL_SOFT_CU)
+				zdev->exec->scu_status[mask_idx] ^= 1 << cu_idx;
+			else
+				zdev->exec->cu_status[mask_idx] ^= 1 << cu_idx;
 			SCHED_DEBUG("<- get_free_cu returns %d\n",
 				    cu_idx_from_mask(cu_idx, mask_idx));
 			return cu_idx_from_mask(cu_idx, mask_idx);
@@ -1150,6 +1357,43 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 	iowrite32(0x1, virt_addr);
 
 	SCHED_DEBUG("<- ert_configure_cu\n");
+}
+
+static int
+ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_cu *scu;
+	u32 i, size = regmap_size(cmd);
+	u32 *cu_regfile;
+	struct start_kernel_cmd *skc = (struct start_kernel_cmd *)cmd->packet;
+
+	SCHED_DEBUG("-> ert_configure_scu ");
+
+	mutex_lock(&sk->sk_lock);
+	scu = sk->sk_cu[cu_idx];
+	if (!scu) {
+		DRM_ERROR("Error: soft cu does not exist.\n");
+		mutex_unlock(&sk->sk_lock);
+		return -ENXIO;
+	}
+
+	cu_regfile = scu->sc_vregs;
+
+	SCHED_DEBUG("cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
+		    cu_idx, cu_regfile, size);
+
+	/* Copy payload to soft CU register */
+	for (i = 1; i < size; ++i)
+		cu_regfile[i] = *(skc->data + skc->extra_cu_masks + i);
+
+	up(&scu->sc_sem);
+	mutex_unlock(&sk->sk_lock);
+
+	SCHED_DEBUG("<- ert_configure_scu\n");
+
+	return 0;
 }
 
 /**
@@ -1435,12 +1679,15 @@ penguin_query(struct sched_cmd *cmd)
 
 	SCHED_DEBUG("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
+
 	case OP_START_CU:
 		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
 			break;
+
 	case OP_CONFIGURE:
 		mark_cmd_complete(cmd);
 		break;
+
 	default:
 		SCHED_DEBUG("unknow op");
 	}
@@ -1474,7 +1721,7 @@ penguin_submit(struct sched_cmd *cmd)
 		return false;
 
 	/* extract cu list */
-	cmd->cu_idx = get_free_cu(cmd);
+	cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 	if (cmd->cu_idx < 0)
 		return false;
 
@@ -1516,12 +1763,31 @@ ps_ert_query(struct sched_cmd *cmd)
 
 	SCHED_DEBUG("-> ps_ert_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
+
+	case OP_CONFIG_SKERNEL:
+		if (scu_configure_done(cmd))
+			mark_cmd_complete(cmd);
+		break;
+
+	case OP_UNCONFIG_SKERNEL:
+		if (scu_unconfig_done(cmd))
+			mark_cmd_complete(cmd);
+		break;
+
+	case OP_START_SKERNEL:
+		if (scu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+			mark_cmd_complete(cmd);
+		break;
+
 	case OP_START_CU:
 		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
 			break;
+		/* pass through */
+
 	case OP_CONFIGURE:
 		mark_cmd_complete(cmd);
 		break;
+
 	default:
 		SCHED_DEBUG("unknow op");
 	}
@@ -1544,29 +1810,68 @@ static int
 ps_ert_submit(struct sched_cmd *cmd)
 {
 	SCHED_DEBUG("-> ps_ert_submit()\n");
-	if (opcode(cmd) == OP_CONFIGURE) {
-		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
-		SCHED_DEBUG("<- ps_ert_submit (configure)\n");
-		return true;
-	}
-
-	if (opcode(cmd) != OP_START_CU)
-		return false;
-
-	/* extract cu list */
-	cmd->cu_idx = get_free_cu(cmd);
-	if (cmd->cu_idx < 0)
-		return false;
 
 	cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 	if (cmd->slot_idx < 0)
 		return false;
 
-	/* found free cu, transfer regmap and start it */
-	ert_configure_cu(cmd, cmd->cu_idx);
+	switch (opcode(cmd)) {
+	case OP_CONFIGURE:
+		SCHED_DEBUG("<- ps_ert_submit (configure)\n");
+		break;
 
-	SCHED_DEBUG("<- ps_ert_submit() cu_idx=%d slot=%d cq_slot=%d\n",
-		    cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
+	case OP_CONFIG_SKERNEL:
+		SCHED_DEBUG("<- ps_ert_submit (configure soft kernel)\n");
+		if (configure_soft_kernel(cmd)) {
+			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			return false;
+		}
+		break;
+
+	case OP_UNCONFIG_SKERNEL:
+		SCHED_DEBUG("<- ps_ert_submit (unconfigure soft kernel)\n");
+		if (unconfigure_soft_kernel(cmd)) {
+			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			return false;
+		}
+		break;
+
+	case OP_START_SKERNEL:
+		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
+		if (cmd->cu_idx < 0) {
+			DRM_ERROR("Can not find free soft kernel slot.");
+			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			return false;
+		}
+		if (ert_configure_scu(cmd, cmd->cu_idx)) {
+			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			return false;
+		}
+
+		SCHED_DEBUG("<- ps_ert_submit() cu_idx=%d slot=%d cq_slot=%d\n",
+			    cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
+		break;
+
+	case OP_START_CU:
+		/* extract cu list */
+		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
+		if (cmd->cu_idx < 0) {
+			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			return false;
+		}
+
+		/* found free cu, transfer regmap and start it */
+		ert_configure_cu(cmd, cmd->cu_idx);
+
+		SCHED_DEBUG("<- ps_ert_submit() cu_idx=%d slot=%d cq_slot=%d\n",
+			    cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
+		break;
+		
+	default:
+		release_slot_idx(cmd->ddev, cmd->slot_idx);
+		return false;
+	}
+
 	return true;
 }
 
@@ -1650,17 +1955,36 @@ get_packet_size(struct sched_packet *packet)
 
 	SCHED_DEBUG("-> get_packet_size");
 	switch (packet->opcode) {
+
 	case OP_CONFIGURE:
 		SCHED_DEBUG("configure cmd");
 		payload = 5 + packet->count;
 		break;
+
+	case OP_CONFIG_SKERNEL:
+		SCHED_DEBUG("configure soft kernel cmd");
+		payload = packet->count;
+		break;
+
+	case OP_UNCONFIG_SKERNEL:
+		SCHED_DEBUG("unconfigure soft kernel cmd");
+		payload = packet->count;
+		break;
+
+	case OP_START_SKERNEL:
+		SCHED_DEBUG("start Soft CU/Kernel cmd");
+		payload = packet->count;
+		break;
+
 	case OP_START_CU:
 		SCHED_DEBUG("start CU/Kernel cmd");
 		payload = packet->count;
 		break;
+
 	case OP_STOP:
 	case OP_ABORT:
 		SCHED_DEBUG("abort or stop cmd");
+
 	default:
 		payload = 0;
 	}
@@ -1848,8 +2172,15 @@ sched_init_exec(struct drm_device *drm)
 
 	init_scheduler_thread();
 
-	if (zdev->ert)
+	if (zdev->ert) {
+		for (i = 0; i < MAX_U32_CU_MASKS; ++i)
+			exec_core->scu_status[i] = 0;
+
+		 /* Initialize soft kernel */
+		zocl_init_soft_kernel(drm);
+
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
+	}
 
 	SCHED_DEBUG("<- sched_init_exec\n");
 	return 0;
@@ -1874,6 +2205,7 @@ int sched_fini_exec(struct drm_device *drm)
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
+
 	fini_scheduler_thread();
 	SCHED_DEBUG("<- sched_fini_exec\n");
 

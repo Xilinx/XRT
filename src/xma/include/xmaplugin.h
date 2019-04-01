@@ -138,7 +138,8 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
- *  @brief Prepare for writing kernel register(s)
+ *  
+ * xma_plg_register_write() - Write kernel register(s)
  *
  *  This function writes the data provided and sets the specified AXI_Lite
  *  register(s) exposed by a kernel. The base offset of 0 is the beginning
@@ -251,7 +252,8 @@ int32_t xma_plg_register_write(XmaHwSession     s_handle,
                                size_t           offset) __attribute__ ((deprecated));
 
 /**
- *  xma_plg_register_read() - Read kernel registers
+ *  
+ * xma_plg_register_read() - Read kernel registers
  *
  *  This function reads the register(s) exposed by the kernel. The base offset
  *  of 0 is the beginning of the kernels AXI_Lite memory map as this function
@@ -274,8 +276,11 @@ int32_t xma_plg_register_read(XmaHwSession     s_handle,
                               size_t           offset) __attribute__ ((deprecated));
 
 /**
- *  xma_plg_register_dump() - This function dumps the registers for a kernel 
- * up to the number of words specified and prints them with the offset and value.
+ *  
+ * xma_plg_register_dump() - Dump kernel registers
+ *
+ *  This function dumps the registers for a kernel up to the number of words
+ *  specified and prints them with the offset and value.
  *
  *  @s_handle:  The session handle associated with this plugin instance
  *  @num_words: Number of 32-bit words to dump

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018, Xilinx Inc
+ *  Copyright (C) 2019, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -187,6 +187,68 @@ struct ert_configure_cmd {
 };
 
 /**
+ * struct ert_configure_sk_cmd: ERT configure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload (13 DWords)
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ * @sk_size:         size in bytes of soft kernel image
+ * @sk_name:         symbol name of soft kernel
+ * @sk_addr:         soft kernel image's physical address (little endian)
+ */
+struct ert_configure_sk_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  /* payload */
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+  uint32_t sk_size;		/* soft kernel size */
+  uint32_t sk_name[8];		/* soft kernel name */
+  uint64_t sk_addr;
+};
+
+/**
+ * struct ert_unconfigure_sk_cmd: ERT unconfigure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ */
+struct ert_unconfigure_sk_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  /* payload */
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+};
+
+/**
  * struct ert_abort_cmd: ERT abort command format.
  *
  * @idx: The slot index of command to abort
@@ -235,6 +297,9 @@ enum ert_cmd_state {
  * @ERT_CU_STAT:        get stats about CU execution
  * @ERT_START_COPYBO:   start KDMA CU or P2P, may be converted to ERT_START_CU
  *                      before cmd reach to scheduler, short-term hack
+ * @ERT_SK_CONFIG:      configure soft kernel
+ * @ERT_SK_START:       start a soft kernel
+ * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
  */
 enum ert_cmd_opcode {
   ERT_START_CU      = 0,
@@ -245,6 +310,9 @@ enum ert_cmd_opcode {
   ERT_EXEC_WRITE    = 5,
   ERT_CU_STAT       = 6,
   ERT_START_COPYBO  = 7,
+  ERT_SK_CONFIG     = 8,
+  ERT_SK_START      = 9,
+  ERT_SK_UNCONFIG   = 10,
 };
 
 /**
