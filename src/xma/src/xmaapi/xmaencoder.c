@@ -440,12 +440,17 @@ void xma_enc_session_statsfile_write(XmaEncoderStats *stats)
             stats->encoded_frame_count,
             stats->encoded_bit_count);
 
-    // Always re-write the entire file
-    lseek(stats->fd, 0, SEEK_SET);
-    rc = write(stats->fd, stat_buf, strlen(stat_buf)); 
-    if (rc < 0)
+    if (stats->fd <= 0) {
         xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD, 
-                   "Write to statsfile failed\n");
+                   "statsfile failed to open\n");
+    } else {
+        // Always re-write the entire file
+        lseek(stats->fd, 0, SEEK_SET);
+        rc = write(stats->fd, stat_buf, strlen(stat_buf)); 
+        if (rc < 0)
+            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD, 
+                    "Write to statsfile failed\n");
+    }
 }
 
 void 
