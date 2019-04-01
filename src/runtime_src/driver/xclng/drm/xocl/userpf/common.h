@@ -175,7 +175,7 @@ void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
 #endif
 
-uint get_live_client_size(struct xocl_dev *xdev);
+u32 get_live_clients(struct xocl_dev *xdev, pid_t **pid_list);
 void reset_notify_client_ctx(struct xocl_dev *xdev);
 
 void get_pcie_link_info(struct xocl_dev	*xdev,
