@@ -689,6 +689,7 @@ static struct mailbox_msg *alloc_msg(void *buf, size_t len, int ttl)
 	msg->mbm_data = newbuf;
 	msg->mbm_len = len;
 	msg->mbm_ttl = ttl;
+	msg->mbm_timer_on = false;
 	msg->mbm_chan_sw = false;
 	init_completion(&msg->mbm_complete);
 
