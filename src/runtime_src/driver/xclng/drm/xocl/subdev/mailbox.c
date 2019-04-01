@@ -1158,8 +1158,11 @@ static void do_hw_tx(struct mailbox_channel *ch)
 		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
 		chan_msg_done(ch, 0);
 
-	if (!ch->mbc_cur_msg)
+	if (!ch->mbc_cur_msg) {
 		ch->mbc_cur_msg = chan_msg_dequeue(ch, INVALID_MSG_ID);
+		if (ch->mbc_cur_msg)
+			ch->mbc_cur_msg->mbm_timer_on = true;
+	}
 
 	if (ch->mbc_cur_msg) {
 		if (ch->mbc_cur_msg->mbm_chan_sw)
