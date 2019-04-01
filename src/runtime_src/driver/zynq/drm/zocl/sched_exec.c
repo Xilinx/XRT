@@ -529,11 +529,23 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		if (is_valid_apts(zdev, cfg->data[i]) == -EINVAL) {
+		/* If it is in ert mode, there is no XCLBIN parsed now
+		 * Trust configuration from host. Once host download XCLBIN to
+		 * PS side, verify host configuration in the same way.
+		 *
+		 * Now the zdev->ert is heavily used in configure()
+		 * Need cleanup.
+		 */
+		if (!zdev->ert && is_valid_apts(zdev, cfg->data[i]) < 0) {
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
 		}
-		exec->cu_addr_phy[i] = cfg->data[i];
+		/* For MPSoC as PCIe device, the CU address for PS = base
+		 * address + PCIe offset.
+		 *
+		 * For Pure MPSoC device, the base address is always 0
+		 */
+		exec->cu_addr_phy[i] = zdev->res_start + cfg->data[i];
 		exec->cu_addr_virt[i] = ioremap(exec->cu_addr_phy[i], CU_SIZE);
 		if (!exec->cu_addr_virt[i]) {
 			write_unlock(&zdev->attr_rwlock);
@@ -1856,7 +1868,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		SCHED_DEBUG("<- ps_ert_submit() cu_idx=%d slot=%d cq_slot=%d\n",
 			    cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
 		break;
-		
+
 	default:
 		release_slot_idx(cmd->ddev, cmd->slot_idx);
 		return false;

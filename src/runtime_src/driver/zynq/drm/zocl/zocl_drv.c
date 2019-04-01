@@ -557,13 +557,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (!zdev)
 		return -ENOMEM;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	/* If res is NULL, skip */
-	if (res)
-		zdev->res_start = res->start;
-
 	/* Record and get IRQ number */
-	for (index = 0; index < MAX_CUS; index++) {
+	for (index = 0; index < MAX_CU_NUM; index++) {
 		irq = platform_get_irq(pdev, index);
 		if (irq < 0)
 			break;
@@ -586,6 +581,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	subdev = find_pdev("80180000.ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found -> %p\n", subdev);
+		/* Trust device tree for now, but a better place should be
+		 * feature rom.
+		 */
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res) {
+			DRM_ERROR("The base address of CU is not found or 0\n");
+			return -EINVAL;
+		}
+
+		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 

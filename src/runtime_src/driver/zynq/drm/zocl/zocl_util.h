@@ -28,7 +28,7 @@
 #define _8KB	0x2000
 #define _64KB	0x10000
 
-#define MAX_CUS 128
+#define MAX_CU_NUM 128
 #define CU_SIZE _64KB
 
 /* Now only for CUs and Debug IPs */
@@ -66,7 +66,7 @@ struct drm_zocl_dev {
 	/* Record start address, this is only for MPSoC as PCIe platform */
 	phys_addr_t		 res_start;
 	unsigned int		 cu_num;
-	unsigned int             irq[MAX_CUS];
+	unsigned int             irq[MAX_CU_NUM];
 	struct sched_exec_core  *exec;
 
 	struct mem_topology	*topology;
