@@ -97,6 +97,13 @@ int zocl_execbuf_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_sk_create_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+int zocl_sk_report_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+
 void zocl_describe(const struct drm_zocl_bo *obj);
 
 void zocl_free_userptr_bo(struct drm_gem_object *obj);

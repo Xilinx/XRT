@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,13 +34,6 @@
 // Forward declarations - use these instead whenever possible...
 
 // ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- * Section:
- *
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
 
 class Section {
  public:

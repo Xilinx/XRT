@@ -1017,12 +1017,12 @@ int xcldev::device::validate(bool quick)
     std::cout << "INFO: Checking PCIE link status: " << std::flush;
     if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
         m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
-        std::cout << "FAILED" << std::endl;
-        std::cout << "WARNING: Card trained to lower spec. "
-            << "Expect: Gen" << m_devinfo.mPCIeLinkSpeedMax << "x"
-            << m_devinfo.mPCIeLinkWidthMax
-            << ", Current: Gen" << m_devinfo.mPCIeLinkSpeed << "x"
-            << m_devinfo.mPCIeLinkWidth
+        std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
+        std::cout << "WARNING: Ensure Card is plugged in to Gen" 
+            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
+            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
+            << m_devinfo.mPCIeLinkWidth << "\n         "
+            << "Lower performance may be experienced"
             << std::endl;
         retVal = 1;
         // Non-fatal, continue validating.
