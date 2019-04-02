@@ -361,7 +361,7 @@ private:
     // Performance monitoring helper functions
     bool isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion);
     unsigned getBankCount();
-    signed cmpIPVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
+    signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
     uint64_t getHostTraceTimeNsec();
     uint64_t getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum);
     uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);

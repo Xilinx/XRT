@@ -120,7 +120,7 @@ namespace xocl {
    * Returns  0 if Version2 = Version1
    * Returns -1 if Version2 < Version1
    */
-  signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+  signed XOCLShim::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
     if (major2 > major1)
       return 1;
     else if (major2 < major1)
