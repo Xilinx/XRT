@@ -32,13 +32,10 @@ namespace xdp {
 
   // Constructor
   TraceParser::TraceParser(XDPPluginI* Plugin)
-    : NUM_TRAIN(3),
-      PCIE_DELAY_OFFSET_MSEC(0.25),
+    : PCIE_DELAY_OFFSET_MSEC(0.25),
       mStartTimeNsec(0),
       mPluginHandle(Plugin)
   {
-    mTag = 0X586C0C6C;
-
     mNumTraceEvents = 0;
     // NOTE: setting this to 0x80000 causes runtime crash when running
     // HW emulation on 070_max_wg_size or 079_median1
@@ -55,6 +52,8 @@ namespace xdp {
     // Default bit width of global memory defined at APM monitoring slaves
     mGlobalMemoryBitWidth = XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH;
 
+    mCuEventID = 0;
+
     // Since device timestamps are in cycles and host timestamps are in msec,
     // then the slope of the line to convert from device to host timestamps
     // is in msec/cycle
@@ -66,8 +65,6 @@ namespace xdp {
 
   // Destructor
   TraceParser::~TraceParser() {
-    mDeviceFirstTimestamp.clear();
-
     // Clear queues (i.e., swap with an empty one)
     std::queue<uint64_t> empty64;
     std::queue<uint32_t> empty32;
@@ -77,10 +74,6 @@ namespace xdp {
       std::swap(mHostWriteStarts[i], empty64);
       std::swap(mReadStarts[i], empty64);
       std::swap(mHostReadStarts[i], empty64);
-      std::swap(mWriteLengths[i], empty32);
-      std::swap(mReadLengths[i], empty32);
-      std::swap(mWriteBytes[i], empty16);
-      std::swap(mReadBytes[i], empty16);
     }
     for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
       mStreamTxStarts[i] = std::queue<uint64_t>();
@@ -101,22 +94,35 @@ namespace xdp {
       xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
     if (mNumTraceEvents >= mMaxTraceEvents || traceVector.mLength == 0)
       return;
+
     // Hardware Emulation Trace
     bool isHwEmu = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM);
     if (isHwEmu) {
       logTraceHWEmu(deviceName, traceVector, resultVector);
       return;
     }
+
     XDP_LOG("[profile_device] Logging %u device trace samples (total = %ld)...\n",
       traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;
-    if (traceVector.mLength >= 8192)
-      mPluginHandle->sendMessage(
+
+    // detect if FIFO is full
+    {
+      auto fifoProperty = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_FIFO, deviceName, 0);
+      auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+      if (traceVector.mLength >= fifoSize)
+        mPluginHandle->sendMessage(
 "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
 Please use 'coarse' option for data transfer trace or turn off Stall profiling");
+    }
 
     uint64_t timestamp = 0;
     uint64_t startTime = 0;
+    // x, y coordinates used for clock training
+    double y1=0;
+    double y2=0;
+    double x1=0;
+    double x2=0;
     DeviceTrace kernelTrace;
     // Parse Start
     for (unsigned int i=0; i < traceVector.mLength; i++) {
@@ -128,10 +134,6 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       // Clock Training
       // ***************
       // clock training relation is linear within small durations (1 sec)
-      double y1=0;
-      double y2=0;
-      double x1=0;
-      double x2=0;
       if (i == 0) {
         y1 = static_cast <double> (trace.HostTimestamp);
         x1 = static_cast <double> (timestamp);
@@ -230,6 +232,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               kernelTrace.StartTime = startTime;
               kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
               kernelTrace.TraceStart = kernelTrace.Start;
+              kernelTrace.EventID = mCuEventID++;
               resultVector.insert(resultVector.begin(), kernelTrace);
             }
           }
@@ -409,8 +412,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       prevHostTimestamp = trace.HostTimestamp;
 
       uint32_t s = 0;
-      bool SPMPacket = (trace.TraceID < 61);
-      bool SAMPacket = (trace.TraceID >= 64 && trace.TraceID <= 94);
+      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_SPM);
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM_HWEM);
       bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
 
       if (SPMPacket) {

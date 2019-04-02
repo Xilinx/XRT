@@ -217,9 +217,12 @@ namespace xdp {
       double cuRunTimeAvgMsec = (double) (cuExecCycles / deviceCyclesMsec) / cuExecCount;
       double cuMaxExecCyclesMsec = (double) cuMaxExecCycles / deviceCyclesMsec;
       double cuMinExecCyclesMsec = (double) cuMinExecCycles / deviceCyclesMsec;
+      uint32_t isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? 1 : 0;
       //XDP_LOG("[RT_PROFILE] cuName : %s exec cycles : %d runtime %f \n", cuName.c_str(), cuExecCycles, cuRunTimeMsec);
-      mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec, cuRunTimeAvgMsec, cuMaxExecCyclesMsec,
-                                            cuMinExecCyclesMsec, cuExecCount, kernelClockMhz, cuMaxParallelIter);
+      mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec,
+                                            cuRunTimeAvgMsec, cuMaxExecCyclesMsec,
+                                            cuMinExecCyclesMsec, cuExecCount, kernelClockMhz,
+                                            isDataflow, cuMaxParallelIter);
     }
 #ifdef XDP_VERBOSE
     if (this->isTimelineTraceFileOn()) {

@@ -85,7 +85,7 @@ namespace xdp {
   void TimeStats::logStats(double totalTimeStat, double avgTimeStat,
                           double maxTimeStat, double minTimeStat,
                           uint32_t totalCalls, uint32_t clockFreqMhz,
-                          uint64_t metadata)
+                          uint32_t flags, uint64_t metadata)
   {
     StartTime = 0;
     EndTime = totalTimeStat;
@@ -98,6 +98,7 @@ namespace xdp {
       MinTime = minTimeStat;
     NoOfCalls = totalCalls;
     ClockFreqMhz = clockFreqMhz;
+    Flags = flags;
   }
 
   //

@@ -434,7 +434,7 @@ namespace xdp {
     auto cuName = name.substr(fourth_index+1);
     auto deviceName = name.substr(0, first_index);
     auto maxParallelIter = stats.getMetadata();
-    std::string isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? "Yes" : "No";
+    std::string isDataflow = stats.getFlags() ? "Yes" : "No";
     double speedup = (stats.getAveTime() * stats.getNoOfCalls()) / stats.getTotalTime();
     std::string speedup_string = std::to_string(speedup) + "x";
 

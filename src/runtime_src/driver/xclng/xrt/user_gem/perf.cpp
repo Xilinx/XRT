@@ -208,6 +208,8 @@ namespace xocl {
       return static_cast<uint32_t>(mPerfmonProperties[slotnum]);
     if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
       return static_cast<uint32_t>(mStreammonProperties[slotnum]);
+    if (type == XCL_PERF_MON_FIFO)
+      return static_cast<uint32_t>(mTraceFifoProperties);
     return 0;
   }
 
@@ -928,7 +930,7 @@ namespace xocl {
     // ******************************
     static unsigned long long firstTimestamp;
     xclTraceResults results = {};
-    uint64_t previousTs = 0;
+    uint64_t previousTimestamp = 0;
     for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
       uint64_t temp = 0;
@@ -992,10 +994,10 @@ namespace xocl {
         mLogStream << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
         mLogStream << "Error : " << static_cast<int>(results.Error) << "   ";
         mLogStream << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
-        mLogStream << "Interval : " << results.Timestamp - previousTs << "   ";
+        mLogStream << "Interval : " << results.Timestamp - previousTimestamp << "   ";
         mLogStream << std::endl;
+        previousTimestamp = results.Timestamp;
       }
-      previousTs = results.Timestamp;
     }
 
     return size;

@@ -112,9 +112,8 @@ namespace xdp {
       }
 
     private:
-      unsigned int mTag;
-      const int NUM_TRAIN;
       const double PCIE_DELAY_OFFSET_MSEC;
+      uint32_t mCuEventID;
       uint32_t mGlobalMemoryBitWidth;
       uint32_t mTraceSamplesThreshold;
       uint32_t mSampleIntervalMsec;
@@ -136,17 +135,10 @@ namespace xdp {
       uint8_t mAccelMonStartedEvents[XSAM_MAX_NUMBER_SLOTS] = { 0 };
       uint64_t mPerfMonLastTranx[XSPM_MAX_NUMBER_SLOTS]     = { 0 };
       uint64_t mAccelMonLastTranx[XSAM_MAX_NUMBER_SLOTS]    = { 0 };
-      std::set<std::string> mDeviceFirstTimestamp;
-      std::vector<uint32_t> mDeviceTrainVector;
-      std::vector<uint64_t> mHostTrainVector;
       std::queue<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint32_t> mWriteLengths[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint32_t> mReadLengths[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint16_t> mWriteBytes[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint16_t> mReadBytes[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];

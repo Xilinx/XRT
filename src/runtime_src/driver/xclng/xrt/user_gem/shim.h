@@ -381,6 +381,7 @@ private:
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;
     bool mIsDeviceProfiling = false;
+    uint8_t mTraceFifoProperties = 0;
     uint64_t mPerfMonFifoCtrlBaseAddress = 0;
     uint64_t mPerfMonFifoReadBaseAddress = 0;
     uint64_t mTraceFunnelAddress = 0;
