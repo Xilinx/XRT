@@ -308,7 +308,7 @@ static void xdev_unmap_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	}
 
 	if (xdev->stm_regs) {
-		pci_iounmap(pdev, xdev->stm_regs);
+		iounmap(xdev->stm_regs);
 		xdev->stm_regs = NULL;
 	}
 }
@@ -348,16 +348,18 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 #endif
 	{
 		u32 rev;
+		resource_size_t bar_start;
 
-		map_len = pci_resource_len(pdev, STM_BAR);
-		xdev->stm_regs = pci_iomap(pdev, STM_BAR, map_len);
+		bar_start = pci_resource_start(pdev, STM_BAR);
+		xdev->stm_regs = ioremap_nocache(bar_start + STM_REG_BASE,
+				4096);
 		if (!xdev->stm_regs) {
 			pr_warn("%s unable to map bar %d.\n",
 				xdev->conf.name, STM_BAR);
 			return -EINVAL;
 		}
 
-		rev = readl(xdev->stm_regs + STM_REG_BASE + STM_REG_REV);
+		rev = readl(xdev->stm_regs + STM_REG_REV);
 		if ((((rev >> 24) & 0xFF)!= 'S') ||
 			(((rev >> 16) & 0xFF) != 'T') ||
 			(((rev >> 8) & 0xFF) != 'M')) {
@@ -758,12 +760,11 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 
 	/* program STM port map */
 	if (xdev->stm_en) {
-		u32 v = readl(xdev->stm_regs + STM_REG_BASE +
-			      STM_REG_H2C_MODE);
+		u32 v = readl(xdev->stm_regs + STM_REG_H2C_MODE);
 		v &= 0x0000FFFF;
 		v |= (STM_PORT_MAP << S_STM_PORT_MAP);
 		v |= F_STM_EN_STMA_BKCHAN;
-		writel(v, xdev->stm_regs + STM_REG_BASE + STM_REG_H2C_MODE);
+		writel(v, xdev->stm_regs + STM_REG_H2C_MODE);
 	}
 
 #ifndef __QDMA_VF__

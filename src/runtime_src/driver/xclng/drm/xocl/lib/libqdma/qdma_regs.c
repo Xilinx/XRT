@@ -674,7 +674,7 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		if (op == STM_CSR_CMD_WR) {
 			switch (addr) {
 			case STM_IND_ADDR_Q_CTX_H2C:
-				reg = STM_REG_BASE + STM_REG_IND_CTXT_DATA_BASE;
+				reg = STM_REG_IND_CTXT_DATA_BASE;
 
 				for (i = 0; i < cnt; i++,
 						reg += QDMA_REG_SZ_IN_BYTES) {
@@ -685,12 +685,12 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				pr_debug("%s: data[5] for h2c-ctxt is: 0x%x\n",
 					 __func__, data[5]);
 				/* write context valid bit */
-				writel(data[5], xdev->stm_regs + STM_REG_BASE +
+				writel(data[5], xdev->stm_regs +
 				       STM_REG_IND_CTXT_DATA5);
 				break;
 
 			case STM_IND_ADDR_Q_CTX_C2H:
-				reg = STM_REG_BASE + STM_REG_IND_CTXT_DATA3;
+				reg = STM_REG_IND_CTXT_DATA3;
 
 				for (i = 0; i < cnt; i++,
 						reg += QDMA_REG_SZ_IN_BYTES) {
@@ -701,13 +701,12 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				pr_debug("%s: data[5] for c2h-ctxt is: 0x%x\n",
 					 __func__, data[5]);
 				/* write context valid bit */
-				writel(data[5], xdev->stm_regs + STM_REG_BASE +
+				writel(data[5], xdev->stm_regs +
 				       STM_REG_IND_CTXT_DATA5);
 				break;
 
 			case STM_IND_ADDR_H2C_MAP:
-				reg = STM_REG_BASE +
-					STM_REG_IND_CTXT_DATA_BASE + (4 * 4);
+				reg = STM_REG_IND_CTXT_DATA_BASE + (4 * 4);
 				pr_debug("%s: reg = 0x%x; data = 0x%x\n",
 					 __func__, reg, qid_hw);
 				if (clear)
@@ -719,7 +718,7 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 			case STM_IND_ADDR_C2H_MAP: {
 				u32 c2h_map;
 
-				reg = STM_REG_BASE + STM_REG_C2H_DATA8;
+				reg = STM_REG_C2H_DATA8;
 				c2h_map = (clear ? 0 : qid_hw) |
 					  (DESC_SZ_8B << 11);
 				pr_debug("%s: reg = 0x%x; data = 0x%x\n",
@@ -742,7 +741,7 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 
 	pr_debug("ctxt_cmd reg 0x%x, qid 0x%x, op 0x%x, fid 0x%x addr 0x%x -> 0x%08x.\n",
 		 STM_REG_BASE + STM_REG_IND_CTXT_CMD, qid_hw, op, fid, addr, v);
-	writel(v, xdev->stm_regs + STM_REG_BASE + STM_REG_IND_CTXT_CMD);
+	writel(v, xdev->stm_regs + STM_REG_IND_CTXT_CMD);
 
 	if (op == STM_CSR_CMD_RD) {
 		switch (addr) {
@@ -750,7 +749,7 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 		case STM_IND_ADDR_Q_CTX_H2C:
 		case STM_IND_ADDR_FORCED_CAN:
 		case STM_IND_ADDR_H2C_MAP:
-			reg = STM_REG_BASE + STM_REG_IND_CTXT_DATA_BASE;
+			reg = STM_REG_IND_CTXT_DATA_BASE;
 			for (i = 0; i < cnt;
 					i++, reg += QDMA_REG_SZ_IN_BYTES) {
 				data[i] = readl(xdev->stm_regs + reg);
@@ -759,12 +758,12 @@ int hw_indirect_stm_prog(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 					 __func__, reg, i, data[i]);
 			}
 			/* read context valid bits */
-			data[5] = readl(xdev->stm_regs + STM_REG_BASE +
+			data[5] = readl(xdev->stm_regs +
 					STM_REG_IND_CTXT_DATA5);
 			break;
 
 		case STM_IND_ADDR_C2H_MAP:
-			reg = STM_REG_BASE + STM_REG_C2H_DATA8;
+			reg = STM_REG_C2H_DATA8;
 			data[0] = readl(xdev->stm_regs + reg);
 			break;
 
