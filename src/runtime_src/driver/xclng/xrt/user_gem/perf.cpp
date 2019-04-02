@@ -115,6 +115,22 @@ namespace xocl {
   unsigned XOCLShim::getBankCount() {
     return mDeviceInfo.mDDRBankCount;
   }
+  /*
+   * Returns  1 if Version2 > Version1
+   * Returns  0 if Version2 = Version1
+   * Returns -1 if Version2 < Version1
+   */
+  signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+    if (major2 > major1)
+      return 1;
+    else if (major2 < major1)
+      return -1;
+    else if (minor2 > minor1)
+      return 1;
+    else if (minor2 < minor1)
+      return -1;
+    else return 0;
+  }
 
   // Set number of profiling slots in monitor
   // NOTE: not supported anymore (extracted from debug_ip_layout)
@@ -567,8 +583,8 @@ namespace xocl {
       // Get SAM configuration
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,s);
       bool has64bit = (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) ? true : false;
-      // Accelerator Monitor >= 1.2 supports dataflow monitoring
-      bool hasDataflow = (mAccelmonMajorVersions[s] >= 1 && mAccelmonMinorVersions[s] > 1) ? true : false;
+      // Accelerator Monitor > 1.1 supports dataflow monitoring
+      bool hasDataflow = (cmpMonVersions(mAccelmonMajorVersions[s],mAccelmonMinorVersions[s],1,1) < 0) ? true : false;
       bool hasStall = (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) ? true : false;
 
       // Debug Info from first SAM
