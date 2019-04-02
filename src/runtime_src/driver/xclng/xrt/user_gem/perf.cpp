@@ -559,17 +559,32 @@ namespace xocl {
     }
 
     /*
-     * Read SDx Accel Monitor Data
+     * Read Accelerator Monitor Data
      */
     numSlots = getPerfMonNumberSlots(XCL_PERF_MON_ACCEL);
     for (uint32_t s=0; s < numSlots; s++) {
+
+      // Get SAM configuration
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,s);
-      uint32_t version = 0;
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                      baseAddress, 
-                      &version, 4);
-      if (mLogStream.is_open()) {
-        mLogStream << "SAM Core Version : " << version << std::endl;
+      bool has64bit = (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) ? true : false;
+      // Accelerator Monitor >= 1.2 supports dataflow monitoring
+      bool hasDataflow = (mAccelmonMajorVersions[s] >= 1 && mAccelmonMinorVersions[s] > 1) ? true : false;
+      bool hasStall = (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) ? true : false;
+
+      // Debug Info from first SAM
+      if (mLogStream.is_open() && (s == 0)) {
+        uint32_t version = 0;
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress, &version, 4);
+        mLogStream << "SAM Core Version Register : " << version << std::endl;
+        mLogStream << "SAM Core vlnv : "
+                   << " Major " << static_cast<int>(mAccelmonMajorVersions[s])
+                   << " Minor " << static_cast<int>(mAccelmonMinorVersions[s])
+                   << std::endl;
+        mLogStream << "SAM config : "
+                   << " 64 bit support : " << has64bit 
+                   << " Dataflow support : " << hasDataflow
+                   << " Stall support : " << hasStall
+                   << std::endl;
       }
 
       // Read sample interval register
@@ -592,16 +607,10 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuMaxExecCycles[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                      baseAddress + XSAM_BUSY_CYCLES_OFFSET,
-                      &counterResults.CuBusyCycles[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        baseAddress + XSAM_MAX_PARALLEL_ITER_OFFSET,
-                        &counterResults.CuMaxParallelIter[s], 4);
 
       // Read upper 32 bits (if available)
-      if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
-        uint64_t upper[6] = {};
+      uint64_t upper[6] = {};
+      if (has64bit) {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                         baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
                         &upper[0], 4);
@@ -614,19 +623,12 @@ namespace xocl {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                         baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
                         &upper[3], 4);
-        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        baseAddress + XSAM_BUSY_CYCLES_UPPER_OFFSET,
-                        &upper[4], 4);
-        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        baseAddress + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
-                        &upper[5], 4);
 
-        counterResults.CuExecCount[s]       += (upper[0] << 32);
-        counterResults.CuExecCycles[s]      += (upper[1] << 32);
-        counterResults.CuMinExecCycles[s]   += (upper[2] << 32);
-        counterResults.CuMaxExecCycles[s]   += (upper[3] << 32);
-        counterResults.CuBusyCycles[s]      += (upper[4] << 32);
-        counterResults.CuMaxParallelIter[s] += (upper[5] << 32);
+        counterResults.CuExecCount[s]     += (upper[0] << 32);
+        counterResults.CuExecCycles[s]    += (upper[1] << 32);
+        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
+        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
+
         if (mLogStream.is_open()) {
           mLogStream << "SAM Upper 32, slot " << s << std::endl;
           mLogStream << "  CuExecCount : " << upper[0] << std::endl;
@@ -634,6 +636,28 @@ namespace xocl {
           mLogStream << "  CuMinExecCycles : " << upper[2] << std::endl;
           mLogStream << "  CuMaxExecCycles : " << upper[3] << std::endl;
         }
+      }
+
+      if (hasDataflow) {
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_BUSY_CYCLES_OFFSET,
+                        &counterResults.CuBusyCycles[s], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_OFFSET,
+                        &counterResults.CuMaxParallelIter[s], 4);
+        if (has64bit) {
+          size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_BUSY_CYCLES_UPPER_OFFSET,
+                        &upper[4], 4);
+          size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
+                        &upper[5], 4);
+          counterResults.CuBusyCycles[s]      += (upper[4] << 32);
+          counterResults.CuMaxParallelIter[s] += (upper[5] << 32);
+        }
+      } else {
+        counterResults.CuBusyCycles[s] = counterResults.CuExecCycles[s];
+        counterResults.CuMaxParallelIter[s] = 1;
       }
 
       if (mLogStream.is_open()) {
@@ -647,7 +671,7 @@ namespace xocl {
       }
 
       // Check Stall bit
-      if (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) {
+      if (hasStall) {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_STALL_INT_OFFSET, 
                       &counterResults.CuStallIntCycles[s], 4); 
