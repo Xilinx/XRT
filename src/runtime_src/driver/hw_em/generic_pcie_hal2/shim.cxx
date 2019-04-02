@@ -468,11 +468,6 @@ namespace xclhwemhal2 {
 
         simMode = strdup(cmdLineOption.str().c_str());
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
-        {
-          sim_path = binaryDirectory+ "/behav_waveform/questa";
-        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("SDX_LAUNCH_WAVEFORM_BATCH","1",true);
         setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
