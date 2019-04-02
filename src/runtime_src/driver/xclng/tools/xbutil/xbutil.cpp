@@ -1501,8 +1501,8 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
 {
     const size_t boSize = 3L * 1024 * 1024 * 1024;
 	if (xclOpenContext(handle, uuid, -1, true)) {
-		std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
-		return -EINVAL;
+        std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
+        return -EINVAL;
 	}
 
     //Allocate boSrc
@@ -1539,7 +1539,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     }
     memset(boTgtPtr, 'B', boSize);
 	if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
-		std::cout << "ERROR: Unable to sync target BO" << std::endl;
+        std::cout << "ERROR: Unable to sync target BO" << std::endl;
         munmap(boSrcPtr, boSize);
         munmap(boTgtPtr, boSize);
         xclFreeBO(handle, boSrc);
@@ -1557,8 +1557,8 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     //send exec command
     xcldev::Timer timer;
 	if(xclExecBuf(handle, execHandle)) {
-		std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
-		return -EINVAL;
+        std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
+        return -EINVAL;
 	}
 
 	//Wait on the command finish
@@ -1576,8 +1576,8 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         xclFreeBO(handle, execHandle);
         xclFreeBO(handle, boSrc);
         xclFreeBO(handle, boTgt);
-		std::cout << "ERROR: Unable to sync target BO" << std::endl;
-		return -EINVAL;
+        std::cout << "ERROR: Unable to sync target BO" << std::endl;
+        return -EINVAL;
 	}
 
 	bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
@@ -1598,9 +1598,9 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
 
     //bandwidth
     double total = boSize;
-	total *= 1000000; // convert us to s 
+    total *= 1000000; // convert us to s 
     total /= (1024 * 1024); //convert to MB
-	std::cout << total / timer_stop << " MB/s\t\n";
+    std::cout << total / timer_stop << " MB/s\t\n";
 
     return 0;
 }
@@ -1651,8 +1651,8 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             if(ret != 0)
                 return ret;
-            std::cout << "Performing M2M Test between " << usedBanks[i].m_tag 
-                      << " and " << usedBanks[j].m_tag << ": ";
+            std::cout << usedBanks[i].m_tag << " -> "
+                << usedBanks[j].m_tag << " M2M bandwidth: ";
             ret = m2mtest_bank(m_handle, uuid, i, j);
         }
     }
