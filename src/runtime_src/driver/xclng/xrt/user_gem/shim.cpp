@@ -371,6 +371,7 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
     va_list args_bak;
+    // vsnprintf will mutate va_list so back it up
     va_copy(args_bak, args);
     int len = std::vsnprintf(nullptr, 0, format, args_bak);
     va_end(args_bak);
@@ -1817,7 +1818,7 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses()
     }
   }
   return 0;
-} 
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/

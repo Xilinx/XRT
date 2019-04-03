@@ -55,22 +55,19 @@ get_self_path()
 }
 
 /*
- * Look for xrt.ini and i not found look for legacy sdaccel.ini
+ * Look for xrt.ini and if not found look for legacy sdaccel.ini.
  */
 static std::string
 verify_ini_path(const boost::filesystem::path& dir)
 {
-  try {
-    auto file_path = dir / "xrt.ini";
-    if (boost::filesystem::exists(file_path))
-      return file_path.string();
+  auto file_path = dir / "xrt.ini";
+  if (boost::filesystem::exists(file_path))
+    return file_path.string();
 
-    file_path = dir / "sdaccel.ini";
-    if (boost::filesystem::exists(file_path))
-      return file_path.string();
-  }
-  catch (const boost::filesystem::filesystem_error& e) {
-  }
+  file_path = dir / "sdaccel.ini";
+  if (boost::filesystem::exists(file_path))
+    return file_path.string();
+
   return "";
 }
 
@@ -79,10 +76,15 @@ get_ini_path()
 {
   std::string full_path;
   try {
-    auto ini_path = boost::filesystem::path(value_or_empty(std::getenv("XRT_INI_PATH")));
-    full_path = verify_ini_path(ini_path);
-    if (!full_path.empty())
-      return full_path;
+    //The env variable should be the full path which includes xrt.ini
+    auto xrt_path = boost::filesystem::path(value_or_empty(std::getenv("XRT_INI_PATH")));
+    if (boost::filesystem::exists(xrt_path))
+      return xrt_path.string();
+
+    //The env variable should be the full path which includes sdaccel.ini
+    auto sda_path = boost::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
+    if (boost::filesystem::exists(sda_path))
+      return sda_path.string();
 
     auto exe_path = boost::filesystem::path(get_self_path()).parent_path();
     full_path = verify_ini_path(exe_path);

@@ -298,17 +298,6 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
  */
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
 
-/**
- * xclP2pEnable() - enable or disable p2p
- *
- * @handle:        Device handle
- * @enable:        false-disable, true-enable
- * @force:         true-force to reassign bus IO memory
- * Return:         0 on success or appropriate error number
- *
- * Enable or Disable P2P feature. Warm reboot might be required.
- */
-XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
 /**
  * xclGetDeviceInfo2() - Obtain various bits of information from the device
@@ -1236,10 +1225,6 @@ XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enu
 XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
                                                        xclTraceResultsVector& traceVector);
 #endif
-
-/* Hack for xbflash only */
-XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, enum xclVerbosityLevel level);
 
 #ifdef __cplusplus
 }

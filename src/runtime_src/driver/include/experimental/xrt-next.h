@@ -27,6 +27,29 @@ extern "C" {
  */
 
 /**
+ * xclP2pEnable() - enable or disable p2p
+ *
+ * @handle:        Device handle
+ * @enable:        false-disable, true-enable
+ * @force:         true-force to reassign bus IO memory
+ * Return:         0 on success or appropriate error number
+ *
+ * Enable or Disable P2P feature. Warm reboot might be required.
+ */
+XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
+
+/* Hack for xbflash only */
+XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, enum xclVerbosityLevel level);
+
+/*
+ * API to get number of live processes on the given device.
+ * This uses kdsstat information in sysfs.
+ */
+
+XCL_DRIVER_DLLESPEC uint xclGetNumLiveProcesses(xclDeviceHandle handle);
+
+/**
  * xclGetSysfsPath() - Helper function to build a sysfs node full path
  *
  * @handle:              Device handle
