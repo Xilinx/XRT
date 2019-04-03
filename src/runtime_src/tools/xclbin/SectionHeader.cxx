@@ -20,7 +20,9 @@
 #include <stdexcept>
 
 
-SectionHeader::SectionHeader() {
+SectionHeader::SectionHeader() 
+  : m_eType(BITSTREAM)
+{
   // Empty
 }
 

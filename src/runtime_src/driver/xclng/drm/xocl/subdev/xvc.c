@@ -35,6 +35,8 @@
 #define	MINOR_PRI_HIGH_BIT	0x10000
 #define MINOR_NAME_MASK		0xffffffff
 
+#define MAX_INPUT_LEN	(1 << 30) 
+
 enum xvc_algo_type {
 	XVC_ALGO_NULL,
 	XVC_ALGO_CFG,
@@ -178,6 +180,11 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	}
 
 	total_bits = xvc_obj.length;
+	if (total_bits > MAX_INPUT_LEN) {
+		pr_err("Input totoal bits beyond 1GB\n");
+		return -EINVAL;
+	}
+
 	total_bytes = (total_bits + 7) >> 3;
 
 	buffer = (char *)kmalloc(total_bytes * 3, GFP_KERNEL);

@@ -289,7 +289,7 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 
 	mdev = platform_get_drvdata(pdev);
 
-	if (down_interruptible(&mdev->channel_sem[dir])) {
+	if (down_killable(&mdev->channel_sem[dir])) {
 		channel = -ERESTARTSYS;
 		goto out;
 	}

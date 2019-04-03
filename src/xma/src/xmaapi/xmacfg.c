@@ -112,8 +112,8 @@ int set_logfile(XmaData *data)
     yaml_node_t *next_node;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->logfile,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->logfile,
+           (const char*)next_node->data.scalar.value, (NAME_MAX-1));
     data->state_idx++;
     data->systemcfg->logger_initialized = true;
 
@@ -137,8 +137,8 @@ int set_dsa(XmaData *data)
     yaml_node_t *next_node;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->dsa,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->dsa,
+           (const char*)next_node->data.scalar.value, (MAX_DSA_NAME-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -149,8 +149,8 @@ int set_pluginpath(XmaData *data)
     yaml_node_t *next_node;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->pluginpath,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->pluginpath,
+           (const char*)next_node->data.scalar.value, (NAME_MAX-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -161,8 +161,8 @@ int set_xclbinpath(XmaData *data)
     yaml_node_t *next_node;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->xclbinpath,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->xclbinpath,
+           (const char*)next_node->data.scalar.value, (NAME_MAX-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -184,8 +184,8 @@ int set_xclbin(XmaData *data)
     int          i = data->imagecfg_idx;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->imagecfg[i].xclbin,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->imagecfg[i].xclbin,
+           (const char*)next_node->data.scalar.value, (NAME_MAX-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -262,8 +262,8 @@ int set_function(XmaData *data)
     int          k = data->kernelcfg_idx;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->imagecfg[i].kernelcfg[k].function,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->imagecfg[i].kernelcfg[k].function,
+           (const char*)next_node->data.scalar.value, (MAX_FUNCTION_NAME-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -276,8 +276,8 @@ int set_plugin(XmaData *data)
     int          k = data->kernelcfg_idx;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->imagecfg[i].kernelcfg[k].plugin,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->imagecfg[i].kernelcfg[k].plugin,
+           (const char*)next_node->data.scalar.value, (MAX_PLUGIN_NAME-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -290,8 +290,8 @@ int set_vendor(XmaData *data)
     int          k = data->kernelcfg_idx;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->imagecfg[i].kernelcfg[k].vendor,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->imagecfg[i].kernelcfg[k].vendor,
+           (const char*)next_node->data.scalar.value, (MAX_VENDOR_NAME-1));
     data->state_idx++;
 
     return XMA_SUCCESS;
@@ -304,8 +304,9 @@ int set_name(XmaData *data)
     int          k = data->kernelcfg_idx;
 
     next_node = get_next_scalar_node(data->document, &data->node_idx);
-    strcpy(data->systemcfg->imagecfg[i].kernelcfg[k].name,
-           (const char*)next_node->data.scalar.value);
+    strncpy(data->systemcfg->imagecfg[i].kernelcfg[k].name,
+           (const char*)next_node->data.scalar.value,
+           (MAX_KERNEL_NAME-1));
     data->state_idx++;
 
     return XMA_SUCCESS;

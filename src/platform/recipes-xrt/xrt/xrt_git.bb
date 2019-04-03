@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=fa343562af4b9b922b8d7fe7b0b6d000 \
                     file://src/runtime_src/driver/xclng/xrt/user_gem/LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57 \
                     file://src/runtime_src/driver/xclng/tools/xbutil/LICENSE;md5=d273d63619c9aeaf15cdaf76422c4f87"
 
-SRC_URI = "git://git@github.com/Xilinx/XRT.git;protocol=https;branch=master"
+SRC_URI = "git://git@github.com/Xilinx/XRT.git;protocol=https;branch=2018.3"
 
 PV = "2.2.0+git${SRCPV}"
 # Since this commit, XRT cmake is yocto friendly
@@ -20,7 +20,7 @@ S = "${WORKDIR}/git"
 inherit cmake pkgconfig
 
 # util-linux is for libuuid-dev.
-DEPENDS = "libdrm opencl-headers ocl-icd boost util-linux"
+DEPENDS = "libdrm opencl-headers ocl-icd boost util-linux git-replacement-native"
 RDEPENDS_${PN} = "bash ocl-icd boost"
 
 FILES_${PN}-dev += "opt/xilinx/xrt/include/* opt/xilinx/xrt/lib/*"

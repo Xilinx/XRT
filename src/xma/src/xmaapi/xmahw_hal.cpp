@@ -230,6 +230,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                  k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++)
             {
                 for (int32_t x = 0;
+                     t < MAX_KERNEL_CONFIGS &&
                      x < systemcfg->imagecfg[i].kernelcfg[k].instances;
                      x++, t++)
                 {
@@ -255,9 +256,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
 
             /* Always attempt download xclbin */
             rc = load_xclbin_to_device(hal->dev_handle, buffer);
-            free(buffer);
             if (rc != 0)
             {
+                free(buffer);
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                            xclfullname.c_str(),
                            systemcfg->imagecfg[i].device_id_map[d]);
@@ -267,7 +268,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
             /* Create all kernel contexts on the device */
             rc = create_contexts(hal->dev_handle, info);
             if (rc != XMA_SUCCESS)
+            {
+                free(buffer);
                 return false;
+	    }
 
             //Setup execbo for use with kernel commands
             for (int32_t k = 0, t = 0;
@@ -286,17 +290,20 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                             hwcfg->devices[dev_id].kernels[t].base_address) 
                         {
                             found = true;
-                            break;
+                        } else if (info.ip_layout[i_ips].base_addr <
+                            hwcfg->devices[dev_id].kernels[t].base_address) {
+                            cu_bit_mask = cu_bit_mask << 1;
                         }
-                        cu_bit_mask = cu_bit_mask << 1;
                     }
                     if (!found) 
                     {
+                        free(buffer);
                         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "CU not found. Couldn't create cu_cmd execbo\n");
                         return false;
                     }
                     if (cu_bit_mask == 0) 
                     {
+                        free(buffer);
                         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA library doesn't support more than 32 CUs\n");
                         return false;
                     }
@@ -312,6 +319,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                                                execBO_flags);
                         if (!bo_handle || bo_handle == mNullBO) 
                         {
+                            free(buffer);
                             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to create bo for cu start\n");
                             return false;
                         }
@@ -331,6 +339,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 }
             }
         }
+        free(buffer);
     }
     return true;
 }

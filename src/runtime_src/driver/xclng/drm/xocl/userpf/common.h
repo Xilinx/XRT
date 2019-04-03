@@ -81,7 +81,7 @@ struct xocl_dev	{
 	u64			bar_len;
 	u32			bar_idx;
 	u64     bypass_bar_len;
-	u32     bypass_bar_idx;
+	int     bypass_bar_idx;
 
 
 	void		       *dma_handle;

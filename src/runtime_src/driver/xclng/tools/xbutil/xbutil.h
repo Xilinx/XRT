@@ -235,16 +235,21 @@ public:
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
+	char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
+
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             boost::property_tree::ptree ptCu;
-            unsigned statusBuf;
+            unsigned statusBuf = 0;
             if (computeUnits.at( i ).m_type != IP_KERNEL)
                 continue;
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+ 
+            if (!skip_cu) {
+                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+            }
+            ptCu.put( "status",       parseCUStatus( statusBuf ) );
             ptCu.put( "index",        i );
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
             sensor_tree::add_child( "board.compute_unit.cu", ptCu );
         }
         return 0;
@@ -401,7 +406,7 @@ public:
         }
 
         const mem_topology *map = (mem_topology *)buf.data();
-        unsigned numDDR = 0;
+        int numDDR = 0;
 
         if(!buf.empty())
             numDDR = map->m_count;
@@ -420,7 +425,7 @@ public:
                 << "\n";
         }
 
-        for(unsigned i = 0; i < numDDR; i++) {
+        for(unsigned i = 0; i < (unsigned)numDDR; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING)
                 continue;
 
@@ -503,7 +508,7 @@ public:
         }
 
         const mem_topology *map = (mem_topology *)buf.data();
-        unsigned num = 0;
+        int num = 0;
 
         if(!buf.empty())
             num = map->m_count;
@@ -522,7 +527,7 @@ public:
                << std::setw(10) << "Pending(B/#)" << "\n";
         }
 
-        for(unsigned i = 0; i < num; i++) {
+        for(int i = 0; i < num; i++) {
             std::string lname;
             bool flag = false;
             std::map<std::string, std::string> stat_map;

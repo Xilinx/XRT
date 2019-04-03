@@ -180,7 +180,7 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
         ert_start_kernel_cmd *cu_cmd = 
             (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
         if (s_handle.kernel_info->kernel_execbo_inuse[i])
-        { 
+        {
             switch(cu_cmd->state)
             {
                 case ERT_CMD_STATE_NEW:
@@ -233,7 +233,7 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
         ert_start_kernel_cmd *cu_cmd = 
             (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[bo_idx];
         cu_cmd->state = ERT_CMD_STATE_NEW;
-        cu_cmd->opcode = ERT_START_CU; 
+        cu_cmd->opcode = ERT_START_CU;
 
         // Copy reg_map into execBO buffer 
         memcpy(cu_cmd->data, src, size);
@@ -255,8 +255,8 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
 
 int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
 {
-    int32_t rc = XMA_SUCCESS;
-    int32_t count = s_handle.kernel_info->kernel_complete_count;
+    int32_t current_count = s_handle.kernel_info->kernel_complete_count;
+    int32_t count = 0;
 
     // Keep track of the number of kernel completions
     while (count == 0)
@@ -281,16 +281,22 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
             break;
 
         // Wait for a notification
-        xclExecWait(s_handle.dev_handle, timeout_ms);
+        if (xclExecWait(s_handle.dev_handle, timeout_ms) <= 0)
+            break;
     }
-
-    if (rc == XMA_SUCCESS)
+    current_count += count;
+    if (current_count)
     {
-        count--;
-        s_handle.kernel_info->kernel_complete_count += count;
+        current_count--;
+        s_handle.kernel_info->kernel_complete_count = current_count;
+        return XMA_SUCCESS;
     }
-
-    return rc;
+    else
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Could not find completed work item\n");
+        return XMA_ERROR;
+    }
 }
     
 int32_t

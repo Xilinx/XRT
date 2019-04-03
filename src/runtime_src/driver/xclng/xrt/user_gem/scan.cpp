@@ -336,7 +336,7 @@ pcidev::pci_func::pci_func(const std::string& sysfs) : sysfs_name(sysfs)
     //Get the driver name and version.
     char driverName[1024] = { 0 };
     unsigned int rc = readlink((dir + "/driver").c_str(),
-        driverName, sizeof (driverName));
+        driverName, sizeof (driverName) - 1);
 
     if (rc > 0 && rc < sizeof (driverName)) {
         driver_name = driverName;

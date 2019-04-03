@@ -55,16 +55,18 @@ static xuid_t uuid_null = NULL_UUID_LE;
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
 #define	ICAP_XCLBIN_V2			"xclbin2"
 
+#define MAX_SECTION_SIZE		(1024 * 1024 * 1024)
+
 /*
  * Bitstream header information.
  */
 typedef struct {
 	unsigned int HeaderLength;     /* Length of header in 32 bit words */
 	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
-	unsigned char *DesignName;     /* Design name read from bitstream header */
-	unsigned char *PartName;       /* Part name read from bitstream header */
-	unsigned char *Date;           /* Date read from bitstream header */
-	unsigned char *Time;           /* Bitstream creation time read from header */
+	unsigned char DesignName[256]; /* Design name read from bitstream header */
+	unsigned char PartName[128];   /* Part name read from bitstream header */
+	unsigned char Date[32];        /* Date read from bitstream header */
+	unsigned char Time[32];        /* Bitstream creation time read from header */
 	unsigned int MagicLength;      /* Length of the magic numbers in header */
 } XHwIcap_Bit_Header;
 #define XHI_BIT_HEADER_FAILURE 	-1
@@ -825,6 +827,8 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 
 	if (length == 0)
 		return 0;
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
 
 	free_clock_freq_topology(icap);
 
@@ -856,6 +860,8 @@ static int icap_setup_clear_bitstream(struct icap *icap,
 
 	if (length == 0)
 		return 0;
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
 
 	free_clear_bitstream(icap);
 
@@ -963,15 +969,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Design Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for design name and final null character. */
-	Header->DesignName = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->DesignName)) {
+		ICAP_ERR(icap, "Design name too long: %d", Len);
+		return -1;
+	}
 	/* Read in Design Name */
 	for (I = 0; I < Len; I++)
 		Header->DesignName[I] = Data[Index++];
-
-
 	if (Header->DesignName[Len-1] != '\0')
 		return -1;
 
@@ -983,14 +987,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get Part Name length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for part name and final null character. */
-	Header->PartName = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->PartName)) {
+		ICAP_ERR(icap, "Part name too long: %d", Len);
+		return -1;
+	}
 	/* Read in part name */
 	for (I = 0; I < Len; I++)
 		Header->PartName[I] = Data[Index++];
-
 	if (Header->PartName[Len-1] != '\0')
 		return -1;
 
@@ -1002,14 +1005,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get date length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for date and final null character. */
-	Header->Date = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->Date)) {
+		ICAP_ERR(icap, "Date too long: %d", Len);
+		return -1;
+	}
 	/* Read in date name */
 	for (I = 0; I < Len; I++)
 		Header->Date[I] = Data[Index++];
-
 	if (Header->Date[Len - 1] != '\0')
 		return -1;
 
@@ -1021,14 +1023,13 @@ static int bitstream_parse_header(struct icap *icap, const unsigned char *Data,
 	/* Get time length */
 	Len = Data[Index++];
 	Len = (Len << 8) | Data[Index++];
-
-	/* allocate space for time and final null character. */
-	Header->Time = kmalloc(Len, GFP_KERNEL);
-
+	if (Len >= sizeof(Header->Time)) {
+		ICAP_ERR(icap, "Time too long: %d", Len);
+		return -1;
+	}
 	/* Read in time name */
 	for (I = 0; I < Len; I++)
 		Header->Time[I] = Data[Index++];
-
 	if (Header->Time[Len - 1] != '\0')
 		return -1;
 
@@ -1091,13 +1092,11 @@ static long icap_download(struct icap *icap, const char *buffer,
 
 	if (bitstream_parse_header(icap, buffer,
 		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
+		return -EINVAL;
 	}
 
 	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
+		return -EINVAL;
 	}
 
 	buffer += bit_header.HeaderLength;
@@ -1111,17 +1110,11 @@ static long icap_download(struct icap *icap, const char *buffer,
 		err = bitstream_helper(icap, (u32 *)buffer,
 			numCharsRead / sizeof (u32));
 		if (err)
-			goto free_buffers;
+			return err;
 		buffer += numCharsRead;
 	}
 
 	err = wait_for_done(icap);
-
-free_buffers:
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -1168,7 +1161,7 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	const struct axlf_section_header* hdr =
 		get_axlf_section_hdr(icap, top, kind);
 
-	if (hdr == NULL)
+	if (hdr == NULL || hdr->m_sectionSize > MAX_SECTION_SIZE)
 		return -EINVAL;
 
 	section = vmalloc(hdr->m_sectionSize);
@@ -1381,6 +1374,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	 */
 	if (secondaryFirmwareLength && (primaryFirmwareLength ||
 		!icap->icap_clear_bitstream)) {
+		if (secondaryFirmwareLength >= MAX_SECTION_SIZE) {
+			err = -EINVAL;
+			goto done;
+		}
 		free_clear_bitstream(icap);
 		icap->icap_clear_bitstream = vmalloc(secondaryFirmwareLength);
 		if (!icap->icap_clear_bitstream) {
@@ -1409,10 +1406,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 done:
 	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	ICAP_INFO(icap, "%s err: %ld", __FUNCTION__, err);
 	return err;
 }
@@ -1452,6 +1445,9 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 	int system_clk_count = 0;
 	unsigned short target_freqs[4] = {0};
 
+	if (length >= MAX_SECTION_SIZE)
+		return -EINVAL;
+
 	buffer = kmalloc(length, GFP_KERNEL);
 	if (!buffer) {
 		ICAP_ERR(icap, "Unable to allocate memory for memory topology");
@@ -1466,9 +1462,9 @@ static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev
 	}
 
 	freqs = (struct clock_freq_topology*)buffer;
-	if(freqs->m_count > 4) {
+	if(freqs->m_count > 4 || freqs->m_count <= 0) {
 		err = -EDOM;
-		ICAP_ERR(icap, "More than 4 clocks found in clock topology");
+		ICAP_ERR(icap, "Invalid num of clocks found in clock topology");
 		goto free_buffers;
 	}
 
@@ -1617,10 +1613,6 @@ static int icap_download_user(struct icap *icap, const char __user *bit_buf,
 free_buffers:
 	icap_free_axi_gate(icap);
 	kfree(buffer);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -1668,12 +1660,17 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 */
 	copy_buffer_size = bin_obj.m_header.m_numSections *
 		sizeof(struct axlf_section_header) + sizeof(struct axlf);
+	if (copy_buffer_size >= MAX_SECTION_SIZE) {
+		err = -EINVAL;
+		goto done;
+	}
 	ICAP_INFO(icap, "copy-in headers, num sections: %d, size: %llu",
 		bin_obj.m_header.m_numSections, copy_buffer_size);
 	copy_buffer = (struct axlf *)vmalloc(copy_buffer_size);
 	if(!copy_buffer) {
 		ICAP_ERR(icap, "unable to alloc copy buffer for headers");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto done;
 	}
 	if (copy_from_user((void *)copy_buffer, u_xclbin, copy_buffer_size)) {
 		err = -EFAULT;
@@ -1682,7 +1679,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
 		ICAP_ERR(icap, "XRT version does not match");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	/* Match the xclbin with the hardware. */
@@ -1690,7 +1688,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "timestamp of ROM did not match Xclbin\n");
 		xocl_sysfs_error(xdev, "timestamp of ROM did not match Xclbin\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	ICAP_INFO(icap,
@@ -1718,7 +1717,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	mutex_unlock(&icap->icap_lock);
 
 	if(!need_download)
-		return 0;
+		goto done;
 
 	/*
 	 * Find sections in xclbin.

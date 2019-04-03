@@ -256,7 +256,7 @@ namespace XDP {
 
   class DeviceTrace: public TimeTrace {
   public:
-    DeviceTrace()
+    DeviceTrace() : Next(nullptr), Size(0)
       {};
     ~DeviceTrace() {};
   public:

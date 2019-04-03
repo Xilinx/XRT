@@ -210,7 +210,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	struct FeatureRomHeader rom;
+	struct FeatureRomHeader rom = { 0 };
 	u32	id;
 	int	i, ret = 0;
 

@@ -277,10 +277,6 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	xlnx_dna = devm_kzalloc(&pdev->dev, sizeof(*xlnx_dna), GFP_KERNEL);
 	if (!xlnx_dna)
 		return -ENOMEM;
-	
-	xlnx_dna->base = devm_kzalloc(&pdev->dev, sizeof(void __iomem *), GFP_KERNEL);
-	if (!xlnx_dna->base)
-		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
