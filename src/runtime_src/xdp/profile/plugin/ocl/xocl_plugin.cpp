@@ -281,35 +281,22 @@ namespace xdp {
   void XoclPlugin::getTraceStringFromComputeUnit(const std::string& deviceName,
       const std::string& cuName, std::string& traceString)
   {
-    auto iter = mComputeUnitKernelTraceMap.find(cuName);
-    if (iter != mComputeUnitKernelTraceMap.end()) {
-      traceString = iter->second;
-    }
-    else {
-      // CR 1003380 - Runtime does not send all CU Names so we create a key
-      std::string kernelName;
-      getProfileKernelName(deviceName, cuName, kernelName);
-      for (const auto &pair : mComputeUnitKernelTraceMap) {
-        auto fullName = pair.second;
-        auto first_index = fullName.find_first_of("|");
-        auto second_index = fullName.find('|', first_index+1);
-        auto third_index = fullName.find('|', second_index+1);
-        auto fourth_index = fullName.find("|", third_index+1);
-        auto fifth_index = fullName.find("|", fourth_index+1);
-        auto sixth_index = fullName.find_last_of("|");
-        std::string currKernelName = fullName.substr(third_index + 1, fourth_index - third_index - 1);
-        if (currKernelName == kernelName) {
-          traceString = fullName.substr(0,fifth_index + 1) + cuName + fullName.substr(sixth_index);
-          return;
-        }
+    std::string kernel;
+    getProfileKernelName(deviceName, cuName, kernel);
+    for (const auto &pair : mComputeUnitKernelTraceMap) {
+      if (pair.first == kernel) {
+        auto index = pair.second.find_last_of("|");
+        traceString = pair.second.substr(0,index + 1) + cuName + pair.second.substr(index);
+        return;
       }
-      traceString = std::string();
     }
+    traceString = std::string();
   }
 
   void XoclPlugin::setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString)
   {
-    mComputeUnitKernelTraceMap[cuName] = traceString;
+    if (!cuName.empty() && mComputeUnitKernelTraceMap.find(cuName) == mComputeUnitKernelTraceMap.end())
+      mComputeUnitKernelTraceMap[cuName] = traceString;
   }
 
   size_t XoclPlugin::getDeviceTimestamp(std::string& deviceName)
@@ -345,6 +332,12 @@ namespace xdp {
                                                 unsigned slotnum)
   {
     return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);
+  }
+
+  bool XoclPlugin::isAPCtrlChain(const std::string& deviceName,
+                                     const std::string& cu)
+  {
+    return xoclp::platform::is_ap_ctrl_chain(mPlatformHandle, deviceName,cu);
   }
 
   void XoclPlugin::sendMessage(const std::string &msg)

@@ -113,12 +113,12 @@ namespace xdp {
           auto p = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_MEMORY, deviceName, s);
           mDataSlotsPropertiesMap[key].push_back(p);
         }
-        uint32_t prevWriteBytes   = mFinalCounterResultsMap[key].WriteBytes[s];
-        uint32_t prevReadBytes    = mFinalCounterResultsMap[key].ReadBytes[s];
-        uint32_t prevWriteTranx   = mFinalCounterResultsMap[key].WriteTranx[s];
-        uint32_t prevReadTranx    = mFinalCounterResultsMap[key].ReadTranx[s];
-        uint32_t prevWriteLatency = mFinalCounterResultsMap[key].WriteLatency[s];
-        uint32_t prevReadLatency  = mFinalCounterResultsMap[key].ReadLatency[s];
+        uint64_t prevWriteBytes   = mFinalCounterResultsMap[key].WriteBytes[s];
+        uint64_t prevReadBytes    = mFinalCounterResultsMap[key].ReadBytes[s];
+        uint64_t prevWriteTranx   = mFinalCounterResultsMap[key].WriteTranx[s];
+        uint64_t prevReadTranx    = mFinalCounterResultsMap[key].ReadTranx[s];
+        uint64_t prevWriteLatency = mFinalCounterResultsMap[key].WriteLatency[s];
+        uint64_t prevReadLatency  = mFinalCounterResultsMap[key].ReadLatency[s];
 
         // Check for rollover of byte counters; if detected, add 2^32
         // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
@@ -150,14 +150,17 @@ namespace xdp {
        */
       numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
       for (unsigned int s=0; s < numSlots; ++s) {
-        uint32_t prevCuExecCount      = mFinalCounterResultsMap[key].CuExecCount[s];
-        uint32_t prevCuExecCycles     = mFinalCounterResultsMap[key].CuExecCycles[s];
-        uint32_t prevCuStallExtCycles = mFinalCounterResultsMap[key].CuStallExtCycles[s];
-        uint32_t prevCuStallIntCycles = mFinalCounterResultsMap[key].CuStallIntCycles[s];
-        uint32_t prevCuStallStrCycles = mFinalCounterResultsMap[key].CuStallStrCycles[s];
+        uint64_t prevCuExecCount       = mFinalCounterResultsMap[key].CuExecCount[s];
+        uint64_t prevCuExecCycles      = mFinalCounterResultsMap[key].CuExecCycles[s];
+        uint64_t prevCuBusyCycles      = mFinalCounterResultsMap[key].CuBusyCycles[s];
+        uint64_t prevCuStallExtCycles  = mFinalCounterResultsMap[key].CuStallExtCycles[s];
+        uint64_t prevCuStallIntCycles  = mFinalCounterResultsMap[key].CuStallIntCycles[s];
+        uint64_t prevCuStallStrCycles  = mFinalCounterResultsMap[key].CuStallStrCycles[s];
         if (!firstReadAfterProgram) {
           if (counterResults.CuExecCycles[s] < prevCuExecCycles)
             mRolloverCountsMap[key].CuExecCycles[s]     += 1;
+          if (counterResults.CuBusyCycles[s] < prevCuBusyCycles)
+            mRolloverCountsMap[key].CuBusyCycles[s]     += 1;
           if (counterResults.CuStallExtCycles[s] < prevCuStallExtCycles)
             mRolloverCountsMap[key].CuStallExtCycles[s] += 1;
           if (counterResults.CuStallIntCycles[s] < prevCuStallIntCycles)
@@ -168,6 +171,7 @@ namespace xdp {
         else {
           mRolloverCounterResultsMap[key].CuExecCount[s]      += prevCuExecCount;
           mRolloverCounterResultsMap[key].CuExecCycles[s]     += prevCuExecCycles;
+          mRolloverCounterResultsMap[key].CuBusyCycles[s]     += prevCuBusyCycles;
           mRolloverCounterResultsMap[key].CuStallExtCycles[s] += prevCuStallExtCycles;
           mRolloverCounterResultsMap[key].CuStallIntCycles[s] += prevCuStallIntCycles;
           mRolloverCounterResultsMap[key].CuStallStrCycles[s] += prevCuStallStrCycles;
@@ -204,14 +208,21 @@ namespace xdp {
       uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
       uint64_t cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
                                 + (rolloverCounts.CuExecCycles[s] * 4294967296UL);
+      uint64_t cuBusyCycles = counterResults.CuBusyCycles[s] + rolloverResults.CuBusyCycles[s]
+                                + (rolloverCounts.CuBusyCycles[s] * 4294967296UL);
       uint32_t cuMaxExecCycles  = counterResults.CuMaxExecCycles[s];
       uint32_t cuMinExecCycles  = counterResults.CuMinExecCycles[s];
-      double cuRunTimeMsec = (double) cuExecCycles / deviceCyclesMsec;
+      uint64_t cuMaxParallelIter = counterResults.CuMaxParallelIter[s];
+      double cuRunTimeMsec = (double) cuBusyCycles / deviceCyclesMsec;
+      double cuRunTimeAvgMsec = (double) (cuExecCycles / deviceCyclesMsec) / cuExecCount;
       double cuMaxExecCyclesMsec = (double) cuMaxExecCycles / deviceCyclesMsec;
       double cuMinExecCyclesMsec = (double) cuMinExecCycles / deviceCyclesMsec;
+      uint32_t isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? 1 : 0;
       //XDP_LOG("[RT_PROFILE] cuName : %s exec cycles : %d runtime %f \n", cuName.c_str(), cuExecCycles, cuRunTimeMsec);
-      mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec, cuMaxExecCyclesMsec,
-                                           cuMinExecCyclesMsec, cuExecCount, kernelClockMhz);
+      mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec,
+                                            cuRunTimeAvgMsec, cuMaxExecCyclesMsec,
+                                            cuMinExecCyclesMsec, cuExecCount, kernelClockMhz,
+                                            isDataflow, cuMaxParallelIter);
     }
 #ifdef XDP_VERBOSE
     if (this->isTimelineTraceFileOn()) {

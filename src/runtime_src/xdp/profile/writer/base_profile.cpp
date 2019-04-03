@@ -62,7 +62,8 @@ namespace xdp {
     // Table 3: Compute Unit Utilization
     std::vector<std::string> ComputeUnitExecutionSummaryColumnLabels = {
         "Device", "Compute Unit", "Kernel", "Global Work Size", "Local Work Size",
-        "Number Of Calls", "Total Time (ms)", "Minimum Time (ms)",
+        "Number Of Calls", "Dataflow Execution","Max Overlapping Executions",
+        "Dataflow Acceleration", "Total Time (ms)", "Minimum Time (ms)",
         "Average Time (ms)", "Maximum Time (ms)", "Clock Frequency (MHz)" };
 
     std::string table3Caption = (flowMode == xdp::RTUtil::HW_EM) ?
@@ -433,14 +434,21 @@ namespace xdp {
     size_t third_index = name.find('|', second_index+1);
     size_t fourth_index = name.find_last_of("|");
 
-    std::string deviceName = name.substr(0, first_index);
+    auto cuName = name.substr(fourth_index+1);
+    auto deviceName = name.substr(0, first_index);
+    auto maxParallelIter = stats.getMetadata();
+    std::string isDataflow = stats.getFlags() ? "Yes" : "No";
+    double speedup = (stats.getAveTime() * stats.getNoOfCalls()) / stats.getTotalTime();
+    std::string speedup_string = std::to_string(speedup) + "x";
+
     writeTableRowStart(getStream());
     writeTableCells(getStream(), deviceName,
-        name.substr(fourth_index+1), // cuName
+        cuName,
         name.substr(first_index+1, second_index - first_index -1), // kernelName
         name.substr(second_index+1, third_index - second_index -1), // globalSize
         name.substr(third_index+1, fourth_index - third_index -1), // localSize
-        stats.getNoOfCalls(), stats.getTotalTime(), stats.getMinTime(),
+        stats.getNoOfCalls(), isDataflow, maxParallelIter, speedup_string,
+        stats.getTotalTime(), stats.getMinTime(),
         stats.getAveTime(), stats.getMaxTime(), stats.getClockFreqMhz());
     writeTableRowEnd(getStream());
   }

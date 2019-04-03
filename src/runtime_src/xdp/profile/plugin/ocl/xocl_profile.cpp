@@ -17,6 +17,7 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
+#include "driver/include/xclbin.h"
 
 namespace xdp { namespace xoclp {
 
@@ -395,6 +396,20 @@ isValidPerfMonTypeCounters(key k, xclPerfMonType type)
   || ((profiler->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL));
 }
 
+bool
+is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu)
+{
+  auto platform = k;
+  if (platform) {
+    for (auto device : platform->get_device_range()) {
+      std::string currDeviceName = device->get_unique_name();
+      if (currDeviceName.compare(deviceName) == 0)
+        return device::isAPCtrlChain(device, cu);
+    }
+  }
+  return false;
+}
+
 ////////////////////////////////////////////////////////////////
 // Device
 ////////////////////////////////////////////////////////////////
@@ -661,6 +676,41 @@ debugReadIPStatus(key k, xclDebugReadType type, void* aDebugResults)
   //read the device profile
   xdevice->debugReadIPStatus(type, aDebugResults);
   return CL_SUCCESS;
+}
+
+template <typename SectionType>
+static SectionType*
+getAxlfSection(const axlf* top, axlf_section_kind kind)
+{
+  if (auto header = xclbin::get_axlf_section(top, kind)) {
+    auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
+    return reinterpret_cast<SectionType*>(begin);
+  }
+  return nullptr;
+}
+
+bool
+isAPCtrlChain(key k, const std::string& cu)
+{
+  auto device = k;
+  if (!device)
+    return false;
+  auto xclbin = device->get_xclbin();
+  auto binary = xclbin.binary();
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
+  if (!ip_layout)
+    return false;
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    std::string current((char *)ip_data.m_name);
+    if (current.find(cu) == std::string::npos)
+      continue;
+    if (ip_data.m_type==IP_TYPE::IP_KERNEL && ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN))
+      return true;
+  }
+  return false;
 }
 
 data*
