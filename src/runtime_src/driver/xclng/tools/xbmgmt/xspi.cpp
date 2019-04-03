@@ -593,7 +593,6 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
 
     //Ensure we set bitstream guard to the first location
     BITSTREAM_START_LOC = recordList.front().mStartAddress;
-
     return programXSpi(mcsStream);
 }
 
@@ -1604,3 +1603,17 @@ bool XSPI_Flasher::writeRegister(unsigned commandCode, unsigned value, unsigned 
     return Status;
 }
 
+int XSPI_Flasher::revertToMFG(void)
+{
+    if (!prepareXSpi()) {
+        std::cout << "ERROR: Unable to prepare the XSpi\n";
+        return -EINVAL;
+    }
+    BITSTREAM_START_LOC = 0x01002000;
+    if(!writeBitstreamGuard(BITSTREAM_START_LOC)) {
+        std::cout << "ERROR: Unable to set bitstream guard!" << std::endl;
+        return -EINVAL;
+    }
+
+    return 0;
+}
