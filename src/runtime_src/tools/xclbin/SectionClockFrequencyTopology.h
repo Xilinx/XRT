@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,17 +26,17 @@
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
+// - C L A S S :   S e c t i o n C l o c k F r e q u e n c y T o p o l o g y -
 
-/**
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
 
 class SectionClockFrequencyTopology : public Section {
  public:
   SectionClockFrequencyTopology();
   virtual ~SectionClockFrequencyTopology();
+
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
 
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
@@ -55,7 +55,7 @@ class SectionClockFrequencyTopology : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", boost::factory<SectionClockFrequencyTopology*>()); }
+    _init() { registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", false, boost::factory<SectionClockFrequencyTopology*>()); }
   } _initializer;
 };
 

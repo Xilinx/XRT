@@ -26,9 +26,9 @@
 #include <linux/fs.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/crc32c.h>
 #include "../xocl_drv.h"
-
-//#define USE_FEATURE_ROM
+#include "version.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -47,7 +47,7 @@ module_param(health_check, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(health_check,
 	"Enable health thread that checks the status of AXI Firewall and SYSMON. (0 = disable, 1 = enable)");
 
-int minimum_initialization = 0;
+int minimum_initialization;
 module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
@@ -59,42 +59,23 @@ MODULE_PARM_DESC(minimum_initialization,
 
 
 static dev_t xclmgmt_devnode;
-struct class *xrt_class = NULL;
+struct class *xrt_class;
 
 /*
  * Called when the device goes from unused to used.
  */
 static int char_open(struct inode *inode, struct file *file)
 {
-	struct xclmgmt_char *lro_char;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_proc_ctx ctx;
-	int	ret;
 
 	/* pointer to containing data structure of the character device inode */
-	lro_char = container_of(inode->i_cdev, struct xclmgmt_char, cdev);
+	lro = xocl_drvinst_open(inode->i_cdev);
+	if (!lro)
+		return -ENXIO;
 
 	/* create a reference to our char device in the opened file */
-	file->private_data = lro_char;
-	lro = lro_char->lro;
+	file->private_data = lro;
 	BUG_ON(!lro);
-
-	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mutex_unlock(&lro->busy_mutex);
-		mgmt_err(lro, "resetting firewall");
-		return -EAGAIN;
-	}
-	mutex_unlock(&lro->busy_mutex);
-
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	ctx.signaled = false;
-	ret = xocl_ctx_add(&lro->ctx_table, &ctx, sizeof (ctx));
-	if (ret && ret != -EEXIST) {
-		mgmt_err(lro, "add proc context failed, ret = %d", ret);
-		return ret;
-	}
 
 	mgmt_info(lro, "opened file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
@@ -108,22 +89,14 @@ static int char_open(struct inode *inode, struct file *file)
 static int char_close(struct inode *inode, struct file *file)
 {
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
-	struct xclmgmt_proc_ctx ctx;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-
-	/* fetch device specific data stored earlier during open */
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
-
-	ctx.pid = task_tgid(current);
-	ctx.lro = lro;
-	(void) xocl_ctx_remove(&lro->ctx_table, &ctx);
 
 	mgmt_info(lro, "Closing file %p by pid: %d\n",
 		file, pid_nr(task_tgid(current)));
+
+	xocl_drvinst_close(lro);
 
 	return 0;
 }
@@ -147,6 +120,38 @@ static void unmap_bars(struct xclmgmt_dev *lro)
 	}
 }
 
+static int identify_bar(struct xocl_dev_core *core, int bar)
+{
+	void __iomem *bar_addr;
+	resource_size_t bar_len;
+
+	bar_len = pci_resource_len(core->pdev, bar);
+	bar_addr = pci_iomap(core->pdev, bar, bar_len);
+	if (!bar_addr) {
+		xocl_err(&core->pdev->dev, "Could not map BAR #%d",
+				core->bar_idx);
+		return -EIO;
+	}
+
+	/*
+	 * did not find a better way to identify BARS. Currently,
+	 * we have DSAs which rely VBNV name to differenciate them.
+	 * And reading VBNV name needs to bring up Feature ROM.
+	 * So we are not able to specify BARs in devices.h
+	 */
+	if (bar_len < 1024 * 1024 && bar > 0) {
+		core->intr_bar_idx = bar;
+		core->intr_bar_addr = bar_addr;
+		core->intr_bar_size = bar_len;
+	} else if (bar_len < 256 * 1024 * 1024) {
+		core->bar_idx = bar;
+		core->bar_size = bar_len;
+		core->bar_addr = bar_addr;
+	}
+
+	return 0;
+}
+
 /* map_bars() -- map device regions into kernel virtual address space
  *
  * Map the device memory regions into kernel virtual address space after
@@ -155,44 +160,18 @@ static void unmap_bars(struct xclmgmt_dev *lro)
  */
 static int map_bars(struct xclmgmt_dev *lro)
 {
-	struct xocl_board_private *dev_info;
+	struct pci_dev *pdev = lro->core.pdev;
 	resource_size_t bar_len;
-	int	ret = 0;
+	int	i, ret = 0;
 
-	dev_info = &lro->core.priv;
-
-	lro->core.bar_idx = dev_info->user_bar;
-	bar_len = pci_resource_len(lro->core.pdev, lro->core.bar_idx);
-
-	mgmt_info(lro, "default bar: %d, bar len: %lld", lro->core.bar_idx,
-		bar_len);
-
-	lro->core.bar_addr = pci_iomap(lro->core.pdev, lro->core.bar_idx,
-		bar_len);
-	if (!lro->core.bar_addr) {
-		mgmt_err(lro, "Could not map BAR #%d", lro->core.bar_idx);
-		return -EIO;
+	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
+		bar_len = pci_resource_len(pdev, i);
+		if (bar_len > 0) {
+			ret = identify_bar(&lro->core, i);
+			if (ret)
+				goto failed;
+		}
 	}
-
-	lro->core.bar_size = bar_len;
-
-	lro->core.intr_bar_idx = dev_info->intr_bar;
-	bar_len = pci_resource_len(lro->core.pdev, lro->core.intr_bar_idx);
-	if (bar_len == 0)
-		return 0;
-
-	mgmt_info(lro, "intr bar: %d, bar len: %lld", lro->core.intr_bar_idx,
-		bar_len);
-
-	lro->core.intr_bar_addr = pci_iomap(lro->core.pdev,
-		lro->core.intr_bar_idx, bar_len);
-	if (!lro->core.intr_bar_addr) {
-		mgmt_err(lro, "Could not map BAR #%d", lro->core.intr_bar_idx);
-		ret = -EIO;
-		goto failed;
-	}
-
-	lro->core.intr_bar_size = bar_len;
 
 	/* succesfully mapped all required BAR regions */
 	return 0;
@@ -221,16 +200,17 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
-	u32 val;
+	u32 val, major, minor, patch;
 	struct FeatureRomHeader rom;
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
+	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
 	obj->vendor = lro->core.pdev->vendor;
 	obj->device = lro->core.pdev->device;
 	obj->subsystem_vendor = lro->core.pdev->subsystem_vendor;
 	obj->subsystem_device = lro->core.pdev->subsystem_device;
-	obj->driver_version = XCLMGMT_DRIVER_VERSION_NUMBER;
+	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
 	val = MGMT_READ_REG32(lro, GENERAL_STATUS_BASE);
@@ -275,7 +255,6 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	int rc;
 	struct xclmgmt_dev *lro;
-	struct xclmgmt_char *lro_char;
 	unsigned long off;
 	unsigned long phys;
 	unsigned long vsize;
@@ -284,9 +263,7 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!capable(CAP_SYS_ADMIN))
 		return -EACCES;
 
-	lro_char = (struct xclmgmt_char *)file->private_data;
-	BUG_ON(!lro_char);
-	lro = lro_char->lro;
+	lro = (struct xclmgmt_dev *)file->private_data;
 	BUG_ON(!lro);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
@@ -345,60 +322,54 @@ static struct file_operations ctrl_fops = {
  * is coupled to the SG DMA file operations which operate on the data bus. If
  * no engines are specified, the interface is coupled with the control bus.
  */
-static struct xclmgmt_char *create_char(struct xclmgmt_dev *lro)
+static int create_char(struct xclmgmt_dev *lro)
 {
 	struct xclmgmt_char *lro_char;
 	int rc;
 
-	/* allocate book keeping data structure */
-	lro_char = kzalloc(sizeof(struct xclmgmt_char), GFP_KERNEL);
-	if (!lro_char) {
-		mgmt_err(lro, "Not enough memory");
-		return NULL;
-	}
+	lro_char = &lro->user_char_dev;
 
-	/* dynamically pick a number into cdevno */
-	lro_char->lro = lro;
 	/* couple the control device file operations to the character device */
-	cdev_init(&lro_char->cdev, &ctrl_fops);
-	lro_char->cdev.owner = THIS_MODULE;
-	lro_char->cdev.dev = MKDEV(MAJOR(xclmgmt_devnode), lro->instance);
-	rc = cdev_add(&lro_char->cdev, lro_char->cdev.dev, 1);
+	lro_char->cdev = cdev_alloc();
+	if (!lro_char->cdev)
+		return -ENOMEM;
+
+	lro_char->cdev->ops = &ctrl_fops;
+	lro_char->cdev->owner = THIS_MODULE;
+	lro_char->cdev->dev = MKDEV(MAJOR(xclmgmt_devnode), lro->core.dev_minor);
+	rc = cdev_add(lro_char->cdev, lro_char->cdev->dev, 1);
 	if (rc < 0) {
+		memset(lro_char, 0, sizeof(*lro_char));
 		printk(KERN_INFO "cdev_add() = %d\n", rc);
 		goto fail_add;
 	}
 
 	lro_char->sys_device = device_create(xrt_class,
 				&lro->core.pdev->dev,
-				lro_char->cdev.dev, NULL,
-			 	DRV_NAME "%d", lro->instance);
+				lro_char->cdev->dev, NULL,
+				DRV_NAME "%d", lro->instance);
 
 	if (IS_ERR(lro_char->sys_device)) {
 		rc = PTR_ERR(lro_char->sys_device);
 		goto fail_device;
 	}
 
-	return lro_char;
+	return 0;
 
 fail_device:
-	cdev_del(&lro_char->cdev);
+	cdev_del(lro_char->cdev);
 fail_add:
-	kfree(lro_char);
-
-	return NULL;
+	return rc;
 }
 
 static int destroy_sg_char(struct xclmgmt_char *lro_char)
 {
 	BUG_ON(!lro_char);
-	BUG_ON(!lro_char->lro);
 	BUG_ON(!xrt_class);
-	BUG_ON(!lro_char->sys_device);
+
 	if (lro_char->sys_device)
-		device_destroy(xrt_class, lro_char->cdev.dev);
-	cdev_del(&lro_char->cdev);
-	kfree(lro_char);
+		device_destroy(xrt_class, lro_char->cdev->dev);
+	cdev_del(lro_char->cdev);
 
 	return 0;
 }
@@ -432,137 +403,103 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
-        if(temp < LOW_TEMP || temp > HI_TEMP) {
-                mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
-                        LOW_TEMP, HI_TEMP, temp);
-        }
+	if (temp < LOW_TEMP || temp > HI_TEMP) {
+		mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
+			LOW_TEMP, HI_TEMP, temp);
+	}
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 {
-        if(volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
-                mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
-                        LOW_MILLVOLT, HI_MILLVOLT, volt);
-        }
+	if (volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
+		mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
+			LOW_MILLVOLT, HI_MILLVOLT, volt);
+	}
 }
 
 static void check_sysmon(struct xclmgmt_dev *lro)
 {
-        u32             val;
+	u32 val;
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
-        check_temp_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	check_temp_within_range(lro, val);
 
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
-        check_volt_within_range(lro, val);
-        xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
-        check_volt_within_range(lro, val);
-}
-
-static int kill_process(struct xocl_context_hash *ctx_hash, void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        int     ret = 0;
-
-        if (!ctx->signaled) {
-                ret = kill_pid(ctx->pid, SIGBUS, 1);
-                if (ret != 0)
-                        mgmt_err(ctx->lro, "Killing pid: %d failed. Err: %d",
-                                pid_nr(ctx->pid), ret);
-                ctx->signaled = true;
-        }
-
-        return ret;
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
+	check_volt_within_range(lro, val);
+	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
+	check_volt_within_range(lro, val);
 }
 
 static int health_check_cb(void *data)
 {
-        struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-        int     ret = 0;
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
+	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	bool tripped, is_sw;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
-        if (!health_check)
-                return 0;
-        mutex_lock(&lro->busy_mutex);
-        if (!xocl_af_check(lro, NULL)) {
-                check_sysmon(lro);
-        } else {
-                ret = xocl_ctx_traverse(&lro->ctx_table, kill_process);
-		/* stop user pf */
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, true);
-		}
-                if (xocl_af_clear(lro) && !XOCL_DSA_PCI_RESET_OFF(lro)) {
-			mgmt_info(lro, "Issuing pcie hot reset.");
-                        xclmgmt_reset_pci(lro);
-                }
-		xocl_af_check(lro, NULL);
+	if (!health_check)
+		return 0;
 
-		freezeAXIGate(lro);
-	        msleep(500);
-	        freeAXIGate(lro);
-	        msleep(500);
-		if (lro->user_pci_dev) {
-			xocl_reset(lro, false);
-		}
-        }
-        mutex_unlock(&lro->busy_mutex);
+	tripped = xocl_af_check(lro, NULL);
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_FIREWALL)) != 0;
 
-        return 0;
-}
+	if (!tripped) {
+		check_sysmon(lro);
+	} else {
+		mgmt_info(lro, "firewall tripped, notify peer");
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req), is_sw);
+	}
 
-static u32 proc_hash(void *arg)
-{
-        struct xclmgmt_proc_ctx *ctx = arg;
-        u32 pid = pid_nr(ctx->pid);
-
-        return (pid % MGMT_PROC_TABLE_HASH_SZ);
-}
-
-static int proc_cmp(void *arg_o, void *arg_n)
-{
-        struct xclmgmt_proc_ctx *ctx_o = arg_o;
-        struct xclmgmt_proc_ctx *ctx_n = arg_n;
-        u32 pid_o = pid_nr(ctx_o->pid);
-        u32 pid_n = pid_nr(ctx_n->pid);
-
-        return (pid_o - pid_n);
+	return 0;
 }
 
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
 {
-	return lro->core.intr_bar_addr != NULL;
+	struct xocl_board_private *dev_info = &lro->core.priv;
+
+	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
+		lro->core.intr_bar_addr != NULL;
 }
 
 static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 {
+	struct xocl_board_private *dev_info = &lro->core.priv;
 	int total, rv, i;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-	/*
-	 * Get start vector (index into msi-x table) of msi-x usr intr on this
-	 * device.
-	 *
-	 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs, the last
-	 * half of them belongs to mgmt pf, and the first half to user pf. All
-	 * vectors are hard-wired.
-	 *
-	 * The device also has some number of DMA intrs whose vectors come
-	 * before usr ones.
-	 *
-	 * This means that mgmt pf needs to allocate msi-x table big enough to
-	 * cover its own usr vectors. So, only the last chunk of the table will
-	 * ever be used for mgmt pf.
-	 */
-	lro->msix_user_start_vector = XOCL_READ_REG32(lro->core.intr_bar_addr +
-		XCLMGMT_INTR_USER_VECTOR) & 0x0f;
-	total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
+		lro->msix_user_start_vector = 0;
+		total = 8;
+	} else {
+		/*
+		 * Get start vector (index into msi-x table) of msi-x usr intr
+		 * on this device.
+		 *
+		 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs,
+		 * the last half of them belongs to mgmt pf, and the first
+		 * half to user pf. All vectors are hard-wired.
+		 *
+		 * The device also has some number of DMA intrs whose vectors
+		 * come before usr ones.
+		 *
+		 * This means that mgmt pf needs to allocate msi-x table big
+		 * enough to cover its own usr vectors. So, only the last
+		 * chunk of the table will ever be used for mgmt pf.
+		 */
+		lro->msix_user_start_vector =
+			XOCL_READ_REG32(lro->core.intr_bar_addr +
+			XCLMGMT_INTR_USER_VECTOR) & 0x0f;
+		total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
-	i = 0; // Suppress warning about unused variable
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+	/* Suppress warning about unused variable */
+	i = 0;
 	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
 	if (rv == total)
 		rv = 0;
@@ -571,7 +508,7 @@ static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
 		lro->msix_irq_entries[i].entry = i;
 	rv = pci_enable_msix(lro->core.pdev, lro->msix_irq_entries, total);
 #endif
-	printk(KERN_INFO "setting up msix, total irqs: %d, rv=%d\n", total, rv);
+	mgmt_info(lro, "setting up msix, total irqs: %d, rv=%d\n", total, rv);
 	return rv;
 }
 
@@ -584,12 +521,15 @@ static void xclmgmt_teardown_msix(struct xclmgmt_dev *lro)
 static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+	struct xocl_board_private *dev_info = &lro->core.priv;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-	XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
-		(en ? XCLMGMT_INTR_USER_ENABLE : XCLMGMT_INTR_USER_DISABLE));
+	if (!(dev_info->flags & XOCL_DSAFLAG_FIXED_INTR))
+		XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
+			(en ? XCLMGMT_INTR_USER_ENABLE :
+			XCLMGMT_INTR_USER_DISABLE));
 	return 0;
 }
 
@@ -602,7 +542,8 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	vec = pci_irq_vector(lro->core.pdev,
 		lro->msix_user_start_vector + intr);
 #else
@@ -614,36 +555,204 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 		return request_irq(vec, handler, 0, DRV_NAME, arg);
 
 	free_irq(vec, arg);
+
 	return 0;
+}
+
+static int xclmgmt_reset(xdev_handle_t xdev_hdl)
+{
+	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+
+	return reset_hot_ioctl(lro);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.intr_config = xclmgmt_intr_config,
 	.intr_register = xclmgmt_intr_register,
+	.reset = xclmgmt_reset,
 };
 
-static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
-	u64 msgid, int err)
+static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	int ret;
+	uint64_t val = 0;
+	size_t resp_sz = 0;
+	void *ptr = NULL;
+	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	switch (subdev_req->kind) {
+	case VOL_12V_PEX:
+		val = xocl_xmc_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(u32);
+		ptr = (void *)&val;
+		break;
+	case IDCODE:
+		val = xocl_icap_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(u32);
+		ptr = (void *)&val;
+		break;
+	case XCLBIN_UUID:
+		ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
+		resp_sz = sizeof(xuid_t);
+		break;
+	default:
+		break;
+	}
+
+	if (!resp_sz) {
+		return -EINVAL;
+	}
+
+	*resp = vmalloc(resp_sz);
+	if (*resp == NULL) {
+		return -ENOMEM;
+	}
+	memcpy(*resp, ptr, resp_sz);
+	*sz = resp_sz;
+	return 0;
+}
+static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, struct mailbox_conn *mb_conn)
+{
+	int ret = 0;
+	uint32_t crc_chk;
+	phys_addr_t paddr;
+
+	paddr = virt_to_phys((void *)mb_conn->kaddr);
+	if (paddr != (phys_addr_t)mb_conn->paddr) {
+		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
+		mgmt_info(lro, "Failed to get the same physical addr, running in VMs?\n");
+		ret = -EFAULT;
+		goto done;
+	}
+	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
+
+	if (crc_chk != mb_conn->crc32) {
+		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
+		mgmt_info(lro, "failed to get the same CRC\n");
+		ret = -EFAULT;
+		goto done;
+	}
+	ret |= MB_PEER_SAME_DOM;
+done:
+	return ret;
+}
+void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+	bool is_sw = false;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if (!mb_req) {
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CHAN_SWITCH;
+
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CHAN_SWITCH)) != 0;
+	mb_conn.flag = ch_switch;
+
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
+	return;
+}
+static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
+	u64 msgid, int err, bool sw_ch)
+{
+	int ret = 0;
+	uint64_t ch_switch = 0;
+	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
+	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
+	struct mailbox_bitstream_kaddr *mb_kaddr = NULL;
+	void *resp = NULL;
+	bool is_sw = false;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+
+	bitstm_lock = (struct mailbox_req_bitstream_lock *)req->data;
 
 	if (err != 0)
 		return;
 
-	printk(KERN_INFO "received request (%d) from peer\n", req->req);
+	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
 
 	switch (req->req) {
 	case MAILBOX_REQ_LOCK_BITSTREAM:
-		ret = xocl_icap_lock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOCK_BITSTREAM)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
+				0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
 		break;
 	case MAILBOX_REQ_UNLOCK_BITSTREAM:
-		ret = xocl_icap_unlock_bitstream(lro, &req->u.req_bit_lock.uuid,
-			req->u.req_bit_lock.pid);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret));
+		if ((ch_switch & (1ULL<<MAILBOX_REQ_UNLOCK_BITSTREAM))^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
+			0);
+		break;
+	case MAILBOX_REQ_HOT_RESET:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_HOT_RESET)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = (int) reset_hot_ioctl(lro);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN_KADDR)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else{
+			mb_kaddr = (struct mailbox_bitstream_kaddr *)req->data;
+			ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
+		}
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_LOAD_XCLBIN:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_download_axlf(lro, req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_RECLOCK:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_RECLOCK)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		break;
+	case MAILBOX_REQ_PEER_DATA:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		if (ret) {
+			/* if can't get data, return 0 as response */
+			ret = 0;
+			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
+		} else
+			(void) xocl_peer_response(lro, msgid, resp, sz, is_sw);
+		vfree(resp);
+		break;
+	case MAILBOX_REQ_CONN_EXPL:
+		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+		if (is_sw^sw_ch)
+			ret = -ENXIO;
+		else
+			ret = xclmgmt_connection_explore(lro, (struct mailbox_conn *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		(void) xclmgmt_chan_switch_notify(lro);
 		break;
 	default:
 		break;
@@ -660,13 +769,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
-
-	lro->user_pci_dev = find_user_node(pdev);
-	if (!lro->user_pci_dev) {
-		xocl_err(&pdev->dev,
-			"could not find user pf for instance %d\n",
-			lro->instance);
-	}
 
 	/* We can only support MSI-X. */
 	ret = xclmgmt_setup_msix(lro);
@@ -687,7 +789,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		xocl_err(&pdev->dev, "failed to register firewall\n");
 		goto fail_firewall;
 	}
-	if(dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
@@ -702,15 +804,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (ret)
 		goto fail_all_subdev;
 
-	ret = xocl_ctx_init(&pdev->dev, &lro->ctx_table,
-		MGMT_PROC_TABLE_HASH_SZ, proc_hash, proc_cmp);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to create ctx table\n");
-		goto fail_all_subdev;
-	}
+	lro->core.thread_arg.health_cb = health_check_cb;
+	lro->core.thread_arg.arg = lro;
+	lro->core.thread_arg.interval = health_interval * 1000;
 
-	xocl_af_start_health_check(lro, health_check_cb, lro,
-		health_interval * 1000);
+	health_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -727,6 +825,35 @@ fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
 
+
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_conn mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+	void *kaddr = NULL;
+	bool is_sw = false;
+	uint64_t ch_switch = 0;
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
+	data_len = sizeof(struct mailbox_conn);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	if (!mb_req) {
+		return;
+	}
+	mb_req->req = MAILBOX_REQ_CONN_EXPL;
+	mb_conn.flag = online;
+	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!kaddr) {
+		return;
+	}
+	memcpy(mb_req->data, &mb_conn, data_len);
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
+	kfree(kaddr);
+	vfree(mb_req);
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry
@@ -741,7 +868,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct xclmgmt_dev *lro = NULL;
 	struct xocl_board_private *dev_info;
 
-	xocl_info(&pdev->dev, "Driver: %s", XOCL_DRV_CHANGE);
+	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
 
 	rc = pci_enable_device(pdev);
@@ -751,8 +878,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return rc;
 	}
 
+	pci_set_master(pdev);
+
 	/* allocate zeroed device book keeping structure */
-	lro = kzalloc(sizeof(struct xclmgmt_dev), GFP_KERNEL);
+	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
 	if (!lro) {
 		xocl_err(&pdev->dev, "Could not kzalloc(xclmgmt_dev).\n");
 		rc = -ENOMEM;
@@ -763,16 +892,25 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
 	lro->core.pdev = pdev;
-	memset(lro->core.dyna_subdevs_id, 0xff, sizeof(u32) * XOCL_SUBDEV_NUM);
 	lro->pci_dev = pdev;
 	lro->ready = false;
 
-	rc = pci_request_regions(pdev, DRV_NAME);
-	/* could not request all regions? */
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_request_regions() = %d\n", rc);
-		goto err_regions;
+	rc = pcie_get_readrq(pdev);
+	if (rc < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto err_alloc;
 	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+			goto err_alloc;
+		}
+	}
+
+	rc = xocl_alloc_dev_minor(lro);
+	if (rc)
+		goto err_alloc_minor;
 
 	dev_info = (struct xocl_board_private *)id->driver_data;
 	xocl_fill_dsa_priv(lro, dev_info);
@@ -783,12 +921,14 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_map;
 
 	lro->instance = XOCL_DEV_ID(pdev);
-	lro->user_char_dev = create_char(lro);
-	if (!lro->user_char_dev) {
+	rc = create_char(lro);
+	if (rc) {
 		xocl_err(&pdev->dev, "create_char(user_char_dev) failed\n");
-		rc = -EINVAL;
 		goto err_cdev;
 	}
+
+	xocl_drvinst_set_filedev(lro, lro->user_char_dev.cdev);
+
 	mutex_init(&lro->busy_mutex);
 
 	mgmt_init_sysfs(&pdev->dev);
@@ -804,15 +944,17 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xclmgmt_extended_probe(lro);
 
+	xclmgmt_connect_notify(lro, true);
+
 	return 0;
 
 err_cdev:
 	unmap_bars(lro);
 err_map:
-	pci_release_regions(pdev);
-err_regions:
-	kfree(lro);
+	xocl_free_dev_minor(lro);
+err_alloc_minor:
 	dev_set_drvdata(&pdev->dev, NULL);
+	xocl_drvinst_free(lro);
 err_alloc:
 	pci_disable_device(pdev);
 
@@ -832,27 +974,28 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	       pdev, lro);
 	BUG_ON(lro->core.pdev != pdev);
 
+	xclmgmt_connect_notify(lro, false);
+
+	health_thread_stop(lro);
+
 	mgmt_fini_sysfs(&pdev->dev);
 
 	xocl_subdev_destroy_all(lro);
 
-	/* free contexts */
-	xocl_ctx_fini(&pdev->dev, &lro->ctx_table);
-
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
-	if (lro->user_char_dev) {
-		destroy_sg_char(lro->user_char_dev);
-		lro->user_char_dev = 0;
-	}
+	destroy_sg_char(&lro->user_char_dev);
 
 	/* unmap the BARs */
 	unmap_bars(lro);
-	pci_disable_device(pdev);
-	pci_release_regions(pdev);
 
-	kfree(lro);
+	pci_disable_device(pdev);
+
+	xocl_free_dev_minor(lro);
+
 	dev_set_drvdata(&pdev->dev, NULL);
+
+	xocl_drvinst_free(lro);
 }
 
 static pci_ers_result_t mgmt_pci_error_detected(struct pci_dev *pdev,
@@ -893,6 +1036,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_sysmon,
 	xocl_init_mb,
 	xocl_init_xvc,
+	xocl_init_nifd,
 	xocl_init_xiic,
 	xocl_init_mailbox,
 	xocl_init_firewall,
@@ -900,6 +1044,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mig,
 	xocl_init_xmc,
 	xocl_init_dna,
+	xocl_init_fmgr,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -907,6 +1052,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_sysmon,
 	xocl_fini_mb,
 	xocl_fini_xvc,
+	xocl_fini_nifd,
 	xocl_fini_xiic,
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
@@ -914,6 +1060,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mig,
 	xocl_fini_xmc,
 	xocl_fini_dna,
+	xocl_fini_fmgr,
 };
 
 static int __init xclmgmt_init(void)
@@ -925,8 +1072,8 @@ static int __init xclmgmt_init(void)
 	if (IS_ERR(xrt_class))
 		return PTR_ERR(xrt_class);
 
-	res = alloc_chrdev_region(&xclmgmt_devnode, XCLMGMT_MINOR_BASE,
-				  XCLMGMT_MINOR_COUNT, DRV_NAME);
+	res = alloc_chrdev_region(&xclmgmt_devnode, 0,
+				  XOCL_MAX_DEVICES, DRV_NAME);
 	if (res)
 		goto alloc_err;
 
@@ -949,7 +1096,7 @@ reg_err:
 	for (i--; i >= 0; i--) {
 		drv_unreg_funcs[i]();
 	}
-	unregister_chrdev_region(xclmgmt_devnode, XCLMGMT_MINOR_COUNT);
+	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
 	pr_info(DRV_NAME " init() err\n");
 	class_destroy(xrt_class);
@@ -967,7 +1114,7 @@ static void xclmgmt_exit(void)
 		drv_unreg_funcs[i]();
 	}
 	/* unregister this driver from the PCI bus driver */
-	unregister_chrdev_region(xclmgmt_devnode, XCLMGMT_MINOR_COUNT);
+	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 	class_destroy(xrt_class);
 }
 
@@ -976,6 +1123,5 @@ module_exit(xclmgmt_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Lizhi Hou <lizhi.hou@xilinx.com>");
-MODULE_VERSION(XCLMGMT_MODULE_VERSION);
-
+MODULE_VERSION(XRT_DRIVER_VERSION);
 MODULE_DESCRIPTION("Xilinx SDx management function driver");

@@ -27,7 +27,10 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
+#include "driver/common/scheduler.h"
+#include "driver/common/message.h"
 
+#include <stdarg.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -74,6 +77,8 @@ namespace xclcpuemhal2 {
       int xclExportBO(unsigned int boHandle); 
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
+      static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
+      
 
       xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
@@ -129,7 +134,7 @@ namespace xclcpuemhal2 {
 
 
       ~CpuemShim();
-      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR );
+      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR, FeatureRomHeader &featureRom );
 
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
@@ -142,6 +147,8 @@ namespace xclcpuemhal2 {
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
+      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
+
 
     private:
       std::mutex mMemManagerMutex;
@@ -213,6 +220,9 @@ namespace xclcpuemhal2 {
       static unsigned int mBufferCount;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       // HAL2 RELATED member variables end 
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
+      FeatureRomHeader mFeatureRom;
 
   };
   

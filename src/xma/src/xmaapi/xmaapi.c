@@ -15,6 +15,10 @@
  * under the License.
  */
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,20 +29,37 @@
 #include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 
-#define XMA_CFG_DEFAULT "/var/tmp/xma_cfg.yaml"
+#define XMA_CFG_DEFAULT "/var/tmp/xilinx/xmacfg.yaml"
+#define XMA_CFG_DIR "/var/tmp/xilinx"
 #define XMAAPI_MOD "xmaapi"
 
 XmaSingleton *g_xma_singleton;
+
+int32_t xma_check_default_cfg_dir(void)
+{
+    if (!access(XMA_CFG_DIR, R_OK | W_OK | X_OK))
+        return XMA_SUCCESS;
+
+    printf("XMA CFG ERROR: Unable to access directory " XMA_CFG_DIR " properly.  Errno = %d\n",
+           errno);
+    return XMA_ERROR;
+}
 
 int32_t xma_initialize(char *cfgfile)
 {
     int32_t ret;
     bool    rc;
 
-    if (!cfgfile)
+    if (!cfgfile) {
         cfgfile = XMA_CFG_DEFAULT;
+        ret = xma_check_default_cfg_dir();
+        if (ret)
+            return ret;
+    }
 
     g_xma_singleton = malloc(sizeof(*g_xma_singleton));
+    if (g_xma_singleton  == NULL)
+        return XMA_ERROR;
     memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));
 
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
@@ -48,6 +69,13 @@ int32_t xma_initialize(char *cfgfile)
     ret = xma_logger_init(&g_xma_singleton->logger);
     if (ret != XMA_SUCCESS)
         return ret;
+
+    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
+               "Creating resource shared mem database\n");
+    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
+
+    if (!g_xma_singleton->shm_res_cfg)
+        return XMA_ERROR;
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
@@ -60,17 +88,10 @@ int32_t xma_initialize(char *cfgfile)
     if (!rc)
         return XMA_ERROR_INVALID;
 
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
-               "Creating resource shared mem database\n");
-    g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
-
-    if (!g_xma_singleton->shm_res_cfg)
-        return XMA_ERROR;
- 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     rc = xma_hw_configure(&g_xma_singleton->hwcfg,
                           &g_xma_singleton->systemcfg,
-                          xma_res_xma_init_completed());
+                          xma_res_xma_init_completed(g_xma_singleton->shm_res_cfg));
     if (!rc)
         goto error;
 

@@ -206,6 +206,12 @@ public:
     }
   }
 
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx);
+
   virtual task::queue*
   getQueue(hal::queue_type qt)
   {
@@ -344,7 +350,7 @@ public:
   virtual ssize_t
   readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
 
-  virtual int 
+  virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:
@@ -520,6 +526,14 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    if (!m_ops->mGetProfilingSlotProperties)
+      return hal::operations_result<uint32_t>();
+    return m_ops->mGetProfilingSlotProperties(m_handle,type,slotnum);
+  }
+
   virtual hal::operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
   {
@@ -559,6 +573,26 @@ public:
     if (!m_ops->mStopTrace)
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
+  }
+
+  virtual void*
+  getHalDeviceHandle() { 
+    return m_handle;
+  }
+
+  virtual hal::operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<std::string>();
+    size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string sysfs_path = std::string(path_buf);
+    return sysfs_path;
   }
 };
 

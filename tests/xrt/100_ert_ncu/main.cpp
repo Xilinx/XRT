@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include "utils.hpp"
 #include "task.hpp"
@@ -247,20 +245,20 @@ init_scheduler(const utils::device& d, bool ert)
 
 
 static int 
-run(const utils::device& d,size_t jobs, size_t seconds, bool ert)
+run(const utils::device& d,size_t jobs, size_t seconds, bool ert, int first_used_mem)
 {
   init_scheduler(d, ert);
 
   // Create specified number of jobs.  All jobs shared input vector 'a'
   const size_t data_size = ELEMENTS * ARRAY_SIZE;
-  auto a = utils::create_bo(d,data_size*sizeof(unsigned long));
+  auto a = utils::create_bo(d,data_size*sizeof(unsigned long), first_used_mem);
   auto adata = reinterpret_cast<unsigned long*>(a->data);
   for (size_t i=0;i<data_size;++i)
     adata[i] = i;
 
   // Each job has its own input/output vector 'b'
   for (size_t i=0; i<jobs; ++i) {
-    auto b = utils::create_bo(d,data_size*sizeof(unsigned long));
+    auto b = utils::create_bo(d,data_size*sizeof(unsigned long), first_used_mem);
     auto bdata = reinterpret_cast<unsigned long*>(b->data);
     for (size_t j=0;j<data_size;++j) {
       bdata[j] = i;
@@ -371,8 +369,9 @@ int run(int argc, char** argv)
 
   std::cout << "Compiled kernel = " << bitstream << std::endl;
 
-  auto device = utils::init(bitstream,device_index,hallog);
-  run(device,jobs,seconds,ert);
+  int first_used_mem = 0;
+  auto device = utils::init(bitstream,device_index,hallog,first_used_mem);
+  run(device,jobs,seconds,ert,first_used_mem);
 
   return 0;
 }

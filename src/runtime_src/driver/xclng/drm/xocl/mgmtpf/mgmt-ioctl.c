@@ -16,7 +16,8 @@
 
 #include "mgmt-core.h"
 
-static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
+static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
+{
 
 	struct xclmgmt_err_info obj;
 	u32	val, level;
@@ -33,7 +34,7 @@ static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg) {
 
 	obj.mNumFirewalls = val;
 	memset(obj.mAXIErrorStatus, 0, sizeof (obj.mAXIErrorStatus));
-	for(i = 0; i < obj.mNumFirewalls; ++i) {
+	for (i = 0; i < obj.mNumFirewalls; ++i) {
 		obj.mAXIErrorStatus[i].mErrFirewallID = i;
 	}
 
@@ -67,34 +68,60 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
-	freezeAXIGate(lro);
-	freeAXIGate(lro);
+	xocl_icap_reset_axi_gate(lro);
 	return compute_unit_busy(lro) ? -EBUSY : 0;
 }
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
-	struct xclmgmt_ioc_bitstream_axlf bitstream_obj;
+	void *copy_buffer = NULL;
+	size_t copy_buffer_size = 0;
+	struct xclmgmt_ioc_bitstream_axlf ioc_obj = { 0 };
+	struct axlf xclbin_obj = { 0 };
+	int ret = 0;
 
-	if (copy_from_user((void *)&bitstream_obj, arg,
-		sizeof(struct xclmgmt_ioc_bitstream_axlf)))
+	if (copy_from_user((void *)&ioc_obj, arg, sizeof(ioc_obj)))
+		return -EFAULT;
+	if (copy_from_user((void *)&xclbin_obj, ioc_obj.xclbin,
+		sizeof(xclbin_obj)))
 		return -EFAULT;
 
-	return xocl_icap_download_axlf(lro, bitstream_obj.xclbin);
+	copy_buffer_size = xclbin_obj.m_header.m_length;
+	copy_buffer = vmalloc(copy_buffer_size);
+	if (copy_buffer == NULL)
+		return -ENOMEM;
+
+	if (copy_from_user((void *)copy_buffer, ioc_obj.xclbin,
+		copy_buffer_size))
+		ret = -EFAULT;
+	else
+		ret = xocl_icap_download_axlf(lro, copy_buffer);
+
+	vfree(copy_buffer);
+	return ret;
+}
+
+static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *data)
+{
+	int ret = 0;
+	struct drm_xocl_sw_mailbox args;
+	if (copy_from_user((void *)&args, data, sizeof(struct drm_xocl_sw_mailbox)))
+		return -EFAULT;
+
+	ret = xocl_mailbox_sw_transfer(lro, &args);
+	if (copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox)))
+		return -EFAULT;
+
+	return ret;
 }
 
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	struct xclmgmt_char *lro_char = (struct xclmgmt_char *)filp->private_data;
 	struct xclmgmt_dev *lro;
 	long result = 0;
+	lro = (struct xclmgmt_dev *)filp->private_data;
 
-	BUG_ON(!lro_char);
-	lro = lro_char->lro;
 	BUG_ON(!lro);
-
-	if (lro_char != lro->user_char_dev)
-		return -ENOTTY;
 
 	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
@@ -107,12 +134,13 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (result)
 		return -EFAULT;
 
-	mutex_lock(&lro->busy_mutex);
-	if (lro->reset_firewall) {
-		mgmt_err(lro, "Firewall tripped!");
-		mutex_unlock(&lro->busy_mutex);
-		return -EBUSY;
+	/* Handle specially because we don't want to take the lock. */
+	if (cmd == XCLMGMT_IOCSWMAILBOX) {
+		result = mgmt_sw_mailbox_ioctl(lro, (void __user *)arg);
+		return result;
 	}
+
+	mutex_lock(&lro->busy_mutex);
 
 	switch (cmd) {
 	case XCLMGMT_IOCINFO:
@@ -120,7 +148,7 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD:
 		printk(KERN_ERR
-			"Bitstream ioctl with legacy bitstream not supported") ;
+			"Bitstream ioctl with legacy bitstream not supported");
 		result = -EINVAL;
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD_AXLF:
@@ -145,7 +173,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		printk(KERN_DEBUG "MGMT default IOCTL request %u\n", cmd & 0xff);
 		result = -ENOTTY;
 	}
-
 	mutex_unlock(&lro->busy_mutex);
 	return result;
 }

@@ -40,6 +40,11 @@
 #define DSA_MAJOR_VERSION 1
 #define DSA_MINOR_VERSION 1
 
+/************************ DEBUG IP LAYOUT ************************************/
+
+#define IP_LAYOUT_HOST_NAME "HOST"
+#define IP_LAYOUT_SEP "-"
+
 /************************ APM 0: Monitor MIG Ports ****************************/
 
 #define XPAR_AXI_PERF_MON_0_NUMBER_SLOTS                2
@@ -190,7 +195,8 @@
 
 #define XAPM_MAX_NUMBER_SLOTS             8
 // Max slots = floor(max slots on trace funnel / 2) = floor(63 / 2) = 31
-#define XSPM_MAX_NUMBER_SLOTS             31
+// NOTE: SPM max slots += 3 to support XDMA/KDMA/P2P monitors on some 2018.3 platforms
+#define XSPM_MAX_NUMBER_SLOTS             34
 #define XSAM_MAX_NUMBER_SLOTS             31
 #define XSSPM_MAX_NUMBER_SLOTS            31
 #define XAPM_METRIC_COUNTERS_PER_SLOT     8
@@ -218,6 +224,15 @@
 #define XAPM_DEBUG_METRIC_COUNTERS_PER_SLOT     4  //debug is only interested in 4 metric counters
 
 /************************ APM Trace Stream ************************************/
+
+/************************ Trace IDs ************************************/
+
+#define MIN_TRACE_ID_SPM        0
+#define MAX_TRACE_ID_SPM        61
+#define MIN_TRACE_ID_SAM        64
+#define MAX_TRACE_ID_SAM        544
+#define MIN_TRACE_ID_SSPM       576
+#define MAX_TRACE_ID_SSPM       607
 
 /* Bit locations of trace flags */
 #define XAPM_READ_LAST                   6
@@ -247,10 +262,11 @@
 enum xclPerfMonType {
 	XCL_PERF_MON_MEMORY = 0,
 	XCL_PERF_MON_HOST   = 1,
-	XCL_PERF_MON_ACCEL  = 2,
-	XCL_PERF_MON_STALL  = 3,
-  XCL_PERF_MON_STR = 4,
-	XCL_PERF_MON_TOTAL_PROFILE = 5
+	XCL_PERF_MON_SHELL  = 2,
+	XCL_PERF_MON_ACCEL  = 3,
+	XCL_PERF_MON_STALL  = 4,
+	XCL_PERF_MON_STR    = 5,
+	XCL_PERF_MON_TOTAL_PROFILE = 6
 };
 
 /* Performance monitor start event */
@@ -353,26 +369,25 @@ enum xclPerfMonEventID {
 
 /* Performance monitor counter results */
 typedef struct {
-  //unsigned int   NumSlots;
-  float          SampleIntervalUsec;
-  unsigned int   WriteBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   WriteTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   WriteLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short WriteMinLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short WriteMaxLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short ReadMinLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short ReadMaxLatency[XSPM_MAX_NUMBER_SLOTS];
+  float              SampleIntervalUsec;
+  unsigned long long WriteBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned short     WriteMinLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned short     WriteMaxLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned short     ReadMinLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned short     ReadMaxLatency[XSPM_MAX_NUMBER_SLOTS];
   // Sdx Accel Mon
-  unsigned int CuExecCount[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuExecCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuStallExtCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuStallIntCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuStallStrCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuMinExecCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned int CuMaxExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCount[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles[XSAM_MAX_NUMBER_SLOTS];
   // SDx Stream Mon
   unsigned long long StrNumTranx[XSSPM_MAX_NUMBER_SLOTS];
   unsigned long long StrDataBytes[XSSPM_MAX_NUMBER_SLOTS];
@@ -383,8 +398,8 @@ typedef struct {
 
 /* Performance monitor trace results */
 typedef struct {
-  xclPerfMonEventID EventID;
-  xclPerfMonEventType EventType;
+  enum xclPerfMonEventID EventID;
+  enum xclPerfMonEventType EventType;
   unsigned long long Timestamp;
   unsigned char  Overflow;
   unsigned int TraceID;
@@ -404,5 +419,37 @@ typedef struct {
   //unsigned int mNumSlots;
   xclTraceResults mArray[MAX_TRACE_NUMBER_SAMPLES];
 } xclTraceResultsVector;
+
+#define DRIVER_NAME_ROOT "/dev"
+#define DEVICE_PREFIX "/dri/renderD"
+#define NIFD_PREFIX "/nifd"
+#define SYSFS_NAME_ROOT "/sys/bus/pci/devices/"
+#define MAX_NAME_LEN 256
+
+enum DeviceType {
+  SW_EMU = 0,
+  HW_EMU = 1,
+  XBB = 2,
+  AWS = 3
+};
+
+/**
+ * \brief data structure for querying device info
+ * 
+ * TODO:
+ * all the data for nifd won't be avaiable until nifd
+ * driver is merged and scan.h is changed to recognize
+ * nifd driver.
+ */
+typedef struct {
+  enum DeviceType device_type;
+  unsigned int device_index;
+  unsigned int mgmt_instance;
+  unsigned int user_instance;
+  unsigned int nifd_instance;
+  char device_name[MAX_NAME_LEN];
+  char nifd_name[MAX_NAME_LEN];
+} xclDebugProfileDeviceInfo;
+
 
 #endif

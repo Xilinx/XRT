@@ -22,19 +22,19 @@ add_library(hw_emu_objects OBJECT ${EM_SRC_FILES})
 set(CURR_SOURCE "")
 add_library(xrt_hwemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:hw_emu_objects>
+  $<TARGET_OBJECTS:util>
   )
-
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(xrt_hwemu
-  ${BOOST_FILESYSTEM_LIBRARY}
-  ${BOOST_SYSTEM_LIBRARY}
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
   common_em
   rt
+  uuid
   )
 
 install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)

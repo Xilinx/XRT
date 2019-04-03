@@ -50,7 +50,11 @@ uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *ba
             for( unsigned int i = 0; i < map->m_count; i++ ) {
                 if (map->m_debug_ip_data[i].m_type == type) {
                     if(baseAddress)baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
-                    if(portNames) portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+                    if(portNames) {
+                        std::string portName;
+                        portName.assign(map->m_debug_ip_data[i].m_name, 128);
+                        portNames->push_back(portName);
+                    }
                     ++count;
                 }
             }
@@ -267,7 +271,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
-    std::cout << "Run 'xbsak status' with option --<ipname> to get more information about the IP" << std::endl;
+    std::cout << "Run 'awssak status' with option --<ipname> to get more information about the IP" << std::endl;
     return 0;
 }
 

@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2017, Xilinx Inc
+ *  Copyright (C) 2015-2018, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -21,19 +21,18 @@
  *
  *  GPL license Verbiage:
  *
- *  This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
- *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *  You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- */
-
-/**
- *  Xilinx SDAccel xclbin container definition
- *  Copyright (C) 2015-2017, Xilinx Inc - All rights reserved
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _XCLBIN_H_
@@ -47,19 +46,14 @@
 #include <cstdlib>
 #include <cstdint>
 #include <algorithm>
+#include <uuid/uuid.h>
 #else
 #include <stdlib.h>
 #include <stdint.h>
+#include <uuid/uuid.h>
 #endif
 
 #if !defined(__KERNEL__)
-#if !defined _UUID_UUID_H
-/*
- * Crude workaround to define uuid_t till we start including "uuid/uuid.h" from
- * "/usr/include" area
- */
-typedef unsigned char uuid_t[16];
-#endif
 typedef uuid_t xuid_t;
 #else //(__KERNEL__)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
@@ -99,31 +93,6 @@ extern "C" {
         XCLBIN_MODE_MAX
     };
 
-
-//    struct xclBin {
-//        char m_magic[8];                    /* should be xclbin0\0  */
-//        uint64_t m_length;                  /* total size of the xclbin file */
-//        uint64_t m_timeStamp;               /* number of seconds since epoch when xclbin was created */
-//        uint64_t m_version;                 /* tool version used to create xclbin */
-//        unsigned m_mode;                    /* XCLBIN_MODE */
-//        char m_nextXclBin[24];              /* Name of next xclbin file in the daisy chain */
-//        uint64_t m_metadataOffset;          /* file offset of embedded metadata */
-//        uint64_t m_metadataLength;          /* size of the embedded metdata */
-//        uint64_t m_primaryFirmwareOffset;   /* file offset of bitstream or emulation archive */
-//        uint64_t m_primaryFirmwareLength;   /* size of the bistream or emulation archive */
-//        uint64_t m_secondaryFirmwareOffset; /* file offset of clear bitstream if any */
-//        uint64_t m_secondaryFirmwareLength; /* size of the clear bitstream */
-//        uint64_t m_driverOffset;            /* file offset of embedded device driver if any (currently unused) */
-//        uint64_t m_driverLength;            /* size of the embedded device driver (currently unused) */
-//
-//        // Extra debug information for hardware and hardware emulation debug
-//
-//        uint64_t m_dwarfOffset ;
-//        uint64_t m_dwarfLength ;
-//        uint64_t m_ipiMappingOffset ;
-//        uint64_t m_ipiMappingLength ;
-//    };
-
     /*
      *  AXLF LAYOUT
      *  -----------
@@ -157,7 +126,11 @@ extern "C" {
         BMC,
         BUILD_METADATA,
         KEYVALUE_METADATA,
-        USER_METADATA
+        USER_METADATA,
+        DNA_CERTIFICATE,
+        PDI,
+        BITSTREAM_PARTIAL_PDI,
+        DTC
     };
 
     enum MEM_TYPE {
@@ -170,12 +143,16 @@ extern "C" {
         MEM_HBM,
         MEM_BRAM,
         MEM_URAM,
+        MEM_STREAMING_CONNECTION
     };
 
     enum IP_TYPE {
         IP_MB = 0,
         IP_KERNEL, //kernel instance
-        IP_DNASC
+        IP_DNASC,
+        IP_DDR4_CONTROLLER,
+        IP_MEM_DDR4,
+        IP_MEM_HBM
     };
 
     struct axlf_section_header {
@@ -189,7 +166,9 @@ extern "C" {
         uint64_t m_length;                  /* Total size of the xclbin file */
         uint64_t m_timeStamp;               /* Number of seconds since epoch when xclbin was created */
         uint64_t m_featureRomTimeStamp;     /* TimeSinceEpoch of the featureRom */
-        uint32_t m_version;                 /* Tool version used to create xclbin */
+        uint16_t m_versionPatch;            /* Patch Version */
+        uint8_t m_versionMajor;             /* Major Version - Version: 2.1.0*/
+        uint8_t m_versionMinor;             /* Minor Version */
         uint32_t m_mode;                    /* XCLBIN_MODE */
 	union {
 	    struct {
@@ -268,10 +247,37 @@ extern "C" {
 
 
     /****   IP_LAYOUT SECTION ****/
+
+    // IP Kernel 
+    #define IP_INT_ENABLE_MASK    0x0001
+    #define IP_INTERRUPT_ID_MASK  0x00FE
+    #define IP_INTERRUPT_ID_SHIFT 0x1
+        
+    enum IP_CONTROL {
+        AP_CTRL_HS = 0,
+        AP_CTRL_CHAIN = 1,
+        AP_CTRL_NONE = 2,
+        AP_CTRL_ME = 3
+    };
+
+    #define IP_CONTROL_MASK  0xFF00
+    #define IP_CONTROL_SHIFT 0x8
+
     /* IPs on AXI lite - their types, names, and base addresses.*/
     struct ip_data {
         uint32_t m_type; //map to IP_TYPE enum
-        uint32_t properties; //32 bits to indicate ip specific property. eg if m_type == IP_KERNEL then bit 0 is for interrupt.
+        union {
+            uint32_t properties; // Default: 32-bits to indicate ip specific property. 
+                                 // m_type: IP_KERNEL
+                                 //         m_int_enable   : Bit  - 0x0000_0001;
+                                 //         m_interrupt_id : Bits - 0x0000_00FE; 
+                                 //         m_ip_control   : Bits = 0x0000_FF00;
+            struct {             // m_type: IP_MEM_*
+               uint16_t m_index;
+               uint8_t m_pc_index;
+               uint8_t unused;
+            } indices;
+        };
         uint64_t m_base_address;
         uint8_t m_name[64]; //eg Kernel name corresponding to KERNEL instance, can embed CU name in future.
     };
@@ -291,7 +297,8 @@ extern "C" {
         AXI_MONITOR_FIFO_LITE,
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
-        AXI_STREAM_MONITOR
+        AXI_STREAM_MONITOR,
+	AXI_STREAM_PROTOCOL_CHECKER
     };
 
     struct debug_ip_data {
@@ -302,7 +309,7 @@ extern "C" {
         uint8_t m_minor;
         uint8_t m_reserved[3];
         uint64_t m_base_address;
-        uint8_t m_name[128];
+        char    m_name[128];
     };
 
     struct debug_ip_layout {
@@ -362,19 +369,7 @@ extern "C" {
     {
         CST_UNKNOWN = 0,
         CST_SDBM = 1,
-        CST_LAST 
-    };
-
-    struct checksum
-    {
-       char m_magic[8];                   /* XCHKSUM */
-       uint8_t m_type;                    /* Checksum Type*/
-       uint8_t padding[7];
-
-       union {
-          uint64_t m_64bit;             
-          unsigned char m_maxKeySize[256];  /* Do not change */
-       };
+        CST_LAST
     };
 
     /**** END : Xilinx internal section *****/

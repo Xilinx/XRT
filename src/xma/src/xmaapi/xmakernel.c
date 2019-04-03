@@ -88,6 +88,9 @@ XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props)
 {
     XmaKernelSession *session = malloc(sizeof(XmaKernelSession));
+    if (session == NULL) {
+        return NULL;
+    }
     XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     XmaKernelRes kern_res;
     int rc, dev_handle, kern_handle, k_handle;
@@ -112,6 +115,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Failed to allocate free kernel. Return code %d\n", rc);
+        free(session);
         return NULL;
     }
 
@@ -119,18 +123,24 @@ xma_kernel_session_create(XmaKernelProperties *props)
 
     dev_handle = xma_res_dev_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_KERNEL_MOD,"dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0)
+    if (dev_handle < 0) {
+        free(session);
         return NULL;
+    }
 
     kern_handle = xma_res_kern_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_KERNEL_MOD,"kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0)
+    if (kern_handle < 0) {
+        free(session);
         return NULL;
+    }
 
     k_handle = xma_res_plugin_handle_get(kern_res);
     xma_logmsg(XMA_INFO_LOG, XMA_KERNEL_MOD,"kernel_handle = %d\n", k_handle);
-    if (k_handle < 0)
+    if (k_handle < 0) {
+        free(session);
         return NULL;
+    }
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -141,11 +151,15 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->base.hw_session.ddr_bank =
         hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
+    //For execbo:
+    session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    session->base.hw_session.dev_index = hal->dev_index;
+
     session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
 
     // Allocate the private data
     session->base.plugin_data =
-        malloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size);
+        calloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
     rc = session->kernel_plugin->init(session);
@@ -153,6 +167,8 @@ xma_kernel_session_create(XmaKernelProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Initalization of kernel plugin failed. Return code %d\n",
                    rc);
+        free(session->base.plugin_data);
+        free(session);
         return NULL;
     }
 

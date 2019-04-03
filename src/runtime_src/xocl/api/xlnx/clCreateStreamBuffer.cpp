@@ -23,7 +23,6 @@
 #include "plugin/xdp/profile.h"
 
 //To access make_unique<>. TODO
-#include "xrt/util/memory.h"
 
 namespace xocl {
 static void
@@ -40,7 +39,7 @@ clCreateStreamBuffer(cl_device_id device,
 	             cl_int*      errcode_ret) 
 {
   validOrError(device,size,errcode_ret);
-  auto buf = xrt::make_unique<xocl::stream_mem>(size);
+  auto buf = std::make_unique<xocl::stream_mem>(size);
   buf->get(xocl::xocl(device));
   xocl::assign(errcode_ret,CL_SUCCESS);
   return buf.release();

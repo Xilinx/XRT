@@ -33,6 +33,7 @@ xma_frame_planes_get(XmaFrameProperties *frame_props)
         {XMA_YUV422_FMT_TYPE,  3},
         {XMA_YUV444_FMT_TYPE,  3},
         {XMA_RGB888_FMT_TYPE,  1},
+        {XMA_RGBP_FMT_TYPE,    3},
     };
 
     return frame_format_desc[frame_props->format].num_planes;
@@ -45,6 +46,8 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
     XmaFrame *frame = malloc(sizeof(XmaFrame));
+    if (frame  == NULL)
+        return NULL;
     memset(frame, 0, sizeof(XmaFrame));
     frame->frame_props = *frame_props;
     num_planes = xma_frame_planes_get(frame_props);
@@ -72,6 +75,8 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
                "%s() frame_props %p and frame_data %p\n",
                __func__, frame_props, frame_data);
     XmaFrame *frame = malloc(sizeof(XmaFrame));
+    if (frame  == NULL)
+        return NULL;
     memset(frame, 0, sizeof(XmaFrame));
     frame->frame_props = *frame_props;
     num_planes = xma_frame_planes_get(frame_props);
@@ -115,12 +120,17 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
                "%s() Cloning buffer from %p of size %lu\n",
                __func__, data, size);
     XmaDataBuffer *buffer = malloc(sizeof(XmaDataBuffer));
+    if (buffer  == NULL)
+        return NULL;
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = true;
     buffer->data.buffer = data;
     buffer->alloc_size = size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
 
     return buffer;
 }
@@ -131,12 +141,17 @@ xma_data_buffer_alloc(size_t size)
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Allocate buffer from of size %lu\n", __func__, size);
     XmaDataBuffer *buffer = malloc(sizeof(XmaDataBuffer));
+    if (buffer  == NULL)
+        return NULL;
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = false;
     buffer->data.buffer = malloc(size);
     buffer->alloc_size = size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
 
     return buffer;
 }

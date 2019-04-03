@@ -8,6 +8,7 @@ Description: Xilinx Media Accelerator API
 Version: 0.0.1
 Requires: yaml-0.1   >= 0.1.4 \
           libxml-2.0 >= 2.9.1 \
-          xrt >= 2.1.0
+          xrt >= 2.1.0 \
+          uuid >= 2.27.0
 Libs: -L${libdir} -lxmaapi
 Cflags: -I${includedir}
