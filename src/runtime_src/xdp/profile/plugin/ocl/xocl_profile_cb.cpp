@@ -125,14 +125,14 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
     timestampMsec = (status == CL_COMPLETE) ? (event->time_end()) / 1e6 : timestampMsec;
     timestampMsec = (status == CL_RUNNING) ? (event->time_start()) / 1e6 : timestampMsec;
     // Create and insert trace string in xdp plugin
-    std::string trace_cu_name = (cu_name.empty()) ? "_dummy" : cu_name;
     std::string uniqueDeviceName = deviceName + "-" + std::to_string(deviceId);
     std::string localSize = std::to_string(localWorkDim[0]) + ":" +
-        std::to_string(localWorkDim[1]) + ":" + std::to_string(localWorkDim[2]);
-    std::string CuInfo = kname + "|" + localSize + "|" + trace_cu_name;
+                            std::to_string(localWorkDim[1]) + ":" +
+                            std::to_string(localWorkDim[2]);
+    std::string CuInfo = kname + "|" + localSize;
     std::string uniqueName = "KERNEL|" + uniqueDeviceName + "|" + xname + "|" + CuInfo + "|";
     std::string traceString = uniqueName + std::to_string(workGroupSize);
-    OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(trace_cu_name, traceString);
+    OCLProfiler::Instance()->getPlugin()->setTraceStringForComputeUnit(kname, traceString);
     // Finally log the execution
     OCLProfiler::Instance()->getProfileManager()->logKernelExecution
       ( reinterpret_cast<uint64_t>(kernel)
@@ -195,6 +195,8 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
@@ -243,13 +245,16 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
        ,timestampMsec);
 }
 
-void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
+void
+cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
 {
     if (!isProfilingOn())
       return;
@@ -289,11 +294,14 @@ void cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t si
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
        ,timestampMsec);
 }
+
 void
 cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
 {
@@ -333,6 +341,8 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
        ,numDevices
        ,deviceName
        ,commandQueueId
+       ,address
+       ,bank
        ,address
        ,bank
        ,threadId
@@ -402,14 +412,17 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
        ,timestampMsec);
 }
 
-void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
-                                                  const std::string & bank, cl_mem_migration_flags flags)
+void
+cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
+                   const std::string & bank, cl_mem_migration_flags flags)
 {
     if (!isProfilingOn() || (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) || (totalSize == 0))
       return;
@@ -466,10 +479,61 @@ void cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t to
        ,commandQueueId
        ,address
        ,bank
+       ,address
+       ,bank
        ,threadId
        ,eventStr
        ,dependStr
        ,timestampMsec);
+}
+
+void
+cb_action_copy(xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_buffer,
+               bool same_device, size_t size, uint64_t srcAddress, const std::string& srcBank,
+               uint64_t dstAddress, const std::string& dstBank)
+{
+    if (!isProfilingOn())
+      return;
+
+    auto queue = event->get_command_queue();
+    auto device = queue->get_device();
+
+    // Create string to specify event and its dependencies
+    std::string eventStr;
+    std::string dependStr;
+    if (status == CL_RUNNING || status == CL_COMPLETE) {
+      eventStr = get_event_string(event);
+      dependStr = get_event_dependencies_string(event);
+      XOCL_DEBUGF("COPY event: %s, depend: %s\n", eventStr.c_str(), dependStr.c_str());
+    }
+
+    auto kind = (same_device) ? xdp::RTUtil::COPY_BUFFER : xdp::RTUtil::COPY_BUFFER_P2P;
+    auto commandState = event_status_to_profile_state(status);
+    auto deviceName = device->get_name();
+    auto contextId =  event->get_context()->get_uid();
+    auto numDevices = event->get_context()->num_devices();
+    auto commandQueueId = event->get_command_queue()->get_uid();
+    auto threadId = std::this_thread::get_id();
+    double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
+
+    OCLProfiler::Instance()->getProfileManager()->logDataTransfer
+      (reinterpret_cast<uint64_t>(src_buffer)
+       ,kind
+       ,commandState
+       ,size
+       ,contextId
+       ,numDevices
+       ,deviceName
+       ,commandQueueId
+       ,srcAddress
+       ,srcBank
+       ,dstAddress
+       ,dstBank
+       ,threadId
+       ,eventStr
+       ,dependStr
+       ,timestampMsec);
+
 }
 
 void cb_log_function_start(const char* functionName, long long queueAddress, unsigned int functionID)
@@ -554,6 +618,7 @@ void register_xocl_profile_callbacks() {
   xocl::profile::register_cb_action_ndrange_migrate (cb_action_ndrange_migrate);
   xocl::profile::register_cb_action_ndrange (cb_action_ndrange);
   xocl::profile::register_cb_action_unmap (cb_action_unmap);
+  xocl::profile::register_cb_action_copy (cb_action_copy);
 
   xocl::profile::register_cb_log_function_start(cb_log_function_start);
   xocl::profile::register_cb_log_function_end(cb_log_function_end);

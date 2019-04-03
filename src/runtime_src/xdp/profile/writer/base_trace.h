@@ -19,7 +19,8 @@
 #define __XDP_BASE_TRACE_WRITER_H
 
 #include <boost/format.hpp>
-#include "../device/trace_parser.h"
+#include "xdp/profile/core/rt_util.h"
+#include "xdp/profile/device/trace_parser.h"
 #include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>
@@ -50,11 +51,13 @@ namespace xdp {
 	    void writeKernel(double traceTime, const std::string& commandString,
             const std::string& stageString, const std::string& eventString,
             const std::string& dependString, uint64_t objId, size_t size);
-	    // Write timeline trace of read/write data transfer
-	    void writeTransfer(double traceTime, const std::string& commandString,
-            const std::string& stageString, const std::string& eventString,
-            const std::string& dependString, size_t size, uint64_t address,
-            const std::string& bank, std::thread::id threadId);
+	    // Write timeline trace of read/write/copy data transfer
+	    void writeTransfer(double traceTime, RTUtil::e_profile_command_kind kind,
+	        const std::string& commandString, const std::string& stageString,
+            const std::string& eventString, const std::string& dependString, size_t size,
+            uint64_t srcAddress, const std::string& srcBank,
+            uint64_t dstAddress, const std::string& dstBank,
+			std::thread::id threadId);
 	    // Write timeline trace of dependency
 	    void writeDependency(double traceTime, const std::string& commandString,
             const std::string& stageString, const std::string& eventString,

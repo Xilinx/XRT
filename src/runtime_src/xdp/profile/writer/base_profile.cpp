@@ -117,18 +117,20 @@ namespace xdp {
         "Number Of Transfers", "Transfer Rate (MB/s)", "Average Size (KB)",
         "Link Utilization (%)", "Link Starve (%)", "Link Stall (%)"
       };
-      writeTableHeader(getStream(), "Data Transfer: Streams between Host and Kernels", StreamTransferSummaryColumnLabels);
+      writeTableHeader(getStream(), "Data Transfer: Streams", StreamTransferSummaryColumnLabels);
       profile->writeKernelStreamSummary(this);
       writeTableFooter(getStream());
     }
 
 
     if (mEnShellTables) {
-      // Table 8 : Data Transfer: Host to Device
       std::vector<std::string> DataTransferSummaryColumnLabels2 = {
         "Device", "Transfer Type", "Number Of Transfers", "Transfer Rate (MB/s)",
-		"Total Data Transfer (MB)", "Average Size (KB)", "Average Latency (ns)"
+        "Total Data Transfer (MB)", "Total Time (ms)", "Average Size (KB)",
+        "Average Latency (ns)"
       };
+
+      // Table 8 : Data Transfer: Host to Device
       writeTableHeader(getStream(), "Data Transfer: Host to Device",
           DataTransferSummaryColumnLabels2);
       profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_XDMA);
@@ -254,26 +256,27 @@ namespace xdp {
   // Device, Transfer Type, Number Of Transfers, Transfer Rate (MB/s),
   // Average Size (KB), Average Latency (ns)
   void ProfileWriterI::writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
-      uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec)
+      uint64_t totalBytes, uint64_t totalTranx, double totalLatencyNsec, double totalTimeMsec)
   {
     double totalMB = totalBytes / 1.0e6;
-    // TODO: re-calculate transfer rate with total transfer time not total latency
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
         totalBytes / (1000.0 * totalTimeMsec);
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    double aveLatencyMsec = (totalTranx == 0) ? 0.0 : totalTimeMsec / totalTranx;
+    double aveLatencyNsec = (totalTranx == 0) ? 0.0 : totalLatencyNsec / totalTranx;
 
     // Don't show these values for HW emulation
     std::string transferRateStr = std::to_string(transferRateMBps);
-    std::string aveLatencyStr = std::to_string(1.0e6 * aveLatencyMsec);
+    std::string totalTimeStr = std::to_string(totalTimeMsec);
+    std::string aveLatencyStr = std::to_string(aveLatencyNsec);
     if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
       transferRateStr = "N/A";
+      totalTimeStr = "N/A";
       aveLatencyStr = "N/A";
     }
 
     writeTableRowStart(getStream());
     writeTableCells(getStream(), deviceName, transferType, totalTranx,
-        transferRateStr, totalMB, aveBytes/1000.0, aveLatencyStr);
+        transferRateStr, totalMB, totalTimeStr, aveBytes/1000.0, aveLatencyStr);
     writeTableRowEnd(getStream());
   }
 

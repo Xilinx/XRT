@@ -276,8 +276,8 @@ namespace xdp {
     // Catch host buffer transfers (reported on aggregated basis)
     // NOTE: the actual statistics reported come from BufferReadStat and BufferWriteStat in ProfileCounters
     if (monitorType == RTUtil::MON_HOST_DYNAMIC) {
-      mProfileCounters->writeTransferSummary(writer, deviceName, monitorType,  true, 0, 0, 0,  readMaxBandwidthMBps);
-      mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, 0, 0, 0, writeMaxBandwidthMBps);
+      mProfileCounters->writeTransferSummary(writer, deviceName, monitorType,  true, 0, 0, 0, 0,  readMaxBandwidthMBps);
+      mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, 0, 0, 0, 0, writeMaxBandwidthMBps);
       return;
     }
 
@@ -285,6 +285,20 @@ namespace xdp {
 
     std::string monitorName;
     RTUtil::monitorTypeToString(monitorType, monitorName);
+
+    auto readKind  = RTUtil::READ_BUFFER;
+    auto writeKind = RTUtil::WRITE_BUFFER;
+    if (monitorType == RTUtil::MON_SHELL_KDMA) {
+      readKind  = RTUtil::COPY_BUFFER;
+      writeKind = RTUtil::COPY_BUFFER;
+    }
+    else if (monitorType == RTUtil::MON_SHELL_P2P) {
+      readKind  = RTUtil::COPY_BUFFER_P2P;
+      writeKind = RTUtil::COPY_BUFFER_P2P;
+    }
+
+    double totalReadTimeMsec  = mProfileCounters->getBufferTransferTotalTime(readKind);
+    double totalWriteTimeMsec = mProfileCounters->getBufferTransferTotalTime(writeKind);
 
     //
     // Shell monitors: KDMA/XDMA/P2P
@@ -343,18 +357,18 @@ namespace xdp {
                             + (rolloverCounts.WriteLatency[s] * 4294967296UL);
       }
 
-      double totalReadTimeMsec  = totalReadLatency / (1000.0 * tp->getDeviceClockFreqMHz());
-      double totalWriteTimeMsec = totalWriteLatency / (1000.0 * tp->getDeviceClockFreqMHz());
+      double totalReadLatencyNsec  = (1000.0 * totalReadLatency)  / tp->getDeviceClockFreqMHz();
+      double totalWriteLatencyNsec = (1000.0 * totalWriteLatency) / tp->getDeviceClockFreqMHz();
 
       // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
       // NOTE: don't show if no transfers were recorded
       if (totalReadTranx > 0) {
         mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, true,  totalReadBytes,
-            totalReadTranx, totalReadTimeMsec, readMaxBandwidthMBps);
+            totalReadTranx, totalReadLatencyNsec, totalReadTimeMsec, readMaxBandwidthMBps);
       }
       if (totalWriteTranx > 0) {
         mProfileCounters->writeTransferSummary(writer, deviceName, monitorType, false, totalWriteBytes,
-            totalWriteTranx, totalWriteTimeMsec, writeMaxBandwidthMBps);
+            totalWriteTranx, totalWriteLatencyNsec, totalWriteTimeMsec, writeMaxBandwidthMBps);
       }
     }
   }

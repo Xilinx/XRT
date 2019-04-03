@@ -55,6 +55,9 @@ using cb_action_ndrange_migrate_type = std::function <void (xocl::event* event,c
                                                       size_t totalSize, uint64_t address, const std::string & bank)>;
 using cb_action_migrate_type = std::function< void (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSize, uint64_t address,
                                                     const std::string & bank, cl_mem_migration_flags flags)>;
+using cb_action_copy_type = std::function< void (xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_buffer,
+                                                 bool same_device, size_t size, uint64_t srcAddress, const std::string& srcBank,
+                                                 uint64_t dstAddress, const std::string& dstBank)>;
 
 /*
  * callback function types for function logging, dependency ...
@@ -87,6 +90,7 @@ void register_cb_action_write (cb_action_write_type&& cb);
 void register_cb_action_unmap (cb_action_unmap_type&& cb);
 void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
 void register_cb_action_migrate (cb_action_migrate_type&& cb);
+void register_cb_action_copy (cb_action_copy_type&& cb);
 
 void register_cb_log_function_start (cb_log_function_start_type&& cb);
 void register_cb_log_function_end (cb_log_function_end_type&& cb);
@@ -96,7 +100,6 @@ void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
 void register_cb_reset(cb_reset_type && cb);
 void register_cb_init (cb_init_type && cb);
 
-
 void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
 void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
 void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
@@ -104,6 +107,7 @@ void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
 void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
 
 void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
+bool is_same_device(cl_mem buffer1, cl_mem buffer2);
 
 std::string
 get_event_string(xocl::event* currEvent);
@@ -131,6 +135,9 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel);
 
 xocl::event::action_profile_type
 action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags);
+
+xocl::event::action_profile_type
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
 
 template <typename F, typename ...Args>
 inline void

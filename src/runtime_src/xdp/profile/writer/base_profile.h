@@ -74,7 +74,7 @@ namespace xdp {
           double totalTimeMsec, double maxTransferRateMBps);
       // Write Read/Write Shell Internal transfer stats
       void writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
-          uint64_t totalBytes, uint64_t totalTranx, double totalTimeMsec);
+          uint64_t totalBytes, uint64_t totalTranx, double totalLatencyNsec, double totalTimeMsec);
       // Write Read/Write Kernel transfer stats
       void writeKernelTransferSummary(const std::string& deviceName, const std::string& cuPortName,
           const std::string& argNames, const std::string& memoryName,
