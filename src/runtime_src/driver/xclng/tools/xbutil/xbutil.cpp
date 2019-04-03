@@ -1497,71 +1497,76 @@ int xcldev::xclP2p(int argc, char *argv[])
 /*
  * m2mtest
  */
+static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh, 
+auto * &boptr, size_t boSize)
+{
+    if(boh != NULLBO)
+        xclFreeBO(handle, boh);
+    if(boptr != nullptr)
+        munmap(boptr, boSize);
+}
+
+static int m2m_alloc_init_bo(xclDeviceHandle handle, char * &boptr, 
+size_t boSize, int bank, char pattern)
+{
+    unsigned boh = NULLBO;
+    boh = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank);
+    if (boh == NULLBO) {
+        std::cout << "Error allocating BO" << std::endl;
+        return -ENOMEM;
+    }
+    boptr = (char*) xclMapBO(handle, boh, true);
+    if (boptr == nullptr) {
+        std::cout << "Error mapping BO" << std::endl;
+        m2m_free_unmap_bo(handle, boh, boptr, boSize);
+        return -EINVAL;
+    }
+    memset(boptr, pattern, boSize);
+    return boh;
+}
 static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int bank_b)
 {
-    const size_t boSize = 3L * 1024 * 1024 * 1024;
-	if (xclOpenContext(handle, uuid, -1, true)) {
+    unsigned boSrc = NULLBO;
+    unsigned boTgt = NULLBO;
+    char *boSrcPtr = nullptr;
+    char *boTgtPtr = nullptr;
+
+    const size_t boSize = 256L * 1024 * 1024;
+    if (xclOpenContext(handle, uuid, -1, true)) {
         std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
         return -EINVAL;
-	}
+    }
 
-    //Allocate boSrc
-    unsigned boSrc = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank_a);
-    if (boSrc == NULLBO) {
-        std::cout << "Error allocating Src BO" << std::endl;
-        return -ENOMEM;
-    }
-    void *boSrcPtr = xclMapBO(handle, boSrc, true);
-    if (boSrcPtr == nullptr) {
-        std::cout << "Error mapping Src BO" << std::endl;
-        xclFreeBO(handle, boSrc);
-        return -EINVAL;
-    }
-    memset(boSrcPtr, 'A', boSize);
-	if(xclSyncBO(handle, boSrc, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
+    //Allocate and init boSrc
+    boSrc = m2m_alloc_init_bo(handle, boSrcPtr, boSize, bank_a, 'A');
+    if(xclSyncBO(handle, boSrc, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
         std::cout << "ERROR: Unable to sync source BO" << std::endl;
-        munmap(boSrcPtr, boSize);
-        xclFreeBO(handle, boSrc);
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         return -EINVAL;
-	}
+    }
 
-    //Allocate boTgt
-    unsigned boTgt = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank_b);
-    if (boTgt == NULLBO) {
-        std::cout << "Error allocating Tgt BO" << std::endl;
-        return -ENOMEM;
-    }
-    void *boTgtPtr = xclMapBO(handle, boTgt, true);
-    if (boTgtPtr == nullptr) {
-        std::cout << "Error mapping Tgt BO" << std::endl;
-        xclFreeBO(handle, boTgt);
-        return -EINVAL;
-    }
-    memset(boTgtPtr, 'B', boSize);
-	if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
+    //Allocate and init boTgt
+    boTgt = m2m_alloc_init_bo(handle, boTgtPtr, boSize, bank_b, 'B');
+    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_TO_DEVICE, boSize, 0)) {
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
-        munmap(boSrcPtr, boSize);
-        munmap(boTgtPtr, boSize);
-        xclFreeBO(handle, boSrc);
-        xclFreeBO(handle, boTgt);
-		return -EINVAL;
-	}
-	//Allocate the exec_bo
-	unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-		xclBOKind(0), (1<<31));
-	struct ert_start_copybo_cmd *execData =
-		reinterpret_cast<struct ert_start_copybo_cmd *>(
-		xclMapBO(handle, execHandle, true));
-	ert_fill_copybo_cmd(execData, boSrc, boTgt, 0, 0, boSize);
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+        return -EINVAL;
+    }
+    //Allocate the exec_bo
+    unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
+        xclBOKind(0), (1<<31));
+    struct ert_start_copybo_cmd *execData =
+        reinterpret_cast<struct ert_start_copybo_cmd *>(
+        xclMapBO(handle, execHandle, true));
+    ert_fill_copybo_cmd(execData, boSrc, boTgt, 0, 0, boSize);
 
-    //send exec command
     xcldev::Timer timer;
-	if(xclExecBuf(handle, execHandle)) {
+    if(xclExecBuf(handle, execHandle)) {
         std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
         return -EINVAL;
-	}
+    }
 
-	//Wait on the command finish
     while (execData->state < ERT_CMD_STATE_COMPLETED){
         while (xclExecWait(handle, 1000) == 0) {
             std::cout << "reentering wait...\n";
@@ -1569,32 +1574,26 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     }
     double timer_stop = timer.stop();
 
-	if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
-        munmap(boSrcPtr, boSize);
-        munmap(boTgtPtr, boSize);
-        munmap(execData, sizeof (ert_start_copybo_cmd));
-        xclFreeBO(handle, execHandle);
-        xclFreeBO(handle, boSrc);
-        xclFreeBO(handle, boTgt);
+    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
-	}
+    }
+    
+    bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
 
-	bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
-
-    // Clean up 
-    munmap(boSrcPtr, boSize);
-    munmap(boTgtPtr, boSize);
-    munmap(execData, sizeof (ert_start_copybo_cmd));
-    xclFreeBO(handle, execHandle);
-    xclFreeBO(handle, boSrc);
-    xclFreeBO(handle, boTgt);
+    // Clean up
+    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
 
     xclCloseContext(handle, uuid, -1);
 
-	if (!match) {
-		return -EINVAL;
-	}
+    if (!match) {
+        return -EINVAL;
+    }
 
     //bandwidth
     double total = boSize;
@@ -1610,6 +1609,7 @@ int xcldev::device::testM2m()
     std::string errmsg;
     std::vector<char> buf;
     std::string xclbinid;
+    int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
     uuid_t uuid;
     int ret = 0;
@@ -1617,6 +1617,12 @@ int xcldev::device::testM2m()
     auto dev = pcidev::get_dev(m_idx);
     if (dev->user == nullptr)
         return -EINVAL;
+
+    dev->user->sysfs_get("mb_scheduler", "mem_topology", errmsg, m2m_enabled);
+    if (m2m_enabled == 0) {
+        std::cout << "M2M is not enabled. Skipping validation" << std::endl;
+        return 0;
+    }
 
     dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
     const mem_topology *map = (mem_topology *)buf.data();
@@ -1649,11 +1655,11 @@ int xcldev::device::testM2m()
 
     for(uint i = 0; i < usedBanks.size()-1; i++) {
         for(uint j = i+1; j < usedBanks.size(); j++) {
-            if(ret != 0)
-                return ret;
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
             ret = m2mtest_bank(m_handle, uuid, i, j);
+            if(ret != 0)
+                return ret;
         }
     }
     return ret;
