@@ -1620,7 +1620,7 @@ int xcldev::device::testM2m()
 
     dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
     if (m2m_enabled == 0) {
-        std::cout << "M2M is not enabled. Skipping validation" << std::endl;
+        std::cout << "M2M is not available. Skipping validation" << std::endl;
         return 0;
     }
 
