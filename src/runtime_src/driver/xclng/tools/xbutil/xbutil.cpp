@@ -1618,7 +1618,7 @@ int xcldev::device::testM2m()
     if (dev->user == nullptr)
         return -EINVAL;
 
-    dev->user->sysfs_get("mb_scheduler", "mem_topology", errmsg, m2m_enabled);
+    dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not enabled. Skipping validation" << std::endl;
         return 0;
