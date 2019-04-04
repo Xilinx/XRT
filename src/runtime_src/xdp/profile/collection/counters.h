@@ -84,8 +84,10 @@ namespace xdp {
     void logComputeUnitDeviceStart(const std::string& deviceName, double timePoint);
     void logComputeUnitExecutionStart(const std::string& cuName, double timePoint);
     void logComputeUnitExecutionEnd(const std::string& cuName, double timePoint);
-    void logComputeUnitStats(const std::string& cuName, const std::string& kernelName, double totalTimeStat, 
-                              double maxTimeStat, double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz);
+    void logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
+                             double totalTimeStat, double avgTimeStat, double maxTimeStat,
+                             double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
+                              uint32_t flags, uint64_t maxParallelIter);
     void logDeviceEvent(std::string deviceName, std::string kernelName, size_t size,
                         double duration, uint32_t bitWidth, double clockFreqMhz,
                         bool isKernel, bool isRead, bool isKernelTransfer);
@@ -133,7 +135,12 @@ namespace xdp {
     std::map<std::string, double> DeviceCUStartTimes;
     std::map<std::string, double> DeviceStartTimes;
     std::map<std::string, double> DeviceEndTimes;
-    std::map<std::string, TimeStats> CallCount;
+
+    // For every API function called in every thread, keep track
+    //  of the start and stop time.
+    std::map<std::pair<std::string, std::thread::id>,
+             std::vector<std::pair<double, double>>> CallCount;
+
     std::map<std::string, TimeStats> KernelExecutionStats;
     std::map<std::string, TimeStats> ComputeUnitExecutionStats;
     std::map<std::string, BufferStats> DeviceKernelReadSummaryStats;

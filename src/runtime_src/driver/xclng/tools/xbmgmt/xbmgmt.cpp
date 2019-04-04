@@ -437,11 +437,12 @@ int xcldev::flash_helper(int argc, char *argv[])
     bool seen_n = false;
     bool seen_o = false;
     bool seen_p = false;
+    bool seen_r = false;
     bool seen_t = false;
     T_Arguments args;
 
     int opt;
-    while( ( opt = getopt( argc, argv, "a:d:fm:n:o:p:t:" ) ) != -1 )
+    while( ( opt = getopt( argc, argv, "a:d:fm:n:o:p:rt:" ) ) != -1 )
     {
         switch( opt )
         {
@@ -489,6 +490,9 @@ int xcldev::flash_helper(int argc, char *argv[])
             notSeenOrDie(seen_t);
             args.timestamp = strtoull(optarg, nullptr, 0);
             break;
+        case 'r':
+            notSeenOrDie(seen_r);
+            break;
         default:
             usageAndDie();
             break;
@@ -499,6 +503,7 @@ int xcldev::flash_helper(int argc, char *argv[])
         // Combination of options not expected.
         (seen_p && (seen_m || seen_n || seen_o))    ||
         (seen_a && (seen_m || seen_n || seen_o))    ||
+        (seen_r && (seen_m || seen_n || seen_o || seen_p || seen_a || seen_t)) ||
         (seen_t && (!seen_a || args.dsa.compare("all") == 0)))
     {
         usageAndDie();
@@ -506,8 +511,8 @@ int xcldev::flash_helper(int argc, char *argv[])
 
     int ret = 0;
 
-    // Manually specify DSA/BMC files.
-    if (args.dsa.empty())
+    // Manually specify DSA/BMC files or revert to MFG.
+    if (args.dsa.empty() || seen_r)
     {
         // By default, only flash the first board.
         if (args.devIdx == UINT_MAX)
@@ -527,13 +532,30 @@ int xcldev::flash_helper(int argc, char *argv[])
         }
         else
         {
-            ret = flasher.upgradeFirmware(args.flasherType,
-                args.primary.get(), args.secondary.get());
-            if (ret == 0)
-            {
-                std::cout << "Shell image flashed succesfully" << std::endl;
-                std::cout << "Cold reboot machine to load the new image on FPGA"
+            if (seen_r) {
+                std::cout << "CAUTION: Reverting board back to MFG mode."
                     << std::endl;
+                if (canProceed()) {
+                    ret = flasher.upgradeFirmware(args.flasherType,
+                        nullptr, nullptr);
+                    if (ret == 0)
+                    {
+                        std::cout <<
+                            "Cold reboot machine to revert board to MFG mode" <<
+                            std::endl;
+                    }
+                }
+            }
+            else
+            {
+                ret = flasher.upgradeFirmware(args.flasherType,
+                    args.primary.get(), args.secondary.get());
+                if (ret == 0)
+                {
+                    std::cout << "Shell image flashed succesfully" << std::endl;
+                    std::cout << "Cold reboot machine to load new image on FPGA"
+                        << std::endl;
+                }
             }
         }
 

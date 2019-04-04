@@ -43,7 +43,7 @@ public:
     ~XSPI_Flasher();
     int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
     int xclUpgradeFirmwareXSpi(std::istream& mcsStream, int device_index=0);
-//    std::ofstream mLogStream;
+    int revertToMFG(void);
 
 private:
     char *mMgmtMap;

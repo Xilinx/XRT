@@ -116,12 +116,28 @@ namespace xdp {
 
   void ProfileCounters::logFunctionCallStart(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logStart(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key      = std::make_pair(functionName, threadId) ;
+    auto value    = std::make_pair(timePoint, (double)0.0) ;
+
+    if (CallCount.find(key) == CallCount.end())
+    {
+      std::vector<std::pair<double, double>> newValue ;
+      newValue.push_back(value) ;
+      CallCount[key] = newValue ;
+    }
+    else
+    {
+      CallCount[key].push_back(value);
+    }
   }
 
   void ProfileCounters::logFunctionCallEnd(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logEnd(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key = std::make_pair(functionName, threadId) ;
+
+    CallCount[key].back().second = timePoint ;
   }
 
   void ProfileCounters::logKernelExecutionStart(const std::string& kernelName, const std::string& deviceName,
@@ -167,8 +183,10 @@ namespace xdp {
     ComputeUnitExecutionStats[cuName].logEnd(timePoint);
   }
 
-  void ProfileCounters::logComputeUnitStats(const std::string& cuName, const std::string& kernelName, double totalTimeStat,
-    double maxTimeStat,  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz)
+  void ProfileCounters::logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
+                                            double totalTimeStat, double avgTimeStat, double maxTimeStat,
+                                            double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
+                                            uint32_t flags, uint64_t maxParallelIter)
   {
     std::string newCU;
     bool foundKernel = false;
@@ -182,7 +200,8 @@ namespace xdp {
       std::string currCUName = fullName.substr(fourth_index + 1, fifth_index - fourth_index - 1);
       std::string currKernelName = fullName.substr(first_index + 1, second_index - first_index - 1);
       if (currCUName == cuName) {
-        ComputeUnitExecutionStats[fullName].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
+        ComputeUnitExecutionStats[fullName].logStats(totalTimeStat, avgTimeStat, maxTimeStat, minTimeStat,
+                                                     totalCalls, clockFreqMhz, flags, maxParallelIter);
         return;
       }
       else if (currKernelName == kernelName) {
@@ -192,7 +211,8 @@ namespace xdp {
     }
     // CR 1003380 - Runtime does not send all CU Names so we create a key
     if (foundKernel && totalTimeStat > 0.0) {
-      ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
+      ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, avgTimeStat, maxTimeStat, minTimeStat,
+                                                totalCalls, clockFreqMhz, flags, maxParallelIter);
     }
   }
 
@@ -410,11 +430,28 @@ namespace xdp {
     using std::pair;
     using std::sort;
     using std::string;
+    
+    // Go through all of the call values and consolidate all of the
+    //  API calls from different threads into a single TimeStats object
+    std::map<std::string, TimeStats> consolidated ;
+    for (auto iter : CallCount)
+    {
+      auto functionName = iter.first.first ;
+      auto pairVector   = iter.second ;
+
+      for (unsigned int i = 0 ; i < pairVector.size() ; ++i)
+      {
+	auto doublePair = pairVector[i] ;
+	consolidated[functionName].logStart(doublePair.first) ;
+	consolidated[functionName].logEnd(doublePair.second) ;
+      }
+    }
+
     // Print it in sorted order of Total Time. To sort it by duration
     // populate a vector and then using lambda function sort it by duration
 
-    vector<pair<string, TimeStats>> callPairs(CallCount.begin(),
-        CallCount.end());
+    vector<pair<string, TimeStats>> callPairs(consolidated.begin(),
+        consolidated.end());
     sort(callPairs.begin(), callPairs.end(),
         [](const pair<string, TimeStats>& A, const pair<string, TimeStats>& B) {
       return A.second.getTotalTime() > B.second.getTotalTime();

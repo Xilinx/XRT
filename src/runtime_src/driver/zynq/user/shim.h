@@ -60,6 +60,8 @@ public:
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
+  uint xclGetNumLiveProcesses();
+
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfPath, size_t size);
 
   // Bitstream/bin download
