@@ -368,9 +368,13 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
-    int len = std::vsnprintf(nullptr, 0, format, args1);
+    va_list args_bak;
+    // vsnprintf will mutate va_list so back it up
+    va_copy(args_bak, args);
+    int len = std::vsnprintf(nullptr, 0, format, args_bak);
+    va_end(args_bak);
 
     if (len < 0) {
         //illegal arguments
@@ -379,10 +383,10 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
-    len++; //To include null terminator
+    ++len; //To include null terminator
 
     std::vector<char> buf(len);
-    len = std::vsnprintf(buf.data(), len, format, args1);
+    len = std::vsnprintf(buf.data(), len, format, args);
 
     if (len < 0) {
         //error processing arguments
@@ -1814,7 +1818,7 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses()
     }
   }
   return 0;
-} 
+}
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
