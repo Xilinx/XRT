@@ -540,12 +540,11 @@ struct xocl_dna_funcs {
 
 
 enum mb_kind {
-	POST_RST,
-	PRE_RST,
+	RESET,
 	CHAN_STATE,
 	CHAN_SWITCH,
-	CH_STATE_RST,
-	CH_SWITCH_RST,
+	COMM_ID,
+	VERSION,
 };
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
@@ -558,8 +557,8 @@ struct xocl_mailbox_funcs {
 		void *resp, size_t len, bool sw_ch);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*set)(struct platform_device *pdev, enum mb_kind kind, void *data);
-	int (*get)(struct platform_device *pdev, enum mb_kind kind, void *data);
+	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);
+	int (*get)(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 	int (*sw_transfer)(struct platform_device *pdev, void *args);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
