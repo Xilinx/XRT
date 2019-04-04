@@ -360,6 +360,14 @@ static unsigned find_matching_freq_config(unsigned freq)
 	return idx;
 }
 
+static unsigned find_matching_freq(unsigned freq)
+{
+	int idx = find_matching_freq_config(freq);
+
+	return frequency_table[idx].ocl;
+}
+
+
 static unsigned short icap_get_ocl_frequency(const struct icap *icap, int idx)
 {
 #define XCL_INPUT_FREQ 100
@@ -737,7 +745,7 @@ static int set_and_verify_freqs(struct icap *icap, unsigned short *freqs, int nu
 {
 	int i;
 	int err;
-	u32 clock_freq_counter, request_in_khz, tolerance;
+	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
 
 	err = set_freqs(icap, freqs, num_freqs);
 	if (err)
@@ -746,9 +754,12 @@ static int set_and_verify_freqs(struct icap *icap, unsigned short *freqs, int nu
 	for (i = 0; i < min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {
 		if (!freqs[i])
 			continue;
+
+		lookup_freq = find_matching_freq(freqs[i]);
+
 		clock_freq_counter = icap_get_clock_frequency_counter_khz(icap, i);
-		request_in_khz = freqs[i]*1000;
-		tolerance = freqs[i]*50;
+		request_in_khz = lookup_freq*1000;
+		tolerance = lookup_freq*50;
 		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
 			ICAP_ERR(icap, "Frequency is higher than tolerance value, request %u"
 					"khz, actual %u khz", request_in_khz, clock_freq_counter);
