@@ -165,11 +165,12 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
             std::cout << size << " B verification failed\n";
             return 1;
         }
+        munmap(readBuffer, maxSize);
     }
 
     std::cout << "transferSizeTest1 complete. Release buffer objects.\n";
     munmap(writeBuffer, maxSize);
-    munmap(readBuffer, maxSize);
+
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i)
@@ -227,16 +228,16 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
             return 1;
         }
         unsigned *readBuffer = (unsigned *)xclMapBO(handle, boHandle1, false);
-
         if (std::memcmp(writeBuffer, readBuffer, size)) {
             std::cout << "FAILED TEST\n";
             std::cout << size << " B verification failed\n";
             return 1;
         }
+        munmap(readBuffer, maxSize);
     }
     std::cout << "transferSizeTest2 complete. Release buffer objects.\n";
     munmap(writeBuffer, maxSize);
-    munmap(readBuffer, maxSize);
+
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     return 0;
