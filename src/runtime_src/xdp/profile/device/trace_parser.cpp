@@ -52,7 +52,8 @@ namespace xdp {
     // Default bit width of global memory defined at APM monitoring slaves
     mGlobalMemoryBitWidth = XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH;
 
-    mCuEventID = 0;
+    // Analyzer assumes ID 0 as blank
+    mCuEventID = 1;
 
     // Since device timestamps are in cycles and host timestamps are in msec,
     // then the slope of the line to convert from device to host timestamps
