@@ -72,7 +72,7 @@ class infCallUtil():
 		try:
 			isEnabled = self.callfunc("appdebug::isAppdebugEnabled", [])
 		except:
-			raise ValueError("Application debug not available. Application debug will be available after the first OpenCL API call.")
+			raise ValueError("Application debug not available. Application debug will be available after the first functional OpenCL API call (OpenCL variable construction doesn't count).")
 		if str(isEnabled) == "false":
 			raise ValueError("Application debug not enabled. Set attribute 'app_debug=true' under 'Debug' section of sdaccel.ini and restart application")
 		return
