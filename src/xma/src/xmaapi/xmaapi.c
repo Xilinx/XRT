@@ -179,7 +179,7 @@ int32_t xma_cfg_dev_cnt_get()
 
 void xma_cfg_dev_ids_get(uint32_t dev_ids[])
 {
-    uint32_t img_cnt = xma_cfg_img_cnt_get();
+    int32_t img_cnt = xma_cfg_img_cnt_get();
     int i, dev_ids_idx = 0;
 
     for (i = 0; i < img_cnt; i++)

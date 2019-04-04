@@ -32,13 +32,10 @@ namespace xdp {
 
   // Constructor
   TraceParser::TraceParser(XDPPluginI* Plugin)
-    : NUM_TRAIN(3),
-      PCIE_DELAY_OFFSET_MSEC(0.25),
+    : PCIE_DELAY_OFFSET_MSEC(0.25),
       mStartTimeNsec(0),
       mPluginHandle(Plugin)
   {
-    mTag = 0X586C0C6C;
-
     mNumTraceEvents = 0;
     // NOTE: setting this to 0x80000 causes runtime crash when running
     // HW emulation on 070_max_wg_size or 079_median1
@@ -55,6 +52,8 @@ namespace xdp {
     // Default bit width of global memory defined at APM monitoring slaves
     mGlobalMemoryBitWidth = XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH;
 
+    mCuEventID = 0;
+
     // Since device timestamps are in cycles and host timestamps are in msec,
     // then the slope of the line to convert from device to host timestamps
     // is in msec/cycle
@@ -62,14 +61,10 @@ namespace xdp {
       mTrainSlope[i] = 1000.0 / mTraceClockRateMHz;
       mTrainOffset[i] = 0.0;
     }
-
-    memset(&mPrevTimestamp, 0, XCL_PERF_MON_TOTAL_PROFILE*sizeof(uint32_t));
   }
 
   // Destructor
   TraceParser::~TraceParser() {
-    mDeviceFirstTimestamp.clear();
-
     // Clear queues (i.e., swap with an empty one)
     std::queue<uint64_t> empty64;
     std::queue<uint32_t> empty32;
@@ -79,10 +74,6 @@ namespace xdp {
       std::swap(mHostWriteStarts[i], empty64);
       std::swap(mReadStarts[i], empty64);
       std::swap(mHostReadStarts[i], empty64);
-      std::swap(mWriteLengths[i], empty32);
-      std::swap(mReadLengths[i], empty32);
-      std::swap(mWriteBytes[i], empty16);
-      std::swap(mReadBytes[i], empty16);
     }
     for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
       mStreamTxStarts[i] = std::queue<uint64_t>();
@@ -93,107 +84,340 @@ namespace xdp {
       mStreamStallStartsHostTime[i] = std::queue<uint64_t>();
       mStreamStarveStartsHostTime[i] = std::queue<uint64_t>();
     }
+    for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
+      mAccelMonCuStarts[i] = std::queue<uint64_t>();
+    }
   }
 
   // Log device trace results: store in queues and report events as they are completed
-  void TraceParser::logTrace(std::string deviceName, xclPerfMonType type,
+  void TraceParser::logTrace(std::string& deviceName, xclPerfMonType type,
       xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
     if (mNumTraceEvents >= mMaxTraceEvents || traceVector.mLength == 0)
       return;
 
-    //uint32_t numSlots = xdp::RTSingleton::Instance()->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+    // Hardware Emulation Trace
     bool isHwEmu = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM);
-    uint8_t flags = 0;
-    uint32_t prevHostTimestamp = 0xFFFFFFFF;
-    uint32_t slotID = 0;
-    uint32_t timestamp = 0;
-    //uint64_t deviceStartTimestamp = 0;
-    uint64_t hostTimestampNsec = 0;
+    if (isHwEmu) {
+      logTraceHWEmu(deviceName, traceVector, resultVector);
+      return;
+    }
+
+    XDP_LOG("[profile_device] Logging %u device trace samples (total = %ld)...\n",
+      traceVector.mLength, mNumTraceEvents);
+    mNumTraceEvents += traceVector.mLength;
+
+    // detect if FIFO is full
+    {
+      auto fifoProperty = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_FIFO, deviceName, 0);
+      auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+      if (traceVector.mLength >= fifoSize)
+        mPluginHandle->sendMessage(
+"Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
+Please use 'coarse' option for data transfer trace or turn off Stall profiling");
+    }
+
+    uint64_t timestamp = 0;
     uint64_t startTime = 0;
+    // x, y coordinates used for clock training
     double y1=0;
     double y2=0;
     double x1=0;
     double x2=0;
     DeviceTrace kernelTrace;
-    
+    // Parse Start
+    for (unsigned int i=0; i < traceVector.mLength; i++) {
+      auto& trace = traceVector.mArray[i];
+      XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
+
+      timestamp = trace.Timestamp;
+      // ***************
+      // Clock Training
+      // ***************
+      // clock training relation is linear within small durations (1 sec)
+      if (i == 0) {
+        y1 = static_cast <double> (trace.HostTimestamp);
+        x1 = static_cast <double> (timestamp);
+        continue;
+      }
+      if (i == 1) {
+        y2 = static_cast <double> (trace.HostTimestamp);
+        x2 = static_cast <double> (timestamp);
+        mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+        mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
+        trainDeviceHostTimestamps(deviceName, type);
+      }
+      if (trace.Overflow == 1)
+        timestamp += LOOP_ADD_TIME_SPM;
+
+      uint32_t s = 0;
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM);
+      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
+      if (!SAMPacket && !SPMPacket && !SSPMPacket)
+        continue;
+
+      if (SSPMPacket) {
+        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        bool isSingle =    trace.EventFlags & 0x10;
+        bool txEvent =     trace.EventFlags & 0x8;
+        bool stallEvent =  trace.EventFlags & 0x4;
+        bool starveEvent = trace.EventFlags & 0x2;
+        bool isStart =     trace.EventFlags & 0x1;
+        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        bool isRead = (ipInfo & 0x2) ? true : false;
+        if (isStart) {
+          if (txEvent)
+            mStreamTxStarts[s].push(timestamp);
+          else if (starveEvent)
+            mStreamStarveStarts[s].push(timestamp);
+          else if (stallEvent)
+            mStreamStallStarts[s].push(timestamp);
+        } else {
+          DeviceTrace streamTrace;
+          streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
+          if (txEvent) {
+            if (isSingle || mStreamTxStarts[s].empty()) {
+              startTime = timestamp;
+            } else {
+              startTime = mStreamTxStarts[s].front();
+              mStreamTxStarts[s].pop();
+            }
+            streamTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
+          } else if (starveEvent) {
+            if (mStreamStarveStarts[s].empty()) {
+              startTime = timestamp;
+            } else {
+              startTime = mStreamStarveStarts[s].front();
+              mStreamStarveStarts[s].pop();
+            }
+            streamTrace.Type = "Stream_Starve";
+          } else if (stallEvent) {
+            if (mStreamStallStarts[s].empty()) {
+              startTime = timestamp;
+            } else {
+              startTime = mStreamStallStarts[s].front();
+              mStreamStallStarts[s].pop();
+            }
+            streamTrace.Type = "Stream_Stall";
+          }
+          streamTrace.SlotNum = s;
+          streamTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
+          streamTrace.StartTime = startTime;
+          streamTrace.EndTime = timestamp;
+          streamTrace.BurstLength = timestamp - startTime + 1;
+          streamTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+          streamTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
+          resultVector.push_back(streamTrace);
+        } // !isStart
+      } else if (SAMPacket) {
+        s = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
+        uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
+        uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
+        uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;
+        uint32_t stallExtEvent = trace.TraceID & XSAM_TRACE_STALL_EXT_MASK;
+        // Common Params for all event types
+        kernelTrace.SlotNum = s;
+        kernelTrace.Name = "OCL Region";
+        kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
+        kernelTrace.EndTime = timestamp;
+        kernelTrace.BurstLength = 0;
+        kernelTrace.NumBytes = 0;
+        kernelTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
+        if (cuEvent) {
+          if (!(trace.EventFlags & XSAM_TRACE_CU_MASK)) {
+            kernelTrace.Type = "Kernel";
+            if (!mAccelMonCuStarts[s].empty()) {
+              startTime = mAccelMonCuStarts[s].front();
+              mAccelMonCuStarts[s].pop();
+              kernelTrace.StartTime = startTime;
+              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+              kernelTrace.TraceStart = kernelTrace.Start;
+              kernelTrace.EventID = mCuEventID++;
+              resultVector.insert(resultVector.begin(), kernelTrace);
+            }
+          }
+          else {
+            mAccelMonCuStarts[s].push(timestamp);
+          }
+        }
+        if (stallIntEvent) {
+          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_INT_MASK) {
+            kernelTrace.Type = "Intra-Kernel Dataflow Stall";
+            startTime = mAccelMonStallIntTime[s];
+            kernelTrace.StartTime = startTime;
+            kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+            kernelTrace.TraceStart = kernelTrace.Start;
+            resultVector.push_back(kernelTrace);
+          }
+          else {
+            mAccelMonStallIntTime[s] = timestamp;
+          }
+        }
+        if (stallStrEvent) {
+          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_STR_MASK) {
+            kernelTrace.Type = "Inter-Kernel Pipe Stall";
+            startTime = mAccelMonStallStrTime[s];
+            kernelTrace.StartTime = startTime;
+            kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+            kernelTrace.TraceStart = kernelTrace.Start;
+            resultVector.push_back(kernelTrace);
+          }
+          else {
+            mAccelMonStallStrTime[s] = timestamp;
+          }
+        }
+        if (stallExtEvent) {
+          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_EXT_MASK) {
+            kernelTrace.Type = "External Memory Stall";
+            startTime = mAccelMonStallExtTime[s];
+            kernelTrace.StartTime = startTime;
+            kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+            kernelTrace.TraceStart = kernelTrace.Start;
+            resultVector.push_back(kernelTrace);
+          }
+          else {
+            mAccelMonStallExtTime[s] = timestamp;
+          }
+        }
+        // Update Events
+        mAccelMonStartedEvents[s] ^= (trace.TraceID & 0xf);
+        mAccelMonLastTranx[s] = timestamp;
+      } else if (IS_READ(trace.TraceID)) {         // SPM Read Trace
+        s = trace.TraceID/2;
+        if (trace.EventType == XCL_PERF_MON_START_EVENT) {
+          mReadStarts[s].push(timestamp);
+        }
+        else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
+           if (trace.Reserved == 1) {
+            startTime = timestamp;
+           }
+           else {
+            if(mReadStarts[s].empty()) {
+              startTime = timestamp;
+            } else {
+              startTime = mReadStarts[s].front();
+              mReadStarts[s].pop();
+            }
+           }
+          DeviceTrace readTrace;
+          readTrace.SlotNum = s;
+          readTrace.Type = "Read";
+          readTrace.StartTime = startTime;
+          readTrace.EndTime = timestamp;
+          readTrace.BurstLength = timestamp - startTime + 1;
+          readTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+          readTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
+          resultVector.push_back(readTrace);
+          mPerfMonLastTranx[s] = timestamp;
+        }
+      } else if (IS_WRITE(trace.TraceID)) {           // SPM Write Trace
+        s = trace.TraceID/2;
+        if (trace.EventType == XCL_PERF_MON_START_EVENT) {
+          mWriteStarts[s].push(timestamp);
+        }
+        else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
+          if (trace.Reserved == 1) {
+            startTime = timestamp;
+          }
+          else {
+            if(mWriteStarts[s].empty()) {
+              startTime = timestamp;
+            } else {
+              startTime = mWriteStarts[s].front();
+              mWriteStarts[s].pop();
+            }
+          }
+          DeviceTrace writeTrace;
+          writeTrace.SlotNum = s;
+          writeTrace.Type = "Write";
+          writeTrace.StartTime = startTime;
+          writeTrace.EndTime = timestamp;
+          writeTrace.BurstLength = timestamp - startTime + 1;
+          writeTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
+          writeTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
+          resultVector.push_back(writeTrace);
+          mPerfMonLastTranx[s] = timestamp;
+        }
+      }
+    } // for i
+
+    // Try to approximate CU Ends from data transnfers
+    std::string cuPortName, cuNameSAM, cuNameSPM;
+    for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
+      if (!mAccelMonCuStarts[i].empty()) {
+        kernelTrace.SlotNum = i;
+        kernelTrace.Name = "OCL Region";
+        kernelTrace.Type = "Kernel";
+        kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
+        kernelTrace.StartTime = mAccelMonCuStarts[i].front();
+        kernelTrace.Start = convertDeviceToHostTimestamp(kernelTrace.StartTime, type, deviceName);
+        kernelTrace.BurstLength = 0;
+        kernelTrace.NumBytes = 0;
+        uint64_t lastTimeStamp = 0;
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
+        for (int j = 0; j < XSPM_MAX_NUMBER_SLOTS; j++) {
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
+          cuNameSPM = cuPortName.substr(0, cuPortName.find_first_of("/"));
+          if (cuNameSAM == cuNameSPM && lastTimeStamp < mPerfMonLastTranx[j])
+            lastTimeStamp = mPerfMonLastTranx[j];
+        }
+        if (lastTimeStamp < mAccelMonLastTranx[i])
+          lastTimeStamp = mAccelMonLastTranx[i];
+        if (lastTimeStamp) {
+          mPluginHandle->sendMessage(
+          "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
+          kernelTrace.EndTime = lastTimeStamp;
+          kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);
+          // Insert is needed in case there are only stalls
+          resultVector.insert(resultVector.begin(), kernelTrace);
+        }
+      }
+    }
+    // Clear vectors
+    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    XDP_LOG("[profile_device] Done logging device trace samples\n");
+  }
+
+  void TraceParser::logTraceHWEmu(std::string& deviceName,
+          xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
     XDP_LOG("[profile_device] Logging %u device trace samples (total = %ld)...\n",
         traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;
 
     // Find and set minimum timestamp in case of multiple Kernels
-    if(isHwEmu) {
-      uint64_t minHostTimestampNsec = traceVector.mArray[0].HostTimestamp;
-      for (unsigned int i=0; i < traceVector.mLength; i++) {
-        if (traceVector.mArray[i].HostTimestamp < minHostTimestampNsec)
-          minHostTimestampNsec = traceVector.mArray[i].HostTimestamp;
-      }
-      getTimestampNsec(minHostTimestampNsec);
-    }
-    else {
-      if (traceVector.mLength >= 8192)
-        mPluginHandle->sendMessage(
-"Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
-Please use 'coarse' option for data transfer trace or turn off Stall profiling");
-    }
-  
-    //
-    // Parse recently offloaded trace results
-    //
+    uint64_t minHostTimestampNsec = traceVector.mArray[0].HostTimestamp;
     for (unsigned int i=0; i < traceVector.mLength; i++) {
-      xclTraceResults trace = traceVector.mArray[i];
+      if (traceVector.mArray[i].HostTimestamp < minHostTimestampNsec)
+        minHostTimestampNsec = traceVector.mArray[i].HostTimestamp;
+    }
+    getTimestampNsec(minHostTimestampNsec);
+    DeviceTrace kernelTrace;
+    uint32_t prevHostTimestamp = 0xFFFFFFFF;
+    uint32_t timestamp = 0;
+    uint64_t hostTimestampNsec = 0;
+    uint64_t mPrevTimestamp = 0;
+    for (unsigned int i=0; i < traceVector.mLength; i++) {
+      auto& trace = traceVector.mArray[i];
       XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
-
-      // ***************
-      // Clock Training
-      // ***************
-      if (isHwEmu) {
-        timestamp = trace.Timestamp + mPrevTimestamp[type];
-        if (trace.Overflow == 1)
-          timestamp += LOOP_ADD_TIME;
-        mPrevTimestamp[type] = timestamp;
-
-        if (trace.HostTimestamp == prevHostTimestamp && trace.Timestamp == 1) {
-          XDP_LOG("[profile_device] Ignoring host timestamp: 0x%X\n",
-                  trace.HostTimestamp);
-          continue;
-        }
-        hostTimestampNsec = getTimestampNsec(trace.HostTimestamp);
-        XDP_LOG("[profile_device] Timestamp pair: Device: 0x%X, Host: 0x%X\n",
-                timestamp, hostTimestampNsec);
-        prevHostTimestamp = trace.HostTimestamp;
+      timestamp = trace.Timestamp + mPrevTimestamp;
+      mPrevTimestamp = timestamp;
+      if (trace.HostTimestamp == prevHostTimestamp && trace.Timestamp == 1) {
+        XDP_LOG("[profile_device] Ignoring host timestamp: 0x%X\n",
+                trace.HostTimestamp);
+        continue;
       }
-      else {
-        // clock training relation is linear within small durations (1 sec)
-        if (i == 0) {
-          y1 = static_cast <double> (trace.HostTimestamp);
-          x1 = static_cast <double> (trace.Timestamp);
-          continue;
-        }
-        if (i == 1) {
-          y2 = static_cast <double> (trace.HostTimestamp);
-          x2 = static_cast <double> (trace.Timestamp);
-          mTrainSlope[type] = (y2 - y1) / (x2 - x1);
-          mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
-          trainDeviceHostTimestamps(deviceName, type);
-        }
-        if (trace.Overflow == 1)
-          trace.Timestamp += LOOP_ADD_TIME_SPM;
-        timestamp = trace.Timestamp;
-        if (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM)
-          slotID = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
-        else
-          // SPM Trace IDs (Slots 0-30)
-          if (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM)
-            slotID = trace.TraceID/2;
-          else
-            if (!(trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM))
-            // Unsupported
-            continue;
-      }
-      uint32_t s = slotID;
+      hostTimestampNsec = getTimestampNsec(trace.HostTimestamp);
+      XDP_LOG("[profile_device] Timestamp pair: Device: 0x%X, Host: 0x%X\n",
+              timestamp, hostTimestampNsec);
+      prevHostTimestamp = trace.HostTimestamp;
 
-      if (isHwEmu) {
-        if (trace.TraceID < 61) {
+      uint32_t s = 0;
+      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_SPM);
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM_HWEM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
+
+      if (SPMPacket) {
+        uint8_t flags = 0;
         s = trace.TraceID / 2;
         flags = trace.EventFlags;
         XDP_LOG("[profile_device] slot %d event flags = %s @ timestamp %d\n",
@@ -212,7 +436,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             XDP_LOG("[profile_device] WARNING: Found write end with write start queue empty @ %d\n", timestamp);
             continue;
           }
-  
+
           uint64_t startTime = mWriteStarts[s].front();
           uint64_t hostStartTime = mHostWriteStarts[s].front();  
           mWriteStarts[s].pop();
@@ -273,334 +497,107 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             resultVector.push_back(readTrace);
           }
         }
-        }
-        else if (trace.TraceID >= 64 && trace.TraceID <= 94) {
-          uint32_t cuEvent = trace.EventFlags & XSAM_TRACE_CU_MASK;
-          s = trace.TraceID - 64;
-          // Common Params for all event types
-          kernelTrace.SlotNum = s;
-          kernelTrace.Name = "OCL Region";
-          kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
-          kernelTrace.EndTime = timestamp;
-          kernelTrace.End = hostTimestampNsec / 1e6;
-          kernelTrace.BurstLength = 0;
-          kernelTrace.NumBytes = 0;
-          if (cuEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
-              kernelTrace.Type = "Kernel";
-              startTime = mAccelMonCuHostTime[s];
-              kernelTrace.StartTime = mAccelMonCuTime[s];
-              kernelTrace.Start = mAccelMonCuHostTime[s] / 1e6;
-              resultVector.push_back(kernelTrace);
-              // Divide by 2 just to be safe
-              mEmuTraceMsecOneCycle = (kernelTrace.End - kernelTrace.Start) / (2 *(kernelTrace.EndTime - kernelTrace.StartTime));
-            }
-            else {
-              mAccelMonCuHostTime[s] = hostTimestampNsec;
-              mAccelMonCuTime[s] = timestamp;
-            }
-            mAccelMonStartedEvents[s] ^= XSAM_TRACE_CU_MASK;
+      }
+      else if (SAMPacket) {
+        uint32_t cuEvent = trace.EventFlags & XSAM_TRACE_CU_MASK;
+        s = trace.TraceID - 64;
+        // Common Params for all event types
+        kernelTrace.SlotNum = s;
+        kernelTrace.Name = "OCL Region";
+        kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
+        kernelTrace.EndTime = timestamp;
+        kernelTrace.End = hostTimestampNsec / 1e6;
+        kernelTrace.BurstLength = 0;
+        kernelTrace.NumBytes = 0;
+        if (cuEvent) {
+          if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
+            kernelTrace.Type = "Kernel";
+            kernelTrace.StartTime = mAccelMonCuTime[s];
+            kernelTrace.Start = mAccelMonCuHostTime[s] / 1e6;
+            resultVector.push_back(kernelTrace);
+            // Divide by 2 just to be safe
+            mEmuTraceMsecOneCycle = (kernelTrace.End - kernelTrace.Start) / (2 *(kernelTrace.EndTime - kernelTrace.StartTime));
           }
-        }
-        else if(trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM) { // SSPM Trace : HW Emu
-            s = trace.TraceID - MIN_TRACE_ID_SSPM;
-            kernelTrace.Kind = DeviceTrace::DEVICE_STREAM;
-
-            bool isSingle    = trace.EventFlags & 0x10;
-            bool txEvent     = trace.EventFlags & 0x8;
-            bool stallEvent  = trace.EventFlags & 0x4;
-            bool starveEvent = trace.EventFlags & 0x2;
-            bool isStart     = trace.EventFlags & 0x1;
-
-            uint64_t startTime = 0;
-            uint64_t hostStartTime = 0;
-
-            unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
-            bool isRead     = (ipInfo & 0x2) ? true : false;
-            if (isStart) {
-              if (txEvent) {
-                mStreamTxStarts[s].push(timestamp);
-                mStreamTxStartsHostTime[s].push(hostTimestampNsec);
-              } else if (starveEvent) {
-                mStreamStarveStarts[s].push(timestamp);
-                mStreamStarveStartsHostTime[s].push(hostTimestampNsec);
-              } else if (stallEvent) {
-                mStreamStallStarts[s].push(timestamp);
-                mStreamStallStartsHostTime[s].push(hostTimestampNsec);
-              }
-            } else {
-                if (txEvent) {
-                  if (isSingle || mStreamTxStarts[s].empty()) {
-                    startTime = timestamp;
-                    hostStartTime = hostTimestampNsec;
-                  } else {
-                    startTime = mStreamTxStarts[s].front();
-                    hostStartTime = mStreamTxStartsHostTime[s].front();
-                    mStreamTxStarts[s].pop();
-                    mStreamTxStartsHostTime[s].pop();
-                  }
-                  kernelTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
-                } else if (starveEvent) {
-                    if (mStreamStarveStarts[s].empty()) {
-                    startTime = timestamp;
-                    hostStartTime = hostTimestampNsec;
-                  } else {
-                    startTime = mStreamStarveStarts[s].front();
-                    hostStartTime = mStreamStarveStartsHostTime[s].front();
-                    mStreamStarveStarts[s].pop();
-                    mStreamStarveStartsHostTime[s].pop();
-                  }
-                  kernelTrace.Type = "Stream_Starve";
-                } else if (stallEvent) {
-                  if (mStreamStallStarts[s].empty()) {
-                    startTime = timestamp;
-                    hostStartTime = hostTimestampNsec;
-                  } else {
-                    startTime = mStreamStallStarts[s].front();
-                    hostStartTime = mStreamStallStartsHostTime[s].front();
-                    mStreamStallStarts[s].pop();
-                    mStreamStallStartsHostTime[s].pop();
-                  }
-                  kernelTrace.Type = "Stream_Stall";
-                }
-                kernelTrace.SlotNum = s;
-                kernelTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
-                kernelTrace.StartTime = startTime;
-                kernelTrace.EndTime = timestamp;
-                kernelTrace.BurstLength = timestamp - startTime + 1;
-                kernelTrace.Start = hostStartTime / 1e6;
-                kernelTrace.End = hostTimestampNsec / 1e6;
-                resultVector.push_back(kernelTrace);
-            }
-        }
-        else continue;
-      } // If Hw Emu
-      else {
-        // SSPM trace
-        DeviceTrace streamTrace;
-        streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
-        if (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM) {
-          s = trace.TraceID - MIN_TRACE_ID_SSPM;
-          bool isSingle =    trace.EventFlags & 0x10;
-          bool txEvent =     trace.EventFlags & 0x8;
-          bool stallEvent =  trace.EventFlags & 0x4;
-          bool starveEvent = trace.EventFlags & 0x2;
-          bool isStart =     trace.EventFlags & 0x1;
-          unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
-          bool isRead = (ipInfo & 0x2) ? true : false;
-          if (isStart) {
-            if (txEvent)
-              mStreamTxStarts[s].push(timestamp);
-            else if (starveEvent)
-              mStreamStarveStarts[s].push(timestamp);
-            else if (stallEvent)
-              mStreamStallStarts[s].push(timestamp);
-          } else {
-              if (txEvent) {
-                if (isSingle || mStreamTxStarts[s].empty()) {
-                  startTime = timestamp;
-                } else {
-                  startTime = mStreamTxStarts[s].front();
-                  mStreamTxStarts[s].pop();
-                }
-                streamTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
-              } else if (starveEvent) {
-                if (mStreamStarveStarts[s].empty()) {
-                  startTime = timestamp;
-                } else {
-                  startTime = mStreamStarveStarts[s].front();
-                  mStreamStarveStarts[s].pop();
-                }
-                streamTrace.Type = "Stream_Starve";
-              } else if (stallEvent) {
-                if (mStreamStallStarts[s].empty()) {
-                  startTime = timestamp;
-                } else {
-                  startTime = mStreamStallStarts[s].front();
-                  mStreamStallStarts[s].pop();
-                }
-                streamTrace.Type = "Stream_Stall";
-              }
-              streamTrace.SlotNum = s;
-              streamTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
-              streamTrace.StartTime = startTime;
-              streamTrace.EndTime = timestamp;
-              streamTrace.BurstLength = timestamp - startTime + 1;
-              streamTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              streamTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
-              resultVector.push_back(streamTrace);
-          } // !isStart
-        }
-        // SAM Trace
-        else if (trace.TraceID >= MIN_TRACE_ID_SAM) {
-          uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
-          uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
-          uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;
-          uint32_t stallExtEvent = trace.TraceID & XSAM_TRACE_STALL_EXT_MASK;
-          // Common Params for all event types
-          kernelTrace.SlotNum = s;
-          kernelTrace.Name = "OCL Region";
-          kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
-          kernelTrace.EndTime = timestamp;
-          kernelTrace.BurstLength = 0;
-          kernelTrace.NumBytes = 0;
-          kernelTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
-          if (cuEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
-              kernelTrace.Type = "Kernel";
-              startTime = mAccelMonCuTime[s];
-              kernelTrace.StartTime = startTime;
-              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              kernelTrace.TraceStart = kernelTrace.Start;
-              resultVector.insert(resultVector.begin(), kernelTrace);
-            }
-            else {
-              mAccelMonCuTime[s] = timestamp;
-            }
+          else {
+            mAccelMonCuHostTime[s] = hostTimestampNsec;
+            mAccelMonCuTime[s] = timestamp;
           }
-          if (stallIntEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_INT_MASK) {
-              kernelTrace.Type = "Intra-Kernel Dataflow Stall";
-              startTime = mAccelMonStallIntTime[s];
-              kernelTrace.StartTime = startTime;
-              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              kernelTrace.TraceStart = kernelTrace.Start;
-              resultVector.push_back(kernelTrace);
-            }
-            else {
-              mAccelMonStallIntTime[s] = timestamp;
-            }
-          }
-          if (stallStrEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_STR_MASK) {
-              kernelTrace.Type = "Inter-Kernel Pipe Stall";
-              startTime = mAccelMonStallStrTime[s];
-              kernelTrace.StartTime = startTime;
-              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              kernelTrace.TraceStart = kernelTrace.Start;
-              resultVector.push_back(kernelTrace);
-            }
-            else {
-              mAccelMonStallStrTime[s] = timestamp;
-            }
-          }
-          if (stallExtEvent) {
-            if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_EXT_MASK) {
-              kernelTrace.Type = "External Memory Stall";
-              startTime = mAccelMonStallExtTime[s];
-              kernelTrace.StartTime = startTime;
-              kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-              kernelTrace.TraceStart = kernelTrace.Start;
-              resultVector.push_back(kernelTrace);
-            }
-            else {
-              mAccelMonStallExtTime[s] = timestamp;
-            }
-          }
-          // Update Events
-          mAccelMonStartedEvents[s] ^= (trace.TraceID & 0xf);
-          mAccelMonLastTranx[s] = timestamp;
-        }
-        else // SPM Trace
-        if (IS_READ(trace.TraceID)) {
-          if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-            mReadStarts[s].push(timestamp);
-          }
-          else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
-             if (trace.Reserved == 1) {
-              startTime = timestamp;
-             }
-             else {
-              if(mReadStarts[s].empty()) {
-                startTime = timestamp;
-              } else {
-                startTime = mReadStarts[s].front();
-                mReadStarts[s].pop();
-              }
-             }
-            DeviceTrace readTrace;
-            readTrace.SlotNum = slotID;
-            readTrace.Type = "Read";
-            readTrace.StartTime = startTime;
-            readTrace.EndTime = timestamp;
-            readTrace.BurstLength = timestamp - startTime + 1;
-            readTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-            readTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
-            resultVector.push_back(readTrace);
-            mPerfMonLastTranx[slotID] = timestamp;
-          }
-        }
-        else
-        if (IS_WRITE(trace.TraceID)) {
-          if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-            mWriteStarts[s].push(timestamp);
-          }
-          else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
-            if (trace.Reserved == 1) {
-              startTime = timestamp;
-            }
-            else {
-              if(mWriteStarts[s].empty()) {
-                startTime = timestamp;
-              } else {
-                startTime = mWriteStarts[s].front();
-                mWriteStarts[s].pop();
-              }
-            }
-            DeviceTrace writeTrace;
-            writeTrace.SlotNum = slotID;
-            writeTrace.Type = "Write";
-            writeTrace.StartTime = startTime;
-            writeTrace.EndTime = timestamp;
-            writeTrace.BurstLength = timestamp - startTime + 1;
-            writeTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
-            writeTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
-            resultVector.push_back(writeTrace);
-            mPerfMonLastTranx[slotID] = timestamp;
-          }
-        }
-      } // Else Hardware
-    } // for i
-    
-    // Try to approximate CU Ends from data transnfers
-    if(!isHwEmu) {
-      std::string cuPortName, cuNameSAM, cuNameSPM;
-      for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
-        if (mAccelMonStartedEvents[i] & XSAM_TRACE_CU_MASK) {
-          kernelTrace.SlotNum = i;
-          kernelTrace.Name = "OCL Region";
-          kernelTrace.Type = "Kernel";
-          kernelTrace.Kind = DeviceTrace::DEVICE_KERNEL;
-          kernelTrace.StartTime = mAccelMonCuTime[i];
-          kernelTrace.Start = convertDeviceToHostTimestamp(kernelTrace.StartTime, type, deviceName);
-          kernelTrace.BurstLength = 0;
-          kernelTrace.NumBytes = 0;
-          uint64_t lastTimeStamp = 0;
-          mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
-          for (int j = 0; j < XSPM_MAX_NUMBER_SLOTS; j++) {
-            mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
-            cuNameSPM = cuPortName.substr(0, cuPortName.find_first_of("/"));
-            if (cuNameSAM == cuNameSPM && lastTimeStamp < mPerfMonLastTranx[j])
-              lastTimeStamp = mPerfMonLastTranx[j];
-          }
-          if (lastTimeStamp < mAccelMonLastTranx[i])
-            lastTimeStamp = mAccelMonLastTranx[i];
-          if (lastTimeStamp) {
-            mPluginHandle->sendMessage(
-            "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
-            kernelTrace.EndTime = lastTimeStamp;
-            kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);
-            // Insert is needed in case there are only stalls
-            resultVector.insert(resultVector.begin(), kernelTrace);
-          }
+          mAccelMonStartedEvents[s] ^= XSAM_TRACE_CU_MASK;
         }
       }
-    }
-    // Clear vectors
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
-    mDeviceTrainVector.clear();
-    mHostTrainVector.clear();
+      else if (SSPMPacket) {
+        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        kernelTrace.Kind = DeviceTrace::DEVICE_STREAM;
 
+        bool isSingle    = trace.EventFlags & 0x10;
+        bool txEvent     = trace.EventFlags & 0x8;
+        bool stallEvent  = trace.EventFlags & 0x4;
+        bool starveEvent = trace.EventFlags & 0x2;
+        bool isStart     = trace.EventFlags & 0x1;
+        uint64_t startTime = 0;
+        uint64_t hostStartTime = 0;
+
+        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        bool isRead     = (ipInfo & 0x2) ? true : false;
+        if (isStart) {
+          if (txEvent) {
+            mStreamTxStarts[s].push(timestamp);
+            mStreamTxStartsHostTime[s].push(hostTimestampNsec);
+          } else if (starveEvent) {
+            mStreamStarveStarts[s].push(timestamp);
+            mStreamStarveStartsHostTime[s].push(hostTimestampNsec);
+          } else if (stallEvent) {
+            mStreamStallStarts[s].push(timestamp);
+            mStreamStallStartsHostTime[s].push(hostTimestampNsec);
+          }
+        } else {
+          if (txEvent) {
+            if (isSingle || mStreamTxStarts[s].empty()) {
+              startTime = timestamp;
+              hostStartTime = hostTimestampNsec;
+            } else {
+              startTime = mStreamTxStarts[s].front();
+              hostStartTime = mStreamTxStartsHostTime[s].front();
+              mStreamTxStarts[s].pop();
+              mStreamTxStartsHostTime[s].pop();
+            }
+            kernelTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
+          } else if (starveEvent) {
+            if (mStreamStarveStarts[s].empty()) {
+              startTime = timestamp;
+              hostStartTime = hostTimestampNsec;
+            } else {
+              startTime = mStreamStarveStarts[s].front();
+              hostStartTime = mStreamStarveStartsHostTime[s].front();
+              mStreamStarveStarts[s].pop();
+              mStreamStarveStartsHostTime[s].pop();
+            }
+            kernelTrace.Type = "Stream_Starve";
+          } else if (stallEvent) {
+            if (mStreamStallStarts[s].empty()) {
+              startTime = timestamp;
+              hostStartTime = hostTimestampNsec;
+            } else {
+              startTime = mStreamStallStarts[s].front();
+              hostStartTime = mStreamStallStartsHostTime[s].front();
+              mStreamStallStarts[s].pop();
+              mStreamStallStartsHostTime[s].pop();
+            }
+            kernelTrace.Type = "Stream_Stall";
+          }
+          kernelTrace.SlotNum = s;
+          kernelTrace.Name = isRead ? "Kernel_Stream_Read" : "Kernel_Stream_Write";
+          kernelTrace.StartTime = startTime;
+          kernelTrace.EndTime = timestamp;
+          kernelTrace.BurstLength = timestamp - startTime + 1;
+          kernelTrace.Start = hostStartTime / 1e6;
+          kernelTrace.End = hostTimestampNsec / 1e6;
+          resultVector.push_back(kernelTrace);
+        }
+      }
+      else continue;
+    }
+    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
     XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 

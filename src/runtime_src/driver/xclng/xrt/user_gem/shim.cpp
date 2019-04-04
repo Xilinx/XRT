@@ -368,9 +368,13 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
-    int len = std::vsnprintf(nullptr, 0, format, args1);
+    va_list args_bak;
+    // vsnprintf will mutate va_list so back it up
+    va_copy(args_bak, args);
+    int len = std::vsnprintf(nullptr, 0, format, args_bak);
+    va_end(args_bak);
 
     if (len < 0) {
         //illegal arguments
@@ -379,10 +383,10 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, cons
         xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
         return len;
     }
-    len++; //To include null terminator
+    ++len; //To include null terminator
 
     std::vector<char> buf(len);
-    len = std::vsnprintf(buf.data(), len, format, args1);
+    len = std::vsnprintf(buf.data(), len, format, args);
 
     if (len < 0) {
         //error processing arguments
@@ -1795,6 +1799,27 @@ int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
     return ret ? -errno : ret;
 }
 
+uint xocl::XOCLShim::xclGetNumLiveProcesses()
+{
+  std::string errmsg;
+  auto dev = pcidev::get_dev(mBoardNumber);
+
+  // Below info from user pf.
+  if(dev->user) {
+    std::vector<std::string> stringVec;
+    dev->user->sysfs_get("", "kdsstat", errmsg, stringVec);
+    // Dependent on message format built in kdsstat_show. Checking number of "context" in kdsstat.
+    // kdsstat has "context: <number_of_live_processes>"
+    if(stringVec.size() >= 4) {
+        std::size_t p = stringVec[3].find_first_of("0123456789");
+        std::string subStr = stringVec[3].substr(p);
+        uint number = std::stoul(subStr);
+        return number;
+    }
+  }
+  return 0;
+}
+
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
 /*******************************/
@@ -2293,4 +2318,10 @@ int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclMSD(args) : -ENODEV;
+}
+
+uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+{
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclGetNumLiveProcesses() : 0;
 }

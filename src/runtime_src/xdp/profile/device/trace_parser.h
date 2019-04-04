@@ -81,7 +81,9 @@ namespace xdp {
       }
 
       // log trace results
-      void logTrace(std::string deviceName, xclPerfMonType type,
+      void logTrace(std::string& deviceName, xclPerfMonType type,
+          xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
+      void logTraceHWEmu(std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
 
       // Get slot name and kind
@@ -110,9 +112,8 @@ namespace xdp {
       }
 
     private:
-      unsigned int mTag;
-      const int NUM_TRAIN;
       const double PCIE_DELAY_OFFSET_MSEC;
+      uint32_t mCuEventID;
       uint32_t mGlobalMemoryBitWidth;
       uint32_t mTraceSamplesThreshold;
       uint32_t mSampleIntervalMsec;
@@ -126,7 +127,6 @@ namespace xdp {
       double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainProgramStart[XCL_PERF_MON_TOTAL_PROFILE];
-      uint32_t mPrevTimestamp[XCL_PERF_MON_TOTAL_PROFILE];
       uint64_t mAccelMonCuTime[XSAM_MAX_NUMBER_SLOTS]       = { 0 };
       uint64_t mAccelMonCuHostTime[XSAM_MAX_NUMBER_SLOTS]   = { 0 };
       uint64_t mAccelMonStallIntTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
@@ -135,23 +135,17 @@ namespace xdp {
       uint8_t mAccelMonStartedEvents[XSAM_MAX_NUMBER_SLOTS] = { 0 };
       uint64_t mPerfMonLastTranx[XSPM_MAX_NUMBER_SLOTS]     = { 0 };
       uint64_t mAccelMonLastTranx[XSAM_MAX_NUMBER_SLOTS]    = { 0 };
-      std::set<std::string> mDeviceFirstTimestamp;
-      std::vector<uint32_t> mDeviceTrainVector;
-      std::vector<uint64_t> mHostTrainVector;
       std::queue<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint32_t> mWriteLengths[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint32_t> mReadLengths[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint16_t> mWriteBytes[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint16_t> mReadBytes[XSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::queue<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
+      std::queue<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
 
     private:
       XDPPluginI* mPluginHandle;

@@ -153,6 +153,7 @@ namespace xdp {
       virtual unsigned getProfileSlotProperties(xclPerfMonType type,
                                                 std::string& deviceName,
                                                 unsigned slotnum) = 0;
+      virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;

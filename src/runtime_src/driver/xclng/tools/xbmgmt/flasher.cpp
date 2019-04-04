@@ -88,7 +88,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     case SPI:
     {
         XSPI_Flasher xspi(mIdx, mMgmtMap);
-        if(secondary == nullptr)
+        if (primary == nullptr)
+        {
+            retVal = xspi.revertToMFG();
+        }
+        else if(secondary == nullptr)
         {
             retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
@@ -101,7 +105,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     case BPI:
     {
         BPI_Flasher bpi(mIdx, mMgmtMap);
-        if(secondary != nullptr)
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: BPI mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
         {
             std::cout << "ERROR: BPI mode does not support two mcs files." << std::endl;
         }
@@ -114,7 +122,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     case QSPIPS:
     {
         XQSPIPS_Flasher xqspi_ps(mIdx, mMgmtMap);
-        if(secondary != nullptr)
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
         {
             std::cout << "ERROR: QSPIPS mode does not support two mcs files." << std::endl;
         }

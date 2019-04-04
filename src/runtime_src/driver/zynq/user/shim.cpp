@@ -454,6 +454,11 @@ int ZYNQShim::xclExecWait(int timeoutMilliSec)
   return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
 }
 
+uint ZYNQShim::xclGetNumLiveProcesses()
+{
+  return 0;
+}
+
 int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
   // Until we have a programmatic way to determine what this directory
@@ -735,6 +740,14 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   if (!drv)
     return -EINVAL;
   return drv->xclExecWait(timeoutMilliSec);
+}
+
+uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return 0;
+  return drv->xclGetNumLiveProcesses();
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
