@@ -229,6 +229,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                  k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++)
             {
                 for (int32_t x = 0;
+                     t < MAX_KERNEL_CONFIGS &&
                      x < systemcfg->imagecfg[i].kernelcfg[k].instances;
                      x++, t++)
                 {
