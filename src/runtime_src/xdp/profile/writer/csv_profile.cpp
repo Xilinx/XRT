@@ -30,7 +30,7 @@ namespace xdp {
       assert(!Summary_ofs.is_open());
       SummaryFileName += FileExtension;
       openStream(Summary_ofs, SummaryFileName);
-      writeDocumentHeader(Summary_ofs, "SDAccel Profile Summary");
+      writeDocumentHeader(Summary_ofs, "Profile Summary");
     }
   }
 

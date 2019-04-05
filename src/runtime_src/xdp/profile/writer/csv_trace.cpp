@@ -30,7 +30,7 @@ namespace xdp {
       assert(!Trace_ofs.is_open());
       TraceFileName += FileExtension;
       openStream(Trace_ofs, TraceFileName);
-      writeDocumentHeader(Trace_ofs, "SDAccel Timeline Trace");
+      writeDocumentHeader(Trace_ofs, "Timeline Trace");
       std::vector<std::string> TimelineTraceColumnLabels = {
           "Time_msec", "Name", "Event", "Address_Port", "Size",
           "Latency_cycles", "Start_cycles", "End_cycles",

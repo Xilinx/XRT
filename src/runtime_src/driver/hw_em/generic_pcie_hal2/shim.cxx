@@ -225,7 +225,7 @@ namespace xclhwemhal2 {
       HwEmShim::mDebugLogStream.open(xclemulation::getEmDebugLogFile(),std::ofstream::out);
       if(xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string initMsg ="INFO: [SDx-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
+        std::string initMsg ="INFO: [HW-EM 01] Hardware emulation runs simulation underneath. Using a large data set will result in long simulation times. It is recommended that a small dataset is used for faster execution. The flow uses approximate models for DDR memory and interconnect and hence the performance data generated is approximate.";
         logMessage(initMsg);
       }
       mFirstBinary = false;
@@ -497,7 +497,7 @@ namespace xclhwemhal2 {
         struct stat statBuf;
         if ( stat(sim_path.c_str(), &statBuf) != 0 )
         {
-          std::string dMsg = "WARNING: [SDx-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
+          std::string dMsg = "WARNING: [HW-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
           logMessage(dMsg,0);
           sim_path = binaryDirectory+ "/behav_gdb/xsim";
           struct stat statBuf2;
@@ -701,23 +701,23 @@ namespace xclhwemhal2 {
 
            if(hostBuf32[0] & CONTROL_AP_START)
            {
-             std::string dMsg ="INFO: [SDx-EM 04-0] Sending start signal to the kernel " + kernelName;
+             std::string dMsg ="INFO: [HW-EM 04-0] Sending start signal to the kernel " + kernelName;
              logMessage(dMsg,1);
            }
            else
            {
-             std::string dMsg ="INFO: [SDx-EM 03-0] Configuring registers for the kernel " + kernelName +" Started";
+             std::string dMsg ="INFO: [HW-EM 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
            xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
-             std::string dMsg ="INFO: [SDx-EM 04-1] Kernel " + kernelName +" is Started";
+             std::string dMsg ="INFO: [HW-EM 04-1] Kernel " + kernelName +" is Started";
              logMessage(dMsg,1);
            }
            else
            {
-             std::string dMsg ="INFO: [SDx-EM 03-1] Configuring registers for the kernel " + kernelName +" Ended";
+             std::string dMsg ="INFO: [HW-EM 03-1] Configuring registers for the kernel " + kernelName +" Ended";
              logMessage(dMsg,1);
            }
            PRINTENDFUNC;
@@ -840,7 +840,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << seek << std::endl;
     }
-    std::string dMsg ="INFO: [SDx-EM 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
+    std::string dMsg ="INFO: [HW-EM 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
     logMessage(dMsg,1);
     void *handle = this;
 
@@ -864,7 +864,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #endif
       processed_bytes += c_size;
     }
-    dMsg ="INFO: [SDx-EM 02-1] Copying buffer from host to device ended";
+    dMsg ="INFO: [HW-EM 02-1] Copying buffer from host to device ended";
     logMessage(dMsg,1);
 
     PRINTENDFUNC;
@@ -888,7 +888,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         << src << ", " << size << ", " << skip << std::endl;
     }
 
-    std::string dMsg ="INFO: [SDx-EM 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
+    std::string dMsg ="INFO: [HW-EM 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
     logMessage(dMsg,1);
     void *handle = this;
 
@@ -912,7 +912,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
       processed_bytes += c_size;
     }
-    dMsg ="INFO: [SDx-EM 05-1] Copying buffer from device to host ended";
+    dMsg ="INFO: [HW-EM 05-1] Copying buffer from device to host ended";
     logMessage(dMsg,1);
     PRINTENDFUNC;
     printMem(mGlobalOutMemStream, 16 , src , dest , size );
@@ -1055,14 +1055,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2);
 
         // Append to detailed kernel trace data mining results file
-        std::string logFilePath= binaryDirectory + "/sdaccel_profile_kernels.csv";
-        std::string destPath3 = "'" + std::string(path) + "/sdaccel_profile_kernels.csv'";
+        std::string logFilePath= binaryDirectory + "/profile_kernels.csv";
+        std::string destPath3 = "'" + std::string(path) + "/profile_kernels.csv'";
         systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3);
         xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
 
         // Append to detailed kernel trace "timeline" file
-        std::string traceFilePath = binaryDirectory + "/sdaccel_timeline_kernels.csv";
-        std::string destPath4 = "'" + std::string(path) + "/sdaccel_timeline_kernels.csv'";
+        std::string traceFilePath = binaryDirectory + "/timeline_kernels.csv";
+        std::string destPath4 = "'" + std::string(path) + "/timeline_kernels.csv'";
         systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4);
 
         if (mLogStream.is_open())
@@ -1128,7 +1128,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
-      std::string waitingMsg ="INFO: [SDx-EM 06-0] Waiting for the simulator process to exit";
+      std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
       logMessage(waitingMsg);
     }
 
@@ -1138,7 +1138,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
-      std::string waitingMsg ="INFO: [SDx-EM 06-1] All the simulator processes exited successfully";
+      std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
     }
 
@@ -1243,7 +1243,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
       if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string waitingMsg ="INFO: [SDx-EM 06-0] Waiting for the simulator process to exit";
+        std::string waitingMsg ="INFO: [HW-EM 06-0] Waiting for the simulator process to exit";
         logMessage(waitingMsg);
       }
 
@@ -1253,7 +1253,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
       if(( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI || lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH) && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
-        std::string waitingMsg ="INFO: [SDx-EM 06-1] All the simulator processes exited successfully";
+        std::string waitingMsg ="INFO: [HW-EM 06-1] All the simulator processes exited successfully";
         logMessage(waitingMsg);
       }
 
@@ -1411,9 +1411,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       char* pPath = GetCurrentDir(path,size);
       if(pPath)
       {
-        std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
+        std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
         systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
-        std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
+        std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
         systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
       }
     }
@@ -1644,9 +1644,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     char* pPath = GetCurrentDir(path,size);
     if(pPath)
     {
-      std::string sdxProfileKernelFile = std::string(path) + "/sdaccel_profile_kernels.csv";
+      std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
       systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE);
-      std::string sdxTraceKernelFile = std::string(path) + "/sdaccel_timeline_kernels.csv";
+      std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE);
     }
     if ( logfileName && (logfileName[0] != '\0'))

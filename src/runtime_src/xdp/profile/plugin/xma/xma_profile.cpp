@@ -93,7 +93,7 @@ profile_initialize(xclDeviceHandle s_handle, int use_profile, int use_trace,
 
     //std::string timelineFile = "xma_timeline_trace.csv";
     //xdp::mWriter = new xdp::CSVWriter(profileFile, timelineFile, "Xilinx");
-    xdp::mWriter = new xdp::CSVWriter("sdaccel_profile_summary", "sdaccel_timeline_trace", "Xilinx");
+    xdp::mWriter = new xdp::CSVWriter("profile_summary", "timeline_trace", "Xilinx");
     xdp::mProfileMgr->attach(xdp::mWriter);
   }
 
