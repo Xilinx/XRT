@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "lib/xmaapi.h"
@@ -130,6 +131,7 @@ typedef struct XmaResConfig {
     pthread_mutex_t lock; /* protect access to shm across processes/threads */
     bool sys_res_ready; /* flag indicating system devices have been programmed */
     pid_t clients[MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS];
+    pid_t config_owner;
     uint32_t ref_cnt;
 } XmaResConfig;
 
@@ -206,7 +208,7 @@ static void xma_free_all_proc_res(XmaResConfig *xma_shm, pid_t proc_id);
 
 static void xma_dec_ref_shm(XmaResConfig *xma_shm);
 
-static int xma_inc_ref_shm(XmaResConfig *xma_shm);
+static int xma_inc_ref_shm(XmaResConfig *xma_shm, bool config_owner);
 
 static int xma_is_client_using_kernel(XmaKernelInstance *k, pid_t proc_id);
 
@@ -528,7 +530,9 @@ int32_t xma_res_kern_chan_id_get(XmaKernelRes *kern_res)
 static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
 {
     extern XmaSingleton *g_xma_singleton;
-    int ret, fd, max_retry;
+    int i, ret, fd, max_retry;
+    bool shm_initalized;
+    int max_wait = xma_cfg_dev_cnt_get() * 10; /* 10s per device programmed */
     XmaResConfig *shm_map;
 
     pthread_mutexattr_t proc_shared_lock;
@@ -577,9 +581,10 @@ eexist:
         return g_xma_singleton->shm_res_cfg;
     }
 
-    /* Check to see that read bit has been asserted by process in control of shm */
+    /* Check to see that read bit has been asserted by process in control of shm
+     * indicating that the mutex and other header info of the shm db is ready */
     ret = access(shm_filename, R_OK | W_OK);
-    for (max_retry = 5; ret < 0 && max_retry > 0; max_retry--)
+    for (max_retry = 50; ret < 0 && max_retry > 0; max_retry--)
     {
         ret = access(shm_filename, R_OK);
         usleep(100);
@@ -603,18 +608,46 @@ eexist:
 
     close(fd);
 
-    /* verify processes and update ref cnt */
-    ret = xma_verify_shm_client_procs(shm_map, config);
-    if (ret < 0) {
+    /* verify processes held resources and update ref cnt */
+    shm_initalized = false;
+    for (max_retry = max_wait; !shm_initalized && max_retry; max_retry--)
+    {
+        xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
+                   "Waiting for system to be configured by %lu\n",
+                    shm_map->config_owner);
+        xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD,
+                   "Will wait for %d more seconds\n", max_retry);
+        ret = xma_verify_shm_client_procs(shm_map, config);
+        if (ret < 0) {
+            /* make best effort to unref */
+            if (xma_shm_lock(shm_map))
+                return NULL;
+            xma_dec_ref_shm(shm_map);
+            xma_shm_unlock(shm_map);
+
+            xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+                       "Problem verifying resources of shared mem database\n");
+            return NULL;
+        }
+
+        /* wait for up to 1s for system to be configured */
+        for (i = 0; i < 50; i++)
+        {
+            if (ret != 1 && !xma_res_xma_init_completed(shm_map)) {
+                usleep(20000);
+            } else {
+                shm_initalized = true;
+                break;
+            }
+        }
+    }
+
+    if (!shm_initalized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
-                   "Problem verifying clients of shared mem database\n");
+                   "Timed out waiting to verify shm system initalization\n");
         munmap((void*)shm_map, sizeof(XmaResConfig));
         return NULL;
     }
-
-    /* wait for system to be configured */
-    while (ret != 1 && !xma_res_xma_init_completed(shm_map))
-        sched_yield();
 
     return shm_map;
 }
@@ -715,7 +748,7 @@ static int xma_init_shm(XmaResConfig *xma_shm,
             shm_devices[dev_id].kernel_cnt = tot_kerns;
         }
     }
-    xma_inc_ref_shm(xma_shm);
+    xma_inc_ref_shm(xma_shm, true);
 
     return XMA_SUCCESS;
 }
@@ -1406,6 +1439,7 @@ static XmaKernReq *xma_res_create_kern_req(enum XmaKernType type,
 static int xma_shm_lock(XmaResConfig *xma_shm)
 {
     extern XmaSingleton *g_xma_singleton;
+    struct timespec lock_timeout;
     int ret;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
@@ -1415,7 +1449,16 @@ static int xma_shm_lock(XmaResConfig *xma_shm)
         return XMA_ERROR_INVALID;
     }
 
-    ret = pthread_mutex_lock(&xma_shm->lock);
+    clock_gettime(CLOCK_REALTIME, &lock_timeout);
+    lock_timeout.tv_sec += 10;
+
+    ret = pthread_mutex_timedlock(&xma_shm->lock, &lock_timeout);
+    if (ret == ETIMEDOUT) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
+            "Timed out trying to aquire xma_shm_db mutex\n");
+        return XMA_ERROR;
+    }
+
     if (ret == EOWNERDEAD) {
         xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
             "XMA shm db mutex owner is dead.\n");
@@ -1522,6 +1565,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
 {
     int i, ret, max_refs;
     bool shm_reinit = false;
+    bool interrupted_config = false;
 
     max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
 
@@ -1540,6 +1584,8 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
 
             xma_shm->clients[i] = 0;
             xma_shm->ref_cnt--;
+            if (xma_shm->config_owner == dead_proc)
+                xma_shm->config_owner = 0;
 
             /* free all resources associated with pid */
             xma_free_all_proc_res(xma_shm, dead_proc);
@@ -1554,8 +1600,10 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
         }
 
     }
+    /* determine if system programming was interrupted and left incomplete */
+    interrupted_config = !xma_shm->config_owner && !xma_shm->sys_res_ready;
 
-    if (xma_shm->ref_cnt == 0) {
+    if (xma_shm->ref_cnt == 0 || interrupted_config) {
         ret = xma_init_shm(xma_shm, config);
         if (ret) {
             xma_shm_unlock(xma_shm);
@@ -1565,7 +1613,7 @@ static int xma_verify_shm_client_procs(XmaResConfig *xma_shm,
         shm_reinit = true;
     }
 
-    if (!shm_reinit && xma_inc_ref_shm(xma_shm)) {
+    if (!shm_reinit && xma_inc_ref_shm(xma_shm, false)) {
         xma_shm_unlock(xma_shm);
         return XMA_ERROR;
     }
@@ -1591,6 +1639,8 @@ static void xma_dec_ref_shm(XmaResConfig *xma_shm)
 
         xma_shm->clients[i] = 0;
         xma_shm->ref_cnt--;
+        if (xma_shm->config_owner == curr_proc)
+            xma_shm->config_owner = 0;
 
         /* defragment process list */
         for (j = i; j < max_refs-1 && xma_shm->clients[j + 1]; j++)
@@ -1603,14 +1653,24 @@ static void xma_dec_ref_shm(XmaResConfig *xma_shm)
 }
 
 /* call while holding lock */
-static int xma_inc_ref_shm(XmaResConfig *xma_shm)
+static int xma_inc_ref_shm(XmaResConfig *xma_shm, bool config_owner)
 {
+    pid_t curr_config_owner = xma_shm->config_owner;
     pid_t curr_proc = getpid();
-    int max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
+    int i, max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+
+    xma_shm->config_owner = config_owner ? curr_proc : curr_config_owner;
     if (xma_shm->ref_cnt + 1 > max_refs)
         return XMA_ERROR_NO_KERNEL;
+
+    for (i = 0;
+         i < xma_shm->ref_cnt && xma_shm->clients[i] != curr_proc;
+         i++);
+
+    if (i != xma_shm->ref_cnt)
+        return XMA_SUCCESS; /* proc already listed; avoid double-ref cnt */
 
     xma_shm->clients[xma_shm->ref_cnt] = curr_proc;
     xma_shm->ref_cnt++;
