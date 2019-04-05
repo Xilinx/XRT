@@ -216,9 +216,12 @@ namespace xclhwemhal2 {
       return false;
 
     /* extract cu list */
-    xcmd->cu_idx = get_free_cu(xcmd);
-    if (xcmd->cu_idx<0)
+    int iFreeCu = get_free_cu(xcmd);
+
+    if (iFreeCu < 0 || iFreeCu >= 128)
       return false;
+
+    xcmd->cu_idx = iFreeCu;
 
     /* track cu executions */
     ++xcmd->exec->cu_usage[xcmd->cu_idx];

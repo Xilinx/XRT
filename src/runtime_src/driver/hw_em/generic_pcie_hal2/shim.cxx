@@ -37,6 +37,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_START = 1;
   const unsigned HwEmShim::CONTROL_AP_DONE  = 2;
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
+  const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
 
   Event::Event()
   {
@@ -449,11 +450,6 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
-        {
-          sim_path = binaryDirectory+ "/behav_waveform/questa";
-        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("SDX_LAUNCH_WAVEFORM_BATCH");
         setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
@@ -469,11 +465,6 @@ namespace xclhwemhal2 {
 
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
-        {
-          sim_path = binaryDirectory+ "/behav_waveform/questa";
-        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("SDX_LAUNCH_WAVEFORM_BATCH","1",true);
         setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
@@ -488,23 +479,12 @@ namespace xclhwemhal2 {
         if(sim_path.empty())
         {
           sim_path = binaryDirectory+ "/behav_gdb/xsim";
-          struct stat statBuf1;
-          if ( stat(sim_path.c_str(), &statBuf1) != 0 )
-          {
-            sim_path = binaryDirectory+ "/behav_gdb/questa";
-          }
         }
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
+        if (boost::filesystem::exists(sim_path) == false)
         {
           std::string dMsg = "WARNING: [SDx-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
           logMessage(dMsg,0);
           sim_path = binaryDirectory+ "/behav_gdb/xsim";
-          struct stat statBuf2;
-          if ( stat(sim_path.c_str(), &statBuf2) != 0 )
-          {
-            sim_path = binaryDirectory+ "/behav_gdb/questa";
-          }
         }
       }
       std::stringstream socket_id;
@@ -977,6 +957,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
     uint64_t result = mDDRMemoryManager[flags]->alloc(size,paddingFactor);
+    if(result == xclemulation::MemoryManager::mNull)
+      return result;
     uint64_t finalValidAddress = result+(paddingFactor*size);
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
@@ -1040,8 +1022,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       {
         // Copy waveform database
         std::string extension = "wdb";
-        struct stat statBuf;
-        if ( stat(std::string(binaryDirectory+ "/msim").c_str(), &statBuf) == 0 )
+        if (boost::filesystem::exists(binaryDirectory+"/msim"))
         {
           extension = "wlf";
         }
@@ -1730,7 +1711,7 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
+uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
 	size_t size = info->size;
   unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
@@ -1767,6 +1748,10 @@ int HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   xobj->buf = NULL;
   xobj->topology=ddr;
   xobj->fd = -1;
+  if(xobj->base == xclemulation::MemoryManager::mNull)
+  {
+    return xclemulation::MemoryManager::mNull;
+  }
 
   info->handle = mBufferCount;
   mXoclObjMap[mBufferCount++] = xobj;
@@ -1781,7 +1766,7 @@ unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   PRINTENDFUNC;
   return result ? mNullBO : info.handle;
 }
@@ -1796,7 +1781,7 @@ unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
-  int result = xoclCreateBo(&info);
+  uint64_t result = xoclCreateBo(&info);
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;
