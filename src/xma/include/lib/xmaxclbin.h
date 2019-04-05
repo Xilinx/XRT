@@ -32,11 +32,35 @@ typedef struct XmaIpLayout
     uint32_t     reserved[16];
 } XmaIpLayout;
 
+typedef struct XmaMemTopology
+{
+    uint8_t       m_type;
+    uint8_t       m_used;
+    uint64_t      m_size;
+    uint64_t      m_base_address;
+    unsigned char m_tag[16];
+} XmaMemTopology;
+
+typedef struct XmaAXLFConnectivity
+{
+    int32_t arg_index;
+    int32_t m_ip_layout_index;
+    int32_t mem_data_index;
+} XmaAXLFConnectivity;
+
 typedef struct XmaXclbinInfo
 {
-    char        xclbin_name[PATH_MAX + NAME_MAX];
-    uint16_t    freq_list[MAX_KERNEL_FREQS];
-    XmaIpLayout ip_layout[MAX_KERNEL_CONFIGS];
+    char                xclbin_name[PATH_MAX + NAME_MAX];
+    uint16_t            freq_list[MAX_KERNEL_FREQS];
+    XmaIpLayout         ip_layout[MAX_KERNEL_CONFIGS];
+    //TODO HHS Change the limits to be appropriate
+    XmaMemTopology      mem_topology[MAX_DDR_MAP];
+    XmaAXLFConnectivity connectivity[MAX_CONNECTION_ENTRIES];
+    uint32_t            number_of_kernels;
+    uint32_t            number_of_mem_banks;
+    uint32_t            number_of_connections;
+    //uint16_t bitmap based on MAX_DDR_MAP=16
+    uint16_t            ip_ddr_mapping[MAX_KERNEL_CONFIGS];
     //For execbo:
     uint32_t    num_ips;
     uuid_t      uuid;
@@ -45,5 +69,5 @@ typedef struct XmaXclbinInfo
 
 char *xma_xclbin_file_open(const char *xclbin_name);
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info);
-
+int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_banks, int* num_banks);
 #endif
