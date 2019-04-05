@@ -6,6 +6,7 @@ set(XRT_HEADER_SRC
   xclerr.h
   xclfeatures.h
   xclhal2.h
+  xrt.h
   xcl_app_debug.h
   xcl_macros.h
   xcl_app_debug.h
@@ -18,3 +19,5 @@ message("-- XRT header files")
 foreach (header ${XRT_HEADER_SRC})
   message("-- ${header}")
 endforeach()
+
+add_subdirectory(experimental)

@@ -112,6 +112,7 @@ namespace xdp {
     static xclPerfMonEventID getFunctionEventID(const std::string &functionName,
         long long queueAddress);
     static void getFlowModeName(e_flow_mode flowMode, std::string& str);
+    static uint32_t getDevTraceBufferSize(uint32_t property);
 
   };
 

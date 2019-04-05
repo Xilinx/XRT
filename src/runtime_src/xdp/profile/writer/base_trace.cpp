@@ -345,11 +345,11 @@ namespace xdp {
         traceName = traceName.substr(0, pos);
         
         writeTableRowStart(getStream());
-        writeTableCells(getStream(), startStr.str(), traceName, "START", "", workGroupSize);
+        writeTableCells(getStream(), startStr.str(), traceName, "START", "", workGroupSize, tr.EventID);
         writeTableRowEnd(getStream());
 
         writeTableRowStart(getStream());
-        writeTableCells(getStream(), endStr.str(), traceName, "END", "", workGroupSize);
+        writeTableCells(getStream(), endStr.str(), traceName, "END", "", workGroupSize, tr.EventID);
         writeTableRowEnd(getStream());
         continue;
       }

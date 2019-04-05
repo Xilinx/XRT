@@ -362,6 +362,7 @@ private:
     // Performance monitoring helper functions
     bool isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion);
     unsigned getBankCount();
+    signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
     uint64_t getHostTraceTimeNsec();
     uint64_t getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum);
     uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);
@@ -382,6 +383,7 @@ private:
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;
     bool mIsDeviceProfiling = false;
+    uint8_t mTraceFifoProperties = 0;
     uint64_t mPerfMonFifoCtrlBaseAddress = 0;
     uint64_t mPerfMonFifoReadBaseAddress = 0;
     uint64_t mTraceFunnelAddress = 0;
