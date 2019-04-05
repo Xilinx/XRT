@@ -25,8 +25,22 @@
 #include "plugin/xdp/profile.h"
 
 #include <string>
+#include <map>
 
 namespace xocl {
+
+static const std::map<std::string, void *> extensionFunctionTable = {
+  std::pair<std::string, void *>("clCreateStream", (void *)clCreateStream),
+  std::pair<std::string, void *>("clReleaseStream", (void *)clReleaseStream),
+  std::pair<std::string, void *>("clWriteStream", (void *)clWriteStream),
+  std::pair<std::string, void *>("clReadStream", (void *)clReadStream),
+  std::pair<std::string, void *>("clCreateStreamBuffer", (void *)clCreateStreamBuffer),
+  std::pair<std::string, void *>("clReleaseStreamBuffer", (void *)clReleaseStreamBuffer),
+  std::pair<std::string, void *>("clPollStreams", (void *)clPollStreams),
+  std::pair<std::string, void *>("clIcdGetPlatformIDsKHR", (void *)clIcdGetPlatformIDsKHR),
+  std::pair<std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
+  std::pair<std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
+};
 
 static void
 validOrError(const char* func_name)
@@ -43,10 +57,8 @@ clGetExtensionFunctionAddress(const char *func_name)
 {
   validOrError(func_name);
 
-  if (std::string(func_name)!="clIcdGetPlatformIDsKHR")
-    return nullptr;
-
-  return (void *)clIcdGetPlatformIDsKHR;
+  auto iter = extensionFunctionTable.find(func_name);
+  return (iter == extensionFunctionTable.end()) ? nullptr : iter->second;
 }
 
 } // xocl
@@ -66,5 +78,3 @@ clGetExtensionFunctionAddress(const char *func_name)
   }
   return nullptr;
 }
-
-
