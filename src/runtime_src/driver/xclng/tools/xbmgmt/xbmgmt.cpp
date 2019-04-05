@@ -633,7 +633,7 @@ int xcldev::flash_helper(int argc, char *argv[])
         std::cout << "Shell on below card(s) will be updated:" << std::endl;
         for (auto p : boardsToUpdate)
         {
-            std::cout << "Card_ID[" << p.first << "]" << std::endl;
+            std::cout << "Card [" << p.first << "]" << std::endl;
         }
 
         // Prompt user about what boards will be updated and ask for permission.
@@ -911,7 +911,7 @@ int main( int argc, char *argv[])
         if (index >= total)
             std::cout << "ERROR: Card index " << index << " is out of range";
         else
-            std::cout << "ERROR: Card_ID[" << index << "] is not ready";
+            std::cout << "ERROR: Card [" << index << "] is not ready";
         std::cout << std::endl;
         return 1;
     }
@@ -1277,7 +1277,7 @@ int scanDevices(int argc, char *argv[])
 
     for(unsigned i = 0; i < total; i++)
     {
-        std::cout << "Card_ID[" << i << "]" << std::endl;
+        std::cout << "Card [" << i << "]" << std::endl;
 
         Flasher f(i);
         if (!f.isValid())
