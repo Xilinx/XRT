@@ -448,11 +448,6 @@ namespace xclhwemhal2 {
 
         simMode = strdup(cmdLineOption.str().c_str());
         sim_path = binaryDirectory+ "/behav_waveform/xsim";
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
-        {
-          sim_path = binaryDirectory+ "/behav_waveform/questa";
-        }
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("SDX_LAUNCH_WAVEFORM_BATCH");
         setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
@@ -482,23 +477,12 @@ namespace xclhwemhal2 {
         if(sim_path.empty())
         {
           sim_path = binaryDirectory+ "/behav_gdb/xsim";
-          struct stat statBuf1;
-          if ( stat(sim_path.c_str(), &statBuf1) != 0 )
-          {
-            sim_path = binaryDirectory+ "/behav_gdb/questa";
-          }
         }
-        struct stat statBuf;
-        if ( stat(sim_path.c_str(), &statBuf) != 0 )
+        if (boost::filesystem::exists(sim_path) == false)
         {
           std::string dMsg = "WARNING: [SDx-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
           logMessage(dMsg,0);
           sim_path = binaryDirectory+ "/behav_gdb/xsim";
-          struct stat statBuf2;
-          if ( stat(sim_path.c_str(), &statBuf2) != 0 )
-          {
-            sim_path = binaryDirectory+ "/behav_gdb/questa";
-          }
         }
       }
       std::stringstream socket_id;
@@ -1028,8 +1012,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       {
         // Copy waveform database
         std::string extension = "wdb";
-        struct stat statBuf;
-        if ( stat(std::string(binaryDirectory+ "/msim").c_str(), &statBuf) == 0 )
+        if (boost::filesystem::exists(binaryDirectory+"/msim"))
         {
           extension = "wlf";
         }
