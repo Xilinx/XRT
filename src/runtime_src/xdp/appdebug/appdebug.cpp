@@ -1432,7 +1432,8 @@ struct sam_debug_view {
   unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
 
   unsigned int NumSlots ;
-  std::string  DevUserName ;
+  std::string DevUserName ;
+  std::string SysfsPath;
 
   sam_debug_view() 
   {
@@ -1465,7 +1466,7 @@ sam_debug_view::getJSONString(bool aVerbose) {
   std::stringstream sstr ;
   std::vector<std::string> slotNames;
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
-  getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
+  getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
 
   sstr << "[" ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
@@ -1502,13 +1503,14 @@ sam_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
   std::vector<std::string> slotNames;
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
-  getIPCountAddrNames (DevUserName, ACCEL_MONITOR, nullptr, &slotNames);
+  getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
   int col = 11;
   std::for_each(slotNames.begin(), slotNames.end(), [&](std::string& slotName){
     col = std::max(col, (int)slotName.length() + 4);
   });
+  
 
-  sstr << "SDx Accel Monitor Counters\n" ;
+  sstr << "Kernel Activities\n" ;
   sstr << std::left
        <<         std::setw(col) << "CU Name"
        << "  " << std::setw(16) << "Exec Count" 
@@ -1547,11 +1549,11 @@ clGetDebugAccelMonitorCounters()
     auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1562,13 +1564,18 @@ clGetDebugAccelMonitorCounters()
   xclAccelMonitorCounterResults samCounters;  
   memset(&samCounters, 0, sizeof(xclAccelMonitorCounterResults));
 
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
     }
   }
 
@@ -1578,7 +1585,8 @@ clGetDebugAccelMonitorCounters()
     return adv;
   }
 
-  auto sam_view = new sam_debug_view () ;
+  auto sam_view = new sam_debug_view() ;
+  sam_view->SysfsPath = sysfs_open_path;
   
   std::copy(samCounters.CuExecCount,
 	    samCounters.CuExecCount+XSAM_MAX_NUMBER_SLOTS,
