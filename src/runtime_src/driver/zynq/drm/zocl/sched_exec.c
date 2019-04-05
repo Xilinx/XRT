@@ -536,7 +536,9 @@ configure(struct sched_cmd *cmd)
 		 * Now the zdev->ert is heavily used in configure()
 		 * Need cleanup.
 		 */
-		if (!zdev->ert && is_valid_apts(zdev, cfg->data[i]) < 0) {
+		if (!zdev->ert && get_apt_index(zdev, cfg->data[i]) < 0) {
+			DRM_ERROR("CU address %x is not found in XLBCIN\n",
+				  cfg->data[i]);
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
 		}
@@ -548,6 +550,7 @@ configure(struct sched_cmd *cmd)
 		exec->cu_addr_phy[i] = zdev->res_start + cfg->data[i];
 		exec->cu_addr_virt[i] = ioremap(exec->cu_addr_phy[i], CU_SIZE);
 		if (!exec->cu_addr_virt[i]) {
+			DRM_ERROR("Mapping CU failed\n");
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
 		}

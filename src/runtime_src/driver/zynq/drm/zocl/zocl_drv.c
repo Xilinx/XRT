@@ -135,13 +135,17 @@ static int get_reserved_mem_region(struct device *dev, struct resource *res)
 }
 
 /**
- * is_valid_apts - Check the geiven phys address is the start of a aperture
+ * get_apt_index - Get the index of the geiven phys address,
+ *		   if it is the start of an aperture
  *
  * @dev: DRM device struct
  * @size: This size was not use, just to match function prototype.
  *
+ * Returns the index if aperture was found.
+ * Returns -EINVAL if not found.
+ *
  */
-int is_valid_apts(struct drm_zocl_dev *zdev, phys_addr_t addr)
+int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr)
 {
 	struct addr_aperture *apts = zdev->apertures;
 	int i;
@@ -284,7 +288,7 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 
 /* This function map two types of kernel address to user space.
  * The first type is pysical registers of a hardware IP, like CUs.
- * The seconde type is GEM buffer.
+ * The second type is GEM buffer.
  */
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 {
@@ -326,12 +330,12 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	/* Hardware component physical address mapping. Typically, this is used
-	 * to map the regsiters of a compute unit to user space.
+	 * to map the registers of a compute unit to user space.
 	 *
 	 * For the most of the time, the hardware is at 0 to 4GB address range.
 	 * *NOTE* Base on MPSoC TRM, it is possible to assign hardware to higher
 	 * address than 4GB. But for now, no one use those higher address range
-	 * for IPs. The RPU will has problem when access outside of 4GB memory.
+	 * for IPs. The RPU is not able to access outside of 4GB memory.
 	 *
 	 * Still use this approach before it requires to support hardware
 	 * address mapping from higher than 4GB space.
@@ -344,9 +348,9 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	phy_addr = vma->vm_pgoff << PAGE_SHIFT;
 
 	/* Only allow user to map register ranges in apertures list.
-	 * Could not map from the middle of a aperture.
+	 * Could not map from the middle of an aperture.
 	 */
-	apt_idx = is_valid_apts(zdev, phy_addr);
+	apt_idx = get_apt_index(zdev, phy_addr);
 	if (apt_idx < 0) {
 		DRM_ERROR("The offset is not in the apertures list\n");
 		return -EINVAL;
@@ -684,6 +688,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	sched_fini_exec(drm);
 	zocl_free_sections(zdev);
 	zocl_fini_sysfs(drm->dev);
+
+	kfree(zdev->apertures);
 
 	if (drm) {
 		drm_dev_unregister(drm);

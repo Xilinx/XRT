@@ -31,9 +31,6 @@
 #define MAX_CU_NUM 128
 #define CU_SIZE _64KB
 
-/* Now only for CUs and Debug IPs */
-#define MAX_APERTURES 144
-
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
 
@@ -73,7 +70,7 @@ struct drm_zocl_dev {
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
-	struct addr_aperture	 apertures[MAX_APERTURES];
+	struct addr_aperture	*apertures;
 	unsigned int		 num_apts;
 	struct drm_zocl_mm_stat	 mm_usage;
 	u64			 unique_id_last_bitstream;
