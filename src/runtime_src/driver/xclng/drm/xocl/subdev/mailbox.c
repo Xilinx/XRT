@@ -1902,9 +1902,9 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *of) {
 	sw_chan_args->is_tx = 1;
 
 	ret = mailbox_sw_transfer(pdev, sw_chan_args);
-	if (ret == 0) {
+	if (ret == 0)
 		return sw_chan_args->sz;
-	}
+	
 	return ret;
 }
 
@@ -1912,13 +1912,17 @@ static ssize_t
 mailbox_write(struct file *file, const char __user *buf, size_t n, loff_t *of) {
 	struct mailbox *mbx = file->private_data;
 	struct platform_device *pdev = mbx->mbx_pdev;
+	int ret = 0;
 	struct sw_chan *sw_chan_args = (struct sw_chan *)buf;
 
 	/* set by user already? */
 	sw_chan_args->is_tx = 0;
 
-	(void) mailbox_sw_transfer(pdev, sw_chan_args);
-	return n;
+	ret = mailbox_sw_transfer(pdev, sw_chan_args);
+	if (ret == 0)
+		return n;
+
+	return ret;
 }
 
 static uint mailbox_poll(struct file *file, poll_table *wait)
@@ -2110,14 +2114,13 @@ int __init xocl_init_mailbox(void)
 	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
 
 	err = alloc_chrdev_region(&mailbox_dev, 0, XOCL_MAX_DEVICES, XOCL_MAILBOX);
-	if (err < 0) {
+	if (err < 0)
 		goto err_chrdev_reg;
-	}
 
 	err = platform_driver_register(&mailbox_driver);
-	if (err < 0) {
+	if (err < 0)
 		goto err_driver_reg;
-	}
+
 	return 0;
 err_driver_reg:
 	unregister_chrdev_region(mailbox_dev, 1);
