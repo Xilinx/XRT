@@ -1595,6 +1595,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd), uuid);
 
     if (!match) {
+        std::cout << "FAILED" << std::endl;
         return -EINVAL;
     }
 
@@ -1658,11 +1659,11 @@ int xcldev::device::testM2m()
 
     for(uint i = 0; i < usedBanks.size()-1; i++) {
         for(uint j = i+1; j < usedBanks.size(); j++) {
+            std::cout << usedBanks[i].m_tag << " -> "
+                << usedBanks[j].m_tag << " M2M bandwidth: ";
             ret = m2mtest_bank(m_handle, uuid, i, j);
             if(ret != 0)
                 return ret;
-            std::cout << usedBanks[i].m_tag << " -> "
-                << usedBanks[j].m_tag << " M2M bandwidth: ";
         }
     }
     return ret;
