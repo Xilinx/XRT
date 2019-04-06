@@ -122,10 +122,16 @@
 #include <linux/mutex.h>
 #include <linux/completion.h>
 #include <linux/list.h>
+#include <linux/poll.h>
 #include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/io.h>
+#include <linux/ioctl.h> 
 #include "../xocl_drv.h"
 
 int mailbox_no_intr;
+dev_t mailbox_dev;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
@@ -267,23 +273,25 @@ struct mailbox_channel {
 	/*
 	 * Software channel settings
 	 */
-	struct completion	sw_chan_complete;
+	wait_queue_head_t	sw_chan_wq;
 	struct mutex		sw_chan_mutex;
 	void			*sw_chan_buf;
 	size_t			sw_chan_buf_sz;
 	uint64_t		sw_chan_msg_id;
 	uint64_t		sw_chan_msg_flags;
+
+	atomic_t		trigger;
 };
 
 /*
  * struct drm_xocl_sw_mailbox *args
  */
 struct sw_chan {
-	uint64_t flags;
-	uint32_t *data;
-	bool is_tx;
 	size_t sz;
+	uint64_t flags;
+	bool is_tx;
 	uint64_t id;
+	uint32_t *data;
 };
 
 /*
@@ -292,6 +300,8 @@ struct sw_chan {
 struct mailbox {
 	struct platform_device	*mbx_pdev;
 	struct mailbox_reg	*mbx_regs;
+	struct cdev		*sys_cdev;
+	struct device		*sys_device;
 	u32			mbx_irq;
 
 	struct mailbox_channel	mbx_rx;
@@ -720,7 +730,7 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	queue_work(ch->mbc_wq, &ch->mbc_work);
 
 	mutex_init(&ch->sw_chan_mutex);
-	init_completion(&ch->sw_chan_complete);
+	init_waitqueue_head(&ch->sw_chan_wq);
 
 	mutex_lock(&ch->sw_chan_mutex);
 	ch->sw_chan_buf = NULL;
@@ -735,6 +745,7 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	timer_setup(&ch->mbc_timer, chan_timer, 0);
 #endif
 
+	atomic_set(&ch->trigger, 0);
 	return 0;
 }
 
@@ -905,8 +916,9 @@ static void do_sw_rx(struct mailbox_channel *ch)
 	}
 	chan_msg_done(ch, err);
 	ch->sw_chan_msg_id = 0;
+	atomic_inc(&ch->trigger);
 	mutex_unlock(&ch->sw_chan_mutex);
-	complete(&ch->sw_chan_complete);
+	wake_up_interruptible(&ch->sw_chan_wq);
 	return;
 
 done:
@@ -1119,8 +1131,10 @@ static void do_sw_tx(struct mailbox_channel *ch)
 
 	if (ch->mbc_cur_msg) {
 		if (ch->sw_chan_buf) {
-			complete(&ch->sw_chan_complete);
-			goto done;
+			atomic_inc(&ch->trigger);
+			mutex_unlock(&ch->sw_chan_mutex);
+			wake_up_interruptible(&ch->sw_chan_wq);
+			return;
 		}
 		if (!ch->mbc_cur_msg->mbm_chan_sw)
 			goto done;
@@ -1132,8 +1146,9 @@ static void do_sw_tx(struct mailbox_channel *ch)
 		ch->sw_chan_msg_flags = ch->mbc_cur_msg->mbm_flags;
 		(void) memcpy(ch->sw_chan_buf, ch->mbc_cur_msg->mbm_data, ch->sw_chan_buf_sz);
 		ch->mbc_bytes_done = ch->mbc_cur_msg->mbm_len;
+		atomic_inc(&ch->trigger);
 		mutex_unlock(&ch->sw_chan_mutex);
-		complete(&ch->sw_chan_complete);
+		wake_up_interruptible(&ch->sw_chan_wq);
 		return;
 	}
 done:
@@ -1771,7 +1786,7 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		complete(&ch->mbc_worker);
 
 		/* sleep until do_hw_tx copies to sw_chan_buf */
-		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
+		if (wait_event_interruptible(ch->sw_chan_wq, atomic_read(&ch->trigger) > 0) == -ERESTARTSYS) {
 			return -ERESTARTSYS;
 		}
 
@@ -1782,6 +1797,7 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		 */
 
 		mutex_lock(&ch->sw_chan_mutex);
+		atomic_dec_if_positive(&ch->trigger);
 		if (ch->sw_chan_buf_sz > sw_chan_args->sz) {
 			sw_chan_args->sz = ch->sw_chan_buf_sz;
 			mutex_unlock(&ch->sw_chan_mutex);
@@ -1825,8 +1841,8 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		complete(&ch->mbc_worker);
 
 		/* sleep until chan_do_rx dequeues */
-		if (wait_for_completion_interruptible(&ch->sw_chan_complete) == -ERESTARTSYS) {
-			MBX_ERR(mbx, "sw_chan_complete signalled with ERESTARTSYS");
+		if (wait_event_interruptible(ch->sw_chan_wq, atomic_read(&ch->trigger) > 0) == -ERESTARTSYS) {
+			MBX_ERR(mbx, "sw_chan_wq signalled with ERESTARTSYS");
 			ret = -ERESTARTSYS;
 			goto end;
 		}
@@ -1834,6 +1850,7 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 
 end:
 	mutex_lock(&ch->sw_chan_mutex);
+	atomic_dec_if_positive(&ch->trigger);
 	if (ch->sw_chan_msg_id == 0)
 		clean_sw_buf(ch);
 	mutex_unlock(&ch->sw_chan_mutex);
@@ -1848,6 +1865,90 @@ static struct xocl_mailbox_funcs mailbox_ops = {
 	.set		= mailbox_set,
 	.get		= mailbox_get,
 	.sw_transfer	= mailbox_sw_transfer,
+};
+
+static int mailbox_open(struct inode *inode, struct file *file)
+{
+	struct mailbox *mbx = NULL;
+
+	mbx = xocl_drvinst_open(inode->i_cdev);
+	if (!mbx)
+		return -ENXIO;
+
+	/* create a reference to our char device in the opened file */
+	file->private_data = mbx;
+	return 0;
+}
+
+/*
+ * Called when the device goes from used to unused.
+ */
+static int mailbox_close(struct inode *inode, struct file *file)
+{
+	struct mailbox *mbx = file->private_data;
+
+	xocl_drvinst_close(mbx);
+	return 0;
+}
+
+static ssize_t
+mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *of) {
+	struct mailbox *mbx = file->private_data;
+	struct platform_device *pdev = mbx->mbx_pdev;
+	int ret = 0;
+	struct sw_chan *sw_chan_args = (struct sw_chan *)buf;
+
+	/* set by user already? */
+	sw_chan_args->is_tx = 1;
+
+	ret = mailbox_sw_transfer(pdev, sw_chan_args);
+	if (ret == 0)
+		return sw_chan_args->sz;
+	
+	return ret;
+}
+
+static ssize_t
+mailbox_write(struct file *file, const char __user *buf, size_t n, loff_t *of) {
+	struct mailbox *mbx = file->private_data;
+	struct platform_device *pdev = mbx->mbx_pdev;
+	int ret = 0;
+	struct sw_chan *sw_chan_args = (struct sw_chan *)buf;
+
+	/* set by user already? */
+	sw_chan_args->is_tx = 0;
+
+	ret = mailbox_sw_transfer(pdev, sw_chan_args);
+	if (ret == 0)
+		return n;
+
+	return ret;
+}
+
+static uint mailbox_poll(struct file *file, poll_table *wait)
+{
+	struct mailbox *mbx = file->private_data;
+	struct mailbox_channel *ch = &mbx->mbx_tx;
+	int counter;
+
+	poll_wait(file, &ch->sw_chan_wq, wait);
+	counter = atomic_read(&ch->trigger);
+	MBX_INFO(mbx, "mailbox_poll: %d", counter);
+	if (counter == 0)
+		return 0;
+	return POLLIN;
+}
+
+/*
+ * pseudo device file operations for the mailbox
+ */
+static const struct file_operations mailbox_fops = {
+	.owner = THIS_MODULE,
+	.open = mailbox_open,
+	.release = mailbox_close,
+	.read = mailbox_read,
+	.write = mailbox_write,
+	.poll = mailbox_poll,
 };
 
 static int mailbox_remove(struct platform_device *pdev)
@@ -1872,8 +1973,14 @@ static int mailbox_remove(struct platform_device *pdev)
 		iounmap(mbx->mbx_regs);
 
 	MBX_INFO(mbx, "mailbox cleaned up successfully");
+	
+	if (mbx->sys_device)
+		device_destroy(xrt_class, mbx->sys_cdev->dev);
+	if (mbx->sys_cdev)
+		cdev_del(mbx->sys_cdev);
 	platform_set_drvdata(pdev, NULL);
-	kfree(mbx);
+	xocl_drvinst_free(mbx);
+
 	return 0;
 }
 
@@ -1883,8 +1990,9 @@ static int mailbox_probe(struct platform_device *pdev)
 	struct resource *res;
 	char *priv, no_intr = 0;
 	int ret;
+	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
-	mbx = kzalloc(sizeof(struct mailbox), GFP_KERNEL);
+	mbx = xocl_drvinst_alloc(&pdev->dev, sizeof(struct mailbox));
 	if (!mbx)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, mbx);
@@ -1957,6 +2065,27 @@ static int mailbox_probe(struct platform_device *pdev)
 
 	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
+	mbx->sys_cdev = cdev_alloc();
+	mbx->sys_cdev->ops = &mailbox_fops;
+	mbx->sys_cdev->owner = THIS_MODULE;
+	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), 0);
+	ret = cdev_add(mbx->sys_cdev, mbx->sys_cdev->dev, 1);
+	if (ret) {
+		MBX_ERR(mbx, "cdev add failed");
+		goto failed;
+	}
+
+	mbx->sys_device = device_create(xrt_class, &pdev->dev,
+			mbx->sys_cdev->dev, NULL, "%s%d",
+			platform_get_device_id(pdev)->name,
+			XOCL_DEV_ID(core->pdev));
+	if (IS_ERR(mbx->sys_device)) {
+		ret = PTR_ERR(mbx->sys_device);
+		goto failed;
+	}
+
+	xocl_drvinst_set_filedev(mbx, mbx->sys_cdev);
+
 	MBX_INFO(mbx, "successfully initialized");
 	return 0;
 
@@ -1981,11 +2110,26 @@ static struct platform_driver mailbox_driver = {
 
 int __init xocl_init_mailbox(void)
 {
+	int err = 0;
 	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
-	return platform_driver_register(&mailbox_driver);
+
+	err = alloc_chrdev_region(&mailbox_dev, 0, XOCL_MAX_DEVICES, XOCL_MAILBOX);
+	if (err < 0)
+		goto err_chrdev_reg;
+
+	err = platform_driver_register(&mailbox_driver);
+	if (err < 0)
+		goto err_driver_reg;
+
+	return 0;
+err_driver_reg:
+	unregister_chrdev_region(mailbox_dev, 1);
+err_chrdev_reg:
+	return err;	
 }
 
 void xocl_fini_mailbox(void)
 {
+	unregister_chrdev_region(mailbox_dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&mailbox_driver);
 }
