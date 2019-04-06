@@ -454,7 +454,10 @@ int run_state_machine(yaml_document_t *document,
          * key = "ImageCfg" - we have one or more images to configure
          */
         yaml_node_t *next_node;
-        int          i = data.imagecfg_idx;
+        int i = data.imagecfg_idx;
+        if (i < 0) {
+            break;
+        }
         if(!strcmp(state_entry->key,"name") || !strcmp(state_entry->key,"ddr_map"))
         {
             next_node = get_next_scalar_node(data.document, &data.node_idx);

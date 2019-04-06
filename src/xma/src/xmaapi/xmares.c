@@ -620,13 +620,16 @@ eexist:
         ret = xma_verify_shm_client_procs(shm_map, config);
         if (ret < 0) {
             /* make best effort to unref */
-            if (xma_shm_lock(shm_map))
+            if (xma_shm_lock(shm_map)) {
+                munmap((void*)shm_map, sizeof(XmaResConfig));
                 return NULL;
+            }
             xma_dec_ref_shm(shm_map);
             xma_shm_unlock(shm_map);
 
             xma_logmsg(XMA_ERROR_LOG, XMA_RES_MOD,
                        "Problem verifying resources of shared mem database\n");
+            munmap((void*)shm_map, sizeof(XmaResConfig));
             return NULL;
         }
 
