@@ -226,7 +226,7 @@ XmaResources xma_res_shm_map(XmaSystemCfg *config)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     xma_set_shm_filenames();
-    return (XmaResources)xma_shm_open(XMA_SHM_FILE, config);
+    return (XmaResources)xma_shm_open((char*)XMA_SHM_FILE, config);
 }
 
 void xma_res_shm_unmap(XmaResources shm_cfg)
@@ -449,7 +449,7 @@ int32_t xma_res_free_dev(XmaResources shm_cfg, int32_t dev_handle)
     return ret;
 }
 
-int32_t xma_res_dev_handle_get(XmaKernelRes *kern_res)
+int32_t xma_res_dev_handle_get(XmaKernelRes kern_res)
 {
     XmaKernReq *kern_req = (XmaKernReq *)kern_res;
 
@@ -460,7 +460,7 @@ int32_t xma_res_dev_handle_get(XmaKernelRes *kern_res)
 
 }
 
-int32_t xma_res_plugin_handle_get(XmaKernelRes *kern_res)
+int32_t xma_res_plugin_handle_get(XmaKernelRes kern_res)
 {
     XmaKernReq *kern_req = (XmaKernReq *)kern_res;
 
@@ -470,7 +470,7 @@ int32_t xma_res_plugin_handle_get(XmaKernelRes *kern_res)
     return kern_req->plugin_handle;
 }
 
-int32_t xma_res_kern_handle_get(XmaKernelRes *kern_res)
+int32_t xma_res_kern_handle_get(XmaKernelRes kern_res)
 {
     XmaKernReq *kern_req = (XmaKernReq *)kern_res;
 
@@ -509,7 +509,7 @@ static void xma_set_shm_filenames(void)
 #endif
 }
 
-XmaSession *xma_res_session_get(XmaKernelRes *kern_res)
+XmaSession *xma_res_session_get(XmaKernelRes kern_res)
 {
     XmaKernReq *kern_req = (XmaKernReq *)kern_res;
 
@@ -519,7 +519,7 @@ XmaSession *xma_res_session_get(XmaKernelRes *kern_res)
     return kern_req->session;
 }
 
-int32_t xma_res_kern_chan_id_get(XmaKernelRes *kern_res)
+int32_t xma_res_kern_chan_id_get(XmaKernelRes kern_res)
 {
     if (!kern_res)
         return XMA_ERROR_INVALID;
@@ -578,7 +578,7 @@ eexist:
     if (g_xma_singleton && g_xma_singleton->shm_res_cfg) {
         xma_logmsg(XMA_INFO_LOG, XMA_RES_MOD,
                    "Resource database already mapped into this process\n");
-        return g_xma_singleton->shm_res_cfg;
+        return (XmaResConfig *)g_xma_singleton->shm_res_cfg;
     }
 
     /* Check to see that read bit has been asserted by process in control of shm
@@ -933,7 +933,8 @@ static int32_t xma_res_alloc_kernel(XmaResources shm_cfg,
     xma_plg_alloc_chan_mp plugin_alloc_chan_mp;
     pid_t proc_id = getpid();
     extern XmaSingleton *g_xma_singleton;
-    int kern_idx, dev_id;
+    int dev_id;
+    uint32_t kern_idx;
     bool kern_aquired = false;
     /* First pass will look for kernels already in-use by proc */
     bool kern_affinity_pass = true;
@@ -1074,7 +1075,7 @@ kern_alloc_loop:
 
     if (kern_aquired) {
         session->kern_res = (XmaKernelRes)kern_props;
-        session->hw_session.context = calloc(1, sizeof(XmaHwContext));
+        session->hw_session.context = (XmaHwContext*) calloc(1, sizeof(XmaHwContext));
         session->hw_session.context->lock = xma_res_obtain_kernel_mutex(session);
         session->hw_session.context->min_offset = 0xFFFFFFFF;
         return XMA_SUCCESS;
@@ -1105,9 +1106,9 @@ static int32_t xma_client_kernel_alloc(XmaResources shm_cfg,
     XmaResConfig *xma_shm = (XmaResConfig *)shm_cfg;
 
     if (alloc_chan_fn && alloc_chan_mp_flg)
-        plugin_alloc_chan_mp = alloc_chan_fn;
+        plugin_alloc_chan_mp = (xma_plg_alloc_chan_mp) alloc_chan_fn;
     else if (alloc_chan_fn && !alloc_chan_mp_flg)
-        plugin_alloc_chan = alloc_chan_fn;
+        plugin_alloc_chan = (xma_plg_alloc_chan) alloc_chan_fn;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
 
@@ -1419,7 +1420,7 @@ static XmaKernReq *xma_res_create_kern_req(enum XmaKernType type,
                                            const char *vendor,
                                            bool dev_excl)
 {
-    XmaKernReq *req = malloc(sizeof(XmaKernReq));
+    XmaKernReq *req = (XmaKernReq*) malloc(sizeof(XmaKernReq));
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
     if (!req || !vendor) {
@@ -1497,7 +1498,7 @@ static void xma_free_all_kernel_chan_res(XmaDevice *dev, pid_t proc_id)
     int i, j, z, p;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
-    for (i = 0; i < MAX_KERNEL_CONFIGS && i < dev->kernel_cnt; i++)
+    for (i = 0; i < MAX_KERNEL_CONFIGS && i < (int)dev->kernel_cnt; i++)
     {
         XmaKernelInstance *kernel = &dev->kernels[i];
         uint8_t init_chan_cnt = kernel->chan_cnt;;
@@ -1633,7 +1634,7 @@ static void xma_dec_ref_shm(XmaResConfig *xma_shm)
     int i;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, __func__);
-    for (i = 0; i < xma_shm->ref_cnt; i++)
+    for (i = 0; i < (int)xma_shm->ref_cnt; i++)
     {
         int j;
 
@@ -1660,7 +1661,7 @@ static int xma_inc_ref_shm(XmaResConfig *xma_shm, bool config_owner)
 {
     pid_t curr_config_owner = xma_shm->config_owner;
     pid_t curr_proc = getpid();
-    int i, max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
+    uint32_t i, max_refs = MAX_XILINX_DEVICES * MAX_KERNEL_CONFIGS;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
 

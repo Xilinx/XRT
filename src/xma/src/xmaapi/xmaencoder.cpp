@@ -129,7 +129,7 @@ xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
 XmaEncoderSession*
 xma_enc_session_create(XmaEncoderProperties *enc_props)
 {
-    XmaEncoderSession *enc_session = malloc(sizeof(XmaEncoderSession));
+    XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
     if (enc_session == NULL)
         return NULL;
     XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
@@ -212,7 +212,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     // For the encoder, only a receiver connection make sense
     // because no HW component consumes an encoded frame at
     // this point in a pipeline
-    XmaEndpoint *end_pt = malloc(sizeof(XmaEndpoint));
+    XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
     end_pt->session = &enc_session->base;
     end_pt->dev_id = dev_handle;
     end_pt->format = enc_props->format;
@@ -326,7 +326,7 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
 void 
 xma_enc_session_statsfile_init(XmaEncoderSession *session)
 {
-    char            *path = "/var/tmp/xilinx";
+    char            *path = (char*) "/var/tmp/xilinx";
     char            *enc_type_str;
     char            *vendor;
     int32_t          dev_id = 0;
@@ -335,7 +335,7 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     char             fname[100];
     XmaEncoderStats *stats;
 
-    stats = malloc(sizeof(XmaEncoderStats));
+    stats = (XmaEncoderStats*) malloc(sizeof(XmaEncoderStats));
 	if (stats == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Unable to initialize encoder stats file\n");
@@ -346,22 +346,22 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     switch(session->encoder_props.hwencoder_type)
     {
         case XMA_H264_ENCODER_TYPE:
-            enc_type_str = "H264";
+            enc_type_str = (char*) "H264";
         break;
         case XMA_HEVC_ENCODER_TYPE:
-            enc_type_str = "HEVC";
+            enc_type_str = (char*) "HEVC";
         break;
         case XMA_VP9_ENCODER_TYPE:
-            enc_type_str = "VP9";
+            enc_type_str = (char*) "VP9";
         break;
         case XMA_AV1_ENCODER_TYPE:
-            enc_type_str = "AV1";
+            enc_type_str = (char*) "AV1";
         break;
         case XMA_COPY_ENCODER_TYPE:
-            enc_type_str = "COPY";
+            enc_type_str = (char*) "COPY";
         break;
         default:
-            enc_type_str = "UNKNOWN";
+            enc_type_str = (char*) "UNKNOWN";
         break;
     }
 
