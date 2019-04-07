@@ -21,26 +21,13 @@
 #include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
+#include "xocl/core/platform.h"
 
 #include "plugin/xdp/profile.h"
 
 #include <string>
-#include <map>
 
 namespace xocl {
-
-static const std::map<std::string, void *> extensionFunctionTable = {
-  std::pair<std::string, void *>("clCreateStream", (void *)clCreateStream),
-  std::pair<std::string, void *>("clReleaseStream", (void *)clReleaseStream),
-  std::pair<std::string, void *>("clWriteStream", (void *)clWriteStream),
-  std::pair<std::string, void *>("clReadStream", (void *)clReadStream),
-  std::pair<std::string, void *>("clCreateStreamBuffer", (void *)clCreateStreamBuffer),
-  std::pair<std::string, void *>("clReleaseStreamBuffer", (void *)clReleaseStreamBuffer),
-  std::pair<std::string, void *>("clPollStreams", (void *)clPollStreams),
-  std::pair<std::string, void *>("clIcdGetPlatformIDsKHR", (void *)clIcdGetPlatformIDsKHR),
-  std::pair<std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
-  std::pair<std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
-};
 
 static void
 validOrError(const char* func_name)
@@ -56,9 +43,7 @@ static void*
 clGetExtensionFunctionAddress(const char *func_name)
 {
   validOrError(func_name);
-
-  auto iter = extensionFunctionTable.find(func_name);
-  return (iter == extensionFunctionTable.end()) ? nullptr : iter->second;
+  return clGetExtensionFunctionAddressForPlatform(get_global_platform(), func_name);
 }
 
 } // xocl

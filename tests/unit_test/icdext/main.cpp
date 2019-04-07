@@ -18,6 +18,10 @@
 #include <CL/cl_ext_xilinx.h>
 #include <iostream>
 
+#include "Stream.h"
+
+//g++ -g -I $XILINX_XRT/include main.cpp -lOpenCL; ./a.out
+
 #define OCL_CHECK(error,call)                                       \
     call;                                                           \
     if (error != CL_SUCCESS) {                                      \
@@ -25,6 +29,11 @@
               __FILE__,__LINE__, error);                            \
       exit(EXIT_FAILURE);                                           \
 }
+
+decltype(&clCreateStream) cl::Stream::openStm_ = nullptr;
+decltype(&clReleaseStream) cl::Stream::closeStm_ = nullptr;
+decltype(&clReadStream) cl::Stream::readStm_ = nullptr;
+decltype(&clWriteStream) cl::Stream::writeStm_ = nullptr;
 
 int main(int argc, char *argv[])
 {
@@ -47,11 +56,6 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    std::string extFuncs[] = {"clCreateStream", "clReleaseStream"};
-    cl_platform_id pid = platform();
-    for (const auto name : extFuncs) {
-        const void *func = clGetExtensionFunctionAddressForPlatform(pid, name.c_str());
-      std::cout << name << "(0x" << func << ")\n";
-    }
+    cl::Stream::init(platform);
     return 0;
 }
