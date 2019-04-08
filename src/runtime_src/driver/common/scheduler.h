@@ -19,24 +19,11 @@
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xclbin.h"
-#include <vector>
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler
 // when XRT C++ code is refactored.
 
 namespace xrt_core { namespace scheduler {
-
-/**
- * get_cus_pair() - Get list CUs physical address & size pair
- */
-std::vector<std::pair<uint64_t, size_t> >
-get_cus_pair(const axlf* top);
-
-/**
- * get_dbg_ips_pair() - Get list of Debug IPs physical address & size pair
- */
-std::vector<std::pair<uint64_t, size_t> >
-get_dbg_ips_pair(const axlf* top);
 
 /**
  * init() - Initialize scheduler

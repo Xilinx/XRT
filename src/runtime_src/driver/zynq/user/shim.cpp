@@ -34,6 +34,7 @@
 #include <poll.h>
 #include "driver/common/message.h"
 #include "driver/common/scheduler.h"
+#include "driver/common/xclbin_parser.h"
 //#include "xclbin.h"
 #include <assert.h>
 
@@ -733,12 +734,12 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         printf("Scheduler init failed\n");
         return ret;
     }
-    ret = drv->mapKernelControl(xrt_core::scheduler::get_cus_pair(buffer));
+    ret = drv->mapKernelControl(xrt_core::xclbin::get_cus_pair(buffer));
     if (ret) {
         printf("Map CUs Failed\n");
         return ret;
     }
-    ret = drv->mapKernelControl(xrt_core::scheduler::get_dbg_ips_pair(buffer));
+    ret = drv->mapKernelControl(xrt_core::xclbin::get_dbg_ips_pair(buffer));
     if (ret) {
         printf("Map Debug IPs Failed\n");
         return ret;
