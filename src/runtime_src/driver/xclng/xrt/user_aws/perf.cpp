@@ -580,7 +580,7 @@ namespace awsbwhal {
 
       // Initialize result to 0
       memset(&results, 0, sizeof(xclTraceResults));
-      // SDSoC Packet Format
+      // Zynq Packet Format
       results.Timestamp = temp & 0x1FFFFFFFFFFF;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
         XCL_PERF_MON_START_EVENT;

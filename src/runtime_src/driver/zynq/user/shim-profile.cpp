@@ -226,7 +226,7 @@ namespace ZYNQ {
   }
   
   /*
-   * Read SDx Accel Monitor Data
+   * Read Accelerator Monitor Data
    */
   numSlots = getProfilingNumberSlots(XCL_PERF_MON_ACCEL);
   for (uint32_t s=0; s < numSlots; ++s) {
@@ -291,7 +291,7 @@ namespace ZYNQ {
     }
   }
   /*
-   * Read SDx Axi Stream Monitor Data
+   * Read AXI Stream Monitor Data
    */
   numSlots = getProfilingNumberSlots(XCL_PERF_MON_STR);
   for (uint32_t s=0; s < numSlots; s++) {
