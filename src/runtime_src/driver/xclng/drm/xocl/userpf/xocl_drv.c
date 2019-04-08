@@ -343,6 +343,59 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
+static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_common resp = {0};
+	size_t resp_len = sizeof(resp);
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	uint64_t ch_switch = 0;
+	bool sw_ch = false;
+	int err = 0, ret = 0;
+
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA);
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		return ret;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+
+	subdev_peer.ver = MB_PROTOCOL_VER;
+	subdev_peer.kind = MGMT;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	err = xocl_peer_request(xdev,
+		mb_req, reqlen, &resp, &resp_len, NULL, NULL, sw_ch);
+
+	if (err)
+		goto done;
+
+	switch (kind) {
+	case MIG_CALIB:
+		ret = resp.mig_calib;
+		break;
+	case PEER_READY:
+		ret = resp.ready;
+		break;
+	default:
+		userpf_err(xdev, "dropped bad request (%d)\n", kind);
+		break;
+	}
+done:
+	vfree(mb_req);
+	return ret;
+}
+
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
+{
+	return xocl_read_from_peer(xdev, kind);	
+}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev)
 {

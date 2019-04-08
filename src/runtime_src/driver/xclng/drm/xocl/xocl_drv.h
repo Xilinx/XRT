@@ -183,7 +183,7 @@ struct xocl_subdev_private {
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
 	(((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data)
 
-typedef	void *	xdev_handle_t;
+typedef	void *xdev_handle_t;
 
 struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
@@ -202,10 +202,6 @@ struct xocl_pci_funcs {
 #define xocl_reset(xdev)			\
 	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
 	-ENODEV)
-#define xocl_get_data(xdev, kind)			\
-	(XDEV_PCIOPS(xdev)->get_data ? XDEV_PCIOPS(xdev)->get_data(xdev, kind) : \
-	-ENODEV)
-
 
 struct xocl_health_thread_arg {
 	int (*health_cb)(void *arg);
@@ -259,7 +255,7 @@ struct xocl_dev_core {
 };
 
 #define XOCL_DRM(xdev_hdl)					\
-	((struct xocl_dev_core *)xdev_hdl)->drm
+	(((struct xocl_dev_core *)xdev_hdl)->drm)
 
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
@@ -485,7 +481,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, enum data_kind kind);
+	void (*get_data)(struct platform_device *pdev, void *buf);
 };
 
 struct xocl_dna_funcs {
@@ -534,8 +530,8 @@ struct xocl_dna_funcs {
 	(MB_DEV(xdev) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV))
 
-#define xocl_xmc_get_data(xdev, cmd)			\
-	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), cmd) : -ENODEV)
+#define xocl_xmc_get_data(xdev, buf)			\
+	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), buf) : -ENODEV)
 
 
 
@@ -546,7 +542,10 @@ enum mb_kind {
 	CHAN_SWITCH,
 	CH_STATE_RST,
 	CH_SWITCH_RST,
+	PROTOCOL_VER,
 };
+
+#define MAILBOX_VERSION(a, b)  ((a<<8) + b)
 
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
@@ -584,9 +583,6 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_get(xdev, kind, data)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
-#define	xocl_mailbox_get_data(xdev, kind)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get_data(MAILBOX_DEV(xdev), kind) \
-		: -ENODEV)
 #define	xocl_mailbox_sw_transfer(xdev, args)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->sw_transfer(MAILBOX_DEV(xdev), \
 	args) : -ENODEV)

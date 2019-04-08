@@ -180,5 +180,6 @@ void reset_notify_client_ctx(struct xocl_dev *xdev);
 
 void get_pcie_link_info(struct xocl_dev	*xdev,
 	unsigned short *link_width, unsigned short *link_speed, bool is_cap);
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
 #endif

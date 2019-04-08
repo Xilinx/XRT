@@ -760,11 +760,44 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 
         dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
         dev->user->sysfs_get("xmc", "xmc_12v_pex_vol", errmsg, info->m12VPex);
+        dev->user->sysfs_get("xmc", "xmc_12v_aux_vol", errmsg, info->m12VAux);
+        dev->user->sysfs_get("xmc", "xmc_12v_pex_curr", errmsg, info->mPexCurr);
+        dev->user->sysfs_get("xmc", "xmc_12v_aux_curr", errmsg, info->mAuxCurr);
+        dev->user->sysfs_get("xmc", "xmc_dimm_temp0", errmsg, info->mDimmTemp[0]);
+        dev->user->sysfs_get("xmc", "xmc_dimm_temp1", errmsg, info->mDimmTemp[1]);
+        dev->user->sysfs_get("xmc", "xmc_dimm_temp2", errmsg, info->mDimmTemp[2]);
+        dev->user->sysfs_get("xmc", "xmc_dimm_temp3", errmsg, info->mDimmTemp[3]);
+        dev->user->sysfs_get("xmc", "xmc_se98_temp0", errmsg, info->mSE98Temp[0]);
+        dev->user->sysfs_get("xmc", "xmc_se98_temp1", errmsg, info->mSE98Temp[1]);
+        dev->user->sysfs_get("xmc", "xmc_se98_temp2", errmsg, info->mSE98Temp[2]);
+        dev->user->sysfs_get("xmc", "xmc_fan_temp", errmsg, info->mFanTemp);
+        dev->user->sysfs_get("xmc", "xmc_fan_rpm", errmsg, info->mFanRpm);
+        dev->user->sysfs_get("xmc", "xmc_3v3_pex_vol", errmsg, info->m3v3Pex);
+        dev->user->sysfs_get("xmc", "xmc_3v3_aux_vol", errmsg, info->m3v3Aux);
+        dev->user->sysfs_get("xmc", "xmc_ddr_vpp_btm", errmsg, info->mDDRVppBottom);
+        dev->user->sysfs_get("xmc", "xmc_ddr_vpp_top", errmsg, info->mDDRVppTop);
+        dev->user->sysfs_get("xmc", "xmc_sys_5v5", errmsg, info->mSys5v5);
+        dev->user->sysfs_get("xmc", "xmc_1v2_top", errmsg, info->m1v2Top);
+        dev->user->sysfs_get("xmc", "xmc_1v8", errmsg, info->m1v8Top);
+        dev->user->sysfs_get("xmc", "xmc_0v85", errmsg, info->m0v85);
+        dev->user->sysfs_get("xmc", "xmc_mgt0v9avcc", errmsg, info->mMgt0v9);
+        dev->user->sysfs_get("xmc", "xmc_12v_sw", errmsg, info->m12vSW);
+        dev->user->sysfs_get("xmc", "xmc_mgtavtt", errmsg, info->mMgtVtt);
+        dev->user->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
+        dev->user->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
+        dev->user->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
+
         dev->user->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
         dev->user->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
         dev->user->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
         dev->user->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
-
+        std::vector<uint64_t> freqs;
+        dev->user->sysfs_get("icap", "clock_freqs", errmsg, freqs);
+        for (unsigned i = 0;
+            i < std::min(freqs.size(), ARRAY_SIZE(info->mOCLFrequency));
+            i++) {
+            info->mOCLFrequency[i] = freqs[i];
+        }
     }
 
 }

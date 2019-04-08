@@ -257,7 +257,9 @@ static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "0\n");
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ret  = xocl_get_data(xdev, MIG_CALIB);
+	return sprintf(buf, "0x%llx\n", ret);
 }
 
 static DEVICE_ATTR_RO(mig_calibration);
@@ -331,6 +333,16 @@ static ssize_t sw_chan_switch_show(struct device *dev,
 
 static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
 
+static ssize_t ready_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ret = xocl_get_data(xdev, PEER_READY);
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR(ready, 0444, ready_show, NULL);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -348,6 +360,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_width_max.attr,
 	&dev_attr_sw_chan_state.attr,
 	&dev_attr_sw_chan_switch.attr,
+	&dev_attr_ready.attr,
 	NULL,
 };
 
