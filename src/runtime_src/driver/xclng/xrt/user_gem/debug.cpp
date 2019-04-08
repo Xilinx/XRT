@@ -109,7 +109,7 @@ namespace xocl {
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
     uint64_t fifoReadBaseAddr = XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
+    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, &mTraceFifoProperties, nullptr, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
 
     uint64_t traceFunnelAddr = 0x0;

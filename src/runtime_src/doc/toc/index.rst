@@ -5,7 +5,7 @@ Xilinx Runtime (XRT) Architecture
 Xilinx Runtime (XRT) is implemented as a combination of userspace and kernel
 driver components. XRT supports both PCIe based accelerator cards and MPSoC
 based embedded architecture provides standardized software interface to Xilinx
-FPGA. The key user APIs are defined in ``xclhal2.h`` header file.
+FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 .. image:: XRT-Layers.svg
    :align: center
@@ -16,7 +16,7 @@ FPGA. The key user APIs are defined in ``xclhal2.h`` header file.
    :maxdepth: 1
    :caption: Table of Contents
 
-   xclhal2.main.rst
+   xrt.main.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
    platforms.rst

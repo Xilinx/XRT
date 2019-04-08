@@ -231,6 +231,7 @@
 #define MAX_TRACE_ID_SPM        61
 #define MIN_TRACE_ID_SAM        64
 #define MAX_TRACE_ID_SAM        544
+#define MAX_TRACE_ID_SAM_HWEM   94
 #define MIN_TRACE_ID_SSPM       576
 #define MAX_TRACE_ID_SSPM       607
 
@@ -266,7 +267,8 @@ enum xclPerfMonType {
 	XCL_PERF_MON_ACCEL  = 3,
 	XCL_PERF_MON_STALL  = 4,
 	XCL_PERF_MON_STR    = 5,
-	XCL_PERF_MON_TOTAL_PROFILE = 6
+	XCL_PERF_MON_FIFO   = 6,
+	XCL_PERF_MON_TOTAL_PROFILE = 7
 };
 
 /* Performance monitor start event */
@@ -383,6 +385,8 @@ typedef struct {
   // Sdx Accel Mon
   unsigned long long CuExecCount[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallExtCycles[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallIntCycles[XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallStrCycles[XSAM_MAX_NUMBER_SLOTS];

@@ -440,8 +440,6 @@ private:
           m_symbol.controlport = port_name;
         }
       }
-      if (m_symbol.controlport.empty())
-        throw xocl::error(CL_INVALID_BINARY,"Missing AXI Slave (control) port for kernel " + name());
     }
 
     void
