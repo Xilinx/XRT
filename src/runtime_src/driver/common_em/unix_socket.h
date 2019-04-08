@@ -43,8 +43,8 @@ public:
        server_started = false;
        close(fd);
     }
-    size_t sk_write(const void *wbuf, size_t count);
-    size_t sk_read(void *rbuf, size_t count);
+    ssize_t sk_write(const void *wbuf, size_t count);
+    ssize_t sk_read(void *rbuf, size_t count);
 };
 
 
