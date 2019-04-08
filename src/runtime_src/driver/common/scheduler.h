@@ -19,7 +19,6 @@
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xclbin.h"
-#include <map>
 #include <vector>
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler

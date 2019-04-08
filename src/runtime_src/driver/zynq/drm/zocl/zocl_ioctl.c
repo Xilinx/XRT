@@ -401,7 +401,6 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 	int i;
 
 	/* Update aperture should only happen when loading xclbin */
-	DRM_INFO("minm clean apertures\n");
 	kfree(zdev->apertures);
 	zdev->num_apts = 0;
 

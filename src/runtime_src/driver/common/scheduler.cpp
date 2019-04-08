@@ -95,10 +95,9 @@ get_cus(const axlf* top, bool encoding)
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (ip_data.m_type == IP_TYPE::IP_KERNEL) {
       uint64_t addr = ip_data.m_base_address;
-      if (encoding) {
+      if (encoding)
           // encode handshaking control in lower unused address bits
           addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
-      }
       cus.push_back(addr);
     }
   }
