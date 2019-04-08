@@ -455,9 +455,6 @@ int run_state_machine(yaml_document_t *document,
          */
         yaml_node_t *next_node;
         int i = data.imagecfg_idx;
-        if (i < 0) {
-            break;
-        }
         if(!strcmp(state_entry->key,"name") || !strcmp(state_entry->key,"ddr_map"))
         {
             next_node = get_next_scalar_node(data.document, &data.node_idx);
@@ -472,7 +469,9 @@ int run_state_machine(yaml_document_t *document,
                         (const char*)next_node->data.scalar.value) == 0)
                 {
                     data.kernelcfg_idx++;
-                    data.systemcfg->imagecfg[i].num_kernelcfg_entries++;
+                    if (i >= 0) {
+                        data.systemcfg->imagecfg[i].num_kernelcfg_entries++;
+                    }
                 }
                 /* Backup to previous node */
                 data.node_idx--;
