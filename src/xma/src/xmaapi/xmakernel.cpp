@@ -87,7 +87,7 @@ xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
 XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props)
 {
-    XmaKernelSession *session = malloc(sizeof(XmaKernelSession));
+    XmaKernelSession *session = (XmaKernelSession*) malloc(sizeof(XmaKernelSession));
     if (session == NULL) {
         return NULL;
     }

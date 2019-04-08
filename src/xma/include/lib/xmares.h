@@ -171,7 +171,7 @@ int32_t xma_res_free_kernel(XmaResources shm_cfg,
  *
  * returns device handle id or -1 on error
 */
-int32_t xma_res_dev_handle_get(XmaKernelRes *kern_res);
+int32_t xma_res_dev_handle_get(XmaKernelRes kern_res);
 
 /**
  * @brief retrieve the plugin handle associated with this resource
@@ -180,7 +180,7 @@ int32_t xma_res_dev_handle_get(XmaKernelRes *kern_res);
  *
  * returns plugin handle id or -1 on error
 */
-int32_t xma_res_plugin_handle_get(XmaKernelRes *kern_res);
+int32_t xma_res_plugin_handle_get(XmaKernelRes kern_res);
 
 /**
  * @brief retrieve the kern handle associated with this resource
@@ -189,7 +189,7 @@ int32_t xma_res_plugin_handle_get(XmaKernelRes *kern_res);
  *
  * returns kern handle id or -1 on error
 */
-int32_t xma_res_kern_handle_get(XmaKernelRes *kern_res);
+int32_t xma_res_kern_handle_get(XmaKernelRes kern_res);
 
 /**
  * @brief retrieve the session object associated with this resource
@@ -198,7 +198,7 @@ int32_t xma_res_kern_handle_get(XmaKernelRes *kern_res);
  *
  * returns session pointer or NULL on error
 */
-XmaSession *xma_res_session_get(XmaKernelRes *kern_res);
+XmaSession *xma_res_session_get(XmaKernelRes kern_res);
 
 /**
  * @brief retrieve the channel id associated with this resource
@@ -207,7 +207,7 @@ XmaSession *xma_res_session_get(XmaKernelRes *kern_res);
  *
  * returns kern handle id or -1 on error
 */
-int32_t xma_res_kern_chan_id_get(XmaKernelRes *kern_res);
+int32_t xma_res_kern_chan_id_get(XmaKernelRes kern_res);
 
 /**
  * @brief obtain pointer to shared memory resource management database

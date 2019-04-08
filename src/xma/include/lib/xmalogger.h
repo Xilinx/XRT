@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <limits.h>
+#include <queue>
 
 #if !defined (PATH_MAX) || !defined (NAME_MAX)
 #include <linux/limits.h>

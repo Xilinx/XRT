@@ -87,7 +87,7 @@ xma_filter_plugins_load(XmaSystemCfg      *systemcfg,
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
-    XmaFilterSession *filter_session = malloc(sizeof(XmaFilterSession));
+    XmaFilterSession *filter_session = (XmaFilterSession*) malloc(sizeof(XmaFilterSession));
     if (filter_session == NULL) {
         return NULL;
     }
@@ -170,7 +170,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.plugin_data =
         calloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size, sizeof(uint8_t));
 
-    XmaEndpoint *end_pt = malloc(sizeof(XmaEndpoint));
+    XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
     end_pt->session = &filter_session->base;
     end_pt->dev_id = dev_handle;
     end_pt->format = filter_props->output.format;
