@@ -1063,6 +1063,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string sdxEmulatorLogFilePath= binaryDirectory + "/" + "sdx_emulator.log";
         std::string destPath7 = "'" + std::string(path) + "/" + fileName + "_sdx_emulator.log'";
         systemUtil::makeSystemCall(sdxEmulatorLogFilePath, systemUtil::systemOperation::COPY, destPath7);
+        
+        // Copy xsc_report Log file
+        std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
+        std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
+        systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8);
 
       }
       i++;
