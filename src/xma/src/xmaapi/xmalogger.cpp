@@ -131,14 +131,14 @@ int xma_logger_init(XmaLogger *logger)
         logger->fd = -1;
 
     /* Create logger actor */
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     logger->actor = xma_actor_create(xma_logger_actor,
                                      XMA_MAX_LOGMSG_SIZE,
                                      XMA_MAX_LOGMSG_Q_ENTRIES);
 
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     xma_actor_start(logger->actor);
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
 
     return 0;
 }
@@ -499,7 +499,7 @@ XmaActor *xma_actor_create(XmaThreadFunc    func,
                            size_t           msg_size,
                            size_t           max_msg_entries)
 {
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     /*
     XmaActor *actor = (XmaActor*) malloc(sizeof(XmaActor));
     pthread_mutex_init(&actor->lock, NULL);
