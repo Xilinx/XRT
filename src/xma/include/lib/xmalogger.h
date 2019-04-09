@@ -23,6 +23,9 @@
 #include <pthread.h>
 #include <limits.h>
 #include <queue>
+#include <condition_variable>
+#include <atomic>
+
 
 #if !defined (PATH_MAX) || !defined (NAME_MAX)
 #include <linux/limits.h>
@@ -31,9 +34,9 @@
 #define XMA_MAX_LOGMSG_SIZE          255
 #define XMA_MAX_LOGMSG_Q_ENTRIES     128
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 /* Callback function for an XmaThread */
 typedef void* (*XmaThreadFunc)(void *data);
@@ -54,7 +57,8 @@ void xma_thread_start(XmaThread *thread);
 bool xma_thread_is_running(XmaThread *thread);
 void xma_thread_join(XmaThread *thread);
 
-/* Data structure for XmaMsgQ */
+/* Data structure for XmaMsgQ *--/
+Sarab: Remove this and use C++ std::queue
 typedef struct XmaMsgQ
 {
     uint8_t     *msg_array;
@@ -65,7 +69,7 @@ typedef struct XmaMsgQ
     int32_t      back;
 } XmaMsgQ;
 
-/* XmaMsgQ APIs */
+/--* XmaMsgQ APIs *--/
 #define XMA_MSGQ_FULL          -1
 #define XMA_MSGQ_MSG_TOO_LARGE -2
 #define XMA_MSGQ_MSG_TOO_SMALL -3
@@ -77,17 +81,31 @@ bool xma_msgq_isfull(XmaMsgQ *msgq);
 bool xma_msgq_isempty(XmaMsgQ *msgq);
 int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size);
 int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size);
-
+*/
 struct XmaActor;
 
 /* Data structure for XmaActor */
 typedef struct XmaActor
 {
     XmaThread          *thread;
+    /*
+    Sarab: Remove this and use C++ std::queue
     XmaMsgQ            *msg_q;
     pthread_mutex_t     lock;
     pthread_cond_t      queued_cond;
     pthread_cond_t      dequeued_cond;
+    */
+
+    std::unique_ptr<std::mutex> logger_queue_mutex;//Using only for waiting for queue to be not empty
+    std::unique_ptr<std::condition_variable> logger_queue_cv;
+    std::unique_ptr<std::atomic<bool>> logger_queue_locked;
+    std::unique_ptr<std::queue<std::string>> logger_queue;
+
+  XmaActor(): logger_queue_mutex(new std::mutex), logger_queue_cv(new std::condition_variable), 
+		logger_queue_locked(new std::atomic<bool>), logger_queue(new std::queue<std::string>) {
+    *logger_queue_locked = false;
+    thread = NULL;
+  }
 } XmaActor;
 
 /* XmaActor APIs */
@@ -114,9 +132,9 @@ typedef struct XmaLogger
 int32_t xma_logger_init(XmaLogger *logger);
 int32_t xma_logger_close(XmaLogger *logger);
 
-/** @} */
-#ifdef __cplusplus
-}
-#endif
+///** @} */
+//#ifdef __cplusplus
+//}
+//#endif
 
 #endif
