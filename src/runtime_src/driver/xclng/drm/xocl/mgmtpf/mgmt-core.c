@@ -214,7 +214,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
 	val = MGMT_READ_REG32(lro, GENERAL_STATUS_BASE);
-	mgmt_info(lro, "MIG Calibration: %d \n", val);
+	mgmt_info(lro, "MIG Calibration: %d\n", val);
 
 	obj->mig_calibration[0] = (val & BIT(0)) ? true : false;
 	obj->mig_calibration[1] = obj->mig_calibration[0];
@@ -307,7 +307,7 @@ static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 /*
  * character device file operations for control bus (through control bridge)
  */
-static struct file_operations ctrl_fops = {
+static const struct file_operations ctrl_fops = {
 	.owner = THIS_MODULE,
 	.open = char_open,
 	.release = char_close,
@@ -438,8 +438,8 @@ static int health_check_cb(void *data)
 	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
 	bool tripped, is_sw;
 	uint64_t ch_switch = 0;
-	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
+	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 	if (!health_check)
 		return 0;
 
@@ -572,40 +572,64 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
+
+static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
+{
+	struct xcl_hwicap *hwicap = NULL;
+
+	hwicap = (struct xcl_hwicap *)buf;
+	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
+	uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
+	hwicap->freq_0 = xocl_icap_get_data(lro, CLOCK_FREQ_0);
+	hwicap->freq_1 = xocl_icap_get_data(lro, CLOCK_FREQ_1);
+	hwicap->freq_2 = xocl_icap_get_data(lro, CLOCK_FREQ_2);
+	hwicap->freq_cntr_0 = xocl_icap_get_data(lro, FREQ_COUNTER_0);
+	hwicap->freq_cntr_1 = xocl_icap_get_data(lro, FREQ_COUNTER_1);
+	hwicap->freq_cntr_2 = xocl_icap_get_data(lro, FREQ_COUNTER_2);
+
+}
+
+static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
+{
+	struct xcl_common *data = NULL;
+
+	data = (struct xcl_common *)buf;
+	data->ready = lro->ready;
+	data->mig_calib = lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0;
+
+}
+
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
-	uint64_t val = 0;
 	size_t resp_sz = 0;
-	void *ptr = NULL;
 	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	uint64_t mgmt_ver = 0, min_ver = 0;
+
+	BUG_ON(!lro);
+	xocl_mailbox_get(lro, VERSION, &mgmt_ver);
+	min_ver = min_t(uint32_t, mgmt_ver, subdev_req->ver);
+
 	switch (subdev_req->kind) {
-	case VOL_12V_PEX:
-		val = xocl_xmc_get_data(lro, subdev_req->kind);
-		resp_sz = sizeof(u32);
-		ptr = (void *)&val;
+	case SENSOR:
+		resp_sz = sizeof(struct xcl_sensor);
+		*resp = vzalloc(resp_sz);
+		(void) xocl_xmc_get_data(lro, *resp);
 		break;
-	case IDCODE:
-		val = xocl_icap_get_data(lro, subdev_req->kind);
-		resp_sz = sizeof(u32);
-		ptr = (void *)&val;
+	case ICAP:
+		resp_sz = sizeof(struct xcl_hwicap);
+		*resp = vzalloc(resp_sz);
+		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
-	case XCLBIN_UUID:
-		ptr = (void *)xocl_icap_get_data(lro, subdev_req->kind);
-		resp_sz = sizeof(xuid_t);
+	case MGMT:
+		resp_sz = sizeof(struct xcl_common);
+		*resp = vzalloc(resp_sz);
+		(void) xclmgmt_get_data(lro, *resp);
 		break;
 	default:
 		break;
 	}
-
-	if (!resp_sz) {
+	if (!resp_sz || !*resp)
 		return -EINVAL;
-	}
-
-	*resp = vmalloc(resp_sz);
-	if (*resp == NULL) {
-		return -ENOMEM;
-	}
-	memcpy(*resp, ptr, resp_sz);
 	*sz = resp_sz;
 	return 0;
 }
@@ -620,7 +644,7 @@ static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
 	if (paddr != (phys_addr_t)mb_conn->paddr) {
 		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n",
 			mb_conn->paddr, paddr);
-		mgmt_info(lro,"Failed to get same physical addr\n");
+		mgmt_info(lro, "Failed to get same physical addr\n");
 		return false;
 	}
 
@@ -662,14 +686,14 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid, 0);
+		ret = xocl_icap_lock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
 	}
 	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid, 0);
+		ret = xocl_icap_unlock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
 		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
 	}
@@ -696,6 +720,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_PEER_DATA: {
 		size_t sz = 0;
 		void *resp = NULL;
+
 		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
@@ -711,6 +736,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_USER_PROBE: {
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
 		struct mailbox_conn_resp resp = { 0 };
+
 		resp.version = min(MB_PROTOCOL_VER, conn->version);
 		resp.conn_flags |= MB_CONN_CONNECTED;
 		if (xclmgmt_is_same_domain(lro, conn))
@@ -803,9 +829,9 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	uint64_t ch_switch = 0;
 
 	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-	data_len = sizeof(struct mailbox_conn);
+	data_len = sizeof(struct mailbox_peer_state);
 	reqlen = sizeof(struct mailbox_req) + data_len;
-	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;
 
@@ -932,9 +958,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 {
 	struct xclmgmt_dev *lro;
 
-	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0)) {
+	if ((pdev == 0) || (dev_get_drvdata(&pdev->dev) == 0))
 		return;
-	}
 
 	lro = (struct xclmgmt_dev *)dev_get_drvdata(&pdev->dev);
 	mgmt_info(lro, "remove(0x%p) where pdev->dev.driver_data = 0x%p",
@@ -1047,9 +1072,8 @@ static int __init xclmgmt_init(void)
 	/* Need to init sub device driver before pci driver register */
 	for (i = 0; i < ARRAY_SIZE(drv_reg_funcs); ++i) {
 		res = drv_reg_funcs[i]();
-		if (res) {
+		if (res)
 			goto drv_init_err;
-		}
 	}
 
 	res = pci_register_driver(&xclmgmt_driver);
@@ -1060,9 +1084,9 @@ static int __init xclmgmt_init(void)
 
 drv_init_err:
 reg_err:
-	for (i--; i >= 0; i--) {
+	for (i--; i >= 0; i--)
 		drv_unreg_funcs[i]();
-	}
+
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 alloc_err:
 	pr_info(DRV_NAME " init() err\n");
@@ -1077,9 +1101,9 @@ static void xclmgmt_exit(void)
 	pr_info(DRV_NAME" exit()\n");
 	pci_unregister_driver(&xclmgmt_driver);
 
-	for (i = ARRAY_SIZE(drv_unreg_funcs) - 1; i >= 0; i--) {
+	for (i = ARRAY_SIZE(drv_unreg_funcs) - 1; i >= 0; i--)
 		drv_unreg_funcs[i]();
-	}
+
 	/* unregister this driver from the PCI bus driver */
 	unregister_chrdev_region(xclmgmt_devnode, XOCL_MAX_DEVICES);
 	class_destroy(xrt_class);

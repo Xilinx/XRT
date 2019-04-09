@@ -633,6 +633,7 @@ public:
             }
             if(pcidev::get_dev(m_idx)->user){
                 pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
+                pcidev::get_dev(m_idx)->user->sysfs_get("icap", "idcode", errmsg, idcode);
             }
             sensor_tree::put( "board.info.idcode", idcode );
             sensor_tree::put( "board.info.fpga_name", fpga );
@@ -650,12 +651,10 @@ public:
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
-            if(pcidev::get_dev(m_idx)->mgmt){
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
-            }
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
             sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
             sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
@@ -681,9 +680,7 @@ public:
         {
             unsigned cur = 0;
             std::string errmsg;
-            if(pcidev::get_dev(m_idx)->mgmt){
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
-            }
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
             sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
         }
 

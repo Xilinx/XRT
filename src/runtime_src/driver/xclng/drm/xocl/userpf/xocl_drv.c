@@ -147,7 +147,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	bool skip = false;
 	int ret = 0, mbret = 0;
 	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
-	size_t resplen = sizeof (ret);
+	size_t resplen = sizeof(ret);
 	uint64_t chan_flag = 0;
 	bool sw_ch = false;
 
@@ -215,7 +215,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 
 	data_len = sizeof(struct mailbox_conn);
 	reqlen = sizeof(struct mailbox_req) + data_len;
-	mb_req = (struct mailbox_req *)vzalloc(reqlen);
+	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;
 
@@ -252,7 +252,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	int err = 0, i = 0;
 	int msg = -ENODEV;
 	struct mailbox_req *req = NULL;
-	size_t resplen = sizeof (msg);
+	size_t resplen = sizeof(msg);
 	size_t data_len = sizeof(struct mailbox_clock_freqscaling);
 	size_t reqlen = sizeof(struct mailbox_req)+data_len;
 	uint64_t chan_flag = 0;
@@ -264,11 +264,10 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 
 
 	mb_freqs.region = freqs->region;
-	for (i = 0; i < 4; ++i) {
+	for (i = 0; i < 4; ++i)
 		mb_freqs.target_freqs[i] = freqs->ocl_target_freq[i];
-	}
 
-	req = (struct mailbox_req *)kzalloc(reqlen, GFP_KERNEL);
+	req = kzalloc(reqlen, GFP_KERNEL);
 	req->req = MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
@@ -276,12 +275,11 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	err = xocl_peer_request(xdev, req, reqlen,
 		&msg, &resplen, NULL, NULL, sw_ch);
 
-	if (msg != 0) {
+	if (msg != 0)
 		err = -ENODEV;
-	}
 
 	kfree(req);
-  return err;
+	return err;
 }
 
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
@@ -335,6 +333,59 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 	}
 	*link_width = (stat & PCI_EXP_LNKSTA_NLW) >> PCI_EXP_LNKSTA_NLW_SHIFT;
 	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
+}
+
+static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_common resp = {0};
+	size_t resp_len = sizeof(resp);
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	uint64_t ch_switch = 0;
+	bool sw_ch = false;
+	int err = 0, ret = 0;
+
+	xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+	sw_ch = ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA);
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		return ret;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+
+	subdev_peer.ver = MB_PROTOCOL_VER;
+	subdev_peer.kind = MGMT;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	err = xocl_peer_request(xdev,
+		mb_req, reqlen, &resp, &resp_len, NULL, NULL, sw_ch);
+
+	if (err)
+		goto done;
+
+	switch (kind) {
+	case MIG_CALIB:
+		ret = resp.mig_calib;
+		break;
+	case PEER_READY:
+		ret = resp.ready;
+		break;
+	default:
+		userpf_err(xdev, "dropped bad request (%d)\n", kind);
+		break;
+	}
+done:
+	vfree(mb_req);
+	return ret;
+}
+
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
+{
+	return xocl_read_from_peer(xdev, kind);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
@@ -393,9 +444,8 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 
 	if (recov_bar_sz) {
 		p2p_bar = xocl_get_p2p_bar(xdev, NULL);
-		if (p2p_bar < 0) {
+		if (p2p_bar < 0)
 			return;
-		}
 
 		xocl_pci_resize_resource(pdev, p2p_bar,
 				(XOCL_PA_SECTION_SHIFT - 20));
@@ -596,8 +646,7 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 	}
 
 	if (i == PCI_BRIDGE_RESOURCE_NUM) {
-		xocl_err(&dev->dev, "Not enough IO Mem space, "
-			"Please check BIOS settings. ");
+		xocl_err(&dev->dev, "Not enough IO Mem space, Please check BIOS settings. ");
 		return -ENOSPC;
 	}
 	pci_release_selected_regions(dev, (1 << resno));
@@ -706,7 +755,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed_alloc_minor;
 
 	xdev->core.drm = xocl_drm_init(xdev);
-        if (!xdev->core.drm) {
+	if (!xdev->core.drm) {
 		ret = -EFAULT;
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed_drm_init;
@@ -720,9 +769,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	ret = xocl_p2p_mem_reserve(xdev);
-	if (ret) {
+	if (ret)
 		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-	}
 
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {
@@ -881,9 +929,8 @@ static int __init xocl_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(xocl_drv_reg_funcs); ++i) {
 		ret = xocl_drv_reg_funcs[i]();
-		if (ret) {
+		if (ret)
 			goto failed;
-		}
 	}
 
 	ret = pci_register_driver(&userpf_driver);
@@ -893,9 +940,8 @@ static int __init xocl_init(void)
 	return 0;
 
 failed:
-	for (i--; i >= 0; i--) {
+	for (i--; i >= 0; i--)
 		xocl_drv_unreg_funcs[i]();
-	}
 	class_destroy(xrt_class);
 
 err_class_create:
@@ -908,9 +954,8 @@ static void __exit xocl_exit(void)
 
 	pci_unregister_driver(&userpf_driver);
 
-	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--) {
+	for (i = ARRAY_SIZE(xocl_drv_unreg_funcs) - 1; i >= 0; i--)
 		xocl_drv_unreg_funcs[i]();
-	}
 
 	class_destroy(xrt_class);
 }
