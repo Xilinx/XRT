@@ -24,13 +24,13 @@
  *   be bumped up.
  * - Support for old OP code should never be removed.
  */
-#define MB_PROTOCOL_VER	 0U
+#define MB_PROTOCOL_VER	0U
 
 /*
  * UUID_SZ should ALWAYS have the same number 
  * as the MACRO UUID_SIZE defined in linux/uuid.h
  */
-#define UUID_SZ		 16
+#define UUID_SZ		16
 /**
  *	mailbox_req OPCODE
  */
@@ -250,9 +250,9 @@ struct mailbox_req {
 /**
  *  BITMAP meanings of flags field in struct mailbox_req
  */
-#define MB_REQ_FLAG_RESPONSE    (1 << 0)
-#define MB_REQ_FLAG_REQUEST   (1 << 1)
-#define MB_REQ_FLAG_RECV_REQ    (1 << 2)
+#define MB_REQ_FLAG_RESPONSE	(1 << 0)
+#define MB_REQ_FLAG_REQUEST	(1 << 1)
+#define MB_REQ_FLAG_RECV_REQ	(1 << 2)
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
 
