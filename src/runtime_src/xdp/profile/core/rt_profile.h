@@ -144,7 +144,7 @@ namespace xdp {
         xclTraceResultsVector& traceVector);
 
     // Log device counters (used in profile summary)
-    void logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
+    void logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programId, xclPerfMonType type,
         xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram);
 
   private:

@@ -280,10 +280,10 @@ namespace xdp {
   // External access to writer
   // ***************************************************************************
 
-  void RTProfile::logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
-      xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
+  void RTProfile::logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programId,
+      xclPerfMonType type, xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
-    mWriter->logDeviceCounters(deviceName, binaryName, type, counterResults, timeNsec, firstReadAfterProgram);
+    mWriter->logDeviceCounters(deviceName, binaryName, programId, type, counterResults, timeNsec, firstReadAfterProgram);
   }
 
   void RTProfile::writeAPISummary(ProfileWriterI* writer) const

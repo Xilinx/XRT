@@ -657,8 +657,15 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     // Create unique name for device since currently all devices are called fpga0
     std::string device_name = device->get_unique_name();
     std::string binary_name = device->get_xclbin().project_name();
+    auto program = device->get_program();
+    auto profiler = OCLProfiler::Instance();
+    uint32_t program_id = 0;
+    // kernel logger logs data in this format
+    if (program && profiler && profiler->getPlugin()->getFlowMode() == xdp::RTUtil::DEVICE) {
+      program_id = program->get_uid();
+    }
 
-    OCLProfiler::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, type, data->mCounterResults,
+    OCLProfiler::Instance()->getProfileManager()->logDeviceCounters(device_name, binary_name, program_id, type, data->mCounterResults,
                                                                          timeNsec, firstReadAfterProgram);
 
     //update the last time sample
