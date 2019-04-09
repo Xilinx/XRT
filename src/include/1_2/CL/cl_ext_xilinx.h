@@ -265,10 +265,8 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id    /* device_id*/,
-	cl_stream             /* stream*/,
+clWriteStream(cl_stream             /* stream*/,
 	const void *          /* ptr */,
-	size_t                /* offset */,
 	size_t                /* size */,
 	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
@@ -285,10 +283,8 @@ clWriteStream(cl_device_id    /* device_id*/,
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id     /* device_id*/,
-	     cl_stream             /* stream*/,
+clReadStream(cl_stream             /* stream*/,
 	     void *                /* ptr */,
-	     size_t                /* offset */,
 	     size_t                /* size */,
 	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
