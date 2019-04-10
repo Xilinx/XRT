@@ -58,6 +58,7 @@ class printSSPMInfo (infCallUtil):
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
+obj_sspm = printSSPMInfo()
 
 class printSAMInfo (infCallUtil):
 	"Print the SDx Streaming Performance Monitor counters"
@@ -83,8 +84,7 @@ class printSAMInfo (infCallUtil):
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
-
-obj_sam = printSAMInfo ()
+obj_sam = printSAMInfo()
 
 class printLAPCInfo (infCallUtil):
 	"Print the status of Lightweight AXI Protocol Checker"
