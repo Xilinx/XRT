@@ -65,6 +65,7 @@ cb_action_write_type cb_action_write;
 cb_action_unmap_type cb_action_unmap ;
 cb_action_ndrange_migrate_type cb_action_ndrange_migrate;
 cb_action_migrate_type cb_action_migrate;
+cb_action_copy_type cb_action_copy;
 
 /*
  * callback functions called for function logging and dependencies...
@@ -117,6 +118,10 @@ void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb)
 void register_cb_action_migrate (cb_action_migrate_type&& cb)
 {
   cb_action_migrate = std::move(cb);
+}
+void register_cb_action_copy (cb_action_copy_type&& cb)
+{
+  cb_action_copy = std::move(cb);
 }
 
 void register_cb_log_function_start (cb_log_function_start_type&& cb)
@@ -213,6 +218,22 @@ void get_address_bank(cl_mem buffer, uint64_t &address, std::string &bank)
   }
   catch (const xocl::error& ex) {
   }
+}
+
+// Attempt to find if two buffers are resident on the same device
+bool is_same_device(cl_mem buffer1, cl_mem buffer2)
+{
+  try {
+    auto xmem1 = xocl::xocl(buffer1);
+    auto xmem2 = xocl::xocl(buffer2);
+
+    if (xmem1 && xmem2)
+      return (xmem1->get_resident_device() == xmem2->get_resident_device());
+  }
+  catch (const xocl::error& ex) {
+  }
+
+  return false;
 }
 
 xocl::event::action_profile_type
@@ -360,6 +381,27 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
   return [mem0,totalSize,address,bank,flags](xocl::event* event,cl_int status,const std::string&) {
     if (cb_action_migrate)
       cb_action_migrate(event, status, mem0, totalSize, address, bank, flags);
+  };
+}
+
+xocl::event::action_profile_type
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+{
+  std::string srcBank;
+  uint64_t srcAddress;
+  get_address_bank(src_buffer, srcAddress, srcBank);
+  srcAddress += src_offset;
+
+  std::string dstBank;
+  uint64_t dstAddress;
+  get_address_bank(dst_buffer, dstAddress, dstBank);
+  dstAddress += dst_offset;
+
+  bool same_device = is_same_device(src_buffer, dst_buffer);
+
+  return [src_buffer,dst_buffer,same_device,size,srcAddress,srcBank,dstAddress,dstBank](xocl::event* event,cl_int status,const std::string&) {
+  if (cb_action_copy)
+    cb_action_copy(event, status, src_buffer, dst_buffer, same_device, size, srcAddress, srcBank, dstAddress, dstBank);
   };
 }
 

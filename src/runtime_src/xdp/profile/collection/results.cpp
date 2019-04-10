@@ -82,19 +82,23 @@ namespace xdp {
       MinTime = time;
   }
 
-  void TimeStats::logStats(double totalTimeStat, double maxTimeStat, 
-                  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz)
+  void TimeStats::logStats(double totalTimeStat, double avgTimeStat,
+                          double maxTimeStat, double minTimeStat,
+                          uint32_t totalCalls, uint32_t clockFreqMhz,
+                          uint32_t flags, uint64_t metadata)
   {
     StartTime = 0;
     EndTime = totalTimeStat;
     TotalTime = totalTimeStat;
-    AveTime = totalTimeStat / totalCalls;
+    AveTime = avgTimeStat;
+    StatMetadata = metadata;
     if (MaxTime < maxTimeStat)
       MaxTime = maxTimeStat;
     if (MinTime > minTimeStat || MinTime == 0)
       MinTime = minTimeStat;
     NoOfCalls = totalCalls;
     ClockFreqMhz = clockFreqMhz;
+    Flags = flags;
   }
 
   //

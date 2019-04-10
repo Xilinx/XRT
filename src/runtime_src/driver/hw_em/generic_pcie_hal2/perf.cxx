@@ -235,9 +235,9 @@ namespace xclhwemhal2 {
           counterResults.CuExecCycles[counter] = total_wr_latency;
           counterResults.CuMinExecCycles[counter] = rd_trans_count;
           counterResults.CuMaxExecCycles[counter] = total_rd_latency;
-          //counterResults.CuStallIntCycles[counter] = total_int_stalls;
-          //counterResults.CuStallStrCycles[counter] = total_str_stalls;
-          //counterResults.CuStallExtCycles[counter] = total_ext_stalls;
+          // Use defaults until dataflow is supported
+          counterResults.CuBusyCycles[counter] = counterResults.CuExecCycles[counter];
+          counterResults.CuMaxParallelIter[counter] = 1;
         } else if (iptype == 3) {
           counterResults.StrNumTranx[counter] = str_num_tranx;
           counterResults.StrDataBytes[counter] = str_data_bytes;

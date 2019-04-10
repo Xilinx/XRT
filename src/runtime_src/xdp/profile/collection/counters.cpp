@@ -73,38 +73,18 @@ namespace xdp {
     // do nothing
   }
 
-  void ProfileCounters::logBufferRead(size_t size, double duration, uint32_t contextId, uint32_t numDevices) {
-#ifdef BUFFER_STAT_PER_CONTEXT
-    if (BufferReadStat.find(contextId) == BufferReadStat.end()) {
+  void ProfileCounters::logBufferTransfer(RTUtil::e_profile_command_kind kind, size_t size, double duration,
+                                          uint32_t contextId, uint32_t numDevices)
+  {
+    if (BufferTransferStats.find(kind) == BufferTransferStats.end()) {
       BufferStats bufferStats;
-      BufferReadStat[contextId] = bufferStats;
-    }
-    BufferReadStat[contextId].log(size, duration);
-    BufferReadStat[contextId].setContextId(contextId);
-    BufferReadStat[contextId].setNumDevices(numDevices);
-#else
-    BufferReadStat.log(size, duration);
-    BufferReadStat.setContextId(contextId);
-    BufferReadStat.setNumDevices(numDevices);
-#endif
-  }
-
-  void ProfileCounters::logBufferWrite(size_t size, double duration, uint32_t contextId, uint32_t numDevices) {
-#ifdef BUFFER_STAT_PER_CONTEXT
-    if (BufferWriteStat.find(contextId) == BufferWriteStat.end()) {
-      BufferStats bufferStats;
-      BufferWriteStat[contextId] = bufferStats;
+      BufferTransferStats[kind] = bufferStats;
     }
 
-    //XOCL_DEBUGF("logBufferWrite: size=%d, duration=%.3f, context ID=%d\n", size, duration, contextId);
-    BufferWriteStat[contextId].log(size, duration);
-    BufferWriteStat[contextId].setContextId(contextId);
-    BufferWriteStat[contextId].setNumDevices(numDevices);
-#else
-    BufferWriteStat.log(size, duration);
-    BufferWriteStat.setContextId(contextId);
-    BufferWriteStat.setNumDevices(numDevices);
-#endif
+    XOCL_DEBUGF("logBufferTransfer: kind=%d, size=%d, duration=%.3f, context=%d\n", kind, size, duration, contextId);
+    BufferTransferStats[kind].log(size, duration);
+    BufferTransferStats[kind].setContextId(contextId);
+    BufferTransferStats[kind].setNumDevices(numDevices);
   }
 
   void ProfileCounters::logDeviceRead(size_t size, double duration)
@@ -136,12 +116,28 @@ namespace xdp {
 
   void ProfileCounters::logFunctionCallStart(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logStart(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key      = std::make_pair(functionName, threadId) ;
+    auto value    = std::make_pair(timePoint, (double)0.0) ;
+
+    if (CallCount.find(key) == CallCount.end())
+    {
+      std::vector<std::pair<double, double>> newValue ;
+      newValue.push_back(value) ;
+      CallCount[key] = newValue ;
+    }
+    else
+    {
+      CallCount[key].push_back(value);
+    }
   }
 
   void ProfileCounters::logFunctionCallEnd(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logEnd(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key = std::make_pair(functionName, threadId) ;
+
+    CallCount[key].back().second = timePoint ;
   }
 
   void ProfileCounters::logKernelExecutionStart(const std::string& kernelName, const std::string& deviceName,
@@ -187,8 +183,10 @@ namespace xdp {
     ComputeUnitExecutionStats[cuName].logEnd(timePoint);
   }
 
-  void ProfileCounters::logComputeUnitStats(const std::string& cuName, const std::string& kernelName, double totalTimeStat,
-    double maxTimeStat,  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz)
+  void ProfileCounters::logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
+                                            double totalTimeStat, double avgTimeStat, double maxTimeStat,
+                                            double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
+                                            uint32_t flags, uint64_t maxParallelIter)
   {
     std::string newCU;
     bool foundKernel = false;
@@ -202,7 +200,8 @@ namespace xdp {
       std::string currCUName = fullName.substr(fourth_index + 1, fifth_index - fourth_index - 1);
       std::string currKernelName = fullName.substr(first_index + 1, second_index - first_index - 1);
       if (currCUName == cuName) {
-        ComputeUnitExecutionStats[fullName].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
+        ComputeUnitExecutionStats[fullName].logStats(totalTimeStat, avgTimeStat, maxTimeStat, minTimeStat,
+                                                     totalCalls, clockFreqMhz, flags, maxParallelIter);
         return;
       }
       else if (currKernelName == kernelName) {
@@ -212,7 +211,8 @@ namespace xdp {
     }
     // CR 1003380 - Runtime does not send all CU Names so we create a key
     if (foundKernel && totalTimeStat > 0.0) {
-      ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, maxTimeStat, minTimeStat, totalCalls, clockFreqMhz);
+      ComputeUnitExecutionStats[newCU].logStats(totalTimeStat, avgTimeStat, maxTimeStat, minTimeStat,
+                                                totalCalls, clockFreqMhz, flags, maxParallelIter);
     }
   }
 
@@ -295,17 +295,9 @@ namespace xdp {
     DeviceBufferReadStat.setBitWidth(bitWidth);
     DeviceBufferWriteStat.setBitWidth(bitWidth);
 
-#ifdef BUFFER_STAT_PER_CONTEXT
-    for (auto readIter : BufferReadStat) {
-      readIter.second.setBitWidth(bitWidth);
+    for (auto iter : BufferTransferStats) {
+      iter.second.setBitWidth(bitWidth);
     }
-    for (auto writeIter : BufferWriteStat) {
-      writeIter.second.setBitWidth(bitWidth);
-    }
-#else
-    BufferReadStat.setBitWidth(bitWidth);
-    BufferWriteStat.setBitWidth(bitWidth);
-#endif
   }
 
   void ProfileCounters::setAllDeviceKernelBitWidth(uint32_t bitWidth)
@@ -319,17 +311,9 @@ namespace xdp {
     DeviceBufferWriteStat.setClockFreqMhz(clockFreqMhz);
     DeviceKernelStat.setClockFreqMhz(clockFreqMhz);
 
-#ifdef BUFFER_STAT_PER_CONTEXT
-    for (auto readIter : BufferReadStat) {
-      readIter.second.setClockFreqMhz(clockFreqMhz);
+    for (auto iter : BufferTransferStats) {
+      iter.second.setClockFreqMhz(clockFreqMhz);
     }
-    for (auto writeIter : BufferWriteStat) {
-      writeIter.second.setClockFreqMhz(clockFreqMhz);
-    }
-#else
-    BufferReadStat.setClockFreqMhz(clockFreqMhz);
-    BufferWriteStat.setClockFreqMhz(clockFreqMhz);
-#endif
   }
 
   // Get device start time (NOTE: when first CU starts)
@@ -404,6 +388,15 @@ namespace xdp {
     return getTotalKernelExecutionTime(deviceName);
   }
 
+  double ProfileCounters::getBufferTransferTotalTime(RTUtil::e_profile_command_kind kind)
+  {
+    if (BufferTransferStats.find(kind) != BufferTransferStats.end()) {
+      return BufferTransferStats[kind].getTotalTime();
+    }
+
+    return 0.0;
+  }
+
   void ProfileCounters::writeKernelSummary(ProfileWriterI* writer) const
   {
     for (const auto &pair : KernelExecutionStats) {
@@ -437,11 +430,28 @@ namespace xdp {
     using std::pair;
     using std::sort;
     using std::string;
+    
+    // Go through all of the call values and consolidate all of the
+    //  API calls from different threads into a single TimeStats object
+    std::map<std::string, TimeStats> consolidated ;
+    for (auto iter : CallCount)
+    {
+      auto functionName = iter.first.first ;
+      auto pairVector   = iter.second ;
+
+      for (unsigned int i = 0 ; i < pairVector.size() ; ++i)
+      {
+	auto doublePair = pairVector[i] ;
+	consolidated[functionName].logStart(doublePair.first) ;
+	consolidated[functionName].logEnd(doublePair.second) ;
+      }
+    }
+
     // Print it in sorted order of Total Time. To sort it by duration
     // populate a vector and then using lambda function sort it by duration
 
-    vector<pair<string, TimeStats>> callPairs(CallCount.begin(),
-        CallCount.end());
+    vector<pair<string, TimeStats>> callPairs(consolidated.begin(),
+        consolidated.end());
     sort(callPairs.begin(), callPairs.end(),
         [](const pair<string, TimeStats>& A, const pair<string, TimeStats>& B) {
       return A.second.getTotalTime() > B.second.getTotalTime();
@@ -472,30 +482,26 @@ namespace xdp {
   // Write data transfer stats for: host, XDMA, KDMA, and P2P
   void ProfileCounters::writeTransferSummary(ProfileWriterI* writer, const std::string& deviceName,
       RTUtil::e_monitor_type monitorType, bool isRead, uint64_t totalBytes, uint64_t totalTranx,
-      double totalTimeMsec, double maxTransferRateMBps) const
+	  double totalLatencyNsec, double totalTimeMsec, double maxTransferRateMBps) const
   {
+    std::string transferType = (isRead) ? "READ" : "WRITE";
+
+    // Host transfers
     if (monitorType == RTUtil::MON_HOST_DYNAMIC) {
-#ifdef BUFFER_STAT_PER_CONTEXT
-      if (isRead) {
-        for (auto readIter : BufferReadStat)
-          writeBufferStat(writer, "READ", readIter.second, maxTransferRateMBps);
+      RTUtil::e_profile_command_kind kind = (isRead) ? RTUtil::READ_BUFFER : RTUtil::WRITE_BUFFER;
+
+      if (BufferTransferStats.find(kind) != BufferTransferStats.end()) {
+        writeBufferStat(writer, transferType, BufferTransferStats.at(kind), maxTransferRateMBps);
       }
-      else {
-        for (auto writeIter : BufferWriteStat)
-          writeBufferStat(writer, "WRITE", writeIter.second, maxTransferRateMBps);
-      }
-#else
-      if (isRead)
-        writeBufferStat(writer, "READ", BufferReadStat, maxTransferRateMBps);
-      else
-        writeBufferStat(writer, "WRITE", BufferWriteStat, maxTransferRateMBps);
-#endif
       return;
     }
 
-    // Now write results from other host monitors (i.e., KDMA/XDMA/P2P)
-    std::string transferType = (isRead) ? "READ" : "WRITE";
-    writer->writeShellTransferSummary(deviceName, transferType, totalBytes, totalTranx, totalTimeMsec);
+    // Now write results from shell monitors (i.e., KDMA/XDMA/P2P)
+    if (monitorType == RTUtil::MON_SHELL_P2P)
+      transferType = (isRead) ? "OUT" : "IN";
+
+    writer->writeShellTransferSummary(deviceName, transferType, totalBytes, totalTranx,
+                                      totalLatencyNsec, totalTimeMsec);
   }
 
   void ProfileCounters::writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,

@@ -5,7 +5,7 @@ set(DOC_TOC_DIR            "${CMAKE_CURRENT_BINARY_DIR}/toc")
 
 file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/mgmt-ioctl.h)
 file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/xocl_ioctl.h)
-file(GLOB XRT_XCLHAL2_H    ${XRT_RUNTIME_SRC_DIR}/driver/include/xclhal2.h)
+file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
 file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
@@ -37,9 +37,9 @@ else ()
     VERBATIM
     )
 
-  add_custom_command(OUTPUT core/xclhal2.rst
-    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XCLHAL2_H} > core/xclhal2.rst
-    DEPENDS ${XRT_XCLHAL2_H}
+  add_custom_command(OUTPUT core/xrt.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XRT_H} > core/xrt.rst
+    DEPENDS ${XRT_XRT_H}
     VERBATIM
     )
 
@@ -61,7 +61,7 @@ else ()
 
   add_custom_target(
     xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xclhal2.rst core/ert.rst core/xma.rst core/xmaplugin.rst
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND mkdir -p html
     COMMAND rm -rf ${DOC_TOC_DIR}/*

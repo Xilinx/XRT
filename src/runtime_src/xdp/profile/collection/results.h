@@ -116,20 +116,25 @@ namespace xdp {
         MaxTime( 0 ),
         MinTime( (std::numeric_limits<double>::max)() ),
         NoOfCalls( 0 ),
-        ClockFreqMhz( 300 )
+        Flags ( 0 ),
+        ClockFreqMhz( 300 ),
+        StatMetadata ( 0 )
       {};
     ~TimeStats() {};
   public:
     void logStart(double timePoint);
     void logEnd(double timePoint);
-    void logStats(double totalTimeStat, double maxTimeStat, 
-                  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz);
+    void logStats(double totalTimeStat, double avgTimeStat, double maxTimeStat,
+                  double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
+                   uint32_t flags, uint64_t metadata);
     inline double getTotalTime() const { return TotalTime; }
-    inline double getAveTime() const {return AveTime; }
-    inline double getMaxTime() const {return MaxTime; }
-    inline double getMinTime() const {return MinTime; }
-    inline uint32_t getNoOfCalls() const {return NoOfCalls; }
+    inline double getAveTime() const { return AveTime; }
+    inline double getMaxTime() const { return MaxTime; }
+    inline double getMinTime() const { return MinTime; }
+    inline uint32_t getFlags() const { return Flags; }
+    inline uint32_t getNoOfCalls() const { return NoOfCalls; }
     inline uint32_t getClockFreqMhz() const { return ClockFreqMhz; }
+    inline uint64_t getMetadata() const { return StatMetadata; }
   private:
     double TotalTime;
     double StartTime;
@@ -138,7 +143,9 @@ namespace xdp {
     double MaxTime;
     double MinTime;
     uint32_t NoOfCalls;
+    uint32_t Flags;
     uint32_t ClockFreqMhz;
+    uint64_t StatMetadata;
   };
 
   // Class to store time trace of kernel execution, buffer read, or buffer write
@@ -288,6 +295,7 @@ namespace xdp {
     uint16_t SlotNum = 0;
     uint16_t BurstLength = 0;
     uint16_t NumBytes = 0;
+    uint32_t EventID = 0;
     uint64_t StartTime = 0;
     uint64_t EndTime = 0;
     double TraceStart = 0.0;

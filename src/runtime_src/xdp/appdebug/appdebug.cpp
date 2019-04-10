@@ -1085,23 +1085,23 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
 }
 
 struct spm_debug_view {
-  unsigned int   WriteBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   WriteTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadTranx[XSPM_MAX_NUMBER_SLOTS];
 
-  unsigned int   OutStandCnts[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastWriteAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastWriteData[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastReadAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastReadData[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int OutStandCnts[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteAddr[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteData[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadAddr[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadData[XSPM_MAX_NUMBER_SLOTS];
   unsigned int   NumSlots;
   std::string    DevUserName;
   std::string    SysfsPath;
   spm_debug_view () {
     std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (WriteTranx, WriteTranx+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill (ReadBytes, ReadBytes+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (ReadTranx, ReadTranx+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (OutStandCnts, OutStandCnts+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (LastWriteAddr, LastWriteAddr+XSPM_MAX_NUMBER_SLOTS, 0);

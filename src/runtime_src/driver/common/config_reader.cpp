@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -54,25 +54,52 @@ get_self_path()
 #endif
 }
 
+/*
+ * Look for xrt.ini and if not found look for legacy sdaccel.ini.
+ */
+static std::string
+verify_ini_path(const boost::filesystem::path& dir)
+{
+  auto file_path = dir / "xrt.ini";
+  if (boost::filesystem::exists(file_path))
+    return file_path.string();
+
+  file_path = dir / "sdaccel.ini";
+  if (boost::filesystem::exists(file_path))
+    return file_path.string();
+
+  return "";
+}
+
 static std::string
 get_ini_path()
 {
+  std::string full_path;
   try {
-    auto ini_path = boost::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
-    // Support SDACCEL_INI_PATH with/without actual filename
-    if (ini_path.filename() != "sdaccel.ini")
-      ini_path /= "sdaccel.ini";
-    if (boost::filesystem::exists(ini_path))
-      return ini_path.string();
-    auto exe_path = boost::filesystem::path(get_self_path()).parent_path()/"sdaccel.ini";
-    if (boost::filesystem::exists(exe_path))
-      return exe_path.string();
-    auto self_path = boost::filesystem::current_path()/"sdaccel.ini";
-      if (boost::filesystem::exists(self_path))
-        return self_path.string();
-  }  catch (const boost::filesystem::filesystem_error& e){ }
+    //The env variable should be the full path which includes xrt.ini
+    auto xrt_path = boost::filesystem::path(value_or_empty(std::getenv("XRT_INI_PATH")));
+    if (boost::filesystem::exists(xrt_path))
+      return xrt_path.string();
 
-  return "";
+    //The env variable should be the full path which includes sdaccel.ini
+    auto sda_path = boost::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
+    if (boost::filesystem::exists(sda_path))
+      return sda_path.string();
+
+    auto exe_path = boost::filesystem::path(get_self_path()).parent_path();
+    full_path = verify_ini_path(exe_path);
+    if (!full_path.empty())
+      return full_path;
+
+    auto self_path = boost::filesystem::current_path();
+    full_path = verify_ini_path(self_path);
+    if (!full_path.empty())
+      return full_path;
+
+  }
+  catch (const boost::filesystem::filesystem_error& e) {
+  }
+  return full_path;
 }
 
 struct tree

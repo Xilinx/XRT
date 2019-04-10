@@ -218,6 +218,15 @@ public:
 
 public:
   /**
+   * @return Minimum buffer alignment in bytes
+   */
+  size_t
+  get_alignment() const
+  {
+    return m_xdevice ? m_xdevice->getAlignment() : getpagesize();
+  }
+
+  /**
    * Check if memory is aligned per device requirement.
    *
    * Default is page size if no backing xrt device
@@ -228,8 +237,7 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
-    return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
+    return p && (reinterpret_cast<uintptr_t>(p) % get_alignment())==0;
   }
 
   /**
