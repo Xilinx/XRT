@@ -94,7 +94,7 @@ static XmaSystemCfgSM systemcfg_sm[] = {
 { "plugin",        &set_plugin,        true },
 { "vendor",        &set_vendor,        true },
 { "name",          &set_name,          true },
-{ "ddr_map",       &set_ddr_map,       true },
+{ "ddr_map",       &set_ddr_map,       false },
 { NULL,            NULL},
 };
 
@@ -314,6 +314,8 @@ int set_name(XmaData *data)
 
 int set_ddr_map(XmaData *data)
 {
+    xma_cfg_log_err("ddr_map field found in cfg file. This is depricated\n");
+    xma_cfg_log_err("This will be ignored and it will be derived from xclbin!\n");
     yaml_node_t *next_node;
     int          i = data->imagecfg_idx;
     int          k = data->kernelcfg_idx;
@@ -332,8 +334,8 @@ int set_ddr_map(XmaData *data)
         if (is_end_of_num_sequence(next_node))
             break;
 
-        data->systemcfg->imagecfg[i].kernelcfg[k].ddr_map[m] =
-            atoi((const char*)next_node->data.scalar.value);
+        // data->systemcfg->imagecfg[i].kernelcfg[k].ddr_map[m] =
+        //     atoi((const char*)next_node->data.scalar.value);
     }
 
     if (m < instances - 1)
@@ -343,34 +345,6 @@ int set_ddr_map(XmaData *data)
         return XMA_ERROR_INVALID;
     }
 
-    /* The next node could be any of the following possibilities:
-     * NULL = end of configuration - we are done
-     * key = "instances" - we have one or more kernels to configure
-     * key = "ImageCfg" - we have one or more images to configure
-    */
-    next_node = get_next_scalar_node(data->document, &data->node_idx);
-    if (!next_node)
-        data->state_idx++;
-    else if (isdigit(next_node->data.scalar.value[0]))
-    {
-        xma_cfg_log_err("Number of items in ddr_map greater than expected\n");
-        return XMA_ERROR_INVALID;
-    }
-    else
-    {
-        data->state_idx =
-            find_state_entry((char*)next_node->data.scalar.value);
-
-        if (strcmp("instances",
-                   (const char*)next_node->data.scalar.value) == 0)
-        {
-            data->kernelcfg_idx++;
-            data->systemcfg->imagecfg[i].num_kernelcfg_entries++;
-        }
-    }
-
-    /* Backup to previous node */
-    data->node_idx--;
     return XMA_SUCCESS;
 }
 
@@ -447,7 +421,7 @@ int run_state_machine(yaml_document_t *document,
     data.kernelcfg_idx = -1;
 
     state_entry = &systemcfg_sm[data.state_idx];
-    
+
 
     while (state_entry->key)
     {
@@ -468,11 +442,41 @@ int run_state_machine(yaml_document_t *document,
                 continue;
             }
                 return XMA_ERROR;
-        } 
+        }
         get_next = true;
         rc = state_entry->transition(&data);
         if (rc == XMA_ERROR)
             break;
+
+        /* The next node could be any of the following possibilities:
+         * NULL = end of configuration - we are done
+         * key = "instances" - we have one or more kernels to configure
+         * key = "ImageCfg" - we have one or more images to configure
+         */
+        yaml_node_t *next_node;
+        int i = data.imagecfg_idx;
+        if(!strcmp(state_entry->key,"name") || !strcmp(state_entry->key,"ddr_map"))
+        {
+            next_node = get_next_scalar_node(data.document, &data.node_idx);
+            if (!next_node)
+                data.state_idx++;
+            else
+            {
+                data.state_idx =
+                    find_state_entry((char*)next_node->data.scalar.value);
+
+                if (strcmp("instances",
+                        (const char*)next_node->data.scalar.value) == 0)
+                {
+                    data.kernelcfg_idx++;
+                    if (i >= 0) {
+                        data.systemcfg->imagecfg[i].num_kernelcfg_entries++;
+                    }
+                }
+                /* Backup to previous node */
+                data.node_idx--;
+            }
+        }
         data.key_no++;
         state_entry = &systemcfg_sm[data.state_idx];
     }

@@ -51,13 +51,13 @@ int32_t xma_initialize(char *cfgfile)
     bool    rc;
 
     if (!cfgfile) {
-        cfgfile = XMA_CFG_DEFAULT;
+        cfgfile = (char*) XMA_CFG_DEFAULT;
         ret = xma_check_default_cfg_dir();
         if (ret)
             return ret;
     }
 
-    g_xma_singleton = malloc(sizeof(*g_xma_singleton));
+    g_xma_singleton = (XmaSingleton*) malloc(sizeof(*g_xma_singleton));
     if (g_xma_singleton  == NULL)
         return XMA_ERROR;
     memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));

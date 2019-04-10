@@ -95,10 +95,10 @@ void unix_socket::start_server(const std::string sk_desc)
   return;
 }
 
-size_t unix_socket::sk_write(const void *wbuf, size_t count)
+ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
-  size_t r;
-  size_t wlen = 0;
+  ssize_t r;
+  ssize_t wlen = 0;
   const unsigned char *buf = (const unsigned char*)(wbuf);
   do {
     if ((r = write(fd, buf + wlen, count - wlen)) < 0) {
@@ -112,10 +112,10 @@ size_t unix_socket::sk_write(const void *wbuf, size_t count)
   return wlen;
 }
 
-size_t unix_socket::sk_read(void *rbuf, size_t count)
+ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 {
-  size_t r;
-  size_t rlen = 0;
+  ssize_t r;
+  ssize_t rlen = 0;
   unsigned char *buf = (unsigned char*)(rbuf);
 
   do {

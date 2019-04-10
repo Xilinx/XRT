@@ -193,6 +193,52 @@ The description above is meant as a high-level introduction to FFmpeg and XMA.
 The remainder of this document covers these topics in more depth and provides
 code examples to help illustrate usage of the XMA.
 
+Execution model
+-----------------
+In earlier versions of XMA plugin **xma_plg_register_write** and **xlc_plg_register_read** 
+were used for various purposes. However starting from 2018.3, **xma_plg_register_write** and 
+**xlc_plg_register_read** are depricated and new APIs are provided at a higher level of abstraction. 
+The new APIs are purposed-based. So instead of direct register read/write the user will use 
+appropriate higher-level purposed based API to achieve the same result. 
+  
+Towards that end, XMA now offers a new execution model with three brand new APIs. 
+
+The new APIs are: 
+  
+  * xma_plg_register_prep_write
+  * xma_plg_schedule_work_item
+  * xma_plg_is_work_item_done
+
+Lets consider the various purposes where the above APIs would be useful. 
+
+**Purpose 1:**
+The API **xma_plg_register_write** was used to send scaler inputs to the kernel by 
+directly writing to the AXI-LITE registers. Now the higher level API 
+**xma_plg_register_prep_write** should be used for the same purpose. 
+
+**Purpose 2:**
+The API **xma_plg_register_write** was also used to start the kernel by writing to the start 
+bit of the AXI-LITE registers. For this purpose the new API **xma_plg_schedule_work_item** 
+should be used instead of **xma_plg_register_write**.
+
+**Purpose 3:**
+The API **xma_plg_register_read** was used to check kernel idle status (by reading AXI-LITE 
+register bit) to determine if the kernel finished processing the operation. For this purpose 
+now the new API **xma_plg_is_work_item_done** should be used.
+
+The below table summarizes how to migrate to the new APIs from **xma_plg_register_write**/**xma_plg_register_read**.  
+
+
+
+======================================== ========================================= ==============================
+                Purposes                     Earlier register read/write API              New API 
+======================================== ========================================= ==============================
+Sending scalar input                               xma_plg_register_write            xma_plg_register_prep_write
+Starting the kernel                              xma_plg_register_write               xma_plg_schedule_work_item
+Checking if kernel finished processing             xma_plg_register_read              xma_plg_is_work_item_done
+======================================== ========================================= ==============================
+
+
 Application Development Guide
 ----------------------------------
 

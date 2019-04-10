@@ -45,7 +45,7 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
     int32_t num_planes;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
-    XmaFrame *frame = malloc(sizeof(XmaFrame));
+    XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
     if (frame  == NULL)
         return NULL;
     memset(frame, 0, sizeof(XmaFrame));
@@ -74,7 +74,7 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() frame_props %p and frame_data %p\n",
                __func__, frame_props, frame_data);
-    XmaFrame *frame = malloc(sizeof(XmaFrame));
+    XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
     if (frame  == NULL)
         return NULL;
     memset(frame, 0, sizeof(XmaFrame));
@@ -119,7 +119,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Cloning buffer from %p of size %lu\n",
                __func__, data, size);
-    XmaDataBuffer *buffer = malloc(sizeof(XmaDataBuffer));
+    XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
     if (buffer  == NULL)
         return NULL;
     memset(buffer, 0, sizeof(XmaDataBuffer));
@@ -140,7 +140,7 @@ xma_data_buffer_alloc(size_t size)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Allocate buffer from of size %lu\n", __func__, size);
-    XmaDataBuffer *buffer = malloc(sizeof(XmaDataBuffer));
+    XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
     if (buffer  == NULL)
         return NULL;
     memset(buffer, 0, sizeof(XmaDataBuffer));

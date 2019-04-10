@@ -17,24 +17,33 @@
 #ifndef _XCL_MB_PROTOCOL_H_
 #define _XCL_MB_PROTOCOL_H_
 
+/*
+ * This header file contains mailbox protocol b/w mgmt and user pfs.
+ * - Any changes made here should maintain backward compatibility.
+ * - If it's not possible, new OP code should be added and version number should
+ *   be bumped up.
+ * - Support for old OP code should never be removed.
+ */
+#define MB_PROTOCOL_VER	 0U
+
 /**
  *	mailbox_req OPCODE
- *
  */
 enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN = 0,
-	MAILBOX_REQ_TEST_READY,
-	MAILBOX_REQ_TEST_READ,
-	MAILBOX_REQ_LOCK_BITSTREAM,
-	MAILBOX_REQ_UNLOCK_BITSTREAM,
-	MAILBOX_REQ_HOT_RESET,
-	MAILBOX_REQ_FIREWALL,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR,
-	MAILBOX_REQ_LOAD_XCLBIN,
-	MAILBOX_REQ_RECLOCK,
-	MAILBOX_REQ_PEER_DATA,
-	MAILBOX_REQ_CONN_EXPL,
-	MAILBOX_REQ_CHAN_SWITCH,
+	MAILBOX_REQ_UNKNOWN =		0,
+	MAILBOX_REQ_TEST_READY =	1,
+	MAILBOX_REQ_TEST_READ =		2,
+	MAILBOX_REQ_LOCK_BITSTREAM =	3,
+	MAILBOX_REQ_UNLOCK_BITSTREAM =	4,
+	MAILBOX_REQ_HOT_RESET =		5,
+	MAILBOX_REQ_FIREWALL =		6,
+	MAILBOX_REQ_LOAD_XCLBIN_KADDR =	7,
+	MAILBOX_REQ_LOAD_XCLBIN =	8,
+	MAILBOX_REQ_RECLOCK =		9,
+	MAILBOX_REQ_PEER_DATA =		10,
+	MAILBOX_REQ_USER_PROBE =	11,
+	MAILBOX_REQ_MGMT_STATE =	12,
+	/* Version 0 OP code ends */
 };
 
 /**
@@ -43,7 +52,7 @@ enum mailbox_request {
  */
 
 struct mailbox_req_bitstream_lock {
-	pid_t pid;
+	uint64_t reserved;
 	xuid_t uuid;
 };
 
@@ -99,22 +108,42 @@ enum data_kind {
  *	MAILBOX_REQ_PEER_DATA payload type
  */
 struct mailbox_subdev_peer {
-		enum data_kind kind;
+	enum data_kind kind;
 };
 
 /**
- *	MAILBOX_REQ_CONN_EXPL & MAILBOX_REQ_CHAN_SWITCH
- *	payload type
+ *	MAILBOX_REQ_USER_PROBE payload type
  */
 struct mailbox_conn {
-	uint64_t flag;
 	uint64_t kaddr;
 	uint64_t paddr;
 	uint32_t crc32;
-	uint32_t ver;
+	uint32_t version;
 	uint64_t sec_id;
 };
 
+/**
+ *	MAILBOX_REQ_USER_PROBE response payload type
+ */
+#define	MB_COMM_ID_LEN		256
+#define MB_CONN_CONNECTED	(1UL << 0)
+#define MB_CONN_SAME_DOMAIN	(1UL << 1)
+struct mailbox_conn_resp {
+	uint32_t version;
+	uint32_t reserved;
+	uint64_t conn_flags;
+	uint64_t chan_switch;
+	char comm_id[MB_COMM_ID_LEN];
+};
+
+/**
+ *	MAILBOX_REQ_MGMT_STATE payload type
+ */
+#define	MB_STATE_ONLINE		(1UL << 0)
+#define	MB_STATE_OFFLINE	(1UL << 1)
+struct mailbox_peer_state {
+	uint64_t state_flags;
+};
 
 /**
  *	MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type
@@ -133,10 +162,10 @@ struct mailbox_clock_freqscaling {
 
 /**
  *	mailbox_req header
- *	req:						opcode
- *	data_len:			 payload size
- *	flags:					reserved
- *	data:					 payload
+ *	req:				opcode
+ *	data_len:			payload size
+ *	flags:				reserved
+ *	data:				payload
  */
 struct mailbox_req {
 	enum mailbox_request req;
@@ -144,20 +173,6 @@ struct mailbox_req {
 	uint64_t flags;
 	char data[0];
 };
-
-#define MB_PROT_VER_MAJOR 0
-#define MB_PROT_VER_MINOR 5
-#define MB_PROTOCOL_VER	 ((MB_PROT_VER_MAJOR<<8) + MB_PROT_VER_MINOR)
-
-
-
-/**
- *	MAILBOX_REQ_CONN_EXPL response
- *	MB_PEER_SAME_DOM
- */
-#define MB_PEER_CONNECTED				(0x1 << 0)
-#define MB_PEER_SAME_DOM				(0x1 << 1)
-#define MB_PEER_SAMEDOM_CONNECTED (MB_PEER_CONNECTED | MB_PEER_SAME_DOM)
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
 
