@@ -1557,8 +1557,6 @@ clGetDebugAccelMonitorCounters()
     return adv;
   }
 
-  cl_int ret = CL_SUCCESS;
-
   xclAccelMonitorCounterResults samCounters;  
   memset(&samCounters, 0, sizeof(xclAccelMonitorCounterResults));
 
@@ -1575,12 +1573,6 @@ clGetDebugAccelMonitorCounters()
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
     }
-  }
-
-  if (ret) 
-  {
-    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error reading sam counters");
-    return adv;
   }
 
   auto sam_view = new sam_debug_view() ;
