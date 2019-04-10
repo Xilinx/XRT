@@ -70,7 +70,7 @@ XmaLogLevel2Str g_loglevel_tbl[] = {
 };
 
 /* Prototype for the logger actor thread */
-void* xma_logger_actor(void *data);
+//void* xma_logger_actor(void *data);
 
 void xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level)
 {
@@ -131,10 +131,13 @@ int xma_logger_init(XmaLogger *logger)
         logger->fd = -1;
 
     /* Create logger actor */
+    /*
     //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     logger->actor = xma_actor_create(xma_logger_actor,
                                      XMA_MAX_LOGMSG_SIZE,
                                      XMA_MAX_LOGMSG_Q_ENTRIES);
+    */
+    logger->actor = xma_actor_create();
 
     //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     xma_actor_start(logger->actor);
@@ -237,12 +240,13 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     }
 }
 
-void* xma_logger_actor(void *data)
+//void* xma_logger_actor(void *data)
+void xma_logger_actor(XmaActor *actor)
 {
     int32_t rc;
     char logmsg[XMA_MAX_LOGMSG_SIZE];
     XmaLogger *logger = &g_xma_singleton->logger;
-    XmaActor  *actor = (XmaActor*)data;
+    //XmaActor  *actor = (XmaActor*)data;
 
     if (!actor)
     {
@@ -372,19 +376,22 @@ void* xma_logger_actor(void *data)
     if (logger->fd != -1)
         close(logger->fd);
 
-    return NULL;
+    //return NULL;
 }
 
 /* XmaThread APIs */
+/*
 XmaThread *xma_thread_create(XmaThreadFunc func, void *data)
 {
-    XmaThread *thread = (XmaThread*) malloc(sizeof(XmaThread));
+    XmaThread *thread = new XmaThread();
+    //XmaThread *thread = (XmaThread*) malloc(sizeof(XmaThread));
     thread->thread_func = func;
     thread->data = data;
     thread->is_running = false;
 
     return thread;
 }
+
 
 void xma_thread_destroy(XmaThread *thread)
 {
@@ -412,9 +419,12 @@ bool xma_thread_is_running(XmaThread *thread)
 
 void xma_thread_join(XmaThread *thread)
 {
-    pthread_join(thread->tid, NULL);
+    //pthread_join(thread->tid, NULL);
+    if (thread->thread_obj.joinable()) {
+        thread->thread_obj.join();
+    }
 }
-
+*/
 /* XmaMsgQ APIs *--/
 Sarab: Remove this and use C++ std::queue
 
@@ -495,9 +505,12 @@ int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
 */
 
 /* XmaActor APIs */
+/*
 XmaActor *xma_actor_create(XmaThreadFunc    func,
                            size_t           msg_size,
                            size_t           max_msg_entries)
+*/
+XmaActor *xma_actor_create()
 {
     //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     /*
@@ -508,7 +521,9 @@ XmaActor *xma_actor_create(XmaThreadFunc    func,
     actor->msg_q = xma_msgq_create(msg_size, max_msg_entries);
     */
     XmaActor *actor =  new XmaActor();
-    actor->thread = xma_thread_create(func, actor);
+    actor->thread = new XmaThread();
+    actor->thread->is_running = false;
+    
     /*
     std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     actor->logger_queue_mutex.reset(new std::mutex());
@@ -530,7 +545,9 @@ XmaActor *xma_actor_create(XmaThreadFunc    func,
 
 void xma_actor_start(XmaActor *actor)
 {
-    xma_thread_start(actor->thread);
+    //xma_thread_start(actor->thread);
+    actor->thread->thread_obj = std::thread(xma_logger_actor, actor);
+    actor->thread->is_running = true;
 }
 
 void xma_actor_destroy(XmaActor *actor)
@@ -540,9 +557,14 @@ void xma_actor_destroy(XmaActor *actor)
     /* Send shutdown message to Actor */
     XMA_DBG_PRINTF("%s", "XMA sending shutdown message\n");
     xma_actor_sendmsg(actor, shutdown, strlen(shutdown));
-    xma_thread_join(actor->thread);
+    if (actor->thread->thread_obj.joinable()) {
+        actor->thread->thread_obj.join();
+    }
+    actor->thread->is_running = false;
+    //xma_thread_join(actor->thread);
     //xma_msgq_destroy(actor->msg_q);
-    xma_thread_destroy(actor->thread);
+    //xma_thread_destroy(actor->thread);
+    free(actor->thread);
 
     free(actor);
 }
