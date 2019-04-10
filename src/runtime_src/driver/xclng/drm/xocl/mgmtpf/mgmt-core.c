@@ -609,152 +609,120 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	*sz = resp_sz;
 	return 0;
 }
-static int xclmgmt_connection_explore(struct xclmgmt_dev *lro, struct mailbox_conn *mb_conn)
+
+static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
+	struct mailbox_conn *mb_conn)
 {
-	int ret = 0;
 	uint32_t crc_chk;
 	phys_addr_t paddr;
 
 	paddr = virt_to_phys((void *)mb_conn->kaddr);
 	if (paddr != (phys_addr_t)mb_conn->paddr) {
-		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n", mb_conn->paddr, paddr);
-		mgmt_info(lro, "Failed to get the same physical addr, running in VMs?\n");
-		ret = -EFAULT;
-		goto done;
+		mgmt_info(lro, "mb_conn->paddr %llx paddr: %llx\n",
+			mb_conn->paddr, paddr);
+		mgmt_info(lro,"Failed to get same physical addr\n");
+		return false;
 	}
-	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
 
+	crc_chk = crc32c_le(~0, (void *)mb_conn->kaddr, PAGE_SIZE);
 	if (crc_chk != mb_conn->crc32) {
 		mgmt_info(lro, "crc32  : %x, %x\n",  mb_conn->crc32, crc_chk);
 		mgmt_info(lro, "failed to get the same CRC\n");
-		ret = -EFAULT;
-		goto done;
+		return false;
 	}
-	ret |= MB_PEER_SAME_DOM;
-done:
-	return ret;
+
+	return true;
 }
-void xclmgmt_chan_switch_notify(struct xclmgmt_dev *lro)
-{
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_conn mb_conn = { 0 };
-	size_t data_len = 0, reqlen = 0;
-	bool is_sw = false;
-	uint64_t ch_switch = 0;
-	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
-	data_len = sizeof(struct mailbox_conn);
-	reqlen = sizeof(struct mailbox_req) + data_len;
-	mb_req = (struct mailbox_req *)vzalloc(reqlen);
-	if (!mb_req) {
-		return;
-	}
-	mb_req->req = MAILBOX_REQ_CHAN_SWITCH;
-
-	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CHAN_SWITCH)) != 0;
-	mb_conn.flag = ch_switch;
-
-	memcpy(mb_req->data, &mb_conn, data_len);
-
-	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
-	return;
-}
 static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
 	uint64_t ch_switch = 0;
-	size_t sz = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
-	struct mailbox_req_bitstream_lock *bitstm_lock = NULL;
-	struct mailbox_bitstream_kaddr *mb_kaddr = NULL;
-	void *resp = NULL;
 	bool is_sw = false;
-	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 
-	bitstm_lock = (struct mailbox_req_bitstream_lock *)req->data;
+	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n",
+		req->req, sw_ch);
 
 	if (err != 0)
 		return;
 
-	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n", req->req, sw_ch);
+	if (xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch) != 0)
+		return;
+
+	is_sw = ((ch_switch & (1ULL << req->req)) != 0);
+	if (is_sw != sw_ch) {
+		mgmt_err(lro, "peer request dropped due to wrong channel\n");
+		return;
+	}
 
 	switch (req->req) {
-	case MAILBOX_REQ_LOCK_BITSTREAM:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOCK_BITSTREAM)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid,
-				0);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+	case MAILBOX_REQ_LOCK_BITSTREAM: {
+		struct mailbox_req_bitstream_lock *bitstm_lock =
+			(struct mailbox_req_bitstream_lock *)req->data;
+		ret = xocl_icap_lock_bitstream(lro, &bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
-	case MAILBOX_REQ_UNLOCK_BITSTREAM:
-		if ((ch_switch & (1ULL<<MAILBOX_REQ_UNLOCK_BITSTREAM))^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid,
-			0);
+	}
+	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
+		struct mailbox_req_bitstream_lock *bitstm_lock =
+			(struct mailbox_req_bitstream_lock *)req->data;
+		ret = xocl_icap_unlock_bitstream(lro, &bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
+	}
 	case MAILBOX_REQ_HOT_RESET:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_HOT_RESET)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		ret = (int) reset_hot_ioctl(lro);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
-	case MAILBOX_REQ_LOAD_XCLBIN_KADDR:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN_KADDR)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else{
-			mb_kaddr = (struct mailbox_bitstream_kaddr *)req->data;
-			ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
-		}
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+	case MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
+		struct mailbox_bitstream_kaddr *mb_kaddr =
+			(struct mailbox_bitstream_kaddr *)req->data;
+		ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
+	}
 	case MAILBOX_REQ_LOAD_XCLBIN:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_LOAD_XCLBIN)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xocl_icap_download_axlf(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		ret = xocl_icap_download_axlf(lro, req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
 	case MAILBOX_REQ_RECLOCK:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_RECLOCK)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xocl_icap_ocl_update_clock_freq_topology(lro, (struct xclmgmt_ioc_freqscaling *)req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
+		ret = xocl_icap_ocl_update_clock_freq_topology(lro,
+			(struct xclmgmt_ioc_freqscaling *)req->data);
+		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
 		break;
-	case MAILBOX_REQ_PEER_DATA:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_PEER_DATA)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+	case MAILBOX_REQ_PEER_DATA: {
+		size_t sz = 0;
+		void *resp = NULL;
+		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;
-			(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret), is_sw);
-		} else
+			(void) xocl_peer_response(lro, msgid, &ret,
+				sizeof(ret), is_sw);
+		} else {
 			(void) xocl_peer_response(lro, msgid, resp, sz, is_sw);
+		}
 		vfree(resp);
 		break;
-	case MAILBOX_REQ_CONN_EXPL:
-		is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
-		if (is_sw^sw_ch)
-			ret = -ENXIO;
-		else
-			ret = xclmgmt_connection_explore(lro, (struct mailbox_conn *)req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof (ret), is_sw);
-		(void) xclmgmt_chan_switch_notify(lro);
+	}
+	case MAILBOX_REQ_USER_PROBE: {
+		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
+		struct mailbox_conn_resp resp = { 0 };
+		resp.version = min(MB_PROTOCOL_VER, conn->version);
+		resp.conn_flags |= MB_CONN_CONNECTED;
+		if (xclmgmt_is_same_domain(lro, conn))
+			resp.conn_flags |= MB_CONN_SAME_DOMAIN;
+		resp.chan_switch = ch_switch;
+		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp.comm_id);
+		(void) xocl_peer_response(lro, msgid, &resp,
+			sizeof(struct mailbox_conn_resp), is_sw);
 		break;
+	}
 	default:
+		mgmt_err(lro, "unknown peer request opcode: %d\n", req->req);
 		break;
 	}
 }
@@ -829,28 +797,27 @@ fail:
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 {
 	struct mailbox_req *mb_req = NULL;
-	struct mailbox_conn mb_conn = { 0 };
+	struct mailbox_peer_state mb_conn = { 0 };
 	size_t data_len = 0, reqlen = 0;
-	void *kaddr = NULL;
 	bool is_sw = false;
 	uint64_t ch_switch = 0;
+
 	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 	data_len = sizeof(struct mailbox_conn);
 	reqlen = sizeof(struct mailbox_req) + data_len;
 	mb_req = (struct mailbox_req *)vzalloc(reqlen);
-	if (!mb_req) {
+	if (!mb_req)
 		return;
-	}
-	mb_req->req = MAILBOX_REQ_CONN_EXPL;
-	mb_conn.flag = online;
-	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!kaddr) {
-		return;
-	}
+
+	mb_req->req = MAILBOX_REQ_MGMT_STATE;
+	if (online)
+		mb_conn.state_flags |= MB_STATE_ONLINE;
+	else
+		mb_conn.state_flags |= MB_STATE_OFFLINE;
 	memcpy(mb_req->data, &mb_conn, data_len);
-	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_CONN_EXPL)) != 0;
+
+	is_sw = (ch_switch & (1ULL<<MAILBOX_REQ_MGMT_STATE)) != 0;
 	(void) xocl_peer_notify(lro, mb_req, reqlen, is_sw);
-	kfree(kaddr);
 	vfree(mb_req);
 }
 
