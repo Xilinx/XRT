@@ -280,51 +280,61 @@ static ssize_t subdev_offline_store(struct device *dev,
 
 static DEVICE_ATTR(subdev_offline, 0200, NULL, subdev_offline_store);
 
-static ssize_t sw_chan_en_store(struct device *dev,
+static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-
-	uint64_t val, ch_switch;
+	uint64_t val;
 
 	if (kstrtoull(buf, 0, &val) < 0)
 		return -EINVAL;
 
-	if (val & 0x1) {
-		mgmt_err(lro, "can only set BIT1 to BIT63");
-		return -EINVAL;
-	}
-	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-	ch_switch |= val;
-	xocl_mailbox_set(lro, CHAN_SWITCH, &ch_switch);
-	xclmgmt_chan_switch_notify(lro);
+	(void) xocl_mailbox_set(lro, CHAN_SWITCH, val);
+	mgmt_err(lro, "mailbox channel switch changed on mgmt pf\n");
+	mgmt_err(lro, "user pf won't be notified until next load of xocl\n");
 
 	return count;
 }
-static ssize_t sw_chan_en_show(struct device *dev,
+static ssize_t config_mailbox_channel_switch_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	uint64_t ch_switch = 0;
 
-	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-
+	(void) xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 	return sprintf(buf, "0x%llx\n", ch_switch);
 }
+static DEVICE_ATTR(config_mailbox_channel_switch, 0644,
+	config_mailbox_channel_switch_show,
+	config_mailbox_channel_switch_store);
 
-static DEVICE_ATTR(sw_chan_en, 0644, sw_chan_en_show, sw_chan_en_store);
-
-static ssize_t sw_chan_reset_store(struct device *dev,
+static ssize_t config_mailbox_comm_id_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	char id[MB_COMM_ID_LEN] = { 0 };
 
-	xocl_mailbox_set(lro, CH_SWITCH_RST, NULL);
-	xclmgmt_chan_switch_notify(lro);
+	if (count > MB_COMM_ID_LEN)
+		return -EINVAL;
+
+	(void) memcpy(id, buf, count);
+	(void) xocl_mailbox_set(lro, COMM_ID, (u64)(uintptr_t)id);
+	mgmt_err(lro, "mailbox communication ID changed on mgmt pf\n");
+	mgmt_err(lro, "user pf won't be notified until next load of xocl\n");
+
 	return count;
 }
+static ssize_t config_mailbox_comm_id_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-static DEVICE_ATTR(sw_chan_reset, 0200, NULL, sw_chan_reset_store);
+	(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)buf);
+	return MB_COMM_ID_LEN;
+}
+static DEVICE_ATTR(config_mailbox_comm_id, 0644,
+	config_mailbox_comm_id_show,
+	config_mailbox_comm_id_store);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -347,8 +357,8 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_dev_offline.attr,
 	&dev_attr_subdev_online.attr,
 	&dev_attr_subdev_offline.attr,
-	&dev_attr_sw_chan_en.attr,
-	&dev_attr_sw_chan_reset.attr,
+	&dev_attr_config_mailbox_channel_switch.attr,
+	&dev_attr_config_mailbox_comm_id.attr,
 	NULL,
 };
 

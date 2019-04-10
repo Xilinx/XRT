@@ -85,7 +85,7 @@ using addr_type = uint64_t;
 
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
-      int xoclCreateBo(xclemulation::xocl_create_bo *info);
+      uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
       unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -191,6 +191,7 @@ using addr_type = uint64_t;
       static const unsigned CONTROL_AP_START;
       static const unsigned CONTROL_AP_DONE;
       static const unsigned CONTROL_AP_IDLE;
+      static const unsigned CONTROL_AP_CONTINUE;
 
       bool isUnified()               { return bUnified; }
       void setUnified(bool _unified) { bUnified = _unified; }

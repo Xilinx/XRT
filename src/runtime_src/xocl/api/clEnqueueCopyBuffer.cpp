@@ -40,16 +40,28 @@ getDeviceMemBaseAddrAlign(cl_device_id device)
 {
   cl_uint size = 0;
   api::clGetDeviceInfo(device,CL_DEVICE_MEM_BASE_ADDR_ALIGN,sizeof(cl_uint),&size,nullptr);
-  return size;
+  return size / 8; // bytes
+}
+
+static std::string
+alignmentMessage(cl_mem sbuf, size_t alignment)
+{
+  std::string msg = "clEnqueueCopyBuffer sub buffer offset is ";
+  msg
+    .append(std::to_string(xocl(sbuf)->get_sub_buffer_offset()))
+    .append(" bytes but must be ")
+    .append(std::to_string(alignment))
+    .append(" bytes aligned");
+  return msg;
 }
 
 static void
-validOrError(cl_command_queue    command_queue, 
+validOrError(cl_command_queue    command_queue,
              cl_mem              src_buffer,
-             cl_mem              dst_buffer, 
+             cl_mem              dst_buffer,
              size_t              src_offset,
              size_t              dst_offset,
-             size_t              size, 
+             size_t              size,
              cl_uint             num_events_in_wait_list,
              const cl_event *    event_wait_list,
              cl_event *          event_parameter)
@@ -99,9 +111,9 @@ validOrError(cl_command_queue    command_queue,
   // associated with queue.
   auto align = getDeviceMemBaseAddrAlign(xocl(command_queue)->get_device());
   if (xocl(src_buffer)->is_sub_buffer() && (xocl(src_buffer)->get_sub_buffer_offset() % align))
-    throw error(CL_MISALIGNED_SUB_BUFFER_OFFSET,"clEnqueueCopyBuffer bad src sub buffer offset");
+    throw error(CL_MISALIGNED_SUB_BUFFER_OFFSET,alignmentMessage(src_buffer,align));
   if (xocl(dst_buffer)->is_sub_buffer() && (xocl(dst_buffer)->get_sub_buffer_offset() % align))
-    throw error(CL_MISALIGNED_SUB_BUFFER_OFFSET,"clEnqueueCopyBuffer bad dst sub buffer offset");
+    throw error(CL_MISALIGNED_SUB_BUFFER_OFFSET,alignmentMessage(dst_buffer,align));
 
   // CL_MEM_COPY_OVERLAP if src_buffer and dst_buffer are the same
   // buffer or subbuffer object and the source and destination regions
@@ -110,11 +122,11 @@ validOrError(cl_command_queue    command_queue,
   // regions overlap if src_offset <= dst_offset <= src_offset + size -
   // 1, or if dst_offset <= src_offset <= dst_offset + size - 1.
   if ((src_buffer==dst_buffer) &&
-      (( (src_offset<=dst_offset) && (dst_offset<=src_offset+size-1) ) || 
+      (( (src_offset<=dst_offset) && (dst_offset<=src_offset+size-1) ) ||
        ( (dst_offset<=src_offset) && (src_offset<=dst_offset+size-1) )
       ))
     throw xocl::error(CL_MEM_COPY_OVERLAP,"clEnqueueCopyBuffer mem copy overlap");
-  
+
   // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
   // allocate memory for data store associated with src_buffer or
   // dst_buffer.
@@ -127,12 +139,12 @@ validOrError(cl_command_queue    command_queue,
 }
 
 static cl_int
-clEnqueueCopyBuffer(cl_command_queue    command_queue, 
+clEnqueueCopyBuffer(cl_command_queue    command_queue,
                     cl_mem              src_buffer,
-                    cl_mem              dst_buffer, 
+                    cl_mem              dst_buffer,
                     size_t              src_offset,
                     size_t              dst_offset,
-                    size_t              size, 
+                    size_t              size,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event_parameter)
@@ -157,12 +169,12 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
 } // xocl
 
 cl_int
-clEnqueueCopyBuffer(cl_command_queue    command_queue, 
+clEnqueueCopyBuffer(cl_command_queue    command_queue,
                     cl_mem              src_buffer,
-                    cl_mem              dst_buffer, 
+                    cl_mem              dst_buffer,
                     size_t              src_offset,
                     size_t              dst_offset,
-                    size_t              size, 
+                    size_t              size,
                     cl_uint             num_events_in_wait_list,
                     const cl_event *    event_wait_list,
                     cl_event *          event_parameter)
@@ -182,5 +194,3 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

@@ -116,12 +116,28 @@ namespace xdp {
 
   void ProfileCounters::logFunctionCallStart(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logStart(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key      = std::make_pair(functionName, threadId) ;
+    auto value    = std::make_pair(timePoint, (double)0.0) ;
+
+    if (CallCount.find(key) == CallCount.end())
+    {
+      std::vector<std::pair<double, double>> newValue ;
+      newValue.push_back(value) ;
+      CallCount[key] = newValue ;
+    }
+    else
+    {
+      CallCount[key].push_back(value);
+    }
   }
 
   void ProfileCounters::logFunctionCallEnd(const std::string& functionName, double timePoint)
   {
-    CallCount[functionName].logEnd(timePoint);
+    auto threadId = std::this_thread::get_id() ;
+    auto key = std::make_pair(functionName, threadId) ;
+
+    CallCount[key].back().second = timePoint ;
   }
 
   void ProfileCounters::logKernelExecutionStart(const std::string& kernelName, const std::string& deviceName,
@@ -414,11 +430,28 @@ namespace xdp {
     using std::pair;
     using std::sort;
     using std::string;
+    
+    // Go through all of the call values and consolidate all of the
+    //  API calls from different threads into a single TimeStats object
+    std::map<std::string, TimeStats> consolidated ;
+    for (auto iter : CallCount)
+    {
+      auto functionName = iter.first.first ;
+      auto pairVector   = iter.second ;
+
+      for (unsigned int i = 0 ; i < pairVector.size() ; ++i)
+      {
+	auto doublePair = pairVector[i] ;
+	consolidated[functionName].logStart(doublePair.first) ;
+	consolidated[functionName].logEnd(doublePair.second) ;
+      }
+    }
+
     // Print it in sorted order of Total Time. To sort it by duration
     // populate a vector and then using lambda function sort it by duration
 
-    vector<pair<string, TimeStats>> callPairs(CallCount.begin(),
-        CallCount.end());
+    vector<pair<string, TimeStats>> callPairs(consolidated.begin(),
+        consolidated.end());
     sort(callPairs.begin(), callPairs.end(),
         [](const pair<string, TimeStats>& A, const pair<string, TimeStats>& B) {
       return A.second.getTotalTime() > B.second.getTotalTime();

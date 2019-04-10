@@ -13,7 +13,7 @@ set(XRT_HEADER_SRC
   xclperf.h
   xclhal2_mem.h)
 
-install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_DIR}/include)
+install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
 message("-- XRT header files")
 foreach (header ${XRT_HEADER_SRC})

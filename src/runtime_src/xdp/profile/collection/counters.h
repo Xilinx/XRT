@@ -135,7 +135,12 @@ namespace xdp {
     std::map<std::string, double> DeviceCUStartTimes;
     std::map<std::string, double> DeviceStartTimes;
     std::map<std::string, double> DeviceEndTimes;
-    std::map<std::string, TimeStats> CallCount;
+
+    // For every API function called in every thread, keep track
+    //  of the start and stop time.
+    std::map<std::pair<std::string, std::thread::id>,
+             std::vector<std::pair<double, double>>> CallCount;
+
     std::map<std::string, TimeStats> KernelExecutionStats;
     std::map<std::string, TimeStats> ComputeUnitExecutionStats;
     std::map<std::string, BufferStats> DeviceKernelReadSummaryStats;
