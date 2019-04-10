@@ -306,30 +306,37 @@ static ssize_t link_speed_max_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(link_speed_max);
 
-static ssize_t sw_chan_state_show(struct device *dev,
+static ssize_t mailbox_connect_state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
 	uint64_t ret = 0;
-	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
 
+	xocl_mailbox_get(xdev, CHAN_STATE, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
+static DEVICE_ATTR_RO(mailbox_connect_state);
 
-static DEVICE_ATTR(sw_chan_state, 0444, sw_chan_state_show, NULL);
-
-static ssize_t sw_chan_switch_show(struct device *dev,
+static ssize_t config_mailbox_channel_switch_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
 	uint64_t ret = 0;
+
 	xocl_mailbox_get(xdev, CHAN_SWITCH, &ret);
 	return sprintf(buf, "0x%llx\n", ret);
 }
+static DEVICE_ATTR_RO(config_mailbox_channel_switch);
 
-static DEVICE_ATTR(sw_chan_switch, 0444, sw_chan_switch_show, NULL);
+static ssize_t config_mailbox_comm_id_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+
+	xocl_mailbox_get(xdev, COMM_ID, (u64 *)buf);
+	return MB_COMM_ID_LEN;
+}
+static DEVICE_ATTR_RO(config_mailbox_comm_id);
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
@@ -346,8 +353,9 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_link_speed.attr,
 	&dev_attr_link_speed_max.attr,
 	&dev_attr_link_width_max.attr,
-	&dev_attr_sw_chan_state.attr,
-	&dev_attr_sw_chan_switch.attr,
+	&dev_attr_mailbox_connect_state.attr,
+	&dev_attr_config_mailbox_channel_switch.attr,
+	&dev_attr_config_mailbox_comm_id.attr,
 	NULL,
 };
 

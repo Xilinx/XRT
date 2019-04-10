@@ -92,7 +92,7 @@ xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props)
 {
-    XmaDecoderSession *dec_session = malloc(sizeof(XmaDecoderSession));
+    XmaDecoderSession *dec_session = (XmaDecoderSession*) malloc(sizeof(XmaDecoderSession));
     if (dec_session == NULL)
         return NULL;
     XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;

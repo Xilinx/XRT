@@ -20,8 +20,14 @@
 #include "pllauncher_defines.h"
 #include <iostream>
 #include <boost/property_tree/xml_parser.hpp>
-#include "shim.cpp"
+#include "shim.h"
+#include "shim-profile.h"
 #include <cstring>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <thread>
+
 namespace ZYNQ {
 
 namespace ZYNQ_HW_EM {

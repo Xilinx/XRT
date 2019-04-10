@@ -70,7 +70,7 @@ XmaLogLevel2Str g_loglevel_tbl[] = {
 };
 
 /* Prototype for the logger actor thread */
-void* xma_logger_actor(void *data);
+//void* xma_logger_actor(void *data);
 
 void xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level)
 {
@@ -131,11 +131,17 @@ int xma_logger_init(XmaLogger *logger)
         logger->fd = -1;
 
     /* Create logger actor */
+    /*
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     logger->actor = xma_actor_create(xma_logger_actor,
                                      XMA_MAX_LOGMSG_SIZE,
                                      XMA_MAX_LOGMSG_Q_ENTRIES);
+    */
+    logger->actor = xma_actor_create();
 
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
     xma_actor_start(logger->actor);
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
 
     return 0;
 }
@@ -234,12 +240,13 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     }
 }
 
-void* xma_logger_actor(void *data)
+//void* xma_logger_actor(void *data)
+void xma_logger_actor(XmaActor *actor)
 {
     int32_t rc;
     char logmsg[XMA_MAX_LOGMSG_SIZE];
     XmaLogger *logger = &g_xma_singleton->logger;
-    XmaActor  *actor = (XmaActor*)data;
+    //XmaActor  *actor = (XmaActor*)data;
 
     if (!actor)
     {
@@ -369,19 +376,22 @@ void* xma_logger_actor(void *data)
     if (logger->fd != -1)
         close(logger->fd);
 
-    return NULL;
+    //return NULL;
 }
 
 /* XmaThread APIs */
+/*
 XmaThread *xma_thread_create(XmaThreadFunc func, void *data)
 {
-    XmaThread *thread = (XmaThread*) malloc(sizeof(XmaThread));
+    XmaThread *thread = new XmaThread();
+    //XmaThread *thread = (XmaThread*) malloc(sizeof(XmaThread));
     thread->thread_func = func;
     thread->data = data;
     thread->is_running = false;
 
     return thread;
 }
+
 
 void xma_thread_destroy(XmaThread *thread)
 {
@@ -409,10 +419,15 @@ bool xma_thread_is_running(XmaThread *thread)
 
 void xma_thread_join(XmaThread *thread)
 {
-    pthread_join(thread->tid, NULL);
+    //pthread_join(thread->tid, NULL);
+    if (thread->thread_obj.joinable()) {
+        thread->thread_obj.join();
+    }
 }
+*/
+/* XmaMsgQ APIs *--/
+Sarab: Remove this and use C++ std::queue
 
-/* XmaMsgQ APIs */
 XmaMsgQ *xma_msgq_create(size_t msg_size, size_t max_msg_entries)
 {
     XmaMsgQ *msgq = (XmaMsgQ*) malloc(sizeof(XmaMsgQ));
@@ -487,25 +502,52 @@ int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size)
 
     return 0;
 }
+*/
 
 /* XmaActor APIs */
+/*
 XmaActor *xma_actor_create(XmaThreadFunc    func,
                            size_t           msg_size,
                            size_t           max_msg_entries)
+*/
+XmaActor *xma_actor_create()
 {
+    //std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    /*
     XmaActor *actor = (XmaActor*) malloc(sizeof(XmaActor));
     pthread_mutex_init(&actor->lock, NULL);
     pthread_cond_init(&actor->queued_cond, NULL);
     pthread_cond_init(&actor->dequeued_cond, NULL);
     actor->msg_q = xma_msgq_create(msg_size, max_msg_entries);
-    actor->thread = xma_thread_create(func, actor);
+    */
+    XmaActor *actor =  new XmaActor();
+    actor->thread = new XmaThread();
+    actor->thread->is_running = false;
+    
+    /*
+    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    actor->logger_queue_mutex.reset(new std::mutex());
+    exit(0);
+
+
+
+    actor->logger_queue_mutex = std::unique_ptr<std::mutex>(new std::mutex());
+    actor->logger_queue_cv = std::unique_ptr<std::condition_variable>(new std::condition_variable());
+    actor->logger_queue_locked = std::unique_ptr<std::atomic<bool>>(new std::atomic<bool>());
+    *(actor->logger_queue_locked) = false;
+
+    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+    actor->logger_queue = std::unique_ptr<std::queue<std::string>>(new std::queue<std::string>());
+    */
 
     return actor;
 }
 
 void xma_actor_start(XmaActor *actor)
 {
-    xma_thread_start(actor->thread);
+    //xma_thread_start(actor->thread);
+    actor->thread->thread_obj = std::thread(xma_logger_actor, actor);
+    actor->thread->is_running = true;
 }
 
 void xma_actor_destroy(XmaActor *actor)
@@ -515,15 +557,21 @@ void xma_actor_destroy(XmaActor *actor)
     /* Send shutdown message to Actor */
     XMA_DBG_PRINTF("%s", "XMA sending shutdown message\n");
     xma_actor_sendmsg(actor, shutdown, strlen(shutdown));
-    xma_thread_join(actor->thread);
-    xma_msgq_destroy(actor->msg_q);
-    xma_thread_destroy(actor->thread);
+    if (actor->thread->thread_obj.joinable()) {
+        actor->thread->thread_obj.join();
+    }
+    actor->thread->is_running = false;
+    //xma_thread_join(actor->thread);
+    //xma_msgq_destroy(actor->msg_q);
+    //xma_thread_destroy(actor->thread);
+    free(actor->thread);
 
     free(actor);
 }
 
 int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
 {
+    /*
     int32_t rc;
     bool    was_empty;
 
@@ -552,13 +600,28 @@ int32_t xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size)
             actor->msg_q->back);
 
     pthread_mutex_unlock(&actor->lock);
+    */
+    // First acquire queue lock
+    bool expected = false;
+    bool desired = true;
+    while (!(*(actor->logger_queue_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Queue lock acquired
+    bool was_empty = actor->logger_queue->empty();
 
-    return rc;
+    actor->logger_queue->emplace(std::string((char*)msg, ((char*)msg)+msg_size));
+    if (was_empty) {
+        (*(actor->logger_queue_cv)).notify_all();
+    }
+    *(actor->logger_queue_locked) = false;
 
+    return 0;
 }
 
 int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
 {
+    /*
     int32_t rc;
     bool    was_full;
 
@@ -587,6 +650,42 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
             actor->msg_q->back);
 
     pthread_mutex_unlock(&actor->lock);
+    */
 
-    return rc;
+    // First acquire queue lock
+    bool lock_acquired = false;
+    bool expected = false;
+    bool desired = true;
+    while (!(*(actor->logger_queue_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Queue lock acquired
+    lock_acquired = true;
+    if (actor->logger_queue->empty()) {
+        *(actor->logger_queue_locked) = false;
+        lock_acquired = false;
+        std::unique_lock<std::mutex> lk(*(actor->logger_queue_mutex));
+        (*(actor->logger_queue_cv)).wait(lk, [&]{return (!(actor->logger_queue->empty()));});
+    }
+    if (!lock_acquired) {
+        expected = false;
+        desired = true;
+        while (!(*(actor->logger_queue_locked)).compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        lock_acquired = true;
+    }
+    
+    std::string log_msg = actor->logger_queue->front();
+    uint32_t max = log_msg.size();
+    if (max > msg_size-1) {
+        max = msg_size-1;
+        XMA_DBG_PRINTF("%s", "XMA msgq dequeue: too small\n");
+    }
+    std::copy(log_msg.begin(), log_msg.begin()+max, (char*)msg);
+
+    actor->logger_queue->pop();
+    *(actor->logger_queue_locked) = false;
+
+    return 0;
 }

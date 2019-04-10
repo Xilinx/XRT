@@ -182,7 +182,7 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props)
 XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *sc_props)
 {
-    XmaScalerSession *sc_session = malloc(sizeof(XmaScalerSession));
+    XmaScalerSession *sc_session = (XmaScalerSession*) malloc(sizeof(XmaScalerSession));
 	XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     XmaKernelRes kern_res;
 	int rc, dev_handle, kern_handle, scal_handle, i;
@@ -256,7 +256,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     // Allocate a connection for each output
     for (i = 0; i < sc_props->num_outputs; i++)
     {
-        XmaEndpoint *end_pt = malloc(sizeof(XmaEndpoint));
+        XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
         end_pt->session = &sc_session->base;
         end_pt->dev_id = dev_handle;
         end_pt->format = sc_props->output[i].format;
