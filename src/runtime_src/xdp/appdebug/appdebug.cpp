@@ -1465,7 +1465,6 @@ std::string
 sam_debug_view::getJSONString(bool aVerbose) {
   std::stringstream sstr ;
   std::vector<std::string> slotNames;
-  std::vector< std::pair<std::string, std::string> > cuNameportNames;
   getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
 
   sstr << "[" ;
@@ -1502,7 +1501,6 @@ std::string
 sam_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
   std::vector<std::string> slotNames;
-  std::vector< std::pair<std::string, std::string> > cuNameportNames;
   getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
   int col = 11;
   std::for_each(slotNames.begin(), slotNames.end(), [&](std::string& slotName){
