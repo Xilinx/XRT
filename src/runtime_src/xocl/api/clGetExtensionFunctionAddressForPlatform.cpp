@@ -17,10 +17,26 @@
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <CL/cl.h>
+#include <map>
 #include "detail/platform.h"
+#include "xocl/core/platform.h"
 #include "plugin/xdp/profile.h"
 
 namespace xocl {
+
+static const std::map<const std::string, void *> extensionFunctionTable = {
+  std::pair<const std::string, void *>("clCreateStream", (void *)clCreateStream),
+  std::pair<const std::string, void *>("clReleaseStream", (void *)clReleaseStream),
+  std::pair<const std::string, void *>("clWriteStream", (void *)clWriteStream),
+  std::pair<const std::string, void *>("clReadStream", (void *)clReadStream),
+  std::pair<const std::string, void *>("clCreateStreamBuffer", (void *)clCreateStreamBuffer),
+  std::pair<const std::string, void *>("clReleaseStreamBuffer", (void *)clReleaseStreamBuffer),
+  std::pair<const std::string, void *>("clPollStreams", (void *)clPollStreams),
+  std::pair<const std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
+  std::pair<const std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
+  std::pair<const std::string, void *>("clIcdGetPlatformIDsKHR", (void *)clIcdGetPlatformIDsKHR),
+};
+
 
 static void
 validOrError(cl_platform_id platform, const char* func_name)
@@ -29,6 +45,8 @@ validOrError(cl_platform_id platform, const char* func_name)
     return;
 
   detail::platform::validOrError(platform);
+  if (!func_name)
+    throw error(CL_INVALID_VALUE,"func_name is nullptr");
 }
 
 static void*
@@ -36,7 +54,11 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
                                          const char *   func_name)
 {
   validOrError(platform,func_name);
-  return nullptr;
+  if (get_global_platform() != platform)
+    return nullptr;
+
+  auto iter = extensionFunctionTable.find(func_name);
+  return (iter == extensionFunctionTable.end()) ? nullptr : iter->second;
 }
 
 } // namespace xocl
@@ -57,5 +79,3 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform ,
   }
   return nullptr;
 }
-
-
