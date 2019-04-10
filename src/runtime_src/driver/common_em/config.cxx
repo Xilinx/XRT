@@ -122,7 +122,7 @@ namespace xclemulation{
       else if(name == "enable_shared_memory")
       {
         //this is temporary solution to use legacy DDR model in emulation. We should remove this switch Once all issues in latest model is fixed
-        if(getBoolValue(value,false))
+        if(!getBoolValue(value,true))
         {
          setenv("SDX_USE_LEGACY_FMODEL","true",true);
         }
