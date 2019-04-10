@@ -255,10 +255,8 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clWriteStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The write request type.
  * errcode_ret: The return value eg CL_SUCCESS
@@ -273,10 +271,8 @@ clWriteStream(cl_stream             /* stream*/,
 
 /**
  * clReadStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
