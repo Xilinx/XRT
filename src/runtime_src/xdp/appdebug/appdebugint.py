@@ -58,8 +58,33 @@ class printSSPMInfo (infCallUtil):
 
 		# free the allocated vector
 		self.callfunc("appdebug::clFreeAppDebugView",free_args)
+obj_sspm = printSSPMInfo()
 
-obj_sspm = printSSPMInfo ()
+class printSAMInfo (infCallUtil):
+	"Print the SDx Streaming Performance Monitor counters"
+	def invoke (self, arg, jsonformat):
+		fargs = []
+		free_args,sam_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugAccelMonitorCounters",fargs, "SAM")
+
+		if (sam_ptr == 0):
+			if (jsonformat == True):
+				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
+			else :
+				print (errmsg)
+			return				
+
+		if (jsonformat):
+			stdstr = self.callmethod(sam_ptr,"getstring",[1, 1]);
+			strout = stdstr['_M_dataplus']['_M_p'].string();
+			print strout
+		else:
+			stdstr = self.callmethod(sam_ptr,"getstring",[1, 0]);
+			strout = stdstr['_M_dataplus']['_M_p'].string();
+			print strout
+
+		# free the allocated vector
+		self.callfunc("appdebug::clFreeAppDebugView",free_args)
+obj_sam = printSAMInfo()
 
 class printLAPCInfo (infCallUtil):
 	"Print the status of Lightweight AXI Protocol Checker"
@@ -125,6 +150,20 @@ class xstatusSSPMInfo (gdb.Command,infCallUtil):
 		obj_sspm.invoke(arg, 0)
 xstatusSSPMInfo()
 
+class xstatusSAMInfo (gdb.Command,infCallUtil):
+	"Print the SDx Streaming Performance Monitor counters when available"
+	def __init__ (self):
+		super (xstatusSAMInfo, self).__init__ ("xstatus sam", 
+                         gdb.COMMAND_USER)
+	def invoke (self, arg, from_tty):
+		try:
+			self.check_app_debug_enabled()
+		except ValueError as e:
+			print (e.message)
+			return
+		obj_sam.invoke(arg, 0)
+xstatusSAMInfo()
+
 class xstatusLAPCInfo (gdb.Command,infCallUtil):
 	"Print the status of Lightweight AXI Protocol Checkers when available"
 	def __init__ (self):
@@ -151,6 +190,7 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 			print (e.message)
 			return
 		obj_spm.invoke(arg, 0)
+		obj_sam.invoke(arg, 0)
 		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()
 
