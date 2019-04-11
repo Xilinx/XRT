@@ -228,7 +228,8 @@ namespace xdp {
       // Check if device supports P2P
       if ((deviceName.find("xilinx_u200_xdma_201830_2") != std::string::npos)
           || (deviceName.find("xilinx_u250_xdma_201830_2") != std::string::npos)
-          || (deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos))
+          || (deviceName.find("xilinx_vcu1525_xdma_201830_2") != std::string::npos)
+          || (deviceName.find("samsung") != std::string::npos))
         setP2PDevice(true);
     }
   }

@@ -46,7 +46,7 @@ namespace xdp {
   {
     ProfileWriterI::writeSummary(profile);
 
-    //Table 7: Top Kernel Summary.
+    // Table 7: Top Kernel Execution
     std::vector<std::string> TopKernelSummaryColumnLabels = {
         "Kernel Instance Address", "Kernel", "Context ID", "Command Queue ID",
         "Device", "Start Time (ms)", "Duration (ms)",
@@ -56,25 +56,25 @@ namespace xdp {
     profile->writeTopKernelSummary(this);
     writeTableFooter(getStream());
 
-    //Table 8: Top Buffer Write Summary
+    // Table 8: Top Memory Writes: Host to Global Memory
     std::vector<std::string> TopBufferWritesColumnLabels = {
         "Buffer Address", "Context ID", "Command Queue ID", "Start Time (ms)",
         "Duration (ms)", "Buffer Size (KB)", "Writing Rate(MB/s)"};
-    writeTableHeader(getStream(), "Top Buffer Writes",
+    writeTableHeader(getStream(), "Top Memory Writes: Host to Global Memory",
         TopBufferWritesColumnLabels);
     profile->writeTopDataTransferSummary(this, false); // Writes
     writeTableFooter(getStream());
 
-    //Table 9: Top Buffer Read Summary
+    // Table 9: Top Memory Reads: Host to Global Memory
     std::vector<std::string> TopBufferReadsColumnLabels = {
         "Buffer Address", "Context ID", "Command Queue ID", "Start Time (ms)",
         "Duration (ms)", "Buffer Size (KB)", "Reading Rate(MB/s)"};
-    writeTableHeader(getStream(), "Top Buffer Reads",
+    writeTableHeader(getStream(), "Top Memory Reads: Host to Global Memory",
         TopBufferReadsColumnLabels);
     profile->writeTopDataTransferSummary(this, true); // Reads
     writeTableFooter(getStream());
 
-    //Table 10: Parameters used in PRCs
+    // Table 10: Parameters used in PRCs
     std::vector<std::string> GuidanceColumnLabels = {
       "Parameter", "Element", "Value"
     };
