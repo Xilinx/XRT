@@ -8,7 +8,7 @@ sys.path.append(script_path)
 from appdebug import infCallUtil
 
 class printSPMInfo (infCallUtil):
-	"Print the SDx Performance Monitor counters"
+	"Print the Performance Monitor counters"
 	def invoke (self, arg, jsonformat):
 		fargs = []
 		free_args,spm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugCounters",fargs, "SPM")
@@ -35,7 +35,7 @@ class printSPMInfo (infCallUtil):
 obj_spm = printSPMInfo ()
 
 class printSSPMInfo (infCallUtil):
-	"Print the SDx Streaming Performance Monitor counters"
+	"Print the Streaming Performance Monitor counters"
 	def invoke (self, arg, jsonformat):
 		fargs = []
 		free_args,sspm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugStreamCounters",fargs, "SSPM")
@@ -124,7 +124,7 @@ class xstatusPrefix(gdb.Command):
 						True)
 xstatusPrefix()
 class xstatusSPMInfo (gdb.Command,infCallUtil):
-	"Print the SDx Performance Monitor counters when available"
+	"Print the Performance Monitor counters when available"
 	def __init__ (self):
 		super (xstatusSPMInfo, self).__init__ ("xstatus spm", 
                          gdb.COMMAND_USER)
@@ -137,7 +137,7 @@ class xstatusSPMInfo (gdb.Command,infCallUtil):
 		obj_spm.invoke(arg, 0)
 xstatusSPMInfo()
 class xstatusSSPMInfo (gdb.Command,infCallUtil):
-	"Print the SDx Streaming Performance Monitor counters when available"
+	"Print the Streaming Performance Monitor counters when available"
 	def __init__ (self):
 		super (xstatusSSPMInfo, self).__init__ ("xstatus sspm", 
                          gdb.COMMAND_USER)

@@ -1159,7 +1159,7 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     sstr << "]";
   }
   else {
-    sstr<< "SDx Performance Monitor Counters\n";
+    sstr<< "Performance Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
     int col2 = std::max(widths.second, strlen("Type or Port"));
 
@@ -1329,7 +1329,7 @@ std::string
 sspm_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
 
-  sstr << "SDx Streaming Performance Monitor Counters\n" ;
+  sstr << "Streaming Performance Monitor Counters\n" ;
   sstr << std::left
        <<         std::setw(32) << "Number of Transactions"
        << "  " << std::setw(16) << "Data Bytes" 
