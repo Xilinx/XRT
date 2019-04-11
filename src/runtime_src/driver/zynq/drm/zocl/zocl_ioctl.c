@@ -416,7 +416,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 		return -EINVAL;
 	}
 
-	apt = kcalloc(total * sizeof(struct addr_aperture), GFP_KERNEL);
+	apt = kcalloc(total, sizeof(struct addr_aperture), GFP_KERNEL);
 	if (!apt) {
 		DRM_ERROR("Out of memory\n");
 		return -ENOMEM;
