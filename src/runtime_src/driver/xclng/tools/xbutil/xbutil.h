@@ -399,6 +399,9 @@ public:
         if(buf.empty() || mm_buf.empty())
             return;
 
+        int j = 0; // stream index
+        int m = 0; // mem index
+
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -427,14 +430,14 @@ public:
                     pending = stat_map[std::string("pending_bytes")] + "/" + stat_map[std::string("pending_requests")];
                 }
 
-                ptStream.put( "index", i );
                 ptStream.put( "tag", map->m_mem_data[i].m_tag );
                 ptStream.put( "flow_id", map->m_mem_data[i].flow_id );
                 ptStream.put( "route_id", map->m_mem_data[i].route_id );
                 ptStream.put( "status", status );
                 ptStream.put( "total", total );
                 ptStream.put( "pending", pending );
-                sensor_tree::add_child( "board.memory.stream", ptStream);
+                sensor_tree::add_child( std::string("board.memory.stream." + std::to_string(j)), ptStream);
+                j++;
                 continue;
             }
 
@@ -454,7 +457,8 @@ public:
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
             ptMem.put( "mem_usage", unitConvert(memoryUsage));
             ptMem.put( "bo_count",  boCount);
-            sensor_tree::add_child( std::string("board.memory." + std::to_string(i)), ptMem );
+            sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+            m++;
         }
     }
 
@@ -599,6 +603,7 @@ public:
 
     int readSensors( void ) const
     {
+        sensor_tree::put( "version",                 "1.1.0" ); // json schema version
         sensor_tree::put( "runtime.build.version",   xrt_build_version );
         sensor_tree::put( "runtime.build.hash",      xrt_build_version_hash );
         sensor_tree::put( "runtime.build.date",      xrt_build_version_date );
