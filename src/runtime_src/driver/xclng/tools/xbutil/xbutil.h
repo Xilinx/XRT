@@ -866,7 +866,7 @@ public:
         ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
         try {
-          for (auto& v : sensor_tree::get_child("board.memory")) {
+          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string mem_usage, tag, size, type, temp;
@@ -931,15 +931,14 @@ public:
              << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
         ostr << std::setw(16) << "Total (B/#)" << std::setw(10)  << "Pending (B/#)" << std::endl;
         try {
-          for (auto& v : sensor_tree::get_child("board.memory")) {
-            if( v.first == "stream" ) {
+          for (auto& v : sensor_tree::get_child("board.memory.stream")) {
+            int stream_index = std::stoi(v.first);
+            if( stream_index >= 0 ) {
               std::string status, tag, total, pending;
               int index = 0;
               unsigned int flow_id = 0, route_id = 0;
               for (auto& subv : v.second) {
-                if( subv.first == "index" ) {
-                  index = subv.second.get_value<int>();
-                } else if( subv.first == "tag" ) {
+                if( subv.first == "tag" ) {
                   tag = subv.second.get_value<std::string>();
                 } else if( subv.first == "flow_id" ) {
                   flow_id = subv.second.get_value<unsigned int>();
@@ -961,6 +960,7 @@ public:
                    << std::setw(9)  << status
                    << std::setw(16) << total
                    << std::setw(10) << pending << std::endl;
+              index++;
             }
           }
         }
