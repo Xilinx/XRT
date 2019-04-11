@@ -474,6 +474,7 @@ configure(struct sched_cmd *cmd)
 	struct sched_exec_core *exec = zdev->exec;
 	struct configure_cmd *cfg;
 	unsigned int i, j;
+	u32 cu_addr;
 	int ret;
 
 	if (sched_error_on(exec, opcode(cmd) != OP_CONFIGURE))
@@ -529,6 +530,11 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
+		/* Clear encoded handshake
+		 * TODO: This is how xocl KDS do this. It will be better if the
+		 * mask is a macro in a common header file.
+		 */
+		cu_addr = cfg->data[i] & ~(0xFF);
 		/* If it is in ert mode, there is no XCLBIN parsed now
 		 * Trust configuration from host. Once host download XCLBIN to
 		 * PS side, verify host configuration in the same way.
@@ -536,7 +542,7 @@ configure(struct sched_cmd *cmd)
 		 * Now the zdev->ert is heavily used in configure()
 		 * Need cleanup.
 		 */
-		if (!zdev->ert && get_apt_index(zdev, cfg->data[i]) < 0) {
+		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
 			DRM_ERROR("CU address %x is not found in XLBCIN\n",
 				  cfg->data[i]);
 			write_unlock(&zdev->attr_rwlock);
@@ -547,7 +553,7 @@ configure(struct sched_cmd *cmd)
 		 *
 		 * For Pure MPSoC device, the base address is always 0
 		 */
-		exec->cu_addr_phy[i] = zdev->res_start + cfg->data[i];
+		exec->cu_addr_phy[i] = zdev->res_start + cu_addr;
 		exec->cu_addr_virt[i] = ioremap(exec->cu_addr_phy[i], CU_SIZE);
 		if (!exec->cu_addr_virt[i]) {
 			DRM_ERROR("Mapping CU failed\n");

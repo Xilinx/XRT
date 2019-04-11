@@ -33,7 +33,7 @@ namespace xrt_core { namespace scheduler {
  * Check sdaccel.ini for default overrides.
  */
 int
-init(xclDeviceHandle handle, const axlf* top, bool encode);
+init(xclDeviceHandle handle, const axlf* top);
 
 }} // utils,xrt
 

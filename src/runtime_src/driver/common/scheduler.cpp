@@ -85,7 +85,7 @@ namespace xrt_core { namespace scheduler {
  * Check sdaccel.ini for default overrides.
  */
 int
-init(xclDeviceHandle handle, const axlf* top, bool encode)
+init(xclDeviceHandle handle, const axlf* top)
 {
   uuid_t uuid;
   auto execbo = create_exec_bo(handle,0x1000);
@@ -93,7 +93,7 @@ init(xclDeviceHandle handle, const axlf* top, bool encode)
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_CONFIGURE;
 
-  auto cus = xclbin::get_cus(top, encode);
+  auto cus = xclbin::get_cus(top, true);
 
   ecmd->slot_size = config::get_ert_slotsize();
   ecmd->num_cus = cus.size();

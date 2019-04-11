@@ -729,7 +729,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         printf("Load Xclbin Failed\n");
         return ret;
     }
-    ret = xrt_core::scheduler::init(handle, buffer, false);
+    ret = xrt_core::scheduler::init(handle, buffer);
     if (ret) {
         printf("Scheduler init failed\n");
         return ret;
