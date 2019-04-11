@@ -422,6 +422,9 @@ struct xocl_mb_scheduler_funcs {
 #define	XOCL_DDR_COUNT(xdev)			\
 	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
+#define XOCL_IS_STREAM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
+	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
 
 /* sysmon callbacks */
 enum {

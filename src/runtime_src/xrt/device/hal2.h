@@ -345,10 +345,10 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf);
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
