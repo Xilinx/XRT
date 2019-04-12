@@ -117,7 +117,6 @@ struct xcl_hwicap {
 };
 
 struct xcl_common {
-	u64 ready;
 	u64 mig_calib;
 };
 
@@ -166,7 +165,6 @@ enum data_kind {
 	DEBUG_IPLAYOUT_AXLF,
 	PEER_CONN,
 	XCLBIN_UUID,
-	PEER_READY,
 	CLOCK_FREQ_2,
 	CLOCK_FREQ_3,
 	FREQ_COUNTER_2,

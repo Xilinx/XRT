@@ -591,7 +591,6 @@ static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
 	struct xcl_common *data = NULL;
 
 	data = (struct xcl_common *)buf;
-	data->ready = lro->ready;
 	data->mig_calib = lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0;
 
 }

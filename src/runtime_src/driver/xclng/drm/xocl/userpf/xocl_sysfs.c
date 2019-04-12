@@ -345,7 +345,11 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ret = xocl_get_data(xdev, PEER_READY);
+	uint64_t ch_state, ret;
+
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+
+	ret = (ch_state & MB_CONN_CONNECTED) ? 1 : 0;
 
 	return sprintf(buf, "0x%llx\n", ret);
 }

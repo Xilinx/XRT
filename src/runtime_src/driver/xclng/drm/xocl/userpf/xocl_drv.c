@@ -351,9 +351,6 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	case MIG_CALIB:
 		ret = resp.mig_calib;
 		break;
-	case PEER_READY:
-		ret = resp.ready;
-		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", kind);
 		break;
