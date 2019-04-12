@@ -1205,7 +1205,6 @@ isEmulationMode()
 
 app_debug_view<spm_debug_view>*
 clGetDebugCounters() {
-  cl_int ret = CL_SUCCESS;
   xclDebugCountersResults debugResults = {0};
 
   if (isEmulationMode()) {
@@ -1237,11 +1236,6 @@ clGetDebugCounters() {
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
-  }
-
-  if (ret) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
-    return adv;
   }
 
   auto spm_view = new spm_debug_view ();
@@ -1369,8 +1363,6 @@ clGetDebugStreamCounters()
     return adv;
   }
 
-  cl_int ret = CL_SUCCESS;
-
   xclStreamingDebugCountersResults streamingDebugCounters;  
   memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
   std::string subdev = "icap";
@@ -1386,12 +1378,6 @@ clGetDebugStreamCounters()
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
-  }
-
-  if (ret) 
-  {
-    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error reading sspm counters");
-    return adv;
   }
 
   auto sspm_view = new sspm_debug_view () ;
@@ -1764,7 +1750,6 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 }
 app_debug_view<lapc_debug_view>*
 clGetDebugCheckers() {
-  cl_int ret = CL_SUCCESS;
   xclDebugCheckersResults debugCheckers;
 
   if (isEmulationMode()) {
@@ -1795,10 +1780,7 @@ clGetDebugCheckers() {
       //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
-  if (ret) {
-    auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error reading lapc status");
-    return adv;
-  }
+
   auto lapc_view = new lapc_debug_view ();
   std::copy(debugCheckers.OverallStatus, debugCheckers.OverallStatus+XLAPC_MAX_NUMBER_SLOTS, lapc_view->OverallStatus);
   for (auto i = 0; i<XLAPC_MAX_NUMBER_SLOTS; ++i)
