@@ -1912,7 +1912,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (!ret)
-      ret = xrt_core::scheduler::init(handle,buffer);
+      ret = xrt_core::scheduler::init(handle, buffer);
     return ret;
 }
 
