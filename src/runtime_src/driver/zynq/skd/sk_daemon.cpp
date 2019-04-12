@@ -19,6 +19,7 @@
 #include <dlfcn.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 
 #include "sk_types.h"
 #include "sk_daemon.h"
@@ -52,7 +53,8 @@ void freeBO(unsigned int boHandle)
  * unit. Before create soft kernel CU, we allocate a BO to hold the
  * reg file for that CU.
  */
-static int createSoftKernel(unsigned int *boh, uint32_t cu_idx) {
+static int createSoftKernel(unsigned int *boh, uint32_t cu_idx)
+{
   int ret;
 
   *boh = xclAllocBO(devHdl, SOFT_KERNEL_REG_SIZE, XCL_BO_DEVICE_RAM, 0);
@@ -64,6 +66,21 @@ static int createSoftKernel(unsigned int *boh, uint32_t cu_idx) {
   ret = xclSKCreate(devHdl, *boh, cu_idx);
 
   return ret;
+}
+
+/* This function release the resources allocated for soft kernel. */
+static int destroySoftKernel(unsigned int boh, void *mapAddr)
+{
+  int ret;
+
+  ret = munmap(mapAddr, SOFT_KERNEL_REG_SIZE);
+  if (ret) {
+    syslog(LOG_ERR, "Cannot munmap BO %d, at %p\n", boh, mapAddr);
+    return ret;
+  }
+  xclFreeBO(devHdl, boh);
+
+  return 0;
 }
 
 /*
@@ -138,6 +155,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   ops.mapBO     = &mapBO;
   ops.freeBO    = &freeBO;
 
+  args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
+
   while (1) {
     ret = waitNextCmd(cu_idx);
 
@@ -147,7 +166,6 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       break;
     }
 
-    args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
     /* Reg file indicates the kernel should not be running. */
     if (args_from_host[0] != 0x1)
       continue;
@@ -157,6 +175,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   }
 
   dlclose(sk_handle);
+  (void) destroySoftKernel(boh, args_from_host);
 }
 
 static inline void getSoftKernelPathName(uint32_t cu_idx, char *path)
