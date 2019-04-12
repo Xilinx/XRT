@@ -58,6 +58,8 @@ static xuid_t uuid_null = NULL_UUID_LE;
 #define DATA_CLK			0
 #define KERNEL_CLK			1
 #define SYSTEM_CLK			2
+
+#define INVALID_MEM_IDX			0xFFFF
 /*
  * Bitstream header information.
  */
@@ -2035,7 +2037,7 @@ static uint32_t convert_mem_type(const char *name)
 
 static uint16_t icap_get_memidx(struct icap *icap, enum MEM_TYPE mem_type, int idx)
 {
-	uint16_t memidx = 0xFFFF, i, mem_idx = 0;
+	uint16_t memidx = INVALID_MEM_IDX, i, mem_idx = 0;
 	enum MEM_TYPE m_type;
 
 	if (!icap->mem_topo)
@@ -2136,7 +2138,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 			 */
 			uint16_t memidx = icap_get_memidx(icap, MEM_DRAM, ip->properties);
 
-			if (memidx == 0xFFFF)
+			if (memidx == INVALID_MEM_IDX)
 				continue;
 
 			if (!icap->mem_topo || memidx >= icap->mem_topo->m_count ||
@@ -2174,7 +2176,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		if (ip->m_type == IP_MEM_HBM) {
 			uint16_t memidx = icap_get_memidx(icap, MEM_HBM, ip->indices.m_index);
 
-			if (memidx == 0xFFFF)
+			if (memidx == INVALID_MEM_IDX)
 				continue;
 
 			if (!icap->mem_topo || memidx >= icap->mem_topo->m_count) {
@@ -2183,8 +2185,6 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 				continue;
 			}
 
-			if (icap->mem_topo->m_mem_data[memidx].m_type != MEM_DDR4)
-				continue;
 			if (!icap->mem_topo->m_mem_data[memidx].m_used) {
 				ICAP_INFO(icap,
 					"ignore ECC controller for: %s",
