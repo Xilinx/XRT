@@ -290,11 +290,16 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                             hwcfg->devices[dev_id].kernels[t].base_address) 
                         {
                             found = true;
-                        } else if (info.ip_layout[i_ips].base_addr <
-                            hwcfg->devices[dev_id].kernels[t].base_address) {
-                            cu_bit_mask = cu_bit_mask << 1;
+                            break;//Use same order as in IP layout for cu_mask
                         }
+                        cu_bit_mask = cu_bit_mask << 1;
                     }
+		    /*
+                    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
+                    std::cout << "Sarab: kernel: " << std::string((char*)hwcfg->devices[dev_id].kernels[t].name) << "; ddr_bank#: " << std::dec << hwcfg->devices[dev_id].kernels[t].ddr_bank << std::endl;
+                    std::cout << "Sarab: kernel base_addr=0x: " << std::hex << hwcfg->devices[dev_id].kernels[t].base_address << std::endl;
+                    std::cout << "Sarab: cu_mask=0x" << std::hex << cu_bit_mask << std::endl;
+      		    */
                     if (!found) 
                     {
                         free(buffer);

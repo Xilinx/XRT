@@ -43,6 +43,10 @@ xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
 #if 0
     printf("xma_plg_buffer_alloc handle = %d\n", handle);
 #endif
+
+    if (handle <= 0) {
+        printf("xclAllocBO failed handle: %d\n", handle);
+    }
     return handle;
 }
 
@@ -237,6 +241,11 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
 
         // Copy reg_map into execBO buffer 
         memcpy(cu_cmd->data, src, size);
+
+#if 0
+        std::cout << "ScheduleWorkItem: kernel: " << std::string((char*)s_handle.kernel_info->name) << "; ddr_bank#: " << std::dec << s_handle.kernel_info->ddr_bank << std::endl;
+        std::cout << "ScheduleWorkItem: cu_mask: 0x" << std::hex << cu_cmd->cu_mask << std::endl;
+#endif
 
         // Set count to size in 32-bit words + 1 
         cu_cmd->count = (size >> 2) + 1;
