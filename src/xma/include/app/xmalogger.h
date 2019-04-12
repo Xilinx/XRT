@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "lib/xmalogger.h"
+//#include "lib/xmalogger.h"
 
 #ifdef __cplusplus
 extern "C" {
