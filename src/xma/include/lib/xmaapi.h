@@ -34,7 +34,7 @@ typedef struct XmaSingleton
     XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
     XmaScalerPlugin   scalercfg[MAX_PLUGINS];
     XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
+    XmaKernelPlugin   kernelcfg[MAX_KERNEL_CONFIGS];
     XmaResources      shm_res_cfg;
     bool              shm_freed;
 } XmaSingleton;
