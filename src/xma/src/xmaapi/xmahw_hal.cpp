@@ -290,10 +290,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                             hwcfg->devices[dev_id].kernels[t].base_address) 
                         {
                             found = true;
-                        } else if (info.ip_layout[i_ips].base_addr <
-                            hwcfg->devices[dev_id].kernels[t].base_address) {
-                            cu_bit_mask = cu_bit_mask << 1;
+                            break;//Keep it based on IP_layout order
                         }
+                        cu_bit_mask = cu_bit_mask << 1;
                     }
                     if (!found) 
                     {
