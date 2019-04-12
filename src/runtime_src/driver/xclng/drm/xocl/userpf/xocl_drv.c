@@ -556,13 +556,11 @@ static int xocl_reassign_resources(struct pci_dev *dev, int resno)
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 {
 	struct resource *res = dev->resource + resno;
-	struct pci_dev *root;
-	struct resource *root_res;
 	u64 bar_size, req_size;
 	unsigned long flags;
 	u16 cmd;
 	int pos, ret = 0;
-	u32 ctrl, i;
+	u32 ctrl;
 
 	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
 	if (!pos) {
@@ -585,21 +583,6 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 		return -EALREADY;
 	}
 
-	xocl_get_root_dev(dev, root);
-
-	for (i = 0; i < PCI_BRIDGE_RESOURCE_NUM; i++) {
-		root_res = root->subordinate->resource[i];
-		root_res = (root_res) ? root_res->parent : NULL;
-		if (root_res && (root_res->flags & IORESOURCE_MEM)
-			&& resource_size(root_res) > req_size)
-			break;
-	}
-
-	if (i == PCI_BRIDGE_RESOURCE_NUM) {
-		xocl_err(&dev->dev, "Not enough IO Mem space, "
-			"Please check BIOS settings. ");
-		return -ENOSPC;
-	}
 	pci_release_selected_regions(dev, (1 << resno));
 	pci_read_config_word(dev, PCI_COMMAND, &cmd);
 	pci_write_config_word(dev, PCI_COMMAND,

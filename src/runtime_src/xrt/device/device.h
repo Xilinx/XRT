@@ -507,15 +507,15 @@ public:
   };
 
   ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->writeStream(stream, ptr, offset, size, req);
+    return m_hal->writeStream(stream, ptr, size, req);
   };
 
   ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req)
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req)
   {
-    return m_hal->readStream(stream, ptr, offset, size, req);
+    return m_hal->readStream(stream, ptr, size, req);
   };
 
   int
