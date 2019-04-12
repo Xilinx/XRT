@@ -367,7 +367,7 @@ static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
 int mailbox_request(struct platform_device *, void *, size_t,
 	void *, size_t *, mailbox_msg_cb_t, void *, bool);
 int mailbox_post(struct platform_device *, u64, void *, size_t, bool);
-
+int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 {
@@ -1382,9 +1382,18 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	int rv = -ENOMEM;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
+	uint64_t ch_state = 0;
+
+	mailbox_get(pdev, CHAN_STATE, &ch_state);
 
 	MBX_INFO(mbx, "sending request: %d go %s",
 		((struct mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));
+
+	if (!(ch_state & MB_CONN_CONNECTED)) {
+		rv = -ENODEV;
+		goto fail;
+	}
+
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -1463,6 +1472,13 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len,
 	int rv = 0;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *msg = NULL;
+	uint64_t ch_state = 0;
+
+	mailbox_get(pdev, CHAN_STATE, &ch_state);
+	if (!(ch_state & MB_CONN_CONNECTED))
+		return -ENODEV;
+
+
 
 	msg = alloc_msg(NULL, len);
 
@@ -2048,6 +2064,9 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->sys_cdev->ops = &mailbox_fops;
 	mbx->sys_cdev->owner = THIS_MODULE;
 	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), 0);
+
+	/* connect_state only change while user probe */
+	mbx->mbx_ch_state = MB_CONN_CONNECTED;
 	ret = cdev_add(mbx->sys_cdev, mbx->sys_cdev->dev, 1);
 	if (ret) {
 		MBX_ERR(mbx, "cdev add failed");
