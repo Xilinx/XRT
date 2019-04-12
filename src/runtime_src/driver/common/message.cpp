@@ -15,22 +15,17 @@
  */
 
 #include "message.h"
-#include "driver/common/t_time.h"
-
+#include "t_time.h"
+#include "version.h"
 #include "config_reader.h"
+
 #include <unistd.h>
 #include <syslog.h>
 #include <map>
 #include <fstream>
 #include <iostream>
-#include <chrono>
-#include <ctime>
-#include <stdio.h>
-#include <string.h>
 #include <thread>
-#include <sstream>
-#include <limits.h>
-#include <version.h>
+#include <climits>
 #include <sys/types.h>
 #ifdef __GNUC__
 # include <linux/limits.h>
@@ -234,8 +229,8 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-  static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
-  dispatcher->send(l, tag, msg);
+    static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
+    dispatcher->send(l, tag, msg);
   }
 }
 

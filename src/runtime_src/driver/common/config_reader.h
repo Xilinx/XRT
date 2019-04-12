@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xrt_device_config_reader_h_
-#define xrt_device_config_reader_h_
+#ifndef xrtcore_config_reader_h_
+#define xrtcore_config_reader_h_
 
 #include <string>
 #include <iosfwd>
