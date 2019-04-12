@@ -803,7 +803,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	uint64_t ch_switch = 0;
 
 	xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-	data_len = sizeof(struct mailbox_conn);
+	data_len = sizeof(struct mailbox_peer_state);
 	reqlen = sizeof(struct mailbox_req) + data_len;
 	mb_req = (struct mailbox_req *)vzalloc(reqlen);
 	if (!mb_req)
