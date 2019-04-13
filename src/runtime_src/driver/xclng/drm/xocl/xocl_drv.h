@@ -261,12 +261,15 @@ struct xocl_dev_core {
 #define	XOCL_DSA_PCI_RESET_OFF(xdev_hdl)			\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
 	XOCL_DSAFLAG_PCI_RESET_OFF)
-#define	XOCL_DSA_MB_SCHE_OFF(xdev_hdl)			\
+#define	XOCL_DSA_MB_SCHE_OFF(xdev_hdl)				\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
 	XOCL_DSAFLAG_MB_SCHE_OFF)
-#define	XOCL_DSA_AXILITE_FLUSH_REQUIRED(xdev_hdl)			\
+#define	XOCL_DSA_AXILITE_FLUSH_REQUIRED(xdev_hdl)		\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
 	XOCL_DSAFLAG_AXILITE_FLUSH)
+#define	XOCL_DSA_NO_KDMA(xdev_hdl)				\
+	(((struct xocl_dev_core *)xdev_hdl)->priv.flags &	\
+	XOCL_DSAFLAG_NO_KDMA)
 
 #define	XOCL_DSA_XPR_ON(xdev_hdl)		\
 	(((struct xocl_dev_core *)xdev_hdl)->priv.xpr)
