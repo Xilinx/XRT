@@ -257,7 +257,10 @@ static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "0\n");
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ret  = xocl_get_data(xdev, MIG_CALIB);
+
+	return sprintf(buf, "0x%llx\n", ret);
 }
 
 static DEVICE_ATTR_RO(mig_calibration);
@@ -338,6 +341,21 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(config_mailbox_comm_id);
 
+static ssize_t ready_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ch_state, ret;
+
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+
+	ret = (ch_state & MB_CONN_CONNECTED) ? 1 : 0;
+
+	return sprintf(buf, "0x%llx\n", ret);
+}
+
+static DEVICE_ATTR_RO(ready);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -356,6 +374,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_mailbox_connect_state.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
+	&dev_attr_ready.attr,
 	NULL,
 };
 
