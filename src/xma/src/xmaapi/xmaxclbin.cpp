@@ -65,7 +65,6 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
         XmaIpLayout* layout = xclbin_info->ip_layout;
         xclbin_info->number_of_kernels = 0;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "IP LAYOUT - %d kernels\n", xclbin_info->number_of_kernels);
         uint32_t j = 0;
         for (int i = 0; i < ipl->m_count; i++)
         {
@@ -79,6 +78,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             j++;
         }
         xclbin_info->number_of_kernels = j;
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "IP LAYOUT - %d kernels\n", xclbin_info->number_of_kernels);
     }
     else
     {
