@@ -321,17 +321,19 @@ struct mailbox {
 	size_t			mbx_tst_tx_msg_len;
 
 	/* Req list for all incoming request message */
-	struct completion mbx_comp;
-	struct mutex mbx_lock;
-	struct list_head mbx_req_list;
-	uint8_t mbx_req_cnt;
-	size_t mbx_req_sz;
+	struct completion	mbx_comp;
+	struct mutex		mbx_lock;
+	struct list_head	mbx_req_list;
+	uint8_t			mbx_req_cnt;
+	size_t			mbx_req_sz;
 
-	uint32_t mbx_prot_ver;
-	uint64_t mbx_ch_state;
-	uint64_t mbx_ch_switch;
-	char mbx_comm_id[256];
-	uint32_t mbx_proto_ver;
+	uint32_t		mbx_prot_ver;
+	uint64_t		mbx_ch_state;
+	uint64_t		mbx_ch_switch;
+	char			mbx_comm_id[256];
+	uint32_t		mbx_proto_ver;
+
+	bool			mbx_peer_dead;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -540,14 +542,17 @@ void timeout_msg(struct mailbox_channel *ch)
 	/* Check active msg first. */
 	msg = ch->mbc_cur_msg;
 	if (msg) {
-
 		if (msg->mbm_ttl == 0) {
 			MBX_ERR(mbx, "found outstanding msg time'd out");
+			if (!mbx->mbx_peer_dead) {
+				MBX_ERR(mbx, "peer becomes dead");
+				mbx->mbx_peer_dead = true;
+			}
 			chan_msg_done(ch, -ETIME);
 			mutex_lock(&ch->sw_chan_mutex);
 			clean_sw_buf(ch);
 			mutex_unlock(&ch->sw_chan_mutex);
-
+			/* Peer is not active any more. */
 		} else {
 			msg->mbm_ttl--;
 			/* Need to come back again for this one. */
@@ -590,6 +595,14 @@ static void chann_worker(struct work_struct *work)
 	struct mailbox *mbx = ch->mbc_parent;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
+		/* Peer is active, if we are woken up not by a timer. */
+		if (!test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
+			if (mbx->mbx_peer_dead) {
+				MBX_ERR(mbx, "peer becomes active");
+				mbx->mbx_peer_dead = false;
+			}
+		}
+
 		MBX_DBG(mbx, "%s worker start", ch->mbc_name);
 		ch->mbc_tran(ch);
 		wait_for_completion_interruptible(&ch->mbc_worker);
@@ -1146,9 +1159,16 @@ static void check_tx_msg_done(struct mailbox_channel *ch)
 		mutex_lock(&ch->sw_chan_mutex);
 		clean_sw_buf(ch);
 		mutex_unlock(&ch->sw_chan_mutex);
+		chan_msg_done(ch, 0);
+	} else {
+		/* HACK FOR NOW */
+		struct mailbox *mbx = ch->mbc_parent;
+		u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+
+		if ((st != 0xffffffff) && ((st & STATUS_STA) != 0))
+			chan_msg_done(ch, 0);
 	}
 
-	chan_msg_done(ch, 0);
 }
 
 static void msg_timer_on(struct mailbox_msg *msg, bool is_tx)
@@ -1378,6 +1398,10 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	uint64_t ch_switch = 0;
 	bool sw_ch = false;
 
+	/* If peer is not alive, no point sending req and waiting for resp. */
+	if (mbx->mbx_peer_dead)
+		return -ENOTCONN;
+
 	mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
 	sw_ch = ch_switch & (1<<(((struct mailbox_req *)req)->req));
 
@@ -1430,7 +1454,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		goto fail;
 	}
 	free_msg(reqmsg);
-
 	msg_timer_on(respmsg, false);
 
 	if (cb)
@@ -1463,6 +1486,8 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len)
 	struct mailbox_msg *msg = NULL;
 	uint64_t ch_switch = 0;
 	bool sw_ch = false;
+
+	/* No checking for peer's liveness for posted msgs. */
 
 	mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
 	sw_ch = ch_switch & (1<<(((struct mailbox_req *)buf)->req));
@@ -1988,6 +2013,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&mbx->mbx_req_list);
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
+	mbx->mbx_peer_dead = false;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);

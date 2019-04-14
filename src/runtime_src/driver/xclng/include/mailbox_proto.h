@@ -143,8 +143,8 @@ struct mailbox_conn {
  *	MAILBOX_REQ_USER_PROBE response payload type
  */
 #define	MB_COMM_ID_LEN		256
-#define MB_CONN_CONNECTED	(1UL << 0)
-#define MB_CONN_SAME_DOMAIN	(1UL << 1)
+#define MB_PEER_READY		(1UL << 0)
+#define MB_PEER_SAME_DOMAIN	(1UL << 1)
 struct mailbox_conn_resp {
 	uint32_t version;
 	uint32_t reserved;

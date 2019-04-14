@@ -276,8 +276,8 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int err = 0;
 
+	ICAP_INFO(icap, "reading from peer");
 	BUG_ON(ICAP_PRIVILEGED(icap));
 
 	mb_req = vmalloc(reqlen);
@@ -290,16 +290,11 @@ static void icap_read_from_peer(struct platform_device *pdev)
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	err = xocl_peer_request(xdev,
+	(void) xocl_peer_request(xdev,
 		mb_req, reqlen, &xcl_hwicap, &resp_len, NULL, NULL);
-
-
-	if (err)
-		goto done;
 
 	icap_set_data(icap, &xcl_hwicap);
 
-done:
 	vfree(mb_req);
 }
 
@@ -1977,14 +1972,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
 			icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
 
-			if ((ch_state & MB_CONN_CONNECTED) == 0) {
-				ICAP_ERR(icap, "%s fail to find peer, abort!",
-					__func__);
-				err = -EFAULT;
-				goto done;
-			}
-
-			if ((ch_state & MB_CONN_SAME_DOMAIN) != 0) {
+			if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
 				data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
 				mb_req = vmalloc(data_len);
 				if (!mb_req) {
@@ -2018,9 +2006,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				err = -EFAULT;
 				goto done;
 			}
-		} else
+		} else {
 			ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
 				xclbin->m_uniqueId);
+		}
 
 		icap->icap_bitstream_id = xclbin->m_uniqueId;
 		if (!uuid_is_null(&xclbin->m_header.uuid)) {
