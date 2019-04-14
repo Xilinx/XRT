@@ -112,6 +112,8 @@ validHostPtrOrError(cl_mem_flags flags, const void* host_ptr)
       if (std::bitset<12>(ext_flags & ddr_bank_mask).count() > 1)
        throw xocl::error(CL_INVALID_VALUE,"Multiple bank flags specified");
     }
+    if (bool(ubuf) && bool(ext_flags & XCL_MEM_EXT_P2P_BUFFER))
+       throw error(CL_INVALID_HOST_PTR,"host_ptr with P2P buffer flags specified");
   }
 }
 
