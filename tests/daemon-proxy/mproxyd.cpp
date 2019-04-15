@@ -1,7 +1,7 @@
 /*
  * ryan.radjabi@xilinx.com
  *
- * Reference for daemonization: https://gist.github.com/alexdlaird/3100f8c7c96871c5b94e
+ * Simple passthrough daemon reference.
  */
 #include <dirent.h>
 #include <iterator>
@@ -63,6 +63,10 @@ int resize_buffer( uint32_t *&buf, const size_t new_sz )
     return 0;
 }
 
+/*
+ * MPD - Management Proxy Daemon
+ * This thread passes messages from userpf->mgmtpf.
+ */
 void *mpd(void *handle_ptr)
 {
     int xferCount = 0;
@@ -77,26 +81,18 @@ void *mpd(void *handle_ptr)
         args.is_tx = true;
         args.sz = prev_sz;
         ret = read( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-        std::cout << "MPD: read() ret: " << ret << ", errno: " << errno << std::endl;
         if( ret <= 0 ) {
-            std::cout << "MPD: debug #0 read() ret: " << ret << ", errno: " << errno << std::endl;
             // sw channel xfer error 
             if( errno != EMSGSIZE ) {
-                std::cout << "MPD: debug #1\n";
                 std::cout << "MPD: transfer failed for other reason\n";
                 exit(1);
             }
-            std::cout << "MPD: debug #2\n";
             // buffer was of insufficient size, resizing
             if( resize_buffer( args.data, args.sz ) != 0 ) {
-                std::cout << "MPD: debug #3\n";
-                std::cout << "MPD: resize_buffer() failed...exiting\n";
                 exit(1);
             }
-            std::cout << "MPD: debug #4\n";
             prev_sz = args.sz; // store the newly alloc'd size
             ret = read( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-            std::cout << "MPD: debug #5 read() ret: " << ret << ", errno: " << errno << std::endl;
             if( ret < 0 ) {
                 std::cout << "MPD: second transfer failed, exiting.\n";
                 exit(1);
@@ -106,7 +102,6 @@ void *mpd(void *handle_ptr)
 
         args.is_tx = false;
         ret = write( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-        std::cout << "MPD: write() ret: " << ret << std::endl;
         if( ret <= 0 ) {
             std::cout << "MSD: transfer error: " << strerror(errno) << std::endl;
             exit(1);
