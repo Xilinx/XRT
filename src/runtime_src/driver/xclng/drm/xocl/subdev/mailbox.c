@@ -1802,12 +1802,13 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		 */
 
 		mutex_lock(&ch->sw_chan_mutex);
-		atomic_dec_if_positive(&ch->trigger);
+
 		if (ch->sw_chan_buf_sz > sw_chan_args->sz) {
 			sw_chan_args->sz = ch->sw_chan_buf_sz;
 			mutex_unlock(&ch->sw_chan_mutex);
 			return -EMSGSIZE;
 		}
+		atomic_dec_if_positive(&ch->trigger);
 
 		ret = copy_to_user(sw_chan_args->data,
 					ch->sw_chan_buf,
