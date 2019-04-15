@@ -156,8 +156,6 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
-	struct drm_file *filp);
 
 /* sysfs functions */
 int xocl_init_sysfs(struct device *dev);
