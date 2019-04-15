@@ -186,7 +186,8 @@ namespace xdp {
   void ProfileCounters::logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
                                             double totalTimeStat, double avgTimeStat, double maxTimeStat,
                                             double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
-                                            uint32_t flags, uint64_t maxParallelIter)
+                                            uint32_t flags, uint64_t maxParallelIter,
+                                            std::string& deviceName, std::string & xclbinName)
   {
     std::string newCU;
     bool foundKernel = false;
@@ -199,6 +200,11 @@ namespace xdp {
       size_t fifth_index = fullName.find_last_of("|");
       std::string currCUName = fullName.substr(fourth_index + 1, fifth_index - fourth_index - 1);
       std::string currKernelName = fullName.substr(first_index + 1, second_index - first_index - 1);
+      std::string currDeviceName = fullName.substr(0, first_index);
+      std::string currBinName = fullName.substr(fifth_index + 1);
+
+      if (currDeviceName != deviceName || currBinName != xclbinName)
+        continue;
       if (currCUName == cuName) {
         ComputeUnitExecutionStats[fullName].logStats(totalTimeStat, avgTimeStat, maxTimeStat, minTimeStat,
                                                      totalCalls, clockFreqMhz, flags, maxParallelIter);

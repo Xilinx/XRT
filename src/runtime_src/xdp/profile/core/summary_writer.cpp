@@ -79,8 +79,8 @@ namespace xdp {
   // Log device counters
   // ***************************************************************************
 
-  void SummaryWriter::logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
-      xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
+  void SummaryWriter::logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programID,
+       xclPerfMonType type, xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
     // Number of monitor slots
     uint32_t numSlots = 0;
@@ -218,13 +218,14 @@ namespace xdp {
       double cuMaxExecCyclesMsec = (double) cuMaxExecCycles / deviceCyclesMsec;
       double cuMinExecCyclesMsec = (double) cuMinExecCycles / deviceCyclesMsec;
       uint32_t isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? 1 : 0;
+      std::string binaryInstance = binaryName + std::to_string(programID);
       //XDP_LOG("[RT_PROFILE] cuName : %s exec cycles : %d runtime %f \n", cuName.c_str(), cuExecCycles, cuRunTimeMsec);
       // Don't log if not a valid stat
       if (cuMaxParallelIter > 0)
         mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec,
                                               cuRunTimeAvgMsec, cuMaxExecCyclesMsec,
                                               cuMinExecCyclesMsec, cuExecCount, kernelClockMhz,
-                                              isDataflow, cuMaxParallelIter);
+                                              isDataflow, cuMaxParallelIter, deviceName, binaryInstance);
     }
 #ifdef XDP_VERBOSE
     if (this->isTimelineTraceFileOn()) {
