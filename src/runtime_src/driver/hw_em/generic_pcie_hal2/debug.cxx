@@ -33,8 +33,8 @@
  */
 
 #include "shim.h"
-//#include "../user_common/perfmon_parameters.h"
 #include "xclbin.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 
 //#include <sys/types.h>
 //#include <sys/stat.h>
@@ -72,6 +72,10 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
+    memset(mPerfmonProperties, 0, sizeof(uint8_t)*XSPM_MAX_NUMBER_SLOTS);
+    memset(mAccelmonProperties, 0, sizeof(uint8_t)*XSAM_MAX_NUMBER_SLOTS);
+    memset(mStreamMonProperties, 0, sizeof(uint8_t)*XSSPM_MAX_NUMBER_SLOTS);
+
     mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
       mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
     
@@ -94,22 +98,22 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: memory slots = " << mMemoryProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: accel slots  = " << mAccelProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: stall slots  = " << mStallProfilingNumberSlots << std::endl;
-      mLogStream << "debug_ip_layout: sspm slots  = " << mStreamProfilingNumberSlots << std::endl;
+      mLogStream << "debug_ip_layout: sspm slots   = " << mStreamProfilingNumberSlots << std::endl;
 
       for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
-                   << ", name = " << mPerfMonSlotName[i] << std::endl;
+                   << "name = " << mPerfMonSlotName[i]
+                   << ", prop = " << static_cast <uint32_t>(mPerfmonProperties[i]) << std::endl;
       }
       for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
-                   << ", name = " << mAccelMonSlotName[i] << std::endl;
+                   << "name = " << mAccelMonSlotName[i]
+                   << ", prop = " << static_cast <uint32_t>(mAccelmonProperties[i]) << std::endl;
       }
       for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
-                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
-                   << ", name = " << mStreamMonSlotName[i] << std::endl;
+                   << "name = " << mStreamMonSlotName[i]
+                   << ", prop = " << static_cast <uint32_t>(mStreamMonProperties[i]) << std::endl;
       }
     }
   }
@@ -124,10 +128,11 @@ namespace xclhwemhal2 {
     if (mLogStream.is_open())
       mLogStream << __func__ << ": reading " << debugFileName << " (is_open = " << ifs.is_open() << ")" << std::endl;
 
-    // NOTE: host is always index 0
     uint32_t count = 0;
+
+    // NOTE: host is always index 0
     if (type == AXI_MM_MONITOR) {
-      properties[0] = 0;
+      properties[0] = XSPM_HOST_PROPERTY_MASK;
       portNames[0] = "host/host";
       ++count;
     }
