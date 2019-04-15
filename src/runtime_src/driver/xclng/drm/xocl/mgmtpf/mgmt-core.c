@@ -734,9 +734,10 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 		resp.version = min(MB_PROTOCOL_VER, conn->version);
-		resp.conn_flags |= MB_CONN_CONNECTED;
-		if (xclmgmt_is_same_domain(lro, conn) && !(ch_switch & 1<<MAILBOX_REQ_LOAD_XCLBIN_KADDR))
-			resp.conn_flags |= MB_CONN_SAME_DOMAIN;
+		resp.conn_flags |= MB_PEER_READY;
+		/* Same domain check only applies when everything is thru HW. */
+		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
+			resp.conn_flags |= MB_PEER_SAME_DOMAIN;
 		resp.chan_switch = ch_switch;
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp.comm_id);
 		(void) xocl_peer_response(lro, msgid, &resp,
