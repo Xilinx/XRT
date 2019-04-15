@@ -25,6 +25,7 @@
 #include <queue>
 #include <condition_variable>
 #include <atomic>
+#include <thread>
 
 
 #if !defined (PATH_MAX) || !defined (NAME_MAX)
@@ -39,24 +40,26 @@
 //#endif
 
 /* Callback function for an XmaThread */
-typedef void* (*XmaThreadFunc)(void *data);
+//typedef void* (*XmaThreadFunc)(void *data);
 
 /* Data structure for an XmaThread */
 typedef struct XmaThread
 {
-    pthread_t           tid;
-    XmaThreadFunc       thread_func;
-    void               *data;
+    //pthread_t           tid;
+    std::thread         thread_obj;
+    //XmaThreadFunc       thread_func;
+    //void               *data;
     bool                is_running;
 } XmaThread;
 
 /* XmaThread APIs */
-XmaThread *xma_thread_create(XmaThreadFunc func, void *data);
+/*
+//XmaThread *xma_thread_create(XmaThreadFunc func, void *data);
 void xma_thread_destroy(XmaThread *thread);
-void xma_thread_start(XmaThread *thread);
+//void xma_thread_start(XmaThread *thread);
 bool xma_thread_is_running(XmaThread *thread);
 void xma_thread_join(XmaThread *thread);
-
+*/
 /* Data structure for XmaMsgQ *--/
 Sarab: Remove this and use C++ std::queue
 typedef struct XmaMsgQ
@@ -109,9 +112,12 @@ typedef struct XmaActor
 } XmaActor;
 
 /* XmaActor APIs */
+/*
 XmaActor *xma_actor_create(XmaThreadFunc      func,
                            size_t             msg_size,
                            size_t             max_msg_entries);
+*/
+XmaActor *xma_actor_create();
 void xma_actor_start(XmaActor *actor);
 void xma_actor_destroy(XmaActor *actor);
 int xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size);

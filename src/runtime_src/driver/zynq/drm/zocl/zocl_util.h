@@ -24,7 +24,12 @@
 #define zocl_dbg(dev, fmt, args...)     \
 	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
+#define _4KB	0x1000
+#define _8KB	0x2000
+#define _64KB	0x10000
+
 #define MAX_CU_NUM 128
+#define CU_SIZE _64KB
 
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
@@ -43,16 +48,20 @@ struct drm_zocl_mm_stat {
 	unsigned int bo_count;
 };
 
+struct addr_aperture {
+	phys_addr_t	addr;
+	size_t		size;
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
 	struct zocl_ert_dev     *ert;
 	struct iommu_domain     *domain;
-	void __iomem            *regs;
-	phys_addr_t              res_start;
-	resource_size_t          res_len;
 	phys_addr_t              host_mem;
 	resource_size_t          host_mem_len;
+	/* Record start address, this is only for MPSoC as PCIe platform */
+	phys_addr_t		 res_start;
 	unsigned int		 cu_num;
 	unsigned int             irq[MAX_CU_NUM];
 	struct sched_exec_core  *exec;
@@ -61,6 +70,8 @@ struct drm_zocl_dev {
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;
 	struct connectivity	*connectivity;
+	struct addr_aperture	*apertures;
+	unsigned int		 num_apts;
 	struct drm_zocl_mm_stat	 mm_usage;
 	u64			 unique_id_last_bitstream;
 

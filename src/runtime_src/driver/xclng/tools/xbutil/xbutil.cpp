@@ -124,11 +124,13 @@ void print_pci_info(void)
         bool ready = dev->is_ready;
 
         if (mdev != nullptr) {
+            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
+            std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "user";
             print(udev);
         }

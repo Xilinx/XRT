@@ -69,6 +69,13 @@ namespace ZYNQ {
     uint8_t mAccelmonMinorVersions [XSAM_MAX_NUMBER_SLOTS]  = {};
     uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
 
+  private:
+    // Helper functions
+    size_t readSPMRegisters(xclCounterResults& counterResults);
+    size_t readSAMRegisters(xclCounterResults& counterResults);
+    size_t readSSPMRegisters(xclCounterResults& counterResults);
+    int cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
+
   public:
     ZYNQShimProfiling() = delete ; // Requires a shim object
     ZYNQShimProfiling(ZYNQShim* s) ;

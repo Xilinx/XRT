@@ -80,7 +80,8 @@ namespace xclhwemhal2 {
     for (unsigned int i=0; i<MAX_U32_CU_MASKS; ++i)
       cu_status[i] = 0;
       
-    ert = true;
+    ertfull = true;
+    ertpoll = false;
     
     num_slot_masks = 1;
 
@@ -93,6 +94,184 @@ namespace xclhwemhal2 {
   exec_core::~exec_core()
   {
   }
+ 
+  xocl_cu::xocl_cu()
+  {
+    idx = 0;
+    base = 0;
+    dataflow = false;
+    addr = 0;
+    polladdr = 0;
+    ctrlreg = 0;
+    done_cnt = 0;
+    run_cnt = 0;
+  }
+
+  xocl_cu::~xocl_cu()
+  {
+    idx = 0;
+    base = 0;
+    dataflow = false;
+    addr = 0;
+    polladdr = 0;
+    ctrlreg = 0;
+    done_cnt = 0;
+    run_cnt = 0;
+  }
+
+  void MBScheduler::cu_continue(struct xocl_cu *xcu)
+  {
+    if (!xcu->dataflow)
+      return;
+
+    // acknowledge done directly to CU (xcu->addr)
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&HwEmShim::CONTROL_AP_CONTINUE,4);
+
+    // in ert_poll mode acknowlegde done to ERT
+    if (xcu->polladdr && xcu->run_cnt) {
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&HwEmShim::CONTROL_AP_CONTINUE,4);
+    }
+  }
+
+  void MBScheduler::cu_poll(struct xocl_cu *xcu)
+  {
+    mParent->xclRead(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->addr,(void*)&(xcu->ctrlreg),4);
+    if (xcu->run_cnt && (xcu->ctrlreg & (HwEmShim::CONTROL_AP_DONE | HwEmShim::CONTROL_AP_IDLE))) 
+    {
+      ++xcu->done_cnt;
+      --xcu->run_cnt;
+      cu_continue(xcu);
+    }
+  }
+
+  bool MBScheduler::cu_ready(struct xocl_cu *xcu)
+  {
+    if ((xcu->ctrlreg & HwEmShim::CONTROL_AP_START) || (!xcu->dataflow && xcu->run_cnt))
+      cu_poll(xcu);
+
+    bool bReady = xcu->dataflow ? !(xcu->ctrlreg & HwEmShim::CONTROL_AP_START) : xcu->run_cnt == 0;
+    return bReady;
+  }
+  
+  static inline uint32_t* cmd_regmap(struct xocl_cmd *xcmd)
+  {
+    struct ert_start_kernel_cmd *ecmd = (struct ert_start_kernel_cmd *)xcmd->packet;
+    return ecmd->data + ecmd->extra_cu_masks;
+  }
+  
+  void MBScheduler::cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  {
+    unsigned int size = regmap_size(xcmd);
+    uint32_t *regmap = cmd_regmap(xcmd);
+    unsigned int idx;
+
+    for (idx = 4; idx < size; ++idx)
+    {
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr + (idx << 2), (void*)(regmap+idx) ,4); 
+    }
+  }
+  
+  void MBScheduler::cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  {
+    unsigned int size = regmap_size(xcmd);
+    uint32_t *regmap = cmd_regmap(xcmd);
+    unsigned int idx;
+
+    for (idx = 4; idx < size - 1; idx += 2) 
+    {
+      uint32_t offset = *(regmap + idx);
+      uint32_t val = *(regmap + idx + 1);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + offset , (void*)(&val) ,4); 
+    }
+  }
+
+  bool MBScheduler::cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  {
+    /* write register map, starting at base + 0x10
+     * 0x0 used for control register
+     * 0x4, 0x8 used for interrupt, which is initialized in setup of ERT
+     * 0xC used for interrupt status, which is set by hardware
+     */
+    if (opcode(xcmd) == ERT_EXEC_WRITE)
+      cu_configure_ooo(xcu, xcmd);
+    else
+      cu_configure_ino(xcu, xcmd);
+
+    // start cu.  update local state as we may not be polling prior
+    // to next ready check.
+    xcu->ctrlreg |= HwEmShim::CONTROL_AP_START;
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr,(void*)& HwEmShim::CONTROL_AP_START, 4);
+
+    // in ert poll mode request ERT to poll CU
+    if (xcu->polladdr) {
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& HwEmShim::CONTROL_AP_START, 4);
+    }
+
+    ++xcu->run_cnt;
+
+    return true;
+  }
+
+
+  xocl_cmd* MBScheduler::cu_first_done(struct xocl_cu *xcu)
+  {
+    if (!xcu->done_cnt && xcu->run_cnt)
+      cu_poll(xcu);
+
+    return xcu->done_cnt ? (xcu->running_queue).front() : NULL;
+  }
+
+  void MBScheduler::cu_pop_done(struct xocl_cu *xcu)
+  {
+    if (!xcu->done_cnt)
+      return;
+
+    //	struct xocl_cmd *xcmd;
+    //xcmd = (xcu->running_queue).front();
+    (xcu->running_queue).pop();
+    --xcu->done_cnt;
+  }
+  
+  unsigned int getFirstSetBitPos(int n) 
+  { 
+    if(!n)
+      return -1;
+    return log2(n & -n) ; 
+  } 
+
+  bool MBScheduler::cmd_has_cu(struct xocl_cmd* xcmd, uint32_t f_cu_idx)
+  {
+    uint32_t mask_idx = 0;
+    uint32_t num_masks = cu_masks(xcmd);
+    uint32_t busy_mask = 0;
+    for (mask_idx=0; mask_idx<num_masks; ++mask_idx) 
+    {
+      uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
+      int cu_idx = getFirstSetBitPos((cmd_mask | busy_mask) ^ busy_mask);
+      if (cu_idx >= 0) 
+      {
+        busy_mask ^= 1<<cu_idx;
+        if(cu_idx_from_mask(cu_idx,mask_idx) == f_cu_idx)
+        {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  
+  void cu_reset(xocl_cu* xcu, unsigned int idx, uint32_t base, uint32_t addr, uint32_t polladdr)
+  {
+    xcu->idx = idx;
+    xcu->base = base;
+    xcu->dataflow = (addr & 0xFF) == AP_CTRL_CHAIN;
+    xcu->addr = addr & ~(0xFF); // clear encoded handshake
+    xcu->polladdr = polladdr;
+    xcu->ctrlreg = 0;
+    xcu->done_cnt = 0;
+    xcu->run_cnt = 0;
+  }
+
 
   MBScheduler::MBScheduler(HwEmShim* _parent)
   {
@@ -140,13 +319,6 @@ namespace xclhwemhal2 {
     return acquire_slot_idx(xcmd->exec);
   }
   
-  unsigned int getFirstSetBitPos(int n) 
-  { 
-    if(!n)
-      return -1;
-    return log2(n & -n) ; 
-  } 
-
   int MBScheduler::get_free_cu(struct xocl_cmd *xcmd)
   {
     uint32_t mask_idx=0;
@@ -196,13 +368,13 @@ namespace xclhwemhal2 {
     mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr, (void*)&ap_start , 4 );
   } 
 
-  static unsigned int get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
-  {
-    struct xocl_cmd *xcmd = exec->submitted_cmds[cmd_idx];
-    if(!xcmd)
-      return -1;
-    return xcmd->cu_idx;
-  }
+//  static unsigned int get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
+//  {
+//    struct xocl_cmd *xcmd = exec->submitted_cmds[cmd_idx];
+//    if(!xcmd)
+//      return -1;
+//    return xcmd->cu_idx;
+//  }
   
   int MBScheduler::penguin_submit(xocl_cmd* xcmd)
   {
@@ -212,46 +384,64 @@ namespace xclhwemhal2 {
       return true;
     }
 
-    if (opcode(xcmd)!=ERT_START_CU)
+    if (type(xcmd) != ERT_CU)
       return false;
 
-    /* extract cu list */
-    int iFreeCu = get_free_cu(xcmd);
+    // Find a ready CU
+    struct exec_core *exec = xcmd->exec;
+    for (unsigned int cuidx = 0; cuidx < exec->num_cus; ++cuidx) 
+    {
+      xocl_cu *xcu = exec->cus[cuidx];
 
-    if (iFreeCu < 0 || iFreeCu >= 128)
-      return false;
-
-    xcmd->cu_idx = iFreeCu;
-
-    /* track cu executions */
-    ++xcmd->exec->cu_usage[xcmd->cu_idx];
-
-    xcmd->slot_idx = acquire_slot(xcmd);
-    if (xcmd->slot_idx<0)
-      return false;
-
-    /* found free cu, transfer regmap and start it */
-    configure_cu(xcmd,xcmd->cu_idx);
-
+      if (cmd_has_cu(xcmd, cuidx) && cu_ready(xcu) && cu_start(xcu, xcmd)) 
+      {
+        xcmd->slot_idx = acquire_slot(xcmd);
+        if (xcmd->slot_idx<0)
+          return false;
+        exec->submitted_cmds[xcmd->slot_idx] = NULL;
+        //exec_release_slot(exec, xcmd);
+        xcmd->cu_idx = cuidx;
+        ++xcmd->exec->cu_usage[xcmd->cu_idx];
+        (xcu->running_queue).push(xcmd);
+        return true;
+      }
+    }
     return true;
   }
-  
+
   void MBScheduler::penguin_query(xocl_cmd* xcmd)
   {
     uint32_t cmd_opcode = opcode(xcmd);
     uint32_t cmd_type = type(xcmd);
 
     if (cmd_type==ERT_KDS_LOCAL || cmd_type==ERT_CTRL
-        ||cmd_opcode==ERT_CONFIGURE
-        ||(cmd_opcode==ERT_START_CU && cu_done(xcmd->exec,get_cu_idx(xcmd->exec,xcmd->slot_idx))))
+        ||cmd_opcode==ERT_CONFIGURE)
     {
       mark_cmd_complete(xcmd);
+    }
+    else if (cmd_type==ERT_CU )
+    {
+      if(xcmd->cu_idx >= 32)
+      {
+        return;
+      }
+      struct xocl_cu *xcu = xcmd->exec->cus[xcmd->cu_idx];
+      if (xcu && cu_first_done(xcu) == xcmd) 
+      {
+        cu_pop_done(xcu);
+        mark_cmd_complete(xcmd);
+      }
     }
   }
 //KDS FLOW ENDED...
 
   void MBScheduler::mb_query(xocl_cmd *xcmd)
   {
+    if (type(xcmd) == ERT_KDS_LOCAL)
+    {
+      penguin_query(xcmd);
+      return;
+    }
     exec_core *exec = xcmd->exec;
     unsigned int cmd_mask_idx = slot_mask_idx(xcmd->slot_idx);
 
@@ -302,6 +492,9 @@ namespace xclhwemhal2 {
 
   int MBScheduler::mb_submit(xocl_cmd *xcmd)
   {
+    if (type(xcmd) == ERT_KDS_LOCAL)
+      return penguin_submit(xcmd);
+
     uint32_t slot_addr;
 
     xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
@@ -337,12 +530,69 @@ namespace xclhwemhal2 {
     return true;
   }
 
+  int MBScheduler::ert_poll_submit_ctrl(xocl_cmd *xcmd)
+  {
+    if (opcode(xcmd) == ERT_CU_STAT)
+      return penguin_submit(xcmd);
+
+    return mb_submit(xcmd);
+  }
+  
+  void MBScheduler::ert_poll_query_ctrl(struct xocl_cmd *xcmd)
+  {
+    if (opcode(xcmd) == ERT_CU_STAT)
+      penguin_query( xcmd);
+    else
+      mb_query(xcmd);
+  }
+
+
+  int MBScheduler::ert_poll_submit(xocl_cmd *xcmd)
+  {
+    return penguin_submit(xcmd);
+  }
+  
+  void MBScheduler::ert_poll_query(xocl_cmd *xcmd)
+  {
+    exec_core *exec = xcmd->exec;
+    unsigned int cmd_mask_idx = slot_mask_idx((xcmd->cu_idx+1));
+
+    if (exec->polling_mode
+        || (cmd_mask_idx==0 && exec->sr0)
+        || (cmd_mask_idx==1 && exec->sr1)
+        || (cmd_mask_idx==2 && exec->sr2)
+        || (cmd_mask_idx==3 && exec->sr3)) {
+      uint32_t csr_addr = ERT_STATUS_REGISTER_ADDR + (cmd_mask_idx<<2);
+      //TODO
+      uint32_t mask = 0;
+      bool waitForResp = false;
+      if (opcode(xcmd)==ERT_CONFIGURE)
+        waitForResp = true;
+      do{
+        mParent->xclRead(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + csr_addr, (void*)&mask, 4);
+      }while(waitForResp && !mask);
+
+      if (mask)
+      {
+#ifdef EM_DEBUG_KDS
+        std::cout<<"Mask is non-zero. Mark respective command complete "<< mask << std::endl;
+#endif
+        mark_mask_complete(xcmd->exec,mask,cmd_mask_idx);
+      }
+    }
+  }
+
+
   int MBScheduler::configure(xocl_cmd *xcmd)
   {
     exec_core *exec=xcmd->exec;
     struct ert_configure_cmd *cfg;
 
     cfg = (struct ert_configure_cmd *)(xcmd->packet);
+
+    bool ert = mParent->isMBSchedulerEnabled();
+    bool ert_poll = (ert && cfg->ert && cfg->dataflow);
+    bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 
     if (exec->configured==0) 
     {
@@ -358,6 +608,10 @@ namespace xclhwemhal2 {
       for ( cuidx=0; cuidx<exec->num_cus; cuidx++) 
       {
         exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+        xocl_cu* nCu = new xocl_cu();
+        exec->cus[cuidx] =  nCu;
+        uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
+        cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
       }
 
       bool cdmaEnabled = false;
@@ -376,21 +630,36 @@ namespace xclhwemhal2 {
             ++cfg->count;
             cfg->data[cuidx] = addr;
             exec->cu_addr_map[cuidx] = cfg->data[cuidx];
+            xocl_cu* nCu = new xocl_cu();
+            exec->cus[cuidx] =  nCu;
+            uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
+            cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
             ++cuidx;
           }
         }
       }
 
-      if (cfg->ert && mParent->isMBSchedulerEnabled())
+      if (ert_poll) 
       {
-        exec->ert=true;
+        cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+        cfg->cu_isr = 0;
+        cfg->cu_dma = 0;
+        exec->ertpoll = true;
+        exec->polling_mode = 1; //cfg->polling;
+        exec->cq_interrupt = cfg->cq_int;
+        cfg->cdma = cdmaEnabled ? 1 : 0;
+      }
+      else if(ert_full)
+      {
+        exec->ertfull = true;
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
         cfg->cdma = cdmaEnabled ? 1 : 0;
       }
       else 
       {
-        exec->ert=false;
+        exec->ertpoll = false;
+        exec->ertfull = false;
         exec->polling_mode = 1; //cfg->polling;
       }
       return 0;
@@ -464,10 +733,11 @@ namespace xclhwemhal2 {
     }
 
     exec_core *exec = xcmd->exec;
-    bool ert = exec->ert;
     bool submitted  = false;
-    if(ert)
+    if(exec->ertfull) 
       submitted = mb_submit(xcmd);
+    else if ( exec->ertpoll )
+      submitted = ert_poll_submit(xcmd);
     else
       submitted = penguin_submit(xcmd);
 
@@ -485,9 +755,10 @@ namespace xclhwemhal2 {
   void MBScheduler::running_to_complete(xocl_cmd *xcmd)
   {
     exec_core *exec = xcmd->exec;
-    bool ert = exec->ert;
-    if(ert)
+    if(exec->ertfull)
       mb_query(xcmd);
+    else if (exec->ertpoll)
+      ert_poll_query(xcmd);
     else
       penguin_query(xcmd);
   }
@@ -558,6 +829,11 @@ namespace xclhwemhal2 {
     for(auto it: pending_cmds)
     {
       xocl_cmd *xcmd = it;
+
+      /* CU style commands must specify CU type */
+      if (opcode(xcmd) == ERT_START_CU || opcode(xcmd) == ERT_EXEC_WRITE)
+        xcmd->packet->type = ERT_CU;
+
       mScheduler->command_queue.push_back(xcmd);
       xcmd->state = ERT_CMD_STATE_QUEUED;
 #ifdef EM_DEBUG_KDS

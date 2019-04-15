@@ -115,6 +115,7 @@ const value_type AP_CONTINUE = 0x10;
 static xrt::task::queue notify_queue;
 static std::thread notifier;
 static bool threaded_notification = true;
+static bool cu_trace_enabled = false;
 
 ////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -147,7 +148,6 @@ private:
   cmd_ptr m_cmd;
   union {
     ert_packet* m_ecmd;
-    //ert_df_kernel_cmd* m_kcmd;
     ert_start_kernel_cmd* m_kcmd;
   };
   exec_core* m_exec;
@@ -201,6 +201,22 @@ public:
     xrt::task::createF(notify_queue,notify,m_cmd);
   }
 
+  // Notify of start of cu with idx
+  void
+  notify_start(value_type cuidx)
+  {
+    if (!cu_trace_enabled)
+      return;
+
+    // Update command packet cumasks to reflect running cu before
+    // invoking call back
+    auto mask = cuidx >> 5;
+    auto num_masks = cumasks();
+    for (size_type midx=0; midx<num_masks; ++midx)
+      m_ecmd->data[midx] = mask==midx ? 1 << (cuidx - (midx<<5)) : 0;
+    m_cmd->notify(ERT_CMD_STATE_RUNNING);
+  }
+
   // @return current state of the command object
   ert_cmd_state
   get_state() const
@@ -242,7 +258,6 @@ public:
   {
     return 1 + m_kcmd->extra_cu_masks;
   }
-
 
   // Payload size of this command object
   //
@@ -436,6 +451,9 @@ public:
     // write register map, starting at base + 0xC
     // 0x4, 0x8 used for interrupt, which is initialized in setu
     xdev->write_register(addr,regmap,size*4);
+
+    // invoke callback for starting cu
+    xcmd->notify_start(idx);
 
     // start cu
     ctrlreg |= AP_START;
@@ -873,6 +891,7 @@ init(xrt::device* xdev, const std::vector<uint32_t>& cu_addr_map)
   std::vector<uint64_t> amap;
   std::copy(cu_addr_map.begin(),cu_addr_map.end(),std::back_inserter(amap));
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  cu_trace_enabled = xrt::config::get_profile();
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
@@ -884,6 +903,7 @@ init(xrt::device* xdev, const axlf* top)
 {
   // create execution core for this device
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  cu_trace_enabled = xrt::config::get_profile();
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
