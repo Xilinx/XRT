@@ -606,8 +606,9 @@ struct xocl_mailbox_funcs {
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*post)(struct platform_device *pdev, u64 req_id,
-		void *resp, size_t len);
+	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
+	int (*post_response)(struct platform_device *pdev,
+		enum mailbox_request req, u64 reqid, void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);
@@ -621,12 +622,12 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
 	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
-#define	xocl_peer_response(xdev, reqid, buf, len)			\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
-	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req, reqlen)					\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, reqlen) : -ENODEV)
+#define	xocl_peer_response(xdev, req, reqid, buf, len)			\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post_response(	\
+	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)
+#define	xocl_peer_notify(xdev, req, reqlen)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post_notify(		\
+	MAILBOX_DEV(xdev), req, reqlen) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
