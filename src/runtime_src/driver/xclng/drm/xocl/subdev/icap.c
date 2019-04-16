@@ -1842,8 +1842,6 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, MEM_TOPOLOGY);
 	icap_clean_axlf_section(icap, DEBUG_IP_LAYOUT);
 	icap_clean_axlf_section(icap, CONNECTIVITY);
-
-
 }
 
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
