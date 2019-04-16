@@ -1524,7 +1524,7 @@ int mailbox_post_response(struct platform_device *pdev,
 	int rv = 0;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *msg = NULL;
-	bool sw_ch = req_is_sw(pdev, ((struct mailbox_req *)buf)->req);
+	bool sw_ch = req_is_sw(pdev, req);
 
 	MBX_INFO(mbx, "posting response for: %d via %s",
 		req, sw_ch ? "SW" : "HW");
