@@ -121,15 +121,19 @@ void print_pci_info(void)
         auto dev = pcidev::get_dev(j);
         auto& mdev = dev->mgmt;
         auto& udev = dev->user;
-        bool ready = dev->is_ready;
+        bool ready = false;
+        std::string errmsg;
 
         if (mdev != nullptr) {
+            mdev->sysfs_get("", "ready", errmsg, ready);
             std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
+            ready = false;
+            udev->sysfs_get("", "ready", errmsg, ready);
             std::cout << (ready ? "" : "*");
             std::cout << "[" << i << "]" << "user";
             print(udev);
