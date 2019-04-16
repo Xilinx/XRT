@@ -230,8 +230,8 @@ bool is_same_device(cl_mem buffer1, cl_mem buffer2)
     if (xmem1 && xmem2) {
       auto device1 = xmem1->get_resident_device();
       auto device2 = xmem2->get_resident_device();
-      std::cout << "xmem1 resident device = " << device1 << std::endl;
-      std::cout << "xmem2 resident device = " << device2 << std::endl;
+      //std::cout << "xmem1 resident device = " << device1 << std::endl;
+      //std::cout << "xmem2 resident device = " << device2 << std::endl;
 
       // TODO: what do we do if one of them is not resident yet?
       if ((device1 == 0) || (device2 == 0))
