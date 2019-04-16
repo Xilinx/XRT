@@ -31,6 +31,7 @@ set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
 target_link_libraries(xrt_hwemu
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
+  xrt_coreutil
   rt
   )
 
