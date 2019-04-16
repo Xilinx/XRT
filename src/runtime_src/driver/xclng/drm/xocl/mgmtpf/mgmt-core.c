@@ -681,35 +681,35 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
 		ret = xocl_icap_lock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
 		ret = xocl_icap_unlock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
 		struct mailbox_bitstream_kaddr *mb_kaddr =
 			(struct mailbox_bitstream_kaddr *)req->data;
 		ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_LOAD_XCLBIN:
 		ret = xocl_icap_download_axlf(lro, req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	case MAILBOX_REQ_RECLOCK:
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro,
 			(struct xclmgmt_ioc_freqscaling *)req->data);
-		(void) xocl_peer_response(lro, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	case MAILBOX_REQ_PEER_DATA: {
 		size_t sz = 0;
@@ -719,10 +719,10 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;
-			(void) xocl_peer_response(lro, msgid, &ret,
+			(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
 		} else {
-			(void) xocl_peer_response(lro, msgid, resp, sz);
+			(void) xocl_peer_response(lro, req->req, msgid, resp, sz);
 		}
 		vfree(resp);
 		break;
@@ -740,7 +740,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			resp.conn_flags |= MB_PEER_SAME_DOMAIN;
 		resp.chan_switch = ch_switch;
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp.comm_id);
-		(void) xocl_peer_response(lro, msgid, &resp,
+		(void) xocl_peer_response(lro, req->req, msgid, &resp,
 			sizeof(struct mailbox_conn_resp));
 		break;
 	}
