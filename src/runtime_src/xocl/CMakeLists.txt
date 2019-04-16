@@ -13,6 +13,8 @@ include_directories(
   ${XRT_XOCL_API_DIR}
 )
 
+add_compile_options("-Wno-nonnull")
+
 file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/*.h"
   "${XRT_XOCL_API_DIR}/*.cpp"
