@@ -1858,20 +1858,21 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
       std::size_t p = stringVec[3].find_first_of("0123456789");
       std::string subStr = stringVec[3].substr(p);
       uint number = std::stoul(subStr);
-      if(number > 1 && stringVec.size() >= 6 && pidBuffer && size) {
+      if(!pidBuffer || !size) {
+        return number;
+      }
+      size_t pos = 0;   // current position in pidBuffer
+      if(stringVec.size() >= 6) {
         // if multiple live processes are present and "pidBuffer" is allocated, populate their PIDs
         // std::cout  << " Multiple live processes " << std::endl;
-        char* bufPtr = pidBuffer;
-        pidBuffer[size-1] = '\0';
-        size_t pos = 0;
         for(uint i = 0; i < number ; i++) {
           const char* cStr = stringVec[5+i].c_str();
-          const char* tPtr = cStr;
+          const char* pPtr = cStr;
           size_t numDigits = 0;
           while(*cStr < '0' || *cStr > '9') {   // if *cStr is not a number, move pointer ahead
             cStr++;
           }
-          tPtr = cStr;
+          pPtr = cStr;    // start of PID
           while(*cStr >= '0' && *cStr <= '9') {
             cStr++;
             numDigits++;
@@ -1881,26 +1882,23 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
             if((pos + numDigits + 1 + 2) >= size) {
               break;
             }
-            bufPtr[pos] = ',';
-            bufPtr[pos+1] = ' ';
+            pidBuffer[pos] = ',';
+            pidBuffer[pos+1] = ' ';
             pos += 2;
           } else if((pos + numDigits + 1) >= size) {
             break;
           }
-
-          cStr = tPtr;    // point back to the start of digits
-          for(size_t j = 0; j < numDigits ; j++) { 
-            bufPtr[pos] = *cStr;
-            cStr++;
-            pos++;
-          }
+          
+          std::memcpy(pidBuffer + pos, pPtr, numDigits);
+          pos += numDigits;
         }   // for pids
       }
+      pidBuffer[pos] = '\0';
       return number;
     }
   }
   return 0;
-}    
+}
 
 
 /*******************************/
