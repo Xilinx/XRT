@@ -325,7 +325,6 @@ namespace xdp {
     RTUtil::commandStageToString(objStage, stageString);
 
     std::string cuName("");
-    std::string cuName2("");
 
     std::string globalSize = std::to_string(globalWorkSize[0]) + ":" +
         std::to_string(globalWorkSize[1]) + ":" + std::to_string(globalWorkSize[2]);
@@ -397,11 +396,22 @@ namespace xdp {
     // Compute Units
     //
     else {
+      /*
+       * log cu stats per device + xclbin + programID
+       * IN HW_EMU the monitors aren't reset even on xclbin change
+       * i.e counters for same xclbin accumulate for every program ID
+       * IN HW the monitors are initialied to 0 for every xclbin load
+       * so counter data is unique for every program ID + xclbin combination
+       */
+      std::string uniqueCuDataKey;
+      if (mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) {
+        uniqueCuDataKey = xclbinName + std::to_string(programId);
+      } else {
+        uniqueCuDataKey = xclbinName + std::to_string(0);
+      }
       // Naming used in profile summary
       cuName = newDeviceName + "|" + kernelName + "|" + globalSize + "|" + localSize
-               + "|" + cu_name + "|" + std::to_string(0x1);
-      // Naming used in timeline trace
-      cuName2 = kernelName + "|" + localSize + "|" + cu_name;
+               + "|" + cu_name + "|" + uniqueCuDataKey;
       if (objStage == RTUtil::START) {
         XDP_LOG("logKernelExecution: CU START @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
         if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU) {
@@ -417,7 +427,8 @@ namespace xdp {
         mProfileCounters->logComputeUnitExecutionEnd(cuName, deviceTimeStamp);
       }
 
-      //New timeline summary data.
+      // Naming used in timeline trace
+      std::string cuName2 = kernelName + "|" + localSize + "|" + cu_name;
       std::string uniqueCUName("KERNEL|");
       (uniqueCUName += newDeviceName) += "|";
       (uniqueCUName += xclbinName) += "|";

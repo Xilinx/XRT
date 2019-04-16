@@ -1225,6 +1225,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	int cuidx = 0;
+	struct ip_layout *layout;
 
 	/* Only allow configuration with one live ctx */
 	if (exec->configured) {
@@ -1248,6 +1249,20 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
+
+	layout = XOCL_IP_LAYOUT(xdev);
+	if (!layout) {
+		userpf_err(xdev, "Can not get IP meta data");
+		return 1;
+	}
+	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
+		userpf_info(xdev, "cu%d base: %llx",
+			cuidx, layout->m_ip_data[cuidx].m_base_address);	
+		if (layout->m_ip_data[cuidx].m_base_address == (u64)-1) {
+			userpf_err(xdev, "cu%d is not enabled", cuidx);
+			return 1;
+		}
+	}
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode

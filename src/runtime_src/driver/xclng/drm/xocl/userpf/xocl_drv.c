@@ -286,16 +286,17 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_MGMT_STATE:
 		st = (struct mailbox_peer_state *)req->data;
 		if (st->state_flags & MB_STATE_ONLINE) {
-			/* Mgmt is online */
+			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
+			(void) xocl_mb_connect(xdev);
 		} else if (st->state_flags & MB_STATE_OFFLINE) {
-			/* Mgmt is offline */
+			/* Mgmt is offline, mark peer as not ready */
 			userpf_info(xdev, "mgmt driver offline\n");
+			(void) xocl_mailbox_set(xdev, CHAN_STATE, 0);
 		} else {
 			userpf_err(xdev, "unknown peer state flag (0x%llx)\n",
 				st->state_flags);
 		}
-		(void) xocl_mb_connect(xdev);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
@@ -330,6 +331,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int err = 0, ret = 0;
 
+	userpf_err(xdev, "reading from peer\n");
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return ret;

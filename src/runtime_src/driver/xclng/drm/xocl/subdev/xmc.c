@@ -177,7 +177,8 @@ static int stop_xmc(struct platform_device *pdev);
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
 	memcpy(&xmc->cache, sensors, sizeof(struct xcl_sensor));
-	xmc->cache_expires = ktime_add(ktime_get_boottime(), ktime_set(xmc->cache_expire_secs, 0));
+	xmc->cache_expires = ktime_add(ktime_get_boottime(),
+		ktime_set(xmc->cache_expire_secs, 0));
 }
 
 static void xmc_read_from_peer(struct platform_device *pdev)
@@ -190,8 +191,8 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int err = 0;
 
+	xocl_err(&pdev->dev, "reading from peer");
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return;
@@ -202,11 +203,9 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	err = xocl_peer_request(xdev,
+	(void) xocl_peer_request(xdev,
 		mb_req, reqlen, &xcl_sensor, &resp_len, NULL, NULL);
-
-	if (!err)
-		set_sensors_data(xmc, &xcl_sensor);
+	set_sensors_data(xmc, &xcl_sensor);
 
 	vfree(mb_req);
 }

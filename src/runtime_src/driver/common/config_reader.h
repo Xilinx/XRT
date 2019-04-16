@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xrt_device_config_reader_h_
-#define xrt_device_config_reader_h_
+#ifndef xrtcore_config_reader_h_
+#define xrtcore_config_reader_h_
 
 #include <string>
 #include <iosfwd>
@@ -148,14 +148,14 @@ get_api_checks()
 inline std::string
 get_logging()
 {
-  static std::string value = detail::get_string_value("Runtime.runtime_log","null");
+  static std::string value = detail::get_string_value("Runtime.runtime_log","console");
   return value;
 }
 
 inline unsigned int
 get_verbosity()
 {
-  static unsigned int value = detail::get_uint_value("Runtime.verbosity",0);
+  static unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
   return value;
 }
 

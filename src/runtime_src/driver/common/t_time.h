@@ -14,11 +14,10 @@
  * under the License.
  */
 
-#ifndef xrt_util_time_h_
-#define xrt_util_time_h_
+#ifndef xrtcore_util_time_h_
+#define xrtcore_util_time_h_
 
-#include <iostream>
-#include <string.h>
+#include <string>
 
 namespace xrt_core {
 

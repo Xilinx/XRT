@@ -153,9 +153,9 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MBX_DBG(mbx, fmt, arg...)	\
 	xocl_dbg(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 
-#define	MAILBOX_TIMER	HZ	/* in jiffies */
-#define	MSG_RX_TTL	10UL	/* in MAILBOX_TIMER */
-#define	MSG_TX_TTL	1UL	/* in MAILBOX_TIMER */
+#define	MAILBOX_TIMER	(HZ / 5) /* in jiffies */
+#define	MSG_RX_TTL	50UL	/* in MAILBOX_TIMER */
+#define	MSG_TX_TTL	10UL	/* in MAILBOX_TIMER */
 #define	MSG_MAX_TTL	0xFFFFFFFF
 #define	TEST_MSG_LEN	128
 
@@ -321,17 +321,19 @@ struct mailbox {
 	size_t			mbx_tst_tx_msg_len;
 
 	/* Req list for all incoming request message */
-	struct completion mbx_comp;
-	struct mutex mbx_lock;
-	struct list_head mbx_req_list;
-	uint8_t mbx_req_cnt;
-	size_t mbx_req_sz;
+	struct completion	mbx_comp;
+	struct mutex		mbx_lock;
+	struct list_head	mbx_req_list;
+	uint8_t			mbx_req_cnt;
+	size_t			mbx_req_sz;
 
-	uint32_t mbx_prot_ver;
-	uint64_t mbx_ch_state;
-	uint64_t mbx_ch_switch;
-	char mbx_comm_id[256];
-	uint32_t mbx_proto_ver;
+	uint32_t		mbx_prot_ver;
+	uint64_t		mbx_ch_state;
+	uint64_t		mbx_ch_switch;
+	char			mbx_comm_id[256];
+	uint32_t		mbx_proto_ver;
+
+	bool			mbx_peer_dead;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -357,7 +359,7 @@ static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
 
 int mailbox_request(struct platform_device *, void *, size_t,
 	void *, size_t *, mailbox_msg_cb_t, void *);
-int mailbox_post(struct platform_device *, u64, void *, size_t);
+int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
@@ -540,14 +542,17 @@ void timeout_msg(struct mailbox_channel *ch)
 	/* Check active msg first. */
 	msg = ch->mbc_cur_msg;
 	if (msg) {
-
 		if (msg->mbm_ttl == 0) {
 			MBX_ERR(mbx, "found outstanding msg time'd out");
+			if (!mbx->mbx_peer_dead) {
+				MBX_ERR(mbx, "peer becomes dead");
+				mbx->mbx_peer_dead = true;
+			}
 			chan_msg_done(ch, -ETIME);
 			mutex_lock(&ch->sw_chan_mutex);
 			clean_sw_buf(ch);
 			mutex_unlock(&ch->sw_chan_mutex);
-
+			/* Peer is not active any more. */
 		} else {
 			msg->mbm_ttl--;
 			/* Need to come back again for this one. */
@@ -590,6 +595,14 @@ static void chann_worker(struct work_struct *work)
 	struct mailbox *mbx = ch->mbc_parent;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
+		/* Peer is active, if we are woken up not by a timer. */
+		if (!test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
+			if (mbx->mbx_peer_dead) {
+				MBX_ERR(mbx, "peer becomes active");
+				mbx->mbx_peer_dead = false;
+			}
+		}
+
 		MBX_DBG(mbx, "%s worker start", ch->mbc_name);
 		ch->mbc_tran(ch);
 		wait_for_completion_interruptible(&ch->mbc_worker);
@@ -1146,9 +1159,16 @@ static void check_tx_msg_done(struct mailbox_channel *ch)
 		mutex_lock(&ch->sw_chan_mutex);
 		clean_sw_buf(ch);
 		mutex_unlock(&ch->sw_chan_mutex);
+		chan_msg_done(ch, 0);
+	} else {
+		/* HACK FOR NOW */
+		struct mailbox *mbx = ch->mbc_parent;
+		u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+
+		if ((st != 0xffffffff) && ((st & STATUS_STA) != 0))
+			chan_msg_done(ch, 0);
 	}
 
-	chan_msg_done(ch, 0);
 }
 
 static void msg_timer_on(struct mailbox_msg *msg, bool is_tx)
@@ -1324,7 +1344,7 @@ static ssize_t mailbox_store(struct device *dev,
 	(void) memcpy(mbx->mbx_tst_tx_msg, buf, count);
 	mbx->mbx_tst_tx_msg_len = count;
 	req.req = MAILBOX_REQ_TEST_READY;
-	(void) mailbox_post(mbx->mbx_pdev, 0, &req, sizeof(req));
+	(void) mailbox_post_notify(mbx->mbx_pdev, &req, sizeof(req));
 
 	return count;
 }
@@ -1366,6 +1386,14 @@ static void dft_post_msg_cb(void *arg, void *buf, size_t len, u64 id, int err,
 	MBX_ERR(msg->mbm_ch->mbc_parent, "failed to post msg, err=%d", err);
 }
 
+static bool req_is_sw(struct platform_device *pdev, enum mailbox_request req)
+{
+	uint64_t ch_switch = 0;
+
+	(void) mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
+	return (ch_switch & (1 << req));
+}
+
 /*
  * Msg will be sent to peer and reply will be received.
  */
@@ -1375,14 +1403,14 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	int rv = -ENOMEM;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *reqmsg = NULL, *respmsg = NULL;
-	uint64_t ch_switch = 0;
-	bool sw_ch = false;
+	bool sw_ch = req_is_sw(pdev, ((struct mailbox_req *)req)->req);
 
-	mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
-	sw_ch = ch_switch & (1<<(((struct mailbox_req *)req)->req));
-
-	MBX_INFO(mbx, "sending request: %d go %s",
+	MBX_INFO(mbx, "sending request: %d via %s",
 		((struct mailbox_req *)req)->req, (sw_ch ? "SW" : "HW"));
+
+	/* If peer is not alive, no point sending req and waiting for resp. */
+	if (mbx->mbx_peer_dead)
+		return -ENOTCONN;
 
 	if (cb) {
 		reqmsg = alloc_msg(NULL, reqlen);
@@ -1430,7 +1458,6 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		goto fail;
 	}
 	free_msg(reqmsg);
-
 	msg_timer_on(respmsg, false);
 
 	if (cb)
@@ -1454,28 +1481,21 @@ fail:
 }
 
 /*
- * Msg will be posted, no wait for reply.
+ * Request will be posted, no wait for reply.
  */
-int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len)
+int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 {
 	int rv = 0;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_msg *msg = NULL;
-	uint64_t ch_switch = 0;
-	bool sw_ch = false;
+	bool sw_ch = req_is_sw(pdev, ((struct mailbox_req *)buf)->req);
 
-	mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
-	sw_ch = ch_switch & (1<<(((struct mailbox_req *)buf)->req));
+	/* No checking for peer's liveness for posted msgs. */
+
+	MBX_INFO(mbx, "posting request: %d via %s",
+		((struct mailbox_req *)buf)->req, sw_ch ? "SW" : "HW");
 
 	msg = alloc_msg(NULL, len);
-
-	if (reqid == 0) {
-		MBX_INFO(mbx, "posting request: %d",
-			((struct mailbox_req *)buf)->req);
-	} else {
-		MBX_INFO(mbx, "posting response...");
-	}
-
 	if (!msg)
 		return -ENOMEM;
 
@@ -1483,20 +1503,51 @@ int mailbox_post(struct platform_device *pdev, u64 reqid, void *buf, size_t len)
 	msg->mbm_cb = dft_post_msg_cb;
 	msg->mbm_cb_arg = msg;
 	msg->mbm_chan_sw = sw_ch;
-	if (reqid) {
-		msg->mbm_req_id = reqid;
-		msg->mbm_flags |= MB_REQ_FLAG_RESPONSE;
-	} else {
-		msg->mbm_req_id = (uintptr_t)msg->mbm_data;
-		msg->mbm_flags |= MB_REQ_FLAG_REQUEST;
-	}
+	msg->mbm_req_id = (uintptr_t)msg->mbm_data;
+	msg->mbm_flags |= MB_REQ_FLAG_REQUEST;
 
 	rv = chan_msg_enqueue(&mbx->mbx_tx, msg);
 	if (rv)
 		free_msg(msg);
+	else /* Kick TX channel to try to send out msg. */
+		complete(&mbx->mbx_tx.mbc_worker);
 
-	/* Kick TX channel to try to send out msg. */
-	complete(&mbx->mbx_tx.mbc_worker);
+	return rv;
+}
+
+/*
+ * Response will be always posted, no waiting.
+ */
+int mailbox_post_response(struct platform_device *pdev,
+	enum mailbox_request req, u64 reqid, void *buf, size_t len)
+{
+	int rv = 0;
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+	struct mailbox_msg *msg = NULL;
+	bool sw_ch = req_is_sw(pdev, req);
+
+	MBX_INFO(mbx, "posting response for: %d via %s",
+		req, sw_ch ? "SW" : "HW");
+
+	/* No checking for peer's liveness for posted msgs. */
+
+	msg = alloc_msg(NULL, len);
+	if (!msg)
+		return -ENOMEM;
+
+	(void) memcpy(msg->mbm_data, buf, len);
+	msg->mbm_cb = dft_post_msg_cb;
+	msg->mbm_cb_arg = msg;
+	msg->mbm_chan_sw = sw_ch;
+	msg->mbm_req_id = reqid;
+	msg->mbm_flags |= MB_REQ_FLAG_RESPONSE;
+
+	rv = chan_msg_enqueue(&mbx->mbx_tx, msg);
+	if (rv)
+		free_msg(msg);
+	else /* Kick TX channel to try to send out msg. */
+		complete(&mbx->mbx_tx.mbc_worker);
+
 	return rv;
 }
 
@@ -1511,8 +1562,9 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 		MBX_INFO(mbx, "%s: %d", recvstr, req->req);
 		if (mbx->mbx_tst_tx_msg_len) {
 			MBX_INFO(mbx, "%s", sendstr);
-			rc = mailbox_post(mbx->mbx_pdev, msg->mbm_req_id,
-				mbx->mbx_tst_tx_msg, mbx->mbx_tst_tx_msg_len);
+			rc = mailbox_post_response(mbx->mbx_pdev, req->req,
+				msg->mbm_req_id, mbx->mbx_tst_tx_msg,
+				mbx->mbx_tst_tx_msg_len);
 			if (rc)
 				MBX_ERR(mbx, "%s failed: %d", sendstr, rc);
 			else
@@ -1777,12 +1829,13 @@ static int mailbox_sw_transfer(struct platform_device *pdev, void *args)
 		 */
 
 		mutex_lock(&ch->sw_chan_mutex);
-		atomic_dec_if_positive(&ch->trigger);
+
 		if (ch->sw_chan_buf_sz > sw_chan_args->sz) {
 			sw_chan_args->sz = ch->sw_chan_buf_sz;
 			mutex_unlock(&ch->sw_chan_mutex);
 			return -EMSGSIZE;
 		}
+		atomic_dec_if_positive(&ch->trigger);
 
 		ret = copy_to_user(sw_chan_args->data,
 					ch->sw_chan_buf,
@@ -1844,7 +1897,8 @@ end:
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_mailbox_funcs mailbox_ops = {
 	.request	= mailbox_request,
-	.post		= mailbox_post,
+	.post_notify	= mailbox_post_notify,
+	.post_response	= mailbox_post_response,
 	.listen		= mailbox_listen,
 	.set		= mailbox_set,
 	.get		= mailbox_get,
@@ -1988,6 +2042,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&mbx->mbx_req_list);
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
+	mbx->mbx_peer_dead = false;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
