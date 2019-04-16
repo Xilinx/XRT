@@ -1799,7 +1799,11 @@ int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
     return ret ? -errno : ret;
 }
 
-uint xocl::XOCLShim::xclGetNumLiveProcesses()
+/*
+ * API to get number of live processes.
+ * Returns number of live processes and puts their PIDs in "pidBuffer", if "pidBuffer" is allocated with "size" number of bytes
+ */
+uint xocl::XOCLShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
 {
   std::string errmsg;
   auto dev = pcidev::get_dev(mBoardNumber);
@@ -1811,14 +1815,53 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses()
     // Dependent on message format built in kdsstat_show. Checking number of "context" in kdsstat.
     // kdsstat has "context: <number_of_live_processes>"
     if(stringVec.size() >= 4) {
-        std::size_t p = stringVec[3].find_first_of("0123456789");
-        std::string subStr = stringVec[3].substr(p);
-        uint number = std::stoul(subStr);
-        return number;
+      std::size_t p = stringVec[3].find_first_of("0123456789");
+      std::string subStr = stringVec[3].substr(p);
+      uint number = std::stoul(subStr);
+      if(number > 1 && stringVec.size() >= 6 && pidBuffer && size) {
+        // if multiple live processes are present and "pidBuffer" is allocated, populate their PIDs
+        // std::cout  << " Multiple live processes " << std::endl;
+        char* bufPtr = pidBuffer;
+        pidBuffer[size-1] = '\0';
+        size_t pos = 0;
+        for(uint i = 0; i < number ; i++) {
+          const char* cStr = stringVec[5+i].c_str();
+          const char* tPtr = cStr;
+          size_t numDigits = 0;
+          while(*cStr < 48 || *cStr > 57) {   // if *cStr is not a number, move pointer ahead
+            cStr++;
+          }
+          tPtr = cStr;
+          while(*cStr >= 48 && *cStr <= 57) {
+            cStr++;
+            numDigits++;
+          }
+
+          if(i) {
+            if((pos + numDigits + 1 + 2) >= size) {
+              break;
+            }
+            bufPtr[pos] = ',';
+            bufPtr[pos+1] = ' ';
+            pos += 2;
+          } else if((pos + numDigits + 1) >= size) {
+            break;
+          }
+
+          cStr = tPtr;    // point back to the start of digits
+          for(size_t j = 0; j < numDigits ; j++) { 
+            bufPtr[pos] = *cStr;
+            cStr++;
+            pos++;
+          }
+        }   // for pids
+      }
+      return number;
     }
   }
   return 0;
-}
+}    
+
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -2320,8 +2363,8 @@ int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
     return drv ? drv->xclMSD(args) : -ENODEV;
 }
 
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+uint xclGetNumLiveProcesses(xclDeviceHandle handle, char* pidBuffer, size_t size)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclGetNumLiveProcesses() : 0;
+    return drv ? drv->xclGetNumLiveProcesses(pidBuffer, size) : 0;
 }

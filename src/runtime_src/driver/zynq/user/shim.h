@@ -60,9 +60,7 @@ public:
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
-  uint xclGetNumLiveProcesses();
-
-  uint xclGetNumLiveProcesses();
+  uint xclGetNumLiveProcesses(char* pidBuffer, size_t size);
 
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfPath, size_t size);
 

@@ -522,11 +522,12 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 }
 
 /*
- * API to get number of live processes. 
+ * API to get number of live processes.
+ * Returns number of live processes and puts their PIDs in "pidBuffer", if "pidBuffer" is allocated with "size" number of byte 
  * Applicable only for System Flow as it supports Multiple processes on same device.
  * For Hardware Emulation, return 0
  */
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+uint xclGetNumLiveProcesses(xclDeviceHandle handle, char* pidBuffer, size_t size)
 {
     return 0;
 }

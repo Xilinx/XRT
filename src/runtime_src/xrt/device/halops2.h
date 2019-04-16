@@ -128,7 +128,7 @@ private:
 //End Streaming
 
   //APIs using sysfs
-  typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
+  typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle, char* pidBuffer, size_t size);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
 //

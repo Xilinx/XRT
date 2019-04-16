@@ -454,7 +454,7 @@ int ZYNQShim::xclExecWait(int timeoutMilliSec)
   return poll(&uifdVector[0], uifdVector.size(), timeoutMilliSec);
 }
 
-uint ZYNQShim::xclGetNumLiveProcesses()
+uint ZYNQShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
 {
   return 0;
 }
@@ -742,12 +742,12 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   return drv->xclExecWait(timeoutMilliSec);
 }
 
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+uint xclGetNumLiveProcesses(xclDeviceHandle handle, char* pidBuffer, size_t size)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return 0;
-  return drv->xclGetNumLiveProcesses();
+  return drv->xclGetNumLiveProcesses(pidBuffer, size);
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 

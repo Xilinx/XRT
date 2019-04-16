@@ -244,7 +244,7 @@ public:
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
     // APIs using sysfs information
-    uint xclGetNumLiveProcesses();
+    uint xclGetNumLiveProcesses(char* pidBuffer, size_t size);
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
     // Experimental debug profile device data API
