@@ -44,7 +44,7 @@ xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
     printf("xma_plg_buffer_alloc handle = %d\n", handle);
 #endif
   
-    if (handle <= 0) {
+    if (handle < 0) {
         printf("xclAllocBO failed. handle=%d\n", handle);
     }
     return handle;
