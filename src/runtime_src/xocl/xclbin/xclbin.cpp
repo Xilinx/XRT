@@ -1014,6 +1014,9 @@ public:
 
       // found the connection that match kernel_name,arg
       size_t memidx = m_con->m_connection[i].mem_data_index;
+      // skip kernel to kernel stream
+      if (m_mem->m_mem_data[memidx].m_type == MEM_STREAMING_CONNECTION)
+	      continue;
       assert(m_mem->m_mem_data[memidx].m_used);
       m_used_connections.push_back(i);
       conn = i;

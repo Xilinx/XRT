@@ -44,6 +44,7 @@ enum {
         XOCL_DSAFLAG_SET_XPR =                  0x10,
         XOCL_DSAFLAG_MFG =                      0x20,
 	XOCL_DSAFLAG_FIXED_INTR =		0x40,
+        XOCL_DSAFLAG_NO_KDMA =              	0x80,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -833,6 +834,13 @@ enum subdev_id {
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
 	}
 
+#define	XOCL_BOARD_USER_DSA_U250_NO_KDMA				\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_NO_KDMA,			\
+		.subdev_info	= USER_RES_DSA52,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+	}
+
 /* mgmt pf defines */
 #define	MGMT_RES_DEFAULT						\
 		((struct xocl_subdev_info []) {				\
@@ -964,7 +972,7 @@ enum subdev_id {
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_XVC_PRI,                           \
-		XOCL_DEVINFO_NIFD_PRI,							\
+		XOCL_DEVINFO_NIFD_PRI,				\
 		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,			\
 		XOCL_DEVINFO_ICAP_MGMT,                         \
 		XOCL_DEVINFO_FMGR,      			\
@@ -1039,6 +1047,26 @@ enum subdev_id {
 		.subdev_info	= MGMT_RES_XBB_DSA52_U280,		\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52_U280),	\
 		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
+#define MGMT_RES_XBB_QDMA_U280                                               \
+	((struct xocl_subdev_info []) {                         \
+		XOCL_DEVINFO_FEATURE_ROM,                       \
+		XOCL_DEVINFO_SYSMON,                            \
+		XOCL_DEVINFO_AF_DSA52,                          \
+		XOCL_DEVINFO_XMC,                               \
+		XOCL_DEVINFO_XVC_PRI,                           \
+		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,			\
+		XOCL_DEVINFO_ICAP_MGMT_U280,                    \
+		XOCL_DEVINFO_FMGR,      			\
+	})
+
+#define XOCL_BOARD_MGMT_XBB_QDMA_U280                                   \
+	(struct xocl_board_private){                                    \
+		.flags          = XOCL_DSAFLAG_FIXED_INTR,		\
+		.subdev_info    = MGMT_RES_XBB_QDMA_U280,               \
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_QDMA_U280),       \
+		.flash_type = FLASH_TYPE_SPI				\
 	}
 
 #define	MGMT_RES_6E8F_DSA52						\
@@ -1116,8 +1144,8 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, 0x4360, MGMT_QDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5010, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5014, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5018, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x501C, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5018, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x501C, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\
@@ -1131,6 +1159,7 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5000, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5004, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
@@ -1166,6 +1195,7 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },	\
@@ -1180,6 +1210,8 @@ enum subdev_id {
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
-		&XOCL_BOARD_MGMT_XBB_DSA51 }
+		&XOCL_BOARD_MGMT_XBB_DSA51 },				\
+	{ 0x10EE, 0x5005, PCI_ANY_ID, "xilinx_u250_xdma_201830_1",	\
+		&XOCL_BOARD_USER_DSA_U250_NO_KDMA }
 
 #endif

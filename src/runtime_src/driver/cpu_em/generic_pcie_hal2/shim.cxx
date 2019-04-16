@@ -175,7 +175,7 @@ namespace xclcpuemhal2 {
 	  // One of the spawned processes died for some reason,
 	  //  kill all of the others and exit the host code
 	  saveDeviceProcessOutputs() ;
-	  std::cerr << "CPU emulation compute unit exited unexpectedly" 
+	  std::cerr << "Software emulation of compute unit(s) exited unexpectedly" 
 		    << std::endl ;
 	  kill(0, SIGTERM) ; 
 	  exit(1) ;

@@ -121,4 +121,6 @@ void zocl_free_sections(struct drm_zocl_dev *zdev);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count);
 
+int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr);
+
 #endif

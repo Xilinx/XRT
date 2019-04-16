@@ -87,7 +87,8 @@ namespace xdp {
     void logComputeUnitStats(const std::string& cuName, const std::string& kernelName,
                              double totalTimeStat, double avgTimeStat, double maxTimeStat,
                              double minTimeStat, uint32_t totalCalls, uint32_t clockFreqMhz,
-                              uint32_t flags, uint64_t maxParallelIter);
+                              uint32_t flags, uint64_t maxParallelIter, std::string& deviceName,
+                              std::string & xclbinName);
     void logDeviceEvent(std::string deviceName, std::string kernelName, size_t size,
                         double duration, uint32_t bitWidth, double clockFreqMhz,
                         bool isKernel, bool isRead, bool isKernelTransfer);

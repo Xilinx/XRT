@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xrt_message_h_
-#define xrt_message_h_
+#ifndef xrtcore_message_h_
+#define xrtcore_message_h_
 #include <string>
 
 namespace xrt_core { namespace message {
@@ -34,10 +34,10 @@ enum class severity_level : unsigned short
 };
 
 
-void 
+void
 send(severity_level l, const char* tag, const char* msg);
 
-inline void 
+inline void
 send(severity_level l, const std::string& tag, const std::string& msg)
 {
   send(l, tag.c_str(), msg.c_str());
@@ -46,6 +46,3 @@ send(severity_level l, const std::string& tag, const std::string& msg)
 }} // message,xrt
 
 #endif
-
-
-
