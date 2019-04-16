@@ -79,7 +79,7 @@ namespace xocl {
     if(liveProcessesOnDevice > 1) {
       /* More than 1 process on device. Device Profiling for multi-process not supported yet.
        */
-      std::string warnMsg = "Multiple live processes, with PIDs " + std::string(pidBuffer) + ", are running on device. Hardware Debug and Profiling data will be unavailable for this process.";
+      std::string warnMsg = "Multiple live processes, with PIDs " + std::string(pidBuffer) + ", are running on device. Debug and Profiling data from hardware will be unavailable for this process.";
       std::cout << warnMsg << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", warnMsg) ;
       mIsDeviceProfiling = false;

@@ -1845,8 +1845,15 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
   if(dev->user) {
     std::vector<std::string> stringVec;
     dev->user->sysfs_get("", "kdsstat", errmsg, stringVec);
-    // Dependent on message format built in kdsstat_show. Checking number of "context" in kdsstat.
-    // kdsstat has "context: <number_of_live_processes>"
+
+    /* Dependent on message format built in kdsstat_show. Checking number of "context" and "client pid" in kdsstat.
+     * kdsstat has
+       "context: <number_of_live_processes>
+        client pid:
+                    <pid> 
+                    <pid>
+       "
+     */ 
     if(stringVec.size() >= 4) {
       std::size_t p = stringVec[3].find_first_of("0123456789");
       std::string subStr = stringVec[3].substr(p);
@@ -1861,11 +1868,11 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses(char* pidBuffer, size_t size)
           const char* cStr = stringVec[5+i].c_str();
           const char* tPtr = cStr;
           size_t numDigits = 0;
-          while(*cStr < 48 || *cStr > 57) {   // if *cStr is not a number, move pointer ahead
+          while(*cStr < '0' || *cStr > '9') {   // if *cStr is not a number, move pointer ahead
             cStr++;
           }
           tPtr = cStr;
-          while(*cStr >= 48 && *cStr <= 57) {
+          while(*cStr >= '0' && *cStr <= '9') {
             cStr++;
             numDigits++;
           }
