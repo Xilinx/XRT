@@ -153,9 +153,9 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MBX_DBG(mbx, fmt, arg...)	\
 	xocl_dbg(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 
-#define	MAILBOX_TIMER	HZ	/* in jiffies */
-#define	MSG_RX_TTL	10UL	/* in MAILBOX_TIMER */
-#define	MSG_TX_TTL	1UL	/* in MAILBOX_TIMER */
+#define	MAILBOX_TIMER	(HZ / 5) /* in jiffies */
+#define	MSG_RX_TTL	50UL	/* in MAILBOX_TIMER */
+#define	MSG_TX_TTL	10UL	/* in MAILBOX_TIMER */
 #define	MSG_MAX_TTL	0xFFFFFFFF
 #define	TEST_MSG_LEN	128
 
