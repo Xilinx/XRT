@@ -126,7 +126,6 @@ void *msd(void *handle_ptr)
         args.is_tx = true;
         args.sz = prev_sz;
         ret = read( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-        std::cout << "MSD: read() ret: " << ret << std::endl;
         if( ret <= 0 ) {
             // sw channel xfer error 
             if( errno != EMSGSIZE ) {
@@ -140,7 +139,6 @@ void *msd(void *handle_ptr)
             }
             prev_sz = args.sz; // store the newly alloc'd size
             ret = read( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-            std::cout << "MSD: read() ret: " << ret << std::endl;
             if( ret < 0 ) {
                 std::cout << "MPD: second transfer failed, exiting.\n";
                 exit(1);
@@ -150,7 +148,6 @@ void *msd(void *handle_ptr)
 
         args.is_tx = false;
         ret = write( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
-        std::cout << "MSD: write() ret: " << ret << std::endl;
         if( ret <= 0 ) {
             std::cout << "                    MPD: transfer error: " << strerror(errno) << std::endl;
             exit(1);
@@ -163,19 +160,11 @@ void *msd(void *handle_ptr)
 
 int main(void)
 {
-
     struct s_handles handles;
 
-    const char mgmt_name[] = "/dev/mailbox.m2560";
-    if ((handles.mgmtfd = open(mgmt_name,O_RDWR)) == -1) {
-        perror("open");
-        exit(1);
-    }
-    const char user_name[] = "/dev/mailbox.u2561";
-    if ((handles.userfd = open(user_name,O_RDWR)) == -1) {
-        perror("open");
-        exit(1);
-    }
+    const int devIndex = 0;
+    handles.userfd = xclMailbox( devIndex );
+    handles.mgmtfd = xclMailboxMgmt( devIndex );
 
     pthread_create(&mpd_id, NULL, mpd, &handles);
     pthread_create(&msd_id, NULL, msd, &handles);

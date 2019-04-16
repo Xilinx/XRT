@@ -1165,6 +1165,17 @@ XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl,
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
+/**
+ * Experimental APIs for reading debug and profile
+ *
+ * Warning: These APIs are experimental and can be
+ * changed or removed at any time. They should only
+ * be used by debug and profile code.
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
+XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
+
 /* XRT Stream Queue APIs */
 
 /**
