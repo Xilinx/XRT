@@ -82,7 +82,7 @@ void *mpd(void *handle_ptr)
         args.sz = prev_sz;
         ret = read( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
         if( ret <= 0 ) {
-            // sw channel xfer error 
+            // sw channel xfer error
             if( errno != EMSGSIZE ) {
                 std::cout << "MPD: transfer failed for other reason\n";
                 exit(1);
@@ -127,7 +127,7 @@ void *msd(void *handle_ptr)
         args.sz = prev_sz;
         ret = read( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
         if( ret <= 0 ) {
-            // sw channel xfer error 
+            // sw channel xfer error
             if( errno != EMSGSIZE ) {
                 std::cout << "              MSD: transfer failed for other reason\n";
                 exit(1);
@@ -162,13 +162,26 @@ int main(void)
 {
     struct s_handles handles;
 
-    const int devIndex = 0;
-    handles.userfd = xclMailbox( devIndex );
-    handles.mgmtfd = xclMailboxMgmt( devIndex );
+    const int numDevs = xclProbe();
+    for (int i = 0; i < numDevs; i++) {
+        handles.userfd = xclMailbox( i );
+        handles.mgmtfd = xclMailboxMgmt( i );
+
+        int ret = fork();
+        if (ret < 0) {
+            std::cout << "Failed to create child process: " << errno << std::endl;
+            exit( errno );
+        }
+        if( ret == 0 ) { // child
+            break;
+        }
+        // parent continues but will never create thread, and eventually exit
+        std::cout << "New child process: " << ret << std::endl;
+    }
 
     pthread_create(&mpd_id, NULL, mpd, &handles);
     pthread_create(&msd_id, NULL, msd, &handles);
-    
+
     pthread_join(mpd_id, NULL);
     pthread_join(msd_id, NULL);
 
