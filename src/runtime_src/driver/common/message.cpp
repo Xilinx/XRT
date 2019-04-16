@@ -15,22 +15,17 @@
  */
 
 #include "message.h"
-#include "driver/common/t_time.h"
-
+#include "t_time.h"
+#include "version.h"
 #include "config_reader.h"
+
 #include <unistd.h>
 #include <syslog.h>
 #include <map>
 #include <fstream>
 #include <iostream>
-#include <chrono>
-#include <ctime>
-#include <stdio.h>
-#include <string.h>
 #include <thread>
-#include <sstream>
-#include <limits.h>
-#include <version.h>
+#include <climits>
 #include <sys/types.h>
 #ifdef __GNUC__
 # include <linux/limits.h>
@@ -137,7 +132,8 @@ private:
 
 //-------
 message_dispatch*
-message_dispatch::make_dispatcher(const std::string& choice)
+message_dispatch::
+make_dispatcher(const std::string& choice)
 {
   if( (choice == "null") || (choice == ""))
     return new null_dispatch;
@@ -158,21 +154,29 @@ message_dispatch::make_dispatcher(const std::string& choice)
 }
 
 //syslog ops.
-syslog_dispatch::syslog_dispatch() {
+syslog_dispatch::
+syslog_dispatch()
+{
   openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER);
 }
 
-syslog_dispatch::~syslog_dispatch() {
+syslog_dispatch::
+~syslog_dispatch()
+{
   closelog();
 }
 
 void
-syslog_dispatch::send(severity_level l, const char* tag, const char* msg) {
+syslog_dispatch::
+send(severity_level l, const char* tag, const char* msg)
+{
   syslog(severityMap[l], "%s", msg);
 }
 
 //file ops
-file_dispatch::file_dispatch(const std::string &file) {
+file_dispatch::
+file_dispatch(const std::string &file)
+{
   handle.open(file.c_str());
   handle << "XRT build version: " << xrt_build_version << std::endl;
   handle << "Build hash: " << xrt_build_version_hash << std::endl;
@@ -193,15 +197,18 @@ file_dispatch::~file_dispatch() {
 }
 
 void
-file_dispatch::send(severity_level l, const char* tag, const char* msg) {
-
+file_dispatch::
+send(severity_level l, const char* tag, const char* msg)
+{
   handle << xrt_core::timestamp() <<" [" << tag << "] Tid: "
          << std::this_thread::get_id() << ", " << " " << severityMap[l]
          << msg << std::endl;
 }
 
 //console ops
-console_dispatch::console_dispatch() {
+console_dispatch::
+console_dispatch()
+{
   std::cout << "XRT build version: " << xrt_build_version << std::endl;
   std::cout << "Build hash: " << xrt_build_version_hash << std::endl;
   std::cout << "Build date: " << xrt_build_version_date << std::endl;
@@ -215,10 +222,12 @@ console_dispatch::console_dispatch() {
   std::cout << "HOST: " <<  hostname << std::endl;
   std::cout << "EXE: " <<get_exe_path() << std::endl;
 }
+
 void
-console_dispatch::send(severity_level l, const char* tag, const char* msg) {
-  std::cout << xrt_core::timestamp() << " [" << tag << "] Tid:"
-            << std::this_thread::get_id() << ", "<< " " << severityMap[l]
+console_dispatch::
+send(severity_level l, const char* tag, const char* msg)
+{
+  std::cout << "[" << tag << "] " << severityMap[l]
             << msg << std::endl;
 }
 
@@ -234,8 +243,8 @@ send(severity_level l, const char* tag, const char* msg)
   int lev = static_cast<int>(l);
 
   if(ver >= lev) {
-  static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
-  dispatcher->send(l, tag, msg);
+    static message_dispatch* dispatcher = message_dispatch::make_dispatcher(logger);
+    dispatcher->send(l, tag, msg);
   }
 }
 
