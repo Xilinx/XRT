@@ -1258,8 +1258,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
 		userpf_info(xdev, "cu%d base: %llx",
 			cuidx, layout->m_ip_data[cuidx].m_base_address);	
-		if (!(layout->m_ip_data[cuidx].properties &
-			((uint32_t)IP_INT_ENABLE_MASK))) {
+		if (layout->m_ip_data[cuidx].m_base_address == (u64)-1) {
 			userpf_err(xdev, "cu%d is not enabled", cuidx);
 			return 1;
 		}
