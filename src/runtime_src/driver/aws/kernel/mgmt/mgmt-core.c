@@ -30,7 +30,7 @@
 #include <linux/vmalloc.h>
 #include <linux/version.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/delay.h>
 
 MODULE_LICENSE("GPL v2");
