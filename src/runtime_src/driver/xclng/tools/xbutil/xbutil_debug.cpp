@@ -62,7 +62,12 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
                 baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
             if(portNames) {
                 std::string portName;
+		// This makes sure that the c string is null terminated,
+		//  but it also copies a full 128 and fills unused spaces
+		//  with null characters.
                 portName.assign(map->m_debug_ip_data[i].m_name, 128);
+		// This statement strips away any extraneous null characters
+		portName.assign(portName.c_str());
                 portNames->push_back(portName);
             }
             ++count;

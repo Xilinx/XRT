@@ -141,7 +141,9 @@ static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return (rom->header.FeatureBitMap & CDMA) ? rom->header.CDMABaseAddress : 0;
+	return (!XOCL_DSA_NO_KDMA(xocl_get_xdev(pdev)) &&
+		(rom->header.FeatureBitMap & CDMA)) ?
+		rom->header.CDMABaseAddress : 0;
 }
 
 static u16 get_ddr_channel_count(struct platform_device *pdev)

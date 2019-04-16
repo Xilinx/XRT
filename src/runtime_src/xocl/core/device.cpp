@@ -1210,6 +1210,7 @@ bool
 device::
 acquire_context(const compute_unit* cu, bool shared) const
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
 
