@@ -77,6 +77,7 @@ else()
   rt
   boost_filesystem
   boost_system
+  uuid
   ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
 )
 endif()
