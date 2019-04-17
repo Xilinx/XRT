@@ -211,8 +211,8 @@ static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(qconf, cmpl_cnt_th_idx);
 	__SHOW_MEMBER(qconf, cmpl_trig_mode);
 	__SHOW_MEMBER(qconf, cmpl_en_intr);
-	__SHOW_MEMBER(qconf, cdh_max);
-	__SHOW_MEMBER(qconf, pipe_gl_max);
+	__SHOW_MEMBER(qconf, cdh_en);
+	__SHOW_MEMBER(qconf, dppkt);
 	__SHOW_MEMBER(qconf, pipe_flow_id);
 	__SHOW_MEMBER(qconf, pipe_slr_id);
 	__SHOW_MEMBER(qconf, pipe_tdest);
@@ -1354,7 +1354,6 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 		qconf->pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
 		STREAM_SLRID_MASK;
 		qconf->pipe_tdest = req.rid & STREAM_TDEST_MASK;
-		qconf->pipe_gl_max = 1;
 		qconf->desc_rng_sz_idx = qdma->h2c_ringsz_idx;
 	}
 	queue->flowid = req.flowid;

@@ -61,6 +61,7 @@ struct qdma_descq {
 	u8 color:1;	/** color bit for the queue */
 	u8 cpu_assigned:1;
 	u8 proc_req_running;
+
 	enum q_state_t q_state; /** Indicate q state */
 	unsigned int qidx_hw; /** hw qidx associated for this queue */
 	unsigned int intr_work_cpu;
@@ -379,6 +380,8 @@ struct qdma_sgt_req_cb {
 	u8 unmap_needed:1; /** indicates whether to unmap the kernel pages*/
 	u8 c2h_eot:1; /** indicates whether tlast is received on c2h side */
 	u8 done:1; /** indicates whether request processing is done or not*/
+
+	unsigned short cdh_offset;
 
 	enum qdma_req_state req_state; /* request state */
 

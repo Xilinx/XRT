@@ -563,10 +563,11 @@ struct qdma_mm_desc {
 #define S_DESC_F_EOP		30
 
 
-#define S_H2C_DESC_F_SOP		1
-#define S_H2C_DESC_F_EOP		2
+/* qdma_h2c_desc.flags */
+#define S_H2C_DESC_F_SOP		0
+#define S_H2C_DESC_F_EOP		1
 
-
+/* qdma_h2c_desc.cdh_flags */
 #define S_H2C_DESC_NUM_GL		0
 #define M_H2C_DESC_NUM_GL		0x7U
 #define V_H2C_DESC_NUM_GL(x)	((x) << S_H2C_DESC_NUM_GL)
@@ -576,7 +577,7 @@ struct qdma_mm_desc {
 #define V_H2C_DESC_NUM_CDH(x)	((x) << S_H2C_DESC_NUM_CDH)
 
 #define S_H2C_DESC_F_ZERO_CDH		13
-#define S_H2C_DESC_F_EOT			14
+#define S_H2C_DESC_F_EOT		14
 #define S_H2C_DESC_F_REQ_CMPL_STATUS	15
 
 /* FIXME pld_len and flags members are part of custom descriptor format needed
@@ -586,10 +587,11 @@ struct qdma_mm_desc {
  * @struct - qdma_h2c_desc
  * @brief	memory mapped descriptor format
  */
+#define QDMA_ST_H2C_DESC_BLEN_MAX	((1 << 28) - 1)
 struct qdma_h2c_desc {
 	__be16 cdh_flags;	/**< cdh flags */
 	__be16 pld_len;		/**< current packet length */
-	__be16 len;			/**< total packet length */
+	__be16 len;		/**< total packet length */
 	__be16 flags;		/**< descriptor flags */
 	__be64 src_addr;	/**< source address */
 };
@@ -666,13 +668,19 @@ struct qdma_c2h_cmpt_cmpl_status {
 #define STM_REG_IND_CTXT_DATA5		0x24
 #define STM_REG_H2C_MODE		0x30
 #define STM_REG_IND_CTXT_REG_COUNT	5
+
 #define STM_SUPPORTED_REV_MIN		0x4
 #define	STM_MAX_SUPPORTED_QID		64
-#define STM_MAX_PKT_SIZE		4096
+#define STM_ST_H2C_DESC_BLEN_MAX	4096
 #define STM_PORT_MAP			0xE1E1
-#define IS_STM_ENABLED_DEVICE(pdev)     \
+#define IS_STM_ENABLED_DEVICE(pdev)	\
 	(((pdev)->device == 0x6aa0) || ((pdev)->device == 0x5011))
-
+#define STM_DPPKT_MAX			16
+#define STM_DPPKT_DFLT			4
+#define STM_H2C_DESC_MAX_CDH_LEN	16  
+#define STM_H2C_DESC_THM_LEN		4	/* cdh_flag & pld_len */ 
+#define STM_H2C_DESC_FIRST_CDH_LEN \
+	(STM_H2C_DESC_MAX_CDH_LEN - STM_H2C_DESC_THM_LEN)
 
 #define S_STM_H2C_CTXT_ENTRY_VALID	0
 #define F_STM_H2C_CTXT_ENTRY_VALID	(1 << S_STM_H2C_CTXT_ENTRY_VALID)

@@ -1900,6 +1900,11 @@ ssize_t qdma_request_submit(unsigned long dev_hndl, unsigned long id,
 		cb->unmap_needed = 1;
 	}
 
+	/* check buffer alignment */
+	rv = qdma_request_check_buffer_alignment(descq, req);
+	if (rv < 0)
+		goto unmap_sgl;
+
 	if (req->offset) {
 		rv = qdma_req_find_offset(req, 1);
 		if (rv < 0)

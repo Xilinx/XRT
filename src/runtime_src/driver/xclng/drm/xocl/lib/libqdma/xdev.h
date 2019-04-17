@@ -234,8 +234,6 @@ struct xlnx_dma_dev {
 	int dvec_start_idx;
 	/**< DMA private device to hold the qdma que details */
 	void *dev_priv;
-	/**< dsa configured max pkt size that STM can support */
-	u32 pipe_stm_max_pkt_size;
 	/**< list of interrupt coalescing configuration for each vector */
 	struct intr_coal_conf  *intr_coal_list;
 	/**< legacy interrupt vector */

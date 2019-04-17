@@ -729,13 +729,11 @@ struct qdma_queue_conf {
 	u8 at:1;
 
 	/*
-	 * TODO: for Platform streaming DSA
+	 * Platform streaming DSA, additional info. for STM
 	 */
 	/** only if pipe = 1 */
-	/** max 16. CDH length per packet */
-	u8 cdh_max;
-	/** <= 7, max # gather buf. per packet */
-	u8 pipe_gl_max;
+	u8 cdh_en:1;
+	u8 dppkt:5;
 	/** pipe flow id */
 	u8 pipe_flow_id;
 	/** pipe SLR id */
@@ -1011,8 +1009,7 @@ struct qdma_request {
 
 	/** indicates end of transfer towards user kernel */
 	u8 udd_len;
-	/** udd data */
-	u8 udd[QDMA_UDD_MAXLEN];
+	u8 *udd_data;	/** udd data */
 };
 
 /*****************************************************************************/

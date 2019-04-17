@@ -122,25 +122,31 @@ int qdma_req_copy_fl(struct qdma_sw_sg *fsgl, unsigned int fsgcnt,
 	return i;
 }
 
-static void sgl_dump(struct qdma_sw_sg *sgl, unsigned int sgcnt)
+static void sgl_dump(struct qdma_sw_sg *sgl, unsigned int sgcnt, int detail)
 {
 	struct qdma_sw_sg *sg = sgl;
 	int i;
 
 	pr_info("sgl 0x%p, sgcnt %u.\n", sgl, sgcnt);
 
+	if (!detail)
+		return;
+
 	for (i = 0; i < sgcnt; i++, sg++)
 		pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx.\n",
 			i, sg, sg->pg, sg->offset, sg->len, sg->dma_addr);
 }
 
-static void sgt_dump(struct sg_table *sgt)
+static void sgt_dump(struct sg_table *sgt, int detail)
 {
 	int i;
 	struct scatterlist *sg = sgt->sgl;
 
 	pr_info("sgt 0x%p, sgl 0x%p, nents %u/%u.\n",
 		sgt, sgt->sgl, sgt->nents, sgt->orig_nents);
+
+	if (!detail)
+		return;
 
 	for_each_sg(sgt->sgl, sg, sgt->orig_nents, i) {
 		if (i < sgt->nents)
@@ -179,7 +185,7 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 		}
 
 		pr_info("bad offset %u.\n", req->offset);
-		sgt_dump(sgt);
+		sgt_dump(sgt, 1);
 		return -EINVAL;
 	} else {
 		struct qdma_sw_sg *sg = req->sgl;
@@ -197,7 +203,7 @@ int qdma_req_find_offset(struct qdma_request *req, bool use_dma_addr)
 		}
 
 		pr_info("bad offset %u.\n", req->offset);
-		sgl_dump(req->sgl, req->sgcnt);
+		sgl_dump(req->sgl, req->sgcnt, 1);
 		return -EINVAL;
 	}
 }
@@ -212,9 +218,9 @@ void qdma_request_dump(const char *str, struct qdma_request *req, bool dump_cb)
                 req->eot_rcved ? "EOT RCV":"", req->fp_done ? 1 : 0);
 
 	if (req->use_sgt)
-		sgt_dump(req->sgt);
+		sgt_dump(req->sgt, 0);
 	else
-		sgl_dump(req->sgl, req->sgcnt);
+		sgl_dump(req->sgl, req->sgcnt, 0);
 
 	if (dump_cb) {
 		struct qdma_sgt_req_cb *cb = qdma_req_cb_get(req);
@@ -355,6 +361,107 @@ int qdma_request_cancel(unsigned long dev_hndl, unsigned long qhndl,
 	unlock_descq(descq);
 
 	schedule_work(&descq->work);
+
+	return 0;
+}
+
+int qdma_request_check_buffer_alignment(struct qdma_descq *descq,
+				struct qdma_request *req)
+{
+	/* currently only STM requires 64B alignment on ST H2C */
+
+	struct qdma_sgt_req_cb *cb = (struct qdma_sgt_req_cb *)req;
+	unsigned int alignsz = 64;
+       
+	/* only STM H2C needs buffer alignment of 64B */ 
+	if (!descq->xdev->stm_en || !descq->conf.pipe ||
+		!descq->conf.st || descq->conf.c2h)
+		return 0;
+
+	if (req->use_sgt) {
+		unsigned int mask = alignsz - 1;
+		struct scatterlist *sg = (struct scatterlist *)cb->sg;
+		unsigned int sgcnt = req->sgt->nents;
+		int i = 1;
+
+		/* single buffer, no checking needed */
+
+		if (sgcnt > 1) {
+			unsigned int len = sg_dma_len(sg);
+
+			/* 1st buffer ends at the alignment */
+			if ((sg_dma_address(sg) + len) & mask) {
+				pr_info("%s, req 0x%p, sgl 0/%u, dma 0x%llx+%u"
+					"NOT aligned.\n",
+					descq->conf.name, req, sgcnt,
+					sg_dma_address(sg), len);
+				return -EINVAL;
+			}
+
+			/* all middle buffers should start & end at alignment */
+			sg = sg_next(sg);
+			for (; i < (sgcnt - 1); i++, sg = sg_next(sg)) {
+				len = sg_dma_len(sg);
+				if ((sg_dma_address(sg) & mask) ||
+				    (len % alignsz)) {
+					pr_info("%s, req 0x%p, sgl %d/%u, dma "
+						"0x%llx + 0x%u NOT aligned.\n",
+						descq->conf.name, req, i, sgcnt,
+						sg_dma_address(sg), len);
+					return -EINVAL;
+				}
+			}
+
+			/* last buffer start at the alignment */
+			len = sg_dma_len(sg);
+			if ((sg_dma_address(sg) & mask)) {
+				pr_info("%s, req 0x%p, sgl %d/%u, dma "
+					"0x%llx + 0x%u NOT aligned.\n",
+					descq->conf.name, req, i, sgcnt,
+					sg_dma_address(sg), len);
+				return -EINVAL;
+			}
+		}
+	} else {
+		unsigned int mask = alignsz - 1;
+		struct qdma_sw_sg *sg = req->sgl;
+		unsigned int sgcnt = req->sgcnt;
+		unsigned int len = sg->len;
+		int i = 1;
+
+		if (sgcnt > 1) {
+			/* 1st buffer ends at the alignment */
+			if (((sg->dma_addr + len) & mask)) {
+				pr_info("%s, req 0x%p, sgl 0/%u, dma 0x%llx+%u"
+					"NOT aligned.\n",
+					descq->conf.name, req, sgcnt,
+					sg->dma_addr, len);
+				return -EINVAL;
+			}
+
+			/* all middle buffers should start & end at alignment */
+			for (++sg; i < (sgcnt - 1); i++, sg++) {
+				len = sg->len;
+				if ((sg->dma_addr & mask) || (len % alignsz)) {
+					pr_info("%s, req 0x%p, sgl %d/%u, dma "
+						"0x%llx + %u NOT aligned.\n",
+						descq->conf.name, req, i, sgcnt,
+						sg->dma_addr, len);
+					return -EINVAL;
+				}
+			}
+
+			/* last buffer start at the alignment */
+			len = sg->len;
+			if (sg->dma_addr & mask) {
+				pr_info("%s, req 0x%p, sgl %d/%u, dma 0x%llx "
+					"NOT aligned.\n",
+					descq->conf.name, req, i, sgcnt,
+					sg->dma_addr);
+				return -EINVAL;
+			}
+		}
+	}
 
 	return 0;
 }

@@ -13,6 +13,8 @@
 # GNU General Public License for more details.
 #
 
+ccflags-y += -g -D__XRT__
+
 xocl_lib-y	:= ../lib/libxdma.o
 xocl_lib-y	+=  \
 		../lib/libqdma/libqdma_config.o	\

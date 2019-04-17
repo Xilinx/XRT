@@ -124,10 +124,15 @@ static int make_stm_h2c_context(struct qdma_descq *descq, u32 *data)
 	int pipe_slr_id = descq->conf.pipe_slr_id;
 	int pipe_flow_id = descq->conf.pipe_flow_id;
 	int pipe_tdest = descq->conf.pipe_tdest;
-	int dppkt = 1;
-	int log2_dppkt = ilog2(dppkt);
 	int pkt_lim = 0;
 	int max_ask = 8;
+	unsigned int dppkt = descq->conf.dppkt;
+
+	if (dppkt > STM_DPPKT_MAX)
+		dppkt = 0;
+	if (!dppkt)
+		dppkt = descq->conf.dppkt =
+			descq->conf.cdh_en ?  STM_DPPKT_DFLT : 1;
 
 	/* 191..160 */
 	data[5] = F_STM_H2C_CTXT_ENTRY_VALID;
@@ -147,7 +152,7 @@ static int make_stm_h2c_context(struct qdma_descq *descq, u32 *data)
 
 	/* 32..63 */
 	data[1] = (dppkt << S_STM_CTXT_DPPKT) |
-		  (log2_dppkt << S_STM_CTXT_LOG2_DPPKT);
+		  ((ilog2(dppkt)) << S_STM_CTXT_LOG2_DPPKT);
 
 	/* 0..31 */
 	/** explicitly init to 8 to workaround hw issue due to which the value
