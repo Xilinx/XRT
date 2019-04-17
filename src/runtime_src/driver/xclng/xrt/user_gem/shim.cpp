@@ -2335,26 +2335,11 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 
 int xclMailbox(unsigned deviceIndex)
 {
-    xclDeviceHandle h = xclOpen(deviceIndex, NULL, XCL_INFO);
-    size_t max_path_size = 256;
-    char raw_path[max_path_size] = {0};
-    int ret = xclGetSysfsPath(h, "", "", raw_path, max_path_size);
-    xclClose(h);
-    if (ret == -1)
-        return -1;
-
-    const std::string s_bdf = std::string(raw_path).substr(std::string("/sys/bus/pci/devices/").length(),
-                                                           std::string("DDDD:bb:dd.f").length());
-    if (s_bdf.length() != std::string("DDDD:bb:dd.f").length())
-        return -1;
-
-    const std::string dom = std::string(s_bdf).substr(0, 4); // 4 chars for domain
-    const std::string bus = std::string(s_bdf).substr(5, 2); // 2 chars for bus
-    const std::string dev = std::string(s_bdf).substr(8, 2); // 2 chars for device
-
-    const int instance = ( (std::stoi(dom, nullptr, 16)<<16)
-                         + (std::stoi(bus, nullptr, 16)<<8)
-                         + (std::stoi(dev, nullptr, 16)<<5) + 1 ); // add 1 for userpf func
+    uint16_t dom  = pcidev::get_dev(deviceIndex)->user->domain;
+    uint16_t bus  = pcidev::get_dev(deviceIndex)->user->bus;
+    uint16_t dev  = pcidev::get_dev(deviceIndex)->user->dev;
+    uint16_t func = pcidev::get_dev(deviceIndex)->user->func;
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
     const int fd = open(std::string("/dev/mailbox.u" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
@@ -2365,26 +2350,11 @@ int xclMailbox(unsigned deviceIndex)
 
 int xclMailboxMgmt(unsigned deviceIndex)
 {
-    xclDeviceHandle h = xclOpen(deviceIndex, NULL, XCL_INFO);
-    size_t max_path_size = 256;
-    char raw_path[max_path_size] = {0};
-    int ret = xclGetSysfsPath(h, "", "", raw_path, max_path_size);
-    xclClose(h);
-    if (ret == -1)
-        return -1;
-
-    const std::string s_bdf = std::string(raw_path).substr(std::string("/sys/bus/pci/devices/").length(),
-                                                           std::string("DDDD:bb:dd.f").length());
-    if (s_bdf.length() != std::string("DDDD:bb:dd.f").length())
-        return -1;
-
-    const std::string dom = std::string(s_bdf).substr(0, 4); // 4 chars for domain
-    const std::string bus = std::string(s_bdf).substr(5, 2); // 2 chars for bus
-    const std::string dev = std::string(s_bdf).substr(8, 2); // 2 chars for device
-
-    const int instance = ( (std::stoi(dom, nullptr, 16)<<16)
-                         + (std::stoi(bus, nullptr, 16)<<8)
-                         + (std::stoi(dev, nullptr, 16)<<5) );
+    uint16_t dom  = pcidev::get_dev(deviceIndex)->mgmt->domain;
+    uint16_t bus  = pcidev::get_dev(deviceIndex)->mgmt->bus;
+    uint16_t dev  = pcidev::get_dev(deviceIndex)->mgmt->dev;
+    uint16_t func = pcidev::get_dev(deviceIndex)->mgmt->func;
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
     const int fd = open(std::string("/dev/mailbox.m" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
