@@ -1,15 +1,8 @@
 
-/{
-	xlnk {
-		compatible = "xlnx,xlnk-1.0";
-	};
-};
-
 &amba {
         zyxclmm_drm: zyxclmm_drm@0xA0000000 {
                 compatible = "xlnx,zoclsvm";
                 status = "okay";
-		reg = <0x0 0xA0000000 0x0 0x800000>;
                 #stream-id-cells = <1>;
                 iommus = <&smmu 0xe80>;
         };

@@ -48,8 +48,8 @@ namespace xdp {
 
   public:
     // Log device counters (used in profile summary)
-    void logDeviceCounters(std::string deviceName, std::string binaryName, xclPerfMonType type,
-        xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram);
+    void logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programId,
+        xclPerfMonType type, xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram);
 
   public:
     void writeProfileSummary(RTProfile* profile);

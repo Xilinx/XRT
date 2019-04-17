@@ -15,10 +15,11 @@
  */
 
 #include "t_time.h"
+
 #include <chrono>
+#include <string>
 #include <ctime>
-#include <iostream>
-#include <string.h>
+#include <cstring>
 
 namespace xrt_core {
 
@@ -47,5 +48,3 @@ timestamp()
 }
 
 } // xrt
-
-

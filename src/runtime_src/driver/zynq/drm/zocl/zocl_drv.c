@@ -40,7 +40,7 @@
 #define ZOCL_DRIVER_MINOR       2
 #define ZOCL_DRIVER_PATCHLEVEL  1
 
-
+/* This should be the same as DRM_FILE_PAGE_OFFSET_START in drm_gem.c */
 #if defined(CONFIG_ARM64)
 #define ZOCL_FILE_PAGE_OFFSET   0x00100000
 #else
@@ -132,6 +132,30 @@ static int get_reserved_mem_region(struct device *dev, struct resource *res)
 		return -EINVAL;
 
 	return 0;
+}
+
+/**
+ * get_apt_index - Get the index of the geiven phys address,
+ *		   if it is the start of an aperture
+ *
+ * @dev: DRM device struct
+ * @size: This size was not use, just to match function prototype.
+ *
+ * Returns the index if aperture was found.
+ * Returns -EINVAL if not found.
+ *
+ */
+int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr)
+{
+	struct addr_aperture *apts = zdev->apertures;
+	int i;
+
+	/* Haven't consider search efficiency yet. */
+	for (i = 0; i < zdev->num_apts; ++i)
+		if (apts[i].addr == addr)
+			break;
+
+	return (i == zdev->num_apts)? -EINVAL : i;
 }
 
 /**
@@ -262,17 +286,25 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
+/* This function map two types of kernel address to user space.
+ * The first type is pysical registers of a hardware IP, like CUs.
+ * The second type is GEM buffer.
+ */
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-	struct drm_file *priv = filp->private_data;
-	struct drm_device *dev = priv->minor->dev;
+	struct drm_file     *priv = filp->private_data;
+	struct drm_device   *dev = priv->minor->dev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct drm_zocl_bo *bo = NULL;
-	unsigned long vsize;
+	struct drm_zocl_bo  *bo = NULL;
+	unsigned long        vsize;
+	phys_addr_t          phy_addr;
+	int apt_idx;
 	int rc;
 
-	/* If the page offset is > 4G (64 bit) or 2G (32 bit),
-	 * then we are trying to map GEM BO
+	/* A GEM buffer object has a fake mmap offset start from page offset
+	 * DRM_FILE_PAGE_OFFSET_START. See drm_gem_init().
+	 * ZOCL_FILE_PAGE_OFFSET should equal to DRM_FILE_PAGE_OFFSET_START.
+	 * ZOCL_FILE_PAGE_OFFSET is 4GB for 64 bits system.
 	 */
 	if (likely(vma->vm_pgoff >= ZOCL_FILE_PAGE_OFFSET)) {
 		if (!zdev->domain)
@@ -297,11 +329,35 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return 0;
 	}
 
-	if (vma->vm_pgoff != 0)
+	/* Hardware component physical address mapping. Typically, this is used
+	 * to map the registers of a compute unit to user space.
+	 *
+	 * For the most of the time, the hardware is at 0 to 4GB address range.
+	 * *NOTE* Base on MPSoC TRM, it is possible to assign hardware to higher
+	 * address than 4GB. But for now, no one use those higher address range
+	 * for IPs. The RPU is not able to access outside of 4GB memory.
+	 *
+	 * Still use this approach before it requires to support hardware
+	 * address mapping from higher than 4GB space.
+	 */
+	if (!zdev->exec->configured) {
+		DRM_ERROR("Schduler is not configured\n");
 		return -EINVAL;
+	}
+
+	phy_addr = vma->vm_pgoff << PAGE_SHIFT;
+
+	/* Only allow user to map register ranges in apertures list.
+	 * Could not map from the middle of an aperture.
+	 */
+	apt_idx = get_apt_index(zdev, phy_addr);
+	if (apt_idx < 0) {
+		DRM_ERROR("The offset is not in the apertures list\n");
+		return -EINVAL;
+	}
 
 	vsize = vma->vm_end - vma->vm_start;
-	if (vsize > zdev->res_len)
+	if (vsize > zdev->apertures[apt_idx].size)
 		return -EINVAL;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
@@ -309,8 +365,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_RESERVED;
 
 	vma->vm_ops = &reg_physical_vm_ops;
-	rc = io_remap_pfn_range(vma, vma->vm_start,
-				zdev->res_start >> PAGE_SHIFT,
+	rc = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
 				vsize, vma->vm_page_prot);
 
 	return rc;
@@ -492,9 +547,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct drm_device *drm;
 	struct drm_zocl_dev	*zdev;
 	struct platform_device *subdev;
-	struct resource *res;
 	struct resource res_mem;
-	void __iomem *map;
+	struct resource *res;
 	int index;
 	int irq;
 	int ret;
@@ -502,22 +556,10 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	id = of_match_node(zocl_drm_of_match, pdev->dev.of_node);
 	DRM_INFO("Probing for %s\n", id->compatible);
 
-	/* Get resource and ioremap */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	map = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(map)) {
-		DRM_ERROR("Failed to map registers: %ld\n", PTR_ERR(map));
-		return PTR_ERR(map);
-	}
-
 	/* Create zocl device and initial */
 	zdev = devm_kzalloc(&pdev->dev, sizeof(*zdev), GFP_KERNEL);
 	if (!zdev)
 		return -ENOMEM;
-
-	zdev->regs       = map;
-	zdev->res_start  = res->start;
-	zdev->res_len    = resource_size(res);
 
 	/* Record and get IRQ number */
 	for (index = 0; index < MAX_CU_NUM; index++) {
@@ -543,6 +585,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	subdev = find_pdev("80180000.ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found -> %p\n", subdev);
+		/* Trust device tree for now, but a better place should be
+		 * feature rom.
+		 */
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res) {
+			DRM_ERROR("The base address of CU is not found or 0\n");
+			return -EINVAL;
+		}
+
+		zdev->res_start = res->start;
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
@@ -636,6 +688,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	sched_fini_exec(drm);
 	zocl_free_sections(zdev);
 	zocl_fini_sysfs(drm->dev);
+
+	kfree(zdev->apertures);
 
 	if (drm) {
 		drm_dev_unregister(drm);

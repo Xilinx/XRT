@@ -372,9 +372,24 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
   std::string bank;
   uint64_t address;
   get_address_bank(mem0, address, bank);
+  // create bank by appending all memory resources
+  // memory resources aren't guaranteed to be contiguous
+  bank.clear();
+  std::string sep = "-";
 
   size_t totalSize = 0;
   for (auto mem : xocl::get_range(mem_objects,mem_objects+num_mem_objects)) {
+    std::string mem_bank;
+    uint64_t mem_addr;
+    get_address_bank(mem, mem_addr, mem_bank);
+    auto found = bank.find(mem_bank);
+    if (found == std::string::npos) {
+      if (bank.empty())
+        bank = mem_bank;
+      else
+        bank += sep + mem_bank;
+    }
+    mem_bank.clear();
     totalSize += xocl::xocl(mem)->get_size();
   }
 
