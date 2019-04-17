@@ -547,10 +547,12 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = 20*m_cus.size();
+  //auto limit = 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;
