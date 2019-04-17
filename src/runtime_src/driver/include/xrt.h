@@ -1165,18 +1165,6 @@ XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl,
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
-/**
- * xclMailbox - opens and returns file descriptor for userpf
- *              mailbox pseudo-device to call read()/write() on.
- */
-XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
-
-/**
- * xclMailboxMgmt - opens and returns file descriptor for mgmtpf 
- *                  mailbox pseudo-device to call read()/write() on.
- */
-XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
-
 /* XRT Stream Queue APIs */
 
 /**
