@@ -27,9 +27,9 @@
 #include "zocl_drv.h"
 
 #define MAX_SLOTS 128
-#define MAX_CUS 128
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
-#define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
+/* MAX_CU_NUM are defined in zocl_util.h */
+#define MAX_U32_CU_MASKS (((MAX_CU_NUM-1)>>5) + 1)
 #define U32_MASK 0xFFFFFFFF
 
 /**
@@ -339,8 +339,9 @@ struct sched_exec_core {
 	/* Soft kernel definitions */
 	u32                        scu_status[MAX_U32_CU_MASKS];
 
-	u32                        cu_addr_phy[MAX_CUS];
-	u32                        cu_usage[MAX_CUS];
+	u32                        cu_addr_phy[MAX_CU_NUM];
+	void __iomem              *cu_addr_virt[MAX_CU_NUM];
+	u32                        cu_usage[MAX_CU_NUM];
 
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;

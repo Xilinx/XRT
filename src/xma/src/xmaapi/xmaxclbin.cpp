@@ -64,18 +64,21 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         char *data = &buffer[ip_hdr->m_sectionOffset];
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
         XmaIpLayout* layout = xclbin_info->ip_layout;
-        xclbin_info->number_of_kernels = ipl->m_count;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "IP LAYOUT - %d kernels\n", xclbin_info->number_of_kernels);
+        xclbin_info->number_of_kernels = 0;
+        uint32_t j = 0;
         for (int i = 0; i < ipl->m_count; i++)
         {
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
-            memcpy(xclbin_info->ip_layout[i].kernel_name,
+            memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
-            layout[i].base_addr = ipl->m_ip_data[i].m_base_address;
+            layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
-                    i, layout[i].kernel_name, layout[i].base_addr);
+                    j, layout[j].kernel_name, layout[j].base_addr);
+            j++;
         }
+        xclbin_info->number_of_kernels = j;
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "IP LAYOUT - %d kernels\n", xclbin_info->number_of_kernels);
     }
     else
     {

@@ -22,7 +22,7 @@ execute_process(
 )
 
 SET(PACKAGE_KIND "TGZ")
-if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
+if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   SET(CPACK_GENERATOR "DEB;TGZ")
   SET(PACKAGE_KIND "DEB")
   # Modify the package name for the xrt component

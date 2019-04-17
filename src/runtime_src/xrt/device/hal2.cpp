@@ -600,10 +600,9 @@ freeStreamBuf(hal::StreamBufHandle buf)
 
 ssize_t
 device::
-writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* request)
+writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* request)
 {
   //TODO:
-  (void)offset;
   xclQueueRequest req;
   xclReqBuffer buffer;
 
@@ -626,9 +625,8 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
 
 ssize_t
 device::
-readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* request)
+readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* request)
 {
-  (void)offset;
   xclQueueRequest req;
   xclReqBuffer buffer;
 
