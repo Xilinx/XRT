@@ -82,15 +82,17 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 /**
- * Experimental APIs for reading debug and profile
- *
- * Warning: These APIs are experimental and can be
- * changed or removed at any time. They should only
- * be used by debug and profile code.
- *
+ * xclMailbox - opens and returns file descriptor for userpf
+ *              mailbox pseudo-device to call read()/write() on.
  */
 XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
+
+/**
+ * xclMailboxMgmt - opens and returns file descriptor for mgmtpf
+ *                  mailbox pseudo-device to call read()/write() on.
+ */
 XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
+
 #ifdef __cplusplus
 }
 #endif
