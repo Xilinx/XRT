@@ -90,33 +90,34 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(void)
+void print_pci_info(std::ostream &ostr)
 {
-    auto print = [](const std::unique_ptr<pcidev::pci_func>& dev) {
-        std::cout << std::hex;
-        std::cout << ":[" << std::setw(2) << std::setfill('0') << dev->bus
+    auto print = [&ostr](const std::unique_ptr<pcidev::pci_func>& dev) {
+        ostr << std::hex;
+        ostr << ":[" << std::setw(2) << std::setfill('0') << dev->bus
             << ":" << std::setw(2) << std::setfill('0') << dev->dev
             << "." << dev->func << "]";
 
-        std::cout << std::hex;
-        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
-        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
+        ostr << std::hex;
+        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
+        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
 
-        std::cout << std::dec;
-        std::cout << ":[";
+        ostr << std::dec;
+        ostr << ":[";
         if(!dev->driver_name.empty()) {
-            std::cout << dev->driver_name << ":" << dev->driver_version << ":";
+            ostr << dev->driver_name << ":" << dev->driver_version << ":";
             if(dev->instance == INVALID_ID) {
-                std::cout << "???";
+                ostr << "???";
             } else {
-                std::cout << dev->instance;
+                ostr << dev->instance;
             }
         }
-        std::cout << "]" << std::endl;;
+        ostr << "]" << std::endl;;
     };
 
+    ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
-        std::cout << "No card found!" << std::endl;
+        ostr << "No card found!" << std::endl;
         return;
     }
 
@@ -131,16 +132,16 @@ void print_pci_info(void)
 
         if (mdev != nullptr) {
             mdev->sysfs_get("", "ready", errmsg, ready);
-            std::cout << (ready ? "" : "*");
-            std::cout << "[" << i << "]" << "mgmt";
+            ostr << (ready ? "" : "*");
+            ostr << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
             ready = false;
             udev->sysfs_get("", "ready", errmsg, ready);
-            std::cout << (ready ? "" : "*");
-            std::cout << "[" << i << "]" << "user";
+            ostr << (ready ? "" : "*");
+            ostr << "[" << i << "]" << "user";
             print(udev);
         }
 
@@ -149,7 +150,7 @@ void print_pci_info(void)
         ++i;
     }
     if (not_ready != 0) {
-        std::cout << "WARNING: " << not_ready
+        ostr << "WARNING: " << not_ready
                   << " card(s) marked by '*' are not ready, "
                   << "run xbutil flash scan -v to further check the details."
                   << std::endl;
@@ -557,19 +558,21 @@ int main(int argc, char *argv[])
     unsigned int total = pcidev::get_dev_total();
     unsigned int count = pcidev::get_dev_ready();
 
-    if (cmd == xcldev::QUERY)
-        xcldev::baseDump(std::cout);
-
     if (total == 0) {
         std::cout << "ERROR: No card found\n";
-        return 1;
     }
     if (cmd != xcldev::DUMP)
         std::cout << "INFO: Found total " << total << " card(s), "
                   << count << " are usable" << std::endl;
 
+    if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN))
+        xcldev::baseDump(std::cout);
+
+    if (total == 0)
+        return 1;
+
     if (cmd == xcldev::SCAN) {
-        print_pci_info();
+        print_pci_info(std::cout);
         return 0;
     }
 
@@ -636,7 +639,9 @@ int main(int argc, char *argv[])
             }
         }
         catch (...) {
-            std::cout << "ERROR: query failed" << std::endl;
+            result = -1;
+            std::cout << std::endl;
+            //std::cout << "ERROR: query failed" << std::endl;
         }
         break;
     case xcldev::DUMP:
