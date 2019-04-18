@@ -23,10 +23,6 @@
 #include <climits>
 #include <algorithm>
 #include <sys/mman.h>
-#include <sys/utsname.h>
-#include <cstdlib>
-#include <gnu/libc-version.h>
-#include <boost/property_tree/ini_parser.hpp>
 
 #include "xbutil.h"
 #include "base.h"
