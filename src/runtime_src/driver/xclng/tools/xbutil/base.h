@@ -51,9 +51,10 @@ void osInfo(boost::property_tree::ptree &pt)
     }
     pt.put("glibc", gnu_get_libc_version());
 
-    std::ifstream ifs;
-    ifs.open("/etc/os-release", std::ifstream::binary);
-    if(ifs.good()) { // confirmed for RHEL/CentOS
+    // The file is a requirement as per latest Linux standards
+    // https://www.freedesktop.org/software/systemd/man/os-release.html
+    std::ifstream ifs("/etc/os-release");
+    if (ifs.good()) {
         boost::property_tree::ptree opt;
         boost::property_tree::ini_parser::read_ini(ifs, opt);
         std::string val = opt.get<std::string>("PRETTY_NAME", "");
@@ -64,13 +65,15 @@ void osInfo(boost::property_tree::ptree &pt)
             }
             pt.put("linux", val);
         }
+        ifs.close()
     }
 
     // Cannot use xrt_core::timestamp() defined in common/t_time because
     // it adds [] around the string
     auto n = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(n);
+    const std::time_t t = std::chrono::system_clock::to_time_t(n);
     std::string tnow(std::ctime(&t));
+    // Strip out the newline at the end
     tnow.pop_back();
     pt.put("now", tnow);
 }
