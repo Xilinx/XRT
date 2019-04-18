@@ -84,7 +84,7 @@ void baseInit()
     boost::property_tree::ptree xrt_pt;
     osInfo(os_pt);
     xrtInfo(xrt_pt);
-    sensor_tree::put("version", "1.2.0"); // json schema version
+    sensor_tree::put("version", "1.1.0"); // json schema version
     sensor_tree::add_child("system", os_pt);
     sensor_tree::add_child("runtime", xrt_pt);
 }
