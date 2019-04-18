@@ -678,102 +678,6 @@ static void unmap_bar(struct xocl_dev *xdev)
 				1 << xdev->p2p_bar_idx);
 }
 
-/* pci driver callbacks */
-int xocl_userpf_probe(struct pci_dev *pdev,
-		const struct pci_device_id *ent)
-{
-	struct xocl_dev			*xdev;
-	struct xocl_board_private	*dev_info;
-	int				ret;
-
-	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
-	if (!xdev) {
-		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
-		return -ENOMEM;
-	}
-
-	/* this is used for all subdevs, bind it to device earlier */
-	pci_set_drvdata(pdev, xdev);
-	dev_info = (struct xocl_board_private *)ent->driver_data;
-
-	xdev->core.pci_ops = &userpf_pci_ops;
-	xdev->core.pdev = pdev;
-	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
-	xocl_fill_dsa_priv(xdev, dev_info);
-
-	ret = identify_bar(xdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to identify bar");
-		goto failed_to_bar;
-	}
-
-	ret = pci_enable_device(pdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to enable device.");
-		goto failed_to_enable;
-	}
-
-	ret = xocl_alloc_dev_minor(xdev);
-	if (ret)
-		goto failed_alloc_minor;
-
-	xdev->core.drm = xocl_drm_init(xdev);
-	if (!xdev->core.drm) {
-		ret = -EFAULT;
-		xocl_err(&pdev->dev, "failed to init drm mm");
-		goto failed_drm_init;
-	}
-
-	ret = xocl_subdev_create_all(xdev, dev_info->subdev_info,
-			dev_info->subdev_num);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to register subdevs");
-		goto failed_create_subdev;
-	}
-
-	ret = xocl_p2p_mem_reserve(xdev);
-	if (ret)
-		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
-
-	ret = xocl_init_sysfs(&pdev->dev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to init sysfs");
-		goto failed_init_sysfs;
-	}
-
-	mutex_init(&xdev->dev_lock);
-	xdev->needs_reset = false;
-	atomic64_set(&xdev->total_execs, 0);
-	atomic_set(&xdev->outstanding_execs, 0);
-	INIT_LIST_HEAD(&xdev->ctx_list);
-
-	/* Launch the mailbox server. */
-	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-
-	(void) xocl_mb_connect(xdev);
-	return 0;
-
-failed_init_sysfs:
-	xocl_p2p_mem_release(xdev, false);
-	xocl_subdev_destroy_all(xdev);
-
-failed_create_subdev:
-	if (xdev->core.drm)
-		xocl_drm_fini(xdev->core.drm);
-failed_drm_init:
-	xocl_free_dev_minor(xdev);
-
-failed_alloc_minor:
-	pci_disable_device(pdev);
-failed_to_enable:
-	unmap_bar(xdev);
-failed_to_bar:
-	xocl_drvinst_free(xdev);
-	pci_set_drvdata(pdev, NULL);
-
-	return ret;
-}
-
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
@@ -800,6 +704,94 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(xdev);
+}
+
+/* pci driver callbacks */
+int xocl_userpf_probe(struct pci_dev *pdev,
+		const struct pci_device_id *ent)
+{
+	struct xocl_dev			*xdev;
+	struct xocl_board_private	*dev_info;
+	int				ret;
+
+	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
+	if (!xdev) {
+		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
+		return -ENOMEM;
+	}
+
+	/* this is used for all subdevs, bind it to device earlier */
+	pci_set_drvdata(pdev, xdev);
+	dev_info = (struct xocl_board_private *)ent->driver_data;
+
+	xdev->core.pci_ops = &userpf_pci_ops;
+	xdev->core.pdev = pdev;
+	xdev->core.dev_minor = XOCL_INVALID_MINOR;
+	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
+	xocl_fill_dsa_priv(xdev, dev_info);
+	mutex_init(&xdev->dev_lock);
+	xdev->needs_reset = false;
+	atomic64_set(&xdev->total_execs, 0);
+	atomic_set(&xdev->outstanding_execs, 0);
+	INIT_LIST_HEAD(&xdev->ctx_list);
+
+	ret = xocl_alloc_dev_minor(xdev);
+	if (ret)
+		goto failed;
+
+	ret = identify_bar(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to identify bar");
+		goto failed;
+	}
+
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to enable device.");
+		goto failed;
+	}
+
+	ret = xocl_subdev_create_all(xdev, dev_info->subdev_info,
+			dev_info->subdev_num);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to register subdevs");
+		goto failed;
+	}
+
+	ret = xocl_p2p_mem_reserve(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
+		goto failed;
+	}
+
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	/* Say hi to peer via mailbox. */
+	(void) xocl_mb_connect(xdev);
+
+	/*
+	 * NOTE: We'll expose ourselves through device node and sysfs from now
+	 * on. Make sure we can handle incoming requests through them by now.
+	 */
+
+	xdev->core.drm = xocl_drm_init(xdev);
+	if (!xdev->core.drm) {
+		ret = -EFAULT;
+		xocl_err(&pdev->dev, "failed to init drm mm");
+		goto failed;
+	}
+
+	ret = xocl_init_sysfs(&pdev->dev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to init sysfs");
+		goto failed;
+	}
+
+	return 0;
+
+failed:
+	xocl_userpf_remove(pdev);
+	return ret;
 }
 
 static pci_ers_result_t user_pci_error_detected(struct pci_dev *pdev,
