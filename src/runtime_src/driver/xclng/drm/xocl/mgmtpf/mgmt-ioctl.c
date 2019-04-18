@@ -101,20 +101,6 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 	return ret;
 }
 
-static int mgmt_sw_mailbox_ioctl(struct xclmgmt_dev *lro, const void __user *data)
-{
-	int ret = 0;
-	struct drm_xocl_sw_mailbox args;
-	if (copy_from_user((void *)&args, data, sizeof(struct drm_xocl_sw_mailbox)))
-		return -EFAULT;
-
-	ret = xocl_mailbox_sw_transfer(lro, &args);
-	if (copy_to_user((void *)data, (void *)&args, sizeof(struct drm_xocl_sw_mailbox)))
-		return -EFAULT;
-
-	return ret;
-}
-
 long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xclmgmt_dev *lro;
@@ -133,12 +119,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	if (result)
 		return -EFAULT;
-
-	/* Handle specially because we don't want to take the lock. */
-	if (cmd == XCLMGMT_IOCSWMAILBOX) {
-		result = mgmt_sw_mailbox_ioctl(lro, (void __user *)arg);
-		return result;
-	}
 
 	mutex_lock(&lro->busy_mutex);
 

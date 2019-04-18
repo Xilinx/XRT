@@ -52,10 +52,10 @@
 #endif
 
 #define GB(x)           ((size_t) (x) << 30)
-#define	USER_PCIID(x)   (((x)->bus << 8) | ((x)->dev << 3) | (x)->func)
+#define USER_PCIID(x)   (((x)->bus << 8) | ((x)->dev << 3) | (x)->func)
 #define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
 
-#define	SHIM_QDMA_AIO_EVT_MAX	1024 * 64
+#define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
 
 inline bool
 is_multiprocess_mode()
@@ -262,7 +262,7 @@ void xocl::XOCLShim::dev_fini()
     }
 
     if (mAioEnabled) {
-	    io_destroy(mAioContext);
+        io_destroy(mAioContext);
             mAioEnabled = false;
     }
 }
@@ -833,14 +833,14 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
         int dev_offline = 1;
         ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
         if (ret)
-		return errno;
+        return errno;
 
         dev_fini();
-	while (dev_offline) {
+    while (dev_offline) {
             pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "dev_offline", err, dev_offline);
-	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-	}
-	dev_init();
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    dev_init();
     } else
         return -EINVAL;
 
@@ -858,9 +858,9 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
         pcidev::get_dev(mBoardNumber)->user->sysfs_put("", "p2p_enable", err, "0");
 
     if (errno == ENOSPC)
-	    return errno;
+        return errno;
     else if (errno == EALREADY && !force)
-	    return 0;
+        return 0;
 
     if (force) {
         dev_fini();
@@ -875,15 +875,15 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
             perror(rescan_path.c_str());
         } else {
             rescanFile << input;
-	}
+    }
 
-	dev_init();
+    dev_init();
     }
 
     int p2p_enable = -1;
     pcidev::get_dev(mBoardNumber)->user->sysfs_get("", "p2p_enable", err, p2p_enable);
     if (p2p_enable == 2)
-	    return EBUSY;
+        return EBUSY;
 
     return 0;
 }
@@ -1156,7 +1156,7 @@ int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *p
 }
 
 int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
-	enum axlf_section_kind kind, int index)
+    enum axlf_section_kind kind, int index)
 {
     if(section_info == nullptr || section_size == nullptr)
         return -EINVAL;
@@ -1539,7 +1539,7 @@ int xocl::XOCLShim::xclBootFPGA()
 int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
     struct xocl_qdma_ioc_create_queue q_info;
-    int	rc;
+    int rc;
 
     memset(&q_info, 0, sizeof (q_info));
     q_info.write = 1;
@@ -1562,7 +1562,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
     struct xocl_qdma_ioc_create_queue q_info;
-    int	rc;
+    int rc;
 
     memset(&q_info, 0, sizeof (q_info));
 
@@ -1608,7 +1608,7 @@ void *xocl::XOCLShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
     if (rc) {
         std::cout << __func__ << " ERROR: Alloc buffer IOCTL failed" << std::endl;
-	return NULL;
+    return NULL;
     }
 
     buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
@@ -1667,14 +1667,14 @@ int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclRe
 
     for (i = num_evt - 1; i >= 0; i--) {
         comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-	if (((struct io_event *)comps)[i].res < 0){
+    if (((struct io_event *)comps)[i].res < 0){
             /* error returned by AIO framework */
             comps[i].nbytes = 0;
-	    comps[i].err_code = ((struct io_event *)comps)[i].res;
-	} else {
+        comps[i].err_code = ((struct io_event *)comps)[i].res;
+    } else {
             comps[i].nbytes = ((struct io_event *)comps)[i].res;
-	    comps[i].err_code = ((struct io_event *)comps)[i].res2;
-	}
+        comps[i].err_code = ((struct io_event *)comps)[i].res2;
+    }
     }
     num_evt = 0;
 
@@ -1815,20 +1815,6 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     reClockInfo.ocl_target_freq[1] = targetFreqMHz[1];
     reClockInfo.ocl_target_freq[2] = targetFreqMHz[2];
     ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_RECLOCK, &reClockInfo);
-    return ret ? -errno : ret;
-}
-
-int xocl::XOCLShim::xclMPD(struct drm_xocl_sw_mailbox *args)
-{
-    int ret;
-    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_SW_MAILBOX, args);
-    return ret ? -errno : ret;
-}
-
-int xocl::XOCLShim::xclMSD(struct drm_xocl_sw_mailbox *args)
-{
-    int ret;
-    ret = ioctl(mMgtHandle, XCLMGMT_IOCSWMAILBOX, args);
     return ret ? -errno : ret;
 }
 
@@ -2228,7 +2214,7 @@ int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
 }
 
 int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size,
-	enum axlf_section_kind kind, int index)
+    enum axlf_section_kind kind, int index)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclGetSectionInfo(section_info, section_size, kind, index) : -ENODEV;
@@ -2308,14 +2294,14 @@ int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
 
 ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
 {
-	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
 }
 
 ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
 {
-	xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
+    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }
 
 int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
@@ -2341,20 +2327,38 @@ char *xclMapMgmt(xclDeviceHandle handle)
   return drv ? drv->xclMapMgmt() :   nullptr;
 }
 
-int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclMPD(args) : -ENODEV;
-}
-
-int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclMSD(args) : -ENODEV;
-}
-
 uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->xclGetNumLiveProcesses() : 0;
+}
+
+int xclMailbox(unsigned deviceIndex)
+{
+    uint16_t dom  = pcidev::get_dev(deviceIndex)->user->domain;
+    uint16_t bus  = pcidev::get_dev(deviceIndex)->user->bus;
+    uint16_t dev  = pcidev::get_dev(deviceIndex)->user->dev;
+    uint16_t func = pcidev::get_dev(deviceIndex)->user->func;
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int fd = open(std::string("/dev/mailbox.u" + std::to_string(instance)).c_str(), O_RDWR);
+    if (fd == -1) {
+        perror("open");
+        return errno;
+    }
+    return fd;
+}
+
+int xclMailboxMgmt(unsigned deviceIndex)
+{
+    uint16_t dom  = pcidev::get_dev(deviceIndex)->mgmt->domain;
+    uint16_t bus  = pcidev::get_dev(deviceIndex)->mgmt->bus;
+    uint16_t dev  = pcidev::get_dev(deviceIndex)->mgmt->dev;
+    uint16_t func = pcidev::get_dev(deviceIndex)->mgmt->func;
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int fd = open(std::string("/dev/mailbox.m" + std::to_string(instance)).c_str(), O_RDWR);
+    if (fd == -1) {
+        perror("open");
+        return errno;
+    }
+    return fd;
 }

@@ -276,9 +276,8 @@ public:
     // Temporary hack for xbflash use only
     char *xclMapMgmt(void) { return mMgtMap; }
     xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
-
-    int xclMPD(struct drm_xocl_sw_mailbox *args);
-    int xclMSD(struct drm_xocl_sw_mailbox *args);
+    int xclMailbox(unsigned deviceIndex);
+    int xclMailboxMgmt(unsigned deviceIndex);
 
 private:
     xclVerbosityLevel mVerbosity;
