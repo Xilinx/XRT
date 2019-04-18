@@ -54,7 +54,7 @@ unaligned_message(void* addr)
 
 static void
 default_allocation_message(const xocl::device* device,const xocl::memory* mem,
-                           const xrt::device::BufferObjectHandle& boh, bool err=false)
+                           const xrt::device::BufferObjectHandle& boh)
 {
   if (!boh)
     return;
@@ -78,6 +78,16 @@ default_allocation_message(const xocl::device* device,const xocl::memory* mem,
     throw std::runtime_error(str.str());
   else
     xrt::message::send(xrt::message::severity_level::WARNING,str.str());
+}
+
+static void
+default_bad_allocation_message(const xocl::device* device,const xocl::memory* mem)
+{
+  std::stringstream str;
+  str << "Host buffer (" << mem->get_uid() << ") "
+      << "has no bank assignment and is not used as kernel argument "
+      << "before first enqueue operation.";
+  xrt::message::send(xrt::message::severity_level::ERROR,str.str());
 }
 
 
@@ -572,9 +582,15 @@ allocate_buffer_object(memory* mem)
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
 
-  auto boh = alloc(mem);
-  default_allocation_message(this,mem,boh);
-  return boh;
+  try {
+    auto boh = alloc(mem);
+    default_allocation_message(this,mem,boh);
+    return boh;
+  }
+  catch (const std::bad_alloc& ex) {
+    default_bad_allocation_message(this,mem);
+    throw;
+  }
 }
 
 xrt::device::BufferObjectHandle
