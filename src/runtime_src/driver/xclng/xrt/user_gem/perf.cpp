@@ -553,7 +553,7 @@ namespace xocl {
         counterResults.ReadLatency[s]  += (upper[5] << 32);
 
         if (mLogStream.is_open()) {
-          mLogStream << "SPM Upper 32, slot " << s << std::endl;
+          mLogStream << "AXI Interface Monitor Upper 32, slot " << s << std::endl;
           mLogStream << "  WriteBytes : " << upper[0] << std::endl;
           mLogStream << "  WriteTranx : " << upper[1] << std::endl;
           mLogStream << "  WriteLatency : " << upper[2] << std::endl;
@@ -564,13 +564,13 @@ namespace xocl {
       }
 
       if (mLogStream.is_open()) {
-        mLogStream << "Reading SPM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SPM ...WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
-        mLogStream << "Reading SPM ...WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
-        mLogStream << "Reading SPM ...WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
       }
     }
 
@@ -580,23 +580,23 @@ namespace xocl {
     numSlots = getPerfMonNumberSlots(XCL_PERF_MON_ACCEL);
     for (uint32_t s=0; s < numSlots; s++) {
 
-      // Get SAM configuration
+      // Get Accelerator Monitor configuration
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,s);
       bool has64bit = (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) ? true : false;
       // Accelerator Monitor > 1.1 supports dataflow monitoring
       bool hasDataflow = (cmpMonVersions(mAccelmonMajorVersions[s],mAccelmonMinorVersions[s],1,1) < 0) ? true : false;
       bool hasStall = (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) ? true : false;
 
-      // Debug Info from first SAM
+      // Debug Info from first Accelerator Monitor
       if (mLogStream.is_open() && (s == 0)) {
         uint32_t version = 0;
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress, &version, 4);
-        mLogStream << "SAM Core Version Register : " << version << std::endl;
-        mLogStream << "SAM Core vlnv : "
+        mLogStream << "Accelerator Monitor Core Version Register : " << version << std::endl;
+        mLogStream << "Accelerator Monitor Core vlnv : "
                    << " Major " << static_cast<int>(mAccelmonMajorVersions[s])
                    << " Minor " << static_cast<int>(mAccelmonMinorVersions[s])
                    << std::endl;
-        mLogStream << "SAM config : "
+        mLogStream << "Accelerator Monitor config : "
                    << " 64 bit support : " << has64bit 
                    << " Dataflow support : " << hasDataflow
                    << " Stall support : " << hasStall
@@ -609,7 +609,7 @@ namespace xocl {
                       baseAddress + XSAM_SAMPLE_OFFSET, 
                       &sampleInterval, 4);
       if (mLogStream.is_open()) {
-        mLogStream << "SAM Sample Interval : " << sampleInterval << std::endl;
+        mLogStream << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
       }
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 
@@ -646,7 +646,7 @@ namespace xocl {
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
         if (mLogStream.is_open()) {
-          mLogStream << "SAM Upper 32, slot " << s << std::endl;
+          mLogStream << "Accelerator Monitor Upper 32, slot " << s << std::endl;
           mLogStream << "  CuExecCount : " << upper[0] << std::endl;
           mLogStream << "  CuExecCycles : " << upper[1] << std::endl;
           mLogStream << "  CuMinExecCycles : " << upper[2] << std::endl;
@@ -677,13 +677,13 @@ namespace xocl {
       }
 
       if (mLogStream.is_open()) {
-        mLogStream << "Reading SAM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SAM ...CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
-        mLogStream << "Reading SAM ...CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
       }
 
       // Check Stall bit
@@ -699,17 +699,17 @@ namespace xocl {
                       &counterResults.CuStallExtCycles[s], 4);
         if (mLogStream.is_open()) {
           mLogStream << "Stall Counters enabled : " << std::endl;
-          mLogStream << "Reading SAM ...CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
-          mLogStream << "Reading SAM ...CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
-          mLogStream << "Reading SAM ...CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
         }
       }
     }
     /*
-     * Read SDx Axi Stream Monitor Data
+     * Read Axi Stream Monitor Data
      */
     if (mLogStream.is_open()) {
-        mLogStream << "Reading SSPMs.." << std::endl;
+        mLogStream << "Reading AXI Stream Monitors.." << std::endl;
     }
     numSlots = getPerfMonNumberSlots(XCL_PERF_MON_STR);
     for (uint32_t s=0; s < numSlots; s++) {
@@ -734,12 +734,12 @@ namespace xocl {
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
                       &counterResults.StrStarveCycles[s], 8);
       if (mLogStream.is_open()) {
-        mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
-        mLogStream << "Reading SSPM ...DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
-        mLogStream << "Reading SSPM ...BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
-        mLogStream << "Reading SSPM ...StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
-        mLogStream << "Reading SSPM ...StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
       }
     }
     return size;
@@ -1012,7 +1012,7 @@ namespace xocl {
         continue;
       }
 
-      // SDSoC Packet Format
+      // Zynq Packet Format
       results.Timestamp = (temp & 0x1FFFFFFFFFFF) - firstTimestamp;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT : 
           XCL_PERF_MON_START_EVENT;

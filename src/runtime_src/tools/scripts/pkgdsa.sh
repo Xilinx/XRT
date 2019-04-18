@@ -664,6 +664,13 @@ EOF
     rsync -avz $opt_dsadir/$opt_dsa.xpfm $pkgdir/opt/xilinx/platforms/$opt_dsa/
     rsync -avz $opt_dsadir/hw/$opt_dsa.dsa $pkgdir/opt/xilinx/platforms/$opt_dsa/hw/
     rsync -avz $opt_dsadir/sw/$opt_dsa.spfm $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/
+
+    # Support the ERT directory
+    if [ -d ${opt_dsadir}/sw/ert ] ; then
+       mkdir -p $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
+       rsync -avz ${opt_dsadir}/sw/ert/ $pkgdir/opt/xilinx/platforms/$opt_dsa/sw/ert
+    fi
+
     chmod -R +r $pkgdir/opt/xilinx/platforms/$opt_dsa
     chmod -R o=g $pkgdir/opt/xilinx/platforms/$opt_dsa
     dpkg-deb --build $pkgdir
@@ -765,6 +772,13 @@ mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw
 rsync -avz $opt_dsadir/$opt_dsa.xpfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/
 rsync -avz $opt_dsadir/hw/$opt_dsa.dsa %{buildroot}/opt/xilinx/platforms/$opt_dsa/hw/
 rsync -avz $opt_dsadir/sw/$opt_dsa.spfm %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/
+
+# Support the ERT directory
+  if [ -d ${opt_dsadir}/sw/ert ] ; then
+    mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
+    rsync -avz ${opt_dsadir}/sw/ert/ %{buildroot}/opt/xilinx/platforms/$opt_dsa/sw/ert
+fi
+
 if [ "${license_dir}" != "" ] ; then
   if [ -d ${license_dir} ] ; then
     mkdir -p %{buildroot}/opt/xilinx/platforms/$opt_dsa/license

@@ -45,6 +45,8 @@ typedef struct XmaFilterPortProperties
     int32_t         bits_per_pixel; /**< bits per pixel of video format */
     int32_t         width; /**< width in pixels of data */
     int32_t         height; /**< height in pixels of data */
+    /** framerate data structure specifying frame rate per second */
+    XmaFraction     framerate;
     int32_t         stride; /**< stride of video data row */
     /* user-defineable properties */
     XmaParameter    *params; /**< array of custom parameters for port */

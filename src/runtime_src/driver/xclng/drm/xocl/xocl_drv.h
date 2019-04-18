@@ -658,7 +658,6 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
-	int (*xclmgmt_mailbox_sw)(struct platform_device *pdev, struct xclmgmt_ioc_sw_mailbox *sw_chan);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\

@@ -1777,7 +1777,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	struct mailbox_req_bitstream_lock bitstream_lock = {0};
 	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
 	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;	
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int resp = 0;
 	size_t resplen = sizeof(resp);
 
@@ -1805,6 +1805,44 @@ done:
 	return err;
 }
 
+static void icap_clean_axlf_section(struct icap *icap,
+	enum axlf_section_kind kind)
+{
+	void **target = NULL;
+
+	switch (kind) {
+	case IP_LAYOUT:
+		target = (void **)&icap->ip_layout;
+		break;
+	case MEM_TOPOLOGY:
+		target = (void **)&icap->mem_topo;
+		break;
+	case DEBUG_IP_LAYOUT:
+		target = (void **)&icap->debug_layout;
+		break;
+	case CONNECTIVITY:
+		target = (void **)&icap->connectivity;
+		break;
+	default:
+		break;
+	}
+	if (target) {
+		vfree(*target);
+		*target = NULL;
+	}
+}
+
+static void icap_clean_bitstream_axlf(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+
+	icap->icap_bitstream_id = 0;
+	uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
+	icap_clean_axlf_section(icap, IP_LAYOUT);
+	icap_clean_axlf_section(icap, MEM_TOPOLOGY);
+	icap_clean_axlf_section(icap, DEBUG_IP_LAYOUT);
+	icap_clean_axlf_section(icap, CONNECTIVITY);
+}
 
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const void *u_xclbin)
@@ -1923,9 +1961,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 				goto done;
 		}
 
-		icap->icap_bitstream_id = 0;
-		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
-
 		buffer = (char *)xclbin;
 		buffer += primaryFirmwareOffset;
 		err = icap_download_user(icap, buffer, primaryFirmwareLength);
@@ -1966,7 +2001,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		if (!uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
 
-			/* 
+			/*
 			 * Clean up and expire cache if we need to download xclbin
 			 */
 			memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
@@ -2035,12 +2070,9 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = icap_verify_bitstream_axlf(pdev, xclbin);
 
 	/* if verify failed */
-	if (err) {
-		icap->icap_bitstream_id = 0;
-		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
-	}
-
 done:
+	if (err)
+		icap_clean_bitstream_axlf(pdev);
 	mutex_unlock(&icap->icap_lock);
 	vfree(mb_req);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
@@ -2297,12 +2329,6 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 
 done:
 	if (err) {
-		vfree(icap->connectivity);
-		icap->connectivity = NULL;
-		vfree(icap->ip_layout);
-		icap->ip_layout = NULL;
-		vfree(icap->mem_topo);
-		icap->mem_topo = NULL;
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG);
 		xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_MIG_HBM);
@@ -2825,7 +2851,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 		icap->cache_expire_secs = val;
 
 	mutex_unlock(&icap->icap_lock);
-	return count;	
+	return count;
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
