@@ -1330,6 +1330,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		exec->polling_mode = 1;
 	}
 
+	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
+		cfg->cu_dma = 0;
+
 	// reserve slot 0 for control commands
 	set_bit(0, exec->slot_status);
 
