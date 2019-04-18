@@ -565,6 +565,13 @@ public:
   get_xclbin() const;
 
   /**
+   * @return
+   *  AXLF top
+   */
+  const axlf*
+  get_axlf() const;
+
+  /**
    * Check if this device is active, meaning it is programmed
    */
   bool
