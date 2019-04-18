@@ -104,7 +104,6 @@ void baseDump(std::ostream &ostr)
          <<    "\nGit Hash:   " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" )
          <<    "\nGit Branch: " << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
          <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
-
 }
 }
 
