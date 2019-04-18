@@ -13,7 +13,9 @@ include_directories(
   ${XRT_XOCL_API_DIR}
 )
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "7.3.0")
 add_compile_options("-Wno-nonnull")
+endif()
 
 file(GLOB XRT_XOCL_API_FILES
   "${XRT_XOCL_API_DIR}/*.h"
