@@ -207,7 +207,7 @@ namespace xdp {
     ProfileMgr->setStallTrace(stall_trace);
 
     // Enable profile summary if profile is on
-    std::string profileFile("sdaccel_profile_summary");
+    std::string profileFile("profile_summary");
     ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
     xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin.get());
     ProfileWriters.push_back(csvProfileWriter);
@@ -216,14 +216,15 @@ namespace xdp {
     // Enable Trace File if profile is on and trace is enabled
     std::string timelineFile("");
     if (xrt::config::get_timeline_trace()) {
-      timelineFile = "sdaccel_timeline_trace";
+      timelineFile = "timeline_trace";
       ProfileMgr->turnOnFile(xdp::RTUtil::FILE_TIMELINE_TRACE);
     }
     xdp::CSVTraceWriter* csvTraceWriter = new xdp::CSVTraceWriter(timelineFile, "Xilinx", Plugin.get());
     TraceWriters.push_back(csvTraceWriter);
     ProfileMgr->attach(csvTraceWriter);
 
-    // In Testing
+#if 0
+    // Not Used
     if (std::getenv("SDX_NEW_PROFILE")) {
       std::string profileFile2("sdx_profile_summary");
       std::string timelineFile2("sdx_timeline_trace");
@@ -231,6 +232,7 @@ namespace xdp {
       ProfileWriters.push_back(csvProfileWriter2);
       ProfileMgr->attach(csvProfileWriter2);
     }
+#endif
 
     // Add functions to callback for profiling kernel/CU scheduling
     xocl::add_command_start_callback(xoclp::get_cu_start);

@@ -437,19 +437,3 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	printk(KERN_INFO "%s err: %d\n", __func__, err);
 	return err;
 }
-
-int xocl_sw_mailbox_ioctl(struct drm_device *dev, void *data,
-	struct drm_file *filp)
-{
-	int ret = 0;
-	struct xocl_drm *drm_p = dev->dev_private;
-	struct xocl_dev *xdev = drm_p->xdev;
-
-	struct drm_xocl_sw_mailbox *args;
-	args = (struct drm_xocl_sw_mailbox *)data;
-
-	/* 0 is a successful transfer */
-	ret = xocl_mailbox_sw_transfer(xdev, args);
-	return ret;
-}
-

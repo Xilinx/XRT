@@ -710,7 +710,7 @@ start_cu(size_type slot_idx)
   for (size_type cu_idx=0; cu_idx<num_cus; ++cu_idx) {
     if (cus.test(cu_idx) && !cu_status.test(cu_idx)) {
       ERT_DEBUGF("start_cu cu(%d) for slot_idx(%d)\n",cu_idx,slot_idx);
-      ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==4,"cu not ready");
+      ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==AP_IDLE,"cu not ready");
       // cudma in 5.1 DSAs has a bug and supports at most 127 word copy
       // excluding the 4 control words
       if (cu_dma_enabled && (cu_dma_52 || regmap_size(slot.header_value)<(127+4))) {
@@ -787,8 +787,7 @@ check_cu(size_type cu_idx, bool wait=false)
 
   // check if done
   do {
-    // done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-    if (read_reg(cu_addr) & (AP_DONE|AP_IDLE)) {
+    if (read_reg(cu_addr) & AP_DONE) {
       // toogle cu status bit, it is now free
       cu_status.toggle(cu_idx);
       cu_slot_usage[cu_idx] = no_index; // reset slot index
