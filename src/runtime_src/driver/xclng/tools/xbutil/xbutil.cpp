@@ -558,9 +558,6 @@ int main(int argc, char *argv[])
     unsigned int total = pcidev::get_dev_total();
     unsigned int count = pcidev::get_dev_ready();
 
-    if (total == 0) {
-        std::cout << "ERROR: No card found\n";
-    }
     if (cmd != xcldev::DUMP)
         std::cout << "INFO: Found total " << total << " card(s), "
                   << count << " are usable" << std::endl;
@@ -569,7 +566,7 @@ int main(int argc, char *argv[])
         xcldev::baseDump(std::cout);
 
     if (total == 0)
-        return 1;
+        return -ENODEV;
 
     if (cmd == xcldev::SCAN) {
         print_pci_info(std::cout);
@@ -601,7 +598,7 @@ int main(int argc, char *argv[])
         else
             std::cout << "ERROR: Card [" << index << "] is not ready";
         std::cout << std::endl;
-        return 1;
+        return -ENOENT;
     }
 
     if(pcidev::get_dev(index)->user == NULL){
