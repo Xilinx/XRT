@@ -251,7 +251,7 @@ const size_type no_index = std::numeric_limits<size_type>::max();
 // Statically allcoated array size is reduced in debug otherwise
 // there is not enough space for compiled firmware
 ////////////////////////////////////////////////////////////////
-#ifdef ERT_DEBUG
+#ifdef ERT_VERBOSE
 const  size_type max_slots                  = 32;   // size of statically allocated array
 #else
 const  size_type max_slots                  = 128;  // size of statically allocated array
@@ -260,7 +260,7 @@ static size_type num_slots                  = 16;   // actual number of slots
 static size_type num_slot_masks             = 1;    // (num_slots-1>>5)+1;
 
 // Max number of compute units
-#ifdef ERT_DEBUG
+#ifdef ERT_VERBOSE
 const  size_type max_cus                    = 32;   // size of statically allocated array
 #else
 const  size_type max_cus                    = 128;  // size of statically allocated array
