@@ -60,6 +60,8 @@
 #define QDMA_MAX_INTR		16
 #define QDMA_USER_INTR_MASK	0xfe
 
+#define QDMA_QSETS_MAX		2048
+
 static dev_t	str_dev;
 
 struct stream_async_req;
@@ -134,8 +136,6 @@ struct xocl_qdma {
 
 	struct mm_channel	*chans[2];
 
-	struct mutex		stat_lock;
-
 	/* streaming */
 	struct cdev		*cdev;
 	struct device		*sys_device;
@@ -150,6 +150,8 @@ struct xocl_qdma {
 	struct qdma_irq		user_msix_table[QDMA_MAX_INTR];
 	u32			user_msix_mask;
 	spinlock_t		user_msix_table_lock;
+
+	struct stream_queue	*queues[QDMA_QSETS_MAX * 2];
 };
 
 struct mm_channel {
@@ -332,8 +334,9 @@ static void stream_device_release(struct device *dev)
 static int stream_sysfs_create(struct stream_queue *queue)
 {
 	struct platform_device	*pdev = queue->qdma->pdev;
+	struct stream_queue	*temp_q;
 	char			name[32];
-	int			ret;
+	int			ret, i;
 
 #if 0
 	queue->dev = device_create(NULL, &pdev->dev,
@@ -357,6 +360,23 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
 		goto failed;
+	}
+
+	for (i = 0; i < QDMA_QSETS_MAX; i++) {
+		temp_q = queue->qdma->queues[i];
+		if (!temp_q)
+		       continue;
+		if (temp_q->qconf.c2h && temp_q->flowid == queue->flowid) {
+			xocl_info(&pdev->dev,
+				"flowid overlapped with queue %d", i);
+			return 0;
+		}
+
+		 if (!temp_q->qconf.c2h && temp_q->routeid == queue->routeid) {
+			 xocl_info(&pdev->dev,
+				"routeid overlapped with queue %d", i);
+			 return 0;
+		 }
 	}
 
 	if (queue->qconf.c2h)
@@ -1242,14 +1262,18 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	qdma = queue->qdma;
 
+	mutex_lock(&qdma->str_dev_lock);
 	xocl_info(&qdma->pdev->dev, "Release Queue 0x%lx", queue->queue);
 
 	if (queue->refcnt > 0) {
+		mutex_unlock(&qdma->str_dev_lock);
 		xocl_err(&qdma->pdev->dev, "Queue is busy");
 		return -EBUSY;
 	}
 
 	stream_sysfs_destroy(queue);
+	qdma->queues[queue->qconf.qidx] = NULL;
+	mutex_unlock(&qdma->str_dev_lock);
 
 	ret = qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
 		NULL, 0);
@@ -1439,13 +1463,17 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 
 	queue->qdma = qdma;
 
+	mutex_lock(&qdma->str_dev_lock);
 	ret = stream_sysfs_create(queue);
 	if (ret) {
+		mutex_unlock(&qdma->str_dev_lock);
 		xocl_err(&qdma->pdev->dev, "sysfs create failed");
 		goto failed;
 	}
 
 	queue->uid = current_uid();
+	qdma->queues[queue->qconf.qidx] = queue;
+	mutex_unlock(&qdma->str_dev_lock);
 
 	return 0;
 
@@ -1659,7 +1687,7 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->pdev = XDEV(xdev)->pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
-	conf->qsets_max = 2048;
+	conf->qsets_max = QDMA_QSETS_MAX;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
@@ -1719,7 +1747,6 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->user_msix_mask = QDMA_USER_INTR_MASK;
 
 	mutex_init(&qdma->str_dev_lock);
-	mutex_init(&qdma->stat_lock);
 	spin_lock_init(&qdma->user_msix_table_lock);
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_DMA, &qdma_ops);
@@ -1785,7 +1812,6 @@ static int qdma_remove(struct platform_device *pdev)
 	}
 
 
-	mutex_destroy(&qdma->stat_lock);
 	mutex_destroy(&qdma->str_dev_lock);
 
 	platform_set_drvdata(pdev, NULL);

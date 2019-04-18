@@ -122,9 +122,12 @@ namespace xclhwemhal2 {
 
  uint32_t HwEmShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum)
  {
-   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS) {
-     return  static_cast <uint32_t> (mStreamMonProperties[slotnum]);
-   }
+   if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mPerfmonProperties[slotnum]);
+   if (type == XCL_PERF_MON_ACCEL && slotnum < XSAM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mAccelmonProperties[slotnum]);
+   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mStreamMonProperties[slotnum]);
    return 0;
  }
 

@@ -44,6 +44,7 @@ enum {
         XOCL_DSAFLAG_SET_XPR =                  0x10,
         XOCL_DSAFLAG_MFG =                      0x20,
 	XOCL_DSAFLAG_FIXED_INTR =		0x40,
+        XOCL_DSAFLAG_NO_KDMA =              	0x80,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -833,6 +834,13 @@ enum subdev_id {
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
 	}
 
+#define	XOCL_BOARD_USER_DSA_U250_NO_KDMA				\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_NO_KDMA,			\
+		.subdev_info	= USER_RES_DSA52,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+	}
+
 /* mgmt pf defines */
 #define	MGMT_RES_DEFAULT						\
 		((struct xocl_subdev_info []) {				\
@@ -1202,6 +1210,8 @@ enum subdev_id {
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
-		&XOCL_BOARD_MGMT_XBB_DSA51 }
+		&XOCL_BOARD_MGMT_XBB_DSA51 },				\
+	{ 0x10EE, 0x5005, PCI_ANY_ID, "xilinx_u250_xdma_201830_1",	\
+		&XOCL_BOARD_USER_DSA_U250_NO_KDMA }
 
 #endif

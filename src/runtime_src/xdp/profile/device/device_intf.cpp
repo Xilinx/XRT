@@ -379,7 +379,7 @@ namespace xdp {
     }
 
     /*
-     * Read SDx Accel Monitor Data
+     * Read Accelerator Monitor Data
      */
     numSlots = getNumberSlots(XCL_PERF_MON_ACCEL);
     for (uint32_t s=0; s < numSlots; s++) {
@@ -387,7 +387,7 @@ namespace xdp {
       uint32_t version = 0;
       size += read(baseAddress, &version, 4);
       if (mVerbose) {
-        std::cout << "SAM Core Version : " << version << std::endl;
+        std::cout << "Accelerator Monitor Core Version : " << version << std::endl;
       }
 
       // Read sample interval register
@@ -395,7 +395,7 @@ namespace xdp {
       size += read(baseAddress + XSAM_SAMPLE_OFFSET,
                    &sampleInterval, 4);
       if (mVerbose) {
-        std::cout << "SAM Sample Interval : " << sampleInterval << std::endl;
+        std::cout << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
       }
 
       size += read(baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
@@ -425,7 +425,7 @@ namespace xdp {
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
         if (mVerbose) {
-          std::cout << "SAM Upper 32, slot " << s << std::endl;
+          std::cout << "Accelerator Monitor Upper 32, slot " << s << std::endl;
           std::cout << "  CuExecCount : " << upper[0] << std::endl;
           std::cout << "  CuExecCycles : " << upper[1] << std::endl;
           std::cout << "  CuMinExecCycles : " << upper[2] << std::endl;
@@ -434,11 +434,11 @@ namespace xdp {
       }
 
       if (mVerbose) {
-        std::cout << "Reading SAM ...SlotNum : " << s << std::endl;
-        std::cout << "Reading SAM ...CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
-        std::cout << "Reading SAM ...CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
-        std::cout << "Reading SAM ...CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
-        std::cout << "Reading SAM ...CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
+        std::cout << "Reading Accelerator Monitor... SlotNum : " << s << std::endl;
+        std::cout << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
+        std::cout << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
+        std::cout << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
+        std::cout << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
       }
 
       // Check Stall bit
@@ -451,17 +451,17 @@ namespace xdp {
                      &counterResults.CuStallExtCycles[s], 4);
         if (mVerbose) {
           std::cout << "Stall Counters enabled : " << std::endl;
-          std::cout << "Reading SAM ...CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
-          std::cout << "Reading SAM ...CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
-          std::cout << "Reading SAM ...CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
+          std::cout << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
+          std::cout << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
+          std::cout << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
         }
       }
     }
     /*
-     * Read SDx Axi Stream Monitor Data
+     * Read AXI Stream Monitor Data
      */
     if (mVerbose) {
-        std::cout << "Reading SSPMs.." << std::endl;
+        std::cout << "Reading AXI Stream Monitors.." << std::endl;
     }
     numSlots = getNumberSlots(XCL_PERF_MON_STR);
     for (uint32_t s=0; s < numSlots; s++) {
@@ -480,12 +480,12 @@ namespace xdp {
       size += read(baseAddress + XSSPM_STARVE_CYCLES_OFFSET,
                    &counterResults.StrStarveCycles[s], 8);
       if (mVerbose) {
-        std::cout << "Reading SSPM ...SlotNum : " << s << std::endl;
-        std::cout << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
-        std::cout << "Reading SSPM ...DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
-        std::cout << "Reading SSPM ...BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
-        std::cout << "Reading SSPM ...StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
-        std::cout << "Reading SSPM ...StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+        std::cout << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
+        std::cout << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
+        std::cout << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
+        std::cout << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
+        std::cout << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
+        std::cout << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
       }
     }
     return size;
@@ -768,7 +768,7 @@ namespace xdp {
         continue;
       }
 
-      // SDSoC Packet Format
+      // Zynq Packet Format
       results.Timestamp = temp & 0x1FFFFFFFFFFF;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT : 
           XCL_PERF_MON_START_EVENT;
