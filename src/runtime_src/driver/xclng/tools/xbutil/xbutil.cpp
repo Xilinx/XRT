@@ -23,8 +23,13 @@
 #include <climits>
 #include <algorithm>
 #include <sys/mman.h>
+#include <sys/utsname.h>
+#include <cstdlib>
+#include <gnu/libc-version.h>
+#include <boost/property_tree/ini_parser.hpp>
 
 #include "xbutil.h"
+#include "base.h"
 #include "ert.h"
 #include "shim.h"
 
@@ -168,6 +173,8 @@ int main(int argc, char *argv[])
     size_t blockSize = 0;
     int c;
     dd::ddArgs_t ddArgs;
+
+    xcldev::baseInit();
 
     const char* exe = argv[ 0 ];
     if (argc == 1) {
@@ -549,6 +556,10 @@ int main(int argc, char *argv[])
 
     unsigned int total = pcidev::get_dev_total();
     unsigned int count = pcidev::get_dev_ready();
+
+    if (cmd == xcldev::QUERY)
+        xcldev::baseDump(std::cout);
+
     if (total == 0) {
         std::cout << "ERROR: No card found\n";
         return 1;
@@ -1029,7 +1040,7 @@ int xcldev::device::validate(bool quick)
     if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
         m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
-        std::cout << "WARNING: Ensure Card is plugged in to Gen" 
+        std::cout << "WARNING: Ensure Card is plugged in to Gen"
             << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
             << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
             << m_devinfo.mPCIeLinkWidth << "\n         "
@@ -1184,7 +1195,7 @@ int xcldev::xclValidate(int argc, char *argv[])
 
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
-        
+
         int v = dev->validate(quick);
         if (v == 1) {
             warning = true;
@@ -1503,7 +1514,7 @@ int xcldev::xclP2p(int argc, char *argv[])
 /*
  * m2mtest
  */
-static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh, 
+static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
     void * boptr, size_t boSize)
 {
     if(boptr != nullptr)
@@ -1512,7 +1523,7 @@ static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
         xclFreeBO(handle, boh);
 }
 
-static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh, 
+static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     char * &boptr, size_t boSize, int bank, char pattern)
 {
     boh = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank);
@@ -1593,7 +1604,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
-    
+
     bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
 
     // Clean up
@@ -1610,7 +1621,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
 
     //bandwidth
     double total = boSize;
-    total *= 1000000; // convert us to s 
+    total *= 1000000; // convert us to s
     total /= (1024 * 1024); //convert to MB
     std::cout << total / timer_stop << " MB/s\t\n";
 
