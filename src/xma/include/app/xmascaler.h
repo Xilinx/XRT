@@ -244,6 +244,8 @@ typedef struct XmaScalerInOutProperties
     int32_t         bits_per_pixel; /**< bits per pixel for primary plane */
     int32_t         width; /**< width of primary plane */
     int32_t         height; /**< height of primary plane */
+    /** framerate data structure specifying frame rate per second */
+    XmaFraction     framerate;
     int32_t         stride; /**< stride of primary plane */
     int32_t         filter_idx; /**< tbd */
     int32_t         coeffLoad;       /**< 0-AutoGen 1-Default 2-FromFile */
