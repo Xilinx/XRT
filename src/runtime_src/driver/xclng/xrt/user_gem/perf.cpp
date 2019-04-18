@@ -733,6 +733,10 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
                       &counterResults.StrStarveCycles[s], 8);
+      // AXIS without TLAST is assumed to be one long transfer
+      if (counterResults.StrNumTranx[s] == 0 && counterResults.StrDataBytes[s] > 0) {
+        counterResults.StrNumTranx[s] = 1;
+      }
       if (mLogStream.is_open()) {
         mLogStream << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
         mLogStream << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
