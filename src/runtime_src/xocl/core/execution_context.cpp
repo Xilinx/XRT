@@ -21,6 +21,8 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
+#include "driver/common/xclbin_parser.h"
+
 #include "impl/spir.h"
 
 #include <iostream>
@@ -239,6 +241,9 @@ execution_context(device* device
 
   // Compute units to use
   add_compute_units(device);
+
+  m_dataflow = xrt_core::xclbin::get_dataflow(device->get_axlf());
+  XOCL_DEBUGF("execution_context(%d) has dataflow(%d)\n",m_uid,m_dataflow);
 }
 
 void
@@ -547,10 +552,11 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = m_dataflow ? 20*m_cus.size() : 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;
