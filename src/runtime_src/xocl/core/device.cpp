@@ -1275,6 +1275,15 @@ get_xclbin() const
   return m_xclbin;
 }
 
+const axlf*
+device::
+get_axlf() const
+{
+  assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
+  auto binary = m_xclbin.binary();
+  auto binary_data = binary.binary_data();
+  return reinterpret_cast<const axlf*>(binary_data.first);
+}
 
 unsigned short
 device::
