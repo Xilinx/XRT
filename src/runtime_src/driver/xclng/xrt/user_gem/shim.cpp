@@ -2339,7 +2339,7 @@ int xclMailbox(unsigned deviceIndex)
     uint16_t bus  = pcidev::get_dev(deviceIndex)->user->bus;
     uint16_t dev  = pcidev::get_dev(deviceIndex)->user->dev;
     uint16_t func = pcidev::get_dev(deviceIndex)->user->func;
-    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<3) + (func));
     const int fd = open(std::string("/dev/mailbox.u" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
@@ -2354,7 +2354,7 @@ int xclMailboxMgmt(unsigned deviceIndex)
     uint16_t bus  = pcidev::get_dev(deviceIndex)->mgmt->bus;
     uint16_t dev  = pcidev::get_dev(deviceIndex)->mgmt->dev;
     uint16_t func = pcidev::get_dev(deviceIndex)->mgmt->func;
-    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<3) + (func));
     const int fd = open(std::string("/dev/mailbox.m" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
