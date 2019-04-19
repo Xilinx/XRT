@@ -189,10 +189,10 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 		except ValueError as e:
 			print (e.message)
 			return
-		spm_error = obj_spm.invoke(arg, 0)
-                sspm_error = obj_sspm.invoke(arg, 0)
-		sam_error = obj_sam.invoke(arg, 0)
-		lapc_error = obj_lapc.invoke(arg, 0)
+		obj_spm.invoke(arg, 0)
+                obj_sspm.invoke(arg, 0)
+		obj_sam.invoke(arg, 0)
+		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()
 
 class xstatusJSONPrefix(gdb.Command):
