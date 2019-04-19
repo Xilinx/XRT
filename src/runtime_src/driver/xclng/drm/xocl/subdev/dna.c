@@ -21,21 +21,21 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 
-/* Registers are defined in pg150-ultrascale-memory-ip.pdf: 
- * AXI4-Lite Slave Control/Status Register Map 
+/* Registers are defined in pg150-ultrascale-memory-ip.pdf:
+ * AXI4-Lite Slave Control/Status Register Map
  */
 #define XLNX_DNA_MEMORY_MAP_MAGIC_IS_DEFINED                        (0x3E4D7732)
 #define XLNX_DNA_MAJOR_MINOR_VERSION_REGISTER_OFFSET                0x00          //  RO
 #define XLNX_DNA_REVISION_REGISTER_OFFSET                           0x04          //  RO
-#define XLNX_DNA_CAPABILITY_REGISTER_OFFSET                         0x08          //  RO 
+#define XLNX_DNA_CAPABILITY_REGISTER_OFFSET                         0x08          //  RO
 //#define XLNX_DNA_SCRATCHPAD_REGISTER_OFFSET                         (0x0C)          //  RO (31-1) + RW (0)
 #define XLNX_DNA_STATUS_REGISTER_OFFSET                             0x10            //  RO
 #define XLNX_DNA_FSM_DNA_WORD_WRITE_COUNT_REGISTER_OFFSET           (0x14)          //  RO
 #define XLNX_DNA_FSM_CERTIFICATE_WORD_WRITE_COUNT_REGISTER_OFFSET   (0x18)          //  RO
 #define XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET             (0x20)          //  RO (31-1) + RW (0)
-#define XLNX_DNA_READBACK_REGISTER_2_OFFSET                         0x40            //  RO XLNX_DNA_BOARD_DNA_95_64 
-#define XLNX_DNA_READBACK_REGISTER_1_OFFSET                         0x44            //  RO XLNX_DNA_BOARD_DNA_63_32 
-#define XLNX_DNA_READBACK_REGISTER_0_OFFSET                         0x48            //  RO XLNX_DNA_BOARD_DNA_31_0  
+#define XLNX_DNA_READBACK_REGISTER_2_OFFSET                         0x40            //  RO XLNX_DNA_BOARD_DNA_95_64
+#define XLNX_DNA_READBACK_REGISTER_1_OFFSET                         0x44            //  RO XLNX_DNA_BOARD_DNA_63_32
+#define XLNX_DNA_READBACK_REGISTER_0_OFFSET                         0x48            //  RO XLNX_DNA_BOARD_DNA_31_0
 #define XLNX_DNA_DATA_AXI_ONLY_REGISTER_OFFSET                      (0x80)          //  WO
 #define XLNX_DNA_CERTIFICATE_DATA_AXI_ONLY_REGISTER_OFFSET          (0xC0)          //  WO - 512 bit aligned.
 #define XLNX_DNA_MAX_ADDRESS_WORDS                                  (0xC4)
@@ -162,9 +162,78 @@ static uint32_t dna_capability(struct platform_device *pdev)
 	return capability;
 }
 
+static void dna_write_cert(struct platform_device *pdev, const uint32_t *cert, uint32_t len)
+{
+	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
+	int i,j,k;
+	u32 status = 0, words;
+	uint8_t retries = 100;
+	bool sha256done = false;
+	uint32_t convert;
+	uint32_t sign_start, message_words = (len-512)>>2;
+	sign_start = message_words;
+
+	if (!xlnx_dna)
+		return;
+
+	iowrite32(0x1, xlnx_dna->base+XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET);
+	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+	xocl_info(&pdev->dev, "Start: status %08x", status);
+
+	for(i=0;i<message_words;i+=16){
+
+		retries = 100;
+		sha256done = false;
+
+		while(!sha256done && retries){
+			status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+			if(!(status>>4 & 0x1)){
+				sha256done = true;
+				break;
+			}
+			msleep(10);
+			retries--;
+		}
+		for(j=0;j<16;++j){
+			convert = (*(cert+i+j)>>24 & 0xff) | (*(cert+i+j)>>8 & 0xff00) | (*(cert+i+j)<<8 & 0xff0000) | ((*(cert+i+j) & 0xff)<<24);
+			iowrite32(convert, xlnx_dna->base+XLNX_DNA_DATA_AXI_ONLY_REGISTER_OFFSET+j*4);
+		}
+	}
+	retries = 100;
+	sha256done = false;
+	while(!sha256done && retries){
+		status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+		if(!(status>>4 & 0x1)){
+			sha256done = true;
+			break;
+		}
+		msleep(10);
+		retries--;
+	}
+
+	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+	words  = ioread32(xlnx_dna->base+XLNX_DNA_FSM_DNA_WORD_WRITE_COUNT_REGISTER_OFFSET);
+	xocl_info(&pdev->dev, "Message: status %08x dna words %d", status, words);
+
+	for(k=0;k<128;k+=16){
+		for(i=0;i<16;i++){
+			j=k+i+sign_start;
+			convert = (*(cert+j)>>24 & 0xff) | (*(cert+j)>>8 & 0xff00) | (*(cert+j)<<8 & 0xff0000) | ((*(cert+j) & 0xff)<<24);
+			iowrite32(convert, xlnx_dna->base+XLNX_DNA_CERTIFICATE_DATA_AXI_ONLY_REGISTER_OFFSET+i*4);
+		}
+	}
+
+	status = ioread32(xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+	words  = ioread32(xlnx_dna->base+XLNX_DNA_FSM_CERTIFICATE_WORD_WRITE_COUNT_REGISTER_OFFSET);
+	xocl_info(&pdev->dev, "Signature: status %08x certificate words %d", status, words);
+
+	return;
+}
+
 static struct xocl_dna_funcs dna_ops = {
-	.status			= dna_status,
+	.status = dna_status,
 	.capability = dna_capability,
+	.write_cert = dna_write_cert,
 };
 
 
@@ -208,7 +277,7 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	xlnx_dna = devm_kzalloc(&pdev->dev, sizeof(*xlnx_dna), GFP_KERNEL);
 	if (!xlnx_dna)
 		return -ENOMEM;
-	
+
 	xlnx_dna->base = devm_kzalloc(&pdev->dev, sizeof(void __iomem *), GFP_KERNEL);
 	if (!xlnx_dna->base)
 		return -ENOMEM;

@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdint.h>
 #include "ert.h"
+#include <queue>
 
 #define XOCL_U32_MASK 0xFFFFFFFF
 
@@ -25,7 +26,7 @@ namespace xclhwemhal2 {
     int		trigger;
     std::mutex mLock;
   };
-  
+
   class xocl_sched
   {
     public:
@@ -42,14 +43,30 @@ namespace xclhwemhal2 {
       xocl_sched(MBScheduler*);
       ~xocl_sched();
   };
-  
+
+  class xocl_cu 
+  {
+    public:
+      unsigned int       idx;
+      bool               dataflow;
+      uint32_t           base;
+      uint32_t           addr;
+      uint32_t           polladdr;
+      uint32_t           ctrlreg;
+      unsigned int       done_cnt;
+      unsigned int       run_cnt;
+      std::queue<xocl_cmd*>         running_queue;
+      xocl_cu();
+      ~xocl_cu();
+  };
+
   class xocl_cmd
   {
     public:
       xclemulation::drm_xocl_bo *bo;
       exec_core *exec;
       enum ert_cmd_state state;
-      int cu_idx;
+      unsigned int cu_idx;
       int slot_idx;
       /* The actual cmd object representation */
       struct ert_packet *packet;
@@ -74,6 +91,7 @@ namespace xclhwemhal2 {
 
     unsigned int               num_slots;
     unsigned int               num_cus;
+    unsigned int               num_cdma;
     unsigned int               cu_shift_offset;
     uint32_t                   cu_base_addr;
     unsigned int               polling_mode;
@@ -86,6 +104,12 @@ namespace xclhwemhal2 {
 
     uint32_t                        cu_status[MAX_U32_CU_MASKS];
     unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
+    uint32_t                        cu_addr_map[MAX_CUS];
+    xocl_cu* cus[MAX_CUS];
+    uint32_t                        cu_usage[MAX_CUS];
+    bool ertfull;
+    bool ertpoll;
+
 
     /* Status register pending complete.  Written by ISR, cleared
        by scheduler */
@@ -107,7 +131,7 @@ namespace xclhwemhal2 {
       if (mask==XOCL_U32_MASK) return -1;
       return ffz(mask);
     }
-    
+
     unsigned int slot_size(exec_core *exec)   { return ERT_CQ_SIZE / exec->num_slots; }
     unsigned int cu_mask_idx(unsigned int cu_idx)    { return cu_idx >> 5; /* 32 cus per mask */ }
     unsigned int cu_idx_in_mask(unsigned int cu_idx) { return cu_idx - (cu_mask_idx(cu_idx) << 5); }
@@ -118,8 +142,17 @@ namespace xclhwemhal2 {
     uint32_t opcode(xocl_cmd* xcmd) { return xcmd->packet->opcode; }
     uint32_t payload_size(xocl_cmd *xcmd) { return xcmd->packet->count; }
     uint32_t packet_size(xocl_cmd *xcmd) { return payload_size(xcmd) + 1; }
+    uint32_t type(struct xocl_cmd* xcmd) { return xcmd->packet->type; }
+
     void mb_query(xocl_cmd *xcmd);
     int mb_submit(xocl_cmd *xcmd);
+    void penguin_query(xocl_cmd *xcmd);
+    int penguin_submit(xocl_cmd *xcmd);
+    void ert_poll_query(xocl_cmd *xcmd);
+    int ert_poll_submit(xocl_cmd *xcmd);
+    void ert_poll_query_ctrl(xocl_cmd *xcmd);
+    int ert_poll_submit_ctrl(xocl_cmd *xcmd);
+    int acquire_slot(struct xocl_cmd* xcmd);
     int acquire_slot_idx(exec_core *exec);
     int configure(xocl_cmd *xcmd);
     void release_slot_idx(exec_core *exec, unsigned int slot_idx);
@@ -134,7 +167,21 @@ namespace xclhwemhal2 {
     int scheduler_wait_condition() ;
     void scheduler_queue_cmds();
     void scheduler_iterate_cmds();
-    
+    int get_free_cu(struct xocl_cmd *xcmd);
+    void configure_cu(struct xocl_cmd *xcmd, int cu_idx);
+    bool cu_done(struct exec_core *exec, unsigned int cu_idx);
+    uint32_t cu_masks(struct xocl_cmd *xcmd);
+    uint32_t regmap_size(struct xocl_cmd* xcmd);
+    bool cmd_has_cu(struct xocl_cmd* xcmd, uint32_t f_cu_idx);
+    void cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd);
+    void cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd);
+    xocl_cmd* cu_first_done(struct xocl_cu *xcu);
+    void cu_pop_done(struct xocl_cu *xcu);
+    void cu_continue(xocl_cu *xcu);
+    void cu_poll(xocl_cu *xcu);
+    bool cu_ready(xocl_cu *xcu);
+    bool cu_start(xocl_cu *xcu, xocl_cmd *xcmd);
+
     friend void scheduler_loop(xocl_sched *xs);
     friend void* scheduler(void* data) ;
 
@@ -149,10 +196,10 @@ namespace xclhwemhal2 {
     private:
     std::list<xocl_cmd*> free_cmds;
     std::mutex free_cmds_mutex;
-    
+
     std::list<xocl_cmd*> pending_cmds;
     std::mutex pending_cmds_mutex;
-    
+
     std::mutex m_add_cmd_mutex;
     int num_pending;
   };

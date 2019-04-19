@@ -121,6 +121,25 @@ std::string parseFirewallStatus(unsigned val)  {
     return status;
 }
 
+std::string parseDNAStatus(unsigned val)  {
+    char delim = '(';
+    std::string status;
+    if (val & BIT(0)) {
+    status += delim;
+    status += "PASS";
+    delim = '|';
+    }
+    else{
+    status += delim;
+    status += "FAIL";
+    delim = '|';        
+    }
+    if (status.size())
+    status += ')';
+    else
+    status = "(UNKNOWN)";
+    return status;
+}
 
 std::string unitConvert(size_t size){
     int i = 0, bit_shift=6;

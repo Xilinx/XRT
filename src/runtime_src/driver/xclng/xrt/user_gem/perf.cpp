@@ -33,19 +33,19 @@
  */
 
 #include "shim.h"
+#include "scan.h"
 //#include "datamover.h"
 #include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/mgmt-ioctl.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 #include "driver/include/xclperf.h"
-#include "../user_common/perfmon_parameters.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include <cstdio>
 #include <cstring>
 #include <cassert>
@@ -115,6 +115,22 @@ namespace xocl {
   unsigned XOCLShim::getBankCount() {
     return mDeviceInfo.mDDRBankCount;
   }
+  /*
+   * Returns  1 if Version2 > Version1
+   * Returns  0 if Version2 = Version1
+   * Returns -1 if Version2 < Version1
+   */
+  signed XOCLShim::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+    if (major2 > major1)
+      return 1;
+    else if (major2 < major1)
+      return -1;
+    else if (minor2 > minor1)
+      return 1;
+    else if (minor2 < minor1)
+      return -1;
+    else return 0;
+  }
 
   // Set number of profiling slots in monitor
   // NOTE: not supported anymore (extracted from debug_ip_layout)
@@ -171,21 +187,45 @@ namespace xocl {
   }
   
   uint32_t XOCLShim::getPerfMonNumberSlots(xclPerfMonType type) {
+    if (type < 0 || type >= XCL_PERF_MON_TOTAL_PROFILE)
+      return 0;
+
     if (type == XCL_PERF_MON_MEMORY)
       return mMemoryProfilingNumberSlots;
     if (type == XCL_PERF_MON_ACCEL)
       return mAccelProfilingNumberSlots;
     if (type == XCL_PERF_MON_STALL)
       return mStallProfilingNumberSlots;
+    if (type == XCL_PERF_MON_STR)
+      return mStreamProfilingNumberSlots;
+
     if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
       for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mPerfmonProperties[i] & 0x4) count++;
+        if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) count++;
       }
       return count;
     }
-    if (type == XCL_PERF_MON_STR)
-      return mStreamProfilingNumberSlots;
+
+    // type == XCL_PERF_MON_SHELL
+    uint32_t count = 0;
+    for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
+      if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) {
+        std::string slotName = mPerfMonSlotName[i];
+        if (slotName.find(IP_LAYOUT_HOST_NAME) == std::string::npos)
+          count++;
+      }
+    }
+    return count;
+  }
+
+  uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+    if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+      return static_cast<uint32_t>(mPerfmonProperties[slotnum]);
+    if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+      return static_cast<uint32_t>(mStreammonProperties[slotnum]);
+    if (type == XCL_PERF_MON_FIFO)
+      return static_cast<uint32_t>(mTraceFifoProperties);
     return 0;
   }
 
@@ -483,36 +523,93 @@ namespace xocl {
                       baseAddress + XSPM_SAMPLE_READ_LATENCY_OFFSET, 
                       &counterResults.ReadLatency[s], 4);
 
+      // Read upper 32 bits (if available)
+      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+        uint64_t upper[6] = {};
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
+                        &upper[0], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
+                        &upper[1], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET,
+                        &upper[2], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
+                        &upper[3], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET,
+                        &upper[4], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET,
+                        &upper[5], 4);
+
+        counterResults.WriteBytes[s]   += (upper[0] << 32);
+        counterResults.WriteTranx[s]   += (upper[1] << 32);
+        counterResults.WriteLatency[s] += (upper[2] << 32);
+        counterResults.ReadBytes[s]    += (upper[3] << 32);
+        counterResults.ReadTranx[s]    += (upper[4] << 32);
+        counterResults.ReadLatency[s]  += (upper[5] << 32);
+
+        if (mLogStream.is_open()) {
+          mLogStream << "AXI Interface Monitor Upper 32, slot " << s << std::endl;
+          mLogStream << "  WriteBytes : " << upper[0] << std::endl;
+          mLogStream << "  WriteTranx : " << upper[1] << std::endl;
+          mLogStream << "  WriteLatency : " << upper[2] << std::endl;
+          mLogStream << "  ReadBytes : " << upper[3] << std::endl;
+          mLogStream << "  ReadTranx : " << upper[4] << std::endl;
+          mLogStream << "  ReadLatency : " << upper[5] << std::endl;
+        }
+      }
+
       if (mLogStream.is_open()) {
-        mLogStream << "Reading SPM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SPM ...WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
-        mLogStream << "Reading SPM ...WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
-        mLogStream << "Reading SPM ...WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
-        mLogStream << "Reading SPM ...ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
+        mLogStream << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
       }
     }
+
     /*
-     * Read SDx Accel Monitor Data
+     * Read Accelerator Monitor Data
      */
     numSlots = getPerfMonNumberSlots(XCL_PERF_MON_ACCEL);
     for (uint32_t s=0; s < numSlots; s++) {
+
+      // Get Accelerator Monitor configuration
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,s);
-      uint32_t version = 0;
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                      baseAddress, 
-                      &version, 4);
-      if (mLogStream.is_open()) {
-        mLogStream << "SAM Core Version : " << version << std::endl;
+      bool has64bit = (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) ? true : false;
+      // Accelerator Monitor > 1.1 supports dataflow monitoring
+      bool hasDataflow = (cmpMonVersions(mAccelmonMajorVersions[s],mAccelmonMinorVersions[s],1,1) < 0) ? true : false;
+      bool hasStall = (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) ? true : false;
+
+      // Debug Info from first Accelerator Monitor
+      if (mLogStream.is_open() && (s == 0)) {
+        uint32_t version = 0;
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress, &version, 4);
+        mLogStream << "Accelerator Monitor Core Version Register : " << version << std::endl;
+        mLogStream << "Accelerator Monitor Core vlnv : "
+                   << " Major " << static_cast<int>(mAccelmonMajorVersions[s])
+                   << " Minor " << static_cast<int>(mAccelmonMinorVersions[s])
+                   << std::endl;
+        mLogStream << "Accelerator Monitor config : "
+                   << " 64 bit support : " << has64bit 
+                   << " Dataflow support : " << hasDataflow
+                   << " Stall support : " << hasStall
+                   << std::endl;
       }
+
       // Read sample interval register
       // NOTE: this also latches the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_SAMPLE_OFFSET, 
                       &sampleInterval, 4);
       if (mLogStream.is_open()) {
-        mLogStream << "SAM Sample Interval : " << sampleInterval << std::endl;
+        mLogStream << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
       }
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 
@@ -526,15 +623,71 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
                       &counterResults.CuMaxExecCycles[s], 4);
-      if (mLogStream.is_open()) {
-        mLogStream << "Reading SAM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SAM ...CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
-        mLogStream << "Reading SAM ...CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
-        mLogStream << "Reading SAM ...CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
+
+      // Read upper 32 bits (if available)
+      uint64_t upper[6] = {};
+      if (has64bit) {
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+                        &upper[0], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[1], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[2], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+                        &upper[3], 4);
+
+        counterResults.CuExecCount[s]     += (upper[0] << 32);
+        counterResults.CuExecCycles[s]    += (upper[1] << 32);
+        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
+        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
+
+        if (mLogStream.is_open()) {
+          mLogStream << "Accelerator Monitor Upper 32, slot " << s << std::endl;
+          mLogStream << "  CuExecCount : " << upper[0] << std::endl;
+          mLogStream << "  CuExecCycles : " << upper[1] << std::endl;
+          mLogStream << "  CuMinExecCycles : " << upper[2] << std::endl;
+          mLogStream << "  CuMaxExecCycles : " << upper[3] << std::endl;
+        }
       }
+
+      if (hasDataflow) {
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_BUSY_CYCLES_OFFSET,
+                        &counterResults.CuBusyCycles[s], 4);
+        size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_OFFSET,
+                        &counterResults.CuMaxParallelIter[s], 4);
+        if (has64bit) {
+          size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_BUSY_CYCLES_UPPER_OFFSET,
+                        &upper[4], 4);
+          size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        baseAddress + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
+                        &upper[5], 4);
+          counterResults.CuBusyCycles[s]      += (upper[4] << 32);
+          counterResults.CuMaxParallelIter[s] += (upper[5] << 32);
+        }
+      } else {
+        counterResults.CuBusyCycles[s] = counterResults.CuExecCycles[s];
+        counterResults.CuMaxParallelIter[s] = 1;
+      }
+
+      if (mLogStream.is_open()) {
+        mLogStream << "Reading Accelerator Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuBusyCycles : " << counterResults.CuBusyCycles[s] << std::endl;
+        mLogStream << "Reading Accelerator Monitor... CuMaxParallelIter : " << counterResults.CuMaxParallelIter[s] << std::endl;
+      }
+
       // Check Stall bit
-      if (mAccelmonProperties[s] & 0x4) {
+      if (hasStall) {
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                       baseAddress + XSAM_ACCEL_STALL_INT_OFFSET, 
                       &counterResults.CuStallIntCycles[s], 4); 
@@ -546,17 +699,17 @@ namespace xocl {
                       &counterResults.CuStallExtCycles[s], 4);
         if (mLogStream.is_open()) {
           mLogStream << "Stall Counters enabled : " << std::endl;
-          mLogStream << "Reading SAM ...CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
-          mLogStream << "Reading SAM ...CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
-          mLogStream << "Reading SAM ...CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
+          mLogStream << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
         }
       }
     }
     /*
-     * Read SDx Axi Stream Monitor Data
+     * Read Axi Stream Monitor Data
      */
     if (mLogStream.is_open()) {
-        mLogStream << "Reading SSPMs.." << std::endl;
+        mLogStream << "Reading AXI Stream Monitors.." << std::endl;
     }
     numSlots = getPerfMonNumberSlots(XCL_PERF_MON_STR);
     for (uint32_t s=0; s < numSlots; s++) {
@@ -581,12 +734,12 @@ namespace xocl {
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
                       &counterResults.StrStarveCycles[s], 8);
       if (mLogStream.is_open()) {
-        mLogStream << "Reading SSPM ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading SSPM ...NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
-        mLogStream << "Reading SSPM ...DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
-        mLogStream << "Reading SSPM ...BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
-        mLogStream << "Reading SSPM ...StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
-        mLogStream << "Reading SSPM ...StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
+        mLogStream << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
       }
     }
     return size;
@@ -815,7 +968,9 @@ namespace xocl {
     // ******************************
     // Read & process all trace FIFOs
     // ******************************
+    static unsigned long long firstTimestamp;
     xclTraceResults results = {};
+    uint64_t previousTimestamp = 0;
     for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
       uint64_t temp = 0;
@@ -823,6 +978,9 @@ namespace xocl {
       temp = *(hostbuf + index) | (uint64_t)*(hostbuf + index + 1) << 32;
       if (!temp)
         continue;
+      // Poor Man's reset
+      if (wordnum == 0)
+        firstTimestamp = temp & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
       int mod = (wordnum % 4);
@@ -832,7 +990,11 @@ namespace xocl {
       }
       if (wordnum <= clockWordIndex) {
         if (mod == 0) {
-          results.Timestamp = temp & 0x1FFFFFFFFFFF;
+          uint64_t currentTimestamp = temp & 0x1FFFFFFFFFFF;
+          if (currentTimestamp >= firstTimestamp)
+            results.Timestamp = currentTimestamp - firstTimestamp;
+          else
+            results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - firstTimestamp);
         }
         uint64_t partial = (((temp >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
@@ -850,8 +1012,8 @@ namespace xocl {
         continue;
       }
 
-      // SDSoC Packet Format
-      results.Timestamp = temp & 0x1FFFFFFFFFFF;
+      // Zynq Packet Format
+      results.Timestamp = (temp & 0x1FFFFFFFFFFF) - firstTimestamp;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT : 
           XCL_PERF_MON_START_EVENT;
       results.TraceID = (temp >> 49) & 0xFFF;
@@ -859,10 +1021,10 @@ namespace xocl {
       results.Overflow = (temp >> 62) & 0x1;
       results.Error = (temp >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
+      results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
-
       if (mLogStream.is_open()) {
-        mLogStream << "  Trace sample " << std::dec << wordnum << ": ";
+        mLogStream << "  Trace sample " << std::dec << std::setw(5) << wordnum << ": ";
         mLogStream << dec2bin(uint32_t(temp>>32)) << " " << dec2bin(uint32_t(temp&0xFFFFFFFF));
         mLogStream << std::endl;
         mLogStream << " Timestamp : " << results.Timestamp << "   ";
@@ -871,15 +1033,51 @@ namespace xocl {
         mLogStream << "Start, Stop : " << static_cast<int>(results.Reserved) << "   ";
         mLogStream << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
         mLogStream << "Error : " << static_cast<int>(results.Error) << "   ";
+        mLogStream << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
+        mLogStream << "Interval : " << results.Timestamp - previousTimestamp << "   ";
         mLogStream << std::endl;
+        previousTimestamp = results.Timestamp;
       }
     }
 
     return size;
   }
 
-} // namespace xocl_gem
+  int XOCLShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    std::string subdev_str = std::string(subdev);
+    std::string entry_str = std::string(entry);
+    if (mLogStream.is_open()) {
+      mLogStream << "Retrieving [sysfs root]";
+      mLogStream << subdev_str << "/" << entry_str;
+      mLogStream << std::endl;
+    }
+    std::string sysfsFullPath = dev->user->get_sysfs_path(subdev_str, entry_str);
+    strncpy(sysfsPath, sysfsFullPath.c_str(), size);
+    sysfsPath[size - 1] = '\0';
+    return 0;
+  }
 
+  int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
+    auto dev = pcidev::get_dev(mBoardNumber);
+    uint16_t user_instance = dev->user->instance;
+    uint16_t mgmt_instance = dev->mgmt ? dev->mgmt->instance : 0;
+    uint16_t nifd_instance = 0;
+    std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
+    std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
+    info->device_type = DeviceType::XBB;
+    info->device_index = mBoardNumber;
+    info->user_instance = user_instance;
+    info->mgmt_instance = mgmt_instance;
+    info->nifd_instance = nifd_instance;
+    strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
+    strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
+    info->device_name[MAX_NAME_LEN-1] = '\0';
+    info->nifd_name[MAX_NAME_LEN-1] = '\0';
+    return 0;
+  }
+
+} // namespace xocl_gem
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
@@ -961,6 +1159,14 @@ void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uin
   return drv->xclSetProfilingNumberSlots(type, numSlots);
 }
 
+uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return 0;
+  return drv->getPerfMonProperties(type, slotnum);
+}
+
 uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
 {
   xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
@@ -982,6 +1188,20 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
                        xclPerfMonEventID id)
 {
   // don't do anything
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+                      const char* entry, char* sysfsPath, size_t size) {
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 

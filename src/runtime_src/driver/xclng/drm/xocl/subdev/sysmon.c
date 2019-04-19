@@ -59,7 +59,7 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 	switch (prop) {
 	case XOCL_SYSMON_PROP_TEMP:
 		tmp = READ_REG32(sysmon, TEMP);
-		*(u32 *)val = SYSMON_TO_MILLDEGREE(tmp);
+		*(u32 *)val = SYSMON_TO_MILLDEGREE(tmp)/1000;
 		break;
 	case XOCL_SYSMON_PROP_TEMP_MAX:
 		tmp = READ_REG32(sysmon, TEMP_MAX);

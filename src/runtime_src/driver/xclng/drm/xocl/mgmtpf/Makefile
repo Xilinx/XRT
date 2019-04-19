@@ -24,12 +24,14 @@ xclmgmt-y := \
 	../subdev/microblaze.o \
 	../subdev/firewall.o \
 	../subdev/xvc.o \
+	../subdev/nifd.o \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
 	../subdev/dna.o \
+	../subdev/fmgr.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \

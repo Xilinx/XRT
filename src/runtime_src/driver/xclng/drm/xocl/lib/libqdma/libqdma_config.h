@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __LIBQDMA_CONFIG_H__
@@ -64,7 +71,7 @@
 /**
  * Total number of qs for all VF
  */
-#define TOTAL_VF_QS	(QDMA_VF_MAX * QDMA_Q_PER_VF_MAX)
+#define TOTAL_VF_QS	0
 
 /**
  * Total number of qs for all PFs
@@ -106,13 +113,13 @@
  */
 #define QDMA_INTR_COAL_RING_SIZE INTR_RING_SZ_4KB
 
-/** Maximum data vectors to be used for each PF
-  * TODO: Please note that for 2018.2 only one vector would be used
-  * per pf and only one ring would be created for this vector
-  * It is also assumed that all PF have the same number of data vectors
-  * and currently different number of vectors per PF is not supported
-  */
-#define QDMA_DATA_VEC_PER_PF_MAX  1
+/** Maximum data vectors to be used for each function
+ * TODO: Please note that for 2018.2 only one vector would be used
+ * per pf and only one ring would be created for this vector
+ * It is also assumed that all functions have the same number of data vectors
+ * and currently different number of vectors per PF is not supported
+ */
+#define QDMA_NUM_DATA_VEC_FOR_INTR_CXT  1
 
 /*****************************************************************************
  * Function Declaration
@@ -169,28 +176,30 @@ unsigned int qdma_get_intr_rngsz(unsigned long dev_hndl);
 #ifndef __QDMA_VF__
 /*****************************************************************************/
 /**
- * qdma_set_wrb_acc() -  Handler function to set the wrb_acc configuration value
+ * qdma_set_cmpl_status_acc() -  Handler function to set the cmpl_status_acc
+ * configuration value
  *
  * @param[in]	dev_hndl:	qdma device handle
- * @param[in]	wrb_acc:	Writeback Accumulation value
+ * @param[in]	cmpl_status_acc:	Writeback Accumulation value
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
  * @return	-1 on failure
  *****************************************************************************/
-int qdma_set_wrb_acc(unsigned long dev_hndl, u32 wrb_acc);
+int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc);
 
 /*****************************************************************************/
 /**
- * qdma_get_wrb_acc() -  Handler function to get the wrb_acc configuration value
+ * qdma_get_cmpl_status_acc() -  Handler function to get the cmpl_status_acc
+ * configuration value
  *
  * @param[in] dev_hndl:		qdma device handle
  *
  * Handler function to get the writeback accumulation value
  *
- * @return	wrb_acc on success
+ * @return	cmpl_status_acc on success
  * @return	-1 on failure
  *****************************************************************************/
-unsigned int qdma_get_wrb_acc(unsigned long dev_hndl);
+unsigned int qdma_get_cmpl_status_acc(unsigned long dev_hndl);
 
 /*****************************************************************************/
 /**

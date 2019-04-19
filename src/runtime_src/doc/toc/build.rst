@@ -4,11 +4,12 @@ Building and Installing Software Stack
 XRT
 ~~~
 
-XRT requires C++11 compiler. Please install the necessary tools and dependencies
+XRT requires C++14 compiler and a few development libraries bundled with modern Linux
+distribution. Please install the necessary tools and dependencies
 using the provided ``src/runtime_src/tools/scripts/xrtdeps.sh``
 
-On RHEL/CentOS use devtoolset to switch to C++11 devlopment environment. This step
-is not applicable to Ubuntu which already has C++11 capable GCC.
+On RHEL/CentOS use devtoolset to switch to C++14 devlopment environment. This step
+is not applicable to Ubuntu which already has C++14 capable GCC.
 
 ::
 
@@ -19,7 +20,7 @@ Build the runtime
 
 ::
 
-   cd XRT/build
+   cd build
    ./build.sh
 
 ``build.sh`` script builds for both Debug and Release profiles.  On RHEL/CentOS, if ``build.sh`` was accidentally run prior to enabling the devtoolset, then it is necessary to clean stale files makefiles by running ``build.sh clean`` prior to the next build.
@@ -27,32 +28,40 @@ Build the runtime
 Build RPM package on RHEL/CentOS or DEB package on Ubuntu
 .........................................................
 
-::
+The package is actually automatically built for the ``Release``
+version but not for the ``Debug`` version::
 
-   cd XRT/build/Release
+   cd build/Release
+   make package
+   cd ../Debug
    make package
 
 Install the XRT RPM package
 ...........................
 
-::
+Install from inside either the ``Release`` or ``Debug`` directory
+according to purpose with (the actual package name might differ) ::
 
-   yum reinstall ./XRT-2.1.0-Linux.rpm
+   sudo yum reinstall ./XRT-2.1.0-Linux.rpm
 
 Install the XRT DEB package
 ...........................
 
-::
+Install from inside either the ``Release`` or ``Debug`` directory
+according to purpose with (the actual package name might differ) ::
 
-   apt install --reinstall ./XRT-2.1.0-Linux.deb
+   sudo apt install --reinstall ./xrt_201830.2.1.0_18.10.deb
 
 XRT Documentation
 ~~~~~~~~~~~~~~~~~
 
-XRT Documentation can be built automatically using Sphinx doc builder together with Linux kernel based kernel-doc utility.
+XRT Documentation can be built automatically using ``Sphinx`` doc builder
+together with Linux kernel based ``kernel-doc`` utility.
 
-::
+To compile and install the documentation into the ``doc`` directory at
+the top of the repository::
 
-   cd XRT/src/runtime_src/doc/
-   make
-   firefox html/index.html
+   cd build
+   ./build.sh docs
+   # To browse the generated local documentation with a web browser:
+   xdg-open Release/runtime_src/doc/html/index.html
