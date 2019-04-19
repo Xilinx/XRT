@@ -89,6 +89,11 @@
 #define	XMC_PRIVILEGED(xmc)	((xmc)->base_addrs[0] != NULL)
 
 #define	XMC_DEFAULT_EXPIRE_SECS	1
+
+//Clock scaling registers
+#define XMC_CLOCK_CONTROL_REG  0x24
+#define XMC_CLOCK_SCALING_EN 0x1
+
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
 	CTL_MASK_CLEAR_ERR	= 0x2,
@@ -120,6 +125,7 @@ enum {
 	IO_IMAGE_MGMT,
 	IO_IMAGE_SCHED,
 	IO_CQ,
+  IO_CLK,
 	NUM_IOADDR
 };
 
@@ -150,6 +156,11 @@ enum {
 #define	COPY_SCHE(xmc, buf, len)		\
 	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
+#define READ_CLK(xmc, off)  \
+  XOCL_READ_REG32(xmc->base_addrs[IO_CLK] + off)
+#define  WRITE_CLK(xmc, val, off) \
+  XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CLK] + off)
+
 struct xocl_xmc {
 	struct platform_device	*pdev;
 	void __iomem		*base_addrs[NUM_IOADDR];
@@ -168,11 +179,13 @@ struct xocl_xmc {
 	u64			cache_expire_secs;
 	struct xcl_sensor	cache;
 	ktime_t			cache_expires;
+  bool  runtime_cs_enabled; //Runtime clock scaling enabled status
 };
 
 
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
+static void xmc_clk_scale_config(struct platform_device *pdev);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1573,6 +1586,21 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	return 0;
 }
 
+static void xmc_clk_scale_config(struct platform_device *pdev)
+{
+  struct xocl_xmc *xmc;
+  u32 cntrl;
+
+  xocl_info(&pdev->dev, "Read clock frequency level...");
+  xmc = platform_get_drvdata(pdev);
+  if (!xmc)
+    return;
+
+  cntrl = READ_CLK(xmc, XMC_CLOCK_CONTROL_REG);
+  cntrl |= XMC_CLOCK_SCALING_EN;
+  WRITE_CLK(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+}
+
 static struct xocl_mb_funcs xmc_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
@@ -1598,6 +1626,8 @@ static int xmc_remove(struct platform_device *pdev)
 	mgmt_sysfs_destroy_xmc(pdev);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
+    if ((i == IO_CLK) && !xmc->runtime_cs_enabled)
+      continue;
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
 	}
@@ -1637,7 +1667,12 @@ static int xmc_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	for (i = 0; i < NUM_IOADDR; i++) {
+  if (xocl_clk_scale_on(xdev_hdl))
+    xmc->runtime_cs_enabled = true;
+
+  for (i = 0; i < NUM_IOADDR; i++) {
+    if ((i == IO_CLK) && !xmc->runtime_cs_enabled)
+      continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -1663,6 +1698,13 @@ static int xmc_probe(struct platform_device *pdev)
 
 	mutex_init(&xmc->xmc_lock);
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
+
+  /* Check if clock scaling feature enabled */
+  if (xmc->runtime_cs_enabled) {
+    xmc_clk_scale_config(pdev);
+    xocl_info(&pdev->dev, "Runtime clock scaling is supported.");
+  }
+
 	return 0;
 
 failed:
