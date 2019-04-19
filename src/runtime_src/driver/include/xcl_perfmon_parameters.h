@@ -127,6 +127,7 @@
 
 /* SAM Trace Control Masks */
 #define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
+#define XSAM_COUNTER_RESET_MASK         0x00000002
 
 /* Debug IP layout properties mask bits */
 #define XSAM_STALL_PROPERTY_MASK        0x4

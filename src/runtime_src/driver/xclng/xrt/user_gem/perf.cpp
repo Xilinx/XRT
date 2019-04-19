@@ -442,6 +442,19 @@ namespace xocl {
       // 3. Read from sample register to ensure total time is read again at end
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_SAMPLE_OFFSET, &regValue, 4);
     }
+    // Reset Accelerator Monitors
+    type = XCL_PERF_MON_ACCEL;
+    numSlots = getPerfMonNumberSlots(type);
+    for (uint32_t i=0; i < numSlots; i++) {
+      baseAddress = getPerfMonBaseAddress(type,i);
+      uint32_t origRegValue = 0;
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
+      regValue = origRegValue | XSAM_COUNTER_RESET_MASK;
+      // Reset begin
+      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      // Reset end
+      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
+    }
     return size;
   }
 
