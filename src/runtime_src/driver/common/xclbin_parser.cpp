@@ -38,11 +38,23 @@ is_valid_cu(const ip_data& ip)
   if (ip.m_type != IP_TYPE::IP_KERNEL)
     return false;
 
-  // ignore streaming kernels
-  if (ip.m_base_address == static_cast<uint64_t>(-1))
-    return false;
+  // Filter IP KERNELS if necessary
+  // ...
 
   return true;
+}
+
+// Base address of unused (streaming) CUs is given a max address to
+// ensure that they are sorted to come after regular AXI-lite CUs
+// The sort order is important as it determines the CU indices used
+// throughout XRT.
+static uint64_t
+get_base_addr(const ip_data& ip)
+{
+  auto addr = ip.m_base_address;
+  if (addr == static_cast<uint64_t>(-1))
+    addr = std::numeric_limits<uint64_t>::max() & ~0xFF;
+  return addr;
 }
 
 }
@@ -60,7 +72,7 @@ get_cus(const axlf* top, bool encoding)
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
-      uint64_t addr = ip_data.m_base_address;
+      uint64_t addr = get_base_addr(ip_data);
       if (encoding)
           // encode handshaking control in lower unused address bits
           addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
@@ -110,7 +122,7 @@ get_cu_base_offset(const axlf* top)
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data))
-      base = std::min(base,ip_data.m_base_address);
+      base = std::min(base,get_base_addr(ip_data));
   }
   return base;
 }

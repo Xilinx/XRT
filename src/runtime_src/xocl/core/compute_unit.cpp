@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 namespace xocl {
 
@@ -32,7 +33,7 @@ compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t 
   static unsigned int count = 0;
   m_uid = count++;
 
-  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%d) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
+  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%zu) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
 }
 
 compute_unit::
@@ -89,13 +90,25 @@ create(const xclbin::symbol* symbol, const xclbin::symbol::instance& inst,
        const device* device, const std::vector<uint64_t>& cu2addr)
 {
   auto itr = std::find(cu2addr.begin(),cu2addr.end(),inst.base);
-  if (itr==cu2addr.end())
-    return nullptr;
 
-  auto idx = std::distance(cu2addr.begin(),itr);
+  // streaming CUs have bogus inst.base in XML meta data and will not
+  // be found in cu2addr.  Here we rely on the sorted cu2addr having
+  // the streaming / unused CUs at the end and we just arbitrarily
+  // give the compute unit the index of the last entry in the array.
+  size_t idx = itr!=cu2addr.end()
+    ? std::distance(cu2addr.begin(),itr)
+    : cu2addr.size()-1;  // unused cus are pushed to end
+
+  // streaming CUs have a bogus / unused base address, the address
+  // doesn't matter we just use max, which corresponds to the sort
+  // order in cu2addr.
+  size_t addr = itr!=cu2addr.end()
+    ? (*itr)
+    : std::numeric_limits<size_t>::max(); // addr doesn't matter
+
   // Unfortunately make_unique can't access private ctor
   // return std::make_unique<compute_unit>(symbol,inst.name,inst.base,idx,device);
-  return std::unique_ptr<compute_unit>(new compute_unit(symbol,inst.name,inst.base,idx,device));
+  return std::unique_ptr<compute_unit>(new compute_unit(symbol,inst.name,addr,idx,device));
 }
 
 } // xocl
