@@ -127,17 +127,17 @@ namespace xocl {
       for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
-                   << ", name = " << mPerfMonSlotName[i] << std::endl;
+                   << ", name = " << mPerfMonSlotName[i].c_str() << std::endl;
       }
       for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
-                   << ", name = " << mAccelMonSlotName[i] << std::endl;
+                   << ", name = " << mAccelMonSlotName[i].c_str() << std::endl;
       }
       for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
-                   << ", name = " << mStreamMonSlotName[i] << std::endl;
+                   << ", name = " << mStreamMonSlotName[i].c_str() << std::endl;
      }
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
                  << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
