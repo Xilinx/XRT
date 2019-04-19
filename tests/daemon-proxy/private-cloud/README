@@ -1,0 +1,21 @@
+Setup required in Host and Guest.
+
+Host Setup:
+* make to build mpd and msd
+* scp mpd to guest
+* create files host_ip and host_port and place them in a location, such as /var/lib/libvirt/filesystem_passthrough/
+* with guest loaded and userpf controlled by guest, configure sw mailbox:
+* from sudo shell: echo 256 > config_mailbox_channel_switch # to pass xclbins through sw mailbox
+* as sudo, run msd
+
+Guest Setup:
+* map filesystem passthrough by running setup_mpd.sh:
+   #!/bin/bash
+   sudo mkdir /tmp/host_files
+   sudo mount -t 9p -o trans=virtio,version=9p2000.L /hostshare /tmp/host_files
+**NOTE** '/hostshare' might be part of the virt-manager configuration on the guest
+* rmmod xocl
+* modprobe xclmgmt
+* as sudo, run mpd
+* 'xbutil program -p verify.xclbin', and confirm that it succeeds
+
