@@ -18,7 +18,7 @@
 
 // This is xclbin parser. Update this file if xclbin format has changed.
 
-namespace xrt_core { namespace xclbin {
+namespace {
 
 template <typename SectionType>
 static SectionType*
@@ -31,6 +31,24 @@ get_axlf_section(const axlf* top, axlf_section_kind kind)
   return nullptr;
 }
 
+// Filter out IPs with invalid base address (streaming kernel)
+static bool
+is_valid_cu(const ip_data& ip)
+{
+  if (ip.m_type != IP_TYPE::IP_KERNEL)
+    return false;
+
+  // ignore streaming kernels
+  if (ip.m_base_address == static_cast<uint64_t>(-1))
+    return false;
+
+  return true;
+}
+
+}
+
+namespace xrt_core { namespace xclbin {
+
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encoding)
 {
@@ -41,7 +59,7 @@ get_cus(const axlf* top, bool encoding)
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type == IP_TYPE::IP_KERNEL) {
+    if (is_valid_cu(ip_data)) {
       uint64_t addr = ip_data.m_base_address;
       if (encoding)
           // encode handshaking control in lower unused address bits
@@ -91,7 +109,7 @@ get_cu_base_offset(const axlf* top)
   uint64_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type == IP_TYPE::IP_KERNEL)
+    if (is_valid_cu(ip_data))
       base = std::min(base,ip_data.m_base_address);
   }
   return base;
@@ -106,7 +124,7 @@ get_cuisr(const axlf* top)
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type==IP_TYPE::IP_KERNEL && !(ip_data.properties & 0x1))
+    if (is_valid_cu(ip_data) && !(ip_data.properties & 0x1))
       return false;
   }
   return true;
@@ -121,7 +139,7 @@ get_dataflow(const axlf* top)
 
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type == IP_TYPE::IP_KERNEL &&
+    if (is_valid_cu(ip_data) &&
         ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN)
         return true;
   }

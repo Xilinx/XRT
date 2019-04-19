@@ -25,6 +25,8 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
+#include "driver/common/xclbin_parser.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -189,16 +191,13 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary(); // ::xclbin::binary
-  auto binary_data = binary.binary_data();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  auto axlf = device->get_axlf();
   if (is_sw_emulation()) {
-    auto cu2addr = xclbin.cu_base_address_map();
+    auto cu2addr = xrt_core::xclbin::get_cus(axlf);
     xrt::sws::init(device->get_xrt_device(),cu2addr);
   }
   else {
-    xrt::scheduler::init(device->get_xrt_device(),header);
+    xrt::scheduler::init(device->get_xrt_device(),axlf);
   }
 }
 
@@ -1196,9 +1195,11 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
+  auto cu2addr = xrt_core::xclbin::get_cus(get_axlf());
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(std::make_unique<compute_unit>(symbol,inst.name,this));
+      if (auto cu = compute_unit::create(symbol,inst,this,cu2addr))
+        add_cu(std::move(cu));
     }
   }
 

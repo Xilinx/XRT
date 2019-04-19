@@ -19,50 +19,18 @@
 #include "range.h"
 #include "device.h"
 #include "program.h"
+
 #include <algorithm>
 #include <iostream>
-
-namespace {
-
-static size_t
-get_base_addr(const xocl::xclbin::symbol* symbol, const std::string& kinst)
-{
-  using inst_type = xocl::xclbin::symbol::instance;
-  auto itr = range_find(symbol->instances,[&kinst](const inst_type& inst){return inst.name==kinst;});
-  if (itr==symbol->instances.end())
-    throw std::runtime_error
-      ("internal error: kernel instance '" + kinst + "' not found in kernel '" + symbol->name + "'");
-  auto port = (*itr).port;
-  auto controlport = symbol->controlport;
-  std::transform(port.begin(), port.end(), port.begin(), ::tolower);
-  std::transform(controlport.begin(), controlport.end(), controlport.begin(), ::tolower);
-  if (port != controlport)
-    throw std::runtime_error
-      ("internal error: kernel instance '"
-       + kinst + "' in kernel '"
-       + symbol->name + "' doesn't match control port '"
-       + symbol->controlport + "' != '" + port + "'");
-  return (*itr).base;
-}
-
-} // namespace
 
 namespace xocl {
 
 compute_unit::
-compute_unit(const xclbin::symbol* s, const std::string& n, device* d)
-  : m_symbol(s), m_name(n), m_device(d), m_address(::get_base_addr(m_symbol,m_name))
+compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d)
+  : m_symbol(s), m_name(n), m_device(d), m_address(base), m_index(idx)
 {
   static unsigned int count = 0;
   m_uid = count++;
-
-  // This should be reworked to not compute every time
-  auto xclbin = d->get_xclbin();
-  auto cu2addr = xclbin.cu_base_address_map();
-  auto itr = std::find(cu2addr.begin(),cu2addr.end(),m_address);
-  if (itr==cu2addr.end())
-    throw std::runtime_error("Internal error  constructing compute unit");
-  m_index = std::distance(cu2addr.begin(),itr);
 
   XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%d) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
 }
@@ -113,6 +81,21 @@ get_memidx_union() const
 {
   auto xclbin = m_device->get_xclbin();
   return xclbin.cu_address_to_memidx(m_address);
+}
+
+std::unique_ptr<compute_unit>
+compute_unit::
+create(const xclbin::symbol* symbol, const xclbin::symbol::instance& inst,
+       const device* device, const std::vector<uint64_t>& cu2addr)
+{
+  auto itr = std::find(cu2addr.begin(),cu2addr.end(),inst.base);
+  if (itr==cu2addr.end())
+    return nullptr;
+
+  auto idx = std::distance(cu2addr.begin(),itr);
+  // Unfortunately make_unique can't access private ctor
+  // return std::make_unique<compute_unit>(symbol,inst.name,inst.base,idx,device);
+  return std::unique_ptr<compute_unit>(new compute_unit(symbol,inst.name,inst.base,idx,device));
 }
 
 } // xocl

@@ -317,14 +317,6 @@ public:
   cu_interrupt() const;
 
   /**
-   * Get a sorted address map of all CUs in this xclbin
-   *
-   * The map is sorted in order of increasing base addresses.
-   */
-  std::vector<uint32_t>
-  cu_base_address_map() const;
-
-  /**
    * Get memory connection indeces for CU argument at specified index
    *
    * @param cuaddr
