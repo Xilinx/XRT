@@ -103,6 +103,11 @@ namespace xocl {
     
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
+
+    if(mIsDeviceProfiling) {
+      resetDevice(XCL_RESET_KERNEL);
+    }
+
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = 0x0;
     getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
