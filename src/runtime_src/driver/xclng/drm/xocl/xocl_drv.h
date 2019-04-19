@@ -214,6 +214,8 @@ struct xocl_dev_core {
 
 	struct xocl_board_private priv;
 
+	rwlock_t		rwlock;
+
 	char			ebuf[XOCL_EBUF_LEN + 1];
 
 	struct kref		kref;
