@@ -920,11 +920,11 @@ public:
              << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
         ostr << std::setw(16) << "Total (B/#)" << std::setw(10)  << "Pending (B/#)" << std::endl;
         try {
+          int index = 0;
           for (auto& v : sensor_tree::get_child("board.memory.stream")) {
             int stream_index = std::stoi(v.first);
             if( stream_index >= 0 ) {
               std::string status, tag, total, pending;
-              int index = 0;
               unsigned int flow_id = 0, route_id = 0;
               for (auto& subv : v.second) {
                 if( subv.first == "tag" ) {
@@ -963,20 +963,21 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status\n";
         try {
+          int cu_i = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string cu_n, cu_s, cu_ba;
-              int cu_i = 0;
               for (auto& subv : v.second) {
                 if( subv.first == "name" )
                   cu_n = subv.second.get_value<std::string>();
-                else if( subv.first == "base_address" )
-                  cu_ba = sensor_tree::pretty<int>(subv.second.get_value<int>(), "N/A", true);
-                else if( subv.first == "status" )
+                else if( subv.first == "base_address" ) {
+                  auto addr = subv.second.get_value<uint64_t>();
+		  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+		} else if( subv.first == "status" )
                   cu_s = subv.second.get_value<std::string>();
               }
-              ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
+              ostr << "CU[" << std::right << std::setw(2) << cu_i++ << "]: "
                    << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
