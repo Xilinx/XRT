@@ -977,10 +977,11 @@ public:
 		} else if( subv.first == "status" )
                   cu_s = subv.second.get_value<std::string>();
               }
-              ostr << "CU[" << std::right << std::setw(2) << cu_i++ << "]: "
+              ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
                    << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
+	      cu_i++;
             }
           }
         }
