@@ -22,12 +22,14 @@
 #include <stdbool.h>
 #include "lib/xmacfg.h"
 #include "lib/xmalimits.h"
+#include <condition_variable>
+#include <atomic>
 
 #define MAX_EXECBO_POOL_SIZE      16
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 /**
  *  @file
@@ -47,12 +49,23 @@ typedef struct XmaHwKernel
     uint32_t    ddr_bank;
     //For execbo:
     int32_t     kernel_complete_count;
+    std::unique_ptr<std::condition_variable> kernel_complete_count_cv;
+    std::unique_ptr<std::atomic<bool>> kernel_complete_count_locked;
+
     void*       kernel_cmd_queue;
     void*       kernel_cmd_completion_queue;
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
     char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
     uint32_t    reserved[16];
+
+    XmaHwKernel(): kernel_complete_count_cv(new std::condition_variable),
+      kernel_complete_count_locked(new std::atomic<bool>) {
+        in_use = false;
+        instance = -1;
+        kernel_complete_count = 0;
+        *kernel_complete_count_locked = false;
+    }
 } XmaHwKernel;
 
 typedef struct XmaHwContext
@@ -156,8 +169,8 @@ bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_stat
  *  @}
  */
 
-#ifdef __cplusplus
-}
-#endif
+//#ifdef __cplusplus
+//}
+//#endif
 
 #endif

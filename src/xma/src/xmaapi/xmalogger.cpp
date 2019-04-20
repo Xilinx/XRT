@@ -524,22 +524,6 @@ XmaActor *xma_actor_create()
     actor->thread = new XmaThread();
     actor->thread->is_running = false;
     
-    /*
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
-    actor->logger_queue_mutex.reset(new std::mutex());
-    exit(0);
-
-
-
-    actor->logger_queue_mutex = std::unique_ptr<std::mutex>(new std::mutex());
-    actor->logger_queue_cv = std::unique_ptr<std::condition_variable>(new std::condition_variable());
-    actor->logger_queue_locked = std::unique_ptr<std::atomic<bool>>(new std::atomic<bool>());
-    *(actor->logger_queue_locked) = false;
-
-    std::cout << "Sarab: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
-    actor->logger_queue = std::unique_ptr<std::queue<std::string>>(new std::queue<std::string>());
-    */
-
     return actor;
 }
 

@@ -179,6 +179,14 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
     int32_t rc = -1;
     bool    found = false;
 
+    // First acquire kernel_complete_count lock
+    bool expected = false;
+    bool desired = true;
+    while (!(*(s_handle.kernel_info->kernel_complete_count_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel_complete_count lock acquired
+
     for (i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
     {
         ert_start_kernel_cmd *cu_cmd = 
@@ -215,6 +223,8 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
         s_handle.kernel_info->kernel_execbo_inuse[i] = true;
         rc = i;
     }
+
+    *(s_handle.kernel_info->kernel_complete_count_locked) = false;
 
     return rc;
 }
@@ -259,6 +269,14 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
 
 int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
 {
+    // First acquire kernel_complete_count lock
+    bool expected = false;
+    bool desired = true;
+    while (!(*(s_handle.kernel_info->kernel_complete_count_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel_complete_count lock acquired
+
     int32_t current_count = s_handle.kernel_info->kernel_complete_count;
     int32_t count = 0;
 
@@ -293,12 +311,14 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
     {
         current_count--;
         s_handle.kernel_info->kernel_complete_count = current_count;
+        *(s_handle.kernel_info->kernel_complete_count_locked) = false;
         return XMA_SUCCESS;
     }
     else
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Could not find completed work item\n");
+        *(s_handle.kernel_info->kernel_complete_count_locked) = false;
         return XMA_ERROR;
     }
 }
