@@ -897,13 +897,18 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 
   if (!get_num_cdmas() || is_sw_emulation()) {
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
-      c->start();
-      char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
-      char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
-      std::memcpy(hbuf_dst,hbuf_src,sz);
-      unmap_buffer(sbuf,hbuf_src);
-      unmap_buffer(dbuf,hbuf_dst);
-      c->done();
+      try {
+        c->start();
+        char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
+        char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
+        std::memcpy(hbuf_dst,hbuf_src,sz);
+        unmap_buffer(sbuf,hbuf_src);
+        unmap_buffer(dbuf,hbuf_dst);
+        c->done();
+      }
+      catch (const std::exception& ex) {
+        c->error(ex);
+      }
     };
     XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
     xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
