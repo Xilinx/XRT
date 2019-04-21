@@ -176,12 +176,16 @@ is_sw_emulation()
   return swem;
 }
 
-//static bool
-//is_emulation_mode()
-//{
-//  static bool val = is_sw_emulation() || is_hw_emulation();
-//  return val;
-//}
+static std::vector<uint64_t>
+get_xclbin_cus(const xocl::device* device)
+{
+  if (is_sw_emulation()) {
+    auto xclbin = device->get_xclbin();
+    return xclbin.cu_base_address_map();
+  }
+
+  return xrt_core::xclbin::get_cus(device->get_axlf());
+}
 
 static void
 init_scheduler(xocl::device* device)
@@ -193,7 +197,7 @@ init_scheduler(xocl::device* device)
 
   auto axlf = device->get_axlf();
   if (is_sw_emulation()) {
-    auto cu2addr = xrt_core::xclbin::get_cus(axlf);
+    auto cu2addr = get_xclbin_cus(device);
     xrt::sws::init(device->get_xrt_device(),cu2addr);
   }
   else {
@@ -1195,7 +1199,7 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
-  auto cu2addr = xrt_core::xclbin::get_cus(get_axlf());
+  auto cu2addr = get_xclbin_cus(this);
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
       if (auto cu = compute_unit::create(symbol,inst,this,cu2addr))

@@ -665,6 +665,13 @@ private:
       return offset;
     }
 
+    void
+    cu_base_address_map(std::vector<uint64_t>& amap) const
+    {
+      for (auto& instance : m_symbol.instances)
+        amap.push_back(instance.base);
+    }
+
     std::string
     conformance_rename()
     {
@@ -890,6 +897,17 @@ public:
       if (!kernel->cu_interrupt())
         return false;
     return retval;
+  }
+
+  std::vector<uint64_t>
+  cu_base_address_map() const
+  {
+    std::vector<uint64_t> amap;
+    for (auto& kernel : m_kernels)
+      kernel->cu_base_address_map(amap);
+
+    std::sort(amap.begin(),amap.end());
+    return amap;
   }
 
   unsigned int
@@ -1215,6 +1233,10 @@ struct xclbin::impl
   cu_interrupt() const
   { return m_xml.cu_interrupt(); }
 
+  std::vector<uint64_t>
+  cu_base_address_map() const
+  { return m_xml.cu_base_address_map(); }
+
   uuid_type
   uuid() const
   { return m_sections.uuid(); }
@@ -1455,6 +1477,13 @@ xclbin::
 cu_interrupt() const
 {
   return impl_or_error()->cu_interrupt();
+}
+
+std::vector<uint64_t>
+xclbin::
+cu_base_address_map() const
+{
+  return impl_or_error()->cu_base_address_map();
 }
 
 xclbin::memidx_bitmask_type
