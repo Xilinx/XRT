@@ -220,7 +220,7 @@ static ssize_t ecc_enabled_store(struct device *dev,
 	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
-	if (kstrtoint(buf, 10, &val) != 1 || val > 1) {
+	if (kstrtoint(buf, 10, &val) || val > 1) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
@@ -242,7 +242,7 @@ static ssize_t ecc_clear_store(struct device *dev, struct device_attribute *da,
 	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
-	if (kstrtoint(buf, 10, &val) != 1 || val > 1) {
+	if (kstrtoint(buf, 10, &val) || val > 1) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
@@ -262,7 +262,7 @@ static ssize_t ecc_inject_store(struct device *dev, struct device_attribute *da,
 	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
-	if (kstrtoint(buf, 10, &val) != 1 || val > 1) {
+	if (kstrtoint(buf, 10, &val) || val > 1) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
@@ -286,7 +286,7 @@ static ssize_t ecc_inject_2bits_store(struct device *dev, struct device_attribut
 	struct hbm_regs *h_regs = (struct hbm_regs *)mig->base;
 	uint32_t val;
 
-	if (kstrtoint(buf, 10, &val) != 1 || val > 1) {
+	if (kstrtoint(buf, 10, &val) || val > 1) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"usage: echo [0|1] > ecc_enabled");
 		return -EINVAL;
