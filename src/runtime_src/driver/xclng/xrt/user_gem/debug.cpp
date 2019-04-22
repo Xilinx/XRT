@@ -123,26 +123,21 @@ namespace xocl {
         mStallProfilingNumberSlots++;
     }
 
-    // Print out debug info
-    // NOTE: Why use c_str()? The strings received from debug_ip_layout are currently
-    // 128 characters in length, padded with null characters. This looks fine on CentOS
-    // but the null characters show up on Ubuntu. Converting to char * was a simple way
-    // to visually get rid of the null characters.
     if (mLogStream.is_open()) {
       for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mPerfMonBaseAddress[i]
-                   << ", name = " << mPerfMonSlotName[i].c_str() << std::endl;
+                   << ", name = " << mPerfMonSlotName[i] << std::endl;
       }
       for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
-                   << ", name = " << mAccelMonSlotName[i].c_str() << std::endl;
+                   << ", name = " << mAccelMonSlotName[i] << std::endl;
       }
       for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
                    << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
-                   << ", name = " << mStreamMonSlotName[i].c_str() << std::endl;
+                   << ", name = " << mStreamMonSlotName[i] << std::endl;
      }
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
                  << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
@@ -178,7 +173,12 @@ namespace xocl {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+            if(portNames) {
+              // Fill up string with 128 characters (padded with null characters)
+              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+              // Strip away extraneous null characters
+              portNames[count].assign(portNames[count].c_str());
+            }
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
             if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
             if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
