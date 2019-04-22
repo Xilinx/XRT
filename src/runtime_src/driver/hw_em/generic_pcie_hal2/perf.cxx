@@ -242,6 +242,10 @@ namespace xclhwemhal2 {
           counterResults.CuBusyCycles[counter] = counterResults.CuExecCycles[counter];
           counterResults.CuMaxParallelIter[counter] = 1;
         } else if (iptype == 3) {
+          // AXIS without TLAST is assumed to be one long transfer
+          if (str_num_tranx == 0 && str_data_bytes > 0) {
+            str_num_tranx = 1;
+          }
           counterResults.StrNumTranx[counter] = str_num_tranx;
           counterResults.StrDataBytes[counter] = str_data_bytes;
           counterResults.StrBusyCycles[counter] = str_busy_cycles;
