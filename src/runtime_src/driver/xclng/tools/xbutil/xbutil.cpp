@@ -710,7 +710,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card]\n";
-    std::cout << "  status  [--debug_ip_name]\n";
+    std::cout << "  status [-d card] [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
