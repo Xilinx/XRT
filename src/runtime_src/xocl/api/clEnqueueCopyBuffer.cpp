@@ -157,7 +157,7 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_copy_buffer,src_buffer,dst_buffer,src_offset,dst_offset,size);
   xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_copy,src_buffer,dst_buffer,src_offset,dst_offset,size);
+    (uevent.get(),xocl::profile::action_copy,src_buffer,dst_buffer,src_offset,dst_offset,size,true);
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_copybuf,src_buffer,dst_buffer,src_offset,dst_offset,size);
 
