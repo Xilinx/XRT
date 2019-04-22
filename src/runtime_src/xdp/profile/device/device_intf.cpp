@@ -671,7 +671,9 @@ namespace xdp {
 // TODO: Windows build support
 //    alignas is defined in c++11
 //#if GCC_VERSION >= 40800
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
+    // Alignment is limited to 16 by PPC64LE
+    //alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
+    alignas(16) uint32_t hostbuf[BUFFER_WORDS];
 //#else
 //    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
 //    uint32_t* hostbuf = alignedBuffer.getBuffer();

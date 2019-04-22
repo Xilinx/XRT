@@ -123,6 +123,11 @@ namespace xocl {
         mStallProfilingNumberSlots++;
     }
 
+    // Print out debug info
+    // NOTE: Why use c_str()? The strings received from debug_ip_layout are currently
+    // 128 characters in length, padded with null characters. This looks fine on CentOS
+    // but the null characters show up on Ubuntu. Converting to char * was a simple way
+    // to visually get rid of the null characters.
     if (mLogStream.is_open()) {
       for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
