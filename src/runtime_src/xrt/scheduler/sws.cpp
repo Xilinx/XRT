@@ -27,6 +27,7 @@
 #include "xrt/util/task.h"
 #include "driver/include/ert.h"
 #include "driver/include/xclbin.h"
+#include "driver/common/xclbin_parser.h"
 #include "command.h"
 #include <limits>
 #include <bitset>
@@ -51,34 +52,6 @@ is_sw_emulation()
   static auto xem = std::getenv("XCL_EMULATION_MODE");
   static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
   return swem;
-}
-
-template <typename SectionType>
-static SectionType*
-get_axlf_section(const axlf* top, axlf_section_kind kind)
-{
-  if (auto header = xclbin::get_axlf_section(top, kind)) {
-    auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
-    return reinterpret_cast<SectionType*>(begin);
-  }
-  return nullptr;
-}
-
-std::vector<uint64_t>
-get_cus(const axlf* top)
-{
-  std::vector<uint64_t> cus;
-  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
-   return cus;
-
-  for (int32_t count=0; count <ip_layout->m_count; ++count) {
-    const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_type == IP_TYPE::IP_KERNEL)
-      cus.push_back(ip_data.m_base_address);
-  }
-  std::sort(cus.begin(),cus.end());
-  return cus;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -883,7 +856,7 @@ stop()
 }
 
 void
-init(xrt::device* xdev, const std::vector<uint32_t>& cu_addr_map)
+init(xrt::device* xdev, const std::vector<uint64_t>& cu_addr_map)
 {
   if (!is_sw_emulation())
     throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
@@ -907,7 +880,7 @@ init(xrt::device* xdev, const axlf* top)
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,get_cus(top))));
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,xrt_core::xclbin::get_cus(top))));
 }
 
 }} // sws,xrt

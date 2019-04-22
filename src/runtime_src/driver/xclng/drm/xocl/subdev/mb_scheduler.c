@@ -670,7 +670,7 @@ struct xocl_cu {
 	struct xocl_dev    *xdev;
 	unsigned int       idx;
 	unsigned int       uid;
-	bool               dataflow;
+	u32                control;
 	void __iomem       *base;
 	u32                addr;
 	u32                polladdr;
@@ -686,15 +686,15 @@ void
 cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
 {
 	xcu->idx = idx;
-	xcu->dataflow = (addr & 0xFF) == AP_CTRL_CHAIN;
+	xcu->control = (addr & 0xFF);
 	xcu->base = base;
 	xcu->addr = addr & ~(0xFF); // clear encoded handshake
 	xcu->polladdr = polladdr;
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
-	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%x dataflow(%d)\n",
-		    xcu->idx, xcu->addr, xcu->polladdr, xcu->dataflow);
+	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%x control(%d)\n",
+		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
 }
 
 /**
@@ -716,6 +716,18 @@ static inline u32
 cu_base_addr(struct xocl_cu *xcu)
 {
 	return xcu->addr;
+}
+
+static inline bool
+cu_dataflow(struct xocl_cu *xcu)
+{
+	return xcu->control == AP_CTRL_CHAIN;
+}
+
+static inline bool
+cu_valid(struct xocl_cu *xcu)
+{
+	return xcu->control != AP_CTRL_NONE;
 }
 
 /**
@@ -740,7 +752,7 @@ cu_destroy(struct xocl_cu *xcu)
 void
 cu_continue(struct xocl_cu *xcu)
 {
-	if (!xcu->dataflow)
+	if (!cu_dataflow(xcu))
 		return;
 
 	SCHED_DEBUGF("-> %s cu(%d) @0x%x\n", __func__, xcu->idx, xcu->addr);
@@ -797,13 +809,13 @@ cu_ready(struct xocl_cu *xcu)
 {
 	SCHED_DEBUGF("-> %s cu(%d)\n", __func__, xcu->idx);
 
-	if ((xcu->ctrlreg & AP_START) || (!xcu->dataflow && xcu->run_cnt))
+	if ((xcu->ctrlreg & AP_START) || (!cu_dataflow(xcu) && xcu->run_cnt))
 		cu_poll(xcu);
 
 	SCHED_DEBUGF("<- %s returns %d\n", __func__,
-		     xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0);
+		     cu_dataflow(xcu) ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0);
 
-	return xcu->dataflow ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0;
+	return cu_dataflow(xcu) ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0;
 }
 
 /**
@@ -1203,6 +1215,12 @@ exec_cu_usage(struct exec_core *exec, unsigned int cuidx)
 	return exec->cu_usage[cuidx];
 }
 
+static bool
+exec_valid_cu(struct exec_core *exec, unsigned int cuidx)
+{
+	struct xocl_cu *xcu = exec->cus[cuidx];
+	return xcu ? cu_valid(xcu) : false;
+}
 
 /**
  */
@@ -1225,7 +1243,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	int cuidx = 0;
-	struct ip_layout *layout;
 
 	/* Only allow configuration with one live ctx */
 	if (exec->configured) {
@@ -1249,20 +1266,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
-
-	layout = XOCL_IP_LAYOUT(xdev);
-	if (!layout) {
-		userpf_err(xdev, "Can not get IP meta data");
-		return 1;
-	}
-	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
-		userpf_info(xdev, "cu%d base: %llx",
-			cuidx, layout->m_ip_data[cuidx].m_base_address);	
-		if (layout->m_ip_data[cuidx].m_base_address == (u64)-1) {
-			userpf_err(xdev, "cu%d is not enabled", cuidx);
-			return 1;
-		}
-	}
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode
@@ -2898,10 +2901,17 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX &&
-		cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
+	    && cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
 		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
 			cu_idx, XOCL_IP_LAYOUT(xdev)->m_count);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
+	    && !exec_valid_cu(exec,cu_idx)) {
+		userpf_err(xdev, "cuidx(%d) cannot be reserved\n",cu_idx);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -3246,42 +3256,41 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 {
 	struct ert_packet *ecmd = (struct ert_packet *)bo->vmapping;
 	struct ert_start_kernel_cmd *scmd = (struct ert_start_kernel_cmd *)bo->vmapping;
-	unsigned int i = 0;
+	unsigned int maskidx = 0;
 	u32 ctx_cus[4] = {0};
 	u32 cumasks = 0;
 	int err = 0;
 
 	SCHED_DEBUGF("-> %s(%d)\n", __func__, ecmd->opcode);
 
-	/* cus for start kernel commands only */
+	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
 		return 0; /* ok */
 
-	/* client context cu bitmap may not change while validating */
+	// client context cu bitmap may not change while validating
 	mutex_lock(&client->xdev->dev_lock);
 
-	/* no specific CUs selected, maybe ctx is not used by client */
+	// no specific CUs selected, maybe ctx is not used by client
 	if (bitmap_empty(client->cu_bitmap, MAX_CUS)) {
 		userpf_err(xocl_get_xdev(pdev), "%s found no CUs in ctx\n", __func__);
 		err = 1;
 		goto out;
 	}
 
-	/* Check CUs in cmd BO against CUs in context */
+	// Check CUs in cmd BO against CUs in context
 	cumasks = 1 + scmd->extra_cu_masks;
 	xocl_bitmap_to_arr32(ctx_cus, client->cu_bitmap, cumasks * 32);
 
-	for (i = 0; i < cumasks; ++i) {
-		uint32_t cmd_cus = ecmd->data[i];
-		/* cmd_cus must be subset of ctx_cus */
-		if (cmd_cus & ~ctx_cus[i]) {
+	for (maskidx = 0; maskidx < cumasks; ++maskidx) {
+		uint32_t cmd_cus = ecmd->data[maskidx];
+		// cmd_cus must be subset of ctx_cus
+		if (cmd_cus & ~ctx_cus[maskidx]) {
 			SCHED_DEBUGF("<- %s(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
-				     __func__, i, cmd_cus, ctx_cus[i]);
+				     __func__, maskidx, cmd_cus, ctx_cus[maskidx]);
 			err = 1;
 			goto out; /* error */
 		}
 	}
-
 
 out:
 	mutex_unlock(&client->xdev->dev_lock);
