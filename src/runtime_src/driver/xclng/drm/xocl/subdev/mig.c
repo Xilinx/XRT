@@ -381,6 +381,8 @@ static int mig_probe(struct platform_device *pdev)
 	if (!mig)
 		return -ENOMEM;
 
+	mig->mig_dev = &pdev->dev;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		xocl_err(&pdev->dev, "resource is NULL");
