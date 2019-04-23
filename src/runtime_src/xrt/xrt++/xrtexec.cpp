@@ -88,4 +88,16 @@ add(addr_type addr, value_type value)
   (*m_impl)[++m_impl->ecmd->count] = value;
 }
 
+void
+exec_write_command::
+clear()
+{
+  // clear cu
+  auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
+  skcmd->cu_mask = 0;
+
+  // clear payload
+  m_impl->ecmd->count = 1+4; // cumask + 4 ctrl
+}
+
 }} // exec,xrt
