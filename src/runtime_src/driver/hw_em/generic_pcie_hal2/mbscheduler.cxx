@@ -410,7 +410,7 @@ namespace xclhwemhal2 {
         return true;
       }
     }
-    return true;
+    return false;
   }
 
   void MBScheduler::penguin_query(xocl_cmd* xcmd)
