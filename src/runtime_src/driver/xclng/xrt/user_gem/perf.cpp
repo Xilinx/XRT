@@ -55,6 +55,7 @@
 #include <time.h>
 #include <string.h>
 #include <chrono>
+#include <iostream>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -459,9 +460,13 @@ namespace xocl {
     // Configure Accelerator monitors for dataflow
     for (uint32_t i=0; i < numSlots; i++) {
       baseAddress = getPerfMonBaseAddress(type,i);
+      std::cout << "Enable dataflow .." << std::endl;
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = regValue | XSAM_DATAFLOW_EN_MASK;
       size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      regValue = 0;
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      std::cout << "Regvalue after dataflow en " << regValue << std::endl;
     }
 
     return size;
