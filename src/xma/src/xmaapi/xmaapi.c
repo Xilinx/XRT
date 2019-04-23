@@ -58,82 +58,108 @@ int32_t xma_initialize(char *cfgfile)
     }
 
     g_xma_singleton = malloc(sizeof(*g_xma_singleton));
-    if (g_xma_singleton  == NULL)
+    if (g_xma_singleton  == NULL) {
+        printf("Value of xma singlton is NULL\n");
         return XMA_ERROR;
+    }
     memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));
 
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Unable to parse yaml file\n");
         return ret;
+    }
 
     ret = xma_logger_init(&g_xma_singleton->logger);
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Logger initalization failed\n");
         return ret;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD,
                "Creating resource shared mem database\n");
     g_xma_singleton->shm_res_cfg = xma_res_shm_map(&g_xma_singleton->systemcfg);
 
-    if (!g_xma_singleton->shm_res_cfg)
+    if (!g_xma_singleton->shm_res_cfg) {
+        printf("Creation of resource shared mem database failed\n");
         return XMA_ERROR;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Failed to probe hardware\n");
         return ret;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Checking hardware compatibility\n");
     rc = xma_hw_is_compatible(&g_xma_singleton->hwcfg,
                               &g_xma_singleton->systemcfg);
-    if (!rc)
-        return XMA_ERROR_INVALID;
+    if (!rc) {
+        printf("Failed to check hardware compatibility\n");
+        return XMA_ERROR_INVALID;		
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
     rc = xma_hw_configure(&g_xma_singleton->hwcfg,
                           &g_xma_singleton->systemcfg,
                           xma_res_xma_init_completed(g_xma_singleton->shm_res_cfg));
-    if (!rc)
+    if (!rc) {
+        printf("Failed to configure hardware\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load scaler plugins\n");
     ret = xma_scaler_plugins_load(&g_xma_singleton->systemcfg,
                                   g_xma_singleton->scalercfg);
 
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Failed to Load scaler plugin\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load encoder plugins\n");
     ret = xma_enc_plugins_load(&g_xma_singleton->systemcfg,
                                g_xma_singleton->encodercfg);
 
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Failed to Load encoder plugin\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load decoder plugins\n");
     ret = xma_dec_plugins_load(&g_xma_singleton->systemcfg,
                                g_xma_singleton->decodercfg);
 
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+       printf("Failed to Load decoder plugin\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load filter plugins\n");
     ret = xma_filter_plugins_load(&g_xma_singleton->systemcfg,
                                  g_xma_singleton->filtercfg);
 
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Failed to Load filter plugin\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load kernel plugins\n");
     ret = xma_kernel_plugins_load(&g_xma_singleton->systemcfg,
                                  g_xma_singleton->kernelcfg);
 
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        printf("Failed to Load kernel plugin\n");
         goto error;
+    }
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
     ret = atexit(xma_exit);
-    if (ret)
+    if (ret) {
+        printf("Failed to Init signal and exit handlers\n");
         goto error;
+    }
 
     xma_init_sighandlers();
     xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
