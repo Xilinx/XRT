@@ -546,6 +546,8 @@ cmd_get(struct xocl_scheduler *xs, struct exec_core *exec, struct client_ctx *cl
 	xcmd->client = client;
 	xcmd->bo = NULL;
 	xcmd->ert_pkt = NULL;
+	xcmd->chain_count = 0;
+	xcmd->wait_count = 0;
 	atomic_inc(&client->outstanding_execs);
 	SCHED_DEBUGF("xcmd(%lu) xcmd(%p) [-> new ]\n", xcmd->uid, xcmd);
 	return xcmd;
