@@ -63,7 +63,7 @@ else ()
     xrt_docs ALL
     DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst
     COMMENT "Generating documentation with Sphinx"
-    COMMAND mkdir -p html
+    COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
     COMMAND cp -rf ${XRT_DOC_TOC_DIR}/* ${DOC_TOC_DIR}
     COMMAND ${SPHINX_EXECUTABLE} -a ${DOC_TOC_DIR} html
