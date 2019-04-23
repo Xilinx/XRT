@@ -463,6 +463,7 @@ namespace xocl {
       std::cout << "Enable dataflow .." << std::endl;
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+      std::cout << "Writing regvalue : " << std::hex << regValue << std::dec << std::endl;
       size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = 0;
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
