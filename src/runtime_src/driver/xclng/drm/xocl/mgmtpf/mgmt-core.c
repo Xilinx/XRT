@@ -874,6 +874,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_alloc;
 	}
 
+	rwlock_init(&lro->core.rwlock);
+
 	/* create a device to driver reference */
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */

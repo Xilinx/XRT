@@ -727,6 +727,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
+	rwlock_init(&xdev->core.rwlock);
 	INIT_DELAYED_WORK(&xdev->core.reset_work, xocl_reset_work);
 	xocl_fill_dsa_priv(xdev, dev_info);
 	mutex_init(&xdev->dev_lock);

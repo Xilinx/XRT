@@ -410,7 +410,7 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
 }
 
 xocl::event::action_profile_type
-action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device)
 {
   std::string srcBank;
   uint64_t srcAddress;
@@ -422,7 +422,9 @@ action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_
   get_address_bank(dst_buffer, dstAddress, dstBank);
   dstAddress += dst_offset;
 
-  bool same_device = is_same_device(src_buffer, dst_buffer);
+  // NOTE: this is not reliable here since one or both buffers may not be resident yet when this starts
+  // For now, have the action caller tell us if it's CDMA (same_device=true) or P2P (same_device=false)
+  //bool same_device = is_same_device(src_buffer, dst_buffer);
 
   return [src_buffer,dst_buffer,same_device,size,srcAddress,srcBank,dstAddress,dstBank](xocl::event* event,cl_int status,const std::string&) {
   if (cb_action_copy)

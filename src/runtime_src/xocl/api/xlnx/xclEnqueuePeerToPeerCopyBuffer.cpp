@@ -106,8 +106,8 @@ validOrError(cl_command_queue    command_queue,
   // buffer or subbuffer object and the source and destination regions
   // overlap or if src_buffer and dst_buffer are different sub-buffers
   // of the same associated buffer object and they overlap. The
-  // regions overlap if src_offset ≤ dst_offset ≤ src_offset + size -
-  // 1, or if dst_offset ≤ src_offset ≤ dst_offset + size - 1.
+  // regions overlap if src_offset <= dst_offset <= src_offset + size -
+  // 1, or if dst_offset <= src_offset <= dst_offset + size - 1.
   if ((src_buffer==dst_buffer) &&
       (( (src_offset<=dst_offset) && (dst_offset<=src_offset+size-1) ) ||
        ( (dst_offset<=src_offset) && (src_offset<=dst_offset+size-1) )
@@ -143,6 +143,8 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
     (command_queue,CL_COMMAND_COPY_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_copy_p2p_buffer,src_buffer,dst_buffer,src_offset,dst_offset,size);
+  xocl::profile::set_event_action
+    (uevent.get(),xocl::profile::action_copy,src_buffer,dst_buffer,src_offset,dst_offset,size,false);
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_copybuf,src_buffer,dst_buffer,src_offset,dst_offset,size);
 

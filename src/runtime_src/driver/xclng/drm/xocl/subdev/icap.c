@@ -683,6 +683,7 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 
+	write_lock(&XDEV(xdev)->rwlock);
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
 	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
@@ -709,6 +710,7 @@ static int icap_freeze_axi_gate(struct icap *icap)
 
 static int icap_free_axi_gate(struct icap *icap)
 {
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int i;
 
 	ICAP_INFO(icap, "freeing CL AXI gate");
@@ -729,6 +731,7 @@ static int icap_free_axi_gate(struct icap *icap)
 	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
 
 	icap->icap_axi_gate_frozen = false;
+	write_unlock(&XDEV(xdev)->rwlock);
 
 	return 0;
 }

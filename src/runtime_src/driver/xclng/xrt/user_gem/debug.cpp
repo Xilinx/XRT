@@ -173,7 +173,12 @@ namespace xocl {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+            if(portNames) {
+              // Fill up string with 128 characters (padded with null characters)
+              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+              // Strip away extraneous null characters
+              portNames[count].assign(portNames[count].c_str());
+            }
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
             if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
             if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;

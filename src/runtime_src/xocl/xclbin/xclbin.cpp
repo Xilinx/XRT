@@ -666,7 +666,7 @@ private:
     }
 
     void
-    cu_base_address_map(std::vector<uint32_t>& amap) const
+    cu_base_address_map(std::vector<uint64_t>& amap) const
     {
       for (auto& instance : m_symbol.instances)
         amap.push_back(instance.base);
@@ -899,10 +899,10 @@ public:
     return retval;
   }
 
-  std::vector<uint32_t>
+  std::vector<uint64_t>
   cu_base_address_map() const
   {
-    std::vector<uint32_t> amap;
+    std::vector<uint64_t> amap;
     for (auto& kernel : m_kernels)
       kernel->cu_base_address_map(amap);
 
@@ -1233,7 +1233,7 @@ struct xclbin::impl
   cu_interrupt() const
   { return m_xml.cu_interrupt(); }
 
-  std::vector<uint32_t>
+  std::vector<uint64_t>
   cu_base_address_map() const
   { return m_xml.cu_base_address_map(); }
 
@@ -1479,7 +1479,7 @@ cu_interrupt() const
   return impl_or_error()->cu_interrupt();
 }
 
-std::vector<uint32_t>
+std::vector<uint64_t>
 xclbin::
 cu_base_address_map() const
 {
