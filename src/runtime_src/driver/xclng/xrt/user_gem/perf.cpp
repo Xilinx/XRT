@@ -455,6 +455,15 @@ namespace xocl {
       // Reset end
       size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
     }
+
+    // Configure Accelerator monitors for dataflow
+    for (uint32_t i=0; i < numSlots; i++) {
+      baseAddress = getPerfMonBaseAddress(type,i);
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+    }
+
     return size;
   }
 
