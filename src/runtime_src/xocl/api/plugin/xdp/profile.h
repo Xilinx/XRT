@@ -137,7 +137,7 @@ xocl::event::action_profile_type
 action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags);
 
 xocl::event::action_profile_type
-action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size);
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device);
 
 template <typename F, typename ...Args>
 inline void

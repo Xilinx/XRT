@@ -84,7 +84,7 @@ enum subcommand {
     STATUS_SPM,
     STATUS_LAPC,
     STATUS_SSPM,
-    STATUS_SPC, 
+    STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
 };
@@ -255,17 +255,20 @@ public:
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
+        char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
+
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
             boost::property_tree::ptree ptCu;
-            unsigned statusBuf;
+            unsigned statusBuf = 0;
             if (computeUnits.at( i ).m_type != IP_KERNEL)
                 continue;
-            xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-            ptCu.put( "index",        i );
+	    if (!skip_cu) {
+                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+	    }
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
             ptCu.put( "status",       parseCUStatus( statusBuf ) );
-            sensor_tree::add_child( "board.compute_unit.cu", ptCu );
+            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
     }
@@ -353,7 +356,7 @@ public:
             ss << "WARNING: 'memstat_raw' invalid, unable to report memory stats. "
                 << "Has the bitstream been loaded? See 'xbutil program'.";
             lines.push_back(ss.str());
-            return;            
+            return;
         }
         unsigned numDDR = map->m_count;
         for(unsigned i = 0; i < numDDR; i++ ) {
@@ -363,7 +366,7 @@ public:
                 continue;
             uint64_t memoryUsage, boCount;
             std::stringstream mem_usage(mm_buf[i]);
-            mem_usage >> memoryUsage >> boCount;            
+            mem_usage >> memoryUsage >> boCount;
 
             float percentage = (float)memoryUsage * 100 /
                 (map->m_mem_data[i].m_size << 10);
@@ -400,46 +403,46 @@ public:
         if(buf.empty() || mm_buf.empty())
             return;
 
+        int j = 0; // stream index
+        int m = 0; // mem index
+
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
                 boost::property_tree::ptree ptStream;
-		std::map<std::string, std::string> stat_map;
-
-		lname = std::string((char *)map->m_mem_data[i].m_tag);
+                std::map<std::string, std::string> stat_map;
+                lname = std::string((char *)map->m_mem_data[i].m_tag);
                 if (lname.back() == 'w')
                     lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
                 else if (lname.back() == 'r')
                     lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
-		else
+                else
                     status = "N/A";
 
-	        pcidev::get_dev(m_idx)->user->sysfs_get("qdma", lname, errmsg, stream_stat);
+                pcidev::get_dev(m_idx)->user->sysfs_get("qdma", lname, errmsg, stream_stat);
                 if (errmsg.empty()) {
                     status = "Active";
-		    for (unsigned k = 0; k < stream_stat.size(); k++) {
-			char key[50];
-			int64_t value;
+                    for (unsigned k = 0; k < stream_stat.size(); k++) {
+                        char key[50];
+                        int64_t value;
 
-			std::sscanf(stream_stat[k].c_str(), "%[^:]:%ld", key, &value);
-			stat_map[std::string(key)] = std::to_string(value);
-		    }
+                        std::sscanf(stream_stat[k].c_str(), "%[^:]:%ld", key, &value);
+                        stat_map[std::string(key)] = std::to_string(value);
+                    }
 
-                    total = stat_map[std::string("complete_bytes")] +
-                        "/" + stat_map[std::string("complete_requests")];
-                    pending = stat_map[std::string("pending_bytes")] +
-                        "/" + stat_map[std::string("pending_requests")];
-		}
+                    total = stat_map[std::string("complete_bytes")] + "/" + stat_map[std::string("complete_requests")];
+                    pending = stat_map[std::string("pending_bytes")] + "/" + stat_map[std::string("pending_requests")];
+                }
 
-		ptStream.put( "index",	i);
                 ptStream.put( "tag", map->m_mem_data[i].m_tag );
                 ptStream.put( "flow_id", map->m_mem_data[i].flow_id );
                 ptStream.put( "route_id", map->m_mem_data[i].route_id );
-		ptStream.put( "status", status );
-		ptStream.put( "total", total );
-		ptStream.put( "pending", pending );
-		sensor_tree::add_child( "board.memory.stream", ptStream);
-		continue;
+                ptStream.put( "status", status );
+                ptStream.put( "total", total );
+                ptStream.put( "pending", pending );
+                sensor_tree::add_child( std::string("board.memory.stream." + std::to_string(j)), ptStream);
+                j++;
+                continue;
             }
 
             std::string str = "**UNUSED**";
@@ -451,7 +454,6 @@ public:
             ss >> memoryUsage >> boCount;
 
             boost::property_tree::ptree ptMem;
-            ptMem.put( "index",     i );
             ptMem.put( "type",      str );
             ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
@@ -459,7 +461,8 @@ public:
             ptMem.put( "size",      unitConvert(map->m_mem_data[i].m_size << 10) );
             ptMem.put( "mem_usage", unitConvert(memoryUsage));
             ptMem.put( "bo_count",  boCount);
-            sensor_tree::add_child( "board.memory.mem", ptMem );
+            sensor_tree::add_child( std::string("board.memory.mem." + std::to_string(m)), ptMem );
+            m++;
         }
     }
 
@@ -601,13 +604,8 @@ public:
         lines.push_back(ss.str());
     }
 
-
     int readSensors( void ) const
     {
-        sensor_tree::put( "runtime.build.version",   xrt_build_version );
-        sensor_tree::put( "runtime.build.hash",      xrt_build_version_hash );
-        sensor_tree::put( "runtime.build.date",      xrt_build_version_date );
-        sensor_tree::put( "runtime.build.branch",    xrt_build_version_branch );
         // info
         sensor_tree::put( "board.info.dsa_name", m_devinfo.mName );
         sensor_tree::put( "board.info.vendor", m_devinfo.mVendorId );
@@ -633,6 +631,7 @@ public:
             }
             if(pcidev::get_dev(m_idx)->user){
                 pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
+                pcidev::get_dev(m_idx)->user->sysfs_get("icap", "idcode", errmsg, idcode);
             }
             sensor_tree::put( "board.info.idcode", idcode );
             sensor_tree::put( "board.info.fpga_name", fpga );
@@ -650,12 +649,10 @@ public:
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
-            if(pcidev::get_dev(m_idx)->mgmt){
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
-            }
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
             sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
             sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
@@ -681,9 +678,7 @@ public:
         {
             unsigned cur = 0;
             std::string errmsg;
-            if(pcidev::get_dev(m_idx)->mgmt){
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
-            }
+            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
             sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
         }
 
@@ -700,10 +695,9 @@ public:
         (void) xclGetUsageInfo(m_handle, &devstat);
         for (unsigned i = 0; i < 2; i++) {
             boost::property_tree::ptree pt_dma;
-            pt_dma.put( "index", i );
             pt_dma.put( "h2c", unitConvert(devstat.h2c[i]) );
             pt_dma.put( "c2h", unitConvert(devstat.c2h[i]) );
-            sensor_tree::add_child( "board.pcie_dma.transfer_metrics.chan", pt_dma );
+            sensor_tree::add_child( std::string("board.pcie_dma.transfer_metrics.chan." + std::to_string(i)), pt_dma );
         }
         getMemTopology( devstat );
         // stream
@@ -740,12 +734,12 @@ public:
         sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
         /** End of debug and profile device information */
 
-	// p2p enable
-	int p2p_enabled;
+        // p2p enable
+        int p2p_enabled;
         pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
-	if(errmsg.empty()) {
-		sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
-	}
+        if(errmsg.empty()) {
+            sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
+        }
         return 0;
     }
 
@@ -766,12 +760,6 @@ public:
      */
     int dump(std::ostream& ostr) const {
         readSensors();
-        ostr << std::left;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "XRT\nVersion:    " << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
-             <<    "\nGit Hash:   " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" )
-             <<    "\nGit Branch: " << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
-             <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
@@ -867,28 +855,26 @@ public:
         ostr << std::setw(16) << "Mem Usage" << std::setw(8)  << "BO count" << std::endl;
 
         try {
-          for (auto& v : sensor_tree::get_child("board.memory")) {
-            if( v.first == "mem" ) {
+          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
               std::string mem_usage, tag, size, type, temp;
-              int index = 0;
               unsigned bo_count = 0;
               for (auto& subv : v.second) {
-                if( subv.first == "index" ) {
-                  index = subv.second.get_value<int>();
-                } else if( subv.first == "type" ) {
-                  type = subv.second.get_value<std::string>();
-                } else if( subv.first == "tag" ) {
-                  tag = subv.second.get_value<std::string>();
-                } else if( subv.first == "temp" ) {
-                  unsigned int t = subv.second.get_value<unsigned int>();
-                  temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
-                } else if( subv.first == "bo_count" ) {
-                  bo_count = subv.second.get_value<unsigned>();
-                } else if( subv.first == "mem_usage" ) {
-                  mem_usage = subv.second.get_value<std::string>();
-                } else if( subv.first == "size" ) {
-                  size = subv.second.get_value<std::string>();
-                }
+                  if( subv.first == "type" ) {
+                      type = subv.second.get_value<std::string>();
+                  } else if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "temp" ) {
+                      unsigned int t = subv.second.get_value<unsigned int>();
+                      temp = sensor_tree::pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+                  } else if( subv.first == "bo_count" ) {
+                      bo_count = subv.second.get_value<unsigned>();
+                  } else if( subv.first == "mem_usage" ) {
+                      mem_usage = subv.second.get_value<std::string>();
+                  } else if( subv.first == "size" ) {
+                      size = subv.second.get_value<std::string>();
+                  }
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
@@ -908,20 +894,19 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "DMA Transfer Metrics" << std::endl;
         try {
-          for (auto& v : sensor_tree::get_child( "board.pcie_dma.transfer_metrics" )) {
-            if( v.first == "chan" ) {
-              std::string chan_index, chan_h2c, chan_c2h, chan_val = "N/A";
+          for (auto& v : sensor_tree::get_child( "board.pcie_dma.transfer_metrics.chan" )) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string chan_h2c, chan_c2h, chan_val = "N/A";
               for (auto& subv : v.second ) {
                 chan_val = subv.second.get_value<std::string>();
-                if( subv.first == "index" )
-                  chan_index = chan_val;
-                else if( subv.first == "h2c" )
+                if( subv.first == "h2c" )
                   chan_h2c = chan_val;
                 else if( subv.first == "c2h" )
                   chan_c2h = chan_val;
               }
-              ostr << "Chan[" << chan_index << "].h2c:  " << chan_h2c << std::endl;
-              ostr << "Chan[" << chan_index << "].c2h:  " << chan_c2h << std::endl;
+              ostr << "Chan[" << index << "].h2c:  " << chan_h2c << std::endl;
+              ostr << "Chan[" << index << "].c2h:  " << chan_c2h << std::endl;
             }
           }
         }
@@ -934,16 +919,15 @@ public:
         ostr << std::setw(17) << "     Tag"  << std::setw(9) << "Flow ID"
              << std::setw(9)  << "Route ID"   << std::setw(9)  << "Status";
         ostr << std::setw(16) << "Total (B/#)" << std::setw(10)  << "Pending (B/#)" << std::endl;
-	try {
-          for (auto& v : sensor_tree::get_child("board.memory")) {
-            if( v.first == "stream" ) {
+        try {
+          int index = 0;
+          for (auto& v : sensor_tree::get_child("board.memory.stream")) {
+            int stream_index = std::stoi(v.first);
+            if( stream_index >= 0 ) {
               std::string status, tag, total, pending;
-              int index = 0;
               unsigned int flow_id = 0, route_id = 0;
               for (auto& subv : v.second) {
-                if( subv.first == "index" ) {
-                  index = subv.second.get_value<int>();
-                } else if( subv.first == "tag" ) {
+                if( subv.first == "tag" ) {
                   tag = subv.second.get_value<std::string>();
                 } else if( subv.first == "flow_id" ) {
                   flow_id = subv.second.get_value<unsigned int>();
@@ -955,7 +939,7 @@ public:
                   total = subv.second.get_value<std::string>();
                 } else if ( subv.first == "pending" ) {
                   pending = subv.second.get_value<std::string>();
-		}
+                }
               }
               ostr << std::left
                    << "[" << std::right << std::setw(2) << index << "] " << std::left
@@ -963,11 +947,12 @@ public:
                    << std::setw(9) << flow_id
                    << std::setw(9)  << route_id
                    << std::setw(9)  << status
-		   << std::setw(16) << total
-		   << std::setw(10) << pending << std::endl;
-	    }
-	  }
-	}
+                   << std::setw(16) << total
+                   << std::setw(10) << pending << std::endl;
+              index++;
+            }
+          }
+        }
         catch( std::exception const& e) {
           // eat the exception, probably bad path
         }
@@ -978,24 +963,25 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status\n";
         try {
+          int cu_i = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
-            if( v.first == "cu" ) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
               std::string cu_n, cu_s, cu_ba;
-              int cu_i = 0;
               for (auto& subv : v.second) {
-                if( subv.first == "index" )
-                  cu_i = subv.second.get_value<int>();
-                else if( subv.first == "name" )
+                if( subv.first == "name" )
                   cu_n = subv.second.get_value<std::string>();
-                else if( subv.first == "base_address" )
-                  cu_ba = sensor_tree::pretty<int>(subv.second.get_value<int>(), "N/A", true);
-                else if( subv.first == "status" )
+                else if( subv.first == "base_address" ) {
+                  auto addr = subv.second.get_value<uint64_t>();
+		  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+		} else if( subv.first == "status" )
                   cu_s = subv.second.get_value<std::string>();
               }
               ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
                    << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
+	      cu_i++;
             }
           }
         }
@@ -1053,7 +1039,7 @@ public:
         const xclBin *header = (const xclBin *)buffer;
         int result = xclLockDevice(m_handle);
         if (result == 0)
-		result = xclLoadXclBin(m_handle, header);
+            result = xclLoadXclBin(m_handle, header);
         delete [] buffer;
         (void) xclUnlockDevice(m_handle);
 

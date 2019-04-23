@@ -62,7 +62,12 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
                 baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
             if(portNames) {
                 std::string portName;
+		// This makes sure that the c string is null terminated,
+		//  but it also copies a full 128 and fills unused spaces
+		//  with null characters.
                 portName.assign(map->m_debug_ip_data[i].m_name, 128);
+		// This statement strips away any extraneous null characters
+		portName.assign(portName.c_str());
                 portNames->push_back(portName);
             }
             ++count;
@@ -131,13 +136,13 @@ int xcldev::device::readSPMCounters() {
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, nullptr, &slotNames);
     if (numSlots == 0) {
-        std::cout << "ERROR: SPM IP does not exist on the platform" << std::endl;
+        std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
 
-    std::cout << "SDx Performance Monitor Counters\n";
+    std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
     int col2 = std::max(widths.second, strlen("Type or Port"));
 
@@ -182,13 +187,13 @@ int xcldev::device::readSSPMCounters() {
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (AXI_STREAM_MONITOR, nullptr, &slotNames);
     if (numSlots == 0) {
-        std::cout << "ERROR: SSPM IP does not exist on the platform" << std::endl;
+        std::cout << "ERROR: AXI Stream Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
 
-    std::cout << "SDx Streaming Performance Monitor Counters\n";
+    std::cout << "AXI Stream Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
     int col2 = std::max(widths.second, strlen("Stream Slave"));
 

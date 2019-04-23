@@ -121,6 +121,9 @@ struct tree
 
       // set env vars to expose sdaccel.ini to hal layer
       setenv();
+
+      // inform which .ini was read
+      xrt_core::message::send(xrt_core::message::severity_level::INFO, "XRT", std::string("Read ") + path);
     }
     catch (const std::exception& ex) {
       xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", ex.what());

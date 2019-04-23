@@ -13,6 +13,7 @@ Added
 * Initial implementation of XRT logging API, xclLogMsg() for use by XRT clients.
 * Initial support for Alveo shell KDMA feature in OpenCL.
 * Yocto recipes to build XRT for embedded platforms. Please consult https://xilinx.github.io/XRT/2018.3/html/yocto.html for details.
+* Cloud and virtualization support added with Management Service Daemon(MSD) and Management Proxy Daemon(MPD). Reference code under ``tests/daemon-proxy``
 
 Fixed
 .....

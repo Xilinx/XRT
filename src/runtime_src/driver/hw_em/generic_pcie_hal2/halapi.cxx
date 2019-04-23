@@ -210,7 +210,7 @@ unsigned xclProbe()
 {
   if(!xclemulation::isXclEmulationModeHwEmuOrSwEmu())
   {
-    std::string initMsg ="ERROR: [SDx-EM 08] Please set XCL_EMULATION_MODE to \"hw_emu\" to run hardware emulation. ";
+    std::string initMsg ="ERROR: [HW-EM 08] Please set XCL_EMULATION_MODE to \"hw_emu\" to run hardware emulation. ";
     std::cout<<initMsg<<std::endl;
     return 0;
   }
@@ -291,7 +291,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     handle->xclOpen(logfileName);
     if(bDefaultDevice)
     {
-      std::string sDummyDeviceMsg ="CRITICAL WARNING: [SDx-EM 08-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
+      std::string sDummyDeviceMsg ="CRITICAL WARNING: [HW-EM 08-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
       handle->logMessage(sDummyDeviceMsg);
     }
   }
@@ -317,7 +317,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
   if (!ret)
-      ret = xrt_core::scheduler::init(handle,buffer);
+      ret = xrt_core::scheduler::init(handle, buffer);
   return ret;
 }
 

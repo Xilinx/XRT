@@ -51,6 +51,9 @@ namespace xdp {
 	    void writeKernel(double traceTime, const std::string& commandString,
             const std::string& stageString, const std::string& eventString,
             const std::string& dependString, uint64_t objId, size_t size);
+      void writeCu(double traceTime, const std::string& commandString,
+            const std::string& stageString, const std::string& eventString,
+            const std::string& dependString, uint64_t objId, size_t size, uint32_t cuId);
 	    // Write timeline trace of read/write/copy data transfer
 	    void writeTransfer(double traceTime, RTUtil::e_profile_command_kind kind,
 	        const std::string& commandString, const std::string& stageString,

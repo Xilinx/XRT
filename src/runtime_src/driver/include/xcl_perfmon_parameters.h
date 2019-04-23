@@ -37,7 +37,7 @@
 #define AXI_FIFO_SRR                    0x28
 #define AXI_FIFO_RESET_VALUE            0xA5
 
-/************************ SDx Performance Monitor (SPM) ***********************/
+/************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
 
 /* Address offsets in core */
 #define XSPM_CONTROL_OFFSET                          0x08
@@ -99,7 +99,7 @@
 #define XSPM_HOST_PROPERTY_MASK                  0x4
 #define XSPM_64BIT_PROPERTY_MASK                 0x8
 
-/************************ SDx Accelerator Monitor (SAM) ************************/
+/************************ Accelerator Monitor (AM, earlier SAM) ************************/
 
 #define XSAM_CONTROL_OFFSET                          0x08
 #define XSAM_TRACE_CTRL_OFFSET                       0x10
@@ -127,12 +127,13 @@
 
 /* SAM Trace Control Masks */
 #define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
+#define XSAM_COUNTER_RESET_MASK         0x00000002
 
 /* Debug IP layout properties mask bits */
 #define XSAM_STALL_PROPERTY_MASK        0x4
 #define XSAM_64BIT_PROPERTY_MASK        0x8
 
-/************************** SDx AXI Stream Monitor (SSPM) *********************/
+/************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
 
 #define XSSPM_SAMPLE_OFFSET            0x20
 #define XSSPM_NUM_TRANX_OFFSET         0x80

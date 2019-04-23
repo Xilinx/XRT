@@ -255,40 +255,32 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clWriteStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The write request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id    /* device_id*/,
-	cl_stream             /* stream*/,
+clWriteStream(cl_stream             /* stream*/,
 	const void *          /* ptr */,
-	size_t                /* offset */,
 	size_t                /* size */,
 	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clReadStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id     /* device_id*/,
-	     cl_stream             /* stream*/,
+clReadStream(cl_stream             /* stream*/,
 	     void *                /* ptr */,
-	     size_t                /* offset */,
 	     size_t                /* size */,
 	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;

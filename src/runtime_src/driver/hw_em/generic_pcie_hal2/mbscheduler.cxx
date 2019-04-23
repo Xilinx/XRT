@@ -243,18 +243,14 @@ namespace xclhwemhal2 {
   {
     uint32_t mask_idx = 0;
     uint32_t num_masks = cu_masks(xcmd);
-    uint32_t busy_mask = 0;
     for (mask_idx=0; mask_idx<num_masks; ++mask_idx) 
     {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
-      int cu_idx = getFirstSetBitPos((cmd_mask | busy_mask) ^ busy_mask);
-      if (cu_idx >= 0) 
+      uint32_t cu_idx = cu_idx_from_mask (f_cu_idx, mask_idx);
+
+      if( (cmd_mask & cu_idx) == cu_idx )
       {
-        busy_mask ^= 1<<cu_idx;
-        if(cu_idx_from_mask(cu_idx,mask_idx) == f_cu_idx)
-        {
-          return true;
-        }
+        return true;
       }
     }
     return false;
@@ -421,7 +417,7 @@ namespace xclhwemhal2 {
     }
     else if (cmd_type==ERT_CU )
     {
-      if(xcmd->cu_idx >= 32)
+      if(xcmd->cu_idx >= MAX_CUS)
       {
         return;
       }

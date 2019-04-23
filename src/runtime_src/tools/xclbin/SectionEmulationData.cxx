@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2018 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,28 +14,21 @@
  * under the License.
  */
 
-#ifndef xrt_message_h_
-#define xrt_message_h_
+#include "SectionEmulationData.h"
 
-#include "driver/common/message.h"
-#include <string>
+#include "XclBinUtilities.h"
+namespace XUtil = XclBinUtilities;
 
-namespace xrt { namespace message {
+// Static Variables / Classes
+SectionEmulationData::_init SectionEmulationData::_initializer;
 
-using namespace xrt_core::message;
-
-inline void
-send(severity_level l, const char* msg)
-{
-  send(l,"XRT",msg);
-};
-
-inline void
-send(severity_level l, const std::string& msg)
-{
-  send(l,msg.c_str());
+SectionEmulationData::SectionEmulationData() {
+  // Empty
 }
 
-}} // message,xrt
+SectionEmulationData::~SectionEmulationData() {
+  // Empty
+}
 
-#endif
+
+
