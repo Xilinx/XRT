@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == xcldev::LIST) {
-        for (unsigned i = 0; i < deviceVec.size(); i++) {
+        for (unsigned i = 0; i < count; i++) {
             std::cout << '[' << i << "] " << std::hex
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->bus() << ":"
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->dev() << "."
@@ -589,12 +589,15 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        if (index >= total)
-            std::cout << "ERROR: Card index " << index << " is out of range";
-        else
-            std::cout << "ERROR: Card [" << index << "] is not ready";
+        std::cout << "ERROR: Card index " << index << " is out of range";
         std::cout << std::endl;
         return -ENOENT;
+    } else {
+        if (index >= count) {
+            std::cout << "ERROR: Card [" << index << "] is not ready";
+            std::cout << std::endl;
+            return -ENOENT;
+        }
     }
 
     if(pcidev::get_dev(index)->user == NULL){
