@@ -1587,7 +1587,7 @@ static long icap_download_clear_bitstream(struct icap *icap)
 /*
  * This function should be called with icap_mutex lock held
  */
-static long axlf_set_freqscaling(struct icap *icap, struct platform_device *pdev,
+static long axlf_set_freqscaling(struct icap *icap,
 	const char *clk_buf, unsigned long length)
 {
 	struct clock_freq_topology *freqs = NULL;
@@ -1666,9 +1666,6 @@ static int icap_download_user(struct icap *icap, const char *bit_buf,
 	unsigned long length)
 {
 	long err = 0;
-	XHwIcap_Bit_Header bit_header = { 0 };
-	unsigned numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-	unsigned byte_read;
 
 	ICAP_INFO(icap, "downloading bitstream, length: %lu", length);
 
@@ -1676,53 +1673,17 @@ static int icap_download_user(struct icap *icap, const char *bit_buf,
 
 	err = icap_download_clear_bitstream(icap);
 	if (err)
-		goto free_buffers;
+		goto done;
 
-	if (bitstream_parse_header(icap, bit_buf,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-
-	bit_buf += bit_header.HeaderLength;
-	for (byte_read = 0; byte_read < bit_header.BitstreamLength;
-		byte_read += numCharsRead) {
-		numCharsRead = bit_header.BitstreamLength - byte_read;
-		if (numCharsRead > DMA_HWICAP_BITFILE_BUFFER_SIZE)
-			numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-
-		err = bitstream_helper(icap, (u32 *)bit_buf,
-			numCharsRead / sizeof(u32));
-		if (err)
-			goto free_buffers;
-
-		bit_buf += numCharsRead;
-	}
-
-	err = wait_for_done(icap);
+	err = icap_download(icap, bit_buf, length);
 	if (err)
-		goto free_buffers;
+		goto done;
 
-	/*
-	 * Perform frequency scaling since PR download can silenty overwrite
-	 * MMCM settings in static region changing the clock frequencies
-	 * although ClockWiz CONFIG registers will misleading report the older
-	 * configuration from before bitstream download as if nothing has
-	 * changed.
-	 */
 	if (!err)
 		err = icap_ocl_freqscaling(icap, true);
 
-free_buffers:
+done:
 	icap_free_axi_gate(icap);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -1847,6 +1808,148 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, CONNECTIVITY);
 }
 
+static int icap_get_and_set_clock_freqs(struct icap *icap, struct axlf *xclbin)
+{
+	int err = 0;
+	const struct axlf_section_header *hdr = NULL;
+	char *buffer;
+
+	ICAP_INFO(icap, "finding CLOCK_FREQ_TOPOLOGY section");
+	/* Read the CLOCK section but defer changing clocks to later */
+	hdr = get_axlf_section_hdr(icap, xclbin,
+		CLOCK_FREQ_TOPOLOGY);
+
+	/* All clear, go ahead and start fiddling with hardware */
+	if (hdr) {
+		buffer = (char *)xclbin;
+		buffer += hdr->m_sectionOffset;
+		err = axlf_set_freqscaling(icap, buffer, hdr->m_sectionSize);
+		if (err)
+			goto done;
+		err = icap_setup_clock_freq_topology(icap, buffer, hdr->m_sectionSize);
+		if (err)
+			goto done;
+	}
+done:
+	return err;
+}
+
+static int icap_get_and_set_clear_bitstream(struct platform_device *pdev, struct axlf *xclbin)
+{
+	int err = 0;
+	struct icap *icap = platform_get_drvdata(pdev);
+	const struct axlf_section_header *hdr = NULL;
+	char *buffer;
+
+	hdr = get_axlf_section_hdr(icap, xclbin,
+		CLEARING_BITSTREAM);
+	if (hdr) {
+		if (XOCL_PL_TO_PCI_DEV(pdev)->device == 0x7138) {
+			err = -EINVAL;
+			goto done;
+		}
+	} else
+		goto done;
+
+	buffer = (char *)xclbin;
+	buffer += hdr->m_sectionOffset;
+	err = icap_setup_clear_bitstream(icap, buffer, hdr->m_sectionSize);
+
+done:
+	return err;
+}
+
+static int icap_get_and_download_bitstream(struct icap *icap, struct axlf *xclbin)
+{
+	int err = 0;
+	const struct axlf_section_header *hdr = NULL;
+	char *buffer;
+
+	ICAP_INFO(icap, "finding bitstream sections");
+	hdr = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
+	if (!hdr) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	buffer = (char *)xclbin;
+	buffer += hdr->m_sectionOffset;
+	err = icap_download_user(icap, buffer, hdr->m_sectionSize);
+
+done:
+	return err;
+}
+
+
+static int icap_download_bitstream_user(struct platform_device *pdev, struct axlf *xclbin)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0;
+	int msg = -ETIMEDOUT;
+	size_t resplen = sizeof(msg);
+	uint32_t data_len = 0;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_bitstream_kaddr mb_addr = {0};
+	xuid_t *peer_uuid;
+	uint64_t ch_state = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+
+	peer_uuid = (xuid_t *)icap_get_data_nolock(xdev, PEER_UUID);
+
+	if (uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
+		ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
+			xclbin->m_uniqueId);
+		goto done;
+	}
+
+	/*
+	 * Clean up and expire cache if we need to download xclbin
+	 */
+	memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
+	icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
+
+	if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
+		data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
+		mb_req = vmalloc(data_len);
+		if (!mb_req) {
+			ICAP_ERR(icap, "Unable to create mb_req\n");
+			err = -ENOMEM;
+			goto done;
+		}
+		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
+		mb_addr.addr = (uint64_t)xclbin;
+		memcpy(mb_req->data, &mb_addr, sizeof(struct mailbox_bitstream_kaddr));
+
+	} else {
+		data_len = sizeof(struct mailbox_req) +
+			xclbin->m_header.m_length;
+		mb_req = vmalloc(data_len);
+		if (!mb_req) {
+			ICAP_ERR(icap, "Unable to create mb_req\n");
+			err = -ENOMEM;
+			goto done;
+		}
+		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
+		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
+	}
+	(void) xocl_peer_request(xdev,
+		mb_req, data_len, &msg, &resplen, NULL, NULL);
+
+	if (msg != 0) {
+		ICAP_ERR(icap,
+			"%s peer failed to download xclbin",
+			__func__);
+		err = -EFAULT;
+		goto done;
+	}
+
+done:
+	vfree(mb_req);
+	return err;
+}
+
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	const void *u_xclbin)
 {
@@ -1855,27 +1958,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 */
 	struct icap *icap = platform_get_drvdata(pdev);
 	long err = 0;
-	uint64_t primaryFirmwareOffset = 0;
-	uint64_t primaryFirmwareLength = 0;
-	uint64_t secondaryFirmwareOffset = 0;
-	uint64_t secondaryFirmwareLength = 0;
-	const struct axlf_section_header *primaryHeader = NULL;
-	const struct axlf_section_header *clockHeader = NULL;
-	const struct axlf_section_header *secondaryHeader = NULL;
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
-	char *buffer;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
-	int msg = -ETIMEDOUT;
-	size_t resplen = sizeof(msg);
 	int pid = pid_nr(task_tgid(current));
-	uint32_t data_len = 0;
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_bitstream_kaddr mb_addr = {0};
-	xuid_t *peer_uuid;
-	uint64_t ch_state = 0;
 
-	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
 		return -EINVAL;
@@ -1912,33 +1999,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		/*
 		 * Find sections in xclbin.
 		 */
-		ICAP_INFO(icap, "finding CLOCK_FREQ_TOPOLOGY section");
-		/* Read the CLOCK section but defer changing clocks to later */
-		clockHeader = get_axlf_section_hdr(icap, xclbin,
-			CLOCK_FREQ_TOPOLOGY);
-
-		ICAP_INFO(icap, "finding bitstream sections");
-		primaryHeader = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
-		if (primaryHeader == NULL) {
-			err = -EINVAL;
-			goto done;
-		}
-		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-		primaryFirmwareLength = primaryHeader->m_sectionSize;
-
-		secondaryHeader = get_axlf_section_hdr(icap, xclbin,
-			CLEARING_BITSTREAM);
-		if (secondaryHeader) {
-			if (XOCL_PL_TO_PCI_DEV(pdev)->device == 0x7138) {
-				err = -EINVAL;
-				goto done;
-			} else {
-				secondaryFirmwareOffset =
-					secondaryHeader->m_sectionOffset;
-				secondaryFirmwareLength =
-					secondaryHeader->m_sectionSize;
-			}
-		}
 
 		mutex_lock(&icap->icap_lock);
 
@@ -1948,31 +2008,15 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			goto done;
 		}
 
-		/* All clear, go ahead and start fiddling with hardware */
-
-		if (clockHeader != NULL) {
-			uint64_t clockFirmwareOffset = clockHeader->m_sectionOffset;
-			uint64_t clockFirmwareLength = clockHeader->m_sectionSize;
-
-			buffer = (char *)xclbin;
-			buffer += clockFirmwareOffset;
-			err = axlf_set_freqscaling(icap, pdev, buffer, clockFirmwareLength);
-			if (err)
-				goto done;
-			err = icap_setup_clock_freq_topology(icap, buffer, clockFirmwareLength);
-			if (err)
-				goto done;
-		}
-
-		buffer = (char *)xclbin;
-		buffer += primaryFirmwareOffset;
-		err = icap_download_user(icap, buffer, primaryFirmwareLength);
+		err = icap_get_and_set_clock_freqs(icap, xclbin);
 		if (err)
 			goto done;
 
-		buffer = (char *)u_xclbin;
-		buffer += secondaryFirmwareOffset;
-		err = icap_setup_clear_bitstream(icap, buffer, secondaryFirmwareLength);
+		err = icap_get_and_download_bitstream(icap, xclbin);
+		if (err)
+			goto done;
+
+		err = icap_get_and_set_clear_bitstream(pdev, xclbin);
 		if (err)
 			goto done;
 
@@ -2000,54 +2044,9 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			}
 		}
 
-		peer_uuid = (xuid_t *)icap_get_data_nolock(pdev, PEER_UUID);
-
-		if (!uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
-
-			/*
-			 * Clean up and expire cache if we need to download xclbin
-			 */
-			memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
-			icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
-
-			if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
-				data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
-				mb_req = vmalloc(data_len);
-				if (!mb_req) {
-					ICAP_ERR(icap, "Unable to create mb_req\n");
-					err = -ENOMEM;
-					goto done;
-				}
-				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
-				mb_addr.addr = (uint64_t)xclbin;
-				memcpy(mb_req->data, &mb_addr, sizeof(struct mailbox_bitstream_kaddr));
-
-			} else {
-				data_len = sizeof(struct mailbox_req) +
-					xclbin->m_header.m_length;
-				mb_req = vmalloc(data_len);
-				if (!mb_req) {
-					ICAP_ERR(icap, "Unable to create mb_req\n");
-					err = -ENOMEM;
-					goto done;
-				}
-				memcpy(mb_req->data, u_xclbin, xclbin->m_header.m_length);
-				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
-			}
-			(void) xocl_peer_request(xdev,
-				mb_req, data_len, &msg, &resplen, NULL, NULL);
-
-			if (msg != 0) {
-				ICAP_ERR(icap,
-					"%s peer failed to download xclbin",
-					__func__);
-				err = -EFAULT;
-				goto done;
-			}
-		} else {
-			ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
-				xclbin->m_uniqueId);
-		}
+		err = icap_download_bitstream_user(pdev, xclbin);
+		if (err)
+			goto done;
 
 		icap->icap_bitstream_id = xclbin->m_uniqueId;
 		if (!uuid_is_null(&xclbin->m_header.uuid)) {
@@ -2077,7 +2076,6 @@ done:
 	if (err)
 		icap_clean_bitstream_axlf(pdev);
 	mutex_unlock(&icap->icap_lock);
-	vfree(mb_req);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
 	return err;
 }
