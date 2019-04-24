@@ -579,6 +579,12 @@ public:
     return operations_result<void>();
   }
 
+  virtual operations_result<void>
+  configureDataflow(xclPerfMonType, unsigned *ip_config)
+  {
+    return operations_result<void>();
+  }
+
   virtual operations_result<size_t>
   startCounters(xclPerfMonType)
   {

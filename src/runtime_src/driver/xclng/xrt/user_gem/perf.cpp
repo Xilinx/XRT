@@ -456,21 +456,27 @@ namespace xocl {
       // Reset end
       size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
     }
+    return size;
+  }
 
-    // Configure Accelerator monitors for dataflow
+  void XOCLShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+    // Configure only Accelerator monitors for now
+    type = XCL_PERF_MON_ACCEL;
+    uint32_t numSlots = getPerfMonNumberSlots(type);
+
     for (uint32_t i=0; i < numSlots; i++) {
-      baseAddress = getPerfMonBaseAddress(type,i);
+      if (!ip_config[i]) continue;
+      uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+      uint32_t regValue = 0;
       std::cout << "Enable dataflow .." << std::endl;
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = regValue | XSAM_DATAFLOW_EN_MASK;
       std::cout << "Writing regvalue : " << std::hex << regValue << std::dec << std::endl;
-      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = 0;
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       std::cout << "Regvalue after dataflow en " << regValue << std::endl;
     }
-
-    return size;
   }
 
   // Stop both profile and trace performance monitoring
@@ -1110,6 +1116,14 @@ namespace xocl {
   }
 
 } // namespace xocl_gem
+
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {

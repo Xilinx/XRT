@@ -547,6 +547,22 @@ getMaxWrite(key k)
   return device->get_xrt_device()->getDeviceMaxWrite().get();
 }
 
+void configureDataflow(key k, xclPerfMonType type)
+{
+  unsigned num_slots = getProfileNumSlots(k, type);
+  auto ip_config = std::make_unique <unsigned []>(num_slots);
+  for (unsigned i=0; i < num_slots; i++) {
+    std::string slot;
+    getProfileSlotName(k, type, i, slot);
+    ip_config[i] = isAPCtrlChain(k, slot) ? 1 : 0;
+    std::cout << "Set dataflow for " << slot << std::endl;
+  }
+
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+  xdevice->configureDataflow(type, ip_config.get());
+}
+
 cl_int 
 startCounters(key k, xclPerfMonType type)
 {

@@ -97,6 +97,7 @@ private:
                                        char* slotName, uint32_t length);
   typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
   typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
+  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config);
   typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type,
@@ -194,6 +195,7 @@ public:
   getSlotNameFuncType mGetProfilingSlotName;
   getSlotPropertiesFuncType mGetProfilingSlotProperties;
   clockTrainingFuncType mClockTraining;
+  configureDataflowFuncType mConfigureDataflow;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
   readCountersFuncType mReadCounters;
