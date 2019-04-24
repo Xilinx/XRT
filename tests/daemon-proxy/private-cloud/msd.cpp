@@ -33,6 +33,10 @@
 
 #define INIT_BUF_SZ 64
 
+std::string host_ip;
+std::string host_port;
+std::string mbx_switch;
+
 // example code to setup communication channel between vm and host
 // tcp is being used here as example.
 // cloud vendor should implements this function
@@ -50,12 +54,6 @@ static void msd_comm_init(int *handle)
     else
         printf("Socket successfully created..\n");
     bzero(&servaddr, sizeof(servaddr));
-
-    // get PORT from filesystem
-    std::ifstream file( "/var/lib/libvirt/filesystem_passthrough/host_port" );
-    std::string host_port;
-    std::getline(file, host_port);
-    file.close();
 
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
@@ -186,14 +184,36 @@ int main( void )
     /* is there an alternative to xclProbe() to get num devs? */
     const int numDevs = 1;
 
+    /* read config file, store ip, port, and switch, later write to
+     * mgmt sysf with xclMailboxPutID() */
+    std::ifstream file( "./config" );
+
+    std::getline(file, host_ip);
+    host_ip = host_ip.substr( std::string("ip=").length(), host_ip.length() );
+    std::getline(file, host_port);
+    host_port = host_port.substr( std::string("port=").length(), host_port.length() );
+    std::getline(file, mbx_switch);
+    mbx_switch = mbx_switch.substr( std::string("switch=").length(), mbx_switch.length() );
+    file.close();
+
     if (numDevs <= 0)
         return -ENODEV;
+
+    for (int i = 0; i < numDevs; i++)
+        xclMailboxMgmtPutID(i, std::string(host_ip+","+host_port+","+std::to_string(i)+";").c_str(), mbx_switch.c_str());
+
 
     for (int i = 0; i < numDevs; i++) {
         msd_comm_init(&comm_fd); // blocks waiting for connection, then forks
 
+        /* receive cloud token and map to device index */
+        int64_t cloud_token = -1;
+        char *data = (char*)&cloud_token;
+        recv( comm_fd, data, sizeof(cloud_token), 0 );
+        std::cout << "cloud token received: " << cloud_token << std::endl;
+
         // only reached by child process
-        local_fd = xclMailboxMgmt(i);
+        local_fd = xclMailboxMgmt( cloud_token );
         break;
     }
 
@@ -211,4 +231,3 @@ int main( void )
 
     return 0;
 }
-

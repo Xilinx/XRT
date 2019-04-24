@@ -32,6 +32,9 @@
 #include "common.h"
 
 #define INIT_BUF_SZ 64
+std::string host_ip;
+std::string host_port;
+std::string host_id;
 
 // example code to setup communication channel between vm and host
 // tcp is being used here as example.
@@ -50,16 +53,6 @@ static void mpd_comm_init(int *handle)
     else
         printf("Socket successfully created..\n");
     bzero(&servaddr, sizeof(servaddr));
-
-    // get host IP from filesystem passthrough
-    std::ifstream file( "/tmp/host_files/host_ip" );
-    std::string host_ip;
-    std::getline(file, host_ip);
-    file.close();
-    file.open( "/tmp/host_files/host_port" );
-    std::string host_port;
-    std::getline(file, host_port);
-    file.close();
 
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
@@ -165,15 +158,38 @@ int main(void)
             exit(errno);
         }
         if (ret == 0) { // child
+
+            /* Ugly way to get host_ip, host_port, and cloud token(host_id) */
+            char c_id[256];
+            xclMailboxUserGetID(i, c_id);
+            std::string s_id = std::string( c_id );
+            std::cout << "s_id : " << s_id << std::endl;
+            size_t pos =  s_id.find(",");
+            std::string rem = s_id.substr( pos+1, s_id.length() );
+            host_ip = s_id.substr( 0, pos );
+            pos =  rem.find(",");
+            host_port = rem.substr( 0, pos );
+            rem = rem.substr( pos+1, rem.length()-1 );
+            host_id = rem.substr( 0, rem.length()-1 );
+
             mpd_comm_init(&comm_fd);
-            local_fd = xclMailbox(i);
+
+            /* handshake to MSD by sending cloud token id */
+            int64_t i64_host_id = std::stoi(host_id);
+            int64_t cloud_token = htonl(i64_host_id);
+            char *data = (char*)&cloud_token;
+            std::cout << "cloud_token = std::stoi(host_id) " << cloud_token <<std::endl;
+            if( write( comm_fd, data, sizeof(cloud_token) ) == -1 ) {
+                std::cout << "Handshake comm_write token failed\n";
+                exit(1);
+            }
+
+            local_fd = xclMailbox( i );
             break;
         }
         // parent continues but will never create thread, and eventually exit
         std::cout << "New child process: " << ret << std::endl;
     }
-    mpd_comm_init(&comm_fd);
-    local_fd = xclMailbox(0);
 
     if ((comm_fd > 0) && (local_fd > 0)) {
         // run until daemon is killed
