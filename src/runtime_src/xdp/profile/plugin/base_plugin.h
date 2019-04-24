@@ -93,6 +93,7 @@ namespace xdp {
         HBM_DEVICE,
         KDMA_DEVICE,
         P2P_DEVICE,
+        P2P_HOST_TRANSFERS,
         PORT_BIT_WIDTH,
         KERNEL_COUNT,
         OBJECTS_RELEASED

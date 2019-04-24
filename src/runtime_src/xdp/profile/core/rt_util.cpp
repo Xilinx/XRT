@@ -31,8 +31,14 @@ namespace xdp {
     case READ_BUFFER:
       commandString = "READ_BUFFER";
       break;
+    case READ_BUFFER_P2P:
+      commandString = "READ_BUFFER_P2P";
+      break;
     case WRITE_BUFFER:
       commandString = "WRITE_BUFFER";
+      break;
+    case WRITE_BUFFER_P2P:
+      commandString = "WRITE_BUFFER_P2P";
       break;
     case COPY_BUFFER:
       commandString = "COPY_BUFFER";
@@ -108,7 +114,7 @@ namespace xdp {
       monitorString = "Host to Device";
       break;
     case MON_SHELL_P2P:
-      monitorString = "Device to Device";
+      monitorString = "Peer to Peer";
       break;
     default:
       assert(0);

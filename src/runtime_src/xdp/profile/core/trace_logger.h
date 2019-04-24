@@ -102,6 +102,7 @@ namespace xdp {
 
   public:
     int getMigrateMemCalls() const { return mMigrateMemCalls;}
+    int getHostP2PTransfers() const { return mHostP2PTransfers;}
     std::string getCurrentBinaryName() const {return mCurrentBinaryName;}
     const std::set<std::thread::id>& getThreadIds() {return mThreadIdSet;}
 
@@ -116,6 +117,7 @@ namespace xdp {
     bool mGetFirstCUTimestamp = true;
     bool mFunctionStartLogged = false;
     int mMigrateMemCalls;
+    int mHostP2PTransfers;
     uint32_t mCurrentContextId;
     std::string mCurrentKernelName;
     std::string mCurrentDeviceName;
