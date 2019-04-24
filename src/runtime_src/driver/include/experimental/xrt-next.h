@@ -82,44 +82,16 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
 /**
-  * xclMPD - Management Proxy Daemon API
-  *
-  * @handle:           Device handle
-  * @args:             software mailbox struct
-  *
-  * This API passes messages through the software channel of the userpf mailbox. The software mailbox struct
-  * has the following members:
-  * uint64_t flags:    reserved
-  * uint32_t *data:    message payload
-  * bool is_tx:        direction bit
-  * size_t sz:         when called, this indicates the size of the userspace buffer, upon return, it will
-  *                    be filled with the message payload size
-  * uint64_t id:       message id
-  *
-  * Returns 0 on success and nonzero on failure. errno will be set to EMSGSIZE when the passed userspace
-  * buffer is too small for the outbound message. This should only happen in the is_tx=true condition.
-  */
-XCL_DRIVER_DLLESPEC int xclMPD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+ * xclMailbox - opens and returns file descriptor for userpf
+ *              mailbox pseudo-device to call read()/write() on.
+ */
+XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
 
 /**
-  * xclMPD - Management Service Daemon API
-  *
-  * @handle:           Device handle
-  * @args:             software mailbox struct
-  *
-  * This API passes messages through the software channel of the mgmtpf mailbox. The software mailbox struct
-  * has the following members:
-  * uint64_t flags:    reserved
-  * uint32_t *data:    message payload
-  * bool is_tx:        direction bit
-  * size_t sz:         when called, this indicates the size of the userspace buffer, upon return, it will
-  *                    be filled with the message payload size
-  * uint64_t id:       message id
-  *
-  * Returns 0 on success and nonzero on failure. errno will be set to EMSGSIZE when the passed userspace
-  * buffer is too small for the outbound message. This should only happen in the is_tx=true condition.
-  */
-XCL_DRIVER_DLLESPEC int xclMSD(xclDeviceHandle handle, struct drm_xocl_sw_mailbox *args);
+ * xclMailboxMgmt - opens and returns file descriptor for mgmtpf
+ *                  mailbox pseudo-device to call read()/write() on.
+ */
+XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
 
 #ifdef __cplusplus
 }

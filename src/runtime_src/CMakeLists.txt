@@ -64,8 +64,11 @@ endif()
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
 set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
 
-set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+set_target_properties(xilinxopencl PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+  INSTALL_RPATH $ORIGIN
+  )
 
 target_link_libraries(oclxdp
   xdp

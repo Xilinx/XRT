@@ -714,12 +714,12 @@ namespace xclhwemhal2 {
 
   size_t HwEmShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) {
 
-    if(tracecount_calls < xclemulation::config::getInstance()->getMaxTraceCount())
-    {
-      tracecount_calls = tracecount_calls + 1;
-      return 0;
-    }
-    tracecount_calls = 0;
+    //if(tracecount_calls < xclemulation::config::getInstance()->getMaxTraceCount())
+    //{
+    //  tracecount_calls = tracecount_calls + 1;
+    //  return 0;
+    //}
+    //tracecount_calls = 0;
 
     if (!simulator_started)
       return 0;

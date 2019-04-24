@@ -982,7 +982,7 @@ static ssize_t cache_expire_secs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u64 val;
+	u64 val = 0;
 
 	mutex_lock(&xmc->xmc_lock);
 	if (!XMC_PRIVILEGED(xmc))

@@ -252,6 +252,8 @@ struct xocl_dev_core {
 
 	struct xocl_board_private priv;
 
+	rwlock_t		rwlock;
+
 	char			ebuf[XOCL_EBUF_LEN + 1];
 };
 
@@ -658,7 +660,6 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
-	int (*xclmgmt_mailbox_sw)(struct platform_device *pdev, struct xclmgmt_ioc_sw_mailbox *sw_chan);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -733,6 +734,24 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
+
+static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
+{
+	u32 val;
+
+	read_lock(&XDEV(xdev)->rwlock);
+	val = ioread32(addr);
+	read_unlock(&XDEV(xdev)->rwlock);
+
+	return val;
+}
+
+static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iomem *addr)
+{
+	read_lock(&XDEV(xdev)->rwlock);
+	iowrite32(value, addr);
+	read_unlock(&XDEV(xdev)->rwlock);
+}
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;

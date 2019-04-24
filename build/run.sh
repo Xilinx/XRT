@@ -12,11 +12,11 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 # and Vivado tools in addition to using XRT.
 
 # Set to location of your preferred SDx install
-sdx=/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2
+sdx=/proj/xbuilds/2019.1_daily_latest/installs/lin64/SDx/2019.1
 #sdx=/home/soeren/perforce/sbx-p4/REL/2018.2/prep/rdi/sdx
 
 # Set to location of your preferred Vivado install
-vivado=/proj/xbuilds/2018.2_daily_latest/installs/lin64/Vivado/2018.2
+vivado=/proj/xbuilds/2019.1_daily_latest/installs/lin64/Vivado/2019.1
 
 ext=.o
 rel="Release"
@@ -137,6 +137,3 @@ echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 echo "PATH=$PATH"
 
 $cmd
-
-
-

@@ -455,6 +455,7 @@ namespace xclbincat1 {
       case PDI: return "PDI";
       case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
       case DTC: return "DTC";
+      case EMULATION_DATA: return "EMULATION_DATA";
 
         break;
     }
