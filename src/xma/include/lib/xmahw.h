@@ -49,7 +49,7 @@ typedef struct XmaHwKernel
     uint32_t    ddr_bank;
     //For execbo:
     int32_t     kernel_complete_count;
-    std::unique_ptr<std::atomic<bool>> kernel_complete_count_locked;
+    std::unique_ptr<std::atomic<bool>> kernel_complete_count_locked;//For thread safety
 
     void*       kernel_cmd_queue;
     void*       kernel_cmd_completion_queue;
