@@ -29,7 +29,7 @@ ENDIF(OPENCL_FOUND)
 find_package(Git)
 
 IF(GIT_FOUND)
-  message("-- Looking for GIT - found at ${GIT_EXECUTABLE}")
+  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
 ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
