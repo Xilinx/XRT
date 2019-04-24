@@ -756,6 +756,60 @@ set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
 }
 
 /**
+ * set_cmd_ext_cu_idx() - Set external cu_idx of a command
+ *
+ * The cu_idx is reflected externally through the command packet
+ *
+ * @cmd: command object
+ * @cu_idx: CU idex
+ */
+inline void
+set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
+{
+	int mask_idx = cu_mask_idx(cu_idx);
+	int mask_cu_idx = cu_idx_in_mask(cu_idx);
+
+	cmd->packet->data[mask_idx] &= 1 << mask_cu_idx;
+}
+
+/**
+ * set_cmd_ext_timestamp() - Set timestamp in the command packet
+ *
+ * The timestamp is reflected externally through the command packet
+ * TODO: Should have scheduler profiling solution in the future.
+ *
+ * @cmd: command object
+ * @ts: timestamp type
+ */
+inline void
+set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
+{
+	u32 opc = opcode(cmd);
+	struct timeval tv;
+	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
+
+	/* Simply skip if it is not start CU command */
+	if (opc != OP_START_CU)
+		return;
+	/* Use the first 4 32bits in the regmap to record CU start/end time.
+	 * To let user application know the CU start/end time.
+	 * The first  32 bits - CU start seconds
+	 * The second 32 bits - CU start microseconds
+	 * The third  32 bits - CU done  seconds
+	 * The fourth 32 bits - CU done  microseconds
+	 * Use 32 bits timestamp is good enough for this purpose for now.
+	 */
+	do_gettimeofday(&tv);
+	if (ts == CU_START_TIME) {
+		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+	} else if (ts == CU_DONE_TIME) {
+		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_usec;
+	}
+}
+
+/**
  * acquire_slot_idx() - Acquire a slot index if available.
  *                      Update slot status to busy so it cannot be reacquired.
  *
@@ -1038,6 +1092,7 @@ mark_cmd_complete(struct sched_cmd *cmd)
 	if (zdev->ert || zdev->exec->polling_mode)
 		--cmd->sched->poll;
 	release_slot_idx(cmd->ddev, cmd->slot_idx);
+	set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
 	notify_host(cmd);
 	SCHED_DEBUG("<- mark_cmd_complete\n");
 }
@@ -1334,6 +1389,11 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	 */
 	for (i = 4; i < size; ++i)
 		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
+
+	/* Let user know which CU execute this command */
+	set_cmd_ext_cu_idx(cmd, cu_idx);
+
+	set_cmd_ext_timestamp(cmd, CU_START_TIME);
 
 	/* start CU at base + 0x0 */
 	iowrite32(0x1, virt_addr);
