@@ -1896,7 +1896,7 @@ static int icap_download_bitstream_user(struct platform_device *pdev, struct axl
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-	peer_uuid = (xuid_t *)icap_get_data_nolock(xdev, PEER_UUID);
+	peer_uuid = (xuid_t *)icap_get_data_nolock(pdev, PEER_UUID);
 
 	if (uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
 		ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
