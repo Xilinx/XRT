@@ -698,6 +698,8 @@ public:
 
   void clear_connection(connidx_type conn);
 
+  int setThresholdValues(uint16_t power, uint16_t temperature);
+
 private:
 
   /**

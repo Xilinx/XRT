@@ -1226,6 +1226,9 @@ XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclP
                                                        xclTraceResultsVector& traceVector);
 #endif
 
+XCL_DRIVER_DLLESPEC int xclSetThresholdValues(xclDeviceHandle handle, uint16_t power,
+                              uint16_t temperature);
+
 #ifdef __cplusplus
 }
 #endif

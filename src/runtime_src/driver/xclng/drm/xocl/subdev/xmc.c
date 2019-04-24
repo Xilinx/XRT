@@ -94,6 +94,11 @@
 #define XMC_CLOCK_CONTROL_REG  0x24
 #define XMC_CLOCK_SCALING_EN 0x1
 
+#define XMC_CLOCK_SCALING_POWER_REG  0x18
+#define XMC_CLOCK_SCALING_POWER_REG_MASK  0xFFFF
+#define XMC_CLOCK_SCALING_TEMP_REG  0x14
+#define XMC_CLOCK_SCALING_TEMP_REG_MASK  0xFFFF
+
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
 	CTL_MASK_CLEAR_ERR	= 0x2,
@@ -186,6 +191,37 @@ struct xocl_xmc {
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
+
+void xmc_set_threshold_values(struct platform_device *pdev, void *buf)
+{
+  struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+  struct xclmgmt_ioc_threshold *obj = (struct xclmgmt_ioc_threshold *)buf;
+  u32 ctrl;
+
+  if (!xmc) {
+    xocl_err(&pdev->dev, "failed since xmc handle is null\n");
+    return;
+  }
+
+  /* Check if clock scaling feature enabled */
+  if (!xmc->runtime_cs_enabled) {
+    xocl_err(&pdev->dev, "failed since runtime clock scaling feature is not supported\n");
+    return;
+  }
+
+  xocl_info(&pdev->dev, "configure threshold values\n");
+  //Set Target Power
+  ctrl = READ_CLK(xmc, XMC_CLOCK_SCALING_POWER_REG);
+  ctrl &= ~XMC_CLOCK_SCALING_POWER_REG_MASK;
+  ctrl |= (obj->power & XMC_CLOCK_SCALING_POWER_REG_MASK);
+  WRITE_CLK(xmc, ctrl, XMC_CLOCK_SCALING_POWER_REG);
+
+  //Set Target Temperature
+  ctrl = READ_CLK(xmc, XMC_CLOCK_SCALING_TEMP_REG);
+  ctrl &= ~XMC_CLOCK_SCALING_TEMP_REG_MASK;
+  ctrl |= (obj->temperature & XMC_CLOCK_SCALING_TEMP_REG_MASK);
+  WRITE_CLK(xmc, ctrl, XMC_CLOCK_SCALING_TEMP_REG);
+}
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1607,6 +1643,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.reset			= xmc_reset,
 	.stop			= stop_xmc,
 	.get_data		= xmc_get_data,
+  .set_threshold_values = xmc_set_threshold_values,
 };
 
 static int xmc_remove(struct platform_device *pdev)

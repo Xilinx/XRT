@@ -494,6 +494,7 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	void (*get_data)(struct platform_device *pdev, void *buf);
+  void (*set_threshold_values)(struct platform_device *pdev, void *buf);
 };
 
 struct xocl_dna_funcs {
@@ -544,6 +545,9 @@ struct xocl_dna_funcs {
 
 #define xocl_xmc_get_data(xdev, buf)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), buf) : -ENODEV)
+
+#define xocl_xmc_config_threshold_values(xdev, obj) \
+  (XMC_DEV(xdev) ? XMC_OPS(xdev)->set_threshold_values(XMC_DEV(xdev), obj) : -ENODEV)
 
 /**
  *	data_kind

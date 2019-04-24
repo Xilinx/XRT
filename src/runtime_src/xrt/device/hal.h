@@ -306,6 +306,9 @@ public:
   virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh) = 0;
 
+  virtual int
+  setThresholdValues(uint16_t power, uint16_t temperature) = 0;
+
   /**
    * Export FD of buffer object handle on this device.
    * The importing device will create another
