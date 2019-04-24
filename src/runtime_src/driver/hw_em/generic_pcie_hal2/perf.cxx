@@ -122,9 +122,12 @@ namespace xclhwemhal2 {
 
  uint32_t HwEmShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum)
  {
-   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS) {
-     return  static_cast <uint32_t> (mStreamMonProperties[slotnum]);
-   }
+   if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mPerfmonProperties[slotnum]);
+   if (type == XCL_PERF_MON_ACCEL && slotnum < XSAM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mAccelmonProperties[slotnum]);
+   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+     return static_cast <uint32_t> (mStreamMonProperties[slotnum]);
    return 0;
  }
 
@@ -239,6 +242,10 @@ namespace xclhwemhal2 {
           counterResults.CuBusyCycles[counter] = counterResults.CuExecCycles[counter];
           counterResults.CuMaxParallelIter[counter] = 1;
         } else if (iptype == 3) {
+          // AXIS without TLAST is assumed to be one long transfer
+          if (str_num_tranx == 0 && str_data_bytes > 0) {
+            str_num_tranx = 1;
+          }
           counterResults.StrNumTranx[counter] = str_num_tranx;
           counterResults.StrDataBytes[counter] = str_data_bytes;
           counterResults.StrBusyCycles[counter] = str_busy_cycles;

@@ -227,13 +227,23 @@ bool is_same_device(cl_mem buffer1, cl_mem buffer2)
     auto xmem1 = xocl::xocl(buffer1);
     auto xmem2 = xocl::xocl(buffer2);
 
-    if (xmem1 && xmem2)
-      return (xmem1->get_resident_device() == xmem2->get_resident_device());
+    if (xmem1 && xmem2) {
+      auto device1 = xmem1->get_resident_device();
+      auto device2 = xmem2->get_resident_device();
+      //std::cout << "xmem1 resident device = " << device1 << std::endl;
+      //std::cout << "xmem2 resident device = " << device2 << std::endl;
+
+      // TODO: what do we do if one of them is not resident yet?
+      if ((device1 == 0) || (device2 == 0))
+        return true;
+
+      return (device1 == device2);
+    }
   }
   catch (const xocl::error& ex) {
   }
 
-  return false;
+  return true;
 }
 
 xocl::event::action_profile_type
@@ -400,7 +410,7 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
 }
 
 xocl::event::action_profile_type
-action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size)
+action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device)
 {
   std::string srcBank;
   uint64_t srcAddress;
@@ -412,7 +422,9 @@ action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_
   get_address_bank(dst_buffer, dstAddress, dstBank);
   dstAddress += dst_offset;
 
-  bool same_device = is_same_device(src_buffer, dst_buffer);
+  // NOTE: this is not reliable here since one or both buffers may not be resident yet when this starts
+  // For now, have the action caller tell us if it's CDMA (same_device=true) or P2P (same_device=false)
+  //bool same_device = is_same_device(src_buffer, dst_buffer);
 
   return [src_buffer,dst_buffer,same_device,size,srcAddress,srcBank,dstAddress,dstBank](xocl::event* event,cl_int status,const std::string&) {
   if (cb_action_copy)

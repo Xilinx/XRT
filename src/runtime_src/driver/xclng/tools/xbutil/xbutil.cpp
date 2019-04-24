@@ -25,6 +25,7 @@
 #include <sys/mman.h>
 
 #include "xbutil.h"
+#include "base.h"
 #include "ert.h"
 #include "shim.h"
 
@@ -85,33 +86,34 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(void)
+void print_pci_info(std::ostream &ostr)
 {
-    auto print = [](const std::unique_ptr<pcidev::pci_func>& dev) {
-        std::cout << std::hex;
-        std::cout << ":[" << std::setw(2) << std::setfill('0') << dev->bus
+    auto print = [&ostr](const std::unique_ptr<pcidev::pci_func>& dev) {
+        ostr << std::hex;
+        ostr << ":[" << std::setw(2) << std::setfill('0') << dev->bus
             << ":" << std::setw(2) << std::setfill('0') << dev->dev
             << "." << dev->func << "]";
 
-        std::cout << std::hex;
-        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
-        std::cout << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
+        ostr << std::hex;
+        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
+        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
 
-        std::cout << std::dec;
-        std::cout << ":[";
+        ostr << std::dec;
+        ostr << ":[";
         if(!dev->driver_name.empty()) {
-            std::cout << dev->driver_name << ":" << dev->driver_version << ":";
+            ostr << dev->driver_name << ":" << dev->driver_version << ":";
             if(dev->instance == INVALID_ID) {
-                std::cout << "???";
+                ostr << "???";
             } else {
-                std::cout << dev->instance;
+                ostr << dev->instance;
             }
         }
-        std::cout << "]" << std::endl;;
+        ostr << "]" << std::endl;;
     };
 
+    ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
-        std::cout << "No card found!" << std::endl;
+        ostr << "No card found!" << std::endl;
         return;
     }
 
@@ -121,17 +123,21 @@ void print_pci_info(void)
         auto dev = pcidev::get_dev(j);
         auto& mdev = dev->mgmt;
         auto& udev = dev->user;
-        bool ready = dev->is_ready;
+        bool ready = false;
+        std::string errmsg;
 
         if (mdev != nullptr) {
-            std::cout << (ready ? "" : "*");
-            std::cout << "[" << i << "]" << "mgmt";
+            mdev->sysfs_get("", "ready", errmsg, ready);
+            ostr << (ready ? "" : "*");
+            ostr << "[" << i << "]" << "mgmt";
             print(mdev);
         }
 
         if (udev != nullptr) {
-            std::cout << (ready ? "" : "*");
-            std::cout << "[" << i << "]" << "user";
+            ready = false;
+            udev->sysfs_get("", "ready", errmsg, ready);
+            ostr << (ready ? "" : "*");
+            ostr << "[" << i << "]" << "user";
             print(udev);
         }
 
@@ -140,7 +146,7 @@ void print_pci_info(void)
         ++i;
     }
     if (not_ready != 0) {
-        std::cout << "WARNING: " << not_ready
+        ostr << "WARNING: " << not_ready
                   << " card(s) marked by '*' are not ready, "
                   << "run xbutil flash scan -v to further check the details."
                   << std::endl;
@@ -164,6 +170,8 @@ int main(int argc, char *argv[])
     size_t blockSize = 0;
     int c;
     dd::ddArgs_t ddArgs;
+
+    xcldev::baseInit();
 
     const char* exe = argv[ 0 ];
     if (argc == 1) {
@@ -545,16 +553,19 @@ int main(int argc, char *argv[])
 
     unsigned int total = pcidev::get_dev_total();
     unsigned int count = pcidev::get_dev_ready();
-    if (total == 0) {
-        std::cout << "ERROR: No card found\n";
-        return 1;
-    }
+
     if (cmd != xcldev::DUMP)
         std::cout << "INFO: Found total " << total << " card(s), "
                   << count << " are usable" << std::endl;
 
+    if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN))
+        xcldev::baseDump(std::cout);
+
+    if (total == 0)
+        return -ENODEV;
+
     if (cmd == xcldev::SCAN) {
-        print_pci_info();
+        print_pci_info(std::cout);
         return 0;
     }
 
@@ -567,7 +578,7 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == xcldev::LIST) {
-        for (unsigned i = 0; i < deviceVec.size(); i++) {
+        for (unsigned i = 0; i < count; i++) {
             std::cout << '[' << i << "] " << std::hex
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->bus() << ":"
                 << std::setw(2) << std::setfill('0') << deviceVec[i]->dev() << "."
@@ -578,12 +589,15 @@ int main(int argc, char *argv[])
     }
 
     if (index >= deviceVec.size()) {
-        if (index >= total)
-            std::cout << "ERROR: Card index " << index << " is out of range";
-        else
-            std::cout << "ERROR: Card [" << index << "] is not ready";
+        std::cout << "ERROR: Card index " << index << " is out of range";
         std::cout << std::endl;
-        return 1;
+        return -ENOENT;
+    } else {
+        if (index >= count) {
+            std::cout << "ERROR: Card [" << index << "] is not ready";
+            std::cout << std::endl;
+            return -ENOENT;
+        }
     }
 
     if(pcidev::get_dev(index)->user == NULL){
@@ -621,7 +635,9 @@ int main(int argc, char *argv[])
             }
         }
         catch (...) {
-            std::cout << "ERROR: query failed" << std::endl;
+            result = -1;
+            std::cout << std::endl;
+            //std::cout << "ERROR: query failed" << std::endl;
         }
         break;
     case xcldev::DUMP:
@@ -697,7 +713,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  reset   [-d card]\n";
-    std::cout << "  status  [--debug_ip_name]\n";
+    std::cout << "  status [-d card] [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
@@ -1025,7 +1041,7 @@ int xcldev::device::validate(bool quick)
     if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
         m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
-        std::cout << "WARNING: Ensure Card is plugged in to Gen" 
+        std::cout << "WARNING: Ensure Card is plugged in to Gen"
             << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
             << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
             << m_devinfo.mPCIeLinkWidth << "\n         "
@@ -1180,7 +1196,7 @@ int xcldev::xclValidate(int argc, char *argv[])
 
         std::cout << std::endl << "INFO: Validating card[" << i << "]: "
             << dev->name() << std::endl;
-        
+
         int v = dev->validate(quick);
         if (v == 1) {
             warning = true;
@@ -1499,7 +1515,7 @@ int xcldev::xclP2p(int argc, char *argv[])
 /*
  * m2mtest
  */
-static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh, 
+static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
     void * boptr, size_t boSize)
 {
     if(boptr != nullptr)
@@ -1508,7 +1524,7 @@ static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
         xclFreeBO(handle, boh);
 }
 
-static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh, 
+static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     char * &boptr, size_t boSize, int bank, char pattern)
 {
     boh = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank);
@@ -1589,7 +1605,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
-    
+
     bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
 
     // Clean up
@@ -1606,7 +1622,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
 
     //bandwidth
     double total = boSize;
-    total *= 1000000; // convert us to s 
+    total *= 1000000; // convert us to s
     total /= (1024 * 1024); //convert to MB
     std::cout << total / timer_stop << " MB/s\t\n";
 

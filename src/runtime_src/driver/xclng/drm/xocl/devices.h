@@ -45,6 +45,7 @@ enum {
         XOCL_DSAFLAG_MFG =                      0x20,
 	XOCL_DSAFLAG_FIXED_INTR =		0x40,
         XOCL_DSAFLAG_NO_KDMA =              	0x80,
+	XOCL_DSAFLAG_CUDMA_OFF =		0x100,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -754,11 +755,12 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 		 	XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_XMC_USER,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_CUDMA_OFF,					\
 		.subdev_info	= USER_RES_QDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
 	}
@@ -778,6 +780,7 @@ enum subdev_id {
 			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_XMC_USER,				\
 		})
 
 #define USER_RES_AWS							\

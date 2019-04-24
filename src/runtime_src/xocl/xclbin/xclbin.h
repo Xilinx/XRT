@@ -321,7 +321,7 @@ public:
    *
    * The map is sorted in order of increasing base addresses.
    */
-  std::vector<uint32_t>
+  std::vector<uint64_t>
   cu_base_address_map() const;
 
   /**

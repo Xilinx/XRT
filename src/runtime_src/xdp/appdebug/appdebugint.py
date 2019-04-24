@@ -17,8 +17,8 @@ class printSPMInfo (infCallUtil):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print (errmsg)
-			return				
+				print ("Error reading SPMs : " + (errmsg))
+			return 
 
 		if (jsonformat):
 			stdstr = self.callmethod(spm_ptr,"getstring",[1, 1]);
@@ -44,7 +44,7 @@ class printSSPMInfo (infCallUtil):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print (errmsg)
+				print ("Error reading SSPMs: " + (errmsg))
 			return				
 
 		if (jsonformat):
@@ -70,7 +70,7 @@ class printSAMInfo (infCallUtil):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print (errmsg)
+				print ("Error reading SAMs : " + (errmsg))
 			return				
 
 		if (jsonformat):
@@ -96,7 +96,7 @@ class printLAPCInfo (infCallUtil):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print (errmsg)
+				print ("Error reading LAPCs: " + (errmsg))
 			return				
 
 		if (jsonformat):
@@ -190,6 +190,7 @@ class xstatusAllInfo (gdb.Command,infCallUtil):
 			print (e.message)
 			return
 		obj_spm.invoke(arg, 0)
+                obj_sspm.invoke(arg, 0)
 		obj_sam.invoke(arg, 0)
 		obj_lapc.invoke(arg, 0)
 xstatusAllInfo()

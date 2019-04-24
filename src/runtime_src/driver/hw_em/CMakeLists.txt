@@ -32,6 +32,7 @@ target_link_libraries(xrt_hwemu
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
+  xrt_coreutil
   common_em
   rt
   uuid

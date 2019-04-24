@@ -252,6 +252,8 @@ struct xocl_dev_core {
 
 	struct xocl_board_private priv;
 
+	rwlock_t		rwlock;
+
 	char			ebuf[XOCL_EBUF_LEN + 1];
 };
 
@@ -606,8 +608,9 @@ struct xocl_mailbox_funcs {
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
 		mailbox_msg_cb_t cb, void *cbarg);
-	int (*post)(struct platform_device *pdev, u64 req_id,
-		void *resp, size_t len);
+	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
+	int (*post_response)(struct platform_device *pdev,
+		enum mailbox_request req, u64 reqid, void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);
@@ -621,12 +624,12 @@ struct xocl_mailbox_funcs {
 #define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
 	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
-#define	xocl_peer_response(xdev, reqid, buf, len)			\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), \
-	reqid, buf, len) : -ENODEV)
-#define	xocl_peer_notify(xdev, req, reqlen)					\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post(MAILBOX_DEV(xdev), 0, \
-	req, reqlen) : -ENODEV)
+#define	xocl_peer_response(xdev, req, reqid, buf, len)			\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post_response(	\
+	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)
+#define	xocl_peer_notify(xdev, req, reqlen)				\
+	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->post_notify(		\
+	MAILBOX_DEV(xdev), req, reqlen) : -ENODEV)
 #define	xocl_peer_listen(xdev, cb, cbarg)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->listen(MAILBOX_DEV(xdev), \
 	cb, cbarg) : -ENODEV)
@@ -657,7 +660,6 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
-	int (*xclmgmt_mailbox_sw)(struct platform_device *pdev, struct xclmgmt_ioc_sw_mailbox *sw_chan);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -732,6 +734,24 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
+
+static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
+{
+	u32 val;
+
+	read_lock(&XDEV(xdev)->rwlock);
+	val = ioread32(addr);
+	read_unlock(&XDEV(xdev)->rwlock);
+
+	return val;
+}
+
+static inline void xocl_dr_reg_write32(xdev_handle_t xdev, u32 value, void __iomem *addr)
+{
+	read_lock(&XDEV(xdev)->rwlock);
+	iowrite32(value, addr);
+	read_unlock(&XDEV(xdev)->rwlock);
+}
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;

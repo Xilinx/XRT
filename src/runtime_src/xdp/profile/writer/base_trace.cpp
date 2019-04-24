@@ -71,6 +71,27 @@ namespace xdp {
     writeTableRowEnd(getStream());
   }
 
+  // Compute Unit events from sw
+  void TraceWriterI::writeCu(double traceTime, const std::string& commandString,
+            const std::string& stageString, const std::string& eventString,
+            const std::string& dependString, uint64_t objId, size_t size, uint32_t cuId)
+  {
+    if (!Trace_ofs.is_open())
+      return;
+
+    std::stringstream timeStr;
+    timeStr << std::setprecision(10) << traceTime;
+
+    std::stringstream strObjId;
+    strObjId << std::showbase << std::hex << std::uppercase << objId;
+
+    writeTableRowStart(getStream());
+    writeTableCells(getStream(), timeStr.str(), commandString,
+        stageString, strObjId.str(), size, std::to_string(cuId), "", "", "", "", "",
+        eventString, dependString);
+    writeTableRowEnd(getStream());
+  }
+
   // Write read/write/copy data transfer event to trace
   void TraceWriterI::writeTransfer(double traceTime, RTUtil::e_profile_command_kind kind,
   	        const std::string& commandString, const std::string& stageString,

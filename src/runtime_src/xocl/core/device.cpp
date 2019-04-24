@@ -25,6 +25,8 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
+#include "driver/common/xclbin_parser.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -54,7 +56,7 @@ unaligned_message(void* addr)
 
 static void
 default_allocation_message(const xocl::device* device,const xocl::memory* mem,
-                           const xrt::device::BufferObjectHandle& boh, bool err=false)
+                           const xrt::device::BufferObjectHandle& boh)
 {
   if (!boh)
     return;
@@ -78,6 +80,16 @@ default_allocation_message(const xocl::device* device,const xocl::memory* mem,
     throw std::runtime_error(str.str());
   else
     xrt::message::send(xrt::message::severity_level::WARNING,str.str());
+}
+
+static void
+default_bad_allocation_message(const xocl::device* device,const xocl::memory* mem)
+{
+  std::stringstream str;
+  str << "Host buffer (" << mem->get_uid() << ") "
+      << "has no bank assignment and is not used as kernel argument "
+      << "before first enqueue operation.";
+  xrt::message::send(xrt::message::severity_level::ERROR,str.str());
 }
 
 
@@ -164,12 +176,16 @@ is_sw_emulation()
   return swem;
 }
 
-//static bool
-//is_emulation_mode()
-//{
-//  static bool val = is_sw_emulation() || is_hw_emulation();
-//  return val;
-//}
+static std::vector<uint64_t>
+get_xclbin_cus(const xocl::device* device)
+{
+  if (is_sw_emulation()) {
+    auto xclbin = device->get_xclbin();
+    return xclbin.cu_base_address_map();
+  }
+
+  return xrt_core::xclbin::get_cus(device->get_axlf());
+}
 
 static void
 init_scheduler(xocl::device* device)
@@ -179,16 +195,13 @@ init_scheduler(xocl::device* device)
   if (!program)
     throw xocl::error(CL_INVALID_PROGRAM,"Cannot initialize MBS before program is loadded");
 
-  auto xclbin = device->get_xclbin();
-  auto binary = xclbin.binary(); // ::xclbin::binary
-  auto binary_data = binary.binary_data();
-  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  auto axlf = device->get_axlf();
   if (is_sw_emulation()) {
-    auto cu2addr = xclbin.cu_base_address_map();
+    auto cu2addr = get_xclbin_cus(device);
     xrt::sws::init(device->get_xrt_device(),cu2addr);
   }
   else {
-    xrt::scheduler::init(device->get_xrt_device(),header);
+    xrt::scheduler::init(device->get_xrt_device(),axlf);
   }
 }
 
@@ -572,9 +585,15 @@ allocate_buffer_object(memory* mem)
   // Else just allocated on any bank
   XOCL_DEBUG(std::cout,"memory(",mem->get_uid(),") allocated on device(",m_uid,") in default bank\n");
 
-  auto boh = alloc(mem);
-  default_allocation_message(this,mem,boh);
-  return boh;
+  try {
+    auto boh = alloc(mem);
+    default_allocation_message(this,mem,boh);
+    return boh;
+  }
+  catch (const std::bad_alloc& ex) {
+    default_bad_allocation_message(this,mem);
+    throw;
+  }
 }
 
 xrt::device::BufferObjectHandle
@@ -881,13 +900,18 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 
   if (!get_num_cdmas() || is_sw_emulation()) {
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
-      c->start();
-      char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
-      char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
-      std::memcpy(hbuf_dst,hbuf_src,sz);
-      unmap_buffer(sbuf,hbuf_src);
-      unmap_buffer(dbuf,hbuf_dst);
-      c->done();
+      try {
+        c->start();
+        char* hbuf_src = static_cast<char*>(map_buffer(sbuf,CL_MAP_READ,soff,sz,nullptr));
+        char* hbuf_dst = static_cast<char*>(map_buffer(dbuf,CL_MAP_WRITE_INVALIDATE_REGION,doff,sz,nullptr));
+        std::memcpy(hbuf_dst,hbuf_src,sz);
+        unmap_buffer(sbuf,hbuf_src);
+        unmap_buffer(dbuf,hbuf_dst);
+        c->done();
+      }
+      catch (const std::exception& ex) {
+        c->error(ex);
+      }
     };
     XOCL_DEBUG(std::cout,"xocl::device::copy_buffer schedules host copy\n");
     xdevice->schedule(cb,xrt::device::queue_type::misc,src_buffer,dst_buffer,src_offset,dst_offset,size,cmd);
@@ -1180,9 +1204,11 @@ load_program(program* program)
   // isn't possible, we *must* iterator symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
+  auto cu2addr = get_xclbin_cus(this);
   for (auto symbol : m_xclbin.kernel_symbols()) {
     for (auto& inst : symbol->instances) {
-      add_cu(std::make_unique<compute_unit>(symbol,inst.name,this));
+      if (auto cu = compute_unit::create(symbol,inst,this,cu2addr))
+        add_cu(std::move(cu));
     }
   }
 
@@ -1259,6 +1285,15 @@ get_xclbin() const
   return m_xclbin;
 }
 
+const axlf*
+device::
+get_axlf() const
+{
+  assert(!m_active || m_active->get_xclbin(this)==m_xclbin);
+  auto binary = m_xclbin.binary();
+  auto binary_data = binary.binary_data();
+  return reinterpret_cast<const axlf*>(binary_data.first);
+}
 
 unsigned short
 device::

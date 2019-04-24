@@ -38,6 +38,7 @@ namespace xdp {
   TraceLogger::TraceLogger(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin)
   : mMigrateMemCalls(0),
     mCurrentContextId(0),
+    mCuStarts(0),
     mProfileCounters(profileCounters),
     mTraceParserHandle(TraceParserHandle),
     mPluginHandle(Plugin)
@@ -116,6 +117,18 @@ namespace xdp {
     for (auto w : mTraceWriters) {
       w->writeKernel(traceTime, commandString, stageString, eventString,
                      dependString, objId, size);
+    }
+  }
+
+  // Write cu event to trace
+  void TraceLogger::writeTimelineTrace( double traceTime,
+      const std::string& commandString, const std::string& stageString,
+      const std::string& eventString, const std::string& dependString,
+      uint64_t objId, size_t size, uint32_t cuId) const
+  {
+    for (auto w : mTraceWriters) {
+      w->writeCu(traceTime, commandString, stageString, eventString,
+                     dependString, objId, size, cuId);
     }
   }
 
@@ -404,6 +417,7 @@ namespace xdp {
        * so counter data is unique for every program ID + xclbin combination
        */
       std::string uniqueCuDataKey;
+      uint32_t cuId = 0;
       if (mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) {
         uniqueCuDataKey = xclbinName + std::to_string(programId);
       } else {
@@ -417,13 +431,23 @@ namespace xdp {
         if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU) {
           mProfileCounters->logComputeUnitExecutionStart(cuName, deviceTimeStamp);
           mProfileCounters->logComputeUnitDeviceStart(newDeviceName, timeStamp);
+          cuId = ++mCuStarts;
+          mCuStartsMap[objId].push(cuId);
         }
       }
       else if (objStage == RTUtil::END) {
         XDP_LOG("logKernelExecution: CU END @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
         // This is updated through HAL
-        if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU)
+        if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU) {
           deviceTimeStamp = 0;
+        } else {
+          // Find CU Start for this End
+          auto &queue = mCuStartsMap[objId];
+          if (!queue.empty()) {
+            cuId = queue.front();
+            queue.pop();
+          }
+        }
         mProfileCounters->logComputeUnitExecutionEnd(cuName, deviceTimeStamp);
       }
 
@@ -434,9 +458,10 @@ namespace xdp {
       (uniqueCUName += xclbinName) += "|";
       (uniqueCUName += cuName2) += "|";
 
-      if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU)
+      if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU && cuId) {
         writeTimelineTrace(timeStamp, uniqueCUName, stageString, eventString, dependString,
-                           objId, workGroupSize);
+                           objId, workGroupSize, cuId);
+      }
     }
 
 #if 0
