@@ -2362,3 +2362,50 @@ int xclMailboxMgmt(unsigned deviceIndex)
     }
     return fd;
 }
+
+int xclMailboxUserGetID(unsigned deviceIndex, char *id)
+{
+    std::string err;
+    std::string s_id;
+    pcidev::get_dev(deviceIndex)->user->sysfs_get("", "config_mailbox_comm_id", err, s_id);
+    strcpy(id, s_id.c_str());
+    return 0;
+}
+
+int xclMailboxMgmtPutID(unsigned deviceIndex, const char *id, const char *mbx_switch)
+{
+    std::string err;
+    std::string s_id = std::string(id);
+    std::string s_mbx_switch = std::string(mbx_switch);
+    pcidev::get_dev(deviceIndex)->mgmt->sysfs_put("", "config_mailbox_channel_switch", err, s_mbx_switch);
+    pcidev::get_dev(deviceIndex)->mgmt->sysfs_put("", "config_mailbox_comm_id", err, s_id);
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
