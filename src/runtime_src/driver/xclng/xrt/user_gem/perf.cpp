@@ -460,6 +460,14 @@ namespace xocl {
   }
 
   void XOCLShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+          << type << ", Configure Accelerator Monitors..." << std::endl;
+    }
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return 0;
+
     // Configure only Accelerator monitors for now
     type = XCL_PERF_MON_ACCEL;
     uint32_t numSlots = getPerfMonNumberSlots(type);
