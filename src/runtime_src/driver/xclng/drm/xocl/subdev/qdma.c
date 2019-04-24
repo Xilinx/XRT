@@ -366,13 +366,15 @@ static int stream_sysfs_create(struct stream_queue *queue)
 		temp_q = queue->qdma->queues[i];
 		if (!temp_q)
 		       continue;
-		if (temp_q->qconf.c2h && temp_q->flowid == queue->flowid) {
+		if (temp_q->qconf.c2h && queue->qconf.c2h &&
+			temp_q->flowid == queue->flowid) {
 			xocl_info(&pdev->dev,
 				"flowid overlapped with queue %d", i);
 			return 0;
 		}
 
-		 if (!temp_q->qconf.c2h && temp_q->routeid == queue->routeid) {
+		 if (!temp_q->qconf.c2h && !queue->qconf.c2h &&
+			temp_q->routeid == queue->routeid) {
 			 xocl_info(&pdev->dev,
 				"routeid overlapped with queue %d", i);
 			 return 0;
@@ -1383,8 +1385,9 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	}
 	queue->flowid = req.flowid;
 	queue->routeid = req.rid;
-	xocl_info(&qdma->pdev->dev, "Creating queue with tdest %d, flow %d, "
-		"slr %d", qconf->pipe_tdest, qconf->pipe_flow_id,
+	xocl_info(&qdma->pdev->dev, "Creating %s queue with tdest %d, flow %d, "
+		"slr %d", qconf->c2h ? "C2H" : "H2C",
+		qconf->pipe_tdest, qconf->pipe_flow_id,
 		qconf->pipe_slr_id);
 
 	ret = qdma_queue_add((unsigned long)qdma->dma_handle, qconf,
@@ -1435,7 +1438,8 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	}
 
 	xocl_info(&qdma->pdev->dev,
-		"Created Queue handle 0x%lx, idx %d, sz %d, %u",
+		"Created %s Queue handle 0x%lx, idx %d, sz %d, %u",
+		qconf->c2h ? "C2H" : "H2C",
 		queue->queue, queue->qconf.qidx, queue->qconf.rngsz,
 		queue->req_free_cnt);
 

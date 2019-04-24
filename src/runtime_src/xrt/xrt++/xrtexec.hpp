@@ -88,6 +88,12 @@ public:
    */
   void
   add(addr_type addr, value_type value);
+
+  /**
+   * Clear current CUs and {addr,value} pairs if any
+   */
+  void
+  clear();
 };
 
 }} //exec, xrtcpp

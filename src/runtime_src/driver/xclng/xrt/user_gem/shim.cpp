@@ -1217,7 +1217,7 @@ void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
     std::vector<std::string> xmcStatStrs;
     auto dev = pcidev::get_dev(mBoardNumber);
     if(dev->user){
-        dev->user->sysfs_get("mm_dma", "channel_stat_raw", errmsg, dmaStatStrs);
+        dev->user->sysfs_get("xdma", "channel_stat_raw", errmsg, dmaStatStrs);
         dev->user->sysfs_get("", "memstat_raw", errmsg, mmStatStrs);
         dev->user->sysfs_get("microblaze", "version", errmsg, xmcStatStrs);
     }

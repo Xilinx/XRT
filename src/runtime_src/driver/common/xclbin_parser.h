@@ -22,8 +22,13 @@
 
 namespace xrt_core { namespace xclbin {
 
+/**
+ * get_cus() - Get sorted list of CU base addresses in xclbin.
+ *
+ * @encode: If true encode control protocol in lower address bit
+ */
 std::vector<uint64_t>
-get_cus(const axlf* top, bool encoding);
+get_cus(const axlf* top, bool encode=false);
 
 std::vector<std::pair<uint64_t, size_t> >
 get_debug_ips(const axlf* top);
@@ -31,9 +36,15 @@ get_debug_ips(const axlf* top);
 uint64_t
 get_cu_base_offset(const axlf* top);
 
+/**
+ * get_cuisr() - Check if all kernels support interrupt
+ */
 bool
 get_cuisr(const axlf* top);
 
+/**
+ * get_dataflow() - Check if any kernel in xclbin is a dataflow kernel
+ */
 bool
 get_dataflow(const axlf* top);
 

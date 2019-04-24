@@ -369,6 +369,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
           kernelTrace.EndTime = lastTimeStamp;
           kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);
+          kernelTrace.EventID = mCuEventID++;
           // Insert is needed in case there are only stalls
           resultVector.insert(resultVector.begin(), kernelTrace);
         }
@@ -515,6 +516,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             kernelTrace.Type = "Kernel";
             kernelTrace.StartTime = mAccelMonCuTime[s];
             kernelTrace.Start = mAccelMonCuHostTime[s] / 1e6;
+            kernelTrace.EventID = mCuEventID++;
             resultVector.push_back(kernelTrace);
             // Divide by 2 just to be safe
             mEmuTraceMsecOneCycle = (kernelTrace.End - kernelTrace.Start) / (2 *(kernelTrace.EndTime - kernelTrace.StartTime));

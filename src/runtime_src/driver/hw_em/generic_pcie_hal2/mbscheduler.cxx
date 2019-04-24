@@ -239,6 +239,14 @@ namespace xclhwemhal2 {
     return log2(n & -n) ; 
   } 
 
+  bool isKthBitSet(int n, int k) 
+  { 
+    if (n & (1 << (k))) 
+      return true;
+    else
+      return false;
+  } 
+
   bool MBScheduler::cmd_has_cu(struct xocl_cmd* xcmd, uint32_t f_cu_idx)
   {
     uint32_t mask_idx = 0;
@@ -248,7 +256,7 @@ namespace xclhwemhal2 {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
       uint32_t cu_idx = cu_idx_from_mask (f_cu_idx, mask_idx);
 
-      if( (cmd_mask & cu_idx) == cu_idx )
+      if( isKthBitSet(cmd_mask, cu_idx))
       {
         return true;
       }
@@ -402,7 +410,7 @@ namespace xclhwemhal2 {
         return true;
       }
     }
-    return true;
+    return false;
   }
 
   void MBScheduler::penguin_query(xocl_cmd* xcmd)

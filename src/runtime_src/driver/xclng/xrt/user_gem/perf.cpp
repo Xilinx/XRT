@@ -442,6 +442,19 @@ namespace xocl {
       // 3. Read from sample register to ensure total time is read again at end
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_SAMPLE_OFFSET, &regValue, 4);
     }
+    // Reset Accelerator Monitors
+    type = XCL_PERF_MON_ACCEL;
+    numSlots = getPerfMonNumberSlots(type);
+    for (uint32_t i=0; i < numSlots; i++) {
+      baseAddress = getPerfMonBaseAddress(type,i);
+      uint32_t origRegValue = 0;
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
+      regValue = origRegValue | XSAM_COUNTER_RESET_MASK;
+      // Reset begin
+      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      // Reset end
+      size += xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &origRegValue, 4);
+    }
     return size;
   }
 
@@ -733,6 +746,10 @@ namespace xocl {
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
                       &counterResults.StrStarveCycles[s], 8);
+      // AXIS without TLAST is assumed to be one long transfer
+      if (counterResults.StrNumTranx[s] == 0 && counterResults.StrDataBytes[s] > 0) {
+        counterResults.StrNumTranx[s] = 1;
+      }
       if (mLogStream.is_open()) {
         mLogStream << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
         mLogStream << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;

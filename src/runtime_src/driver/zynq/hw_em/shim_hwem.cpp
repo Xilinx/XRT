@@ -24,6 +24,7 @@
 #include "shim-profile.h"
 #include <cstring>
 #include <errno.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <thread>
@@ -265,6 +266,10 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   //Send the end of packet
   char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
   memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);
+  
+	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(header) };
+	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
+
   return ret;
 }
 
