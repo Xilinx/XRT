@@ -21,6 +21,21 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+# get glibc version for use in CPACK_*_XRT_PACKAGE_DEPENDS
+# source: https://gist.github.com/likema/f5c04dad837d2f5068ae7a8860c180e7
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -print-file-name=libc.so.6
+    OUTPUT_VARIABLE GLIBC
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+get_filename_component(GLIBC ${GLIBC} REALPATH)
+get_filename_component(GLIBC_VERSION ${GLIBC} NAME)
+string(REPLACE "libc-" "" GLIBC_VERSION ${GLIBC_VERSION})
+string(REPLACE ".so" "" GLIBC_VERSION ${GLIBC_VERSION})
+if(NOT GLIBC_VERSION MATCHES "^[0-9.]+$")
+    message(FATAL_ERROR "Unknown glibc version: ${GLIBC_VERSION}")
+endif(NOT GLIBC_VERSION MATCHES "^[0-9.]+$")
+
+
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   SET(CPACK_GENERATOR "DEB;TGZ")
@@ -35,12 +50,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   # aws component dependencies
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
   # xrt component dependencies
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>=1.58), libboost-filesystem-dev (>=1.58), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6)")
-  if (${LINUX_VERSION} STREQUAL 16.04)
-    SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS}, libc6 (>= 2.23), libc6 (< 2.27)")
-  else ()
-    SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "${CPACK_DEBIAN_XRT_PACKAGE_DEPENDS}, libc6 (>= 2.27)")
-  endif ()
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>=1.58), libboost-filesystem-dev (>=1.58), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION})")
 
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_GENERATOR "RPM;TGZ")
@@ -57,7 +67,7 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   # aws component dependencies
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   # xrt component dependencies
-  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4 ")
+  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4, libc >= ${GLIBC_VERSION}")
 else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
