@@ -389,15 +389,17 @@ static int mig_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (!strncasecmp(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "DDR", 3))
+	if (!strncasecmp(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "DDR", 3)) {
 		mig->type = DRAM_ECC;
-	else if (!strncasecmp(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "HBM", 3)) {
+	} else if (!strncasecmp(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "HBM", 3)) {
 		left_parentness = strstr(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "[");
 		right_parentness = strstr(XOCL_GET_SUBDEV_PRIV(&pdev->dev), "]");
 		digit_len = right_parentness-(1+left_parentness);
 		strncpy(temp, left_parentness+1, digit_len);
 		temp[digit_len] = '\0';
-		kstrtoint(temp, 10, &idx);
+
+		if (kstrtoint(temp, 10, &idx) != 0)
+			return -EINVAL;
 
 		if (idx % 2)
 			mig->type = HBM_ECC_PS1;
