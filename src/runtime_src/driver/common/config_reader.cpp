@@ -105,6 +105,7 @@ get_ini_path()
 struct tree
 {
   boost::property_tree::ptree m_tree;
+  const boost::property_tree::ptree null_tree;
 
   void
   setenv()
@@ -187,6 +188,14 @@ unsigned int
 get_uint_value(const char* key, unsigned int default_value)
 {
   return s_tree.m_tree.get<unsigned int>(key,default_value);
+}
+
+
+const boost::property_tree::ptree&
+get_ptree_value(const char* key)
+{
+  boost::property_tree::ptree::const_assoc_iterator i = s_tree.m_tree.find(key);
+  return (i != s_tree.m_tree.not_found()) ? i->second : s_tree.null_tree;
 }
 
 std::ostream&

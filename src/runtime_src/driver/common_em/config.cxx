@@ -1,4 +1,21 @@
+/**
+ * Copyright (C) 2016-2019 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
 #include "config.h"
+#include "driver/common/config_reader.h"
 
 namespace xclemulation{
 
@@ -27,27 +44,27 @@ namespace xclemulation{
   }
 
   //constructor
-  config::config()  
-  { 
-    mDiagnostics = true; 
-    mUMRChecks = false; 
-    mOOBChecks = false; 
-    mMemLogs = false;  
-    mLaunchWaveform = LAUNCHWAVEFORM::OFF; 
-    mDontRun = false; 
-    mSimDir = ""; 
-    mPacketSize = 0x800000; 
-    mMaxTraceCount = 1; 
-    mPaddingFactor = 1; 
-    mSuppressInfo = false ; 
-    mSuppressWarnings = false; 
-    mSuppressErrors = false; 
-    mPrintInfosInConsole = true; 
-    mPrintWarningsInConsole = true; 
-    mPrintErrorsInConsole = true; 
-    mVerbosity = 0; 
-    mServerPort = 0; 
-    mKeepRunDir=false; 
+  config::config()
+  {
+    mDiagnostics = true;
+    mUMRChecks = false;
+    mOOBChecks = false;
+    mMemLogs = false;
+    mLaunchWaveform = LAUNCHWAVEFORM::OFF;
+    mDontRun = false;
+    mSimDir = "";
+    mPacketSize = 0x800000;
+    mMaxTraceCount = 1;
+    mPaddingFactor = 1;
+    mSuppressInfo = false ;
+    mSuppressWarnings = false;
+    mSuppressErrors = false;
+    mPrintInfosInConsole = true;
+    mPrintWarningsInConsole = true;
+    mPrintErrorsInConsole = true;
+    mVerbosity = 0;
+    mServerPort = 0;
+    mKeepRunDir=false;
     mLauncherArgs = "";
   }
 
@@ -74,7 +91,7 @@ namespace xclemulation{
       std::string value = i.second;
       if(value.empty() || name.empty())
         continue;
-      
+
       if(name == "diagnostics")
       {
         enableDiagnostics(getBoolValue(value,false));
@@ -207,22 +224,22 @@ namespace xclemulation{
         setLaunchWaveform(LAUNCHWAVEFORM::BATCH);
       }
     }
-    
+
   }
 
 
-  static std::string getSelfPath() 
+  static std::string getSelfPath()
   {
     char buff[PATH_MAX];
     ssize_t len = ::readlink("/proc/self/exe", buff, sizeof(buff)-1);
-    if (len != -1) 
+    if (len != -1)
     {
       buff[len] = '\0';
       return std::string(buff);
     }
     return "";
   }
-  
+
   static const char* valueOrEmpty(const char* cstr)
   {
     return cstr ? cstr : "";
@@ -243,7 +260,7 @@ namespace xclemulation{
     }
     return directory;
   }
-  
+
   static std::string getEmConfigFilePath()
   {
     std::string executablePath = getExecutablePath();
@@ -254,7 +271,7 @@ namespace xclemulation{
     std::string xclEmConfigfile = executablePath.empty()? "emconfig.json" :executablePath+ "/emconfig.json";
     return xclEmConfigfile;
   }
-  
+
   bool isXclEmulationModeHwEmuOrSwEmu()
   {
     static auto xem = std::getenv("XCL_EMULATION_MODE");
@@ -274,23 +291,23 @@ namespace xclemulation{
     std::string xclEmConfigfile = executablePath.empty()? "emulation_debug.log" :executablePath+ "/emulation_debug.log";
     return xclEmConfigfile;
   }
- 
+
   static std::string getCurrenWorkingDir()
   {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
       return std::string(cwd);
-    } 
+    }
     return "";
   }
-  
+
   static bool checkWritable(std::string &sDir)
   {
     if(sDir.empty())
       return false;
     std::string sPermissionCheckFile = sDir +"/.permission_check.txt";
     FILE *fp = fopen(sPermissionCheckFile.c_str(), "w");
-    if (fp == NULL) 
+    if (fp == NULL)
     {
       return false;
     }
@@ -325,45 +342,19 @@ namespace xclemulation{
     return sRunDir;
   }
 
-
-  static std::string getIniFile()
-  {
-    std::string executablePath = getExecutablePath();
-    std::string sdaccelIniPath = valueOrEmpty(std::getenv("SDACCEL_INI_PATH"));
-    if (!sdaccelIniPath.empty()) {
-      executablePath = sdaccelIniPath;
-    }
-    std::string iniFile = executablePath.empty()? "sdaccel.ini" :executablePath+ "/sdaccel.ini";
-    struct stat buffer;
-    return (stat(iniFile.c_str(), &buffer) == 0) ? iniFile : "";
-  }
-
+  /* Use the common INI file reader */
   std::map<std::string,std::string> getEnvironmentByReadingIni()
   {
     std::map<std::string,std::string> environmentNameValueMap;
-    std::string iniFile = getIniFile();
-    if(iniFile.empty())
-      return environmentNameValueMap;
-
-    boost::property_tree::ptree m_tree;
-    boost::property_tree::ini_parser::read_ini(iniFile.c_str(), m_tree);
-    for(auto& section : m_tree)
+    const boost::property_tree::ptree &e_tree = xrt_core::config::detail::get_ptree_value("Emulation");
+    for (auto& key : e_tree)
     {
-      std::string sectionName = section.first;
-      if(sectionName == "Emulation") 
-      {
-        for (auto& key:section.second) 
-        {
-          environmentNameValueMap[key.first] = key.second.get_value<std::string>();
-        }
-      }
-      else if(sectionName == "Debug") 
-      {
-        for (auto& key:section.second) 
-        {
-          environmentNameValueMap["Debug."+key.first] = key.second.get_value<std::string>();
-        }
-      }
+      environmentNameValueMap[key.first] = key.second.get_value<std::string>();
+    }
+    const boost::property_tree::ptree &d_tree = xrt_core::config::detail::get_ptree_value("Debug");
+    for (auto& key : d_tree)
+    {
+      environmentNameValueMap["Debug." + key.first] = key.second.get_value<std::string>();
     }
     return environmentNameValueMap;
   }
@@ -478,9 +469,9 @@ namespace xclemulation{
           {
             size = (*it).second;
           }
-          info.mDDRSize = info.mDDRSize + size; 
+          info.mDDRSize = info.mDDRSize + size;
           DDRBank bank;
-          bank.ddrSize = size; 
+          bank.ddrSize = size;
           DDRBankList.push_back(bank);
         }
       }
@@ -491,7 +482,7 @@ namespace xclemulation{
     if(DDRBankList.size() == 0)
     {
       DDRBank bank;
-      bank.ddrSize = 0x400000000; 
+      bank.ddrSize = 0x400000000;
       DDRBankList.push_back(bank);
       info.mDDRBankCount = info.mDDRBankCount + 1;
     }
@@ -505,47 +496,47 @@ namespace xclemulation{
       if(name == "Major_Version")
       {
         unsigned int majorVersion = prop.second.get_value<unsigned>();
-        fRomHeader.MajorVersion = majorVersion; 
+        fRomHeader.MajorVersion = majorVersion;
       }
       else if(name == "Minor_Version")
       {
         unsigned int minorVersion = prop.second.get_value<unsigned>();
-        fRomHeader.MinorVersion = minorVersion; 
+        fRomHeader.MinorVersion = minorVersion;
       }
       else if(name == "Vivado_Build_Id")
       {
         unsigned int vivadoBuildId = prop.second.get_value<unsigned long>();
-        fRomHeader.VivadoBuildID = vivadoBuildId; 
+        fRomHeader.VivadoBuildID = vivadoBuildId;
       }
       else if(name == "Ip_Build_Id")
       {
         unsigned long ipBuildId = prop.second.get_value<unsigned long>();
-        fRomHeader.IPBuildID = ipBuildId; 
+        fRomHeader.IPBuildID = ipBuildId;
       }
       else if(name == "Time_Since_Epoch")
       {
         unsigned long long timeSinceEpoch = prop.second.get_value<unsigned long long>();
-        fRomHeader.TimeSinceEpoch = timeSinceEpoch; 
+        fRomHeader.TimeSinceEpoch = timeSinceEpoch;
       }
       else if(name == "Ddr_Channel_Count")
       {
         unsigned int ddrChannelCount = prop.second.get_value<unsigned>();
-        fRomHeader.DDRChannelCount = ddrChannelCount; 
+        fRomHeader.DDRChannelCount = ddrChannelCount;
       }
       else if(name == "Ddr_Channel_Size")
       {
         unsigned int ddrChannelSize = prop.second.get_value<unsigned>();
-        fRomHeader.DDRChannelSize = ddrChannelSize; 
+        fRomHeader.DDRChannelSize = ddrChannelSize;
       }
       else if(name == "Dr_Base_Address")
       {
         unsigned long long drBaseAddress = prop.second.get_value<unsigned long long>();
-        fRomHeader.DRBaseAddress = drBaseAddress; 
+        fRomHeader.DRBaseAddress = drBaseAddress;
       }
       else if(name == "Feature_Bitmap")
       {
         unsigned long long featureBitMap = prop.second.get_value<unsigned long long>();
-        fRomHeader.FeatureBitMap= featureBitMap; 
+        fRomHeader.FeatureBitMap= featureBitMap;
       }
       else if(name == "Cdma_Base_Address0")
       {
@@ -565,7 +556,7 @@ namespace xclemulation{
       }
     }
   }
-  
+
   static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool,FeatureRomHeader> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
   {
 
@@ -573,7 +564,7 @@ namespace xclemulation{
     {
       xclDeviceInfo2 info;
 
-      //fill info with default values 
+      //fill info with default values
       info.mMagic = 0X586C0C6C;
       //info.mHALMajorVersion = XCLHAL_MAJOR_VER;
       //info.mHALMinorVersion= XCLHAL_MINOR_VER;
@@ -675,7 +666,7 @@ namespace xclemulation{
     ptree::const_iterator platformEnd = platformTree.end();
     bool bUnified = false;
     bool bXPR = false;
-    for (ptree::const_iterator it = platformTree.begin(); it != platformEnd; ++it) 
+    for (ptree::const_iterator it = platformTree.begin(); it != platformEnd; ++it)
     {
       if(it->first == "UnifiedPlatform")
       {
@@ -683,7 +674,7 @@ namespace xclemulation{
         bUnified = getBoolValue(unified,bUnified);
       }
       else if(it->first == "ExpandedPR")
-      { 
+      {
         std::string expandedPR = it->second.get_value<std::string>();
         bXPR = getBoolValue(expandedPR,bXPR);
       }
@@ -717,7 +708,7 @@ namespace xclemulation{
   {
     using boost::property_tree::ptree;
     ptree::const_iterator end = versionTree.end();
-    for (ptree::const_iterator it = versionTree.begin(); it != end; ++it) 
+    for (ptree::const_iterator it = versionTree.begin(); it != end; ++it)
     {
       if(it->first == "FileVersion")
       {
@@ -755,7 +746,7 @@ namespace xclemulation{
     initializeMemMap(memMap);
     boost::property_tree::ptree configTree;
     boost::property_tree::read_json(ifs, configTree);//read the config file and stores in configTree
-    ifs.close(); 
+    ifs.close();
 
     using boost::property_tree::ptree;
     ptree::const_iterator end = configTree.end();
@@ -764,7 +755,7 @@ namespace xclemulation{
 
     //iterate over configTree and  check whether file version is  1.0 or not. If not return 1.
     //get both platform and environment tree
-    for (ptree::const_iterator it = configTree.begin(); it != end; ++it) 
+    for (ptree::const_iterator it = configTree.begin(); it != end; ++it)
     {
       if(it->first == "Version")
       {
