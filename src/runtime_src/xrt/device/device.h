@@ -20,6 +20,7 @@
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
 #include "driver/include/xclbin.h"
+#include "driver/include/ert.h"
 
 #include <set>
 #include <vector>
@@ -300,6 +301,11 @@ public:
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset)
   { return m_hal->copy(dst_bo,src_bo,sz,dst_offset,src_offset); }
 
+  void
+  fill_copy_pkt(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt)
+  { return m_hal->fill_copy_pkt(dst_bo,src_bo,sz,dst_offset,src_offset,pkt); }
+
   /**
    * Read a device register
    *
@@ -388,6 +394,17 @@ public:
   { return m_hal->exec_wait(timeout_ms); }
 
 public:
+  /**
+   * @returns
+   *   True of this buffer object is imported from another device,
+   *   false otherwise
+   */
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const
+  {
+    return m_hal->is_imported(boh);
+  }
+
   /**
    * Get the device address of a buffer object
    *

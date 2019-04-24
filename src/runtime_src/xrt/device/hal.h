@@ -26,6 +26,7 @@
 #include "driver/include/xclperf.h"
 #include "driver/include/xcl_app_debug.h"
 #include "driver/include/stream.h"
+#include "driver/include/ert.h"
 
 #include <memory>
 #include <string>
@@ -243,6 +244,10 @@ public:
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz,
        size_t dst_offset, size_t src_offset) = 0;
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt) = 0;
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size) = 0;
 
@@ -299,6 +304,14 @@ public:
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
 public:
+  /**
+   * @returns
+   *   True of this buffer object is imported from another device,
+   *   false otherwise
+   */
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const = 0;
+
   /**
    * @returns
    *   The device address of a buffer object
