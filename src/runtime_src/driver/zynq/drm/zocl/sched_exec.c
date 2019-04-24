@@ -543,7 +543,7 @@ configure(struct sched_cmd *cmd)
 		 * Need cleanup.
 		 */
 		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
-			DRM_ERROR("CU address %x is not found in XLBCIN\n",
+			DRM_ERROR("CU address %x is not found in XCLBIN\n",
 				  cfg->data[i]);
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
