@@ -466,7 +466,7 @@ namespace xocl {
     }
     readDebugIpLayout();
     if (!mIsDeviceProfiling)
-      return 0;
+      return;
 
     // Configure only Accelerator monitors for now
     type = XCL_PERF_MON_ACCEL;

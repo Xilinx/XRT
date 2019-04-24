@@ -577,12 +577,12 @@ startCounters(key k, xclPerfMonType type)
   if (deviceClockMHz > 0)
     OCLProfiler::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
 
-  // Only configure Accelerator Mons
-  configureDataflow(k, XCL_PERF_MON_ACCEL);
-
   xdevice->startCounters(type);
   data->mSampleIntervalMsec =
     OCLProfiler::Instance()->getProfileManager()->getSampleIntervalMsec();
+  // Only configure Accelerator Mons
+  // Dependent on Debug IP Layout data present in hal
+  configureDataflow(k, XCL_PERF_MON_ACCEL);
   return CL_SUCCESS;
 }
 
