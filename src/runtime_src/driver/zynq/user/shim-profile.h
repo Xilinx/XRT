@@ -86,6 +86,7 @@ namespace ZYNQ {
     uint32_t getProfilingNumberSlots(xclPerfMonType type);
     void getProfilingSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
 
+    void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
     // Counters
     size_t xclPerfMonStartCounters(xclPerfMonType type);
     size_t xclPerfMonStopCounters(xclPerfMonType type);

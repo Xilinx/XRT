@@ -260,6 +260,34 @@ namespace awsbwhal {
     return size;
   }
 
+  void AwsXcl::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+          << type << ", Configure Monitors For Dataflow..." << std::endl;
+    }
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return;
+
+    // Configure only Accelerator monitors for now
+    type = XCL_PERF_MON_ACCEL;
+    uint32_t numSlots = getPerfMonNumberSlots(type);
+
+    for (uint32_t i=0; i < numSlots; i++) {
+      if (!ip_config[i]) continue;
+      uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+      uint32_t regValue = 0;
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+      xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      regValue = 0;
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      if (mLogStream.is_open()) {
+        mLogStream << "Dataflow enabled on slot : " << i << std::endl;
+      }
+    }
+  }
+
   // ********
   // Counters
   // ********
@@ -610,6 +638,13 @@ namespace awsbwhal {
 
 } // namespace awsbwhal
 
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {

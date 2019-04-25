@@ -462,7 +462,7 @@ namespace xocl {
   void XOCLShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
-          << type << ", Configure Accelerator Monitors..." << std::endl;
+          << type << ", Configure Monitors For Dataflow..." << std::endl;
     }
     readDebugIpLayout();
     if (!mIsDeviceProfiling)
@@ -476,14 +476,14 @@ namespace xocl {
       if (!ip_config[i]) continue;
       uint64_t baseAddress = getPerfMonBaseAddress(type,i);
       uint32_t regValue = 0;
-      std::cout << "Enable dataflow .." << std::endl;
       xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = regValue | XSAM_DATAFLOW_EN_MASK;
-      std::cout << "Writing regvalue : " << std::hex << regValue << std::dec << std::endl;
       xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = 0;
       xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
-      std::cout << "Regvalue after dataflow en " << regValue << std::endl;
+      if (mLogStream.is_open()) {
+        mLogStream << "Dataflow enabled on slot : " << i << std::endl;
+      }
     }
   }
 

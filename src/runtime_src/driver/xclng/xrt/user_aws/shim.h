@@ -219,6 +219,7 @@ public:
         double xclGetWriteMaxBandwidthMBps();
         void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
         size_t xclPerfMonClockTraining(xclPerfMonType type);
+        void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
         // Counters
         size_t xclPerfMonStartCounters(xclPerfMonType type);
         size_t xclPerfMonStopCounters(xclPerfMonType type);
