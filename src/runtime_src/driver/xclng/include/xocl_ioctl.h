@@ -448,8 +448,8 @@ struct drm_xocl_execbuf {
 };
 
 struct drm_xocl_threshold_info {
-  uint16_t power;
-  uint16_t temperature;
+        uint16_t power;
+        uint16_t temperature;
 };
 
 /**

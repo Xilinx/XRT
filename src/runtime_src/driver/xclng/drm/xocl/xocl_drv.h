@@ -293,7 +293,7 @@ struct xocl_rom_funcs {
 	bool (*verify_timestamp)(struct platform_device *pdev, u64 timestamp);
 	u64 (*get_timestamp)(struct platform_device *pdev);
 	void (*get_raw_header)(struct platform_device *pdev, void *header);
-  bool (*runtime_clk_scale_on)(struct platform_device *pdev);
+        bool (*runtime_clk_scale_on)(struct platform_device *pdev);
 };
 #define ROM_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
@@ -307,8 +307,8 @@ struct xocl_rom_funcs {
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
 #define	xocl_cdma_addr(xdev)		\
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->cdma_addr(ROM_DEV(xdev)) : 0)
-#define xocl_clk_scale_on(xdev) \
-  (ROM_DEV(xdev) ? ROM_OPS(xdev)->runtime_clk_scale_on(ROM_DEV(xdev)) : false)
+#define xocl_clk_scale_on(xdev)         \
+        (ROM_DEV(xdev) ? ROM_OPS(xdev)->runtime_clk_scale_on(ROM_DEV(xdev)) : false)
 #define	xocl_get_ddr_channel_count(xdev) \
 	(ROM_DEV(xdev) ? ROM_OPS(xdev)->get_ddr_channel_count(ROM_DEV(xdev)) :\
 	0)
@@ -494,7 +494,7 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	void (*get_data)(struct platform_device *pdev, void *buf);
-  void (*set_threshold_values)(struct platform_device *pdev, void *buf);
+        void (*set_threshold_values)(struct platform_device *pdev, void *buf);
 };
 
 struct xocl_dna_funcs {
@@ -546,8 +546,8 @@ struct xocl_dna_funcs {
 #define xocl_xmc_get_data(xdev, buf)			\
 	(XMC_DEV(xdev) ? XMC_OPS(xdev)->get_data(XMC_DEV(xdev), buf) : -ENODEV)
 
-#define xocl_xmc_config_threshold_values(xdev, obj) \
-  (XMC_DEV(xdev) ? XMC_OPS(xdev)->set_threshold_values(XMC_DEV(xdev), obj) : -ENODEV)
+#define xocl_xmc_config_threshold_values(xdev, obj)     \
+        (XMC_DEV(xdev) ? XMC_OPS(xdev)->set_threshold_values(XMC_DEV(xdev), obj) : -ENODEV)
 
 /**
  *	data_kind

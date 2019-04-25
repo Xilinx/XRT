@@ -25,14 +25,13 @@ clSetThresholdValues(cl_device_id device,
                 uint16_t power,
                 uint16_t temperature)
 {
-  int ret;
-  auto xdevice  = xocl(device);
+        int ret;
+        auto xdevice  = xocl(device);
 
-  ret = xdevice->get_xrt_device()->setThresholdValues(power, temperature);
-  if (!ret)
-    return CL_SUCCESS;
-
-  return ret;
+        ret = xdevice->get_xrt_device()->setThresholdValues(power, temperature);
+        if (!ret)
+                return CL_SUCCESS;
+        return ret;
 }
 
 } // Namespace xocl END
@@ -44,17 +43,17 @@ clSetThresholdValues(cl_device_id device,
                 uint16_t power,
                 uint16_t temperature)
 {
-  try {
-    return xocl::clSetThresholdValues(device, power, temperature);
-  }
-  catch (const xrt::error& ex) {
-    xocl::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xocl::send_exception_message(ex.what());
-    return CL_INVALID_OPERATION;
-  }
+        try {
+                return xocl::clSetThresholdValues(device, power, temperature);
+        }
+        catch (const xrt::error& ex) {
+                xocl::send_exception_message(ex.what());
+                return ex.get_code();
+        }
+        catch (const std::exception& ex) {
+                xocl::send_exception_message(ex.what());
+                return CL_INVALID_OPERATION;
+        }
 }
 
 } // xlnx
@@ -62,8 +61,8 @@ clSetThresholdValues(cl_device_id device,
 
 cl_int
 xclSetThresholdValues(cl_device_id device,
-                  uint16_t power,
-                  uint16_t temperature)
+                uint16_t power,
+                uint16_t temperature)
 {
-  return xlnx::clSetThresholdValues(device, power, temperature);
+        return xlnx::clSetThresholdValues(device, power, temperature);
 }

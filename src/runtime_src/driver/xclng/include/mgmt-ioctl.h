@@ -74,9 +74,9 @@ enum XCLMGMT_IOC_TYPES {
 	XCLMGMT_IOC_REBOOT,
 	XCLMGMT_IOC_ICAP_DOWNLOAD_AXLF,
 	XCLMGMT_IOC_ERR_INFO,
-	XCLMGMT_IOC_SW_MAILBOX,
-  XCLMGMT_IOC_THRESHOLD,
-	XCLMGMT_IOC_MAX
+        XCLMGMT_IOC_SW_MAILBOX,
+        XCLMGMT_IOC_THRESHOLD,
+        XCLMGMT_IOC_MAX
 };
 
 /**
@@ -170,8 +170,8 @@ struct xclmgmt_ioc_freqscaling {
 };
 
 struct xclmgmt_ioc_threshold {
-  uint16_t power;
-  uint16_t temperature;
+        uint16_t power;
+        uint16_t temperature;
 };
 
 #define XCLMGMT_IOCINFO			_IOR(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_INFO, struct xclmgmt_ioc_info)
@@ -182,7 +182,7 @@ struct xclmgmt_ioc_threshold {
 #define XCLMGMT_IOCOCLRESET		_IO(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_OCL_RESET)
 #define XCLMGMT_IOCREBOOT		_IO(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_REBOOT)
 #define XCLMGMT_IOCERRINFO		_IOR(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_ERR_INFO, struct xclErrorStatus)
-#define XCLMGMT_IOCSETTHRESHOLD _IOW(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_THRESHOLD, struct xclmgmt_ioc_threshold)
+#define XCLMGMT_IOCSETTHRESHOLD         _IOW(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_THRESHOLD, struct xclmgmt_ioc_threshold)
 
 #define	XCLMGMT_MB_HWMON_NAME	    "xclmgmt_microblaze"
 #define XCLMGMT_SYSMON_HWMON_NAME   "xclmgmt_sysmon"

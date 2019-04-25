@@ -63,15 +63,15 @@ struct class *xrt_class;
 
 int ocl_set_threshold_ioctl(struct xclmgmt_dev *lro, const void __user *arg)
 {
-  struct xclmgmt_ioc_threshold obj;
+        struct xclmgmt_ioc_threshold obj;
 
-  mgmt_info(lro, "ocl_set_threshold_ioctl called");
-  if (copy_from_user((void *)&obj, arg, sizeof(struct xclmgmt_ioc_threshold)))
-    return -EFAULT;
+        mgmt_info(lro, "ocl_set_threshold_ioctl called");
+        if (copy_from_user((void *)&obj, arg, sizeof(struct xclmgmt_ioc_threshold)))
+                return -EFAULT;
 
-  xocl_xmc_config_threshold_values(lro, &obj);
+        xocl_xmc_config_threshold_values(lro, &obj);
 
-  return 0;
+        return 0;
 }
 
 /*

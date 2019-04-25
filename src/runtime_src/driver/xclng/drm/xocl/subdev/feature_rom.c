@@ -30,7 +30,7 @@ struct feature_rom {
 	bool			mb_sche_enabled;
 	bool			are_dev;
 	bool			aws_dev;
-  bool    runtime_clk_scale_en;
+        bool                    runtime_clk_scale_en;
 };
 
 static ssize_t VBNV_show(struct device *dev,
@@ -137,12 +137,12 @@ static bool mb_sched_on(struct platform_device *pdev)
 
 static bool runtime_clk_scale_on(struct platform_device *pdev)
 {
-  struct feature_rom *rom;
+        struct feature_rom *rom;
 
-  rom = platform_get_drvdata(pdev);
-  BUG_ON(!rom);
+        rom = platform_get_drvdata(pdev);
+        BUG_ON(!rom);
 
-  return rom->runtime_clk_scale_en;
+        return rom->runtime_clk_scale_en;
 }
 
 static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
@@ -242,7 +242,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.verify_timestamp = verify_timestamp,
 	.get_timestamp = get_timestamp,
 	.get_raw_header = get_raw_header,
-  .runtime_clk_scale_on = runtime_clk_scale_on,
+        .runtime_clk_scale_on = runtime_clk_scale_on,
 };
 
 static int feature_rom_probe(struct platform_device *pdev)
@@ -328,8 +328,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 	if(rom->header.FeatureBitMap & MB_SCHEDULER)
 		rom->mb_sche_enabled = true;
 
-  if(rom->header.FeatureBitMap & RUNTIME_CLK_SCALE)
-    rom->runtime_clk_scale_en = true;
+        if(rom->header.FeatureBitMap & RUNTIME_CLK_SCALE)
+                rom->runtime_clk_scale_en = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
