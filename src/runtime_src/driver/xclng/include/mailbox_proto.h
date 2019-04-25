@@ -205,7 +205,7 @@ struct sw_chan {
     uint64_t flags;
     bool is_tx;
     uint64_t id;
-    char data[0];
+    uint32_t *data;
 };
 
 
