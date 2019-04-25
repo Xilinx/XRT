@@ -931,8 +931,8 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     }
   }
 
-  // Copy via host of local buffers and no kdma
-  if (!get_num_cdmas() && !imported) {
+  // Copy via host of local buffers and no kdma and neither buffer is p2p (no shadow buffer in host)
+  if (!get_num_cdmas() && !imported && !src_buffer->is_p2p_memory() && !dst_buffer->is_p2p_memory()) {
     // non p2p BOs then copy through host
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
       try {
@@ -967,7 +967,16 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
 
   // Could not copy
   std::stringstream err;
-  err << "copy_buffer failed. imported(" << imported << ") kdma(" << get_num_cdmas() << ")";
+  err << "Copying of buffers failed.\n";
+  if (is_imported(src_buffer))
+    err << "The src buffer is imported from another device\n";
+  if (is_imported(dst_buffer))
+    err << "The dst buffer is imported from another device\n";
+  if (src_buffer->is_p2p_memory())
+    err << "The src buffer is a p2p buffer\n";
+  if (dst_buffer->is_p2p_memory())
+    err << "The dst buffer is a p2p buffer\n";
+  err << "The targeted device has " << get_num_cdmas() << " KDMA kernels\n";
   throw std::runtime_error(err.str());
 }
 
