@@ -581,7 +581,7 @@ startCounters(key k, xclPerfMonType type)
     OCLProfiler::Instance()->getProfileManager()->getSampleIntervalMsec();
 
   // Depends on Debug IP Layout data loaded in hal
-  configureDataflow(k, type);
+  configureDataflow(k, XCL_PERF_MON_ACCEL);
   return CL_SUCCESS;
 }
 
