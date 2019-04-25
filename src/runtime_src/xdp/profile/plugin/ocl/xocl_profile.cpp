@@ -555,7 +555,6 @@ void configureDataflow(key k, xclPerfMonType type)
     std::string slot;
     getProfileSlotName(k, type, i, slot);
     ip_config[i] = isAPCtrlChain(k, slot) ? 1 : 0;
-    std::cout << "Set dataflow for " << slot << std::endl;
   }
 
   auto device = k;
