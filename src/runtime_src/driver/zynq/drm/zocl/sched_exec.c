@@ -862,40 +862,21 @@ release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 }
 
 /**
- * get_cu_idx() - Get index of CU executing command at idx
+ * cu_done() - Check status of CU which execute cmd
  *
- * This function is called in polling mode only and
- * the command at cmd_idx is guaranteed to have been
- * started on a CU
+ * @cmd: submmited command
  *
- * Return: Index of CU, or -1 on error
- */
-inline unsigned int
-get_cu_idx(struct drm_device *dev, unsigned int cmd_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct sched_cmd *cmd = zdev->exec->submitted_cmds[cmd_idx];
-
-	if (sched_error_on(zdev->exec, !cmd))
-		return -1;
-	return cmd->cu_idx;
-}
-
-/**
- * cu_done() - Check status of CU
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
+ * This function is called to check if the CU which execute cmd is done.
+ * The cmd should be guaranteed to have been submitted.
  *
  * Return: %true if cu done, %false otherwise
  */
 inline int
-cu_done(struct drm_device *dev, unsigned int cu_idx)
+cu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	u32 status;
 
 	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
@@ -918,9 +899,10 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 }
 
 inline int
-scu_done(struct drm_device *dev, unsigned int cu_idx)
+scu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
 	struct soft_kernel *sk = zdev->soft_kernel;
 	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 
@@ -1000,38 +982,6 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	mutex_unlock(&sk->sk_lock);
 
 	return true;
-}
-
-/**
- * ert_cu_done() - Check status of CU in ERT way
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
- *
- * Return: %true if cu done, %false otherwise
- */
-inline int
-ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
-	u32 status;
-
-	SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n",
-		    cu_idx, virt_addr);
-	status = ioread32(virt_addr);
-	if (status & 2) {
-		unsigned int mask_idx = cu_mask_idx(cu_idx);
-		unsigned int pos = cu_idx_in_mask(cu_idx);
-
-		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
-		SCHED_DEBUG("<- ert_cu_done returns 1\n");
-		return true;
-	}
-	SCHED_DEBUG("<- ert_cu_done returns 0\n");
-	return false;
 }
 
 /**
@@ -1752,7 +1702,7 @@ penguin_query(struct sched_cmd *cmd)
 	switch (opc) {
 
 	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (!cu_done(cmd))
 			break;
 
 	case OP_CONFIGURE:
@@ -1846,12 +1796,12 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	case OP_START_SKERNEL:
-		if (scu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (scu_done(cmd))
 			mark_cmd_complete(cmd);
 		break;
 
 	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (!cu_done(cmd))
 			break;
 		/* pass through */
 
