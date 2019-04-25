@@ -30,18 +30,24 @@ usage()
     echo "-xsct <PATH>                 Full path to xsct executable"
     echo "-petalinux <PATH>         Full path to petalinux folder"
     echo "-xrt <PATH>                   XRT github repo path"
+    echo "-[gen-dsa <Yes/No]        Generate DSA or not, default=Yes"
     echo "-[bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
     echo "[-help]                            List this help"
     exit $1
 }
 
 BSP_FILE="/not/nul/"
+GEN_DSA="Yes"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
             usage 0
             ;;
-        
+        -gen-dsa)
+	    shift
+	    GEN_DSA=$1
+	    shift
+	    ;;
         -vivado)
             shift
             PATH_TO_VIVADO=$1
@@ -128,8 +134,8 @@ fi
 
 ORIGINAL_DIR=$PWD
 
-BUILD_DSA=true
-if [ "${BUILD_DSA}" == "true" ]; then
+#BUILD_DSA=true
+if [ "${GEN_DSA}" == "Yes" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/zcu102_vivado/${PLATFORM_NAME}.hdf
