@@ -22,10 +22,10 @@ if [ -e $DRACUT_CONF_PATH ]; then
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
 fi
 
-echo "Invoking DKMS common.postinst"
+echo "Invoking DKMS common.postinst for xrt"
 /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
 if [ $? -eq 0 ]; then
-    echo "Finished common.postinst"
+    echo "Finished DKMS common.postinst"
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
