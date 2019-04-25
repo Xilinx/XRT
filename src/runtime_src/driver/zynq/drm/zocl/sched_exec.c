@@ -890,6 +890,7 @@ cu_done(struct sched_cmd *cmd)
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
+		set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
 		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
 		SCHED_DEBUG("<- cu_done returns 1\n");
 		return true;
@@ -1042,7 +1043,6 @@ mark_cmd_complete(struct sched_cmd *cmd)
 	if (zdev->ert || zdev->exec->polling_mode)
 		--cmd->sched->poll;
 	release_slot_idx(cmd->ddev, cmd->slot_idx);
-	set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
 	notify_host(cmd);
 	SCHED_DEBUG("<- mark_cmd_complete\n");
 }
