@@ -25,17 +25,18 @@ usage()
 {
     echo "Build Embedded platform (ert)"
     echo
-    echo "-platform <NAME>           Embedded Platform name, e.g. zcu102ng" 
+    echo "-platform <NAME>         Embedded Platform name, e.g. zcu102ng"
+    echo "-dsa <PATH>                  Full path to the plafrom.dsa file" 
     echo "-vivado <PATH>             Full path to vivado executable"
-    echo "-xsct <PATH>               Full path to xsct executable"
-    echo "-petalinux <PATH>          Full path to petalinux folder"
-    echo "-xrt <PATH>                XRT github repo path"
+    echo "-xsct <PATH>                 Full path to xsct executable"
+    echo "-petalinux <PATH>         Full path to petalinux folder"
+    echo "-xrt <PATH>                   XRT github repo path"
     echo "-[bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
-    echo "[-help]                    List this help"
+    echo "[-help]                            List this help"
     exit $1
 }
 
-
+BSP_FILE="/not/nul/"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -47,6 +48,11 @@ while [ $# -gt 0 ]; do
             PATH_TO_VIVADO=$1
             shift
       ;;
+#	-dsa)
+#	    shift
+#	    DSA=$1
+#	    shift
+#	    ;;
         -xsct)
             shift
             PATH_TO_XSCT=$1
@@ -83,6 +89,7 @@ if [ "foo${PATH_TO_VIVADO}" == "foo" ] ; then
   echo "full path to vivado is missing!"
   usage 1
 fi
+
 if [ "foo${PATH_TO_XSCT}" == "foo" ] ; then
   echo "full path to xsct is missing"
   usage 1
@@ -95,6 +102,12 @@ if [ "foo${PLATFORM_NAME}" == "foo" ] ; then
   echo "Embedded platform name is missing"
   usage 1
 fi
+
+#if [ "foo${DSA}" == "foo" ] ; then
+ # echo "full path to ${PLATFORM_NAME}.dsa is missing!"
+ # usage 1
+#fi
+
 if [ "foo${XRT_REPO_DIR}" == "foo" ] ; then
   echo "full path to xrt repo path is missing"
   usage 1
@@ -106,6 +119,10 @@ if [ ! -f $PATH_TO_VIVADO ]; then
   echo "ERROR: Failed to find vivado executable (it is missing): ${PATH_TO_VIVADO}"
   exit 1
 fi
+#if [ ! -f $DSA ]; then
+ # echo "ERROR: Failed to find platform dsa (it is missing): ${DSA}"
+ # exit 1
+#fi
 
 if [ ! -f $PATH_TO_XSCT ]; then
   echo "ERROR: Failed to find xsct executale (it is missing): ${PATH_TO_XSCT}"
@@ -123,7 +140,7 @@ fi
 ORIGINAL_DIR=$PWD
 
 BUILD_DSA=true
-if [ "${BUILD_DSA}" = true ]; then
+if [ "${BUILD_DSA}" == "true" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/zcu102_vivado/${PLATFORM_NAME}.hdf
@@ -152,22 +169,23 @@ echo "PETALINUX: $PETALINUX_LOCATION"
 
 echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 . $PETALINUX_LOCATION/settings.sh $PETALINUX_LOCATION
-
+echo "################################# 0 ##############################"
 # We want the PetaLinux project to go here:
 cd $ORIGINAL_DIR
+echo "ORIGINAL_DIR : ${ORIGINAL_DIR} $PLATFORM_NAME"
+# if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
 
-# if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the 
-# template  
 if [ ! -d $PLATFORM_NAME ]; then
+  echo "################################# 1 ##############################"
   echo " * Create PetaLinux Project: $PLATFORM_NAME"
-  if [ -d $BSP_FILE ]; then
+  if [ -f $BSP_FILE ]; then
     echo "petalinux-create -t project -n $PLATFORM_NAME -s $BSP_FILE" 
     petalinux-create -t project -n $PLATFORM_NAME -s $BSP_FILE
   else
     echo "petalinux-create -t project -n $PLATFORM_NAME --template zynqMP"
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
+  fi  
 fi
-
 
 
 mkdir -p ${PLATFORM_NAME}/build/conf/
@@ -220,8 +238,10 @@ echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragmen
 cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
 
-echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
+  echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+  cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+fi
 
 echo " * Configuring the kernel"
 #Configure Linux kernel (default kernel config is good for zocl driver)
@@ -248,10 +268,11 @@ petalinux-config -c rootfs --oldconfig
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "petalinux-build"
-petalinux-build
+petalinux-build 
 
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
+mkdir -p ${ORIGINAL_DIR}/dsa_build/src/a53/xrt/image
 cp ./${PLATFORM_NAME}/images/linux/image.ub ${ORIGINAL_DIR}/dsa_build/src/a53/xrt/image/image.ub
 mkdir -p ${ORIGINAL_DIR}/dsa_build/src/boot
 cp ./${PLATFORM_NAME}/images/linux/bl31.elf ${ORIGINAL_DIR}/dsa_build/src/boot/bl31.elf
@@ -271,7 +292,9 @@ cd       $ORIGINAL_DIR/dsa_build/src/aarch64-xilinx-linux
 #replace that tar with the 2 commands in step 4 from: http://confluence.xilinx.com/display/XIP/SDAccel+platform+porting+from+SDSoc+2019.1
 #remove x86* dir from generated sysroot
 #so 10GB will come down to 5 GB
-
+#cd $ORIGINAL_DIR/${PLATFORM_NAME}
+#petalinux-build --sdk
+#second command
 tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
 
 cd ${ORIGINAL_DIR}/dsa_build
