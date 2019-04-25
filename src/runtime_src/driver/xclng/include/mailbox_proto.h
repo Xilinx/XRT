@@ -58,7 +58,7 @@ enum mailbox_request {
 
 struct mailbox_req_bitstream_lock {
 	uint64_t reserved;
-	u8 uuid[UUID_SZ];
+	uint8_t uuid[UUID_SZ];
 };
 
 
@@ -69,55 +69,55 @@ enum group_kind {
 };
 
 struct xcl_sensor {
-	u64 vol_12v_pex;
-	u64 vol_12v_aux;
-	u64 cur_12v_pex;
-	u64 cur_12v_aux;
-	u64 vol_3v3_pex;
-	u64 vol_3v3_aux;
-	u64 ddr_vpp_btm;
-	u64 sys_5v5;
-	u64 top_1v2;
-	u64 vol_1v8;
-	u64 vol_0v85;
-	u64 ddr_vpp_top;
-	u64 mgt0v9avcc;
-	u64 vol_12v_sw;
-	u64 mgtavtt;
-	u64 vcc1v2_btm;
-	u64 fpga_temp;
-	u64 fan_temp;
-	u64 fan_rpm;
-	u64 dimm_temp0;
-	u64 dimm_temp1;
-	u64 dimm_temp2;
-	u64 dimm_temp3;
-	u64 vccint_vol;
-	u64 vccint_curr;
-	u64 se98_temp0;
-	u64 se98_temp1;
-	u64 se98_temp2;
-	u64 cage_temp0;
-	u64 cage_temp1;
-	u64 cage_temp2;
-	u64 cage_temp3;
+	uint64_t vol_12v_pex;
+	uint64_t vol_12v_aux;
+	uint64_t cur_12v_pex;
+	uint64_t cur_12v_aux;
+	uint64_t vol_3v3_pex;
+	uint64_t vol_3v3_aux;
+	uint64_t ddr_vpp_btm;
+	uint64_t sys_5v5;
+	uint64_t top_1v2;
+	uint64_t vol_1v8;
+	uint64_t vol_0v85;
+	uint64_t ddr_vpp_top;
+	uint64_t mgt0v9avcc;
+	uint64_t vol_12v_sw;
+	uint64_t mgtavtt;
+	uint64_t vcc1v2_btm;
+	uint64_t fpga_temp;
+	uint64_t fan_temp;
+	uint64_t fan_rpm;
+	uint64_t dimm_temp0;
+	uint64_t dimm_temp1;
+	uint64_t dimm_temp2;
+	uint64_t dimm_temp3;
+	uint64_t vccint_vol;
+	uint64_t vccint_curr;
+	uint64_t se98_temp0;
+	uint64_t se98_temp1;
+	uint64_t se98_temp2;
+	uint64_t cage_temp0;
+	uint64_t cage_temp1;
+	uint64_t cage_temp2;
+	uint64_t cage_temp3;
 };
 
 struct xcl_hwicap {
-	u64 freq_0;
-	u64 freq_1;
-	u64 freq_2;
-	u64 freq_3;
-	u64 freq_cntr_0;
-	u64 freq_cntr_1;
-	u64 freq_cntr_2;
-	u64 freq_cntr_3;
-	u64 idcode;
-	u8 uuid[UUID_SZ];
+	uint64_t freq_0;
+	uint64_t freq_1;
+	uint64_t freq_2;
+	uint64_t freq_3;
+	uint64_t freq_cntr_0;
+	uint64_t freq_cntr_1;
+	uint64_t freq_cntr_2;
+	uint64_t freq_cntr_3;
+	uint64_t idcode;
+	uint8_t uuid[UUID_SZ];
 };
 
 struct xcl_common {
-	u64 mig_calib;
+	uint64_t mig_calib;
 };
 
 /**
@@ -196,6 +196,18 @@ struct mailbox_req {
 #define MB_REQ_FLAG_RESPONSE	(1 << 0)
 #define MB_REQ_FLAG_REQUEST	(1 << 1)
 #define MB_REQ_FLAG_RECV_REQ	(1 << 2)
+
+/*
+ * software mailbox arguments
+ */
+struct sw_chan {
+	size_t sz;
+	uint64_t flags;
+	bool is_tx;
+	uint64_t id;
+	uint32_t *data;
+};
+
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
 
