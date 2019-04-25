@@ -296,7 +296,7 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
  * @xcmd: command to change internal state on
  * @state: new command state per ert.h
  */
-inline void
+static inline void
 set_cmd_int_state(struct sched_cmd *cmd, enum cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
@@ -746,7 +746,7 @@ unconfigure_soft_kernel(struct sched_cmd *cmd)
  * @cmd: command object
  * @state: new state
  */
-inline void
+static inline void
 set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_state(,%d)\n", state);
@@ -763,7 +763,7 @@ set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
  * @cmd: command object
  * @cu_idx: CU idex
  */
-inline void
+static inline void
 set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
 {
 	int mask_idx = cu_mask_idx(cu_idx);
@@ -781,7 +781,7 @@ set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
  * @cmd: command object
  * @ts: timestamp type
  */
-inline void
+static inline void
 set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 {
 	u32 opc = opcode(cmd);
