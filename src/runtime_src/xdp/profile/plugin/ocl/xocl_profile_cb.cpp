@@ -169,6 +169,10 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
       XOCL_DEBUGF("READ status: %d, event: %s, depend: %s\n", status, eventStr.c_str(), dependStr.c_str());
     }
 
+    // Catch if reading from P2P buffer
+    auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
+    auto kind = (ext_flags & XCL_MEM_EXT_P2P_BUFFER) ? xdp::RTUtil::READ_BUFFER_P2P : xdp::RTUtil::READ_BUFFER;
+
     auto commandState = event_status_to_profile_state(status);
     auto queue = event->get_command_queue();
     auto deviceName = queue->get_device()->get_name();
@@ -186,7 +190,7 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
 
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,xdp::RTUtil::READ_BUFFER
+       ,kind
        ,commandState
        ,actual_size
        ,contextId
@@ -275,6 +279,10 @@ cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
       XOCL_DEBUGF("WRITE event: %s, depend: %s\n", eventStr.c_str(), dependStr.c_str());
     }
 
+    // Catch if writing to P2P buffer
+    auto ext_flags = xocl::xocl(buffer)->get_ext_flags();
+    auto kind = (ext_flags & XCL_MEM_EXT_P2P_BUFFER) ? xdp::RTUtil::WRITE_BUFFER_P2P : xdp::RTUtil::WRITE_BUFFER;
+
     auto commandState = event_status_to_profile_state(status);
     auto deviceName = device->get_name();
     auto contextId =  event->get_context()->get_uid();
@@ -285,7 +293,7 @@ cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
 
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
-       ,xdp::RTUtil::WRITE_BUFFER
+       ,kind
        ,commandState
        ,size
        ,contextId
