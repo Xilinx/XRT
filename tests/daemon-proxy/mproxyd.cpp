@@ -27,7 +27,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <getopt.h>
-
+#include "mailbox_proto.h"
 #include "xclhal2.h"
 
 #define INIT_BUF_SZ 64
@@ -38,14 +38,6 @@ pthread_t msd_id;
 struct s_handles {
         int userfd;
         int mgmtfd;
-};
-
-struct drm_xocl_sw_mailbox {
-    size_t sz;
-    uint64_t flags;
-    bool is_tx;
-    uint64_t id;
-    uint32_t *data;
 };
 
 int resize_buffer( uint32_t *&buf, const size_t new_sz )
@@ -73,14 +65,14 @@ void *mpd(void *handle_ptr)
     int ret;
     struct s_handles *h = (struct s_handles *)handle_ptr;
     size_t prev_sz = INIT_BUF_SZ;
-    struct drm_xocl_sw_mailbox args = { prev_sz, 0, true, 0, 0 };
+    struct sw_chan args = { prev_sz, 0, true, 0, 0 };
     args.data = (uint32_t *)malloc(prev_sz);
 
     std::cout << "[XOCL->XCLMGMT Intercept ON (HAL)]\n";
     for( ;; ) {
         args.is_tx = true;
         args.sz = prev_sz;
-        ret = read( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+        ret = read( h->userfd, &args, (sizeof(struct sw_chan) + args.sz) );
         if( ret <= 0 ) {
             // sw channel xfer error
             if( errno != EMSGSIZE ) {
@@ -92,7 +84,7 @@ void *mpd(void *handle_ptr)
                 exit(1);
             }
             prev_sz = args.sz; // store the newly alloc'd size
-            ret = read( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+            ret = read( h->userfd, &args, (sizeof(struct sw_chan) + args.sz) );
             if( ret < 0 ) {
                 std::cout << "MPD: second transfer failed, exiting.\n";
                 exit(1);
@@ -101,7 +93,7 @@ void *mpd(void *handle_ptr)
         std::cout << "[MPD-TX]\n";
 
         args.is_tx = false;
-        ret = write( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+        ret = write( h->mgmtfd, &args, (sizeof(struct sw_chan) + args.sz) );
         if( ret <= 0 ) {
             std::cout << "MSD: transfer error: " << strerror(errno) << std::endl;
             exit(1);
@@ -118,14 +110,14 @@ void *msd(void *handle_ptr)
     int ret;
     struct s_handles *h = (struct s_handles *)handle_ptr;
     size_t prev_sz = INIT_BUF_SZ;
-    struct drm_xocl_sw_mailbox args = { prev_sz, 0, true, 0, 0 };
+    struct sw_chan args = { prev_sz, 0, true, 0, 0 };
     args.data = (uint32_t *)malloc(prev_sz);
 
     std::cout << "               [XCLMGMT->XOCL Intercept ON (HAL)]\n";
     for( ;; ) {
         args.is_tx = true;
         args.sz = prev_sz;
-        ret = read( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+        ret = read( h->mgmtfd, &args, (sizeof(struct sw_chan) + args.sz) );
         if( ret <= 0 ) {
             // sw channel xfer error
             if( errno != EMSGSIZE ) {
@@ -138,7 +130,7 @@ void *msd(void *handle_ptr)
                 exit(1);
             }
             prev_sz = args.sz; // store the newly alloc'd size
-            ret = read( h->mgmtfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+            ret = read( h->mgmtfd, &args, (sizeof(struct sw_chan) + args.sz) );
             if( ret < 0 ) {
                 std::cout << "MPD: second transfer failed, exiting.\n";
                 exit(1);
@@ -147,7 +139,7 @@ void *msd(void *handle_ptr)
         std::cout << "                [MSD-TX]\n";
 
         args.is_tx = false;
-        ret = write( h->userfd, &args, (sizeof(struct drm_xocl_sw_mailbox) + args.sz) );
+        ret = write( h->userfd, &args, (sizeof(struct sw_chan) + args.sz) );
         if( ret <= 0 ) {
             std::cout << "                    MPD: transfer error: " << strerror(errno) << std::endl;
             exit(1);
