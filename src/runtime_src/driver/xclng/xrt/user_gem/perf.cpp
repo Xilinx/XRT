@@ -479,8 +479,6 @@ namespace xocl {
       xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       regValue = regValue | XSAM_DATAFLOW_EN_MASK;
       xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
-      regValue = 0;
-      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       if (mLogStream.is_open()) {
         mLogStream << "Dataflow enabled on slot : " << i << std::endl;
       }
