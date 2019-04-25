@@ -7,7 +7,7 @@
 
 INCLUDE (FindPkgConfig)
 
-# DRM
+# -- DRM --
 pkg_check_modules(DRM REQUIRED libdrm)
 IF(DRM_FOUND)
   MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
@@ -16,7 +16,7 @@ ELSE(DRM_FOUND)
   MESSAGE(FATAL_ERROR "Looking for DRM - not found")
 ENDIF(DRM_FOUND)
 
-# OpenCL header files
+# -- OpenCL header files -- 
 pkg_check_modules(OPENCL REQUIRED OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
@@ -25,10 +25,11 @@ ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
 
+# -- Git --
 find_package(Git)
 
 IF(GIT_FOUND)
-  message("git found: ${GIT_EXECUTABLE}")
+  MESSAGE(STATUS "Looking for GIT - found at ${GIT_EXECUTABLE}")
 ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
