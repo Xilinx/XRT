@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,7 +14,6 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <CL/cl.h>
 #include <map>
