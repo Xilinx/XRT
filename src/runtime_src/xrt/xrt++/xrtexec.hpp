@@ -48,7 +48,7 @@ protected:
   command(xrt_device* dev, ert_cmd_opcode opcode);
 
 public:
-  void
+  int
   execute();
 
   void

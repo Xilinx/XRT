@@ -38,11 +38,11 @@ command(xrt_device* device, ert_cmd_opcode opcode)
   : m_impl(std::make_shared<impl>(static_cast<xrt::device*>(device),opcode))
 {}
 
-void
+int
 command::
 execute()
 {
-  m_impl->execute();
+  return m_impl->execute();
 }
 
 void
