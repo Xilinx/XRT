@@ -720,19 +720,24 @@ isAPCtrlChain(key k, const std::string& cu)
   auto device = k;
   if (!device)
     return false;
+  size_t base_addr = 0;
+  for (auto& xcu : device->get_cus()) {
+    if (xcu->get_name().compare(cu) == 0)
+      base_addr = xcu->get_base_addr();
+  }
   auto xclbin = device->get_xclbin();
   auto binary = xclbin.binary();
   auto binary_data = binary.binary_data();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
+  if (!ip_layout || !base_addr)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    std::string current((char *)ip_data.m_name);
-    if (current.find(cu) == std::string::npos)
+    auto current = ip_data.m_base_address;
+    if (current != base_addr || ip_data.m_type != IP_TYPE::IP_KERNEL)
       continue;
-    if (ip_data.m_type==IP_TYPE::IP_KERNEL && ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN))
+    if ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN)
       return true;
   }
   return false;
