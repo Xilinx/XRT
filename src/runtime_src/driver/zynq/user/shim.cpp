@@ -169,20 +169,15 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
 void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset)
 {
     void *vaddr = NULL;
-    uint64_t mask = 0xFFFF;
 
-    // If CU size is still 64KiB, this is safe.
+    // If CU size is 64 Kb, then this is safe.  For Debug/Profile IPs,
+    //  they may have 4K or 8K register space.  The profiling library
+    //  will make sure that the offset will not be abused.
+    uint64_t mask = (space == XCL_ADDR_SPACE_DEVICE_PERFMON) ? 0x1FFF : 0xFFFF;
+
     vaddr  = mKernelControl[phy_addr & ~mask];
     offset = phy_addr & mask;
-    if (!vaddr && space == XCL_ADDR_SPACE_DEVICE_PERFMON) {
-      // Get base address again for Debug IPs.
-      // Since some Debug IP has 4KiB/8KiB register space.
-      // There is a risk that we only check 8KiB register space.
-      // The profiling library make sure that the offset will not be abused.
-      mask   = 0x1FFF;
-      vaddr  = mKernelControl[phy_addr & ~mask];
-      offset = phy_addr & mask;
-    }
+
     if (!vaddr)
         std::cout  << "Could not found the mapped address. Check if XCLBIN is loaded." << std::endl;
 
