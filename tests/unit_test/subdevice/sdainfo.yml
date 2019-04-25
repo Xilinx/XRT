@@ -16,6 +16,7 @@ board_copy: [cuselect.xclbin]
 copy: [main.cpp, addone.cl]
 devices:
 - [xilinx_.*]
+exclude_devices: [xilinx_u280-es1_xdma_201910_1, xilinx_u200_qdma_201910_1]
 flags: -g -Wall -std=c++14
 flows: [hw_all]
 krnls:
@@ -31,6 +32,6 @@ xclbins:
   - {krnl: addone, name: addone_2}
   - {krnl: addone, name: addone_3}
   - {krnl: addone, name: addone_4}
-  link_flags: --sp addone_1.a:bank0 --sp addone_1.b:bank1 --sp addone_2.a:bank1 --sp addone_2.b:bank2 --sp addone_3.a:bank2 --sp addone_3.b:bank3 --sp addone_4.a:bank3  --sp addone_4.b:bank0
+  link_flags: --sp addone_1.a:DDR[0] --sp addone_1.b:DDR[1] --sp addone_2.a:DDR[1] --sp addone_2.b:DDR[2] --sp addone_3.a:DDR[2] --sp addone_3.b:DDR[3] --sp addone_4.a:DDR[3]  --sp addone_4.b:DDR[0]
   name: addone
   region: OCL_REGION_0

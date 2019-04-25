@@ -2086,7 +2086,8 @@ done:
 
 static uint32_t convert_mem_type(const char *name)
 {
-	enum MEM_TYPE mem_type;
+	/* Use MEM_DDR3 as a invalid memory type. */
+	enum MEM_TYPE mem_type = MEM_DDR3;
 
 	if (!strncasecmp(name, "DDR", 3))
 		mem_type = MEM_DRAM;

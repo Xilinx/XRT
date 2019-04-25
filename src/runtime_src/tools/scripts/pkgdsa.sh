@@ -633,7 +633,7 @@ dodebdev()
 {
     uRel=`lsb_release -r -s`
     dir=debbuild/$dsa-$version-dev_${uRel}
-    pkg_dirname=debbuild/$dsa-${version}-dev-${revision}_${uRel}
+    pkg_dirname=debbuild/$dsa-dev-${version}-${revision}_${uRel}
     pkgdir=$opt_pkgdir/$pkg_dirname
 
     # Clean the directory
@@ -742,14 +742,14 @@ dorpmdev()
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_dsa-dev.spec
 
-%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}.%%{ARCH}.rpm
+%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
 
 buildroot:  %{_topdir}
 summary: Xilinx $dsa development DSA
 name: $dsa-dev
 version: $version
 release: $revision
-license: apache
+license: Xilinx EULA
 vendor: Xilinx Inc
 
 requires: $dsa >= $version
@@ -813,12 +813,14 @@ dorpm()
 
 cat <<EOF > $opt_pkgdir/$dir/SPECS/$opt_dsa.spec
 
+%define _rpmfilename %%{ARCH}/%%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm
+
 buildroot:  %{_topdir}
 summary: Xilinx $dsa deployment DSA
 name: $dsa
 version: $version
 release: $revision
-license: apache
+license: Apache
 vendor: Xilinx Inc
 autoreqprov: no
 requires: xrt >= $opt_xrt
@@ -834,6 +836,8 @@ echo "${post_inst_msg}"
 %install
 mkdir -p %{buildroot}/lib/firmware/xilinx
 cp $opt_pkgdir/dsabin/firmware/* %{buildroot}/lib/firmware/xilinx
+
+mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa
 
 if [ -d ${opt_dsadir}/test ] ; then
   mkdir -p %{buildroot}/opt/xilinx/dsa/$opt_dsa/test

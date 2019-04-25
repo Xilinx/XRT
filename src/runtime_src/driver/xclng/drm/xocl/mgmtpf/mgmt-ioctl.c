@@ -77,7 +77,7 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 	void *copy_buffer = NULL;
 	size_t copy_buffer_size = 0;
 	struct xclmgmt_ioc_bitstream_axlf ioc_obj = { 0 };
-	struct axlf xclbin_obj = { 0 };
+	struct axlf xclbin_obj = { {0} };
 	int ret = 0;
 
 	if (copy_from_user((void *)&ioc_obj, arg, sizeof(ioc_obj)))

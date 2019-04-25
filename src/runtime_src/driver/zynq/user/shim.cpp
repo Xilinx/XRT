@@ -516,7 +516,7 @@ int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfs
   // Until we have a programmatic way to determine what this directory
   //  is on Zynq platforms, this is hard-coded so we can test out 
   //  debug and profile features.
-  std::string path = "/sys/devices/platform/amba/a0000000.zyxclmm_drm/";
+  std::string path = "/sys/devices/platform/amba/amba:zyxclmm_drm/";
   path += entry ;
 
   if (path.length() >= size) return -1 ;

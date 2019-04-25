@@ -41,6 +41,7 @@ target_link_libraries(common_em
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
+  xrt_coreutil
   dl
   pthread
   crypt
