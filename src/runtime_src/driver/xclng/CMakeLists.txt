@@ -11,4 +11,5 @@ add_subdirectory(xrt)
 add_subdirectory(tools/xbutil)
 add_subdirectory(tools/xbmgmt)
 add_subdirectory(tools/awssak)
+add_subdirectory(include)
 
