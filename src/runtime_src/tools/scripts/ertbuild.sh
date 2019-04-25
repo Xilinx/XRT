@@ -26,7 +26,6 @@ usage()
     echo "Build Embedded platform (ert)"
     echo
     echo "-platform <NAME>         Embedded Platform name, e.g. zcu102ng"
-    echo "-dsa <PATH>                  Full path to the plafrom.dsa file" 
     echo "-vivado <PATH>             Full path to vivado executable"
     echo "-xsct <PATH>                 Full path to xsct executable"
     echo "-petalinux <PATH>         Full path to petalinux folder"
@@ -48,11 +47,6 @@ while [ $# -gt 0 ]; do
             PATH_TO_VIVADO=$1
             shift
       ;;
-#	-dsa)
-#	    shift
-#	    DSA=$1
-#	    shift
-#	    ;;
         -xsct)
             shift
             PATH_TO_XSCT=$1
@@ -102,11 +96,6 @@ if [ "foo${PLATFORM_NAME}" == "foo" ] ; then
   echo "Embedded platform name is missing"
   usage 1
 fi
-
-#if [ "foo${DSA}" == "foo" ] ; then
- # echo "full path to ${PLATFORM_NAME}.dsa is missing!"
- # usage 1
-#fi
 
 if [ "foo${XRT_REPO_DIR}" == "foo" ] ; then
   echo "full path to xrt repo path is missing"
@@ -169,14 +158,13 @@ echo "PETALINUX: $PETALINUX_LOCATION"
 
 echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 . $PETALINUX_LOCATION/settings.sh $PETALINUX_LOCATION
-echo "################################# 0 ##############################"
+
 # We want the PetaLinux project to go here:
 cd $ORIGINAL_DIR
 echo "ORIGINAL_DIR : ${ORIGINAL_DIR} $PLATFORM_NAME"
 # if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
 
 if [ ! -d $PLATFORM_NAME ]; then
-  echo "################################# 1 ##############################"
   echo " * Create PetaLinux Project: $PLATFORM_NAME"
   if [ -f $BSP_FILE ]; then
     echo "petalinux-create -t project -n $PLATFORM_NAME -s $BSP_FILE" 
@@ -237,7 +225,6 @@ echo " * Adding XRT Kernel Node to Device Tree"
 echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
 cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
-
 if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
   echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
   cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
@@ -288,13 +275,13 @@ echo " * Preparing Sysroot"
 mkdir -p $ORIGINAL_DIR/dsa_build/src/aarch64-xilinx-linux
 cd       $ORIGINAL_DIR/dsa_build/src/aarch64-xilinx-linux
 
-#NASSER this is not correct, talk to Min Ma
-#replace that tar with the 2 commands in step 4 from: http://confluence.xilinx.com/display/XIP/SDAccel+platform+porting+from+SDSoc+2019.1
-#remove x86* dir from generated sysroot
-#so 10GB will come down to 5 GB
-#cd $ORIGINAL_DIR/${PLATFORM_NAME}
-#petalinux-build --sdk
-#second command
+# if we need to create HW for tests, then
+# replace that tar with the 2 commands in step 4 from: http://confluence.xilinx.com/display/XIP/SDAccel+platform+porting+from+SDSoc+2019.1
+# cd $ORIGINAL_DIR/${PLATFORM_NAME}
+# petalinux-build --sdk
+# second command
+# to save 5GB remove x86* dir from generated sysroot
+
 tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
 
 cd ${ORIGINAL_DIR}/dsa_build
