@@ -21,38 +21,44 @@ set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-usage()
-{
+usage() {
     echo "Build Embedded platform (ert)"
     echo
-    echo "-platform <NAME>         Embedded Platform name, e.g. zcu102ng"
-    echo "-vivado <PATH>             Full path to vivado executable"
-    echo "-xsct <PATH>                 Full path to xsct executable"
-    echo "-petalinux <PATH>         Full path to petalinux folder"
-    echo "-xrt <PATH>                   XRT github repo path"
-    echo "-[gen-dsa <Yes/No]        Generate DSA or not, default=Yes"
+    echo "-platform <NAME>            Embedded Platform name, e.g. zcu102ng"
+    echo "-vivado <PATH>              Full path to vivado executable"
+    echo "-xsct <PATH>                Full path to xsct executable"
+    echo "-petalinux <PATH>           Full path to petalinux folder"
+    echo "-xrt <PATH>                 XRT github repo path"
+    echo "[-build-dsa <Yes/No>]       Build DSA or not, if not then copy a pre-build DSA from a relative path to vivado executable. Default=Yes"
+    echo "-[build-sysroot <Yes/No>]   Build SYSROOT or not, default=No"
     echo "-[bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
-    echo "[-help]                            List this help"
+    echo "[-help]                     List this help"
     exit $1
 }
 
-BSP_FILE="/not/nul/"
+BSP_FILE="/null/null/fasan"
 GEN_DSA="Yes"
+BUILD_SYSROOT="No"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
             usage 0
             ;;
-        -gen-dsa)
+        -build-dsa)
 	    shift
 	    GEN_DSA=$1
+	    shift
+	    ;;
+        -build-sysroot)
+	    shift
+	    BUILD_SYSROOT=$1
 	    shift
 	    ;;
         -vivado)
             shift
             PATH_TO_VIVADO=$1
             shift
-      ;;
+         ;;
         -xsct)
             shift
             PATH_TO_XSCT=$1
@@ -134,7 +140,7 @@ fi
 
 ORIGINAL_DIR=$PWD
 
-#BUILD_DSA=true
+
 if [ "${GEN_DSA}" == "Yes" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
@@ -167,6 +173,8 @@ echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 
 # We want the PetaLinux project to go here:
 cd $ORIGINAL_DIR
+mkdir -p ${PLATFORM_NAME}/build/conf/
+
 echo "ORIGINAL_DIR : ${ORIGINAL_DIR} $PLATFORM_NAME"
 # if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
 
@@ -179,10 +187,6 @@ if [ ! -d $PLATFORM_NAME ]; then
     echo "petalinux-create -t project -n $PLATFORM_NAME --template zynqMP"
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
-fi
-
-
-mkdir -p ${PLATFORM_NAME}/build/conf/
 
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
@@ -262,7 +266,7 @@ petalinux-config -c rootfs --oldconfig
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "petalinux-build"
 petalinux-build 
-
+fi
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
 mkdir -p ${ORIGINAL_DIR}/dsa_build/src/a53/xrt/image
@@ -288,7 +292,16 @@ cd       $ORIGINAL_DIR/dsa_build/src/aarch64-xilinx-linux
 # second command
 # to save 5GB remove x86* dir from generated sysroot
 
-tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
+if [ $BUILD_SYSROOT == "Yes" ]; then
+  echo " * Building SYSROOT"  
+  cd ${ORIGINAL_DIR}/${PLATFORM_NAME}
+  petalinux-build --sdk
+  petalinux-package --sysroot -d .
+  cd -
+else
+  echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
+  tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
+fi
 
 cd ${ORIGINAL_DIR}/dsa_build
 echo " * Building Platform (from: $PWD)"
