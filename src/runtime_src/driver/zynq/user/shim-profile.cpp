@@ -119,9 +119,9 @@ namespace ZYNQ {
         if (!ip_config[i]) continue;
         uint64_t baseAddress = getPerfMonBaseAddress(type,i);
         uint32_t regValue = 0;
-        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
         regValue = regValue | XSAM_DATAFLOW_EN_MASK;
-        xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
       }
     }
   }
