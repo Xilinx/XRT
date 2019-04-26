@@ -553,6 +553,15 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<void>
+  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    if (!m_ops->mConfigureDataflow)
+      return hal::operations_result<void>();
+    m_ops->mConfigureDataflow(m_handle,type, ip_config);
+    return hal::operations_result<void>(0);
+  }
+
   virtual hal::operations_result<size_t>
   startCounters(xclPerfMonType type)
   {

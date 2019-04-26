@@ -104,6 +104,27 @@ namespace ZYNQ {
     
     strncpy(slotName, str.c_str(), length);
   }
+
+  void ZYNQShimProfiling::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    // Update addresses for debug/profile IP
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return;
+
+    uint32_t numSlots = getProfilingNumberSlots(type);
+
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (uint32_t i=0; i < numSlots; i++) {
+        if (!ip_config[i]) continue;
+        uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+        uint32_t regValue = 0;
+        shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+        shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      }
+    }
+  }
   
   size_t ZYNQShimProfiling::xclPerfMonStartCounters(xclPerfMonType type)
   {
