@@ -1183,29 +1183,41 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
       if (simulator_started == true)
       {
-#ifndef _WINDOWS
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
         do
         {
-          bool accel=false;
-          xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
-#endif
-          for(unsigned int i = 0; i<samplessize ; i++)
-          {
-#ifndef _WINDOWS
-            // TODO: Windows build support
-            // r_msg is defined as part of *RPC_CALL definition
-            const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
-            eventObj.timestamp = event.timestamp();
-            eventObj.eventflags = event.eventflags();
-            eventObj.arlen = event.arlen();
-            eventObj.awlen = event.awlen();
-            eventObj.host_timestamp = event.host_timestamp();
-            eventObj.readBytes = event.rd_bytes();
-            eventObj.writeBytes = event.wr_bytes();
-            list_of_events[counter].push_back(eventObj);
-#endif
+          if (isAWSLegacy()) {
+            std::string slot = std::to_string(counter);
+            char const * slotname = slot.c_str();
+            xclPerfMonReadTrace_RPC_CALL_AWS(xclPerfMonReadTrace,ack,samplessize,slotname);
+            for(unsigned int i = 0; i<samplessize ; i++) {
+              const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+              eventObj.timestamp = event.timestamp();
+              eventObj.eventflags = event.eventflags();
+              eventObj.arlen = event.arlen();
+              eventObj.awlen = event.awlen();
+              eventObj.host_timestamp = event.host_timestamp();
+              eventObj.readBytes = event.rd_bytes();
+              eventObj.writeBytes = event.wr_bytes();
+              list_of_events[counter].push_back(eventObj);
+            }
+          } else {
+            bool accel=false;
+            xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+            for(unsigned int i = 0; i<samplessize ; i++) {
+              // TODO: Windows build support
+              // r_msg is defined as part of *RPC_CALL definition
+              const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+              eventObj.timestamp = event.timestamp();
+              eventObj.eventflags = event.eventflags();
+              eventObj.arlen = event.arlen();
+              eventObj.awlen = event.awlen();
+              eventObj.host_timestamp = event.host_timestamp();
+              eventObj.readBytes = event.rd_bytes();
+              eventObj.writeBytes = event.wr_bytes();
+              list_of_events[counter].push_back(eventObj);
+            }
           }
         } while (samplessize != 0);
       }
