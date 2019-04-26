@@ -188,6 +188,7 @@ namespace xclhwemhal2 {
     int init_scheduler_thread(void) ;
     int fini_scheduler_thread(void) ;
     int add_exec_buffer(exec_core *eCore , xclemulation::drm_xocl_bo *buf) ;
+    int convert_execbuf(exec_core *exec, xclemulation::drm_xocl_bo *xobj, xocl_cmd* xcmd);
 
     xocl_sched* mScheduler;
     MBScheduler(HwEmShim* _parent);

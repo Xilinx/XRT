@@ -773,6 +773,64 @@ namespace xclhwemhal2 {
     return cmd;
   } 
   
+  int MBScheduler::convert_execbuf(exec_core *exec, xclemulation::drm_xocl_bo *xobj, xocl_cmd* xcmd)
+  {
+    size_t src_off;
+    size_t dst_off;
+    size_t sz;
+    uint64_t src_addr = -1; //initializing to avoid ubuntu error
+    uint64_t dst_addr = -1; //initializing to avoid ubuntu error
+    struct ert_start_copybo_cmd *scmd = (struct ert_start_copybo_cmd *)xobj->buf;
+
+    /* CU style commands must specify CU type */
+    if (scmd->opcode == ERT_START_CU || scmd->opcode == ERT_EXEC_WRITE)
+      scmd->type = ERT_CU;
+
+    /* Only convert COPYBO cmd for now. */
+    if (scmd->opcode != ERT_START_COPYBO)
+      return 0;
+
+    sz = ert_copybo_size(scmd);
+
+    src_off = ert_copybo_src_offset(scmd);
+    xclemulation::drm_xocl_bo* sBo = mParent->xclGetBoByHandle(scmd->src_bo_hdl);
+
+    dst_off = ert_copybo_dst_offset(scmd);
+    xclemulation::drm_xocl_bo* dBo = mParent->xclGetBoByHandle(scmd->dst_bo_hdl);
+    
+    if(!sBo && !dBo)
+    {
+      return -EINVAL;
+    }
+    
+    if(sBo)
+      src_addr = sBo->base;
+    if(dBo)
+      dst_addr = dBo->base;
+
+    if (( !sBo || !dBo || mParent->isImported(scmd->src_bo_hdl) || mParent->isImported(scmd->dst_bo_hdl)) )
+    {
+      int ret =  mParent->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
+      scmd->type = ERT_KDS_LOCAL;
+      return ret;
+    }
+
+    /* Both BOs are local, copy via KDMA CU */
+    if (exec->num_cdma == 0)
+      return -EINVAL;
+
+    ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+
+    for (unsigned int i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
+      scmd->cu_mask[i / 32] |= 1 << (i % 32);
+
+    scmd->opcode = ERT_START_CU;
+    scmd->type = ERT_CU;
+
+    return 0;
+
+  }
+
   int MBScheduler::add_cmd(exec_core *exec, xclemulation::drm_xocl_bo* bo)
   {
     std::lock_guard<std::mutex> lk(pending_cmds_mutex);
@@ -782,6 +840,7 @@ namespace xclhwemhal2 {
     xcmd->exec=exec;
     xcmd->cu_idx=-1;
     xcmd->slot_idx=-1;
+    int ret = convert_execbuf(exec, bo , xcmd);
 #ifdef EM_DEBUG_KDS
     std::cout<<"adding a command CMD: " <<xcmd<<" PACKET: "<<xcmd->packet<< " BO: "<< xcmd->bo <<" BASE: "<<xcmd->bo->base<< std::endl;
 #endif
@@ -790,7 +849,7 @@ namespace xclhwemhal2 {
     pending_cmds.push_back(xcmd);
     num_pending++;
     scheduler_wait_condition();
-    return 0;
+    return ret;
   }
 
   
