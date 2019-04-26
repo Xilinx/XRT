@@ -1866,6 +1866,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
       std::cout<<"ERROR HERE in importBO "<<std::endl;
       return -1;
     }
+    mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
     bool ack;
     xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
@@ -2101,9 +2102,9 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
     PRINTENDFUNC;
     return -1;
   }
-  mMBSch->add_exec_buffer(mCore, bo);
+  int ret = mMBSch->add_exec_buffer(mCore, bo);
   PRINTENDFUNC;
-  return 0;
+  return ret;
 }
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
