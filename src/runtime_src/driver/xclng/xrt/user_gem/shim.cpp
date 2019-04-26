@@ -1524,22 +1524,6 @@ int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 }
 
 /*
- * xclSetThresholdValues()
- */
-int xocl::XOCLShim::xclSetThresholdValues(uint16_t power, uint16_t temperature)
-{
-    int ret;
-    drm_xocl_threshold_info threshold;
-
-    std::memset(&threshold, 0, sizeof(drm_xocl_threshold_info));
-    threshold.power = power;
-    threshold.temperature = temperature;
-
-    ret = ioctl( mMgtHandle, XCLMGMT_IOCSETTHRESHOLD, &threshold);
-    return ret ? -errno : ret;
-}
-
-/*
  * xclBootFPGA()
  */
 int xocl::XOCLShim::xclBootFPGA()
@@ -2087,19 +2071,6 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
     xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
-}
-
-int xclSetThresholdValues(xclDeviceHandle handle, uint16_t power, uint16_t temperature)
-{
-    int retVal = -1;
-
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
-    if( !drv )
-        return -ENODEV;
-
-    retVal = drv->xclSetThresholdValues(power, temperature);
-
-    return retVal;
 }
 
 /*

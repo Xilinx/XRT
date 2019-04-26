@@ -117,8 +117,6 @@ struct xclmgmt_dev {
 
 extern int health_check;
 
-int ocl_set_threshold_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
-
 int ocl_freqscaling_ioctl(struct xclmgmt_dev *lro, const void __user *arg);
 void platform_axilite_flush(struct xclmgmt_dev *lro);
 u16 get_dsa_version(struct xclmgmt_dev *lro);

@@ -447,11 +447,6 @@ struct drm_xocl_execbuf {
         uint32_t deps[8];
 };
 
-struct drm_xocl_threshold_info {
-        uint16_t power;
-        uint16_t temperature;
-};
-
 /**
  * struct drm_xocl_user_intr - Register user's eventfd for MSIX interrupt
  * used with DRM_IOCTL_XOCL_USER_INTR ioctl

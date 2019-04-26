@@ -93,11 +93,6 @@ XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
  */
 XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
 
-/**
- * xclSetThresholdValues - configures the threshold values for board power and temperature in xmc.
- */
-XCL_DRIVER_DLLESPEC int xclSetThresholdValues(xclDeviceHandle handle, uint16_t power, uint16_t temperature);
-
 #ifdef __cplusplus
 }
 #endif

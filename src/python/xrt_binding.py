@@ -1224,16 +1224,3 @@ def xclOpenMgmt(deviceIndex):
     libc.xclOpenMgmt.restype = xclDeviceHandle
     libc.xclOpenMgmt.argtype = ctypes.c_uint
     return libc.xclOpenMgmt(deviceIndex)
-
-def xclSetThresholdValues(handle, power, temperature):
-    """
-    Configure board power and tempearature with args
-
-    :param handle: (xclDeviceHandle) device handle
-    :param power: (uint16) target pwoer
-    :param temperature: (uint16) target temperature
-    :return:
-    """
-    libc.xclSetThresholdValues.restype = ctypes.c_int
-    libc.xclSetThresholdValues.argtypes = [xclDeviceHandle, ctypes.c_uint16, ctypes.c_uint16]
-    return libc.xclSetThresholdValues(handle, power, temperature)
