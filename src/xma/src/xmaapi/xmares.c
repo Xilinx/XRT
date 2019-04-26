@@ -584,7 +584,7 @@ eexist:
     /* Check to see that read bit has been asserted by process in control of shm
      * indicating that the mutex and other header info of the shm db is ready */
     ret = access(shm_filename, R_OK | W_OK);
-    for (max_retry = 50; ret < 0 && max_retry > 0; max_retry--)
+    for (max_retry = 500; ret < 0 && max_retry > 0; max_retry--)
     {
         ret = access(shm_filename, R_OK);
         usleep(100);
