@@ -778,8 +778,8 @@ namespace xclhwemhal2 {
     size_t src_off;
     size_t dst_off;
     size_t sz;
-    uint64_t src_addr;
-    uint64_t dst_addr;
+    uint64_t src_addr = -1; //initializing to avoid ubuntu error
+    uint64_t dst_addr = -1; //initializing to avoid ubuntu error
     struct ert_start_copybo_cmd *scmd = (struct ert_start_copybo_cmd *)xobj->buf;
 
     /* CU style commands must specify CU type */
