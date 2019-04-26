@@ -296,7 +296,7 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
  * @xcmd: command to change internal state on
  * @state: new command state per ert.h
  */
-inline void
+static inline void
 set_cmd_int_state(struct sched_cmd *cmd, enum cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
@@ -543,7 +543,7 @@ configure(struct sched_cmd *cmd)
 		 * Need cleanup.
 		 */
 		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
-			DRM_ERROR("CU address %x is not found in XLBCIN\n",
+			DRM_ERROR("CU address %x is not found in XCLBIN\n",
 				  cfg->data[i]);
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
@@ -746,13 +746,67 @@ unconfigure_soft_kernel(struct sched_cmd *cmd)
  * @cmd: command object
  * @state: new state
  */
-inline void
+static inline void
 set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_state(,%d)\n", state);
 	cmd->state = state;
 	cmd->packet->state = state;
 	SCHED_DEBUG("<- set_cmd_state\n");
+}
+
+/**
+ * set_cmd_ext_cu_idx() - Set external cu_idx of a command
+ *
+ * The cu_idx is reflected externally through the command packet
+ *
+ * @cmd: command object
+ * @cu_idx: CU idex
+ */
+static inline void
+set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
+{
+	int mask_idx = cu_mask_idx(cu_idx);
+	int mask_cu_idx = cu_idx_in_mask(cu_idx);
+
+	cmd->packet->data[mask_idx] &= 1 << mask_cu_idx;
+}
+
+/**
+ * set_cmd_ext_timestamp() - Set timestamp in the command packet
+ *
+ * The timestamp is reflected externally through the command packet
+ * TODO: Should have scheduler profiling solution in the future.
+ *
+ * @cmd: command object
+ * @ts: timestamp type
+ */
+static inline void
+set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
+{
+	u32 opc = opcode(cmd);
+	struct timeval tv;
+	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
+
+	/* Simply skip if it is not start CU command */
+	if (opc != OP_START_CU)
+		return;
+	/* Use the first 4 32bits in the regmap to record CU start/end time.
+	 * To let user application know the CU start/end time.
+	 * The first  32 bits - CU start seconds
+	 * The second 32 bits - CU start microseconds
+	 * The third  32 bits - CU done  seconds
+	 * The fourth 32 bits - CU done  microseconds
+	 * Use 32 bits timestamp is good enough for this purpose for now.
+	 */
+	do_gettimeofday(&tv);
+	if (ts == CU_START_TIME) {
+		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+	} else if (ts == CU_DONE_TIME) {
+		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_usec;
+	}
 }
 
 /**
@@ -808,40 +862,21 @@ release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 }
 
 /**
- * get_cu_idx() - Get index of CU executing command at idx
+ * cu_done() - Check status of CU which execute cmd
  *
- * This function is called in polling mode only and
- * the command at cmd_idx is guaranteed to have been
- * started on a CU
+ * @cmd: submmited command
  *
- * Return: Index of CU, or -1 on error
- */
-inline unsigned int
-get_cu_idx(struct drm_device *dev, unsigned int cmd_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct sched_cmd *cmd = zdev->exec->submitted_cmds[cmd_idx];
-
-	if (sched_error_on(zdev->exec, !cmd))
-		return -1;
-	return cmd->cu_idx;
-}
-
-/**
- * cu_done() - Check status of CU
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
+ * This function is called to check if the CU which execute cmd is done.
+ * The cmd should be guaranteed to have been submitted.
  *
  * Return: %true if cu done, %false otherwise
  */
 inline int
-cu_done(struct drm_device *dev, unsigned int cu_idx)
+cu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	u32 status;
 
 	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
@@ -855,6 +890,7 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
+		set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
 		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
 		SCHED_DEBUG("<- cu_done returns 1\n");
 		return true;
@@ -864,9 +900,10 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 }
 
 inline int
-scu_done(struct drm_device *dev, unsigned int cu_idx)
+scu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
 	struct soft_kernel *sk = zdev->soft_kernel;
 	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 
@@ -946,38 +983,6 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	mutex_unlock(&sk->sk_lock);
 
 	return true;
-}
-
-/**
- * ert_cu_done() - Check status of CU in ERT way
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
- *
- * Return: %true if cu done, %false otherwise
- */
-inline int
-ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
-	u32 status;
-
-	SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n",
-		    cu_idx, virt_addr);
-	status = ioread32(virt_addr);
-	if (status & 2) {
-		unsigned int mask_idx = cu_mask_idx(cu_idx);
-		unsigned int pos = cu_idx_in_mask(cu_idx);
-
-		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
-		SCHED_DEBUG("<- ert_cu_done returns 1\n");
-		return true;
-	}
-	SCHED_DEBUG("<- ert_cu_done returns 0\n");
-	return false;
 }
 
 /**
@@ -1334,6 +1339,11 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	 */
 	for (i = 4; i < size; ++i)
 		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
+
+	/* Let user know which CU execute this command */
+	set_cmd_ext_cu_idx(cmd, cu_idx);
+
+	set_cmd_ext_timestamp(cmd, CU_START_TIME);
 
 	/* start CU at base + 0x0 */
 	iowrite32(0x1, virt_addr);
@@ -1692,7 +1702,7 @@ penguin_query(struct sched_cmd *cmd)
 	switch (opc) {
 
 	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (!cu_done(cmd))
 			break;
 
 	case OP_CONFIGURE:
@@ -1786,12 +1796,12 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	case OP_START_SKERNEL:
-		if (scu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (scu_done(cmd))
 			mark_cmd_complete(cmd);
 		break;
 
 	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+		if (!cu_done(cmd))
 			break;
 		/* pass through */
 

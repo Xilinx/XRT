@@ -33,6 +33,14 @@
 #define U32_MASK 0xFFFFFFFF
 
 /**
+ * Timestamp only use in set_cmd_ext_timestamp()
+ */
+enum zocl_ts_type {
+	CU_START_TIME,
+	CU_DONE_TIME,
+};
+
+/**
  * Address constants per spec
  */
 #define WORD_SIZE                     4          /* 4 bytes */
