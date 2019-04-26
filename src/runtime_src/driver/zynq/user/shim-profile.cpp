@@ -493,8 +493,11 @@ namespace ZYNQ {
     // Limit to max number of samples so we don't overrun trace buffer on host
     uint32_t maxSamples = getPerfMonNumberSamples(type);
     numSamples = (numSamples > maxSamples) ? maxSamples : numSamples;
-    traceVector.mLength = numSamples;
 
+    // On Zynq, we are currently storing 2 samples per packet in the FIFO
+    numSamples = numSamples/2 ;
+    traceVector.mLength = numSamples;
+    
     // Read all of the contents of the trace FIFO into local memory
     uint64_t fifoContents[numSamples] ;
 
