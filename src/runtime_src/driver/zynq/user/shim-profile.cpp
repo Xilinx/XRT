@@ -112,7 +112,7 @@ namespace ZYNQ {
     if (!mIsDeviceProfiling)
       return;
 
-    uint32_t numSlots = getPerfMonNumberSlots(type);
+    uint32_t numSlots = getProfilingNumberSlots(type);
 
     if (type == XCL_PERF_MON_ACCEL) {
       for (uint32_t i=0; i < numSlots; i++) {
