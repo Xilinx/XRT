@@ -19,6 +19,20 @@
 
 namespace xrtcpp {
 
+void
+acquire_cu_context(xrt_device* device, value_type cuidx)
+{
+  auto xdevice = static_cast<xrt::device*>(device);
+  xdevice->acquire_cu_context(cuidx,true);
+}
+
+void
+release_cu_context(xrt_device* device, value_type cuidx)
+{
+  auto xdevice = static_cast<xrt::device*>(device);
+  xdevice->release_cu_context(cuidx);
+}
+
 namespace exec {
 
 struct command::impl : xrt::command
@@ -75,9 +89,6 @@ add_cu(value_type cuidx)
     throw std::runtime_error("write_command supports at most 32 CUs");
   auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
   skcmd->cu_mask |= 1<<cuidx;
-
-  auto xdevice = m_impl->get_device();
-  xdevice->acquire_cu_context(cuidx,true);
 }
 
 void

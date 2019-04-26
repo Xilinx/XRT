@@ -82,19 +82,23 @@ throw_if_error(cl_int errcode, const std::string& msg)
 static int
 run_kernel(xrt_device* xdev, uint32_t cuidx, uint64_t bo_dev_addr)
 {
-  auto cmd = xrtcpp::exec::exec_write_command(xdev);
-  cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,bo_dev_addr); // low
-  cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
-  cmd.add_cu(cuidx);
-  cmd.execute();
-  cmd.wait();
+  xrtcpp::acquire_cu_context(xdev,cuidx);
+  for (int i=0; i<2; ++i) {
+    auto cmd = xrtcpp::exec::exec_write_command(xdev);
+    cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,bo_dev_addr); // low
+    cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
+    cmd.add_cu(cuidx);
+    cmd.execute();
+    cmd.wait();
 
 
-  // execute same command again demo completed() API busy wait
-  int count = 0;
-  cmd.execute();
-  while (!cmd.completed()) ++count;
-  std::cout << "wait count: " << count << "\n";
+    // execute same command again demo completed() API busy wait
+    int count = 0;
+    cmd.execute();
+    while (!cmd.completed()) ++count;
+    std::cout << "wait count: " << count << "\n";
+  }
+  xrtcpp::release_cu_context(xdev,cuidx);
   return 0;
 }
 
