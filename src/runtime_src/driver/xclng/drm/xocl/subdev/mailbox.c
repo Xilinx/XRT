@@ -129,6 +129,7 @@
 #include <linux/io.h>
 #include <linux/ioctl.h>
 #include "../xocl_drv.h"
+#include "mailbox_proto.h"
 
 int mailbox_no_intr;
 dev_t mailbox_dev;
@@ -278,17 +279,6 @@ struct mailbox_channel {
 	uint64_t		sw_chan_msg_flags;
 
 	atomic_t		trigger;
-};
-
-/*
- * struct drm_xocl_sw_mailbox *args
- */
-struct sw_chan {
-	size_t sz;
-	uint64_t flags;
-	bool is_tx;
-	uint64_t id;
-	uint32_t *data;
 };
 
 /*

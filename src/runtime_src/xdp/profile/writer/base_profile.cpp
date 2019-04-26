@@ -137,8 +137,8 @@ namespace xdp {
       profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_XDMA);
       writeTableFooter(getStream());
 
-      // Table 9 : Data Transfer: Device to Device
-      writeTableHeader(getStream(), "Data Transfer: Device to Device",
+      // Table 9 : Data Transfer: Peer to Peer
+      writeTableHeader(getStream(), "Data Transfer: Peer to Peer",
           DataTransferSummaryColumnLabels2);
       profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_P2P);
       writeTableFooter(getStream());
@@ -585,6 +585,13 @@ namespace xdp {
     XDPPluginI::getGuidanceName(XDPPluginI::P2P_DEVICE, checkName5d);
     int isP2P = (mPluginHandle->isP2PDevice()) ? 1 : 0;
     writeTableCells(getStream(), checkName5d, "all", isP2P);
+    writeTableRowEnd(getStream());
+
+    // 5e. Host transfers from P2P buffers
+    std::string checkName5e;
+    XDPPluginI::getGuidanceName(XDPPluginI::P2P_HOST_TRANSFERS, checkName5e);
+    int hostP2PTransfers = profile->getHostP2PTransfers();
+    writeTableCells(getStream(), checkName5e, "host", hostP2PTransfers);
     writeTableRowEnd(getStream());
 
     // 6. Port data widths

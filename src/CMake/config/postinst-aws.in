@@ -8,27 +8,20 @@ if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
     dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
     find /lib/modules -type f -name awsmgmt.ko -delete
     find /lib/modules -type f -name awsmgmt.ko.kz -delete
+    find /lib/modules -type f -name awsmgmt.ko.xz -delete
     depmod -A
 fi
 
-if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
-    echo "Registering new XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
-    dkms add -m xrt-aws -v "@XRT_VERSION_STRING@"
-fi
-
-if [ -e /lib/modules/`uname -r`/build/include ]; then
-    echo "Building XRT Linux kernel modules sources with dkms"
-    dkms build -m xrt-aws -v "@XRT_VERSION_STRING@"
-    echo "Installing XRT Linux kernel modules sources with dkms"
-    dkms install -m xrt-aws -v "@XRT_VERSION_STRING@" --force
+echo "Invoking xrt-aws common.postinst"
+/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
+if [ $? -eq 0 ]; then
+    echo "Finished xrt-aws common.postinst"
     install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/kernel/mgmt/10-awsmgmt.rules /etc/udev/rules.d
 
-    echo "Loading new XRT Linux kernel modules"
+    echo "Loading new XRT AWS Linux kernel modules"
     udevadm control --reload-rules
     modprobe awsmgmt
     udevadm trigger
-else
-    echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi
 
 exit 0

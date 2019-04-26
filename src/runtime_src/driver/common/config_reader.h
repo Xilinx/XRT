@@ -187,7 +187,7 @@ get_hal_logging()
 inline bool
 get_multiprocess()
 {
-  static bool value = detail::get_bool_value("Runtime.multiprocess",false);
+  static bool value = detail::get_bool_value("Runtime.multiprocess",true);
   return value;
 }
 

@@ -16,22 +16,16 @@ if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     depmod -A
 fi
 
-if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
-    echo "Registering new XRT Linux kernel module sources @XRT_VERSION_STRING@ with dkms"
-    dkms add -m xrt -v "@XRT_VERSION_STRING@"
-fi
-
 DRACUT_CONF_PATH=/etc/dracut.conf.d
 if [ -e $DRACUT_CONF_PATH ]; then
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
 fi
 
-if [ -e /lib/modules/`uname -r`/build/include ]; then
-    echo "Building XRT Linux kernel modules sources with dkms"
-    dkms build -m xrt -v "@XRT_VERSION_STRING@"
-    echo "Installing XRT Linux kernel modules sources with dkms"
-    dkms install -m xrt -v "@XRT_VERSION_STRING@" --force
+echo "Invoking DKMS common.postinst for xrt"
+/usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
+if [ $? -eq 0 ]; then
+    echo "Finished DKMS common.postinst"
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
@@ -40,8 +34,6 @@ if [ -e /lib/modules/`uname -r`/build/include ]; then
     modprobe xclmgmt
     modprobe xocl
     udevadm trigger
-else
-    echo "Build/Install of XRT Linux kernel modules skipped since Linux kernel headers are not installed"
 fi
 
 exit 0

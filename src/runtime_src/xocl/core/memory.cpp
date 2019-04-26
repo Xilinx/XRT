@@ -207,7 +207,6 @@ get_buffer_object_or_null(const device* device) const
     : (*itr).second;
 }
 
-
 memory::buffer_object_handle
 memory::
 try_get_buffer_object_or_error(const device* device) const
