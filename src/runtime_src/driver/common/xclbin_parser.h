@@ -18,6 +18,7 @@
 #define xclbin_parser_h_
 
 #include "driver/include/xclbin.h"
+#include <string>
 #include <vector>
 
 namespace xrt_core { namespace xclbin {
