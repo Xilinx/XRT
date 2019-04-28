@@ -192,7 +192,7 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
-	xocl_err(&pdev->dev, "reading from peer");
+	xocl_info(&pdev->dev, "reading from peer");
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return;
