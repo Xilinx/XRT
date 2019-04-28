@@ -171,7 +171,7 @@ get_buffer_object(device* device)
     for (auto& karg : m_karg) {
       auto kernel = karg.first;
       auto argidx = karg.second;
-      if (!kernel->validate_cus(argidx,m_memidx))
+      if (!kernel->validate_cus(device,argidx,m_memidx))
         throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
                           "Buffer connected to memory '"
                           + std::to_string(m_memidx)

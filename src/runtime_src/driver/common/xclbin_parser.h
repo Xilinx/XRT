@@ -18,9 +18,16 @@
 #define xclbin_parser_h_
 
 #include "driver/include/xclbin.h"
+#include <string>
 #include <vector>
 
 namespace xrt_core { namespace xclbin {
+
+/**
+ * memidx_to_name() - Convert mem topology memory index to name
+ */
+std::string
+memidx_to_name(const axlf* top, int32_t midx);
 
 /**
  * get_cus() - Get sorted list of CU base addresses in xclbin.
@@ -30,7 +37,7 @@ namespace xrt_core { namespace xclbin {
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode=false);
 
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top);
 
 uint64_t
@@ -51,13 +58,13 @@ get_dataflow(const axlf* top);
 /**
  * get_cus_pair() - Get list CUs physical address & size pair
  */
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_cus_pair(const axlf* top);
 
 /**
  * get_dbg_ips_pair() - Get list of Debug IPs physical address & size pair
  */
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_dbg_ips_pair(const axlf* top);
 
 } // xclbin
