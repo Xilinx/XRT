@@ -27,10 +27,25 @@ struct xrt_device;
 
 namespace xrtcpp {
 
-namespace exec {
-
 using value_type = uint32_t;
 using addr_type = uint32_t;
+
+/**
+ * Open a context that allows the current process to use @cuidx
+ *
+ * A context on a CU can only be opened once for a given process
+ * and should be released when process is done with the CU
+ */
+void
+acquire_cu_context(xrt_device* device, value_type cuidx);
+
+/**
+ * Release a context previously acquired
+ */
+void
+release_cu_context(xrt_device* device, value_type cuidx);
+
+namespace exec {
 
 /**
  * class command : abstraction for commands executed by XRT

@@ -147,6 +147,7 @@ using addr_type = uint64_t;
       double xclGetReadMaxBandwidthMBps();
       double xclGetWriteMaxBandwidthMBps();
       size_t xclPerfMonClockTraining();
+      void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
       size_t xclPerfMonStartCounters();
       size_t xclPerfMonStopCounters();
       size_t xclPerfMonReadCounters( xclPerfMonType type, xclCounterResults& counterResults);

@@ -402,6 +402,14 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   return drv->xclPerfMonClockTraining();
 }
 
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
+
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);

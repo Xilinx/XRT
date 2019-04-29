@@ -104,6 +104,27 @@ namespace ZYNQ {
     
     strncpy(slotName, str.c_str(), length);
   }
+
+  void ZYNQShimProfiling::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    // Update addresses for debug/profile IP
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return;
+
+    uint32_t numSlots = getProfilingNumberSlots(type);
+
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (uint32_t i=0; i < numSlots; i++) {
+        if (!ip_config[i]) continue;
+        uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+        uint32_t regValue = 0;
+        shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+        shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+      }
+    }
+  }
   
   size_t ZYNQShimProfiling::xclPerfMonStartCounters(xclPerfMonType type)
   {
@@ -493,8 +514,11 @@ namespace ZYNQ {
     // Limit to max number of samples so we don't overrun trace buffer on host
     uint32_t maxSamples = getPerfMonNumberSamples(type);
     numSamples = (numSamples > maxSamples) ? maxSamples : numSamples;
-    traceVector.mLength = numSamples;
 
+    // On Zynq, we are currently storing 2 samples per packet in the FIFO
+    numSamples = numSamples/2 ;
+    traceVector.mLength = numSamples;
+    
     // Read all of the contents of the trace FIFO into local memory
     uint64_t fifoContents[numSamples] ;
 
