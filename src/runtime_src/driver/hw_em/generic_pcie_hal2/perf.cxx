@@ -93,6 +93,12 @@ namespace xclhwemhal2 {
     return 0;
   }
 
+  // Implement this when hw em models support dataflow
+  void HwEmShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    return;
+  }
+
   size_t HwEmShim::xclPerfMonStartCounters()
   {
     //TODO::Still to decide whether to start Performance Monitor or not

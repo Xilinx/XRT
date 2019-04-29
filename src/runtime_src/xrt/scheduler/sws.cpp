@@ -806,7 +806,7 @@ scheduler_loop()
 
 namespace xrt { namespace sws {
 
-void
+int
 schedule(const cmd_ptr& cmd)
 {
   auto device = cmd->get_device();
@@ -819,6 +819,7 @@ schedule(const cmd_ptr& cmd)
   s_pending_cmds.push_back(xcmd);
   ++s_num_pending;
   scheduler->notify();
+  return 0;
 }
 
 void

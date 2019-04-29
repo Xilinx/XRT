@@ -100,7 +100,7 @@ check(const command_type& cmd)
   return true;
 }
 
-static void
+static int
 launch(command_type cmd)
 {
   XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
@@ -118,7 +118,7 @@ launch(command_type cmd)
 
   // Submit the command
   auto exec_bo = cmd->get_exec_bo();
-  device->exec_buf(exec_bo);
+  return device->exec_buf(exec_bo);
 }
 
 static void
@@ -189,10 +189,10 @@ monitor(const xrt::device* device)
 
 namespace xrt { namespace kds {
 
-void
+int
 schedule(const command_type& cmd)
 {
-  launch(cmd);
+  return launch(cmd);
 }
 
 void

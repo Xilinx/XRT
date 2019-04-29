@@ -147,6 +147,7 @@ using addr_type = uint64_t;
       double xclGetReadMaxBandwidthMBps();
       double xclGetWriteMaxBandwidthMBps();
       size_t xclPerfMonClockTraining();
+      void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
       size_t xclPerfMonStartCounters();
       size_t xclPerfMonStopCounters();
       size_t xclPerfMonReadCounters( xclPerfMonType type, xclCounterResults& counterResults);
@@ -214,7 +215,13 @@ using addr_type = uint64_t;
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-
+      bool isImported(unsigned int _bo) 
+      {
+        if (mImportedBOs.find(_bo) != mImportedBOs.end())
+          return true;
+        return false;
+      }
+        
 
     private:
       //hw_em_profile* _profile_inst;
@@ -297,6 +304,7 @@ using addr_type = uint64_t;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
+      std::set<unsigned int > mImportedBOs;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

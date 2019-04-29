@@ -1033,9 +1033,17 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     }
 
     Section *pSection = findSection(eKind);
+
     if (pSection == nullptr) {
-      std::string errMsg = XUtil::format("ERROR: Section '%s' doesn't exists.  Must have an existing section in order to append.", pSection->getSectionKindAsString().c_str());
-      throw std::runtime_error(errMsg);
+      Section *pTempSection = Section::createSectionObjectOfKind(eKind);
+
+      // Add DTC exception. Only for 2019.1
+      if (eKind == DTC) {
+        pSection = pTempSection;
+      } else {
+        std::string errMsg = XUtil::format("ERROR: Section '%s' doesn't exists for JSON key '%s'.  Must have an existing section in order to append.", pTempSection->getSectionKindAsString().c_str(), sectionName.c_str());
+        throw std::runtime_error(errMsg);
+      }
     }
 
     boost::property_tree::ptree ptPayload;

@@ -62,6 +62,7 @@ create_exec_bo(xclDeviceHandle handle, size_t sz)
   auto delBO = [](buffer_object* bo) {
     munmap(bo->data,bo->size);
     xclFreeBO(bo->dev,bo->bo);
+    delete bo;
   };
 
   auto ubo = std::make_unique<buffer_object>();

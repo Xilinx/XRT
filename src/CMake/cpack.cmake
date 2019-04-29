@@ -21,6 +21,14 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+include (CMake/glibc.cmake)
+
+# Trick to get the Boost Version string and one version greater
+SET(Boost_MINOR_VERSION_ONEGREATER "${Boost_MINOR_VERSION}")
+MATH(EXPR Boost_MINOR_VERSION_ONEGREATER "1 + ${Boost_MINOR_VERSION}")
+SET(Boost_VER_STR "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}")
+SET(Boost_VER_STR_ONEGREATER "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION_ONEGREATER}")
+
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   SET(CPACK_GENERATOR "DEB;TGZ")
@@ -35,7 +43,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   # aws component dependencies
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
   # xrt component dependencies
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>=1.58), libboost-filesystem-dev (>=1.58), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6)")
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER})")
 
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_GENERATOR "RPM;TGZ")

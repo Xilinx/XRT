@@ -602,13 +602,15 @@ public:
    * Internal validated list of CUs is updated / trimmed to those that
    * support argument at @argidx connected to memory bank at @memidx
    *
+   * @param dev
+   *  Targeted device for connectivity check
    * @param argidx
    *  The argument index to validate
    * @param memidx
    *  The memory index that must be used by argument
    */
   size_t
-  validate_cus(unsigned long argidx, int memidx) const;
+  validate_cus(const device* dev, unsigned long argidx, int memidx) const;
 
   /**
    * Error message for exceptions when connectivity checks fail

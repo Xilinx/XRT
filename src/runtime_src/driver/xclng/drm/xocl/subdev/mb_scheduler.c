@@ -3071,6 +3071,9 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	}
 
 	/* Both BOs are local, copy via KDMA CU */
+	if (exec->num_cdma == 0)
+		return -EINVAL;
+
 	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
 
 	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)

@@ -128,7 +128,7 @@ public:
   bool
   is_p2p_memory() const
   {
-    return (m_ext_flags >> 30) & 0x1 ? true : false;
+    return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
   }
 
   // Derived classes accessors

@@ -62,12 +62,15 @@ SectionDTC::marshalToJSON(char* _pDataSection,
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: DTC Image");
 
+  boost::property_tree::ptree dtcTree;
+
   // Parse the DTC buffer
-  class DTC dtc(_pDataSection, _sectionSize);
+  if (_pDataSection != nullptr) {
+      class DTC dtc(_pDataSection, _sectionSize);
+      dtc.marshalToJSON(dtcTree);
+  }
 
   // Create the JSON file
-  boost::property_tree::ptree dtcTree;
-  dtc.marshalToJSON(dtcTree);
   _ptree.add_child("ip_shell_definitions", dtcTree);
   XUtil::TRACE_PrintTree("Ptree", _ptree);
 }
@@ -87,5 +90,22 @@ SectionDTC::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   // Dump debug data
   std::string sBuf = _buf.str();
   XUtil::TRACE_BUF("DTC Buffer", sBuf.c_str(), sBuf.size());
+}
+
+
+
+void 
+SectionDTC::appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData,
+                                         boost::property_tree::ptree& _ptToAppendTo)
+{
+  XUtil::TRACE_PrintTree("To Append To", _ptToAppendTo);
+  XUtil::TRACE_PrintTree("Append data", _ptAppendData);
+
+  boost::property_tree::ptree &ipShellTree = _ptToAppendTo.get_child("ip_shell_definitions");
+  for (auto childTree : _ptAppendData) {
+    ipShellTree.add_child(childTree.first, childTree.second);
+  }
+
+  XUtil::TRACE_PrintTree("To Append To Done", _ptToAppendTo);
 }
 

@@ -55,6 +55,7 @@
 #include <time.h>
 #include <string.h>
 #include <chrono>
+#include <iostream>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -472,6 +473,32 @@ namespace xocl {
     }
 
     return size;
+  }
+
+  void XOCLShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+          << type << ", Configure Monitors For Dataflow..." << std::endl;
+    }
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return;
+
+    uint32_t numSlots = getPerfMonNumberSlots(type);
+
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (uint32_t i=0; i < numSlots; i++) {
+        if (!ip_config[i]) continue;
+        uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+        uint32_t regValue = 0;
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+        xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        if (mLogStream.is_open()) {
+          mLogStream << "Dataflow enabled on slot : " << i << std::endl;
+        }
+      }
+    }
   }
 
   // Stop both profile and trace performance monitoring
@@ -1111,6 +1138,14 @@ namespace xocl {
   }
 
 } // namespace xocl_gem
+
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {

@@ -61,6 +61,19 @@ get_base_addr(const ip_data& ip)
 
 namespace xrt_core { namespace xclbin {
 
+std::string
+memidx_to_name(const axlf* top,  int32_t midx)
+{
+  auto mem_topology = get_axlf_section<const ::mem_topology>(top,axlf_section_kind::MEM_TOPOLOGY);
+  if (!mem_topology)
+    return std::to_string(midx);
+  if (midx >= mem_topology->m_count)
+    return std::to_string(midx);
+
+  auto& md = mem_topology->m_mem_data[midx];
+  return std::string(reinterpret_cast<const char*>(md.m_tag));
+}
+
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encoding)
 {
@@ -83,10 +96,10 @@ get_cus(const axlf* top, bool encoding)
   return cus;
 }
 
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top)
 {
-  std::vector<std::pair<uint64_t, size_t> > ips;
+  std::vector<std::pair<uint64_t, size_t>> ips;
   auto debug_ip_layout = get_axlf_section<const ::debug_ip_layout>(top,
                          axlf_section_kind::DEBUG_IP_LAYOUT);
   if (!debug_ip_layout)
@@ -158,11 +171,11 @@ get_dataflow(const axlf* top)
   return false;
 }
 
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_cus_pair(const axlf* top)
 {
   std::vector<uint64_t> cus;
-  std::vector<std::pair<uint64_t, size_t> > ret;
+  std::vector<std::pair<uint64_t, size_t>> ret;
   cus = get_cus(top, false);
 
   for (auto it = cus.begin(); it != cus.end(); ++it)
@@ -172,7 +185,7 @@ get_cus_pair(const axlf* top)
   return ret;
 }
 
-std::vector<std::pair<uint64_t, size_t> >
+std::vector<std::pair<uint64_t, size_t>>
 get_dbg_ips_pair(const axlf* top)
 {
   return get_debug_ips(top);
