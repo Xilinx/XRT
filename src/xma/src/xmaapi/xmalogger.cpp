@@ -254,75 +254,6 @@ void xma_logger_actor(XmaActor *actor)
         exit(-1);
     }
 
-    char buf[1024] = {0};
-    auto len = ::readlink("/proc/self/exe", buf, 1024);
-    std::string curr_dir =  std::string(buf, (len>0) ? len : 0);
-    std::string ini_file1 = "";
-    if (!curr_dir.empty()) {
-        if (curr_dir.back() != '/') {
-            size_t pos = curr_dir.find_last_of("/");
-            if (pos != std::string::npos) {
-                ini_file1 = curr_dir.substr(0, pos);
-                ini_file1.append("/sdaccel.ini");
-            } else {
-                ini_file1 = "./sdaccel.ini";
-            }
-        } else {
-            ini_file1 = curr_dir;
-            ini_file1.append("sdaccel.ini");
-        }
-    }
-
-    char* ini_path = std::getenv("SDACCEL_INI_PATH");
-    //char* ini_file = getenv("SDACCEL_INI_PATH");
-    std::string ini_file2 = "";
-    if (ini_path != NULL) {
-        ini_file2 = std::string(ini_path);
-        if (!ini_file2.empty()) {
-            if (ini_file2.find("sdaccel.ini") == std::string::npos) {
-                if (ini_file2.back() != '/') {
-                    ini_file2.append("/sdaccel.ini");
-                } else {
-                    ini_file2.append("sdaccel.ini");
-                }
-            }
-        }
-    }
-
-    //std::cout << "ERROR: " << __func__ << " , " << std::dec << __LINE__ << std::endl;
-    //std::cout << "ERROR: ini_file1: " << ini_file1 << std::endl;
-    //std::cout << "ERROR: ini_file2: " << ini_file2 << std::endl;
-    bool found_sdaccel_ini_file = false;
-    std::ifstream infile;
-    if (!ini_file2.empty()) {
-        infile.open(ini_file2, std::ios::ate);
-        if (infile.is_open()) {
-            size_t size = infile.tellg();
-            infile.close();
-            if (size > 0) {
-                found_sdaccel_ini_file = true;
-                std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
-                std::cout << "XMA Logger: sdaccel.ini file: " << ini_file2 << std::endl;
-            }
-        }
-    }
-    if (!found_sdaccel_ini_file) {
-        if (!ini_file1.empty()) {
-            infile.open(ini_file1, std::ios::ate);
-            if (infile.is_open()) {
-                size_t size = infile.tellg();
-                infile.close();
-                if (size > 0) {
-                    found_sdaccel_ini_file = true;
-                    std::cout << "XMA Logger: Using log destination settings from sdaccel.ini instead of yaml file" << std::endl;
-                    std::cout << "XMA Logger: sdaccel.ini file: " << ini_file1 << std::endl;
-                }
-            }
-        }
-    }
-
-
-
 
     //std::cout << "ERROR: found ini file: " << std::boolalpha << found_sdaccel_ini_file << std::endl;
     printf("XMA Logger: Logging thread started\n");
@@ -338,35 +269,7 @@ void xma_logger_actor(XmaActor *actor)
                 break;
             }
 
-            if (found_sdaccel_ini_file) {
-                /* Format log message
-                sprintf(msg_buff, "%s.%03d %d %s %s ", log_time, millisec, getpid(), log_level, log_name);
-                */
-                //rc = xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, logmsg);
-                xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
-            } else {
-                if (logger->fd != -1)
-                {
-                    rc = write(logger->fd, logmsg, strlen(logmsg));
-                    if (rc < 0)
-                    {
-                        perror("XMA Logger: could not write to file: ");
-                        break;
-                    }
-                }
-                if (logger->use_syslog){
-                    uint8_t syslog_level = LOG_DEBUG;
-                    switch(logger->log_level){
-                        case XMA_CRITICAL_LOG: syslog_level = LOG_CRIT ; break;
-                        case XMA_ERROR_LOG   : syslog_level = LOG_ERR  ; break;
-                        case XMA_INFO_LOG    : syslog_level = LOG_INFO ; break;
-                        case XMA_DEBUG_LOG   : syslog_level = LOG_DEBUG; break;
-                    }
-                    syslog(syslog_level,"%s", logmsg);
-                }
-                if (logger->use_stdout)
-                    printf("%s", logmsg);
-            }
+            xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
         }
         else
             /* Logger has been shutdown - so return from thread */
