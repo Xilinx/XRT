@@ -2037,7 +2037,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL);
 
-			if (msg != 0) {
+			/*
+			 *  Ignore fail if it's an AWS device
+			 */
+			if (msg != 0 && !xocl_is_aws(xdev)) {
 				ICAP_ERR(icap,
 					"%s peer failed to download xclbin",
 					__func__);
