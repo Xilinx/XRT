@@ -17,6 +17,7 @@
  * GNU General Public License for more details.
  */
 
+#include "ert.h"
 #include "zocl_drv.h"
 #include "zocl_sk.h"
 #include "sched_exec.h"
@@ -46,11 +47,11 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	kdata->opcode = scmd->skc_packet->opcode;
 
-	if (kdata->opcode == OP_CONFIG_SKERNEL) {
-		struct configure_sk_cmd *cmd;
+	if (kdata->opcode == ERT_SK_CONFIG) {
+		struct ert_configure_sk_cmd *cmd;
 
 		/* Copy the command to ioctl caller */
-		cmd = (struct configure_sk_cmd *)scmd->skc_packet;
+		cmd = (struct ert_configure_sk_cmd *)scmd->skc_packet;
 		kdata->start_cuidx = cmd->start_cuidx;
 		kdata->cu_nums = cmd->num_cus;
 		kdata->size = cmd->sk_size;
