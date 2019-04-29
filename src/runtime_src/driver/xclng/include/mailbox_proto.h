@@ -201,11 +201,10 @@ struct mailbox_req {
  * software mailbox arguments
  */
 struct sw_chan {
-	size_t sz;
+	uint64_t sz;
 	uint64_t flags;
-	bool is_tx;
 	uint64_t id;
-	uint32_t *data;
+	char data[0]; /* variable length of payload */
 };
 
 
