@@ -2836,8 +2836,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	list_del(&client->link);
 	DRM_INFO("client exits pid(%d)\n", pid);
 
-	mutex_unlock(&xdev->dev_lock);
-
 	if (CLIENT_NUM_CU_CTX(client) == 0)
 		goto done;
 
@@ -2870,6 +2868,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
 
 done:
+	mutex_unlock(&xdev->dev_lock);
 	devm_kfree(XDEV2DEV(xdev), client);
 	*priv = NULL;
 }
