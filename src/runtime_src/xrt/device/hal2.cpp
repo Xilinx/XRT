@@ -484,15 +484,6 @@ getDeviceAddr(const BufferObjectHandle& boh)
 
 int
 device::
-setThresholdValues(uint16_t power, uint16_t temperature)
-{
-  if (!m_ops->mSetThreshold)
-    throw std::runtime_error("SetThreshold function not found in FPGA driver. Please install latest driver");
-  return m_ops->mSetThreshold(m_handle, power, temperature);
-}
-
-int
-device::
 getMemObjectFd(const BufferObjectHandle& boh)
 {
   if (!m_ops->mExportBO)

@@ -75,7 +75,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mWriteQueue(0)
   ,mReadQueue(0)
   ,mPollQueues(0)
-  ,mSetThreshold(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
 {
@@ -164,7 +163,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
 
-  mSetThreshold = (setThresholdFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclSetThresholdValues");
   // APIs using sysfs
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
   mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");

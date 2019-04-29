@@ -194,7 +194,6 @@ public:
 
     int xclTestXSpi(int device_index);
     int xclBootFPGA();
-    int xclSetThresholdValues(uint16_t power, uint16_t temperature);
     int xclRemoveAndScanFPGA();
 
     // Legacy buffer management API support

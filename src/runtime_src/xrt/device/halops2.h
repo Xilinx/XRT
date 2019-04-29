@@ -127,8 +127,6 @@ private:
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
 
-  typedef int (*setThresholdFuncType)(xclDeviceHandle handle, uint16_t power, uint16_t temperature);
-
   //APIs using sysfs
   typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
@@ -215,8 +213,6 @@ public:
   readQueueFuncType mReadQueue;
   pollQueuesFuncType mPollQueues;
 //End Streaming
-
-  setThresholdFuncType mSetThreshold;
 
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;

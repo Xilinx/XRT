@@ -363,9 +363,6 @@ public:
   virtual BufferObjectHandle
   getBufferFromFd(const int fd, size_t& size, unsigned flags);
 
-  virtual int
-  setThresholdValues(uint16_t power, uint16_t temperature);
-
 public:
   virtual hal::operations_result<int>
   lockDevice()

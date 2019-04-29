@@ -403,11 +403,6 @@ public:
     return m_hal->getDeviceAddr(boh);
   }
 
-  int setThresholdValues(uint16_t power, uint16_t temperature)
-  {
-    return m_hal->setThresholdValues(power, temperature);
-  }
-
   /**
    * Export FD of buffer object handle on this device.
    * The importing device will create another
