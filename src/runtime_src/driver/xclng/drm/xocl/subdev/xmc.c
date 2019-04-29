@@ -94,6 +94,10 @@
 #define XMC_CLOCK_CONTROL_REG  0x24
 #define XMC_CLOCK_SCALING_EN 0x1
 
+#define XMC_CLOCK_SCALING_MODE_REG  0x10
+#define XMC_CLOCK_SCALING_MODE_POWER  0x0
+#define XMC_CLOCK_SCALING_MODE_TEMP  0x1
+
 #define XMC_CLOCK_SCALING_POWER_REG  0x18
 #define XMC_CLOCK_SCALING_POWER_REG_MASK  0xFFFF
 #define XMC_CLOCK_SCALING_TEMP_REG  0x14
@@ -1083,6 +1087,83 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 }
 
 /* Runtime clock scaling sysfs node */
+static ssize_t scaling_governor_show(struct device *dev, struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 mode;
+	char val[10];
+
+	if (!xmc->runtime_cs_enabled) {
+		xocl_err(dev, "req failed, runtime clock scaling feature is not supported\n");
+		return -EIO;
+	}
+	mutex_lock(&xmc->xmc_lock);
+	mode = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_MODE_REG);
+	mutex_unlock(&xmc->xmc_lock);
+
+	switch(mode) {
+		case 0: strcpy(val, "power"); break;
+		case 1: strcpy(val, "temp"); break;
+	}
+
+	return sprintf(buf, "%s\n", val);
+}
+static ssize_t scaling_governor_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val;
+
+	/* Check if clock scaling feature enabled */
+	if (!xmc->runtime_cs_enabled) {
+		xocl_err(dev, "req failed, runtime clock scaling feature is not supported\n");
+		return -EIO;
+	}
+
+	if (strncmp(buf, "power", strlen("power")) == 0)
+		val = XMC_CLOCK_SCALING_MODE_POWER;
+	else if (strncmp(buf, "temp", strlen("temp")) == 0)
+		val = XMC_CLOCK_SCALING_MODE_TEMP;
+	else {
+		xocl_err(dev, "Runtime clock scaling supported modes [power, temp]\n");
+		return -EINVAL;
+	}
+
+	mutex_lock(&xmc->xmc_lock);
+	WRITE_RUNTIME_CS(xmc, val, XMC_CLOCK_SCALING_MODE_REG);
+	mutex_unlock(&xmc->xmc_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(scaling_governor);
+
+static ssize_t scaling_cur_temp_show(struct device *dev, struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 board_temp;
+
+	safe_read32(xmc, XMC_FPGA_TEMP, &board_temp);
+
+	return sprintf(buf, "%d\n", board_temp);
+}
+static DEVICE_ATTR_RO(scaling_cur_temp);
+
+static ssize_t scaling_cur_power_show(struct device *dev, struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 mPexCurr, m12VPex, mAuxCurr, m12VAux, board_power;
+
+	//Measure board power in terms of Watts and store it in register
+	safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &m12VPex);
+	safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, &m12VAux);
+	safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &mPexCurr);
+	safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &mAuxCurr);
+	board_power = ((mPexCurr * m12VPex) + (mAuxCurr * m12VAux)) / 1000000;
+
+	return sprintf(buf, "%d\n", board_power);
+}
+static DEVICE_ATTR_RO(scaling_cur_power);
+
 static ssize_t scaling_enabled_show(struct device *dev, struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
@@ -1105,7 +1186,7 @@ static ssize_t scaling_enabled_show(struct device *dev, struct device_attribute 
 }
 static DEVICE_ATTR_RO(scaling_enabled);
 
-static ssize_t scaling_cur_power_show(struct device *dev, struct device_attribute *da, char *buf)
+static ssize_t scaling_target_power_show(struct device *dev, struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
@@ -1121,7 +1202,7 @@ static ssize_t scaling_cur_power_show(struct device *dev, struct device_attribut
 
 	return sprintf(buf, "%uW\n", val);
 }
-static ssize_t scaling_cur_power_store(struct device *dev,
+static ssize_t scaling_target_power_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
@@ -1145,9 +1226,9 @@ static ssize_t scaling_cur_power_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR_RW(scaling_cur_power);
+static DEVICE_ATTR_RW(scaling_target_power);
 
-static ssize_t scaling_cur_temp_show(struct device *dev, struct device_attribute *da, char *buf)
+static ssize_t scaling_target_temp_show(struct device *dev, struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
@@ -1164,7 +1245,7 @@ static ssize_t scaling_cur_temp_show(struct device *dev, struct device_attribute
 	return sprintf(buf, "%uc\n", val);
 }
 
-static ssize_t scaling_cur_temp_store(struct device *dev,
+static ssize_t scaling_target_temp_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
@@ -1188,7 +1269,7 @@ static ssize_t scaling_cur_temp_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR_RW(scaling_cur_temp);
+static DEVICE_ATTR_RW(scaling_target_temp);
 
 static struct attribute *xmc_attrs[] = {
 	&dev_attr_version.attr,
@@ -1240,6 +1321,9 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_enabled.attr,
 	&dev_attr_scaling_cur_temp.attr,
 	&dev_attr_scaling_cur_power.attr,
+	&dev_attr_scaling_target_temp.attr,
+	&dev_attr_scaling_target_power.attr,
+	&dev_attr_scaling_governor.attr,
 	NULL,
 };
 
