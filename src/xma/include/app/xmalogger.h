@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stddef.h>
 //#include "lib/xmalogger.h"
+#include <xrt.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,18 +29,19 @@ extern "C" {
 /**
  * enum XmaLogLevelType - Describes the logging level associated with a log message.
 */
+
 typedef enum XmaLogLevelType
 {
-    XMA_CRITICAL_LOG = 0, /**< 0 */
-    XMA_ERROR_LOG,        /**< 1 */
-    XMA_INFO_LOG,         /**< 2 */
-    XMA_DEBUG_LOG,        /**< 3 */
+    XMA_CRITICAL_LOG = CRITICAL,
+    XMA_ERROR_LOG = ERROR,
+    XMA_INFO_LOG = INFO,
+    XMA_DEBUG_LOG = DEBUG
 } XmaLogLevelType;
 
 /**
  * typedef XmaLoggerCallback - Describes the function signature for an XMA logger callback.
-*/
 typedef void (*XmaLoggerCallback)(char *msg); 
+*/
 
 /**
  * xma_logmsg() - This function logs a message to stdout, a file, or both depending on
@@ -78,9 +80,9 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
  * @level:    The level of log messages to be sent to the callback
  * function.  All messages of equal or greater severity are 
  * forwarded to the callback function
-*/
 void
 xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level);
+*/
 
 
 #ifdef __cplusplus
