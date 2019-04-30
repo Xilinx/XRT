@@ -173,7 +173,7 @@ echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 
 # We want the PetaLinux project to go here:
 cd $ORIGINAL_DIR
-mkdir -p ${PLATFORM_NAME}/build/conf/
+
 
 echo "ORIGINAL_DIR : ${ORIGINAL_DIR} $PLATFORM_NAME"
 # if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
@@ -188,6 +188,7 @@ if [ ! -d $PLATFORM_NAME ]; then
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
 
+mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
 echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> ${PLATFORM_NAME}/project-spec/configs/config
