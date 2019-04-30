@@ -48,7 +48,7 @@ to_hex(void* addr)
 static void
 unaligned_message(void* addr)
 {
-  xrt::message::send(xrt::message::severity_level::WARNING,
+  xrt::message::send(xrt::message::severity_level::XRT_WARNING,
                      "unaligned host pointer '"
                      + to_hex(addr)
                      + "' detected, this leads to extra memcpy");
@@ -79,7 +79,7 @@ default_allocation_message(const xocl::device* device,const xocl::memory* mem,
   if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
     throw std::runtime_error(str.str());
   else
-    xrt::message::send(xrt::message::severity_level::WARNING,str.str());
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
 }
 
 static void
@@ -89,7 +89,7 @@ default_bad_allocation_message(const xocl::device* device,const xocl::memory* me
   str << "Host buffer (" << mem->get_uid() << ") "
       << "has no bank assignment and is not used as kernel argument "
       << "before first enqueue operation.";
-  xrt::message::send(xrt::message::severity_level::ERROR,str.str());
+  xrt::message::send(xrt::message::severity_level::XRT_ERROR,str.str());
 }
 
 
