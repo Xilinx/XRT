@@ -337,7 +337,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_mailbox_get(xdev, COMM_ID, (u64 *)buf);
-	return MB_COMM_ID_LEN;
+	return COMM_ID_SIZE;
 }
 static DEVICE_ATTR_RO(config_mailbox_comm_id);
 
