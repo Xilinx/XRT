@@ -119,8 +119,8 @@ enum {
 
 #define	XOCL_FEATURE_ROM_USER	"rom" USER_SUFFIX
 #define XOCL_FEATURE_ROM	"rom" SUBDEV_SUFFIX
-#define XOCL_XDMA		"xdma" SUBDEV_SUFFIX
-#define XOCL_QDMA		"qdma" SUBDEV_SUFFIX
+#define XOCL_XDMA		"dma.xdma" SUBDEV_SUFFIX
+#define XOCL_QDMA		"dma.qdma" SUBDEV_SUFFIX
 #define XOCL_MB_SCHEDULER	"mb_scheduler" SUBDEV_SUFFIX
 #define XOCL_XVC_PUB		"xvc_pub" SUBDEV_SUFFIX
 #define XOCL_XVC_PRI		"xvc_pri" SUBDEV_SUFFIX
