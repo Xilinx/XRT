@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "driver/common/scheduler.h"
 #include <errno.h>
 /*
  * Define GCC version macro so we can use newer C++11 features
@@ -1271,9 +1272,10 @@ int xclLoadBitstream(xclDeviceHandle handle, const char *xclBinFileName)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclLoadXclBin(buffer);
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+      ret = xrt_core::scheduler::init(handle, buffer);
+    return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)

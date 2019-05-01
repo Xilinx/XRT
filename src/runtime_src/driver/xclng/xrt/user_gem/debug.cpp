@@ -79,7 +79,7 @@ namespace xocl {
        */
       std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
       std::cout << warnMsg << std::endl;
-      xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", warnMsg) ;
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
       mIsDeviceProfiling = false;
       mIsDebugIpLayoutRead = true;
       return;
@@ -94,13 +94,13 @@ namespace xocl {
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(AXI_MM_MONITOR, mPerfMonBaseAddress,
       mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XSPM_MAX_NUMBER_SLOTS);
-    
+
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
       mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
-    
+
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
@@ -154,7 +154,7 @@ namespace xocl {
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
   uint32_t XOCLShim::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                         uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, 
+                                         uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                          size_t size) {
     debug_ip_layout *map;
     auto dev = pcidev::get_dev(mBoardNumber);
@@ -230,7 +230,7 @@ namespace xocl {
   }
 
   // Read APM performance counters
-  
+
   size_t XOCLShim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
@@ -252,7 +252,7 @@ namespace xocl {
         XSPM_SAMPLE_LAST_READ_DATA_OFFSET
     };
 
-    uint64_t spm_upper_offsets[] = { 
+    uint64_t spm_upper_offsets[] = {
         XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
         XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
         XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
@@ -315,7 +315,7 @@ namespace xocl {
 
   // Read the streaming performance monitors
 
-  size_t XOCLShim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) { 
+  size_t XOCLShim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) {
 
     size_t size = 0; // The amount of data read from the hardware
 
@@ -325,10 +325,10 @@ namespace xocl {
       << ", Read streaming device counters..." << std::endl;
     }
 
-    // Get the base addresses of all the SSPM IPs in the debug IP layout 
+    // Get the base addresses of all the SSPM IPs in the debug IP layout
     uint64_t baseAddress[XSSPM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, 
-					    baseAddress, 
+    uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR,
+					    baseAddress,
 					    nullptr, nullptr, nullptr, nullptr,
 					    XSSPM_MAX_NUMBER_SLOTS);
 
@@ -369,7 +369,7 @@ namespace xocl {
       aCounterResults->StrStarveCycles[i] = tmp[4] ;
     }
     return size;
-  } 
+  }
 
   size_t XOCLShim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
 
@@ -398,7 +398,7 @@ namespace xocl {
       uint32_t pc_asserted ;
       uint32_t current_pc ;
       uint32_t snapshot_pc ;
-      
+
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
 		      baseAddress[i] + XSPC_PC_ASSERTED_OFFSET,
 		      &pc_asserted, sizeof(uint32_t));
@@ -421,7 +421,7 @@ namespace xocl {
 
     /*
       Here should read the version number
-      and return immediately if version 
+      and return immediately if version
       is not supported
     */
 
@@ -442,7 +442,7 @@ namespace xocl {
         XSAM_ACCEL_TOTAL_CU_START_OFFSET
     };
 
-    uint64_t sam_upper_offsets[] = { 
+    uint64_t sam_upper_offsets[] = {
         XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
         XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
         XSAM_ACCEL_STALL_INT_UPPER_OFFSET,
@@ -524,5 +524,3 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
   };
   return -1;
 }
-
-

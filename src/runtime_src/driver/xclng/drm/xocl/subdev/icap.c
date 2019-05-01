@@ -1759,6 +1759,11 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 
 		if (err) {
 			err = -ENODEV;
+			/*
+			 * ignore error if aws
+			 */
+			if (xocl_is_aws(xdev))
+				err = 0;
 			goto done;
 		}
 
@@ -1783,6 +1788,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int resp = 0;
 	size_t resplen = sizeof(resp);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	/* if there is no user there
 	 * ask mgmt to unlock the bitstream
@@ -1800,6 +1806,11 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 			mb_req, reqlen, &resp, &resplen, NULL, NULL);
 		if (err) {
 			err = -ENODEV;
+			/*
+			 * ignore error if aws
+			 */
+			if (xocl_is_aws(xdev))
+				err = 0;
 			goto done;
 		}
 	}
@@ -2037,7 +2048,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL);
 
-			if (msg != 0) {
+			/*
+			 *  Ignore fail if it's an AWS device
+			 */
+			if (msg != 0 && !xocl_is_aws(xdev)) {
 				ICAP_ERR(icap,
 					"%s peer failed to download xclbin",
 					__func__);

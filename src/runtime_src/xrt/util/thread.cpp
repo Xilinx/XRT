@@ -117,7 +117,7 @@ set_cpu_affinity(std::thread& thread)
           CPU_SET(cpu,&cpuset);
         }
         else {
-          xrt::message::send(xrt::message::severity_level::WARNING,"Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
+          xrt::message::send(xrt::message::severity_level::XRT_WARNING,"Ignoring cpu affinity since cpu #" + tok + " is out of range\n");
           all=true;
         }
       }
@@ -132,7 +132,7 @@ set_cpu_affinity(std::thread& thread)
   }
 }
 
-#else 
+#else
 
 static void
 set_thread_policy(std::thread& thread)
@@ -167,5 +167,3 @@ void set_cpu_affinity(std::thread& thread)
 } // detail
 
 } // xrt
-
-

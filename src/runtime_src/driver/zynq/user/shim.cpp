@@ -918,7 +918,7 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   return 1; // Not yet enabled
 }
 
-void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config)
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
