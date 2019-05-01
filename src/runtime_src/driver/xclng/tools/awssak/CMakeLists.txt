@@ -19,6 +19,10 @@ if(${INTERNAL_TESTING})
   add_definitions(-DINTERNAL_TESTING)
   target_link_libraries(awssak
     xrt_awsstatic
+    xrt_coreutil_static
+    uuid
+    boost_filesystem
+    boost_system
     pthread
     rt
     )
@@ -28,6 +32,10 @@ else()
 
   target_link_libraries(awssak
     xrt_awsstatic
+    xrt_coreutil_static
+    uuid
+    boost_filesystem
+    boost_system
     pthread
     rt
     ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
