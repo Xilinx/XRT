@@ -17,7 +17,7 @@ void mailbox_daemon(int src_fd, int tgt_fd, std::string name)
     int ret = 0;
     int xferCount = 0;
 
-    std::cout << name << ": started" << std::endl;
+    std::cout << name << ": started\n";
 
     buf->sz = INIT_BUF_SIZE;
     for( ;; ) {
@@ -29,15 +29,16 @@ void mailbox_daemon(int src_fd, int tgt_fd, std::string name)
         ret = read(src_fd, (void *)buf, bufsz);
         if (ret == 0) {
             // Race with another thread?
-            std::cout << name << ": read failed: empty msg" << std::endl;
+            std::cout << name << ": read failed: empty msg\n";
             break;
         } else if (ret < 0) {
             if(errno == EMSGSIZE) {
-                size_t newsz = buf->sz;
+                size_t newsz = buf->sz; // store size
 
-                std::cout << name << ": read failed: need bigger buffer: "
-                    << sizeof(struct sw_chan) + newsz << std::endl;
+                std::cout << name << ": read failed: need bigger buffer: " 
+                          << sizeof(struct sw_chan) + newsz << std::endl;
 
+                // Sanity checks
                 assert(newsz > INIT_BUF_SIZE);
                 assert(buf == (struct sw_chan *)init_buf);
 
@@ -45,14 +46,14 @@ void mailbox_daemon(int src_fd, int tgt_fd, std::string name)
                 buf = (struct sw_chan *)malloc(sizeof(struct sw_chan) + newsz);
                 buf->sz = newsz;
                 assert(buf != NULL);
-                continue;
+                continue; // Call read() with the new buffer
             } else {
                 std::cout << name << ": read failed: " << errno << " ("
-                    << std::strerror(errno) << ")" << std::endl;
+                          << std::strerror(errno) << ")\n";
                 break;
             }
         }
-        std::cout << name << ": read OK: " << ret << " bytes" << std::endl;
+        std::cout << name << ": read OK: " << ret << " bytes\n";
 
         // Successfully got a msg, pass through to peer
         bufsz = sizeof(struct sw_chan) + buf->sz;
@@ -62,18 +63,19 @@ void mailbox_daemon(int src_fd, int tgt_fd, std::string name)
         if (ret != bufsz) {
             if (ret < 0) {
                 std::cout << name << ": write failed: " << errno << " ("
-                    << std::strerror(errno) << ")" << std::endl;
+                          << std::strerror(errno) << ")\n";
             } else {
                 std::cout << name << ": write failed: short write: "
-                    << ret << std::endl;
+                          << ret << std::endl;
             }
             break;
         }
-        std::cout << name << ": write OK: " << ret << " bytes" << std::endl;
+        std::cout << name << ": write OK: " << ret << " bytes\n";
 
         xferCount++;
-        std::cout << name << ": " << xferCount << " msg delivered" << std::endl;
+        std::cout << name << ": " << xferCount << " msg delivered\n";
 
+        // Free the larger buffer if alloc'd and use original buffer
         if (buf != (struct sw_chan *)init_buf) {
             free(buf);
             buf = (struct sw_chan *)init_buf;
@@ -81,7 +83,7 @@ void mailbox_daemon(int src_fd, int tgt_fd, std::string name)
         buf->sz = INIT_BUF_SIZE;
     }
 
-    std::cout << name << ": ended" << std::endl;
+    std::cout << name << ": ended\n";
 }
 
 int str2index(const char *arg, unsigned& index)
@@ -92,8 +94,7 @@ int str2index(const char *arg, unsigned& index)
 
     i = std::strtoul(arg, &endptr, 0);
     if (*endptr != '\0' || i >= UINT_MAX) {
-        std::cout << "ERROR: " << devStr << " is not a valid card index."
-            << std::endl;
+        std::cout << "ERROR: " << devStr << " is not a valid card index.\n";
         return -EINVAL;
     }
     index = i;
