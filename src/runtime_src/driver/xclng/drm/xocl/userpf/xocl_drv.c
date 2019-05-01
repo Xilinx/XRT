@@ -200,23 +200,25 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 {
 	struct mailbox_req *mb_req = NULL;
 	struct mailbox_conn *mb_conn = NULL;
-	struct mailbox_conn_resp resp = { 0 };
+	struct mailbox_conn_resp *resp = (struct mailbox_conn_resp *)
+		vzalloc(sizeof(struct mailbox_conn_resp));
 	size_t data_len = 0;
 	size_t reqlen = 0;
 	size_t resplen = sizeof(struct mailbox_conn_resp);
 	void *kaddr = NULL;
 
+	if (!resp)
+		goto done;
+
 	data_len = sizeof(struct mailbox_conn);
 	reqlen = sizeof(struct mailbox_req) + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
-		return;
+		goto done;
 
 	kaddr = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!kaddr) {
-		vfree(mb_req);
-		return;
-	}
+	if (!kaddr)
+		goto done;
 
 	mb_req->req = MAILBOX_REQ_USER_PROBE;
 	mb_conn = (struct mailbox_conn *)mb_req->data;
@@ -226,16 +228,18 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
 	mb_conn->version = MB_PROTOCOL_VER;
 
-	(void) xocl_peer_request(xdev, mb_req, reqlen, &resp, &resplen,
+	(void) xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
 		NULL, NULL);
-	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp.conn_flags);
-	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp.chan_switch);
-	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp.comm_id);
+	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
+	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
+	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
 
-	userpf_info(xdev, "ch_state 0x%llx\n", resp.conn_flags);
+	userpf_info(xdev, "ch_state 0x%llx\n", resp->conn_flags);
 
+done:
 	kfree(kaddr);
 	vfree(mb_req);
+	vfree(resp);
 }
 
 int xocl_reclock(struct xocl_dev *xdev, void *data)

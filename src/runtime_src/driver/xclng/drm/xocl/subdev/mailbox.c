@@ -321,7 +321,7 @@ struct mailbox {
 	uint32_t		mbx_prot_ver;
 	uint64_t		mbx_ch_state;
 	uint64_t		mbx_ch_switch;
-	char			mbx_comm_id[256];
+	char			mbx_comm_id[COMM_ID_SIZE];
 	uint32_t		mbx_proto_ver;
 
 	bool			mbx_peer_dead;

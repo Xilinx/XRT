@@ -312,13 +312,17 @@ static ssize_t config_mailbox_comm_id_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	char id[MB_COMM_ID_LEN] = { 0 };
+	char *id = (char *)vzalloc(COMM_ID_SIZE);
 
-	if (count > MB_COMM_ID_LEN)
+	if (!id)
+		return -ENOMEM;
+
+	if (count > COMM_ID_SIZE)
 		return -EINVAL;
 
 	(void) memcpy(id, buf, count);
 	(void) xocl_mailbox_set(lro, COMM_ID, (u64)(uintptr_t)id);
+	vfree(id);
 	mgmt_err(lro, "mailbox communication ID changed on mgmt pf\n");
 	mgmt_err(lro, "user pf won't be notified until next load of xocl\n");
 
@@ -330,7 +334,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
 	(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)buf);
-	return MB_COMM_ID_LEN;
+	return COMM_ID_SIZE;
 }
 static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
