@@ -583,6 +583,16 @@ public:
   }
 
   /**
+   * @return
+   *  Number of CUs that can be used by this kernel object
+   */
+  size_t
+  get_num_cus() const
+  {
+    return m_cus.size();
+  }
+
+  /**
    * Get the set of memory banks an argument can connect to given the
    * current set of kernel compute units for specified device
    *
