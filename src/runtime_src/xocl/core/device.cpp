@@ -923,6 +923,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     auto dst_boh = dst_buffer->get_buffer_object(this);
     xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
 
+    cmd->start();  // done() called by scheduler on success
     if (cmd->execute() == 0) {
       // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
       // is resident after KDMA is done even if host does explicitly migrate.
@@ -960,7 +961,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     // Old code path for p2p buffer xclEnqueueP2PCopy
     if (imported) {
       // old code path for p2p buffer
+      cmd->start();
       copy_p2p_buffer(src_buffer,dst_buffer,src_offset,dst_offset,size);
+      cmd->done();
       return;
     }
   }
