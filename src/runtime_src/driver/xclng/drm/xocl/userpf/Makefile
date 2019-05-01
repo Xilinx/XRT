@@ -21,17 +21,15 @@ xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
-	../subdev/mm_xdma.o \
+	../subdev/xdma.o \
+	../subdev/qdma.o \
 	../subdev/feature_rom.o \
-	../subdev/mm_qdma.o \
 	../subdev/mb_scheduler.o \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
-	../subdev/str_qdma.o \
+	../subdev/xmc.o \
 	$(xocl_lib-y)	\
-	xdma.o	\
-	qdma.o	\
 	xocl_drv.o	\
 	xocl_bo.o	\
 	xocl_drm.o	\
@@ -47,7 +45,7 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../../include -I$(ROOT)/../../../include -I${ROOT}/../../xrt/user_gem -I${ROOT}/../../../../
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX
+ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX -D__XRT__
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif
@@ -68,5 +66,6 @@ clean:
 	rm -rf *.o *.o.d *~ core .depend .*.cmd *.ko *.ko.unsigned *.mod.c \
 	../subdev/*.o ../subdev/.*.o.cmd ../lib/*.o ../lib/.*.o.cmd	\
 	../lib/libqdma/*.o ../lib/libqdma/.*.o.cmd 	\
+	../lib/libqdma/*.o.ur-safe \
 	.tmp_versions *.symvers modules.order
 	#* *.save *.bak Modules.* modules.order Module.markers *.bin

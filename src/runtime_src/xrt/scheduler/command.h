@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <array>
+#include <memory>
 
 namespace xrt {
 
@@ -32,7 +33,7 @@ namespace xrt {
  * A command consist of a 4K packet.  Each word (u32) of the packet
  * can be accessed through the command API.
  */
-class command
+class command : public std::enable_shared_from_this<command>
 {
   static constexpr auto regmap_size = 4096/sizeof(uint32_t);
 public:
@@ -56,6 +57,12 @@ public:
    * Dtor.  Recycles the underlying exec buffer
    */
   ~command();
+
+  std::shared_ptr<command>
+  get_ptr()
+  {
+    return shared_from_this();
+  }
 
   /**
    * Unique ID for this command.
@@ -170,6 +177,12 @@ public:
   }
 
   /**
+   * Execute this command
+   */
+  int
+  execute();
+
+  /**
    * Wait for command completion
    */
   void
@@ -178,6 +191,15 @@ public:
     std::unique_lock<std::mutex> lk(m_mutex);
     while (!m_done)
       m_cmd_done.wait(lk);
+  }
+
+  /**
+   * Check if command has completed
+   */
+  bool
+  completed() const
+  {
+    return m_done;
   }
 
   /**
@@ -191,6 +213,12 @@ public:
    */
   virtual void
   done() const {}
+
+  /**
+   * Client call back for command error
+   */
+  virtual void
+  error(const std::exception&) const {}
 
 public:
 

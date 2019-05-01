@@ -17,28 +17,20 @@
 #ifndef xrt_message_h_
 #define xrt_message_h_
 
+#include "driver/common/message.h"
 #include <string>
 
 namespace xrt { namespace message {
 
-//modeled based on syslog severity. 
-enum class severity_level : unsigned short 
+using namespace xrt_core::message;
+
+inline void
+send(severity_level l, const char* msg)
 {
- ALERT,
- CRITICAL,
- DEBUG,
- EMERGENCY,
- ERROR,
- INFO,
- INTERNAL,
- NOTICE,
- WARNING
+  send(l,"XRT",msg);
 };
 
-void 
-send(severity_level l, const char* msg);
-
-inline void 
+inline void
 send(severity_level l, const std::string& msg)
 {
   send(l,msg.c_str());
@@ -47,6 +39,3 @@ send(severity_level l, const std::string& msg)
 }} // message,xrt
 
 #endif
-
-
-

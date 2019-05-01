@@ -28,7 +28,7 @@ namespace pmd { class pipe; class notype;}
 
 }
 
-struct _cl_pipe : public xocl::object<xocl::pmd::pipe,xocl::pmd::notype,_cl_pipe> {};
+struct _cl_pipe : public xocl::object<xocl::pmd::pipe,_cl_pipe> {};
 
 namespace xocl { namespace pmd {
 
@@ -45,7 +45,7 @@ public:
   virtual ~pipe();
 
   unsigned int
-  get_uid() const 
+  get_uid() const
   {
     return m_uid;
   }
@@ -75,5 +75,3 @@ private:
 }} // pmd,xocl
 
 #endif
-
-

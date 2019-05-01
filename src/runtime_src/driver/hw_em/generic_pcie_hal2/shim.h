@@ -28,6 +28,8 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
+#include "driver/common/scheduler.h"
+#include "driver/common/message.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -42,6 +44,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <tuple>
+#include <stdarg.h>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -82,7 +85,7 @@ using addr_type = uint64_t;
 
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
-      int xoclCreateBo(xclemulation::xocl_create_bo *info);
+      uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
       unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
@@ -90,6 +93,9 @@ using addr_type = uint64_t;
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
       size_t xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
       void xclFreeBO(unsigned int boHandle);
+      ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
+      ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
+      static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
       //P2P Support
       int xclExportBO(unsigned int boHandle); 
@@ -141,9 +147,9 @@ using addr_type = uint64_t;
       double xclGetReadMaxBandwidthMBps();
       double xclGetWriteMaxBandwidthMBps();
       size_t xclPerfMonClockTraining();
+      void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
       size_t xclPerfMonStartCounters();
       size_t xclPerfMonStopCounters();
-      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
       size_t xclPerfMonReadCounters( xclPerfMonType type, xclCounterResults& counterResults);
       size_t xclPerfMonStartTrace(uint32_t startTrigger);
       size_t xclPerfMonStopTrace();
@@ -159,6 +165,8 @@ using addr_type = uint64_t;
       uint32_t getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
                                    std::string * portNames, uint8_t *properties, size_t size);
       void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
+      uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
+      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
@@ -170,7 +178,7 @@ using addr_type = uint64_t;
       uint32_t getAddressSpace (uint32_t topology);
 
       //constructor
-      HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR);
+      HwEmShim( unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, bool bXPR, FeatureRomHeader &featureRom);
 
       //destructor
       ~HwEmShim();
@@ -184,9 +192,15 @@ using addr_type = uint64_t;
       static const unsigned CONTROL_AP_START;
       static const unsigned CONTROL_AP_DONE;
       static const unsigned CONTROL_AP_IDLE;
+      static const unsigned CONTROL_AP_CONTINUE;
 
       bool isUnified()               { return bUnified; }
       void setUnified(bool _unified) { bUnified = _unified; }
+
+      bool isMBSchedulerEnabled();
+      unsigned int getDsaVersion();
+      bool isCdmaEnabled();
+      uint64_t getCdmaBaseAddress(unsigned int index);
 
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
@@ -200,7 +214,14 @@ using addr_type = uint64_t;
       int xclFreeQDMABuf(uint64_t buf_hdl);
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-
+      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
+      bool isImported(unsigned int _bo) 
+      {
+        if (mImportedBOs.find(_bo) != mImportedBOs.end())
+          return true;
+        return false;
+      }
+        
 
     private:
       //hw_em_profile* _profile_inst;
@@ -211,6 +232,7 @@ using addr_type = uint64_t;
 
       void initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList);
       std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
+      xclemulation::MemoryManager* mDataSpace;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::map<uint64_t, KernelArg>> mKernelOffsetArgsInfoMap;
       std::map<uint64_t,uint64_t> mAddrMap;
@@ -264,17 +286,25 @@ using addr_type = uint64_t;
       bool mIsDeviceProfiling = false;
       uint32_t mMemoryProfilingNumberSlots;
       uint32_t mAccelProfilingNumberSlots;
+      uint32_t mStreamProfilingNumberSlots;
       uint32_t mStallProfilingNumberSlots;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
       uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
       uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
+      uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS];
       std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
       std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
+      std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS];
       uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
       uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
+      uint8_t mStreamMonProperties[XSSPM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      uint64_t mReqCounter;
+      FeatureRomHeader mFeatureRom;
+      std::set<unsigned int > mImportedBOs;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

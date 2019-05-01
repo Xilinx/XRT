@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __XDMA_KTHREAD_H__
@@ -105,10 +112,10 @@ int qdma_kthread_dump(struct qdma_kthread *thp, char *buf, int buflen,
 #define unlock_thread(thp)		spin_unlock(&(thp)->lock)
 /** macro to wake up the qdma k thread */
 #define qdma_kthread_wakeup(thp) \
-        do { \
+	do { \
 		thp->schedule = 1; \
 		qdma_waitq_wakeup(&thp->waitq); \
-	} while(0);
+	} while (0)
 /** pr_debug_thread */
 #define pr_debug_thread(fmt, ...)
 #endif

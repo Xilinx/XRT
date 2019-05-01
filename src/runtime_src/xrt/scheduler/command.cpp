@@ -15,6 +15,7 @@
  */
 
 #include "command.h"
+#include "scheduler.h"
 
 #include <map>
 #include <vector>
@@ -123,6 +124,14 @@ command::
     m_device->unmap(m_exec_bo);
     free_buffer(m_device,m_exec_bo);
   }
+}
+
+int
+command::
+execute()
+{
+  m_done=false;
+  return xrt::scheduler::schedule(get_ptr());
 }
 
 } // xrt

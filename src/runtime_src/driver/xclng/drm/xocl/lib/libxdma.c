@@ -1443,14 +1443,15 @@ static void unmap_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 		/* is this BAR mapped? */
 		if (xdev->bar[i]) {
 			/* unmap BAR */
-			pci_iounmap(dev, xdev->bar[i]);
+			iounmap(xdev->bar[i]);
 			/* mark as unmapped */
 			xdev->bar[i] = NULL;
 		}
 	}
 }
 
-static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
+static resource_size_t map_single_bar(struct xdma_dev *xdev,
+	       	struct pci_dev *dev, int idx)
 {
 	resource_size_t bar_start;
 	resource_size_t bar_len;
@@ -1462,12 +1463,23 @@ static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
 
 	xdev->bar[idx] = NULL;
 
-	/* do not map BARs with length 0. Note that start MAY be 0! */
-	if (!bar_len) {
-		//pr_info("BAR #%d is not present - skipping\n", idx);
+	/*
+	 * do not map
+	 * BARs with length 0. Note that start MAY be 0!
+	 * P2P bar (size >= 256M)
+	 */
+	pr_info("map bar %d, len %lld\n", idx, bar_len);
+	if (!bar_len || bar_len >= (1 << 28)) {
 		return 0;
 	}
 
+	/*
+	 * bail out if the bar is mapped
+	 */
+	if (!request_mem_region(bar_start, bar_len, xdev->mod_name)) 
+		return 0;
+
+	release_mem_region(bar_start, bar_len);
 	/* BAR size exceeds maximum desired mapping? */
 	if (bar_len > INT_MAX) {
 		pr_info("Limit BAR %d mapping from %llu to %d bytes\n", idx,
@@ -1479,7 +1491,8 @@ static int map_single_bar(struct xdma_dev *xdev, struct pci_dev *dev, int idx)
 	 * address space
 	 */
 	dbg_init("BAR%d: %llu bytes to be mapped.\n", idx, (u64)map_len);
-	xdev->bar[idx] = pci_iomap(dev, idx, map_len);
+	xdev->bar[idx] = ioremap_nocache(pci_resource_start(dev, idx),
+			 map_len);
 
 	if (!xdev->bar[idx]) {
 		pr_info("Could not map BAR %d.\n", idx);
@@ -1502,6 +1515,9 @@ static int is_config_bar(struct xdma_dev *xdev, int idx)
 		(struct interrupt_regs *) (xdev->bar[idx] + XDMA_OFS_INT_CTRL);
 	struct config_regs *cfg_regs =
 		(struct config_regs *)(xdev->bar[idx] + XDMA_OFS_CONFIG);
+
+	if (!xdev->bar[idx])
+		return 0;
 
 	irq_id = read_register(&irq_regs->identifier);
 	cfg_id = read_register(&cfg_regs->identifier);
@@ -1539,7 +1555,7 @@ static void identify_bars(struct xdma_dev *xdev, int *bar_id_list, int num_bars,
 	BUG_ON(!xdev);
 	BUG_ON(!bar_id_list);
 
-	dbg_init("xdev 0x%p, bars %d, config at %d.\n",
+	pr_info("xdev 0x%p, bars %d, config at %d.\n",
 		xdev, num_bars, config_bar_pos);
 
 	switch (num_bars) {
@@ -1598,7 +1614,7 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 
 	/* iterate through all the BARs */
 	for (i = 0; i < XDMA_BAR_NUM; i++) {
-		int bar_len;
+		resource_size_t bar_len;
 
 		bar_len = map_single_bar(xdev, dev, i);
 		if (bar_len == 0) {
@@ -3009,12 +3025,20 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		struct xdma_transfer *xfer;
 
 		/* one transfer at a time */
+#ifndef CONFIG_PREEMPT_COUNT
 		spin_lock(&engine->desc_lock);
+#else
+		mutex_lock(&engine->desc_mutex);
+#endif
 
 		/* build transfer */
 		rv = transfer_init(engine, req);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			goto unmap_sgl;
 		}
 		xfer = &req->xfer;
@@ -3039,7 +3063,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 		rv = transfer_queue(engine, xfer);
 		if (rv < 0) {
+#ifndef CONFIG_PREEMPT_COUNT
 			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 			pr_info("unable to submit %s, %d.\n", engine->name, rv);
 			goto unmap_sgl;
 		}
@@ -3116,7 +3144,11 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			break;
 		}
 		transfer_destroy(xdev, xfer);
-		spin_unlock(&engine->desc_lock);
+#ifndef CONFIG_PREEMPT_COUNT
+			spin_unlock(&engine->desc_lock);
+#else
+			mutex_unlock(&engine->desc_mutex);
+#endif
 
 		if (rv < 0)
 			goto unmap_sgl;
@@ -3256,6 +3288,9 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
@@ -3265,33 +3300,15 @@ static struct xdma_dev *alloc_dev_instance(struct pci_dev *pdev)
 	for (i = 0; i < XDMA_CHANNEL_NUM_MAX; i++, engine++) {
 		spin_lock_init(&engine->lock);
 		spin_lock_init(&engine->desc_lock);
+#ifdef CONFIG_PREEMPT_COUNT
+		mutex_init(&engine->desc_mutex);
+#endif
 		INIT_LIST_HEAD(&engine->transfer_list);
 		init_waitqueue_head(&engine->shutdown_wq);
 		init_waitqueue_head(&engine->xdma_perf_wq);
 	}
 
 	return xdev;
-}
-
-static int request_regions(struct xdma_dev *xdev, struct pci_dev *pdev)
-{
-	int rv;
-
-	BUG_ON(!xdev);
-	BUG_ON(!pdev);
-
-	dbg_init("pci_request_regions()\n");
-	rv = pci_request_regions(pdev, xdev->mod_name);
-	/* could not request all regions? */
-	if (rv) {
-		dbg_init("pci_request_regions() = %d, device in use?\n", rv);
-		/* assume device is in use so do not disable it later */
-		xdev->regions_in_use = 1;
-	} else {
-		xdev->got_regions = 1;
-	}
-
-	return rv;
 }
 
 static int set_dma_mask(struct pci_dev *pdev)
@@ -3448,12 +3465,12 @@ static int probe_engines(struct xdma_dev *xdev)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+static void pci_enable_capability(struct pci_dev *pdev, int cap)
 {
-	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, PCI_EXP_DEVCTL_RELAX_EN);
+	pcie_capability_set_word(pdev, PCI_EXP_DEVCTL, cap);
 }
 #else
-static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
+static void pci_enable_capability(struct pci_dev *pdev, int cap)
 {
 	u16 v;
 	int pos;
@@ -3461,17 +3478,19 @@ static void pci_enable_relaxed_ordering(struct pci_dev *pdev)
 	pos = pci_pcie_cap(pdev);
 	if (pos > 0) {
 		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &v);
-		v |= PCI_EXP_DEVCTL_RELAX_EN;
+		v |= cap;
 		pci_write_config_word(pdev, pos + PCI_EXP_DEVCTL, v);
 	}
 }
 #endif
 
-static void pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
+static int pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 {
 	u16 cap;
+#if 0
 	u32 v;
 	void *__iomem reg;
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,5,0)
 	pcie_capability_read_word(pdev, PCI_EXP_DEVCTL, &cap);
@@ -3483,26 +3502,40 @@ static void pci_check_extended_tag(struct xdma_dev *xdev, struct pci_dev *pdev)
 		pci_read_config_word(pdev, pos + PCI_EXP_DEVCTL, &cap);
 	else {
 		pr_info("pdev 0x%p, unable to access pcie cap.\n", pdev);
-		return;
+		return -EACCES;
 	}
 #endif
 
 	if ((cap & PCI_EXP_DEVCTL_EXT_TAG))
-		return;
+		return 0;
 
 	/* extended tag not enabled */
 	pr_info("0x%p EXT_TAG disabled.\n", pdev);
 
+#if 0
+	/* Confirmed with Karen. This code is needed when ExtTag is disabled.
+	 * Reason to disable below code:
+	 * We observed that the ExtTag was cleared on some system. The SSD-
+	 * FPGA board will not work on that system (DMA failed). The solution
+	 * is that XDMA driver should enable ExtTag in that case.
+	 *
+	 * If ExtTag need to be disabled for your system, please enable this.
+	 */
 	if (xdev->config_bar_idx < 0) {
 		pr_info("pdev 0x%p, xdev 0x%p, config bar UNKNOWN.\n",
-			pdev, xdev);
-                return;
+				pdev, xdev);
+		return -EINVAL;
 	}
 
 	reg = xdev->bar[xdev->config_bar_idx] + XDMA_OFS_CONFIG + 0x4C;
 	v =  read_register(reg);
 	v = (v & 0xFF) | (((u32)32) << 8);
 	write_register(v, reg, XDMA_OFS_CONFIG + 0x4C);
+	return 0;
+#else
+	/* Return 1 will go to enable ExtTag */
+	return 1;
+#endif
 }
 
 void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
@@ -3534,32 +3567,34 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	    xdev->c2h_channel_max > XDMA_CHANNEL_NUM_MAX)
 		xdev->c2h_channel_max = XDMA_CHANNEL_NUM_MAX;
 
-	rv = pci_enable_device(pdev);
-	if (rv) {
-		dbg_init("pci_enable_device() failed, %d.\n", rv);
-		goto err_enable;
-	}
-
 	/* keep INTx enabled */
 	pci_check_intr_pend(pdev);
 
 	/* enable relaxed ordering */
-	pci_enable_relaxed_ordering(pdev);
+	pci_enable_capability(pdev, PCI_EXP_DEVCTL_RELAX_EN);
 
-	pci_check_extended_tag(xdev, pdev);
+	/* if extended tag check failed, enable it */
+	if (pci_check_extended_tag(xdev, pdev)) {
+		pr_info("ExtTag is disabled, try enable it.\n");
+		pci_enable_capability(pdev, PCI_EXP_DEVCTL_EXT_TAG);
+	}
 
 	/* force MRRS to be 512 */
-	rv = pcie_set_readrq(pdev, 512);
-	if (rv)
-		pr_info("device %s, error set PCI_EXP_DEVCTL_READRQ: %d.\n",
-			dev_name(&pdev->dev), rv);
+	rv = pcie_get_readrq(pdev);
+	if (rv < 0) {
+		dev_err(&pdev->dev, "failed to read mrrs %d\n", rv);
+		goto err_map;
+	}
+	if (rv > 512) {
+		rv = pcie_set_readrq(pdev, 512);
+		if (rv) {
+			dev_err(&pdev->dev, "failed to force mrrs %d\n", rv);
+			goto err_map;
+		}
+	}
 
 	/* enable bus master capability */
 	pci_set_master(pdev);
-
-	rv = request_regions(xdev, pdev);
-	if (rv)
-		goto err_regions;
 
 	rv = map_bars(xdev, pdev);
 	if (rv)
@@ -3609,12 +3644,6 @@ err_engines:
 err_mask:
 	unmap_bars(xdev, pdev);
 err_map:
-	if (xdev->got_regions)
-		pci_release_regions(pdev);
-err_regions:
-	if (!xdev->regions_in_use)
-		pci_disable_device(pdev);
-err_enable:
 	xdev_list_remove(xdev);
 	kfree(xdev);
 	return NULL;
@@ -3649,16 +3678,6 @@ void xdma_device_close(struct pci_dev *pdev, void *dev_hndl)
 
 	remove_engines(xdev);
 	unmap_bars(xdev, pdev);
-
-	if (xdev->got_regions) {
-		dbg_init("pci_release_regions 0x%p.\n", pdev);
-		pci_release_regions(pdev);
-	}
-
-	if (!xdev->regions_in_use) {
-		dbg_init("pci_disable_device 0x%p.\n", pdev);
-		pci_disable_device(pdev);
-	}
 
 	xdev_list_remove(xdev);
 
@@ -4423,5 +4442,3 @@ int xdma_cyclic_transfer_teardown(struct xdma_engine *engine)
 
 	return 0;
 }
-
-

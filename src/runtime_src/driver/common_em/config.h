@@ -22,6 +22,7 @@
 
 #include "xbar_sys_parameters.h"
 #include "xclhal2.h"
+#include "xclfeatures.h"
 
 namespace xclemulation{
 
@@ -111,6 +112,7 @@ namespace xclemulation{
       inline void setVerbosityLevel(unsigned int verbosity)     { mVerbosity        = verbosity;     }
       inline void setServerPort(unsigned int serverPort)        { mServerPort       = serverPort;    }
       inline void setKeepRunDir(bool _mKeepRundir)              { mKeepRunDir = _mKeepRundir;        }    
+      inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }    
       
       inline bool isDiagnosticsEnabled()        const { return mDiagnostics;    }
       inline bool isUMRChecksEnabled()          const { return mUMRChecks;      }
@@ -131,6 +133,7 @@ namespace xclemulation{
       inline unsigned int getServerPort()       const { return mServerPort;      }
       inline bool isErrorsToBePrintedOnConsole()   const { return mPrintErrorsInConsole;  }
       inline bool isWarningsToBePrintedOnConsole() const { return mPrintWarningsInConsole;}
+      inline std::string getLauncherArgs() const { return mLauncherArgs;}
       
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
@@ -155,13 +158,14 @@ namespace xclemulation{
       bool mVerbosity;
       unsigned int mServerPort;
       bool mKeepRunDir;
+      std::string mLauncherArgs;
       
      
       config();
       ~config() { };//empty destructor
   };
 
-  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool> >& devicesInfo);
+  void getDevicesInfo(std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader> >& devicesInfo);
   bool copyLogsFromOneFileToAnother(const std::string &logFile, std::ofstream &ofs);
   std::string getEmDebugLogFile();
   bool isXclEmulationModeHwEmuOrSwEmu();

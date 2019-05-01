@@ -158,6 +158,7 @@ public:
     XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
+    static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -177,11 +178,15 @@ public:
 
     // Bitstream/bin download
     int xclLoadXclBin(const xclBin *buffer);
+    int xclLoadXclBinMgmt(const xclBin *buffer);
     int xclGetErrorStatus(xclErrorStatus *info);
     int xclGetDeviceInfo2(xclDeviceInfo2 *info);
     bool isGood() const;
+    bool isGoodMgmt() const;
     static XOCLShim *handleCheck(void * handle);
+    static XOCLShim *handleCheckMgmt(void * handle);
     int resetDevice(xclResetKind kind);
+    int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
     bool xclUnlockDevice();
     int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
@@ -202,7 +207,7 @@ public:
     ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
 
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
-
+    int xclReClockUser(unsigned short region, const unsigned short *targetFreqMHz);
 
     // Performance monitoring
     // Control
@@ -211,9 +216,11 @@ public:
     double xclGetWriteMaxBandwidthMBps();
     void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
     uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+    uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
     void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                             char* slotName, uint32_t length);
     size_t xclPerfMonClockTraining(xclPerfMonType type);
+    void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
     // Counters
     size_t xclPerfMonStartCounters(xclPerfMonType type);
     size_t xclPerfMonStopCounters(xclPerfMonType type);
@@ -222,10 +229,14 @@ public:
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                    uint8_t *properties, size_t size);
+                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
+                                    size_t size);
     size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
     size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
     size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
+    size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
+    size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+
 
     // Trace
     size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
@@ -233,13 +244,21 @@ public:
     uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+    // APIs using sysfs information
+    uint xclGetNumLiveProcesses();
+    int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+    // Experimental debug profile device data API
+    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
+
+
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);
     int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
-    int xclOpenContext(uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-    int xclCloseContext(uuid_t xclbinId, unsigned int ipIndex) const;
+    int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }
@@ -257,7 +276,9 @@ public:
 
     // Temporary hack for xbflash use only
     char *xclMapMgmt(void) { return mMgtMap; }
-    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex);
+    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
+    int xclMailbox(unsigned deviceIndex);
+    int xclMailboxMgmt(unsigned deviceIndex);
 
 private:
     xclVerbosityLevel mVerbosity;
@@ -285,7 +306,11 @@ private:
         return ((mDeviceInfo.mSubsystemId >> 12) == 4);
     }
 
+    int dev_init();
+    void dev_fini();
+
     int xclLoadAxlf(const axlf *buffer);
+    int xclLoadAxlfMgmt(const axlf *buffer);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
@@ -337,6 +362,7 @@ private:
     // Performance monitoring helper functions
     bool isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion);
     unsigned getBankCount();
+    signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
     uint64_t getHostTraceTimeNsec();
     uint64_t getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum);
     uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);
@@ -357,6 +383,7 @@ private:
     // Information extracted from platform linker
     bool mIsDebugIpLayoutRead = false;
     bool mIsDeviceProfiling = false;
+    uint8_t mTraceFifoProperties = 0;
     uint64_t mPerfMonFifoCtrlBaseAddress = 0;
     uint64_t mPerfMonFifoReadBaseAddress = 0;
     uint64_t mTraceFunnelAddress = 0;
@@ -369,6 +396,12 @@ private:
     uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
     uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
     uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
 
     // QDMA AIO
     aio_context_t mAioContext;

@@ -16,7 +16,6 @@
 
 #include "binary.h"
 
-#include "xrt/util/memory.h"
 #include "driver/include/xclbin.h"
 
 #include <algorithm>
@@ -157,7 +156,7 @@ create_xclbin2(std::vector<char>&& xb)
   // Ok we are probably good, any throws now breaks
   // strong exception safety guarantee as xb is being
   // moved
-  return xrt::make_unique<xclbin2>(std::move(xb));
+  return std::make_unique<xclbin2>(std::move(xb));
 }
 
 
