@@ -303,11 +303,6 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
   if(ext && ext->param) {
     auto kernel = xocl::xocl(ext->kernel);
 
-#if 0
-    if (kernel->get_cus().size() > 1)
-        throw xocl::error(CL_INVALID_OPERATION, "Can not create stream because the kernel object has more than one CUs");
-#endif
-
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
     auto mems = m_xclbin.get_mem_topology();
