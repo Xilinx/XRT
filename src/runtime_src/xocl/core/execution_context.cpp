@@ -400,7 +400,10 @@ start()
 
   // Ensure that S_AXI_CONTROL is created even when kernel
   // has no arguments.
-  packet[offset] = 0;
+  packet[offset]   = 0;  // control signals
+  packet[offset+1] = 0;  // gier
+  packet[offset+2] = 0;  // ier
+  packet[offset+3] = 0;  // isr
 
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
