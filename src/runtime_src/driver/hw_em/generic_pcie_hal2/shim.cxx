@@ -1664,7 +1664,7 @@ static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	if (flags == 0xffffffff)
 		return true;
 
-  ddr = xclemulation::xocl_bo_ddr_idx(flags);
+  ddr = xclemulation::xocl_bo_ddr_idx(flags,false);
   if (ddr > ddr_count)
 		return false;
 
@@ -1719,7 +1719,7 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
 uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
 	size_t size = info->size;
-  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags,false);
 
   if (!size)
   {
