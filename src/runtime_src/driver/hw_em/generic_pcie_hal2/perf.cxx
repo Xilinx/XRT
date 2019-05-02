@@ -224,7 +224,8 @@ namespace xclhwemhal2 {
           if (accel)
             return 0;
           std::string slot = std::to_string(counter);
-          char const * slotname = slot.c_str();
+          // Sahil suggested that it should be Bank0 instead of 0 by itself
+          char const * slotname = ("BANK" + slot).c_str();
           xclPerfMonReadCounters_RPC_CALL_AWS(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname);
         } else {
           if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
@@ -321,7 +322,7 @@ namespace xclhwemhal2 {
 
         if (isAWSLegacy()) {
           std::string slot = std::to_string(counter);
-          char const * slotname = slot.c_str();
+          char const * slotname = ("BANK" + slot).c_str();
           xclPerfMonGetTraceCount_RPC_CALL_AWS(xclPerfMonGetTraceCount,ack,no_of_samples,slotname);
         } else {
           char slotname[128];
@@ -416,11 +417,13 @@ namespace xclhwemhal2 {
         // *_RPC_CALL uses unix_socket
         char slotname[128];
         if (isAWSLegacy()) {
+          std::cout << "reading aws trace" << std::endl;
           if (accel) return 0;
           std::string slot = std::to_string(counter);
-          char const * slotname = slot.c_str();
+          char const * slotname = ("BANK" + slot).c_str();
           xclPerfMonReadTrace_RPC_CALL_AWS(xclPerfMonReadTrace,ack,samplessize,slotname);
           unsigned int i = 0;
+          std::cout << "sample size: " << samplessize << std::endl;
           for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
           {
             const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
@@ -437,6 +440,8 @@ namespace xclhwemhal2 {
             result.HostTimestamp = event.host_timestamp();
             result.EventID = XCL_PERF_MON_HW_EVENT;
             traceVector.mArray[index++] = result;
+            std::cout << "ReadBytes: " << result.ReadBytes << std::endl;
+            std::cout << "WriteBytes: " << result.WriteBytes << std::endl;
           }
           traceVector.mLength = index;
 

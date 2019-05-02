@@ -729,6 +729,7 @@ mtx.unlock();
       return 0; \
     }\
     c_msg.set_ack(ack); \
+    c_msg.set_accel(true); \
     c_msg.set_slotname(slotname); \
 
 #define xclPerfMonReadTrace_RPC_CALL_AWS(func_name,ack,samplessize,slotname) \

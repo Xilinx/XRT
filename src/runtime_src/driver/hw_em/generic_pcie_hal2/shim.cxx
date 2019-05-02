@@ -1189,7 +1189,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         {
           if (isAWSLegacy()) {
             std::string slot = std::to_string(counter);
-            char const * slotname = slot.c_str();
+            char const * slotname = ("BANK" + slot).c_str();
             xclPerfMonReadTrace_RPC_CALL_AWS(xclPerfMonReadTrace,ack,samplessize,slotname);
             for(unsigned int i = 0; i<samplessize ; i++) {
               const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
