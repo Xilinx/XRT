@@ -694,6 +694,7 @@ mtx.unlock();
       RELEASE_MUTEX();\
       return 0; \
     }\
+    c_msg.set_accel(false); \
     c_msg.set_slotname(slotname); \
 
 #define xclPerfMonReadCounters_RPC_CALL_AWS(func_name,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname) \
@@ -712,6 +713,7 @@ mtx.unlock();
       return 0; \
     }\
   c_msg.set_ack(ack); \
+  c_msg.set_accel(false); \
   c_msg.set_slotname(slotname); \
 
 #define xclPerfMonGetTraceCount_RPC_CALL_AWS(func_name,ack,no_of_samples,slotname) \
@@ -729,7 +731,7 @@ mtx.unlock();
       return 0; \
     }\
     c_msg.set_ack(ack); \
-    c_msg.set_accel(true); \
+    c_msg.set_accel(false); \
     c_msg.set_slotname(slotname); \
 
 #define xclPerfMonReadTrace_RPC_CALL_AWS(func_name,ack,samplessize,slotname) \

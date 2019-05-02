@@ -365,8 +365,10 @@ namespace xclhwemhal2 {
     for(; counter < numSlots; counter++)
     {
       // Ignore host
-      if (counter == XPAR_SPM0_HOST_SLOT && !accel && 3 != iptype)
+      /*
+      if (!accel && 3 != iptype)
         continue;
+      */
 
       unsigned int numberOfElementsAdded = 0;
 
@@ -417,7 +419,7 @@ namespace xclhwemhal2 {
         // *_RPC_CALL uses unix_socket
         char slotname[128];
         if (isAWSLegacy()) {
-          std::cout << "reading aws trace" << std::endl;
+          std::cout << "reading aws trace with counter " << counter << std::endl;
           if (accel) return 0;
           std::string slot = std::to_string(counter);
           char const * slotname = ("BANK" + slot).c_str();
