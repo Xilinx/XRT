@@ -2832,6 +2832,19 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	mutex_lock(&xdev->dev_lock);
 
 	pid = pid_nr(client->pid);
+
+	list_del(&client->link);
+	DRM_INFO("client exits pid(%d)\n", pid);
+
+	if (CLIENT_NUM_CU_CTX(client) == 0)
+		goto done;
+
+	/*
+	 * This happens when application exists without formally releasing the
+	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
+	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
+	 */
+
 	layout = XOCL_IP_LAYOUT(xdev);
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
@@ -2839,11 +2852,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
 	  : MAX_CUS;
 
-	/*
-	 * This happens when application exists without formally releasing the
-	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
-	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
-	 */
 	while (layout && (bit < layout->m_count)) {
 		if (exec->ip_reference[bit]) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
@@ -2853,19 +2861,14 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
 
-	/* Unlock xclbin */
-	if (CLIENT_NUM_CU_CTX(client) != 0)
-		(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
-
 	client->virt_cu_ref = 0;
 	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
-	list_del(&client->link);
-	DRM_INFO("client exits pid(%d)\n", pid);
+	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
 
+done:
 	mutex_unlock(&xdev->dev_lock);
-
 	devm_kfree(XDEV2DEV(xdev), client);
 	*priv = NULL;
 }

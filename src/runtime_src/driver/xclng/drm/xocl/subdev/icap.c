@@ -3214,8 +3214,6 @@ static int icap_probe(struct platform_device *pdev)
 	icap->cache_expire_secs = ICAP_DEFAULT_EXPIRE_SECS;
 
 	icap_probe_chip(icap);
-	if (!ICAP_PRIVILEGED(icap))
-		icap_unlock_bitstream(pdev, NULL, 0);
 	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x",
 			icap->idcode);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);

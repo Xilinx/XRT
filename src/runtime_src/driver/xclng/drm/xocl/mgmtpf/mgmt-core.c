@@ -729,19 +729,24 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_USER_PROBE: {
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-		struct mailbox_conn_resp resp = { 0 };
+		struct mailbox_conn_resp *resp =
+			(struct mailbox_conn_resp *)vzalloc(sizeof(*resp));
 		uint64_t ch_switch = 0;
 
+		if (!resp)
+			break;
+
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-		resp.version = min(MB_PROTOCOL_VER, conn->version);
-		resp.conn_flags |= MB_PEER_READY;
+		resp->version = min(MB_PROTOCOL_VER, conn->version);
+		resp->conn_flags |= MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
-			resp.conn_flags |= MB_PEER_SAME_DOMAIN;
-		resp.chan_switch = ch_switch;
-		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp.comm_id);
-		(void) xocl_peer_response(lro, req->req, msgid, &resp,
+			resp->conn_flags |= MB_PEER_SAME_DOMAIN;
+		resp->chan_switch = ch_switch;
+		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
+		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct mailbox_conn_resp));
+		vfree(resp);
 		break;
 	}
 	default:
