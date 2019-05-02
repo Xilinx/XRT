@@ -1108,6 +1108,7 @@ static ssize_t scaling_governor_show(struct device *dev, struct device_attribute
 
 	return sprintf(buf, "%s\n", val);
 }
+
 static ssize_t scaling_governor_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
@@ -1202,6 +1203,7 @@ static ssize_t scaling_target_power_show(struct device *dev, struct device_attri
 
 	return sprintf(buf, "%uW\n", val);
 }
+
 static ssize_t scaling_target_power_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
@@ -1217,6 +1219,7 @@ static ssize_t scaling_target_power_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
+        //TODO: Check if the threshold power is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val2 &= ~XMC_CLOCK_SCALING_POWER_REG_MASK;
@@ -1260,6 +1263,7 @@ static ssize_t scaling_target_temp_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
+        //TODO: Check if the threshold temperature is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val2 &= ~XMC_CLOCK_SCALING_TEMP_REG_MASK;
