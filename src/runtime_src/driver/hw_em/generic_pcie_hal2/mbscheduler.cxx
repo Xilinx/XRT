@@ -649,6 +649,7 @@ namespace xclhwemhal2 {
         cfg->cu_isr = 0;
         cfg->cu_dma = 0;
         exec->ertpoll = true;
+        exec->ertfull = false;
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
         cfg->cdma = cdmaEnabled ? 1 : 0;
@@ -656,6 +657,7 @@ namespace xclhwemhal2 {
       else if(ert_full)
       {
         exec->ertfull = true;
+        exec->ertpoll = false;
         exec->polling_mode = 1; //cfg->polling;
         exec->cq_interrupt = cfg->cq_int;
         cfg->cdma = cdmaEnabled ? 1 : 0;
@@ -728,20 +730,29 @@ namespace xclhwemhal2 {
   int MBScheduler::queued_to_running(xocl_cmd *xcmd)
   {
     int retval = false;
+    bool bConfigure = false;
     if (opcode(xcmd)==ERT_CONFIGURE)
     {
 #ifdef EM_DEBUG_KDS
     std::cout<<"Configure command has started. XCMD " <<xcmd<<" PACKET: "<<xcmd->packet<< " BO: "<< xcmd->bo << std::endl;
 #endif
       configure(xcmd);
+      bConfigure = true;
     }
 
     exec_core *exec = xcmd->exec;
     bool submitted  = false;
     if(exec->ertfull) 
+    {
       submitted = mb_submit(xcmd);
+    }
     else if ( exec->ertpoll )
-      submitted = ert_poll_submit(xcmd);
+    {
+      if(bConfigure)
+        submitted = ert_poll_submit_ctrl(xcmd);
+      else
+        submitted = ert_poll_submit(xcmd);
+    }
     else
       submitted = penguin_submit(xcmd);
 
@@ -759,10 +770,20 @@ namespace xclhwemhal2 {
   void MBScheduler::running_to_complete(xocl_cmd *xcmd)
   {
     exec_core *exec = xcmd->exec;
+
+    bool bConfigure = false;
+    if (opcode(xcmd)==ERT_CONFIGURE)
+      bConfigure = true;
+
     if(exec->ertfull)
       mb_query(xcmd);
     else if (exec->ertpoll)
-      ert_poll_query(xcmd);
+    {
+      if(bConfigure)
+        ert_poll_query_ctrl(xcmd);
+      else
+        penguin_query(xcmd);
+    }
     else
       penguin_query(xcmd);
   }
