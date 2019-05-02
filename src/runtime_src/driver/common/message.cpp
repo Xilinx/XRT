@@ -77,14 +77,14 @@ public:
   virtual void send(severity_level l, const char* tag, const char* msg) override;
 private:
   std::map<severity_level, const char*> severityMap = {
-    { severity_level::EMERGENCY, "EMERGENCY: "},
-    { severity_level::ALERT,     "ALERT: "},
-    { severity_level::CRITICAL,  "CRITICAL: "},
-    { severity_level::ERROR,     "ERROR: "},
-    { severity_level::WARNING,   "WARNING: "},
-    { severity_level::NOTICE,    "NOTICE: "},
-    { severity_level::INFO,      "INFO: "},
-    { severity_level::DEBUG,     "DEBUG: "}
+    { severity_level::XRT_EMERGENCY, "EMERGENCY: "},
+    { severity_level::XRT_ALERT,     "ALERT: "},
+    { severity_level::XRT_CRITICAL,  "CRITICAL: "},
+    { severity_level::XRT_ERROR,     "ERROR: "},
+    { severity_level::XRT_WARNING,   "WARNING: "},
+    { severity_level::XRT_NOTICE,    "NOTICE: "},
+    { severity_level::XRT_INFO,      "INFO: "},
+    { severity_level::XRT_DEBUG,     "DEBUG: "}
   };
 };
 
@@ -97,14 +97,14 @@ public:
   virtual void send(severity_level l, const char* tag, const char* msg) override;
 private:
   std::map<severity_level, int> severityMap = {
-    { severity_level::EMERGENCY, LOG_EMERG},
-    { severity_level::ALERT,     LOG_ALERT},
-    { severity_level::CRITICAL,  LOG_CRIT},
-    { severity_level::ERROR,     LOG_ERR},
-    { severity_level::WARNING,   LOG_WARNING},
-    { severity_level::NOTICE,    LOG_NOTICE},
-    { severity_level::INFO,      LOG_INFO},
-    { severity_level::DEBUG,     LOG_DEBUG}
+    { severity_level::XRT_EMERGENCY, LOG_EMERG},
+    { severity_level::XRT_ALERT,     LOG_ALERT},
+    { severity_level::XRT_CRITICAL,  LOG_CRIT},
+    { severity_level::XRT_ERROR,     LOG_ERR},
+    { severity_level::XRT_WARNING,   LOG_WARNING},
+    { severity_level::XRT_NOTICE,    LOG_NOTICE},
+    { severity_level::XRT_INFO,      LOG_INFO},
+    { severity_level::XRT_DEBUG,     LOG_DEBUG}
   };
 };
 
@@ -119,14 +119,14 @@ public:
 private:
   std::ofstream handle;
   std::map<severity_level, const char*> severityMap = {
-    { severity_level::EMERGENCY, "EMERGENCY: "},
-    { severity_level::ALERT,     "ALERT: "},
-    { severity_level::CRITICAL,  "CRITICAL: "},
-    { severity_level::ERROR,     "ERROR: "},
-    { severity_level::WARNING,   "WARNING: "},
-    { severity_level::NOTICE,    "NOTICE: "},
-    { severity_level::INFO,      "INFO: "},
-    { severity_level::DEBUG,     "DEBUG: "}
+    { severity_level::XRT_EMERGENCY, "EMERGENCY: "},
+    { severity_level::XRT_ALERT,     "ALERT: "},
+    { severity_level::XRT_CRITICAL,  "CRITICAL: "},
+    { severity_level::XRT_ERROR,     "ERROR: "},
+    { severity_level::XRT_WARNING,   "WARNING: "},
+    { severity_level::XRT_NOTICE,    "NOTICE: "},
+    { severity_level::XRT_INFO,      "INFO: "},
+    { severity_level::XRT_DEBUG,     "DEBUG: "}
   };
 };
 

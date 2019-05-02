@@ -210,8 +210,7 @@ for f in ${tests[*]}; do
  if [ $sync == 1 ]; then
   # sync from sprite
   echo $base/$f/${rundir}
-  rsync -avz -f '- /*/*/' $base/$f/${rundir} $f/
-  rsync -avz -f '+ /*/xclbin/' -f '+ /*/src/' -f '+ /*/data/' -f '- /*/*/' $base/$f/${rundir} $f/
+  rsync -avz -f '- /*/_x*/' -f '- /*/.Xil/' -f '- /*/reports/' -f '- /*/xocc_log/' -f '- /*/xbinst/' $base/$f/${rundir} $f/
  fi
 
  if [ $run -eq 0 ]; then
@@ -234,7 +233,7 @@ for f in ${tests[*]}; do
   echo "DSA		= $DSA"
   echo "================================================================"
 
-  cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
+  cmd=`grep 'host.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
 
   # this is required for dsv.onbrd suite
   if [ "X$cmd" == "X" ]; then

@@ -23,14 +23,14 @@ namespace xrt_core { namespace message {
 //modeled based on syslog severity.
 enum class severity_level : unsigned short
 {
- EMERGENCY,
- ALERT,
- CRITICAL,
- ERROR,
- WARNING,
- NOTICE,
- INFO,
- DEBUG
+  XRT_EMERGENCY,
+  XRT_ALERT,
+  XRT_CRITICAL,
+  XRT_ERROR,
+  XRT_WARNING,
+  XRT_NOTICE,
+  XRT_INFO,
+  XRT_DEBUG
 };
 
 

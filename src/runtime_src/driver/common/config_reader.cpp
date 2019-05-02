@@ -121,10 +121,10 @@ struct tree
       read_ini(path,m_tree);
 
       // inform which .ini was read
-      xrt_core::message::send(xrt_core::message::severity_level::INFO, "XRT", std::string("Read ") + path);
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT", std::string("Read ") + path);
     }
     catch (const std::exception& ex) {
-      xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", ex.what());
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", ex.what());
     }
   }
 

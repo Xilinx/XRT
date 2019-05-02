@@ -20,26 +20,28 @@
 #include <stdint.h>
 #include <stddef.h>
 //#include "lib/xmalogger.h"
+#include <xrt.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * enum XmaLogLevelType - Describes the logging level associated with a log message.
-*/
-typedef enum XmaLogLevelType
-{
-    XMA_CRITICAL_LOG = 0, /**< 0 */
-    XMA_ERROR_LOG,        /**< 1 */
-    XMA_INFO_LOG,         /**< 2 */
-    XMA_DEBUG_LOG,        /**< 3 */
-} XmaLogLevelType;
+/*
+ * Alias XmaLogLevelType to XRT standard xclLogMsgLevel
+ * Redfine XMA msg log literals to map to XRT literals
+ */
+
+typedef enum xclLogMsgLevel XmaLogLevelType;
+
+#define XMA_CRITICAL_LOG CRITICAL
+#define XMA_ERROR_LOG ERROR
+#define XMA_INFO_LOG INFO
+#define XMA_DEBUG_LOG DEBUG
 
 /**
  * typedef XmaLoggerCallback - Describes the function signature for an XMA logger callback.
+typedef void (*XmaLoggerCallback)(char *msg);
 */
-typedef void (*XmaLoggerCallback)(char *msg); 
 
 /**
  * xma_logmsg() - This function logs a message to stdout, a file, or both depending on
@@ -63,7 +65,7 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
  * messages that match the logging levels of equal or greater severity.  For
  * example, a level of XMA_INFO_LOG will match INFO, ERROR, and CRITICAL log
  * messages while a level of XMA_ERROR_LOG will match only ERROR and
- * CRITICAL messages.  
+ * CRITICAL messages.
  * The supplied callback is given a copy of the log message buffer.  This
  * means the client must free the buffer once the message has been consumed.
  * Failure to free the message will result in a memory-leak.  The log
@@ -76,11 +78,11 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
  *
  * @callback: Pointer to a callback function to receive log messages
  * @level:    The level of log messages to be sent to the callback
- * function.  All messages of equal or greater severity are 
+ * function.  All messages of equal or greater severity are
  * forwarded to the callback function
-*/
 void
 xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level);
+*/
 
 
 #ifdef __cplusplus

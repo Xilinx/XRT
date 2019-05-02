@@ -48,7 +48,7 @@ to_hex(void* addr)
 static void
 unaligned_message(void* addr)
 {
-  xrt::message::send(xrt::message::severity_level::WARNING,
+  xrt::message::send(xrt::message::severity_level::XRT_WARNING,
                      "unaligned host pointer '"
                      + to_hex(addr)
                      + "' detected, this leads to extra memcpy");
@@ -79,7 +79,7 @@ default_allocation_message(const xocl::device* device,const xocl::memory* mem,
   if (xrt::config::get_feature_toggle("Runtime.strict_bank_rule"))
     throw std::runtime_error(str.str());
   else
-    xrt::message::send(xrt::message::severity_level::WARNING,str.str());
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
 }
 
 static void
@@ -89,7 +89,7 @@ default_bad_allocation_message(const xocl::device* device,const xocl::memory* me
   str << "Host buffer (" << mem->get_uid() << ") "
       << "has no bank assignment and is not used as kernel argument "
       << "before first enqueue operation.";
-  xrt::message::send(xrt::message::severity_level::ERROR,str.str());
+  xrt::message::send(xrt::message::severity_level::XRT_ERROR,str.str());
 }
 
 
@@ -302,11 +302,6 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 
   if(ext && ext->param) {
     auto kernel = xocl::xocl(ext->kernel);
-
-#if 0
-    if (kernel->get_cus().size() > 1)
-        throw xocl::error(CL_INVALID_OPERATION, "Can not create stream because the kernel object has more than one CUs");
-#endif
 
     auto& kernel_name = kernel->get_name_from_constructor();
     auto memidx = m_xclbin.get_memidx_from_arg(kernel_name,ext->flags,conn);
@@ -923,6 +918,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     auto dst_boh = dst_buffer->get_buffer_object(this);
     xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
 
+    cmd->start();  // done() called by scheduler on success
     if (cmd->execute() == 0) {
       // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
       // is resident after KDMA is done even if host does explicitly migrate.
@@ -960,7 +956,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     // Old code path for p2p buffer xclEnqueueP2PCopy
     if (imported) {
       // old code path for p2p buffer
+      cmd->start();
       copy_p2p_buffer(src_buffer,dst_buffer,src_offset,dst_offset,size);
+      cmd->done();
       return;
     }
   }

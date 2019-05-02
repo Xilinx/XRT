@@ -433,7 +433,7 @@ validate_cus(const device* device, unsigned long argidx, int memidx) const
     if ((cuconn & connections).none()) {
       auto axlf = device->get_axlf();
       xrt::message::send
-        (xrt::message::severity_level::WARNING
+        (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
          + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(axlf,memidx)

@@ -162,6 +162,10 @@ struct mm_channel {
 	uint64_t		total_trans_bytes;
 };
 
+static u32 get_channel_count(struct platform_device *pdev);
+static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
+	u32 write);
+
 static void dump_sgtable(struct device *dev, struct sg_table *sgt)
 {
 	int i;
@@ -416,8 +420,26 @@ static ssize_t error_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(error);
 
+static ssize_t channel_stat_raw_show(struct device *dev,
+		        struct device_attribute *attr, char *buf)
+{
+	u32 i;
+	ssize_t nbytes = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 chs = get_channel_count(pdev);
+
+	for (i = 0; i < chs; i++) {
+		nbytes += sprintf(buf + nbytes, "%llu %llu\n",
+		get_channel_stat(pdev, i, 0),
+		get_channel_stat(pdev, i, 1));
+	}
+	return nbytes;
+}
+static DEVICE_ATTR_RO(channel_stat_raw);
+
 static struct attribute *qdma_attributes[] = {
 	&dev_attr_error.attr,
+	&dev_attr_channel_stat_raw.attr,
 	NULL,
 };
 

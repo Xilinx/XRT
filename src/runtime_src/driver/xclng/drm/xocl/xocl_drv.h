@@ -615,7 +615,6 @@ struct xocl_mailbox_funcs {
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);
 	int (*get)(struct platform_device *pdev, enum mb_kind kind, u64 *data);
-	int (*sw_transfer)(struct platform_device *pdev, void *args);
 };
 #define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
 #define	MAILBOX_OPS(xdev)	\
@@ -639,9 +638,6 @@ struct xocl_mailbox_funcs {
 #define	xocl_mailbox_get(xdev, kind, data)				\
 	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
-#define	xocl_mailbox_sw_transfer(xdev, args)				\
-	(MAILBOX_READY(xdev) ? MAILBOX_OPS(xdev)->sw_transfer(MAILBOX_DEV(xdev), \
-	args) : -ENODEV)
 
 struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
