@@ -110,6 +110,7 @@ namespace xdp {
         static uint64_t firstTimeNsec = timeNsec;
         return (timeNsec - firstTimeNsec + mStartTimeNsec);
       }
+      void ResetState();
 
     private:
       const double PCIE_DELAY_OFFSET_MSEC;
