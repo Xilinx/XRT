@@ -443,8 +443,6 @@ namespace xclhwemhal2 {
             result.HostTimestamp = event.host_timestamp();
             result.EventID = XCL_PERF_MON_HW_EVENT;
             traceVector.mArray[index++] = result;
-            std::cout << "ReadBytes: " << result.ReadBytes << std::endl;
-            std::cout << "WriteBytes: " << result.WriteBytes << std::endl;
           }
           traceVector.mLength = index;
 
