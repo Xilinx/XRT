@@ -311,11 +311,11 @@ public:
             ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'awssak program'." << std::endl;
         } else {
             ostr << std::left << std::setw(16) << "Tag"  << std::setw(16) << "Type"
-                << std::setw(16) << "Temp" << std::setw(16) << "Size" << "\n";
+                << std::setw(16) << "Temp" << std::setw(16) << "Size" << std::endl;
             for(int i = 0; i < numDDR; i++) {
                 const int fixed_w = 16;
-                ostr << " [" << i << "] " <<
-                    std::setw(16 - (std::to_string(i).length()) - 4) << std::left
+                ostr << std::left << " [" << i << "] " <<
+                    std::setw(16 - (std::to_string(i).length()) - 4)
                     << map->m_mem_data[i].m_tag;
 
                 std::string str;
