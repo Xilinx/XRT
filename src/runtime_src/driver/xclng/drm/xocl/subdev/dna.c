@@ -42,6 +42,8 @@
 
 #define DEV2XDEV(d) xocl_get_xdev(to_platform_device(d))
 
+#define XLNX_DNA_INVALID_CAPABILITY_MASK                            0xFFFFFFFE
+
 struct xocl_xlnx_dna {
 	void __iomem		*base;
 	struct device		*xlnx_dna_dev;
@@ -277,6 +279,7 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	struct xocl_xlnx_dna *xlnx_dna;
 	struct resource *res;
 	int err;
+	uint32_t capability;
 
 	xlnx_dna = devm_kzalloc(&pdev->dev, sizeof(*xlnx_dna), GFP_KERNEL);
 	if (!xlnx_dna)
@@ -302,6 +305,13 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, xlnx_dna);
+
+	capability = dna_capability(pdev);
+	if (capability & XLNX_DNA_INVALID_CAPABILITY_MASK) {
+		xocl_err(&pdev->dev, "DNA IP does not present");
+		err = -EINVAL;
+		goto create_xlnx_dna_failed;
+	}
 
 	err = mgmt_sysfs_create_xlnx_dna(pdev);
 	if (err)
