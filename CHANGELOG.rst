@@ -7,12 +7,13 @@ XRT ChangeLog
 Added
 .....
 
+™
 * Production support for *QDMA* (Xilinx PCIe Streaming DMA) engine has been added to XRT. Applications can use Xilinx streaming extension APIs defined in cl_ext_xilinx.h to work with streams on QDMA platforms like xilinx_u200_qdma_201910_1. Look for examples on https://github.com/Xilinx/SDAccel_Examples.
-* *PCIe peer-to-peer* functionality is fully supported. Please consult https://xilinx.github.io/XRT/2019.1/html/p2p.html for details on how to setup PCIe peer-to-peer BAR and host system requirements. P2P buffers are created by passing ``XCL_MEM_EXT_P2P_BUFFER`` flag to ``clCreateBuffer()`` API. Peer PCIe devices like NVMe can directly DMA from/to P2P buffers. P2P transfers between two |Alveo (TM)| boards can be triggered through standard ``lEnqueueCopyBuffers()`` API.
+* *PCIe peer-to-peer* functionality is fully supported. Please consult https://xilinx.github.io/XRT/2019.1/html/p2p.html for details on how to setup PCIe peer-to-peer BAR and host system requirements. P2P buffers are created by passing ``XCL_MEM_EXT_P2P_BUFFER`` flag to ``clCreateBuffer()`` API. Peer PCIe devices like NVMe can directly DMA from/to P2P buffers. P2P transfers between two Alveo™ boards can be triggered through standard ``lEnqueueCopyBuffers()`` API.
 * Support has been added for *AP_CTRL_CHAIN* (data-flow) and *AP_CTRL_NONE* (streaming) execution models. XRT scheduler (including hardware accelerated ERT) have been updated to handle the new execution models. xclbin tools have been updated to annotate xclbin IP_LAYOUT entries with suitable tags to pass the execution model information to XRT.
 * *Memory to memory (M2M)* transfers from one DDR bank to another can be effected on platforms with M2M IP via standard clEnqueueCopyBuffer()
 * XRT now looks for ``xrt.ini`` configuration file and if not found looks for legacy sdaccel.ini configuration file. If not found in usual search directories the files are now also searched in working directory.
-* Embedded platforms based on |Zynq MPSoC US+ (TM)| are fully supported. For reference designs looks at |reVISION (TM)| stack from Xilinx. Embedded platforms now use interrupts for CU completion notification significantly reducing ARM CPU usage.
+* Embedded platforms based on Zynq MPSoC US+™ are fully supported. For reference designs looks at reVISION™ stack from Xilinx. Embedded platforms now use interrupts for CU completion notification significantly reducing ARM CPU usage.
 * XRT now makes no assumption about CU base addresses on embedded platforms. CU base addresses can be completely floating and are discovered from ``IP_LAYOUT`` section of xclbin.
 * XMA and OCL now use common config reader and messaging framework provided by XRT core.
 * XMA uses XRT core framework for scheduling tasks on encoder/decoder/scaler. New XMA APIs provide a method to prepare register write command packet, send the write command to XRT and then wait for completion of one or more command submissions. Please look at https://github.com/Xilinx/xma-samples for recommended way to write XMA plugins and design video IPs.
@@ -22,7 +23,7 @@ Added
 
 Fixed
 .....
-
+TODO
 
 2.1.0 (201830.2.1)
 ~~~~~~~~~~~~~~~~~~
