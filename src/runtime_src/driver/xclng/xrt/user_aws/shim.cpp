@@ -121,37 +121,13 @@ namespace awsbwhal {
     int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
     {
         std::string buf, dev_name;
+        std::string errmsg;
         dev_name = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-
-        std::string subdev_str = "";
-        std::string entry_str = "xclbinuuid";
-        std::string binid_path = xcldev::get_sysfs_path(dev_name, subdev_str, entry_str);
-
-
-//        sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
-
-//         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-//         std::string binid_path = devPath + "/xclbinuuid";
-         struct stat sb;
-         if( stat( binid_path.c_str(), &sb ) < 0 ) {
-             std::cout << "ERROR: failed to stat " << binid_path << std::endl;
-             return errno;
-         }
-         std::ifstream ifs( binid_path.c_str(), std::ifstream::binary );
-         if( !ifs.good() ) {
-             return errno;
-         }
-         char* fileReadBuf = new char[sb.st_size];
-         memset(fileReadBuf, 0, sb.st_size);
-         ifs.read( fileReadBuf, sb.st_size );
-         if( ifs.gcount() > 0 ) {
-             std::string tmp_hex_string = fileReadBuf;
-             xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
-         } else { // xclbinuuid exists, but no data read or reported
-             std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
-         }
-         delete [] fileReadBuf;
-         ifs.close();
+        xcldev::sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
+        if (!buf.empty())
+             xclbin_id_from_sysfs = std::stoi(buf,nullptr,16);
+        else
+            std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
          return 0;
     }
 
