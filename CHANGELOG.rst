@@ -7,7 +7,6 @@ XRT ChangeLog
 Added
 .....
 
-™
 * Production support for *QDMA* (Xilinx PCIe Streaming DMA) engine has been added to XRT. Applications can use Xilinx streaming extension APIs defined in cl_ext_xilinx.h to work with streams on QDMA platforms like xilinx_u200_qdma_201910_1. Look for examples on https://github.com/Xilinx/SDAccel_Examples.
 * *PCIe peer-to-peer* functionality is fully supported. Please consult https://xilinx.github.io/XRT/2019.1/html/p2p.html for details on how to setup PCIe peer-to-peer BAR and host system requirements. P2P buffers are created by passing ``XCL_MEM_EXT_P2P_BUFFER`` flag to ``clCreateBuffer()`` API. Peer PCIe devices like NVMe can directly DMA from/to P2P buffers. P2P transfers between two Alveo™ boards can be triggered through standard ``lEnqueueCopyBuffers()`` API.
 * Support has been added for *AP_CTRL_CHAIN* (data-flow) and *AP_CTRL_NONE* (streaming) execution models. XRT scheduler (including hardware accelerated ERT) have been updated to handle the new execution models. xclbin tools have been updated to annotate xclbin IP_LAYOUT entries with suitable tags to pass the execution model information to XRT.
@@ -23,7 +22,9 @@ Added
 
 Fixed
 .....
+
 TODO
+
 
 2.1.0 (201830.2.1)
 ~~~~~~~~~~~~~~~~~~
