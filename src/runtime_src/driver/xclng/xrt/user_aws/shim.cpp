@@ -120,8 +120,18 @@ namespace awsbwhal {
 
     int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
     {
-         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-         std::string binid_path = devPath + "/xclbinuuid";
+        std::string buf, dev_name;
+        dev_name = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+
+        std::string subdev_str = "";
+        std::string entry_str = "xclbinuuid";
+        std::string binid_path = xcldev::get_sysfs_path(dev_name, subdev_str, entry_str);
+
+
+//        sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
+
+//         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+//         std::string binid_path = devPath + "/xclbinuuid";
          struct stat sb;
          if( stat( binid_path.c_str(), &sb ) < 0 ) {
              std::cout << "ERROR: failed to stat " << binid_path << std::endl;
