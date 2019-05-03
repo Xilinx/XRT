@@ -416,7 +416,7 @@ namespace xclhwemhal2 {
       {
 #ifndef _WINDOWS
 // add windows support
-#endif
+
         unsigned int samplessize = 0;
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
@@ -550,6 +550,7 @@ namespace xclhwemhal2 {
             }
           }
         }
+#endif
       }
     }
 
