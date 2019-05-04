@@ -126,12 +126,12 @@ command::
   }
 }
 
-int
+void
 command::
 execute()
 {
   m_done=false;
-  return xrt::scheduler::schedule(get_ptr());
+  xrt::scheduler::schedule(get_ptr());
 }
 
 } // xrt

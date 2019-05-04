@@ -29,7 +29,7 @@ using command_type = std::shared_ptr<command>;
  */
 namespace sws {
 
-int
+void
 schedule(const command_type& cmd);
 
 void
@@ -51,7 +51,7 @@ init(xrt::device* device, const std::vector<uint64_t>& cu_addr_map);
  */
 namespace kds {
 
-int
+void
 schedule(const command_type& cmd);
 
 void
@@ -69,7 +69,7 @@ namespace scheduler {
 /**
  * Schedule a command for execution on either sws or mbs
  */
-int
+void
 schedule(const command_type& cmd);
 
 void
