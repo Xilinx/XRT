@@ -101,13 +101,13 @@ stop()
 /**
  * Schedule a command for execution on either sws or kds
  */
-int
+void
 schedule(const command_type& cmd)
 {
   if (kds_enabled())
-    return kds::schedule(cmd);
+    kds::schedule(cmd);
   else
-    return sws::schedule(cmd);
+    sws::schedule(cmd);
 }
 
 void

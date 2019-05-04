@@ -109,7 +109,7 @@ struct ert_start_kernel_cmd {
   uint32_t data[1];          /* count-1 number of words */
 };
 
-#define COPYBO_UNIT   64     /* Limited by KDMA CU */
+#define KDMA_BLOCK_SIZE 64   /* Limited by KDMA CU */
 struct ert_start_copybo_cmd {
   uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
   uint32_t unused:6;         /* [9-4] */
@@ -125,7 +125,7 @@ struct ert_start_copybo_cmd {
   uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
   uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
   uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
-  uint32_t size;             /* size in COPYBO_UNIT byte */
+  uint32_t size;             /* size in bytes */
   void     *arg;             /* pointer to aux data for KDS */
 };
 
@@ -488,7 +488,7 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
   pkt->dst_addr_lo = dst_offset;
   pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
   pkt->dst_bo_hdl = dst_bo;
-  pkt->size = size / COPYBO_UNIT;
+  pkt->size = size;
   pkt->arg = 0;
 }
 static inline uint64_t
@@ -504,8 +504,7 @@ ert_copybo_dst_offset(struct ert_start_copybo_cmd *pkt)
 static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
 {
-  uint64_t sz = pkt->size;
-  return sz * COPYBO_UNIT;
+  return pkt->size;
 }
 
 #endif
