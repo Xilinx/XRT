@@ -154,10 +154,11 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MBX_DBG(mbx, fmt, arg...)	\
 	xocl_dbg(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 
-#define	MAILBOX_TIMER		(HZ / 5) /* in jiffies */
-#define	MSG_RX_DEFAULT_TTL	100UL	/* in MAILBOX_TIMER */
-#define	MSG_TX_DEFAULT_TTL	10UL	/* in MAILBOX_TIMER */
-#define	MSG_TX_PER_MB_TTL	10UL	/* in MAILBOX_TIMER */
+#define	MAILBOX_TIMER		(HZ / 50) /* in jiffies */
+#define	MAILBOX_SEC2TIMER(s)	((s) * HZ / MAILBOX_TIMER)
+#define	MSG_RX_DEFAULT_TTL	20UL	/* in seconds */
+#define	MSG_TX_DEFAULT_TTL	2UL	/* in seconds */
+#define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
 #define	TEST_MSG_LEN		128
 
@@ -1126,12 +1127,16 @@ static void do_hw_tx(struct mailbox_channel *ch)
 
 static void msg_timer_on(struct mailbox_msg *msg, bool is_tx)
 {
+	u32 ttl;
+
 	if (is_tx) {
-		msg->mbm_ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL,
+		ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL,
 			MSG_TX_DEFAULT_TTL);
 	} else {
-		msg->mbm_ttl = MSG_RX_DEFAULT_TTL;
+		ttl = MSG_RX_DEFAULT_TTL;
 	}
+
+	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
 }
 
 /* Prepare outstanding msg for sending outgoing msg. */
