@@ -55,11 +55,10 @@
 #include <fstream>
 #include <algorithm>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 #define LENGTH (20)
-#define AP_START 1
-#define AP_DONE 2
-#define AP_IDLE 4
 
 static void
 throw_if_error(cl_int errcode, const char* msg=nullptr)
@@ -79,26 +78,87 @@ throw_if_error(cl_int errcode, const std::string& msg)
   throw_if_error(errcode,msg.c_str());
 }
 
+// Configure number of jobs to run
+static const size_t num_jobs = 10;
+
+// Configure how long to iterate the jobs
+static const size_t seconds = 15;
+
+// Flag to stop job rescheduling.  Is set to true after
+// specified number of seconds.
+static bool stop = false;
+
+struct job_type
+{
+  size_t id = 0;
+  size_t runs = 0;
+  xrt_device* m_xdev;
+  uint32_t m_cuidx;
+  uint64_t m_bo_dev_addr;
+
+  xrtcpp::exec::exec_write_command m_cmd;
+
+  job_type(xrt_device* xdev, uint32_t cuidx, uint64_t bo_dev_addr)
+    : m_xdev(xdev), m_cuidx(cuidx), m_bo_dev_addr(bo_dev_addr)
+    , m_cmd(xrtcpp::exec::exec_write_command(xdev))
+  {
+    static size_t count = 0;
+    id = count++;
+  }
+
+  void
+  run()
+  {
+    while (!stop) {
+      m_cmd.clear();
+      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,m_bo_dev_addr); // low
+      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(m_bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
+      m_cmd.add_cu(m_cuidx);
+      m_cmd.execute();
+      m_cmd.wait();
+
+      // execute same command again demo completed() API busy wait
+      int count = 0;
+      m_cmd.execute();
+      while (!m_cmd.completed()) ++count;
+
+      runs += 2;
+    }
+  }
+};
+
 static int
 run_kernel(xrt_device* xdev, uint32_t cuidx, uint64_t bo_dev_addr)
 {
   xrtcpp::acquire_cu_context(xdev,cuidx);
-  for (int i=0; i<2; ++i) {
-    auto cmd = xrtcpp::exec::exec_write_command(xdev);
-    cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,bo_dev_addr); // low
-    cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
-    cmd.add_cu(cuidx);
-    cmd.execute();
-    cmd.wait();
 
+  // create jobs
+  std::vector<job_type> jobs;
+  jobs.reserve(num_jobs);
+  for (size_t j=0; j<num_jobs; ++j)
+    jobs.emplace_back(xdev,cuidx,bo_dev_addr);
 
-    // execute same command again demo completed() API busy wait
-    int count = 0;
-    cmd.execute();
-    while (!cmd.completed()) ++count;
-    std::cout << "wait count: " << count << "\n";
-  }
+  // each job runs on its own thread
+  auto launch = [](job_type& j) {
+    j.run();
+  };
+
+  stop = false;
+  std::vector<std::thread> workers;
+  for (auto& j : jobs)
+    workers.emplace_back(std::thread(launch,std::ref(j)));
+
+  std::this_thread::sleep_for(std::chrono::seconds(seconds));
+  stop=true;
+
+  for (auto& t : workers)
+    t.join();
+
   xrtcpp::release_cu_context(xdev,cuidx);
+
+  for (auto& j : jobs)
+    std::cout << "job[" << j.id << "] runs(" << j.runs << ")\n";
+
   return 0;
 }
 

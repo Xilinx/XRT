@@ -3077,7 +3077,15 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if (exec->num_cdma == 0)
 		return -EINVAL;
 
-	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+	userpf_info(xdev,"checking alignment requirments for KDMA sz(%lu)",sz);
+	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+	    sz % KDMA_BLOCK_SIZE) {
+		userpf_info(xdev,"improper alignment, cannot use KDMA");
+		return -EINVAL;
+	}
+
+	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
 
 	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
 		scmd->cu_mask[i / 32] |= 1 << (i % 32);
@@ -3102,7 +3110,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	struct drm_device *ddev = filp->minor->dev;
 
 	if (xdev->needs_reset) {
-		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
+		userpf_err(xdev, "device needs reset, use 'xbutil reset'");
 		return -EBUSY;
 	}
 

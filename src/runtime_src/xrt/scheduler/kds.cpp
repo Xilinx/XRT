@@ -73,11 +73,17 @@ is_51_dsa(const xrt::device* device)
   return (nm.find("_5_1")!=std::string::npos || nm.find("u200_xdma_201820_1")!=std::string::npos);
 }
 
+inline ert_cmd_state
+get_command_state(const command_type& cmd)
+{
+  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
+  return static_cast<ert_cmd_state>(epacket->state);
+}
+
 inline bool
 is_command_done(const command_type& cmd)
 {
-  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
-  return epacket->state >= ERT_CMD_STATE_COMPLETED;
+  return get_command_state(cmd) >= ERT_CMD_STATE_COMPLETED;
 }
 
 static bool
@@ -100,7 +106,7 @@ check(const command_type& cmd)
   return true;
 }
 
-static int
+static void
 launch(command_type cmd)
 {
   XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
@@ -108,17 +114,28 @@ launch(command_type cmd)
   auto device = cmd->get_device();
   auto& submitted_cmds = s_device_cmds[device]; // safe since inserted in init
 
+  command_queue_type::const_iterator pos;
+
   // Store command so completion can be tracked.  Make sure this is
   // done prior to exec_buf as exec_wait can otherwise be missed.
   {
     std::lock_guard<std::mutex> lk(s_mutex);
-    submitted_cmds.push_back(cmd);
+    pos = submitted_cmds.insert(submitted_cmds.end(),cmd);
     s_work.notify_all();
   }
 
   // Submit the command
   auto exec_bo = cmd->get_exec_bo();
-  return device->exec_buf(exec_bo);
+  try {
+    device->exec_buf(exec_bo);
+  }
+  catch (...) {
+    // Remove the pending command
+    std::lock_guard<std::mutex> lk(s_mutex);
+    assert(get_command_state(cmd)==ERT_CMD_STATE_NEW);
+    submitted_cmds.erase(pos);
+    throw;
+  }
 }
 
 static void
@@ -189,7 +206,7 @@ monitor(const xrt::device* device)
 
 namespace xrt { namespace kds {
 
-int
+void
 schedule(const command_type& cmd)
 {
   return launch(cmd);
