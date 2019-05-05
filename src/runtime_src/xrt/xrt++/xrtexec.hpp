@@ -63,7 +63,12 @@ protected:
   command(xrt_device* dev, ert_cmd_opcode opcode);
 
 public:
-  int
+  /**
+   * Execute a command
+   *
+   * Throws on error
+   */
+  void
   execute();
 
   void

@@ -179,7 +179,7 @@ public:
   /**
    * Execute this command
    */
-  int
+  void
   execute();
 
   /**
