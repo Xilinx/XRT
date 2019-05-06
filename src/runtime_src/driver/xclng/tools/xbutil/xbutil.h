@@ -419,7 +419,7 @@ public:
                 else
                     status = "N/A";
 
-                pcidev::get_dev(m_idx)->user->sysfs_get("qdma", lname, errmsg, stream_stat);
+                pcidev::get_dev(m_idx)->user->sysfs_get("dma", lname, errmsg, stream_stat);
                 if (errmsg.empty()) {
                     status = "Active";
                     for (unsigned k = 0; k < stream_stat.size(); k++) {
