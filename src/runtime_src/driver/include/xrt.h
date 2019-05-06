@@ -206,15 +206,15 @@ enum xclAddressSpace {
  * Defines log message severity levels for messages sent to log file with xclLogMsg cmd
  */
 
-enum xclLogMsgLevel {
-     EMERGENCY = 0,
-     ALERT = 1,
-     CRITICAL = 2,
-     ERROR = 3,
-     WARNING = 4,
-     NOTICE = 5,
-     INFO = 6,
-     DEBUG = 7
+enum xrtLogMsgLevel {
+     XRT_EMERGENCY = 0,
+     XRT_ALERT = 1,
+     XRT_CRITICAL = 2,
+     XRT_ERROR = 3,
+     XRT_WARNING = 4,
+     XRT_NOTICE = 5,
+     XRT_INFO = 6,
+     XRT_DEBUG = 7
 };
 
 /**
@@ -490,7 +490,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xclLogMsgLevel level, const char* tag, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
