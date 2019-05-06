@@ -66,27 +66,34 @@ namespace xdp {
 
   // Destructor
   TraceParser::~TraceParser() {
-    // Clear queues (i.e., swap with an empty one)
-    std::queue<uint64_t> empty64;
-    std::queue<uint32_t> empty32;
-    std::queue<uint16_t> empty16;
+    ResetState();
+  }
+
+  template <class T>
+  void clear_queue(std::queue<T> &q) {
+    std::queue<T> e;
+    std::swap(q, e);
+  }
+
+  void TraceParser::ResetState() {
+    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    // Clear queues
     for (int i=0; i < XSPM_MAX_NUMBER_SLOTS; i++) {
-      std::swap(mWriteStarts[i], empty64);
-      std::swap(mHostWriteStarts[i], empty64);
-      std::swap(mReadStarts[i], empty64);
-      std::swap(mHostReadStarts[i], empty64);
+      clear_queue(mWriteStarts[i]);
+      clear_queue(mHostWriteStarts[i]);
+      clear_queue(mReadStarts[i]);
+      clear_queue(mHostReadStarts[i]);
     }
     for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
-      mStreamTxStarts[i] = std::queue<uint64_t>();
-      mStreamStallStarts[i] = std::queue<uint64_t>();
-      mStreamStarveStarts[i] = std::queue<uint64_t>();
-
-      mStreamTxStartsHostTime[i] = std::queue<uint64_t>();
-      mStreamStallStartsHostTime[i] = std::queue<uint64_t>();
-      mStreamStarveStartsHostTime[i] = std::queue<uint64_t>();
+      clear_queue(mStreamTxStarts[i]);
+      clear_queue(mStreamStallStarts[i]);
+      clear_queue(mStreamStarveStarts[i]);
+      clear_queue(mStreamTxStartsHostTime[i]);
+      clear_queue(mStreamStallStartsHostTime[i]);
+      clear_queue(mStreamStarveStartsHostTime[i]);
     }
     for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
-      mAccelMonCuStarts[i] = std::queue<uint64_t>();
+      clear_queue(mAccelMonCuStarts[i]);
     }
   }
 
@@ -209,6 +216,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           streamTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
           streamTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
           resultVector.push_back(streamTrace);
+          mStreamMonLastTranx[s] = timestamp;
         } // !isStart
       } else if (SAMPacket) {
         s = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
@@ -342,9 +350,10 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       }
     } // for i
 
-    // Try to approximate CU Ends from data transnfers
-    std::string cuPortName, cuNameSAM, cuNameSPM;
-    for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
+    // Try to approximate CU Ends from cu port events
+    bool warning = false;
+    unsigned numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+    for (unsigned i = 0; i < numCu; i++) {
       if (!mAccelMonCuStarts[i].empty()) {
         kernelTrace.SlotNum = i;
         kernelTrace.Name = "OCL Region";
@@ -355,18 +364,35 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.BurstLength = 0;
         kernelTrace.NumBytes = 0;
         uint64_t lastTimeStamp = 0;
-        mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
-        for (int j = 0; j < XSPM_MAX_NUMBER_SLOTS; j++) {
-          mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
-          cuNameSPM = cuPortName.substr(0, cuPortName.find_first_of("/"));
-          if (cuNameSAM == cuNameSPM && lastTimeStamp < mPerfMonLastTranx[j])
+        std::string cu;
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cu);
+        // Check if any memory port on current CU had a trace packet
+        unsigned numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+        for (unsigned j = 0; j < numMem; j++) {
+          std::string port;
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, port);
+          auto found = port.find(cu);
+          if (found != std::string::npos && lastTimeStamp < mPerfMonLastTranx[j])
             lastTimeStamp = mPerfMonLastTranx[j];
         }
+        // Check if any streaming port on current CU had a trace packet
+        unsigned numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+        for (unsigned j = 0; j < numStream; j++) {
+          std::string port;
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, j, port);
+          auto found = port.find(cu);
+          if (found != std::string::npos && lastTimeStamp < mStreamMonLastTranx[j])
+            lastTimeStamp = mStreamMonLastTranx[j];
+        }
+        // Default case
         if (lastTimeStamp < mAccelMonLastTranx[i])
           lastTimeStamp = mAccelMonLastTranx[i];
         if (lastTimeStamp) {
-          mPluginHandle->sendMessage(
-          "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
+          if (!warning) {
+            mPluginHandle->sendMessage(
+            "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
+            warning = true;
+          }
           kernelTrace.EndTime = lastTimeStamp;
           kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);
           kernelTrace.EventID = mCuEventID++;
@@ -375,8 +401,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         }
       }
     }
-    // Clear vectors
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    ResetState();
     XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 
