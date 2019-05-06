@@ -128,6 +128,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_PL_DEV_TO_XDEV(pldev) \
 	pci_get_drvdata(XOCL_PL_TO_PCI_DEV(pldev))
 
+#define XOCL_PCI_FUNC(xdev_hdl)		\
+	PCI_FUNC(XDEV(xdev_hdl)->pdev->devfn)
+
 #define	XOCL_QDMA_USER_BAR	2
 #define	XOCL_DSA_VERSION(xdev)			\
 	(XDEV(xdev)->priv.dsa_ver)
@@ -170,19 +173,23 @@ extern struct class *xrt_class;
 struct drm_xocl_bo;
 struct client_ctx;
 
+enum {
+	XOCL_SUBDEV_STATE_UNINIT,
+	XOCL_SUBDEV_STATE_INIT,
+};
+
 struct xocl_subdev {
 	struct platform_device		*pldev;
 	void				*ops;
-};
-
-struct xocl_subdev_private {
-	int		id;
-	bool		is_multi;
-	char		priv_data[1];
+	int				state;
+	struct xocl_subdev_info		info;
+	int				inst;
+	struct resource			res[XOCL_SUBDEV_MAX_RES];
+	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
-	(((struct xocl_subdev_private *)dev_get_platdata(dev))->priv_data)
+	(dev_get_platdata(dev))
 
 typedef	void *xdev_handle_t;
 
@@ -231,9 +238,10 @@ struct xocl_drvinst {
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
-	struct xocl_subdev	subdevs[XOCL_SUBDEV_NUM];
-	u32			subdev_num;
+	struct xocl_subdev	*subdevs[XOCL_SUBDEV_NUM];
 	struct xocl_pci_funcs	*pci_ops;
+
+	struct mutex 		lock;
 
 	u32			bar_idx;
 	void __iomem		*bar_addr;
@@ -278,10 +286,16 @@ struct xocl_dev_core {
 
 
 #define	SUBDEV(xdev, id)	\
-	(XDEV(xdev)->subdevs[id])
+	(XDEV(xdev)->subdevs[id][0])
+
+struct xocl_subdev_funcs {
+	int (*offline)(struct platform_device *pdev);
+	int (*online)(struct platform_device *pdev);
+};
 
 /* rom callbacks */
 struct xocl_rom_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	bool (*is_unified)(struct platform_device *pdev);
 	bool (*mb_mgmt_on)(struct platform_device *pdev);
 	bool (*mb_sched_on)(struct platform_device *pdev);
@@ -329,6 +343,7 @@ struct xocl_rom_funcs {
 
 /* dma callbacks */
 struct xocl_dma_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	ssize_t (*migrate_bo)(struct platform_device *pdev,
 		struct sg_table *sgt, u32 dir, u64 paddr, u32 channel, u64 sz);
 	int (*ac_chan)(struct platform_device *pdev, u32 dir);
@@ -374,6 +389,7 @@ struct xocl_dma_funcs {
 
 /* mb_scheduler callbacks */
 struct xocl_mb_scheduler_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*create_client)(struct platform_device *pdev, void **priv);
 	void (*destroy_client)(struct platform_device *pdev, void **priv);
 	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
@@ -447,6 +463,7 @@ enum {
 	XOCL_SYSMON_PROP_VCC_BRAM_MIN,
 };
 struct xocl_sysmon_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*get_prop)(struct platform_device *pdev, u32 prop, void *val);
 };
 #define	SYSMON_DEV(xdev)	\
@@ -468,6 +485,7 @@ enum {
 	XOCL_AF_PROP_DETECTED_TIME,
 };
 struct xocl_firewall_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*get_prop)(struct platform_device *pdev, u32 prop, void *val);
 	int (*clear_firewall)(struct platform_device *pdev);
 	u32 (*check_firewall)(struct platform_device *pdev, int *level);
@@ -487,6 +505,7 @@ struct xocl_firewall_funcs {
 
 /* microblaze callbacks */
 struct xocl_mb_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	void (*reset)(struct platform_device *pdev);
 	int (*stop)(struct platform_device *pdev);
 	int (*load_mgmt_image)(struct platform_device *pdev, const char *buf,
@@ -497,6 +516,7 @@ struct xocl_mb_funcs {
 };
 
 struct xocl_dna_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
 	void (*write_cert)(struct platform_device *pdev, const uint32_t *buf, u32 len);
@@ -608,6 +628,7 @@ enum mb_kind {
 typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
 		mailbox_msg_cb_t cb, void *cbarg);
@@ -643,6 +664,7 @@ struct xocl_mailbox_funcs {
 	kind, data) : -ENODEV)
 
 struct xocl_icap_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
@@ -709,16 +731,15 @@ xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
 
 /* subdev functions */
-int xocl_subdev_create_multi_inst(xdev_handle_t xdev_hdl,
-	struct xocl_subdev_info *sdev_info);
-int xocl_subdev_create_one(xdev_handle_t xdev_hdl,
+int xocl_subdev_init(xdev_handle_t xdev_hdl);
+void xocl_subdev_fini(xdev_handle_t xdev_hdl);
+int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num);
-void xocl_subdev_destroy_one(xdev_handle_t xdev_hdl, u32 subdev_id);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
-void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, int id);
+void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);

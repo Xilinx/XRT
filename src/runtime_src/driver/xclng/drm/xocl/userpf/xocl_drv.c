@@ -704,6 +704,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
+	xocl_subdev_fini(xdev);
+	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
@@ -728,6 +730,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, xdev);
 	dev_info = (struct xocl_board_private *)ent->driver_data;
 
+	mutex_init(&xdev->core.lock);
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
@@ -739,6 +742,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
+
+	ret = xocl_subdev_init(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to failed to init subdev");
+		goto failed;
+	}
 
 	ret = xocl_alloc_dev_minor(xdev);
 	if (ret)

@@ -51,13 +51,23 @@ enum {
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
 
+enum {
+	XOCL_SUBDEV_LEVEL_STATIC,
+	XOCL_SUBDEV_LEVEL_BLD,
+	XOCL_SUBDEV_LEVEL_PRP,
+	XOCL_SUBDEV_LEVEL_URP,
+};
 struct xocl_subdev_info {
         uint32_t		id;
-        char			*name;
+        const char		*name;
         struct resource		*res;
         int			num_res;
 	void			*priv_data;
 	int			data_len;
+	bool			multi_inst;
+	int			level;
+	int			bar_idx;
+	int			pf;
 };
 
 struct xocl_board_private {
@@ -157,6 +167,10 @@ enum subdev_id {
 	XOCL_SUBDEV_NUM
 };
 
+#define XOCL_SUBDEV_MAX_RES		32
+#define XOCL_SUBDEV_RES_NAME_LEN	64
+#define XOCL_SUBDEV_MAX_INST		64
+
 #define	XOCL_RES_FEATURE_ROM				\
 		((struct resource []) {			\
 			{				\
@@ -208,6 +222,8 @@ enum subdev_id {
 		XOCL_MIG,				\
 		XOCL_RES_MIG,				\
 		ARRAY_SIZE(XOCL_RES_MIG),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
 	}
 
 
@@ -226,6 +242,8 @@ enum subdev_id {
 		XOCL_MIG,				\
 		XOCL_RES_MIG_HBM,			\
 		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
 	}
 
 #define	XOCL_RES_AF					\
@@ -382,6 +400,7 @@ enum subdev_id {
 		XOCL_DNA,				\
 		XOCL_RES_DNA,				\
 		ARRAY_SIZE(XOCL_RES_DNA),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000
