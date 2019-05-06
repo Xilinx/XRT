@@ -1168,7 +1168,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #ifndef _WINDOWS
     // TODO: Windows build support
     // *_RPC_CALL uses unix_socket
-#endif
+
     Event eventObj;
     uint32_t numSlots = getPerfMonNumberSlots(XCL_PERF_MON_MEMORY);
     bool ack = true;
@@ -1222,6 +1222,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         } while (samplessize != 0);
       }
     }
+
+#endif
 
     xclGetDebugMessages(true);
     simulator_started = false;
