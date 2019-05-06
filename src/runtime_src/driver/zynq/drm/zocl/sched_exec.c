@@ -328,6 +328,28 @@ set_cmd_int_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 }
 
 /**
+ * write_cu_regmap - Write CU regmap
+ *
+ * @reg_data: start address of regmap data
+ * @base_addr: CU regmap base virtual address
+ */
+static inline void
+write_cu_regmap(u32 *reg_data, u32 *base_addr, u32 size)
+{
+	u32 i;
+
+	/* Write register map, starting at base_addr + 0x10 (byte)
+	 * This based on the fact that kernel used
+	 *	0x00 -- Control Register
+	 *	0x04 and 0x08 -- Interrupt Enable Registers
+	 *	0x0C -- Interrupt Status Register
+	 * Skip the first 4 words in user regmap.
+	 */
+	for (i = 4; i < size; ++i)
+		iowrite32(reg_data[i], base_addr + i);
+}
+
+/**
  * setup_ert_hw() - Setup Embedded Hardware HW IP
  *
  * This function will be called by configure()
@@ -480,22 +502,13 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 static void
 init_cu_by_idx(struct sched_cmd *cmd, int cu_idx)
 {
-	u32 i, size = regmap_size(cmd);
+	u32 size = regmap_size(cmd);
 	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct ert_init_kernel_cmd *ik;
 
 	ik = (struct ert_init_kernel_cmd *)cmd->packet;
 
-	/* Initialize CU by writing register map starting at
-	 * base_address + 0x10 (byte)
-	 * This based on the fact that kernel used
-	 *	0x00 -- Control Register
-	 *	0x04 and 0x08 -- Interrupt Enable Registers
-	 *	0x0C -- Interrupt Status Register
-	 * Skip the first 4 words in user regmap.
-	 */
-	for (i = 4; i < size; ++i)
-		iowrite32(*(ik->data + ik->extra_cu_masks + i), virt_addr + i);
+	write_cu_regmap(ik->data + ik->extra_cu_masks, virt_addr, size);
 }
 
 /**
@@ -1450,7 +1463,7 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 static void
 configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-	u32 i, size = regmap_size(cmd);
+	u32 size = regmap_size(cmd);
 	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct ert_start_kernel_cmd *sk;
 
@@ -1459,6 +1472,9 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
+	write_cu_regmap(sk->data + sk->extra_cu_masks, virt_addr, size);
+
+#if 0
 	/* Write register map, starting at base_address + 0x10 (byte)
 	 * This based on the fact that kernel used
 	 *	0x00 -- Control Register
@@ -1468,6 +1484,7 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	 */
 	for (i = 4; i < size; ++i)
 		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
+#endif
 
 	/* Let user know which CU execute this command */
 	set_cmd_ext_cu_idx(cmd, cu_idx);
