@@ -466,6 +466,7 @@ namespace xclcpuemhal2 {
 
     if(header)
     {
+      resetProgram();
 
     if( mFirstBinary )
     {
