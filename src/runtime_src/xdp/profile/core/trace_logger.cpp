@@ -431,7 +431,7 @@ namespace xdp {
                + "|" + cu_name + "|" + uniqueCuDataKey;
       if (objStage == RTUtil::START) {
         XDP_LOG("logKernelExecution: CU START @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
-        if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU) {
+        if (mPluginHandle->getFlowMode() == xdp::RTUtil::CPU || (mPluginHandle->isAwsDevice(deviceName) && mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM)) {
           mProfileCounters->logComputeUnitExecutionStart(cuName, deviceTimeStamp);
           mProfileCounters->logComputeUnitDeviceStart(newDeviceName, timeStamp);
           cuId = ++mCuStarts;
@@ -441,7 +441,7 @@ namespace xdp {
       else if (objStage == RTUtil::END) {
         XDP_LOG("logKernelExecution: CU END @ %.3f msec for %s\n", deviceTimeStamp, cuName.c_str());
         // This is updated through HAL
-        if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU) {
+        if (mPluginHandle->getFlowMode() != xdp::RTUtil::CPU && !(mPluginHandle->isAwsDevice(deviceName) && mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM)) {
           deviceTimeStamp = 0;
         } else {
           // Find CU Start for this End
