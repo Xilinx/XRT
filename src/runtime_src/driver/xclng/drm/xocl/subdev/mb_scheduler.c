@@ -676,6 +676,7 @@ struct xocl_cu {
 	void __iomem       *base;
 	u32                addr;
 	u32                polladdr;
+	u32                ap_check;
 
 	u32                ctrlreg;
 	unsigned int       done_cnt;
@@ -692,6 +693,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u3
 	xcu->base = base;
 	xcu->addr = addr & ~(0xFF); // clear encoded handshake
 	xcu->polladdr = polladdr;
+	xcu->ap_check = (xcu->control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
@@ -790,7 +792,7 @@ cu_poll(struct xocl_cu *xcu)
 
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
-	if (xcu->run_cnt && (xcu->ctrlreg & (AP_DONE|AP_IDLE))) {
+	if (xcu->run_cnt && (xcu->ctrlreg & xcu->ap_check)) {
 		++xcu->done_cnt; // assert done_cnt <= |running_queue|
 		--xcu->run_cnt;
 		cu_continue(xcu);
