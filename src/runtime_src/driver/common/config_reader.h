@@ -114,6 +114,13 @@ get_profile()
   return value;
 }
 
+inline std::string
+get_xdp_logging()
+{
+  static std::string value = detail::get_string_value("Debug.xdp_log","null");
+  return value;
+}
+
 inline bool
 get_device_profile()
 {
