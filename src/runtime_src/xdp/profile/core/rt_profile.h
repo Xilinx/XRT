@@ -20,6 +20,7 @@
 #include "rt_util.h"
 #include "driver/include/xclperf.h"
 #include "xdp/profile/plugin/base_plugin.h"
+#include "xdp/util/logger.h"
 
 #include <set>
 #include <vector>

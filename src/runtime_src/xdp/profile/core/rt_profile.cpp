@@ -42,6 +42,8 @@ namespace xdp {
     mStallTraceOption(RTUtil::STALL_TRACE_OFF),
     mPluginHandle(Plugin)
   {
+    init_xdp_log();
+
     // Profile counters (to store counter results)
     mProfileCounters = new ProfileCounters();
 
@@ -51,6 +53,10 @@ namespace xdp {
     // Logger & writer
     mLogger = new TraceLogger(mProfileCounters, mTraceParser, mPluginHandle.get());
     mWriter = new SummaryWriter(mProfileCounters, mTraceParser, mPluginHandle.get());
+
+    if (xdp_log_file.is_open()) {
+      xdp_log_file << __func__ << ": XDP initialized" << std::endl;
+    }
   }
 
   RTProfile::~RTProfile()
@@ -62,6 +68,12 @@ namespace xdp {
     delete mLogger;
     delete mTraceParser;
     delete mProfileCounters;
+
+    if (xdp_log_file.is_open()) {
+      xdp_log_file << __func__ << ": XDP ended" << std::endl;
+    }
+
+    close_xdp_log();
   }
 
   // ***************************************************************************
