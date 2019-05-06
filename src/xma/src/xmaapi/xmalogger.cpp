@@ -222,8 +222,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     va_start(ap, msg);
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
     va_end(ap);
-    //xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
-    xclLogMsg(NULL, (xclLogMsgLevel)level, "XMA", msg_buff);
+    //xclLogMsg(NULL, xrtLogMsgLevel::XRT_INFO, "XMA",logmsg);
+    xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
 
     /* Send message buffer to logger Actor -
        will be copied to loggers message buffer *--/
@@ -269,7 +269,7 @@ void xma_logger_actor(XmaActor *actor)
                 break;
             }
 
-            xclLogMsg(NULL, xclLogMsgLevel::INFO, "XMA",logmsg);
+            xclLogMsg(NULL, xrtLogMsgLevel::XRT_INFO, "XMA",logmsg);
         }
         else
             /--* Logger has been shutdown - so return from thread *--/
@@ -414,7 +414,7 @@ XmaActor *xma_actor_create()
     XmaActor *actor =  new XmaActor();
     actor->thread = new XmaThread();
     actor->thread->is_running = false;
-    
+
     return actor;
 }
 
@@ -490,7 +490,7 @@ int32_t xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size)
         }
         lock_acquired = true;
     }
-    
+
     std::string log_msg = actor->logger_queue->front();
     uint32_t max = log_msg.size();
     if (max > msg_size-1) {
