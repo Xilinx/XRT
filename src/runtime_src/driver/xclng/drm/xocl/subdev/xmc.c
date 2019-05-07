@@ -1907,7 +1907,7 @@ static int xmc_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_XMC, &xmc_ops);
+	xocl_subdev_register(pdev, XOCL_SUBDEV_MB, &xmc_ops);
 
 	mutex_init(&xmc->xmc_lock);
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;

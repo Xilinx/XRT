@@ -82,7 +82,7 @@ void xocl_drvinst_free(void *data)
 	mutex_unlock(&xocl_drvinst_lock);
 
 	/* wait all opened instances to close */
-	if (!atomic_dec_and_test(&drvinstp->ref)) {
+	if (atomic_read(&drvinstp->ref) > 1) {
 		xocl_info(drvinstp->dev, "Wait for close %p\n",
 				&drvinstp->comp);
 		ret = wait_for_completion_killable(&drvinstp->comp);

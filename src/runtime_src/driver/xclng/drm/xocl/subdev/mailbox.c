@@ -1750,21 +1750,6 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 	int ret = 0;
 
 	switch (kind) {
-	case RESET:
-		if (mailbox_no_intr)
-			break;
-
-		if (data == 1) {
-			/* Post reset */
-			MBX_INFO(mbx, "enable intr mode");
-			if (mailbox_enable_intr_mode(mbx) != 0)
-				MBX_ERR(mbx, "enable intr failed after reset");
-		} else {
-			/* Pre reset */
-			MBX_INFO(mbx, "enable polling mode");
-			mailbox_disable_intr_mode(mbx);
-		}
-		break;
 	case CHAN_STATE:
 		mutex_lock(&mbx->mbx_lock);
 		mbx->mbx_ch_state = data;
@@ -1800,8 +1785,28 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 	return ret;
 }
 
+static int mailbox_offline(struct platform_device *pdev)
+{
+	struct mailbox *mbx;
+
+        mbx = platform_get_drvdata(pdev);
+	mailbox_disable_intr_mode(mbx);
+	return 0;
+}
+
+static int mailbox_online(struct platform_device *pdev)
+{
+	struct mailbox *mbx;
+
+        mbx = platform_get_drvdata(pdev);
+	mailbox_enable_intr_mode(mbx);
+	return 0;
+}
+
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_mailbox_funcs mailbox_ops = {
+	.offline_cb	= mailbox_offline,
+	.online_cb	= mailbox_online,
 	.request	= mailbox_request,
 	.post_notify	= mailbox_post_notify,
 	.post_response	= mailbox_post_response,
