@@ -77,7 +77,7 @@ namespace xclcpuemhal2 {
       int xclExportBO(unsigned int boHandle); 
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
-      static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
+      static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
       
 
       xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);

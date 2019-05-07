@@ -539,7 +539,7 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
     return 0;
 }
 
-int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
+int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
   va_start(args, format);
