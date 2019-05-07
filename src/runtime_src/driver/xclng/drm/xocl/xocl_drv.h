@@ -626,7 +626,6 @@ enum data_kind {
 };
 
 enum mb_kind {
-	RESET,
 	CHAN_STATE,
 	CHAN_SWITCH,
 	COMM_ID,
@@ -750,6 +749,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info, u32 subdev_num);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl);
+int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);

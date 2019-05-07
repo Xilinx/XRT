@@ -91,7 +91,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
 			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
-		(void) xocl_mailbox_set(xdev, RESET, 0);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
@@ -99,7 +98,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
-		(void) xocl_mailbox_set(xdev, RESET, 1);
 		xocl_exec_reset(xdev);
 	}
 }

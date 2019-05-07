@@ -983,6 +983,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_fini_sysfs(&pdev->dev);
 
 	xocl_subdev_destroy_all(lro);
+	xocl_subdev_fini(lro);
 
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
