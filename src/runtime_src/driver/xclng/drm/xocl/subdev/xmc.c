@@ -91,17 +91,17 @@
 #define	XMC_DEFAULT_EXPIRE_SECS	1
 
 //Clock scaling registers
-#define XMC_CLOCK_CONTROL_REG  0x24
+#define XMC_CLOCK_CONTROL_REG 0x24
 #define XMC_CLOCK_SCALING_EN 0x1
 
-#define XMC_CLOCK_SCALING_MODE_REG  0x10
-#define XMC_CLOCK_SCALING_MODE_POWER  0x0
-#define XMC_CLOCK_SCALING_MODE_TEMP  0x1
+#define XMC_CLOCK_SCALING_MODE_REG 0x10
+#define XMC_CLOCK_SCALING_MODE_POWER 0x0
+#define XMC_CLOCK_SCALING_MODE_TEMP 0x1
 
-#define XMC_CLOCK_SCALING_POWER_REG  0x18
-#define XMC_CLOCK_SCALING_POWER_REG_MASK  0xFFFF
-#define XMC_CLOCK_SCALING_TEMP_REG  0x14
-#define XMC_CLOCK_SCALING_TEMP_REG_MASK  0xFFFF
+#define XMC_CLOCK_SCALING_POWER_REG 0x18
+#define XMC_CLOCK_SCALING_POWER_REG_MASK 0xFFFF
+#define XMC_CLOCK_SCALING_TEMP_REG 0x14
+#define XMC_CLOCK_SCALING_TEMP_REG_MASK 0xFFFF
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW	= 0x1,
@@ -134,7 +134,7 @@ enum {
 	IO_IMAGE_MGMT,
 	IO_IMAGE_SCHED,
 	IO_CQ,
-        IO_CLK_SCALING,
+	IO_CLK_SCALING,
 	NUM_IOADDR
 };
 
@@ -165,10 +165,10 @@ enum {
 #define	COPY_SCHE(xmc, buf, len)		\
 	xocl_memcpy_toio(xmc->base_addrs[IO_IMAGE_SCHED], buf, len)
 
-#define READ_RUNTIME_CS(xmc, off)       \
-        XOCL_READ_REG32(xmc->base_addrs[IO_CLK_SCALING] + off)
-#define  WRITE_RUNTIME_CS(xmc, val, off)        \
-        XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CLK_SCALING] + off)
+#define READ_RUNTIME_CS(xmc, off)	\
+	XOCL_READ_REG32(xmc->base_addrs[IO_CLK_SCALING] + off)
+#define WRITE_RUNTIME_CS(xmc, val, off)	\
+	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CLK_SCALING] + off)
 
 struct xocl_xmc {
 	struct platform_device	*pdev;
@@ -188,7 +188,7 @@ struct xocl_xmc {
 	u64			cache_expire_secs;
 	struct xcl_sensor	cache;
 	ktime_t			cache_expires;
-        bool                    runtime_cs_enabled; //Runtime clock scaling enabled status
+	bool			runtime_cs_enabled; //Runtime clock scaling enabled status
 };
 
 
@@ -1219,7 +1219,7 @@ static ssize_t scaling_target_power_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-        //TODO: Check if the threshold power is in board spec limits.
+	//TODO: Check if the threshold power is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val2 &= ~XMC_CLOCK_SCALING_POWER_REG_MASK;
@@ -1263,7 +1263,7 @@ static ssize_t scaling_target_temp_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-        //TODO: Check if the threshold temperature is in board spec limits.
+	//TODO: Check if the threshold temperature is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val2 &= ~XMC_CLOCK_SCALING_TEMP_REG_MASK;
@@ -1793,18 +1793,18 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 
 static void xmc_clk_scale_config(struct platform_device *pdev)
 {
-        struct xocl_xmc *xmc;
-        u32 cntrl;
+	struct xocl_xmc *xmc;
+	u32 cntrl;
 
-        xmc = platform_get_drvdata(pdev);
-        if (!xmc) {
-                xocl_info(&pdev->dev, "failed since xmc handle is null\n");
-                return;
-        }
+	xmc = platform_get_drvdata(pdev);
+	if (!xmc) {
+		xocl_info(&pdev->dev, "failed since xmc handle is null\n");
+		return;
+	}
 
-        cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
-        cntrl |= XMC_CLOCK_SCALING_EN;
-        WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	cntrl |= XMC_CLOCK_SCALING_EN;
+	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
 }
 
 static struct xocl_mb_funcs xmc_ops = {
@@ -1832,8 +1832,8 @@ static int xmc_remove(struct platform_device *pdev)
 	mgmt_sysfs_destroy_xmc(pdev);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
-                if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-                        continue;
+		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
+			continue;
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
 	}
@@ -1873,12 +1873,12 @@ static int xmc_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-        if (xocl_clk_scale_on(xdev_hdl))
-                xmc->runtime_cs_enabled = true;
+	if (xocl_clk_scale_on(xdev_hdl))
+		xmc->runtime_cs_enabled = true;
 
-        for (i = 0; i < NUM_IOADDR; i++) {
-                if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-                        continue;
+	for (i = 0; i < NUM_IOADDR; i++) {
+		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
+			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -1905,8 +1905,8 @@ static int xmc_probe(struct platform_device *pdev)
 	mutex_init(&xmc->xmc_lock);
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
 
-        /* Check if clock scaling feature enabled */
-        if (xmc->runtime_cs_enabled) {
+	/* Check if clock scaling feature enabled */
+	if (xmc->runtime_cs_enabled) {
 		//This case will hit during userpf module loading since platform_get_resource() returns 0 here.
 		//Hence, xmc->base_addrs[*] values will be 0, so prevent accessing xmc registers in this case.
 		if (!xmc->base_addrs[IO_CLK_SCALING]) {
@@ -1915,7 +1915,7 @@ static int xmc_probe(struct platform_device *pdev)
 			xmc_clk_scale_config(pdev);
 			xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 		}
-        }
+	}
 
 	return 0;
 
