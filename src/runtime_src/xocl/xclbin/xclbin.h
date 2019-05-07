@@ -21,6 +21,7 @@
 
 #include "xocl/core/refcount.h"
 #include "xclbin/binary.h"
+#include "xrt/util/uuid.h"
 
 #include <map>
 #include <string>
@@ -62,6 +63,7 @@ public:
   //Max 64 mem banks for now.
   using memidx_bitmask_type = std::bitset<64>;
   using memidx_type = int32_t;
+  using connidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
@@ -155,6 +157,9 @@ public:
   ~xclbin();
 
   xclbin&
+  operator=(const xclbin&& rhs);
+
+  xclbin&
   operator=(const xclbin& rhs);
 
   bool
@@ -174,6 +179,13 @@ public:
    */
   std::string
   dsa_name() const;
+
+  /**
+   * Get uuid of xclbin
+   */
+  using uuid_type = xrt::uuid;
+  uuid_type
+  uuid() const;
 
   /**
    * Check if unified platform
@@ -309,7 +321,7 @@ public:
    *
    * The map is sorted in order of increasing base addresses.
    */
-  std::vector<uint32_t>
+  std::vector<uint64_t>
   cu_base_address_map() const;
 
   /**
@@ -374,11 +386,16 @@ public:
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
+   * @param conn
+   *   Index into the connectivity section allocated.
    * @return
    *   Memory idx
    */
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn);
+
+  void
+  clear_connection(connidx_type index);
 
   /**
    * Get the memory index with the specified tag.

@@ -28,11 +28,58 @@
 #include <string>
 #include <algorithm>
 #include <numeric>
-
+#include <dirent.h>
 #include "dmatest.h"
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xclbin.h"
+
+static std::string get_name(const std::string& dir, const std::string& subdir)
+{
+    std::string line;
+    std::ifstream ifs(dir + "/" + subdir + "/name");
+
+    if (ifs.is_open())
+        std::getline(ifs, line);
+
+    return line;
+}
+
+// Helper to find subdevice directory name
+// Assumption: all subdevice's sysfs directory name starts with subdevice name!!
+static int get_subdev_dir_name(const std::string& dir,
+    const std::string& subDevName, std::string& subdir)
+{
+    DIR *dp;
+    size_t sub_nm_sz = subDevName.size();
+
+    subdir = "";
+    if (subDevName.empty())
+        return 0;
+
+    int ret = -ENOENT;
+    dp = opendir(dir.c_str());
+    if (dp) {
+        struct dirent *entry;
+        while ((entry = readdir(dp))) {
+            std::string nm = get_name(dir, entry->d_name);
+            if (!nm.empty()) {
+                if (nm != subDevName)
+                    continue;
+            } else if(strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
+                entry->d_name[sub_nm_sz] != '.') {
+                continue;
+            }
+            // found it
+            subdir = entry->d_name;
+            ret = 0;
+            break;
+        }
+        closedir(dp);
+    }
+
+    return ret;
+}
 
 namespace xcldev {
   class memaccess {
@@ -61,8 +108,16 @@ namespace xcldev {
     {
         int nfound = 0;
         aBanks.clear();
-        std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/mem_topology"; // TODO: unify common sysfs reads
+        std::string base = "/sys/bus/pci/devices/" + mDevUserName;
+        std::string icap;
         struct stat sb;
+
+        if ( get_subdev_dir_name(base, "icap", icap) ) {
+            std::cout << "ERROR: failed to find icap subdev " << std::endl;
+            return EINVAL;
+        }
+
+        std::string path = base + "/" + icap + "/mem_topology";
         if( stat( path.c_str(), &sb ) < 0 ) {
             std::cout << "ERROR: failed to stat " << path << std::endl;
             return errno;
@@ -142,6 +197,7 @@ namespace xcldev {
         int result = 0;
         std::vector<mem_bank_t> mems;
         int numBanks = getDDRBanks(mems);
+
         if (!numBanks) {
           std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
           return -1;

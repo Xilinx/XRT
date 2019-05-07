@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __QDMA_MBOX_H__
@@ -54,19 +61,16 @@
 /** shift value for status src */
 #define		S_MBOX_FN_STATUS_SRC	4	/* PF only, source func.*/
 /** mask value for status src */
-#define		M_MBOX_FN_STATUS_SRC	0xFF
+#define		M_MBOX_FN_STATUS_SRC	0xFFF
 /** face value for status src */
 #define		G_MBOX_FN_STATUS_SRC(x)	\
 		(((x) >> S_MBOX_FN_STATUS_SRC) & M_MBOX_FN_STATUS_SRC)
-/** shift value for status reset */
-#define		S_MBOX_FN_STATUS_RESET	12	/* TBD: reset status */
-/** mask value for status reset */
-#define		M_MBOX_FN_STATUS_RESET	0x1
 /** face value for mailbox function status */
 #define MBOX_FN_STATUS_MASK \
 		(F_MBOX_FN_STATUS_IN_MSG | \
 		 F_MBOX_FN_STATUS_OUT_MSG | \
 		 F_MBOX_FN_STATUS_ACK)
+
 /** mailbox function commands register */
 #define MBOX_FN_CMD			0x4
 /** shift value for send command */
@@ -98,7 +102,7 @@
 /** shift value for FN target id */
 #define		S_MBOX_FN_TARGET_ID	0
 /** mask value for FN target id */
-#define		M_MBOX_FN_TARGET_ID	0xFF
+#define		M_MBOX_FN_TARGET_ID	0xFFF
 /** face value for FN target id */
 #define		V_MBOX_FN_TARGET_ID(x)	((x) & M_MBOX_FN_TARGET_ID)
 /** mailbox isr enable register */
@@ -130,17 +134,17 @@
  */
 struct hw_descq_context {
 	/** software descriptor context data: 4 data words */
-	u32 sw[4];
+	u32 sw[5];
 	/** prefetch context data: 2 data words */
 	u32 prefetch[2];
 	/** queue completion context data: 4 data words */
-	u32 wrb[4];
+	u32 cmpt[5];
 	/** hardware descriptor  context data: 2 data words */
 	u32 hw[2];	/* for retrieve only */
 	/** C2H or H2C context: 1 data word */
 	u32 cr[1];	/* for retrieve only */
-	/** qid2vec context data: 1 data word */
-	u32 qid2vec[1];
+	/** FMAP context data */
+	u32 fmap[2];
 };
 
 /**
@@ -148,8 +152,8 @@ struct hw_descq_context {
  * @brief	queue stm information
  */
 struct stm_descq_context {
-	/** STM data: 5 data words */
-	u32 stm[5];
+	/** STM data: 6 data words */
+	u32 stm[6];
 };
 
 /**
@@ -178,6 +182,7 @@ enum mbox_msg_op {
 	/* 0x07 */ MBOX_OP_QCTXT_RD,	/** queue context read */
 	/* 0x08 */ MBOX_OP_QCTXT_CLR,	/** queue context clear */
 	/* 0x09 */ MBOX_OP_QCTXT_INV,	/** queue context invalidate */
+	/* 0x0a */ MBOX_OP_QCONF,		/** queue context invalidate */
 
 	/** PF->VF: response */
 	/* 0x12 */ MBOX_OP_HELLO_RESP = 0x12,/** vf online */
@@ -188,6 +193,7 @@ enum mbox_msg_op {
 	/* 0x17 */ MBOX_OP_QCTXT_RD_RESP, /** queue context read */
 	/* 0x18 */ MBOX_OP_QCTXT_CLR_RESP, /** queue context clear */
 	/* 0x19 */ MBOX_OP_QCTXT_INV_RESP, /** queue context invalidate */
+	/* 0x1a */ MBOX_OP_QCONF_RESP,  /** queue context invalidate */
 
 	MBOX_OP_MAX
 };
@@ -200,8 +206,8 @@ enum mbox_msg_op {
  */
 struct mbox_msg_hdr {
 	u8 op;		/** opcode */
-	u8 src;		/** src function */
-	u8 dst;		/** dst function */
+	u16 src;		/** src function */
+	u16 dst;		/** dst function */
 	char status;	/** execution status */
 };
 
@@ -233,22 +239,22 @@ struct mbox_msg_csr {
  * @brief	interrupt context mailbox message
  */
 
-/** mailbox interrupt context max vectors */
-#define MBOX_INTR_CTXT_VEC_MAX	7
 
 struct mbox_msg_intr_ctxt {
 	/** mailbox message header*/
 	struct mbox_msg_hdr hdr;
 	/** flag to indicate clear interrupt context*/
-	u8 clear:1;
+	u16 clear:1;
 	/** filler variable*/
-	u8 filler;
+	u16 filler:15;
 	/** start vector number*/
 	u8 vec_base;	/* 0 ~ 7 */
-	/** number of vectors to be assigned for virtual function*/
-	u8 vec_cnt;	/* 1 ~ 8 */
-	/** interrupt context data*/
-	u32 w[MBOX_INTR_CTXT_VEC_MAX << 1];
+	/** number of intr context rings be assigned for virtual function*/
+	u8 num_rings;	/* 1 ~ 8 */
+	/** ring index associated for each vector */
+	u32 ring_index_list[QDMA_NUM_DATA_VEC_FOR_INTR_CXT];
+	/** interrupt context data for all rings*/
+	u32 w[QDMA_NUM_DATA_VEC_FOR_INTR_CXT * 3];
 };
 
 /**
@@ -268,8 +274,6 @@ struct mbox_msg_qctxt {
 	u8 st:1;
 	/** flag to indicate to enable the interrupts */
 	u8 intr_en:1;
-	/** flag to indicate to enable the interrupt aggregation */
-	u8 intr_coal_en:1;
 	/** interrupt id */
 	u8 intr_id;
 	/** queue id */
@@ -330,7 +334,7 @@ struct qdma_mbox {
 
 };
 
-#define QDMA_MBOX_MSG_TIMEOUT_MS	1000 /* 1000 ms*/	
+#define QDMA_MBOX_MSG_TIMEOUT_MS	1000 /* 1000 ms*/
 /*****************************************************************************/
 /**
  * qdma_mbox_init() - initialize qdma mailbox
