@@ -617,6 +617,12 @@ enum subdev_id {
 			.end 	= 0x19FFFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
+			/* RUNTIME CLOCK SCALING FEATURE BASE */	\
+			{				\
+			.start	= 0x053000,		\
+			.end	= 0x053fff,		\
+			.flags	= IORESOURCE_MEM,	\
+			},				\
 		})
 
 #define	XOCL_DEVINFO_XMC					\
