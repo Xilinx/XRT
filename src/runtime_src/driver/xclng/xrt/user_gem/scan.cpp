@@ -444,9 +444,14 @@ static int add_to_device_list(
             auto dev = std::unique_ptr<pcidev::pci_device>(
                 new pcidev::pci_device(mdev_dummy, udev));
             userpf_devfs_good = find_userpf_devfs(dev);
-            if(userpf_devfs_good){
+            bool is_ready = false;
+            dev->user->sysfs_get("", "ready", errmsg, is_ready);
+
+            if (userpf_devfs_good && is_ready) {
                 devices.insert(devices.begin(), std::move(dev));
                 good_dev++;
+            } else if (userpf_devfs_good && !is_ready) {
+                devices.push_back(std::move(dev));
             }
         }
     }
