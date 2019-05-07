@@ -160,7 +160,6 @@ enum subdev_id {
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_ICAP,
-	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
@@ -646,7 +645,7 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_XMC					\
 	{						\
-		XOCL_SUBDEV_XMC,				\
+		XOCL_SUBDEV_MB,				\
 		XOCL_XMC,				\
 		XOCL_RES_XMC,				\
 		ARRAY_SIZE(XOCL_RES_XMC),		\
@@ -654,7 +653,7 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_XMC_USER			\
 	{						\
-		XOCL_SUBDEV_XMC,				\
+		XOCL_SUBDEV_MB,				\
 		XOCL_XMC,				\
 		NULL,					\
 		0,					\

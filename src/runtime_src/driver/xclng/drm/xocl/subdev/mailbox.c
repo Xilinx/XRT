@@ -326,6 +326,7 @@ struct mailbox {
 	uint32_t		mbx_proto_ver;
 
 	bool			mbx_peer_dead;
+	bool			mbx_offline;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -1800,8 +1801,24 @@ int mailbox_set(struct platform_device *pdev, enum mb_kind kind, u64 data)
 	return ret;
 }
 
+static int mailbox_offline(struct platform_device *pdev)
+{
+	struct mailbox *mbx;
+
+        mbx = platform_get_drvdata(pdev);
+	mailbox_disable_intr_mode(mbx);
+	return 0;
+}
+
+static int mailbox_online(struct platform_device *pdev)
+{
+	return 0;
+}
+
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_mailbox_funcs mailbox_ops = {
+	.offline_cb	= mailbox_offline,
+	.online_cb	= mailbox_online,
 	.request	= mailbox_request,
 	.post_notify	= mailbox_post_notify,
 	.post_response	= mailbox_post_response,

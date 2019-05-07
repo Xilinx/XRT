@@ -2166,7 +2166,6 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 	for (i = 0; i < icap->ip_layout->m_count; ++i) {
-		struct resource res = { 0 };
 		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
 
 		if (ip->m_type == IP_KERNEL)
@@ -2255,12 +2254,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG_HBM,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
+
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =

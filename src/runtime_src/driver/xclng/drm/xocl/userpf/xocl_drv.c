@@ -79,33 +79,26 @@ struct xocl_pci_funcs userpf_pci_ops = {
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
-	struct xocl_subdev_info mbox;
 	int ret;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
-		ret = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MAILBOX,
-			&mbox, NULL);
-		if (ret) {
-			xocl_err(&pdev->dev, "can not get mailbox subdev");
-			return;
-		}
 		/* clean up mem topology */
 		xocl_cleanup_mem(XOCL_DRM(xdev));
-		xocl_subdev_destroy_all(xdev);
-		ret = xocl_subdev_create_one(xdev, &mbox);
+		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+		xocl_subdev_offline_all(xdev);
+		ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
+			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
 		(void) xocl_mailbox_set(xdev, RESET, 0);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
 		reset_notify_client_ctx(xdev);
-		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
-			xdev->core.priv.subdev_num);
+		ret = xocl_subdev_online_all(xdev);
 		if (ret)
-			xocl_err(&pdev->dev, "Create subdevs failed %d", ret);
+			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_mailbox_set(xdev, RESET, 1);
 		xocl_exec_reset(xdev);
 	}
