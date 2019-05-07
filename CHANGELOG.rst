@@ -22,6 +22,7 @@ Added
 * OCL can perform automatic binding of cl_mem to DDR bank by using several heuristics like kernel argument index and kernel instance information. Please use annotated kernel name in ``clCreateKernel()`` call to uniquely identify CU instances which helps with automatic binding of kernel arguments.
 * ``xclbincat`` and ``xclbinsplit`` are deprecated by ``xclbinutil``.  These deprecated tools are currently scheduled to be obsoleted in the next release.
 * Profiling subsystem has been enhanced to show dataflow, PCIe peer to peer transfers, M2M transfers and kernel to kernel streaming information.
+* XRT has switched to new header file ``xrt.h`` in place of ``xclhal2.h``. The latter is still around for backwards compatibility but includes xrt.h for all definitions. A new file ``xrt-next.h`` has been added for experimental features.
 
 
 2.1.0 (201830.2.1)
