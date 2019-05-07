@@ -15,11 +15,11 @@ Added
 * Embedded platforms based on Zynq MPSoC US+™ are fully supported. For reference designs please explore reVISION™ stack from Xilinx. Embedded platforms now use interrupts for CU completion notification significantly reducing ARM CPU usage.
 * Profiling support has been extended to embedded platforms with timeline trace and profile summary.
 * XRT now makes no assumption about CU base addresses on embedded platforms. CU base addresses can be completely floating and are discovered from ``IP_LAYOUT`` section of xclbin.
-* XMA and OCL now use common config reader and messaging framework provided by XRT core.
+* XMA (Xilinx Media Accelerator) is now fully integrated into XRT by using the common config reader and messaging framework (also shared by OCL) provided by XRT core.
 * XMA uses XRT core framework for scheduling tasks on encoder/decoder/scaler. New XMA APIs provide a method to prepare register write command packet, send the write command to XRT and then wait for completion of one or more command submissions. Please look at https://github.com/Xilinx/xma-samples for recommended way to write XMA plugins and design video IP control interface.
 * Multiple process mode is on by default in this release. This means multiple user processes can simultaneously use the same CU on a board. XRT does time division multiplexing. Note there is no support for pre-emption. In multi-process run only the first process gets profiling support.
 * ``xbutil top`` now reports live CU usage metric.
-* OCL can perform automatic binding of cl_mem to DDR bank by using several heuristics like kernel argument index and kernel instance information. Please use annotated kernel name in ``clCreateKernel()`` call to uniquely identify CU instances which helps with automatic binding of kernel arguments.
+* OCL can perform automatic binding of cl_mem to DDR bank by using several heuristics like kernel argument index and kernel instance information. The API ``clCreateKernel`` is enhanced to accept annotated CU name(s) to fetch asymmetrical compute units (for more information regarding asymmetrical compute units please refer SDAccel Programmer's Guide [Link to be inserted]) and streaming compute units.
 * ``xclbincat`` and ``xclbinsplit`` are deprecated by ``xclbinutil``.  These deprecated tools are currently scheduled to be obsoleted in the next release.
 * Profiling subsystem has been enhanced to show dataflow, PCIe peer to peer transfers, M2M transfers and kernel to kernel streaming information.
 * XRT has switched to new header file ``xrt.h`` in place of ``xclhal2.h``. The latter is still around for backwards compatibility but includes xrt.h for all definitions. A new file ``xrt-next.h`` has been added for experimental features.
