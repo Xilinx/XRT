@@ -423,7 +423,8 @@ namespace awsbwhal {
     return size;
   }
 
-  signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+  signed AwsXcl::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2)
+  {
     if (major2 > major1)
       return 1;
     else if (major2 < major1)
@@ -546,7 +547,6 @@ namespace awsbwhal {
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,s);
       bool has64bit = (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) ? true : false;
       // Accelerator Monitor > 1.1 supports dataflow monitoring
-//      bool hasDataflow = true;
       bool hasDataflow = (cmpMonVersions(mAccelmonMajorVersions[s],mAccelmonMinorVersions[s],1,1) < 0) ? true : false;
       bool hasStall = (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) ? true : false;
 
@@ -560,8 +560,8 @@ namespace awsbwhal {
         mLogStream << "Accelerator Monitor Core Version Register : " << version << std::endl;
         mLogStream << "Accelerator Monitor Core Version Register : " << version << std::endl;
         mLogStream << "Accelerator Monitor Core vlnv : "
-//                   << " Major " << static_cast<int>(mAccelmonMajorVersions[s])
- //                  << " Minor " << static_cast<int>(mAccelmonMinorVersions[s])
+                   << " Major " << static_cast<int>(mAccelmonMajorVersions[s])
+                   << " Minor " << static_cast<int>(mAccelmonMinorVersions[s])
                    << std::endl;
         mLogStream << "Accelerator Monitor config : "
                    << " 64 bit support : " << has64bit
@@ -714,55 +714,6 @@ namespace awsbwhal {
       }
     }
 
-#if 0
-    size_t size = 0;
-    uint64_t baseAddress;
-    uint32_t sampleInterval;
-    uint32_t numSlots = getPerfMonNumberSlots(type);
-
-    for (uint32_t s = 0; s < numSlots; s++) {
-      baseAddress = getPerfMonBaseAddress(type, s);
-
-      // Read sample interval register
-      // NOTE: this also latches the sampled metric counters
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_OFFSET,
-        &sampleInterval, 4);
-      // Need to do this for every xilmon  
-      if (s == 0) {
-        counterResults.SampleIntervalUsec = sampleInterval / xclGetDeviceClockFreqMHz();
-      }
-
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_WRITE_BYTES_OFFSET,
-        &counterResults.WriteBytes[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_WRITE_TRANX_OFFSET,
-        &counterResults.WriteTranx[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_WRITE_LATENCY_OFFSET,
-        &counterResults.WriteLatency[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_READ_BYTES_OFFSET,
-        &counterResults.ReadBytes[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_READ_TRANX_OFFSET,
-        &counterResults.ReadTranx[s], 4);
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-        baseAddress + XSPM_SAMPLE_READ_LATENCY_OFFSET,
-        &counterResults.ReadLatency[s], 4);
-
-      if (mLogStream.is_open()) {
-        mLogStream << "Reading ...SlotNum : " << s << std::endl;
-        mLogStream << "Reading ...WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
-        mLogStream << "Reading ...WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
-        mLogStream << "Reading ...WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
-        mLogStream << "Reading ...ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
-        mLogStream << "Reading ...ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
-        mLogStream << "Reading ...ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
-      }
-    }
-#endif
     return size;
   }
 
