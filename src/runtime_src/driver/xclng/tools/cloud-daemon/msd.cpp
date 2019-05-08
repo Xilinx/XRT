@@ -14,9 +14,11 @@ std::string host_ip;
 std::string host_port;
 std::string mbx_switch;
 
-// example code to setup communication channel between vm and host
-// tcp is being used here as example.
-// cloud vendor should implements this function
+/*
+ * Example code to setup communication channel between vm and host.
+ * TCP is being used here for example.
+ * Cloud vendor should implement this function.
+ */
 static void msd_comm_init(int *handle)
 {
     int sockfd, connfd, len;
@@ -27,9 +29,9 @@ static void msd_comm_init(int *handle)
     if (sockfd == -1) {
         perror("socket creation failed...");
         exit(1);
-    }
-    else
+    } else {
         printf("Socket successfully created..\n");
+    }
     bzero(&servaddr, sizeof(servaddr));
 
     // assign IP, PORT
@@ -41,17 +43,17 @@ static void msd_comm_init(int *handle)
     if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
         perror("socket bind failed...");
         exit(1);
-    }
-    else
+    } else {
         printf("Socket successfully binded..\n");
+    }
 
     // Now server is ready to listen and verification
     if ((listen(sockfd, 5)) != 0) {
         perror("Listen failed...");
         exit(1);
-    }
-    else
+    } else {
         printf("Server listening..\n");
+    }
     len = sizeof(cli);
 
     while (1) {
@@ -65,10 +67,9 @@ static void msd_comm_init(int *handle)
         }
 
         //In case there are multiple VMs created on the same host,
-        //there should be hust one msd running on host, and multiple mpds
+        //there should be just one msd running on host, and multiple mpds
         //each of which runs on a VM. So there would be multiple tcp
         //connections established. each child here handles one connection
-        //If we use udp, no children processes are required.
         if (!fork()) { //child
             close(sockfd);
             *handle = connfd;
@@ -78,7 +79,7 @@ static void msd_comm_init(int *handle)
         close(connfd);
         while(waitpid(-1,NULL,WNOHANG) > 0); /* clean up child processes */
     }
-    //assume the server never exit.
+    //Assume the server never exits.
     printf("Never happen!!\n");
     exit(100);
 }
@@ -87,8 +88,8 @@ int main( void )
 {
     int comm_fd, local_fd = -1;
 
-    /* read config file, store ip, port, and switch, later write to
-     * mgmt sysf with xclMailboxMgmtPutID() */
+    // Read config file, store ip, port, and switch, later write to
+    // mgmt sysf with xclMailboxMgmtPutID().
     wordexp_t p;
     char **w;
     wordexp( "$XILINX_XRT/etc/msd-host.config", &p, 0 );
@@ -110,14 +111,15 @@ int main( void )
     mbx_switch = mbx_switch.substr( std::string("switch=").length(), mbx_switch.length() );
     file.close();
 
+    // Write to config_mailbox_comm_id in format "127.0.0.1,12345,0", where 0 is the device index.
     int numDevs = 0;
-    while( xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+std::to_string(numDevs)+";").c_str(), mbx_switch.c_str()) != -ENODEV )
+    while (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+std::to_string(numDevs)+";").c_str(), mbx_switch.c_str()) != -ENODEV)
         numDevs++;
 
     for (int i = 0; i < numDevs; i++) {
         msd_comm_init(&comm_fd); // blocks waiting for connection, then forks
 
-        /* receive cloud token and map to device index */
+        // receive cloud token and map to device index
         int64_t cloud_token = -1;
         char *data = (char*)&cloud_token;
         recv( comm_fd, data, sizeof(cloud_token), 0 );
@@ -137,9 +139,10 @@ int main( void )
         mailbox_daemon(local_fd, comm_fd, "[MSD]");
 
         // cleanup when stopped
-        comm_fini(comm_fd);
+        close(comm_fd);
         close(local_fd);
     }
 
     return 0;
 }
+

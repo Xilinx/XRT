@@ -12,9 +12,11 @@ std::string host_ip;
 std::string host_port;
 std::string host_id;
 
-// example code to setup communication channel between vm and host
-// tcp is being used here as example.
-// cloud vendor should implements this function
+/*
+ * Example code to setup communication channel between vm and host.
+ * TCP is being used here for example.
+ * Cloud vendor should implement this function.
+ */
 static void mpd_comm_init(int *handle)
 {
     int sockfd;
@@ -25,9 +27,9 @@ static void mpd_comm_init(int *handle)
     if (sockfd == -1) {
         perror("socket creation failed...");
         exit(1);
-    }
-    else
+    } else {
         printf("Socket successfully created..\n");
+    }
     bzero(&servaddr, sizeof(servaddr));
 
     // assign IP, PORT
@@ -39,8 +41,7 @@ static void mpd_comm_init(int *handle)
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
         perror("connection with the server failed...");
         exit(1);
-    }
-    else {
+    } else {
         printf("connected to the server..\n");
     }
 
@@ -106,7 +107,7 @@ int main(void)
         mailbox_daemon(local_fd, comm_fd, "[MPD]");
 
         // cleanup when stopped
-        comm_fini(comm_fd);
+        close(comm_fd);
         close(local_fd);
     }
     return 0;
