@@ -67,7 +67,6 @@ int main(void)
             char c_id[256];
             xclMailboxUserGetID(i, c_id);
             std::string s_id = std::string( c_id );
-            std::cout << "s_id : " << s_id << std::endl;
             size_t pos =  s_id.find(",");
             std::string rem = s_id.substr( pos+1, s_id.length() );
             host_ip = s_id.substr( 0, pos );
@@ -75,17 +74,13 @@ int main(void)
             host_port = rem.substr( 0, pos );
             rem = rem.substr( pos+1, rem.length()-1 );
             host_id = rem.substr( 0, rem.length()-1 );
-            std::cout << "host_ip: " << host_ip << "---, host_port: " << host_port << "---, host_id: " << host_id << std::endl;
 
             mpd_comm_init(&comm_fd);
 
             /* handshake to MSD by sending cloud token id */
             int64_t i64_host_id = std::stoi(host_id);
-            std::cout << "i64_host_id: " << i64_host_id << std::endl;
             int64_t cloud_token = i64_host_id;
-            std::cout << "cloud_token: " << cloud_token << std::endl;
             char *data = (char*)&cloud_token;
-            std::cout << "data: " << data <<std::endl;
             if( write( comm_fd, data, sizeof(cloud_token) ) == -1 ) {
                 std::cout << "Handshake comm_write token failed\n";
                 exit(1);
