@@ -1,7 +1,5 @@
 /*
- * A GEM style device manager for PCIe based OpenCL accelerators.
- *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Max Zhen <maxz@xilinx.com>
  *
@@ -15,13 +13,13 @@
  * GNU General Public License for more details.
  */
 
-/*
- * Statement of Theory
+/**
+ * DOC: Statement of Theory
  *
  * This is the mailbox sub-device driver added into existing xclmgmt / xocl
  * driver so that user pf and mgmt pf can send and receive messages of
- * arbitrary length to / from peer. The driver is written based on the spec of
- * pg114 document (https://www.xilinx.com/support/documentation/
+ * arbitrary length to / from the peer. The driver is written based on the
+ * spec of pg114 document (https://www.xilinx.com/support/documentation/
  * ip_documentation/mailbox/v2_1/pg114-mailbox.pdf). The HW provides one TX
  * channel and one RX channel, which operate completely independent of each
  * other. Data can be pushed into or read from a channel in DWORD unit as a
@@ -31,20 +29,28 @@
  * Packet layer
  *
  * The driver implemented two transport layers - packet and message layer (see
- * below). A packet is a fixed size chunk of data that can be send through TX
+ * below). A packet is a fixed size chunk of data that can be sent through TX
  * channel or retrieved from RX channel. The TX and RX interrupt happens at
  * packet boundary, instead of DWORD boundary. The driver will not attempt to
  * send next packet until the previous one is read by peer. Similarly, the
  * driver will not attempt to read the data from HW until a full packet has been
- * written to HW by peer. No polling is implemented. Data transfer is entirely
+ * written to HW by peer. In normal operational mode, data transfer is entirely
  * interrupt driven. So, the interrupt functionality needs to work and enabled
- * on both mgmt and user pf for mailbox driver to function properly.
+ * on both mgmt and user pf for mailbox driver to function properly. During hot
+ * reset of the device, this driver may work in polling mode for short period of
+ * time until the reset is done.
  *
- * A TX packet is considered as time'd out after sitting in the TX channel of
- * mailbox HW for two packet ticks (1 packet tick = 1 second, for now) without
- * being read by peer. Currently, the driver will not try to re-transmit the
- * packet after timeout. It just simply propagate the error to the upper layer.
- * A retry at packet layer can be implement later, if considered as appropriate.
+ * A packet is defined as struct mailbox_pkt. There are mainly two types of
+ * packets: start-of-msg and msg-body packets. Both can carry end-of-msg flag to
+ * indicate that the packet is the last one in the current msg.
+ *
+ * The start-of-msg packet contains some meta data related to the entire msg,
+ * such as msg ID, msg flags and msg size. Strictly speaking, these info belongs
+ * to the msg layer, but it helps the receiving end to prepare buffer for the
+ * incoming msg payload after seeing the 1st packet instead of the whole msg.
+ * It is an optimization for msg receiving.
+ *
+ * The body-of-msg packet contains only msg payload.
  *
  *
  * Message layer
@@ -53,70 +59,130 @@
  * message into multiple packets and transmit them to the peer, which, in turn,
  * will assemble them into a full message before it's delivered to upper layer
  * for further processing. One message requires at least one packet to be
- * transferred to the peer.
+ * transferred to the peer (a start-of-msg packet with end-of-msg flag).
  *
  * Each message has a unique temporary u64 ID (see communication model below
- * for more detail). The ID shows up in each packet's header. So, at packet
- * layer, there is no assumption that adjacent packets belong to the same
- * message. However, for the sake of simplicity, at message layer, the driver
- * will not attempt to send the next message until the sending of current one
- * is finished. I.E., we implement a FIFO for message TX channel. All messages
- * are sent by driver in the order of received from upper layer. We can
- * implement messages of different priority later, if needed. There is no
- * certain order for receiving messages. It's up to the peer side to decide
- * which message gets enqueued into its own TX queue first, which will be
- * received first on the other side.
+ * for more detail). The ID shows up in start-of-msg packet only. So, at packet
+ * layer, there is an assumption that adjacent packets belong to the same
+ * message unless the next one is another start-of-msg packet. So, at message
+ * layer, the driver will not attempt to send the next message until the
+ * transmitting of current one is done. I.E., we implement a FIFO for message
+ * TX channel. All messages are sent by driver in the order of received from
+ * upper layer. We can implement msgs of different priority later, if needed.
  *
- * A message is considered as time'd out when it's transmit (send or receive)
- * is not finished within 10 packet ticks. This applies to all messages queued
- * up on both RX and TX channels. Again, no retry for a time'd out message is
- * implemented. The error will be simply passed to upper layer. Also, a TX
- * message may time out earlier if it's being transmitted and one of it's
- * packets time'd out. During normal operation, timeout should never happen.
+ * On the RX side, there is no certain order for receiving messages. It's up to
+ * the peer to decide which message gets enqueued into its own TX queue first,
+ * which will be received first on the other side.
+ *
+ * A TX message is considered as time'd out when it's transmit is not done
+ * within 2 seconds (for msg larger than 1MB, it's 2 second per MB). A RX msg
+ * is considered as time'd out 20 seconds after the corresponding TX one has
+ * been sent out. There is no retry after msg time'd out. The error will be
+ * simply propagated back to the upper layer.
+ *
+ * A msg is defined as struct mailbox_msg. It carrys a flag indicating that if
+ * it's a msg of request or response msg. A response msg must have a big enough
+ * msg buffer sitting in the receiver's RX queue waiting for it. A request msg
+ * does not have a waiting msg buffer.
  *
  * The upper layer can choose to queue a message for TX or RX asynchronously
  * when it provides a callback or wait synchronously when no callback is
  * provided.
  *
  *
- * Communication model
+ * Communication layer
  *
  * At the highest layer, the driver implements a request-response communication
- * model. A request may or may not require a response, but a response must match
- * a request, or it'll be silently dropped. The driver provides a few kernel
- * APIs for mgmt and user pf to talk to each other in this model (see kernel
- * APIs section below for details). Each request or response is a message by
- * itself. A request message will automatically be assigned a message ID when
- * it's enqueued into TX channel for sending. If this request requires a
- * response, the buffer provided by caller for receiving response will be
- * enqueued into RX channel as well. The enqueued response message will have
- * the same message ID as the corresponding request message. The response
- * message, if provided, will always be enqueued before the request message is
- * enqueued to avoid race condition.
+ * model. Three types of msgs can be sent/received in this model:
+ *   - A request msg which requires a response.
+ *   - A notification msg which does not require a response.
+ *   - A response msg which is used to respond a request.
+ * The OP code of the request determines whether it's a request or notification.
  *
- * The driver will automatically enqueue a special message into the RX channel
- * for receiving new request after initialized. This request RX message has a
- * special message ID (id=0) and never time'd out. When a new request comes
- * from peer, it'll be copied into request RX message then passed to the
- * callback provided by upper layer through xocl_peer_listen() API for further
- * processing. Currently, the driver implements only one kernel thread for RX
- * channel and one for TX channel. So, all message callback happens in the
- * context of that channel thread. So, the user of mailbox driver needs to be
- * careful when it calls xocl_peer_request() synchronously in this context.
- * You may see deadlock when both ends are trying to call xocl_peer_request()
- * synchronously at the same time.
+ * If provided, a response msg must match a request msg by msg ID, or it'll be
+ * silently dropped. And there is no response to a reponse. A communication
+ * session starts with a request and finishes with 0 or 1 reponse, always.
+ * A request buffer or response buffer will be wrapped with a single msg. This
+ * means that a session contains at most 2 msgs and the msg ID serves as the
+ * session ID.
+ *
+ * The mailbox driver provides a few kernel APIs for mgmt and user pf to talk to
+ * each other at this layer (see mailbox_ops for details). A request or
+ * notification msg will automatically be assigned a msg ID when it's enqueued
+ * into TX channel for transmitting. For a request msg, the buffer provided by
+ * caller for receiving response will be enqueued into RX channel as well. The
+ * enqueued response msg will have the same msg ID as the corresponding request
+ * msg. The response msg, if provided, will always be enqueued before the
+ * request msg is enqueued to avoid race condition.
+ *
+ * When a new request or notification is received from peer, driver will
+ * allocate a msg buffer and copy the msg into it then passes it to the callback
+ * provided by upper layer (mgmt or user pf driver) through xocl_peer_listen()
+ * API for further processing.
+ *
+ * Currently, the driver implements one kernel thread for RX channel (RX thread)
+ * , one for TX channel (TX thread) and one thread for processing incoming
+ * request (REQ thread).
+ *
+ * The RX thread is responsible for receiving incoming msgs. If it's a request
+ * or notification msg, it'll punt it to REQ thread for processing, which, in
+ * turn, will call the callback provided by mgmt pf driver
+ * (xclmgmt_mailbox_srv()) or user pf driver (xocl_mailbox_srv()) to further
+ * process it. If it's a response, it'll simply wake up the waiting thread (
+ * currently, all response msgs are waited synchronously by caller)
+ *
+ * The TX thread is responsible for sending out msgs. When it's done, the TX
+ * thread will simply wake up the waiting thread (if it's a request requiring
+ * a response) or call a default callback to free the msg when the msg is a
+ * notification or a response msg which does not require any response.
  *
  *
- * +------------------+            +------------------+
- * | Request/Response | <--------> | Request/Response |
- * +------------------+            +------------------+
- * | Message          | <--------> | Message          |
- * +------------------+            +------------------+
- * | Packet           | <--------> | Packet           |
- * +------------------+            +------------------+
- * | RX/TX Channel    | <<======>> | RX/TX Channel    |
- * +------------------+            +------------------+
- *   mgmt pf                         user pf
+ * Software communication channel
+ *
+ * A msg can be sent or received through HW mailbox channel or through a daemon
+ * implemented in user land (software communication daemon). The daemon waiting
+ * for sending msg from user pf to mgmt pf is called MPD. The other one is MSD,
+ * which is responsible for sending msg from mgmt pf to user pf.
+ *
+ * Each mailbox subdevice driver creates a device node under /dev. A daemon
+ * (MPD or MSD) can block and wait in the read() interface waiting for fetching
+ * out-going msg sent to peer. Or it can block and wait in the poll()/select()
+ * interface and will be woken up when there is an out-going msg ready to be
+ * sent. Then it can fetch the msg via read() interface. It's entirely up to the
+ * daemon to process the msg. It may pass it through to the peer or handle it
+ * completely in its own way.
+ *
+ * If the daemon wants to pass a msg (request or response) to a mailbox driver,
+ * it can do so by calling write() driver interface. It may block and wait until
+ * the previous msg is consumed by the RX thread before it can finish
+ * transmiting its own msg and return back to user land.
+ *
+ *
+ * Communication protocols
+ *
+ * As indicated above, the packet layer and msg layer communication protocol is
+ * defined as struct mailbox_pkt and struct mailbox_msg respectively in this
+ * file. The protocol for communicating at communication layer is defined in
+ * mailbox_proto.h.
+ *
+ * The software communication channel communicates at communication layer only,
+ * which sees only request and response buffers. It should only implement the
+ * protocol defined in mailbox_proto.h.
+ *
+ * The current protocol defined at communication layer followed a rule as below:
+ * All requests initiated from user pf requires a response and all requests from
+ * mgmt pf does not require a response. This should avoid any possible deadlock
+ * derived from each side blocking and waiting for response from the peer.
+ *
+ * The overall architecture can be shown as below::
+ *
+ *             +----------+      +----------+            +----------+
+ *             [ Req/Resp ]  <---[SW Channel]---->       [ Req/Resp ]
+ *       +-----+----------+      +----------+      +-----+----------+
+ *       [ Msg | Req/Resp ]                        [ Msg | Req/Resp ]
+ *       +---+-+------+---+      +----------+      +---+-+-----+----+
+ *       [Pkt]...[]...[Pkt]  <---[HW Channel]----> [Pkt]...[]...[Pkt]
+ *       +---+        +---+      +----------+      +---+        +---+
  */
 
 #include <linux/mutex.h>
