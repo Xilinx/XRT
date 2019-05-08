@@ -2375,7 +2375,7 @@ int xclMailboxUserGetID(unsigned deviceIndex, char *id)
 int xclMailboxMgmtPutID(unsigned deviceIndex, const char *id, const char *mbx_switch)
 {
     if (deviceIndex >= pcidev::get_dev_total())
-	return -ENODEV;
+        return -ENODEV;
     std::string err;
     std::string s_id = std::string(id);
     std::string s_mbx_switch = std::string(mbx_switch);
