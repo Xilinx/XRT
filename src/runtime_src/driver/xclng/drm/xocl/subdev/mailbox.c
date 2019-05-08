@@ -47,7 +47,7 @@
  * The start-of-msg packet contains some meta data related to the entire msg,
  * such as msg ID, msg flags and msg size. Strictly speaking, these info belongs
  * to the msg layer, but it helps the receiving end to prepare buffer for the
- * up-coming msg payload after seeing the 1st packet instead of the whole msg.
+ * incoming msg payload after seeing the 1st packet instead of the whole msg.
  * It is an optimization for msg receiving.
  *
  * The body-of-msg packet contains only msg payload.
@@ -93,43 +93,48 @@
  * Communication layer
  *
  * At the highest layer, the driver implements a request-response communication
- * model. A request may or may not require a response. But, if provided, a
- * response must match a request using msg ID, or it'll be silently dropped.
- * And there is no response to a reponse. A communication session starts with
- * a request and finishes with 0 or 1 reponse, always. A request buffer or
- * response buffer will be wrapped with a single msg. This means that a session
- * contains at most 2 msgs and the msg ID serves as the session ID.
+ * model. Three types of msgs can be sent/received in this model:
+ *   - A request msg which requires a response.
+ *   - A notification msg which does not require a response.
+ *   - A response msg which is used to respond a request.
+ * The OP code of the request determines whether it's a request or notification.
+ *
+ * If provided, a response msg must match a request msg by msg ID, or it'll be
+ * silently dropped. And there is no response to a reponse. A communication
+ * session starts with a request and finishes with 0 or 1 reponse, always.
+ * A request buffer or response buffer will be wrapped with a single msg. This
+ * means that a session contains at most 2 msgs and the msg ID serves as the
+ * session ID.
  *
  * The mailbox driver provides a few kernel APIs for mgmt and user pf to talk to
- * each other at this layer (see mailbox_ops for details). A request message
- * will automatically be assigned a message ID when it's enqueued into TX
- * channel for transmitting. If this request requires a response, the buffer
- * provided by caller for receiving response will be enqueued into RX channel
- * as well. The enqueued response message will have the same message ID as the
- * corresponding request message. The response message, if provided, will always
- * be enqueued before the request message is enqueued to avoid race condition.
+ * each other at this layer (see mailbox_ops for details). A request or
+ * notification msg will automatically be assigned a msg ID when it's enqueued
+ * into TX channel for transmitting. For a request msg, the buffer provided by
+ * caller for receiving response will be enqueued into RX channel as well. The
+ * enqueued response msg will have the same msg ID as the corresponding request
+ * msg. The response msg, if provided, will always be enqueued before the
+ * request msg is enqueued to avoid race condition.
  *
- * When a new request is received from peer, driver will allocate a msg buffer
- * and copy the request msg into it then passes to the callback provided by
- * upper layer (mgmt or user pf driver) through xocl_peer_listen() API for
- * further processing.
+ * When a new request or notification is received from peer, driver will
+ * allocate a msg buffer and copy the msg into it then passes it to the callback
+ * provided by upper layer (mgmt or user pf driver) through xocl_peer_listen()
+ * API for further processing.
  *
  * Currently, the driver implements one kernel thread for RX channel (RX thread)
  * , one for TX channel (TX thread) and one thread for processing incoming
  * request (REQ thread).
  *
- * The RX thread is responsible for receiving incoming msgs (request or response
- * msgs). If it's a request msg, it'll punt it to REQ thread for processing,
- * which, in turn, will call callbacks provided by mgmt pf driver
+ * The RX thread is responsible for receiving incoming msgs. If it's a request
+ * or notification msg, it'll punt it to REQ thread for processing, which, in
+ * turn, will call the callback provided by mgmt pf driver
  * (xclmgmt_mailbox_srv()) or user pf driver (xocl_mailbox_srv()) to further
- * processing it. If it's a response, it'll simply wake up the waiting thread (
+ * process it. If it's a response, it'll simply wake up the waiting thread (
  * currently, all response msgs are waited synchronously by caller)
  *
- * The TX thread is responsible for sending out msgs (request or response msgs).
- * When it's done, the TX thread will simply wake up the waiting thread (if it's
- * a request requiring a response) or call a default callback to free the msg
- * when the msg is a posted request or a response msg which does not require any
- * response msg.
+ * The TX thread is responsible for sending out msgs. When it's done, the TX
+ * thread will simply wake up the waiting thread (if it's a request requiring
+ * a response) or call a default callback to free the msg when the msg is a
+ * notification or a response msg which does not require any response.
  *
  *
  * Software communication channel
