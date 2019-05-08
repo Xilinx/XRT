@@ -372,7 +372,7 @@ public:
         bool mIsDeviceProfiling = false;
         uint64_t mPerfMonFifoCtrlBaseAddress;
         uint64_t mPerfMonFifoReadBaseAddress;
-        uint64_t mTraceFunnelAddress;
+        uint64_t mTraceFunnelAddress = 0;
         uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS]     = {0};
         uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS]    = {0};
         uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS]  = {0};

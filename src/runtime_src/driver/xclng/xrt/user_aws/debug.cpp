@@ -17,7 +17,6 @@
 
 
 #include "shim.h"
-#include "scan.h"
 #include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/include/xclbin.h"
 
@@ -122,52 +121,6 @@ namespace awsbwhal {
   uint32_t AwsXcl::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                        uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                        size_t size) {
-#if 0
-    debug_ip_layout *map;
-
-        std::string errmsg;
-        std::string buf;
-        std::string dev_name;
-        dev_name = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
-        xcldev::sysfs_get(dev_name, "icap", "debug_ip_layout", errmsg, buf);
-
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if(buf.empty()) {
-            return 0;
-        }
-        uint32_t count = 0;
-
-        map = (debug_ip_layout*)buf.data();
-        if(map->m_count < 0)
-            return -EINVAL;
-
-        for( unsigned int i = 0; i < map->m_count; i++ ) {
-          if (count >= size) break;
-          if (map->m_debug_ip_data[i].m_type == type) {
-//            if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-//            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
-//            if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
-
-            if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames) {
-              // Fill up string with 128 characters (padded with null characters)
-              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
-              // Strip away extraneous null characters
-              portNames[count].assign(portNames[count].c_str());
-            }
-            if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
-            if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
-            if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
-
-            ++count;
-          }
-        }
-#endif
-
     debug_ip_layout *map;
     char debugIPLayoutPath[512] = {0};
     xclGetSysfsPath("icap", "debug_ip_layout", debugIPLayoutPath, 512);
@@ -192,11 +145,6 @@ namespace awsbwhal {
               // Strip away extraneous null characters
               portNames[count].assign(portNames[count].c_str());
             }
-
-#if 0
-            if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
-#endif
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
             if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
             if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
