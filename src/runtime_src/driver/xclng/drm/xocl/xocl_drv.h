@@ -225,6 +225,9 @@ struct xocl_drvinst_proc {
 	u32			count;
 };
 
+/*
+ * Base structure for platform driver data structures
+ */
 struct xocl_drvinst {
 	struct device		*dev;
 	u32			size;
@@ -233,7 +236,11 @@ struct xocl_drvinst {
 	struct list_head	open_procs;
 	void			*file_dev;
 	bool			offline;
-	char			data[1];
+        /*
+	 * The derived object placed inline in field "data"
+	 * should be aligned at 8 byte boundary
+	 */
+        u64			data[1];
 };
 
 struct xocl_dev_core {
