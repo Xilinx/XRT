@@ -106,14 +106,14 @@ namespace xocl {
   // Helper functions
   // ****************
 
-  bool XOCLShim::isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion) {
+  bool shim::isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion) {
     unsigned checkVersion = (majorVersion << 4) + (minorVersion);
     if (onlyThisVersion)
       return (mDeviceInfo.mDeviceVersion == checkVersion);
     return (mDeviceInfo.mDeviceVersion >= checkVersion);
   }
 
-  unsigned XOCLShim::getBankCount() {
+  unsigned shim::getBankCount() {
     return mDeviceInfo.mDDRBankCount;
   }
   /*
@@ -121,7 +121,7 @@ namespace xocl {
    * Returns  0 if Version2 = Version1
    * Returns -1 if Version2 < Version1
    */
-  signed XOCLShim::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
+  signed shim::cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2) {
     if (major2 > major1)
       return 1;
     else if (major2 < major1)
@@ -135,7 +135,7 @@ namespace xocl {
 
   // Set number of profiling slots in monitor
   // NOTE: not supported anymore (extracted from debug_ip_layout)
-  void XOCLShim::xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots) {
+  void shim::xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots) {
 #if 0
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id()
@@ -151,7 +151,7 @@ namespace xocl {
   // Get host timestamp to write to APM
   // IMPORTANT NOTE: this *must* be compatible with the method of generating
   // timestamps as defined in RTProfile::getTraceTime()
-  uint64_t XOCLShim::getHostTraceTimeNsec() {
+  uint64_t shim::getHostTraceTimeNsec() {
     using namespace std::chrono;
     typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
     duration_ns time_span =
@@ -159,35 +159,35 @@ namespace xocl {
     return time_span.count();
   }
 
-  uint64_t XOCLShim::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
+  uint64_t shim::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
     if (type == XCL_PERF_MON_MEMORY)         return mPerfMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_ACCEL)     return mAccelMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_STR)       return mStreamMonBaseAddress[slotNum];
     return 0;
   }
 
-  uint64_t XOCLShim::getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum) {
+  uint64_t shim::getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum) {
     if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
         return mPerfMonFifoCtrlBaseAddress;
     else
       return 0;
   }
 
-  uint64_t XOCLShim::getPerfMonFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum) {
+  uint64_t shim::getPerfMonFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum) {
     if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
         return mPerfMonFifoReadBaseAddress;
     else
       return 0;
   }
 
-  uint64_t XOCLShim::getTraceFunnelAddress(xclPerfMonType type) {
+  uint64_t shim::getTraceFunnelAddress(xclPerfMonType type) {
     if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
         return mTraceFunnelAddress;
     else
       return 0;
   }
   
-  uint32_t XOCLShim::getPerfMonNumberSlots(xclPerfMonType type) {
+  uint32_t shim::getPerfMonNumberSlots(xclPerfMonType type) {
     if (type < 0 || type >= XCL_PERF_MON_TOTAL_PROFILE)
       return 0;
 
@@ -220,7 +220,7 @@ namespace xocl {
     return count;
   }
 
-  uint32_t XOCLShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+  uint32_t shim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
     if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
       return static_cast<uint32_t>(mPerfmonProperties[slotnum]);
     if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
@@ -230,7 +230,7 @@ namespace xocl {
     return 0;
   }
 
-  void XOCLShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+  void shim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
 		                            char* slotName, uint32_t length) {
     std::string str = "";
     if (type == XCL_PERF_MON_MEMORY) {
@@ -245,7 +245,7 @@ namespace xocl {
     strncpy(slotName, str.c_str(), length);
   }
 
-  uint32_t XOCLShim::getPerfMonNumberSamples(xclPerfMonType type) {
+  uint32_t shim::getPerfMonNumberSamples(xclPerfMonType type) {
     if (type == XCL_PERF_MON_MEMORY) return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
     if (type == XCL_PERF_MON_HOST) return XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES;
     // TODO: get number of samples from metadata
@@ -253,7 +253,7 @@ namespace xocl {
     return 0;
   }
 
-  uint8_t XOCLShim::getPerfMonShowIDS(xclPerfMonType type) {
+  uint8_t shim::getPerfMonShowIDS(xclPerfMonType type) {
     if (type == XCL_PERF_MON_MEMORY) {
       if (isDSAVersion(1, 0, true))
         return 0;
@@ -271,7 +271,7 @@ namespace xocl {
     return 0;
   }
 
-  uint8_t XOCLShim::getPerfMonShowLEN(xclPerfMonType type) {
+  uint8_t shim::getPerfMonShowLEN(xclPerfMonType type) {
     if (type == XCL_PERF_MON_MEMORY) {
       if (getBankCount() > 1)
         return XPAR_AXI_PERF_MON_0_SHOW_AXI_LEN_2DDR;
@@ -287,7 +287,7 @@ namespace xocl {
     return 0;
   }
 
-  uint32_t XOCLShim::getPerfMonSlotStartBit(xclPerfMonType type, uint32_t slotnum) {
+  uint32_t shim::getPerfMonSlotStartBit(xclPerfMonType type, uint32_t slotnum) {
     // NOTE: ID widths also set to 5 in HEAD/data/sdaccel/board_support/alpha_data/common/xclplat/xclplat_ip.tcl
     uint32_t bitsPerID = 5;
     uint8_t showIDs = getPerfMonShowIDS(type);
@@ -296,7 +296,7 @@ namespace xocl {
     return (18 + (bitsPerSlot * slotnum));
   }
 
-  uint32_t XOCLShim::getPerfMonSlotDataWidth(xclPerfMonType type, uint32_t slotnum) {
+  uint32_t shim::getPerfMonSlotDataWidth(xclPerfMonType type, uint32_t slotnum) {
     // TODO: this only supports slot 0
     if (slotnum == 0) return XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH;
     if (slotnum == 1) return XPAR_AXI_PERF_MON_0_SLOT1_DATA_WIDTH;
@@ -310,7 +310,7 @@ namespace xocl {
   }
 
   // Get the device clock frequency (in MHz)
-  double XOCLShim::xclGetDeviceClockFreqMHz() {
+  double shim::xclGetDeviceClockFreqMHz() {
     xclGetDeviceInfo2(&mDeviceInfo);
     unsigned clockFreq = mDeviceInfo.mOCLFrequency[0];
     if (clockFreq == 0)
@@ -323,23 +323,23 @@ namespace xocl {
 
   // Get the maximum bandwidth for host reads from the device (in MB/sec)
   // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-  double XOCLShim::xclGetReadMaxBandwidthMBps() {
+  double shim::xclGetReadMaxBandwidthMBps() {
     return 9600.0;
   }
 
   // Get the maximum bandwidth for host writes to the device (in MB/sec)
   // NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-  double XOCLShim::xclGetWriteMaxBandwidthMBps() {
+  double shim::xclGetWriteMaxBandwidthMBps() {
     return 9600.0;
   }
 
   // Convert binary string to decimal
-  uint32_t XOCLShim::bin2dec(std::string str, int start, int number) {
+  uint32_t shim::bin2dec(std::string str, int start, int number) {
     return bin2dec(str.c_str(), start, number);
   }
 
   // Convert binary char * to decimal
-  uint32_t XOCLShim::bin2dec(const char* ptr, int start, int number) {
+  uint32_t shim::bin2dec(const char* ptr, int start, int number) {
     const char* temp_ptr = ptr + start;
     uint32_t value = 0;
     int i = 0;
@@ -359,7 +359,7 @@ namespace xocl {
 
   // Convert decimal to binary string
   // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string XOCLShim::dec2bin(uint32_t n) {
+  std::string shim::dec2bin(uint32_t n) {
     char result[(sizeof(uint32_t) * 8) + 1];
     unsigned index = sizeof(uint32_t) * 8;
     result[index] = '\0';
@@ -375,7 +375,7 @@ namespace xocl {
   }
 
   // Convert decimal to binary string of length bits
-  std::string XOCLShim::dec2bin(uint32_t n, unsigned bits) {
+  std::string shim::dec2bin(uint32_t n, unsigned bits) {
     char result[bits + 1];
     unsigned index = bits;
     result[index] = '\0';
@@ -390,7 +390,7 @@ namespace xocl {
   }
 
   // Reset all APM trace AXI stream FIFOs
-  size_t XOCLShim::resetFifos(xclPerfMonType type) {
+  size_t shim::resetFifos(xclPerfMonType type) {
 
     uint64_t resetCoreAddress = getPerfMonFifoBaseAddress(type, 0) + AXI_FIFO_SRR;
     uint64_t resetFifoAddress = getPerfMonFifoBaseAddress(type, 0) + AXI_FIFO_RDFR;
@@ -407,7 +407,7 @@ namespace xocl {
   // ********
 
   // Start device counters performance monitoring
-  size_t XOCLShim::xclPerfMonStartCounters(xclPerfMonType type) {
+  size_t shim::xclPerfMonStartCounters(xclPerfMonType type) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Start device counters..." << std::endl;
@@ -475,7 +475,7 @@ namespace xocl {
     return size;
   }
 
-  void XOCLShim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+  void shim::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Configure Monitors For Dataflow..." << std::endl;
@@ -502,7 +502,7 @@ namespace xocl {
   }
 
   // Stop both profile and trace performance monitoring
-  size_t XOCLShim::xclPerfMonStopCounters(xclPerfMonType type) {
+  size_t shim::xclPerfMonStopCounters(xclPerfMonType type) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Stop and reset device counters..." << std::endl;
@@ -529,7 +529,7 @@ namespace xocl {
   }
 
   // Read SPM performance counters
-  size_t XOCLShim::xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults) {
+  size_t shim::xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << ", " << &counterResults
@@ -810,7 +810,7 @@ namespace xocl {
   // *****
 
   // Clock training used in converting device trace timestamps to host domain
-  size_t XOCLShim::xclPerfMonClockTraining(xclPerfMonType type) {
+  size_t shim::xclPerfMonClockTraining(xclPerfMonType type) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Send clock training..." << std::endl;
@@ -820,7 +820,7 @@ namespace xocl {
   }
 
   // Start trace performance monitoring
-  size_t XOCLShim::xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger) {
+  size_t shim::xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger) {
     // StartTrigger Bits:
     // Bit 0: Trace Coarse/Fine     Bit 1: Transfer Trace Ctrl
     // Bit 2: CU Trace Ctrl         Bit 3: INT Trace Ctrl
@@ -877,7 +877,7 @@ namespace xocl {
   }
 
   // Stop trace performance monitoring
-  size_t XOCLShim::xclPerfMonStopTrace(xclPerfMonType type) {
+  size_t shim::xclPerfMonStopTrace(xclPerfMonType type) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Stop and reset device tracing..." << std::endl;
@@ -893,7 +893,7 @@ namespace xocl {
   }
 
   // Get trace word count
-  uint32_t XOCLShim::xclPerfMonGetTraceCount(xclPerfMonType type) {
+  uint32_t shim::xclPerfMonGetTraceCount(xclPerfMonType type) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << std::endl;
@@ -923,7 +923,7 @@ namespace xocl {
   }
 
   // Read all values from APM trace AXI stream FIFOs
-  size_t XOCLShim::xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector) {
+  size_t shim::xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << type << ", " << &traceVector
@@ -1103,7 +1103,7 @@ namespace xocl {
     return size;
   }
 
-  int XOCLShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size) {
+  int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size) {
     auto dev = pcidev::get_dev(mBoardNumber);
     std::string subdev_str = std::string(subdev);
     std::string entry_str = std::string(entry);
@@ -1118,7 +1118,7 @@ namespace xocl {
     return 0;
   }
 
-  int XOCLShim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
+  int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
     auto dev = pcidev::get_dev(mBoardNumber);
     uint16_t user_instance = dev->user->instance;
     uint16_t mgmt_instance = dev->mgmt ? dev->mgmt->instance : 0;
@@ -1141,7 +1141,7 @@ namespace xocl {
 
 void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return;
   return drv->xclPerfMonConfigureDataflow(type, ip_config);
@@ -1149,68 +1149,68 @@ void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, un
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonStartCounters(type) : -ENODEV;
 }
 
 size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonStopCounters(type) : -ENODEV;
 }
 
 size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type, xclCounterResults& counterResults)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonReadCounters(type, counterResults) : -ENODEV;
 }
 
 size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonClockTraining(type) : -ENODEV;
 }
 
 size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_t startTrigger)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonStartTrace(type, startTrigger) : -ENODEV;
 }
 
 size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonStopTrace(type) : -ENODEV;
 }
 
 uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonGetTraceCount(type) : -ENODEV;
 }
 
 size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTraceResultsVector& traceVector)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclPerfMonReadTrace(type, traceVector) : -ENODEV;
 }
 
 double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
 }
 
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
 }
 
 
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
 }
 
@@ -1221,7 +1221,7 @@ size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 
 void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return;
   return drv->xclSetProfilingNumberSlots(type, numSlots);
@@ -1229,7 +1229,7 @@ void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uin
 
 uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return 0;
   return drv->getPerfMonProperties(type, slotnum);
@@ -1237,7 +1237,7 @@ uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType ty
 
 uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return 2;
   return drv->getPerfMonNumberSlots(type);
@@ -1246,7 +1246,7 @@ uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
 void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
 		                     char* slotName, uint32_t length)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return;
   return drv->getPerfMonSlotName(type, slotnum, slotName, length);
@@ -1260,7 +1260,7 @@ void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type,
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
                       const char* entry, char* sysfsPath, size_t size) {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
@@ -1268,7 +1268,7 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
 
 int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 

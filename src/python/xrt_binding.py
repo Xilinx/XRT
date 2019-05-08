@@ -562,69 +562,6 @@ def xclGetBOProperties(handle, boHandle, properties):
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
     return libc.xclGetBOProperties(handle, boHandle, properties)
 
-def xclAllocDeviceBuffer(handle, size):
-    """
-    Allocate a buffer on the device
-    :param handle: Device handle
-    :param size: Size of buffer
-    :return: Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
-    """
-    libc.xclAllocDeviceBuffer.restype = ctypes.c_uint64
-    libc.xclAllocDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_size_t]
-    return libc.xclAllocDeviceBuffer(handle, size)
-
-def xclAllocDeviceBuffer2(handle, size, domain, flags):
-    """
-    Allocate a buffer on the device on a specific DDR
-    :param handle: Device handle
-    :param size: Size of buffer
-    :param domain: Memory domain
-    :param flags: Desired DDR bank as a bitmap.
-    :return: Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
-    """
-    libc.xclAllocDeviceBuffer2.restype = ctypes.c_uint64
-    libc.xclAllocDeviceBuffer2.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
-    return libc.xclAllocDeviceBuffer2(handle, size, domain, flags)
-
-def xclFreeDeviceBuffer(handle, buf):
-    """
-    Free a previously buffer on the device
-    :param handle: Device handle
-    :param buf: Physical address of buffer
-    :return:
-    """
-    libc.xclFreeDeviceBuffer.restype = None
-    libc.xclFreeDeviceBuffer.argtypes = [xclDeviceHandle, ctypes.c_uint64]
-    return libc.xclFreeDeviceBuffer(handle, buf)
-
-def xclCopyBufferHost2Device(handle, dest, src, size, seek):
-    """
-    Write to device memory
-    :param handle: Device handle
-    :param dest: Physical address in the device
-    :param src: Source buffer pointer
-    :param size: Size of data to synchronize
-    :param seek: Seek within the segment pointed to physical address
-    :return: Size of data moved or standard error number
-    """
-    libc.xclCopyBufferHost2Device.restype = ctypes.c_size_t
-    libc.xclCopyBufferHost2Device.argtypes = [xclDeviceHandle, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
-    return libc.xclCopyBufferHost2Device(handle, dest, src, size, seek)
-
-def xclCopyBufferDevice2Host(handle, dest, src, size, skip):
-    """
-    Read from device memory
-    :param handle: Device handle
-    :param dest: Destination buffer pointer
-    :param src: Physical address in the device
-    :param size: Size of data to synchronize
-    :param skip: Skip within the segment pointed to physical address
-    :return: Size of data moved or standard error number
-    """
-    libc.xclCopyBufferDevice2Host.restype = ctypes.c_size_t
-    libc.xclCopyBufferDevice2Host.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t]
-    return libc.xclCopyBufferDevice2Host(handle, dest, src, size, skip)
-
 def xclUnmgdPread(handle, flags, buf, size, offeset):
     """
     Perform unmanaged device memory read operation
