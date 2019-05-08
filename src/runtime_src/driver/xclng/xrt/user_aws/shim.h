@@ -241,6 +241,9 @@ public:
         uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
         size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+        // APIs using sysfs information
+        int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
         // Execute and interrupt abstraction
         int xclExecBuf(unsigned int cmdBO);
         int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
@@ -361,6 +364,7 @@ public:
         uint32_t mMemoryProfilingNumberSlots;
         uint32_t mAccelProfilingNumberSlots;
         uint32_t mStallProfilingNumberSlots;
+        uint32_t mStreamProfilingNumberSlots;
         std::string mDevUserName;
 
         // Information extracted from platform linker
@@ -369,16 +373,21 @@ public:
         uint64_t mPerfMonFifoCtrlBaseAddress;
         uint64_t mPerfMonFifoReadBaseAddress;
         uint64_t mTraceFunnelAddress;
-        uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS]   = {0};
-        uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS]  = {0};
-        std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS]   = {};
-        std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS]  = {};
-        uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS]     = {0};
-        uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS]    = {0};
-        uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS]  = {0};
-        uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
-        uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS]  = {0};
-        uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
+        uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS]     = {0};
+        uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS]    = {0};
+        uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS]  = {0};
+        std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS]     = {};
+        std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS]    = {};
+        std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS]  = {};
+        uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS]       = {0};
+        uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS]      = {0};
+        uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS]    = {0};
+        uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS]    = {0};
+        uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS]   = {0};
+        uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {0};
+        uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS]    = {0};
+        uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS]   = {0};
+        uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {0};
 
         char *mUserMap;
         std::ofstream mLogStream;

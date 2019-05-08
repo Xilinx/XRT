@@ -529,7 +529,8 @@ namespace awsbwhal {
                    mOffsets{0x0, 0x0, 0x0, 0x0},
                    mMemoryProfilingNumberSlots(0),
                    mAccelProfilingNumberSlots(0),
-                   mStallProfilingNumberSlots(0)
+                   mStallProfilingNumberSlots(0),
+                   mStreamProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
@@ -915,6 +916,21 @@ namespace awsbwhal {
         return -EINVAL;
       drm_xocl_pread_unmgd unmgd = {0, 0, offset, count, reinterpret_cast<uint64_t>(buf)};
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
+    }
+
+    int AwsXcl::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+    {
+      std::string devName = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+      std::string subdevStr(subdev);        
+      std::string entryStr(entry);        
+
+      if(mLogStream.is_open()) {
+        mLogStream << "Retrieving [sysfs root]" << subdevStr << "/" << entryStr << std::endl;
+      }
+      std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+      strncpy(sysfsPath, sysfsPathStr.c_str(), size);
+      sysfsPathStr[size - 1] = '\0';
+      return 0;
     }
     
     /*
@@ -1595,5 +1611,12 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 int xclAwssak(int argc, char *argv[])
 {
     return xcldev::xclAwssak(argc, argv);
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entry,
+                    char* sysfsPath, size_t size)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
 }
 

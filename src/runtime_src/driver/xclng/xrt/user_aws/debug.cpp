@@ -17,6 +17,7 @@
 
 
 #include "shim.h"
+#include "scan.h"
 #include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/include/xclbin.h"
 
@@ -64,6 +65,9 @@ namespace awsbwhal {
       mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XSPM_MAX_NUMBER_SLOTS);
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
+    mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
+      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
+
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
@@ -97,6 +101,12 @@ namespace awsbwhal {
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;
       }
+      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
+        mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
+                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
+                   << ", name = " << mStreamMonSlotName[i] << std::endl;
+      }
+
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
                  << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_FULL: "
@@ -159,7 +169,10 @@ namespace awsbwhal {
 #endif
 
     debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/0000:85:00.0/icap.u.34048/debug_ip_layout";
+    char debugIPLayoutPath[512] = {0};
+    xclGetSysfsPath("icap", "debug_ip_layout", debugIPLayoutPath, 512);
+    std::string path(debugIPLayoutPath);
+//    std::string path = "/sys/bus/pci/devices/0000:85:00.0/icap.u.34048/debug_ip_layout";
 //    std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/debug_ip_layout";
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     uint32_t count = 0;

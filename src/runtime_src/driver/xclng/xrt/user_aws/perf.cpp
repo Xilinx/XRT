@@ -86,7 +86,7 @@ namespace awsbwhal {
   uint64_t AwsXcl::getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum) {
     if (type == XCL_PERF_MON_MEMORY) return mPerfMonBaseAddress[slotNum];
     if (type == XCL_PERF_MON_ACCEL)  return mAccelMonBaseAddress[slotNum];
-//    if (type == XCL_PERF_MON_STR)    return mStreamMonBaseAddress[slotNum];
+    if (type == XCL_PERF_MON_STR)    return mStreamMonBaseAddress[slotNum];
     return 0;
   }
 
