@@ -98,9 +98,9 @@ event_status_to_profile_state(cl_int status)
  *
  */
 void
-cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, cl_kernel kernel,
-                 std::string kname, std::string xname, size_t workGroupSize, const size_t* globalWorkDim,
-                 const size_t* localWorkDim, unsigned int programId)
+cb_action_ndrange(xocl::event* event,cl_int status,const std::string& cu_name, cl_kernel kernel,
+                  std::string kname, std::string xname, size_t workGroupSize, const size_t* globalWorkDim,
+                  const size_t* localWorkDim, unsigned int programId)
 {
     if (!isProfilingOn())
       return;
@@ -155,7 +155,8 @@ cb_action_ndrange (xocl::event* event,cl_int status,const std::string& cu_name, 
 }
 
 void
-cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank, bool entire_buffer, size_t user_size, size_t user_offset)
+cb_action_read(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank,
+               bool entire_buffer, size_t user_size, size_t user_offset)
 {
     if (!isProfilingOn())
       return;
@@ -181,12 +182,8 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
     auto commandQueueId = event->get_command_queue()->get_uid();
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
-    size_t actual_size = 0;
-    if (entire_buffer) {
-      actual_size = size;
-    } else {
-      actual_size = user_size;
-    }
+
+    size_t actual_size = (entire_buffer) ? size : user_size;
 
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
@@ -209,7 +206,7 @@ cb_action_read (xocl::event* event,cl_int status, cl_mem buffer, size_t size, ui
 
 void
 cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address,
-                           const std::string& bank, cl_map_flags map_flags)
+              const std::string& bank, cl_map_flags map_flags)
 {
     if (!isProfilingOn())
       return;
@@ -258,7 +255,8 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
 }
 
 void
-cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank)
+cb_action_write(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank,
+                bool entire_buffer, size_t user_size, size_t user_offset)
 {
     if (!isProfilingOn())
       return;
@@ -291,11 +289,13 @@ cb_action_write (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto threadId = std::this_thread::get_id();
     double timestampMsec = (status == CL_COMPLETE) ? event->time_end() / 1e6 : 0.0;
 
+    size_t actual_size = (entire_buffer) ? size : user_size;
+
     OCLProfiler::Instance()->getProfileManager()->logDataTransfer
       (reinterpret_cast<uint64_t>(buffer)
        ,kind
        ,commandState
-       ,size
+       ,actual_size
        ,contextId
        ,numDevices
        ,deviceName
@@ -515,7 +515,13 @@ cb_action_copy(xocl::event* event, cl_int status, cl_mem src_buffer, cl_mem dst_
       XOCL_DEBUGF("COPY event: %s, depend: %s\n", eventStr.c_str(), dependStr.c_str());
     }
 
+    // Catch if copying to/from P2P buffer
     auto kind = (same_device) ? xdp::RTUtil::COPY_BUFFER : xdp::RTUtil::COPY_BUFFER_P2P;
+    auto src_ext_flags = xocl::xocl(src_buffer)->get_ext_flags();
+    auto dst_ext_flags = xocl::xocl(dst_buffer)->get_ext_flags();
+    if ((src_ext_flags & XCL_MEM_EXT_P2P_BUFFER) || (dst_ext_flags & XCL_MEM_EXT_P2P_BUFFER))
+      kind = xdp::RTUtil::COPY_BUFFER_P2P;
+
     auto commandState = event_status_to_profile_state(status);
     auto deviceName = device->get_name();
     auto contextId =  event->get_context()->get_uid();

@@ -131,14 +131,14 @@ namespace xdp {
         "Average Latency (ns)"
       };
 
-      // Table 8 : Data Transfer: Host to Device
-      writeTableHeader(getStream(), "Data Transfer: Host to Device",
+      // Table 8 : Data Transfer: DMA
+      writeTableHeader(getStream(), "Data Transfer: DMA",
           DataTransferSummaryColumnLabels2);
       profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_XDMA);
       writeTableFooter(getStream());
 
-      // Table 9 : Data Transfer: Peer to Peer
-      writeTableHeader(getStream(), "Data Transfer: Peer to Peer",
+      // Table 9 : Data Transfer: DMA Bypass
+      writeTableHeader(getStream(), "Data Transfer: DMA Bypass",
           DataTransferSummaryColumnLabels2);
       profile->writeTransferSummary(this, xdp::RTUtil::MON_SHELL_P2P);
       writeTableFooter(getStream());
