@@ -109,6 +109,44 @@ struct ert_start_kernel_cmd {
   uint32_t data[1];          /* count-1 number of words */
 };
 
+/**
+ * struct ert_init_kernel_cmd: ERT initialize kernel command format
+ * this command initializes CUs by writing CU registers. CUs are
+ * represented by cu_mask and extra_cu_masks.
+ *
+ * @state:           [3-0] current state of a command
+ * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
+ * @count:           [22-12] number of words following header
+ * @opcode:          [27-23] 0, opcode for init_kernel
+ * @type:            [31-27] 0, type of init_kernel
+ *
+ * @cu_mask:         first mandatory CU mask
+ * @data:            count-9 number of words representing interpreted payload
+ *
+ * The packet payload is comprised of reserved id field, 8 reserved fields,
+ * a mandatory CU mask, and extra_cu_masks per header field, followed by a
+ * CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.
+ */
+struct ert_init_kernel_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:6;         /* [9-4]  */
+      uint32_t extra_cu_masks:2; /* [11-10]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  uint32_t reserved[8];      /* reserved for future use */
+
+  /* payload */
+  uint32_t cu_mask;          /* mandatory cu mask */
+  uint32_t data[1];          /* count-9 number of words */
+};
+
 #define KDMA_BLOCK_SIZE 64   /* Limited by KDMA CU */
 struct ert_start_copybo_cmd {
   uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
@@ -313,6 +351,7 @@ enum ert_cmd_opcode {
   ERT_SK_CONFIG     = 8,
   ERT_SK_START      = 9,
   ERT_SK_UNCONFIG   = 10,
+  ERT_INIT_CU       = 11,
 };
 
 /**
