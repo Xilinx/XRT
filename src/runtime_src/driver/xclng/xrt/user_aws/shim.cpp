@@ -541,9 +541,9 @@ namespace awsbwhal {
                    maxDMASize(0xfa0000),
                    mLocked(false),
                    mOffsets{0x0, 0x0, 0x0, 0x0},
-                                                      mMemoryProfilingNumberSlots(0),
-                                                      mAccelProfilingNumberSlots(0),
-                                                      mStallProfilingNumberSlots(0)
+                   mMemoryProfilingNumberSlots(0),
+                   mAccelProfilingNumberSlots(0),
+                   mStallProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
@@ -552,6 +552,11 @@ namespace awsbwhal {
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle <= 0) {
             std::cout << "WARNING: AwsXcl - Cannot open userPF: " << devName << std::endl;
+        }
+        if (logfileName != nullptr) {
+          mLogStream.open(logfileName);
+          mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
         }
 
 #ifdef INTERNAL_TESTING
@@ -602,21 +607,6 @@ namespace awsbwhal {
                         std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
         }
 #endif
-
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
 
         //
         // Profiling - defaults
