@@ -149,14 +149,17 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
   auto end = offsets.end();
 
   while (offset_it != end) {
-    auto it = mKernelControl.find(offset_it->first);
-    if (it == mKernelControl.end()) {
-      ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
-      if (!ptr) {
-          printf("Map failed for aperture 0x%lx, size 0x%x\n", offset_it->first, offset_it->second);
-          return -1;
+    // This (~0xFF) is the KDS mask
+    if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
+      auto it = mKernelControl.find(offset_it->first);
+      if (it == mKernelControl.end()) {
+        ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
+        if (!ptr) {
+            printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
+            return -1;
+        }
+        mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
       }
-      mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
     }
     offset_it++;
   }
