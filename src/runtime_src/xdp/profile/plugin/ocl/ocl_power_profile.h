@@ -21,9 +21,9 @@ class OclPowerProfile {
 public:
     OclPowerProfile(xrt::device* xrt_device);
     ~OclPowerProfile();
-    void poll_power(xrt::device* xrt_device);
+    void poll_power();
     bool should_continue();
-    void start_polling(xrt::device* xrt_device);
+    void start_polling();
     void stop_polling();
 private:
     std::ofstream power_profiling_output;
@@ -31,6 +31,7 @@ private:
     PowerProfileStatus status;
     std::thread polling_thread;
     std::string power_profile_config;
+    xrt::device* target_device;
 };
 
 }
