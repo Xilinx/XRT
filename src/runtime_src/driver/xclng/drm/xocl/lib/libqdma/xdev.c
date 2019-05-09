@@ -343,19 +343,16 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 	}
 
 	xdev->stm_en = 0;
-#ifndef __XRT__
-	if (IS_STM_ENABLED_DEVICE(pdev)) 
-#endif
-	{
+	if (xdev->conf.bar_num_stm >= 0) {
 		u32 rev;
 		resource_size_t bar_start;
 
-		bar_start = pci_resource_start(pdev, STM_BAR);
+		bar_start = pci_resource_start(pdev, (int)xdev->conf.bar_num_stm);
 		xdev->stm_regs = ioremap_nocache(bar_start + STM_REG_BASE,
 				4096);
 		if (!xdev->stm_regs) {
 			pr_warn("%s unable to map bar %d.\n",
-				xdev->conf.name, STM_BAR);
+				xdev->conf.name, xdev->conf.bar_num_stm);
 			return -EINVAL;
 		}
 
@@ -363,7 +360,7 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 		if ((((rev >> 24) & 0xFF)!= 'S') ||
 			(((rev >> 16) & 0xFF) != 'T') ||
 			(((rev >> 8) & 0xFF) != 'M')) {
-			pr_err("%s: Uknown STM %c%c%c.\n",
+			pr_err("%s: Unknown STM %c%c%c.\n",
 				xdev->conf.name, (rev >> 24) & 0xFF,
 				(rev >> 16) & 0xFF, (rev >> 8) & 0xFF);
 			xdev_unmap_bars(xdev, pdev);
@@ -701,12 +698,13 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 		pr_info("%s: pci device NULL.\n", mod_name);
 		return QDMA_ERR_INVALID_PCI_DEV;
 	}
-	conf->bar_num_stm = -1;
 
-	pr_info("%s, pdev 0x%p, %s, 0x%x:0x%x, master %d, intr %d,0x%x, qmax %u.\n",
+	pr_info("%s pdev 0x%p, %s, 0x%x:0x%x, master %d, intr %d,0x%x, qmax %u,"
+		"cfg %d, stm %d.\n",
 		mod_name, pdev, dev_name(&pdev->dev), pdev->vendor,
 		pdev->device, conf->master_pf, conf->qdma_drv_mode,
-		conf->intr_rngsz, conf->qsets_max);
+		conf->intr_rngsz, conf->qsets_max, conf->bar_num_config,
+		conf->bar_num_stm);
 
 	xdev = xdev_find_by_pdev(pdev);
 	if (xdev) {

@@ -41,6 +41,10 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
+/* qdma bar # */
+#define	QDMA_BARNUM_STM		0
+#define	QDMA_BARNUM_CONFIG	2
+
 #define MM_DEFAULT_RINGSZ_IDX	5
 
 
@@ -1731,6 +1735,8 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
+	conf->bar_num_config = QDMA_BARNUM_CONFIG;
+	conf->bar_num_stm = QDMA_BARNUM_STM;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
