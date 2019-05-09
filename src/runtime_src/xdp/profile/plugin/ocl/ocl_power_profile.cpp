@@ -7,7 +7,7 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device) : status(PowerProfileS
     target_device = xrt_device;
     if (power_profile_config != "off") {
         power_profiling_output.open("ocl_power_profile.csv");
-        start_polling(xrt_device);
+        start_polling();
     }
 }
 
