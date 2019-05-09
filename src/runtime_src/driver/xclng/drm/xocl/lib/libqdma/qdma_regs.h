@@ -30,11 +30,10 @@
 #define	QDMA_REG_POLL_DFLT_TIMEOUT_US	(500*1000)	/* 500ms */
 
 /* desc. Q default */
-#define	RNG_SZ_DFLT			64
-#define CMPT_RNG_SZ_DFLT			64
+#define	RNG_SZ_DFLT		2048
 #define	C2H_TIMER_CNT_DFLT	0x1
-#define	C2H_CNT_TH_DFLT	0x1
-#define	C2H_BUF_SZ_DFLT	PAGE_SIZE
+#define	C2H_CNT_TH_DFLT		0x1
+#define	C2H_BUF_SZ_DFLT		PAGE_SIZE
 
 /* QDMA IP limits */
 #define QDMA_QSET_MAX		2048	/* 2K queues */
