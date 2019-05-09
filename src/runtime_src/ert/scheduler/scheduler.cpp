@@ -1135,7 +1135,7 @@ scheduler_loop()
           continue; // CU is not used
 
         auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
-        if (!(cuvalue & (AP_DONE | AP_IDLE)))
+        if (!(cuvalue & AP_DONE))
           continue;
 
         cu_status.toggle(cuidx); // disable polling until host re-enables

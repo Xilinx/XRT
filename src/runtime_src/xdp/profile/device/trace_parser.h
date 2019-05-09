@@ -110,6 +110,7 @@ namespace xdp {
         static uint64_t firstTimeNsec = timeNsec;
         return (timeNsec - firstTimeNsec + mStartTimeNsec);
       }
+      void ResetState();
 
     private:
       const double PCIE_DELAY_OFFSET_MSEC;
@@ -135,17 +136,18 @@ namespace xdp {
       uint8_t mAccelMonStartedEvents[XSAM_MAX_NUMBER_SLOTS] = { 0 };
       uint64_t mPerfMonLastTranx[XSPM_MAX_NUMBER_SLOTS]     = { 0 };
       uint64_t mAccelMonLastTranx[XSAM_MAX_NUMBER_SLOTS]    = { 0 };
-      std::queue<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::queue<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
+      uint64_t mStreamMonLastTranx[XSSPM_MAX_NUMBER_SLOTS]  = { 0 };
+      std::list<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
 
     private:
       XDPPluginI* mPluginHandle;

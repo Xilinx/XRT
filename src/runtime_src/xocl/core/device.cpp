@@ -92,6 +92,15 @@ default_bad_allocation_message(const xocl::device* device,const xocl::memory* me
   xrt::message::send(xrt::message::severity_level::XRT_ERROR,str.str());
 }
 
+static void
+host_copy_message(const xocl::memory* dst, const xocl::memory* src)
+{
+  std::stringstream str;
+  str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
+      << "to dst buffer(" << dst->get_uid() << ")";
+  xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
+}
+
 
 static inline unsigned
 myctz(unsigned val)
@@ -928,6 +937,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
       return;
     }
     catch (...) {
+      host_copy_message(dst_buffer,src_buffer);
     }
   }
 

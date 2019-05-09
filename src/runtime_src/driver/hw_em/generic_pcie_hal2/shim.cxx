@@ -2389,7 +2389,7 @@ int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
 /*
  * xclLogMsg()
  */
-int HwEmShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 

@@ -79,34 +79,25 @@ struct xocl_pci_funcs userpf_pci_ops = {
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
-	struct xocl_subdev_info mbox;
 	int ret;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
 	if (prepare) {
-		ret = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MAILBOX,
-			&mbox, NULL);
-		if (ret) {
-			xocl_err(&pdev->dev, "can not get mailbox subdev");
-			return;
-		}
 		/* clean up mem topology */
 		xocl_cleanup_mem(XOCL_DRM(xdev));
-		xocl_subdev_destroy_all(xdev);
-		ret = xocl_subdev_create_one(xdev, &mbox);
+		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+		xocl_subdev_offline_all(xdev);
+		ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Create mailbox failed %d", ret);
-		(void) xocl_mailbox_set(xdev, RESET, 0);
+			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
 		reset_notify_client_ctx(xdev);
-		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
-			xdev->core.priv.subdev_num);
+		ret = xocl_subdev_online_all(xdev);
 		if (ret)
-			xocl_err(&pdev->dev, "Create subdevs failed %d", ret);
-		(void) xocl_mailbox_set(xdev, RESET, 1);
+			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
 		xocl_exec_reset(xdev);
 	}
 }
@@ -704,6 +695,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	unmap_bar(xdev);
 
+	xocl_subdev_fini(xdev);
+	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
 
 	pci_set_drvdata(pdev, NULL);
@@ -728,6 +721,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, xdev);
 	dev_info = (struct xocl_board_private *)ent->driver_data;
 
+	mutex_init(&xdev->core.lock);
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
@@ -739,6 +733,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic64_set(&xdev->total_execs, 0);
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
+
+	ret = xocl_subdev_init(xdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to failed to init subdev");
+		goto failed;
+	}
 
 	ret = xocl_alloc_dev_minor(xdev);
 	if (ret)
