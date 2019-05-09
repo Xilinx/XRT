@@ -218,19 +218,31 @@ namespace xclhwemhal2 {
       //counterResults.NumSlots = numSlots;
       for(; counter < numSlots; counter++)
       {
-        if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
-          continue;
-        char slotname[128];
-        getPerfMonSlotName(type,counter,slotname,128);
 
-        if (type != XCL_PERF_MON_STR) {
-          xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,
-                                          total_wr_latency,rd_byte_count,rd_trans_count,
-                                          total_rd_latency,sampleIntervalUsec,slotname,accel);
+        if (isAWSLegacy()) {
+          // Not supported in aws platform
+          if (accel)
+            return 0;
+          std::string slot = std::to_string(counter);
+          // Sahil suggested that it should be Bank0 instead of 0 by itself
+          char const * slotname = ("BANK" + slot).c_str();
+          xclPerfMonReadCounters_RPC_CALL_AWS(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,total_wr_latency,rd_byte_count,rd_trans_count,total_rd_latency,sampleIntervalUsec,slotname);
         } else {
-          xclPerfMonReadCounters_Streaming_RPC_CALL(xclPerfMonReadCounters_Streaming, str_num_tranx,str_data_bytes,str_busy_cycles,
-                                                      str_stall_cycles,str_starve_cycles,slotname);
+          if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
+            continue;
+          char slotname[128];
+          getPerfMonSlotName(type,counter,slotname,128);
+
+          if (type != XCL_PERF_MON_STR) {
+            xclPerfMonReadCounters_RPC_CALL(xclPerfMonReadCounters,wr_byte_count,wr_trans_count,
+                                            total_wr_latency,rd_byte_count,rd_trans_count,
+                                            total_rd_latency,sampleIntervalUsec,slotname,accel);
+          } else {
+            xclPerfMonReadCounters_Streaming_RPC_CALL(xclPerfMonReadCounters_Streaming, str_num_tranx,str_data_bytes,str_busy_cycles,
+                                                        str_stall_cycles,str_starve_cycles,slotname);
+          }
         }
+
 #endif
         if (iptype == 1) {
           counterResults.WriteBytes[counter] = wr_byte_count;
@@ -307,10 +319,17 @@ namespace xclhwemhal2 {
 #ifndef _WINDOWS
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
-        char slotname[128];
-        getPerfMonSlotName(type,counter,slotname,128);
 
-        xclPerfMonGetTraceCount_RPC_CALL(xclPerfMonGetTraceCount,ack,no_of_samples,slotname,accel);
+        if (isAWSLegacy()) {
+          std::string slot = std::to_string(counter);
+          char const * slotname = ("BANK" + slot).c_str();
+          xclPerfMonGetTraceCount_RPC_CALL_AWS(xclPerfMonGetTraceCount,ack,no_of_samples,slotname);
+        } else {
+          char slotname[128];
+          getPerfMonSlotName(type,counter,slotname,128);
+          xclPerfMonGetTraceCount_RPC_CALL(xclPerfMonGetTraceCount,ack,no_of_samples,slotname,accel);
+        }
+
 #endif
       }
       no_of_final_samples = no_of_samples + list_of_events[counter].size();
@@ -346,8 +365,13 @@ namespace xclhwemhal2 {
     for(; counter < numSlots; counter++)
     {
       // Ignore host
+      /*
       if (counter == XPAR_SPM0_HOST_SLOT && !accel && 3 != iptype)
         continue;
+      */
+      if (counter == XPAR_SPM0_HOST_SLOT && !accel && 3 != iptype && !isAWSLegacy()) {
+        continue;
+      }
 
       unsigned int numberOfElementsAdded = 0;
 
@@ -391,33 +415,24 @@ namespace xclhwemhal2 {
       if (simulator_started == true)
       {
 #ifndef _WINDOWS
+// add windows support
+
         unsigned int samplessize = 0;
         // TODO: Windows build support
         // *_RPC_CALL uses unix_socket
         char slotname[128];
-        getPerfMonSlotName(type,counter,slotname,128);
-
-        if (type != XCL_PERF_MON_STR) {
-          xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+        if (isAWSLegacy()) {
+          if (accel) return 0;
+          std::string slot = std::to_string(counter);
+          char const * slotname = ("BANK" + slot).c_str();
+          xclPerfMonReadTrace_RPC_CALL_AWS(xclPerfMonReadTrace,ack,samplessize,slotname);
           unsigned int i = 0;
           for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
           {
-            // TODO: Windows build support
-            // r_msg is defined as part of *RPC_CALL definition
             const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
-
             xclTraceResults result;
             memset(&result, 0, sizeof(xclTraceResults));
-            // result.TraceID = accel ? counter + 64 : counter * 2;
-            if (iptype == 1) {
-              result.TraceID = counter * 2;
-            } else if (iptype == 2) {
-              result.TraceID = counter + 64;
-            } else if (iptype == 3) {
-              result.TraceID = counter + 576;
-            } else {
-              return 0;
-            }
+            result.TraceID = accel ? counter + 64 : counter * 2;
             result.Timestamp = event.timestamp();
             result.Overflow = (event.timestamp() >> 17) & 0x1;
             result.EventFlags = event.eventflags();
@@ -446,45 +461,96 @@ namespace xclhwemhal2 {
             eventObj.writeBytes = event.wr_bytes();
             list_of_events[counter].push_back(eventObj);
           }
-#endif
         } else {
-#ifndef _WINDOWS
-          xclPerfMonReadTrace_Streaming_RPC_CALL(xclPerfMonReadTrace_Streaming,ack,samplessize,slotname);
-          unsigned int i = 0;
-          for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
-          {
-            // TODO: Windows build support
-            // r_msg is defined as part of *RPC_CALL definition
-            const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
+          getPerfMonSlotName(type,counter,slotname,128);
 
-            xclTraceResults result;
-            memset(&result, 0, sizeof(xclTraceResults));
-            // result.TraceID = accel ? counter + 64 : counter * 2;
-            if (iptype == 3) {
-              result.TraceID = counter + 576;
+          if (type != XCL_PERF_MON_STR) {
+            xclPerfMonReadTrace_RPC_CALL(xclPerfMonReadTrace,ack,samplessize,slotname,accel);
+            unsigned int i = 0;
+            for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
+            {
+              // TODO: Windows build support
+              // r_msg is defined as part of *RPC_CALL definition
+              const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+
+              xclTraceResults result;
+              memset(&result, 0, sizeof(xclTraceResults));
+              // result.TraceID = accel ? counter + 64 : counter * 2;
+              if (iptype == 1) {
+                result.TraceID = counter * 2;
+              } else if (iptype == 2) {
+                result.TraceID = counter + 64;
+              } else if (iptype == 3) {
+                result.TraceID = counter + 576;
+              } else {
+                return 0;
+              }
+              result.Timestamp = event.timestamp();
+              result.Overflow = (event.timestamp() >> 17) & 0x1;
+              result.EventFlags = event.eventflags();
+              result.ReadAddrLen = event.arlen();
+              result.WriteAddrLen = event.awlen();
+              result.WriteBytes = (event.wr_bytes());
+              result.ReadBytes  = (event.rd_bytes());
+              result.HostTimestamp = event.host_timestamp();
+              result.EventID = XCL_PERF_MON_HW_EVENT;
+              traceVector.mArray[index++] = result;
             }
-            result.Timestamp = event.timestamp();
-            result.Overflow = (event.timestamp() >> 17) & 0x1;
-            result.EventFlags = event.eventflags();
-            result.HostTimestamp = event.host_timestamp();
-            result.EventID = XCL_PERF_MON_HW_EVENT;
-            traceVector.mArray[index++] = result;
-          }
-          traceVector.mLength = index;
+            traceVector.mLength = index;
 
-          Event eventObj;
-          for(; i<samplessize ; i++)
-          {
-            // TODO: Windows build support
-            // r_msg is defined as part of *RPC_CALL definition
-            const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
-            eventObj.timestamp = event.timestamp();
-            eventObj.eventflags = event.eventflags();
-            eventObj.host_timestamp = event.host_timestamp();
-            list_of_events[counter].push_back(eventObj);
+            Event eventObj;
+            for(; i<samplessize ; i++)
+            {
+              // TODO: Windows build support
+              // r_msg is defined as part of *RPC_CALL definition
+              const xclPerfMonReadTrace_response::events &event = r_msg.output_data(i);
+              eventObj.timestamp = event.timestamp();
+              eventObj.eventflags = event.eventflags();
+              eventObj.arlen = event.arlen();
+              eventObj.awlen = event.awlen();
+              eventObj.host_timestamp = event.host_timestamp();
+              eventObj.readBytes = event.rd_bytes();
+              eventObj.writeBytes = event.wr_bytes();
+              list_of_events[counter].push_back(eventObj);
+            }
+          } else {
+            xclPerfMonReadTrace_Streaming_RPC_CALL(xclPerfMonReadTrace_Streaming,ack,samplessize,slotname);
+            unsigned int i = 0;
+            for(; i<samplessize && index<(MAX_TRACE_NUMBER_SAMPLES-7); i++)
+            {
+              // TODO: Windows build support
+              // r_msg is defined as part of *RPC_CALL definition
+              const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
+
+              xclTraceResults result;
+              memset(&result, 0, sizeof(xclTraceResults));
+              // result.TraceID = accel ? counter + 64 : counter * 2;
+              if (iptype == 3) {
+                result.TraceID = counter + 576;
+              }
+              result.Timestamp = event.timestamp();
+              result.Overflow = (event.timestamp() >> 17) & 0x1;
+              result.EventFlags = event.eventflags();
+              result.HostTimestamp = event.host_timestamp();
+              result.EventID = XCL_PERF_MON_HW_EVENT;
+              traceVector.mArray[index++] = result;
+            }
+            traceVector.mLength = index;
+
+            Event eventObj;
+            for(; i<samplessize ; i++)
+            {
+              // TODO: Windows build support
+              // r_msg is defined as part of *RPC_CALL definition
+              const xclPerfMonReadTrace_Streaming_response::events &event = r_msg.output_data(i);
+              eventObj.timestamp = event.timestamp();
+              eventObj.eventflags = event.eventflags();
+              eventObj.host_timestamp = event.host_timestamp();
+              list_of_events[counter].push_back(eventObj);
+            }
           }
-#endif
         }
+#endif
       }
     }
 

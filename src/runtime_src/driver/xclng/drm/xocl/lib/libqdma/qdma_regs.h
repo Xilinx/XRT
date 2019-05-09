@@ -669,7 +669,7 @@ struct qdma_c2h_cmpt_cmpl_status {
 #define STM_SUPPORTED_REV_MIN		0x4
 #define	STM_MAX_SUPPORTED_QID		64
 #define STM_MAX_PKT_SIZE		4096
-#define STM_PORT_MAP			0xE1E1
+#define STM_PORT_MAP			0xE4E4
 #define IS_STM_ENABLED_DEVICE(pdev)     \
 	(((pdev)->device == 0x6aa0) || ((pdev)->device == 0x5011))
 

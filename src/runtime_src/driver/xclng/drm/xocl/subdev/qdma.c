@@ -93,6 +93,11 @@ struct stream_async_req {
 	struct qdma_request req;
 };
 
+enum {
+	QUEUE_STATE_INITIALIZED,
+	QUEUE_STATE_CLEANUP,
+};
+
 struct stream_queue {
 	struct device		dev;
 	struct xocl_qdma	*qdma;
@@ -103,7 +108,6 @@ struct stream_queue {
 	int			routeid;
 	struct file		*file;
 	int			qfd;
-	int			refcnt;
 	kuid_t			uid;
 	spinlock_t		req_lock;
 	struct list_head	req_pend_list;
@@ -1288,12 +1292,13 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	mutex_lock(&qdma->str_dev_lock);
 	xocl_info(&qdma->pdev->dev, "Release Queue 0x%lx", queue->queue);
-
-	if (queue->refcnt > 0) {
+	if (queue->state != QUEUE_STATE_INITIALIZED) {
+		xocl_info(&qdma->pdev->dev, "Already released 0x%lx",
+			queue->queue);
 		mutex_unlock(&qdma->str_dev_lock);
-		xocl_err(&qdma->pdev->dev, "Queue is busy");
-		return -EBUSY;
+		return 0;
 	}
+	queue->state = QUEUE_STATE_CLEANUP;
 
 	stream_sysfs_destroy(queue);
 	qdma->queues[queue->qconf.qidx] = NULL;
@@ -1313,7 +1318,6 @@ static int queue_flush(struct file *file, fl_owner_t id)
 			"Destroy queue failed ret = %ld", ret);
 		goto failed;
 	}
-	queue->queue = 0UL;
 
 	spin_lock_bh(&queue->req_lock);
 	while (!list_empty(&queue->req_pend_list)) {
@@ -1332,10 +1336,22 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	if (queue->req_cache)
 		vfree(queue->req_cache);
-	devm_kfree(&qdma->pdev->dev, queue);
-	file->private_data = NULL;
 failed:
 	return ret;
+}
+
+static int queue_close(struct inode *inode, struct file *file)
+{
+	struct xocl_qdma *qdma;
+	struct stream_queue *queue;
+
+	queue = (struct stream_queue *)file->private_data;
+	qdma = queue->qdma;
+
+	devm_kfree(&qdma->pdev->dev, queue);
+	file->private_data = NULL;
+
+	return 0;
 }
 
 static struct file_operations queue_fops = {
@@ -1348,6 +1364,7 @@ static struct file_operations queue_fops = {
 		.aio_write = queue_aio_write,
 #endif
 		.flush = queue_flush,
+		.release = queue_close,
 };
 
 /* stream device file operations */

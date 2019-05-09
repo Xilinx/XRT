@@ -200,6 +200,12 @@ namespace xdp {
     bool deviceDataExists = (mDeviceBinaryCuSlotsMap.find(key) == mDeviceBinaryCuSlotsMap.end()) ? false : true;
     xclCounterResults rolloverResults = mRolloverCounterResultsMap.at(key);
     xclCounterResults rolloverCounts = mRolloverCountsMap.at(key);
+
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM && mPluginHandle->isAwsDevice(deviceName)) {
+      mPluginHandle->setHostSlotIndex(4);
+      numSlots = 0;
+    }
+
     for (unsigned int s=0; s < numSlots; ++s) {
       mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, s, cuName);
       mPluginHandle->getProfileKernelName(deviceName, cuName, kernelName);
@@ -554,7 +560,13 @@ namespace xdp {
 
         std::string memoryName;
         std::string argNames;
-        mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+
+        if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM && mPluginHandle->isAwsDevice(deviceName)) {
+          memoryName = std::to_string(s);
+          argNames = "All";
+        } else {
+          mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
+        }
 
         double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
 
