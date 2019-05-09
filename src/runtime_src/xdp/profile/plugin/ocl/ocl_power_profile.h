@@ -5,6 +5,7 @@
 #include <mutex>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
 
