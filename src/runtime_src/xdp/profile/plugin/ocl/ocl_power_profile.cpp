@@ -36,8 +36,41 @@ void OclPowerProfile::poll_power() {
     std::string vccint_vol_path = target_device->getSysfsPath(subdev, vccint_vol_entry).get();
     while (should_continue()) {
         // TODO: do the reading, logging of the data and pausing
+        std::fstream aux_curr_fs(aux_curr_path);
+        std::fstream aux_vol_fs(aux_vol_path);
+        std::fstream pex_curr_fs(pex_curr_path);
+        std::fstream pex_vol_fs(pex_vol_path);
+        std::fstream vccint_curr_fs(vccint_curr_path);
+        std::fstream vccint_vol_fs(vccint_vol_path);
 
         // TODO: step 1 read sensor values from sysfs
+        std::string aux_curr_str;
+        std::string aux_vol_str;
+        std::string pex_curr_str;
+        std::string pex_vol_str;
+        std::string vccint_curr_str;
+        std::string vccint_vol_str;
+
+        std::getline(aux_curr_fs, aux_curr_str);
+        std::getline(aux_vol_fs, aux_vol_str);
+        std::getline(pex_curr_fs, pex_curr_str);
+        std::getline(pex_vol_fs, pex_vol_str);
+        std::getline(vccint_curr_fs, vccint_curr_str);
+        std::getline(vccint_vol_fs, vccint_vol_str);
+
+        int aux_curr = std::stoi(aux_curr_str);
+        int aux_vol = std::stoi(aux_vol_str);
+        int pex_curr = std::stoi(pex_curr_str);
+        int pex_vol = std::stoi(pex_vol_str);
+        int vccint_curr = std::stoi(vccint_curr_str);
+        int vccint_vol = std::stoi(vccint_vol_str);
+
+        std::cout << "aux_curr: " << aux_curr << std::endl;
+        std::cout << "aux_vol: " << aux_vol << std::endl;
+        std::cout << "pex_curr: " << pex_curr << std::endl;
+        std::cout << "pex_vol: " << pex_vol << std::endl;
+        std::cout << "vccint_curr: " << vccint_curr << std::endl;
+        std::cout << "vccint_vol: " << vccint_vol << std::endl;
 
         // TODO: step 2 write the result into the ofstream
 
