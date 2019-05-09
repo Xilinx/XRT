@@ -21,7 +21,13 @@ OclPowerProfile::~OclPowerProfile() {
 
 void OclPowerProfile::poll_power() {
     while (should_continue()) {
-        // TODO: do the read of the data and pausing
+        // TODO: do the reading, logging of the data and pausing
+
+        // TODO: step 1 read sensor values from sysfs
+
+        // TODO: step 2 write the result into the ofstream
+
+        // TODO: step 3 pause the thread for certain time
     }
 }
 
