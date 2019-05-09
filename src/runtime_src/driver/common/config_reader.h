@@ -286,7 +286,7 @@ get_ert_slotsize()
 inline bool
 get_cdma()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.cdma",false);
+  static unsigned int value = detail::get_bool_value("Runtime.cdma",true);
   return value;
 }
 

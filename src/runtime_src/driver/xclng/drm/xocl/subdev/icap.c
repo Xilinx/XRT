@@ -2166,14 +2166,13 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 	for (i = 0; i < icap->ip_layout->m_count; ++i) {
-		struct xocl_subdev_info subdev_info = { 0 };
-		struct resource res = { 0 };
 		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
 
 		if (ip->m_type == IP_KERNEL)
 			continue;
 
 		if (ip->m_type == IP_DDR4_CONTROLLER) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
 			uint32_t memidx = ip->properties;
 
 			if (!icap->mem_topo || ip->properties >= icap->mem_topo->m_count ||
@@ -2189,29 +2188,23 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
 				goto done;
 			}
-		}
-
-		if (ip->m_type == IP_MEM_DDR4) {
+		} else if (ip->m_type == IP_MEM_DDR4) {
 			/*
 			 * Get global memory index by feeding desired memory type and index
 			 */
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
 			uint16_t memidx = icap_get_memidx(icap, MEM_DRAM, ip->properties);
 
 			if (memidx == INVALID_MEM_IDX)
@@ -2230,26 +2223,20 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
 				goto done;
 			}
-		}
-
-		if (ip->m_type == IP_MEM_HBM) {
+		} else if (ip->m_type == IP_MEM_HBM) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
 			uint16_t memidx = icap_get_memidx(icap, MEM_HBM, ip->indices.m_index);
 
 			if (memidx == INVALID_MEM_IDX)
@@ -2267,36 +2254,25 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG_HBM,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
-				ICAP_ERR(icap, "can't create MIG subdev");
+				ICAP_ERR(icap, "can't create MIG_HBM subdev");
 				goto done;
 			}
-		}
+		} else if (ip->m_type == IP_DNASC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DNA;
 
-		if (ip->m_type == IP_DNASC) {
 			dna_check = true;
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_DNA,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get DNA subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
-			err = xocl_subdev_create_one(xdev, &subdev_info);
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create DNA subdev");
 				goto done;

@@ -27,16 +27,16 @@ extern "C" {
 #endif
 
 /*
- * Alias XmaLogLevelType to XRT standard xclLogMsgLevel
+ * Alias XmaLogLevelType to XRT standard xrtLogMsgLevel
  * Redfine XMA msg log literals to map to XRT literals
  */
 
-typedef enum xclLogMsgLevel XmaLogLevelType;
+typedef enum xrtLogMsgLevel XmaLogLevelType;
 
-#define XMA_CRITICAL_LOG CRITICAL
-#define XMA_ERROR_LOG ERROR
-#define XMA_INFO_LOG INFO
-#define XMA_DEBUG_LOG DEBUG
+#define XMA_CRITICAL_LOG XRT_CRITICAL
+#define XMA_ERROR_LOG XRT_ERROR
+#define XMA_INFO_LOG XRT_INFO
+#define XMA_DEBUG_LOG XRT_DEBUG
 
 /**
  * typedef XmaLoggerCallback - Describes the function signature for an XMA logger callback.

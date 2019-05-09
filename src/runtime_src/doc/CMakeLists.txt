@@ -9,6 +9,8 @@ file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/driver/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
 file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
+file(GLOB XRT_MAILBOX_PROTO_H ${XRT_RUNTIME_SRC_DIR}/driver/xclng/include/mailbox_proto.h)
+file(GLOB XRT_MAILBOX_C    ${XRT_RUNTIME_SRC_DIR}/driver/xclng/drm/xocl/subdev/mailbox.c)
 
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
@@ -48,20 +50,34 @@ else ()
     DEPENDS ${XRT_ERT_H}
     VERBATIM
     )
+
   add_custom_command(OUTPUT core/xma.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_H} > core/xma.rst
     DEPENDS ${XRT_XMA_H}
     VERBATIM
     )
+
   add_custom_command(OUTPUT core/xmaplugin.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XMA_PLUGIN_H} > core/xmaplugin.rst
     DEPENDS ${XRT_XMA_PLUGIN_H}
     VERBATIM
     )
 
+  add_custom_command(OUTPUT core/mailbox_proto.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MAILBOX_PROTO_H} > core/mailbox_proto.rst
+    DEPENDS ${XRT_MAILBOX_PROTO_H}
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/mailbox.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_MAILBOX_C} > core/mailbox.rst
+    DEPENDS ${XRT_MAILBOX_C}
+    VERBATIM
+    )
+
   add_custom_target(
     xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
@@ -69,3 +85,5 @@ else ()
     COMMAND ${SPHINX_EXECUTABLE} -a ${DOC_TOC_DIR} html
     )
 endif ()
+
+# Don't forget to add a rst file under toc/ for html generation

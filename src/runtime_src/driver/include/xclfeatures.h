@@ -107,6 +107,7 @@ enum FeatureBitMask {
 	, HBM		       =   0x0000000000040000	    /* bits 19	: Device has HBM's. HBMCount/Size are valid*/
 	, CDMA		       =   0x0000000000080000	    /* bits 21	: Device has CDMA*/
 	, QDMA		       =   0x0000000000100000	    /* bits 20	: Device has QDMA*/
+	, RUNTIME_CLK_SCALE    =   0x0000000000200000	    /* bit 22 : Device has RUNTIME CLOCK SCALING feature*/
 
    //....more
 };
