@@ -85,6 +85,13 @@ namespace xdp {
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
+    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      for (auto device : platform->get_device_range()) {
+        auto power_profile = std::make_shared<OclPowerProfile>(device->get_xrt_device());
+        PowerProfileList.push_back(power_profile);
+      }
+    }
+
     mProfileRunning = true;
   }
 

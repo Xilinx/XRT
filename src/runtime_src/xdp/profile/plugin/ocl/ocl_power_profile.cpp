@@ -20,6 +20,20 @@ OclPowerProfile::~OclPowerProfile() {
 }
 
 void OclPowerProfile::poll_power() {
+    // TODO: prepare all the sysfs paths
+    std::string subdev = "xmc";
+    std::string aux_curr_entry = "xmc_12v_aux_curr";
+    std::string aux_vol_entry = "xmc_12v_aux_vol";
+    std::string pex_curr_entry = "xmc_12v_pex_curr";
+    std::string pex_vol_entry = "xmc_12v_pex_vol";
+    std::string vccint_curr_entry = "xmc_vccint_curr";
+    std::string vccint_vol_entry = "xmc_vccint_vol";
+    std::string aux_curr_path = target_device->getSysfsPath(subdev, aux_curr_entry).get();
+    std::string aux_vol_path = target_device->getSysfsPath(subdev, aux_vol_entry).get();
+    std::string pex_curr_path = target_device->getSysfsPath(subdev, pex_curr_entry).get();
+    std::string pex_vol_path = target_device->getSysfsPath(subdev, pex_vol_entry).get();
+    std::string vccint_curr_path = target_device->getSysfsPath(subdev, vccint_curr_entry).get();
+    std::string vccint_vol_path = target_device->getSysfsPath(subdev, vccint_vol_entry).get();
     while (should_continue()) {
         // TODO: do the reading, logging of the data and pausing
 
