@@ -30,6 +30,7 @@ private:
     std::mutex status_lock;
     PowerProfileStatus status;
     std::thread polling_thread;
+    std::string power_profile_config;
 };
 
 }
