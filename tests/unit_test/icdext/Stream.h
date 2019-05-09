@@ -61,14 +61,14 @@ namespace cl {
         int read(void* buf, size_t offset, size_t size,
                  cl_stream_xfer_req* attr) {
             int res = 0;
-            readStm_(device_(), stream_, buf, offset, size, attr, &res);
+            readStm_(stream_, buf, size, attr, &res);
             return res;
         }
 
         int write(void* buf, size_t offset, size_t size,
                   cl_stream_xfer_req* attr) {
             int res = 0;
-            writeStm_(device_(), stream_, buf, offset, size, attr, &res);
+            writeStm_(stream_, buf, size, attr, &res);
             return res;
         }
     };

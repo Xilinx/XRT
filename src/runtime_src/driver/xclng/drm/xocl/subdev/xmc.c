@@ -75,6 +75,7 @@
 #define XMC_CAGE_TEMP3_REG          0x194
 #define XMC_SNSR_CHKSUM_REG         0x1A4
 #define XMC_SNSR_FLAGS_REG          0x1A8
+#define XMC_HBM_TEMP_REG            0x260
 #define XMC_HOST_MSG_OFFSET_REG     0x300
 #define XMC_HOST_MSG_ERROR_REG      0x304
 #define XMC_HOST_MSG_HEADER_REG     0x308
@@ -1029,6 +1030,12 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 
 	if (!xmc)
 		return -ENODEV;
+
+
+	if (!strncmp(m_tag, "HBM", 3)){
+		safe_read32(xmc, XMC_HBM_TEMP_REG + sizeof(u32)*VOLTAGE_INS, &ret);
+		return ret;
+	}
 
 
 	if (!strncmp(m_tag, "bank", 4)) {

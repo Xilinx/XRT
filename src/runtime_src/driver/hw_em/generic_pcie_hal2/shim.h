@@ -95,7 +95,7 @@ using addr_type = uint64_t;
       void xclFreeBO(unsigned int boHandle);
       ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
       ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
-      static int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1);
+      static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
       //P2P Support
       int xclExportBO(unsigned int boHandle); 
@@ -205,6 +205,10 @@ using addr_type = uint64_t;
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
+
+      bool isAWSLegacy () {
+        return std::string(mDeviceInfo.mName).find("xilinx_aws-vu9p-f1-04261818_dynamic_5_0") != std::string::npos; 
+      }
 
       //QDMA Support
       int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);

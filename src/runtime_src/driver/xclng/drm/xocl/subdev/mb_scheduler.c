@@ -676,6 +676,7 @@ struct xocl_cu {
 	void __iomem       *base;
 	u32                addr;
 	u32                polladdr;
+	u32                ap_check;
 
 	u32                ctrlreg;
 	unsigned int       done_cnt;
@@ -692,6 +693,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u3
 	xcu->base = base;
 	xcu->addr = addr & ~(0xFF); // clear encoded handshake
 	xcu->polladdr = polladdr;
+	xcu->ap_check = (xcu->control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
@@ -790,7 +792,7 @@ cu_poll(struct xocl_cu *xcu)
 
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
-	if (xcu->run_cnt && (xcu->ctrlreg & (AP_DONE|AP_IDLE))) {
+	if (xcu->run_cnt && (xcu->ctrlreg & xcu->ap_check)) {
 		++xcu->done_cnt; // assert done_cnt <= |running_queue|
 		--xcu->run_cnt;
 		cu_continue(xcu);
@@ -3074,7 +3076,15 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if (exec->num_cdma == 0)
 		return -EINVAL;
 
-	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz);
+	userpf_info(xdev,"checking alignment requirments for KDMA sz(%lu)",sz);
+	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
+	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+	    sz % KDMA_BLOCK_SIZE) {
+		userpf_info(xdev,"improper alignment, cannot use KDMA");
+		return -EINVAL;
+	}
+
+	ert_fill_copybo_cmd(scmd, 0, 0, src_addr, dst_addr, sz / KDMA_BLOCK_SIZE);
 
 	for (i = exec->num_cus - exec->num_cdma; i < exec->num_cus; i++)
 		scmd->cu_mask[i / 32] |= 1 << (i % 32);
@@ -3099,7 +3109,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	struct drm_device *ddev = filp->minor->dev;
 
 	if (xdev->needs_reset) {
-		userpf_err(xdev, "device needs reset, use 'xbutil reset -h'");
+		userpf_err(xdev, "device needs reset, use 'xbutil reset'");
 		return -EBUSY;
 	}
 

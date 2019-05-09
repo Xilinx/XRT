@@ -180,10 +180,22 @@ namespace xdp {
           return iter->second;
         return 300;
       }
+    
+    public:
+      bool isAwsDevice(std::string const &deviceName) const {
+        return (deviceName.find(awsDeviceString) != std::string::npos);
+      }
 
-      // Lets profiler communicate to application
-      public:
-        virtual void sendMessage(const std::string &msg);
+      void setHostSlotIndex (int index) {
+        HostSlotIndex = index;
+      }
+
+      std::string awsDeviceString = "xilinx_aws-vu9p-f1-04261818_dynamic_5_0";
+      int HostSlotIndex;
+
+    // Lets profiler communicate to application
+    public:
+      virtual void sendMessage(const std::string &msg);
     };
 
 } // xdp

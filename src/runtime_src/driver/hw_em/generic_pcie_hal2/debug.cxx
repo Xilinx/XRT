@@ -76,8 +76,17 @@ namespace xclhwemhal2 {
     memset(mAccelmonProperties, 0, sizeof(uint8_t)*XSAM_MAX_NUMBER_SLOTS);
     memset(mStreamMonProperties, 0, sizeof(uint8_t)*XSSPM_MAX_NUMBER_SLOTS);
 
-    mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
+    if (isAWSLegacy()) {
+      // Per Bank Monitoring
+      mMemoryProfilingNumberSlots = 4;
+      mPerfMonSlotName[0] = "All";
+      mPerfMonSlotName[1] = "All";
+      mPerfMonSlotName[2] = "All";
+      mPerfMonSlotName[3] = "All";
+    } else {
+      mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
       mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+    }
     
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
       mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
