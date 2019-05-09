@@ -945,6 +945,7 @@ namespace awsbwhal {
     // ******************************
     static unsigned long long firstTimestamp;
     xclTraceResults results = {};
+    uint64_t previousTimestamp = 0;
     for (uint32_t wordnum = 0; wordnum < numSamples; wordnum++) {
       uint32_t index = wordsPerSample * wordnum;
       uint64_t temp = 0;
@@ -964,21 +965,25 @@ namespace awsbwhal {
       }
       if (wordnum <= clockWordIndex) {
         if (mod == 0) {
-          results.Timestamp = (temp & 0x1FFFFFFFFFFF) - firstTimestamp;
-        }
+          uint64_t currentTimestamp = temp & 0x1FFFFFFFFFFF;
+          if (currentTimestamp >= firstTimestamp)
+            results.Timestamp = currentTimestamp - firstTimestamp;
+          else 
+            results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - firstTimestamp);
+        }    
         uint64_t partial = (((temp >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
         if (mLogStream.is_open()) {
           mLogStream << "Updated partial host timestamp : " << std::hex << partial << std::endl;
-        }
-        if (mod == 3) {
+        }    
+        if (mod == 3) { 
           if (mLogStream.is_open()) {
             mLogStream << "  Trace sample " << std::dec << wordnum << ": ";
-            mLogStream << " Timestamp : 0x" << std::hex << results.Timestamp << "   ";
-            mLogStream << " Host Timestamp : 0x" << std::hex << results.HostTimestamp << std::endl;
-          }
+            mLogStream << " Timestamp : " << results.Timestamp << "   ";
+            mLogStream << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
+          }    
           traceVector.mArray[static_cast<int>(wordnum/4)] = results;
-       }
+        }    
         continue;
       }
 
@@ -995,6 +1000,7 @@ namespace awsbwhal {
       results.Overflow = (temp >> 62) & 0x1;
       results.Error = (temp >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
+      results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
 //      traceVector.mArray[wordnum] = results;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
 
@@ -1009,7 +1015,10 @@ namespace awsbwhal {
         mLogStream << "Start, Stop : " << static_cast<int>(results.Reserved) << "   ";
         mLogStream << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
         mLogStream << "Error : " << static_cast<int>(results.Error) << "   ";
+        mLogStream << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
+        mLogStream << "Interval : " << results.Timestamp - previousTimestamp << "   ";
         mLogStream << std::endl;
+        previousTimestamp = results.Timestamp;
       }
     }
 
