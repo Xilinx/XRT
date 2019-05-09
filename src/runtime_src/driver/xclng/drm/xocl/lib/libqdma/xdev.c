@@ -756,13 +756,29 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 	if (rv)
 		goto unmap_bars;
 
-	/* program STM port map */
 	if (xdev->stm_en) {
-		u32 v = readl(xdev->stm_regs + STM_REG_H2C_MODE);
-		v &= 0x0000FFFF;
-		v |= (STM_PORT_MAP << S_STM_PORT_MAP);
-		v |= F_STM_EN_STMA_BKCHAN;
+		/* program STM port map */
+		u32 v = readl(xdev->stm_regs + STM_REG_CONFIG_HINT);
+		u32 nport = (v >> S_STM_REG_CONFIG_PORT_NUM) &
+				M_STM_REG_CONFIG_PORT_NUM;
+		u32 portmap = (v >> S_STM_REG_CONFIG_PORT_MAP) &
+				M_STM_REG_CONFIG_PORT_MAP;
+
+		v = V_STM_REG_H2C_MODE_PORTMAP_H2C(portmap) |
+			V_STM_REG_H2C_MODE_PORTMAP_C2H(portmap) |
+			F_STM_EN_STMA_BKCHAN;
 		writel(v, xdev->stm_regs + STM_REG_H2C_MODE);
+
+		/* C2H weight */
+		v = STM_REG_C2H_MODE_WEIGHT_DFLT;
+		if (nport < STM_REG_CONFIG_PORT_MAX) {
+			int shift = (STM_REG_CONFIG_PORT_MAX - nport) *
+					L_STM_REG_C2H_MODE_WEIGHT;
+
+			v = (STM_REG_C2H_MODE_WEIGHT_DFLT >> shift) &
+			       (~((1 << shift) - 1));
+		}
+		writel(v, xdev->stm_regs + STM_REG_C2H_MODE);
 	}
 
 #ifndef __QDMA_VF__
