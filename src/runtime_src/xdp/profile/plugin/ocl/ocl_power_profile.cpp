@@ -2,10 +2,14 @@
 
 namespace xdp {
 
-OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin) : status(PowerProfileStatus::IDLE) {
+OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, 
+                                std::shared_ptr<XoclPlugin> xocl_plugin,
+                                std::string unique_name) 
+                                : status(PowerProfileStatus::IDLE) {
     power_profile_config = xrt::config::get_power_profile();
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
+    target_unique_name = unique_name;
     if (power_profile_config != "off") {
         start_polling();
     }
@@ -15,7 +19,7 @@ OclPowerProfile::~OclPowerProfile() {
     if (power_profile_config != "off") {
         stop_polling();
         polling_thread.join();
-        power_profiling_output.open("ocl_power_profile.csv", std::ios::out);
+        power_profiling_output.open("ocl_power_profile_" + target_unique_name + ".csv", std::ios::out);
         write_header();
         write_trace();
         power_profiling_output.close();
@@ -46,12 +50,12 @@ void OclPowerProfile::poll_power() {
     std::cout << "vccint_vol_path: " << vccint_vol_path << std::endl;
 
     // TODO: do the reading, logging of the data and pausing
-    std::fstream aux_curr_fs(aux_curr_path);
-    std::fstream aux_vol_fs(aux_vol_path);
-    std::fstream pex_curr_fs(pex_curr_path);
-    std::fstream pex_vol_fs(pex_vol_path);
-    std::fstream vccint_curr_fs(vccint_curr_path);
-    std::fstream vccint_vol_fs(vccint_vol_path);
+    std::ifstream aux_curr_fs(aux_curr_path);
+    std::ifstream aux_vol_fs(aux_vol_path);
+    std::ifstream pex_curr_fs(pex_curr_path);
+    std::ifstream pex_vol_fs(pex_vol_path);
+    std::ifstream vccint_curr_fs(vccint_curr_path);
+    std::ifstream vccint_vol_fs(vccint_vol_path);
 
     while (should_continue()) {
         // TODO: step 1 read sensor values from sysfs

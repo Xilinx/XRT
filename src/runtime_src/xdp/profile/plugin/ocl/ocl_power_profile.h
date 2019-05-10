@@ -31,7 +31,7 @@ struct PowerStat {
 
 class OclPowerProfile {
 public:
-    OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin);
+    OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin, std::string unique_name);
     ~OclPowerProfile();
     void poll_power();
     bool should_continue();
@@ -48,6 +48,7 @@ private:
     xrt::device* target_device;
     std::shared_ptr<XoclPlugin> target_xocl_plugin;
     std::vector<PowerStat> power_trace;
+    std::string target_unique_name;
 };
 
 }
