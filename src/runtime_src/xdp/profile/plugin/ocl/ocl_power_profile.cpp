@@ -70,13 +70,13 @@ void OclPowerProfile::poll_power() {
         int vccint_vol = vccint_vol_str.empty() ? 0 : std::stoi(vccint_vol_str);
 
         // TODO: step 2 write the result into the ofstream
-        power_profiling_output << timestamp << ",";
-        power_profiling_output << aux_curr << ",";
-        power_profiling_output << aux_vol << ",";
-        power_profiling_output << pex_curr << ",";
-        power_profiling_output << pex_vol << ",";
-        power_profiling_output << vccint_curr << ",";
-        power_profiling_output << vccint_vol << std::endl;
+        power_profiling_output << timestamp << ","
+                            << aux_curr << ","
+                            << aux_vol << ","
+                            << pex_curr << ","
+                            << pex_vol << ","
+                            << vccint_curr << ","
+                            << vccint_vol << std::endl;
 
         // TODO: step 3 pause the thread for certain time
         std::this_thread::sleep_for (std::chrono::milliseconds(100));
