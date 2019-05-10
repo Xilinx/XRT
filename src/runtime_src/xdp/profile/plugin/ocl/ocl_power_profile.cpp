@@ -60,6 +60,7 @@ void OclPowerProfile::poll_power() {
         std::getline(vccint_curr_fs, vccint_curr_str);
         std::getline(vccint_vol_fs, vccint_vol_str);
 
+        double timestamp = target_xocl_plugin->getTraceTime();
         int aux_curr = aux_curr_str.empty() ? 0 : std::stoi(aux_curr_str);
         int aux_vol = aux_vol_str.empty() ? 0 : std::stoi(aux_vol_str);
         int pex_curr = pex_curr_str.empty() ? 0 : std::stoi(pex_curr_str);
@@ -68,6 +69,7 @@ void OclPowerProfile::poll_power() {
         int vccint_vol = vccint_vol_str.empty() ? 0 : std::stoi(vccint_vol_str);
 
         // TODO: step 2 write the result into the ofstream
+        power_profiling_output << timestamp << ",";
         power_profiling_output << aux_curr << ",";
         power_profiling_output << aux_vol << ",";
         power_profiling_output << pex_curr << ",";
