@@ -49,15 +49,15 @@ void OclPowerProfile::poll_power() {
     std::cout << "vccint_curr_path: " << vccint_curr_path << std::endl;
     std::cout << "vccint_vol_path: " << vccint_vol_path << std::endl;
 
-    // TODO: do the reading, logging of the data and pausing
-    std::ifstream aux_curr_fs(aux_curr_path);
-    std::ifstream aux_vol_fs(aux_vol_path);
-    std::ifstream pex_curr_fs(pex_curr_path);
-    std::ifstream pex_vol_fs(pex_vol_path);
-    std::ifstream vccint_curr_fs(vccint_curr_path);
-    std::ifstream vccint_vol_fs(vccint_vol_path);
-
     while (should_continue()) {
+        // TODO: do the reading, logging of the data and pausing
+        std::ifstream aux_curr_fs(aux_curr_path);
+        std::ifstream aux_vol_fs(aux_vol_path);
+        std::ifstream pex_curr_fs(pex_curr_path);
+        std::ifstream pex_vol_fs(pex_vol_path);
+        std::ifstream vccint_curr_fs(vccint_curr_path);
+        std::ifstream vccint_vol_fs(vccint_vol_path);
+
         // TODO: step 1 read sensor values from sysfs
         std::string aux_curr_str;
         std::string aux_vol_str;
@@ -91,16 +91,16 @@ void OclPowerProfile::poll_power() {
             vccint_vol
         });
 
+        aux_curr_fs.close();
+        aux_vol_fs.close();
+        pex_curr_fs.close();
+        pex_vol_fs.close();
+        vccint_curr_fs.close();
+        vccint_vol_fs.close();
+
         // TODO: step 3 pause the thread for certain time
         std::this_thread::sleep_for (std::chrono::milliseconds(20));
     }
-
-    aux_curr_fs.close();
-    aux_vol_fs.close();
-    pex_curr_fs.close();
-    pex_vol_fs.close();
-    vccint_curr_fs.close();
-    vccint_vol_fs.close();
 }
 
 bool OclPowerProfile::should_continue() {
