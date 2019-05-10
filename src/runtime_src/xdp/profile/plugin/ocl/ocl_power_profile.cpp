@@ -111,4 +111,14 @@ void OclPowerProfile::stop_polling() {
     status = PowerProfileStatus::STOPPING;
 }
 
+void OclPowerProfile::write_header() {
+    power_profiling_output << "timestamp,";
+    power_profiling_output << "aux_curr,";
+    power_profiling_output << "aux_vol,";
+    power_profiling_output << "pex_curr,";
+    power_profiling_output << "pex_vol,";
+    power_profiling_output << "vccint_curr,";
+    power_profiling_output << "vccint_vol" << std::endl;
+}
+
 }

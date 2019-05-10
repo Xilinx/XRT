@@ -26,6 +26,7 @@ public:
     bool should_continue();
     void start_polling();
     void stop_polling();
+    void write_header();
 private:
     std::ofstream power_profiling_output;
     std::mutex status_lock;
