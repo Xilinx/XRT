@@ -20,7 +20,7 @@ enum class PowerProfileStatus {
 
 class OclPowerProfile {
 public:
-    OclPowerProfile(xrt::device* xrt_device);
+    OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin);
     ~OclPowerProfile();
     void poll_power();
     bool should_continue();

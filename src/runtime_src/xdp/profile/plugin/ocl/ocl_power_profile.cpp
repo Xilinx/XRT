@@ -2,7 +2,7 @@
 
 namespace xdp {
 
-OclPowerProfile::OclPowerProfile(xrt::device* xrt_device) : status(PowerProfileStatus::IDLE) {
+OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, , std::shared_ptr<XoclPlugin> xocl_plugin) : status(PowerProfileStatus::IDLE) {
     power_profile_config = xrt::config::get_power_profile();
     target_device = xrt_device;
     if (power_profile_config != "off") {
