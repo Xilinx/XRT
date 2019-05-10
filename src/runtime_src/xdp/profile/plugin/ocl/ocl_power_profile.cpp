@@ -7,7 +7,7 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPl
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     if (power_profile_config != "off") {
-        power_profiling_output.open("ocl_power_profile.csv");
+        power_profiling_output.open("ocl_power_profile.csv", std::ios::out);
         write_header();
         start_polling();
     }
