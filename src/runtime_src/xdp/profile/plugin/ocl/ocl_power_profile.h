@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include "xdp/profile/plugin/ocl/xocl_profile.h"
+#include "xdp/profile/plugin/ocl/xocl_plugin.h"
 
 namespace xdp {
 
