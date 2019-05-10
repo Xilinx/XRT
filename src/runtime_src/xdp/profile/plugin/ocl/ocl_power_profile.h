@@ -19,6 +19,16 @@ enum class PowerProfileStatus {
     STOPPED
 };
 
+struct PowerStat {
+    double timestamp;
+    int aux_curr;
+    int aux_vol;
+    int pex_curr;
+    int pex_vol;
+    int vccint_curr;
+    int vccint_vol;
+};
+
 class OclPowerProfile {
 public:
     OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin);
@@ -36,6 +46,7 @@ private:
     std::string power_profile_config;
     xrt::device* target_device;
     std::shared_ptr<XoclPlugin> target_xocl_plugin;
+    std::vector<PowerStat> power_trace;
 };
 
 }

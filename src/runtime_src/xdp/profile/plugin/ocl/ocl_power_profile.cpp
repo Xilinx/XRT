@@ -69,6 +69,16 @@ void OclPowerProfile::poll_power() {
         int vccint_curr = vccint_curr_str.empty() ? 0 : std::stoi(vccint_curr_str);
         int vccint_vol = vccint_vol_str.empty() ? 0 : std::stoi(vccint_vol_str);
 
+        power_trace.push_back({
+            timestamp,
+            aux_curr,
+            aux_vol,
+            pex_curr,
+            pex_vol,
+            vccint_curr,
+            vccint_vol
+        });
+
         // TODO: step 2 write the result into the ofstream
         power_profiling_output << timestamp << ","
                             << aux_curr << ","
