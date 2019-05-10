@@ -46,8 +46,6 @@ void OclPowerProfile::poll_power() {
     std::fstream vccint_vol_fs(vccint_vol_path);
 
     while (should_continue()) {
-        
-
         // TODO: step 1 read sensor values from sysfs
         std::string aux_curr_str;
         std::string aux_vol_str;
@@ -83,6 +81,13 @@ void OclPowerProfile::poll_power() {
         // TODO: step 3 pause the thread for certain time
         std::this_thread::sleep_for (std::chrono::milliseconds(100));
     }
+
+    aux_curr_fs.close();
+    aux_vol_fs.close();
+    pex_curr_fs.close();
+    pex_vol_fs.close();
+    vccint_curr_fs.close();
+    vccint_vol_fs.close();
 }
 
 bool OclPowerProfile::should_continue() {
