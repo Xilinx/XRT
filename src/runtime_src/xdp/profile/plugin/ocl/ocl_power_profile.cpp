@@ -81,7 +81,7 @@ void OclPowerProfile::poll_power() {
         });
 
         // TODO: step 3 pause the thread for certain time
-        std::this_thread::sleep_for (std::chrono::milliseconds(200));
+        std::this_thread::sleep_for (std::chrono::milliseconds(20));
     }
 
     aux_curr_fs.close();
