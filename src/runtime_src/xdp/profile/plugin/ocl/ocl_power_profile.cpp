@@ -5,6 +5,7 @@ namespace xdp {
 OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPlugin> xocl_plugin) : status(PowerProfileStatus::IDLE) {
     power_profile_config = xrt::config::get_power_profile();
     target_device = xrt_device;
+    target_xocl_plugin = xocl_plugin;
     if (power_profile_config != "off") {
         power_profiling_output.open("ocl_power_profile.csv");
         write_header();

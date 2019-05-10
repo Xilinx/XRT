@@ -35,6 +35,7 @@ private:
     std::thread polling_thread;
     std::string power_profile_config;
     xrt::device* target_device;
+    std::shared_ptr<XoclPlugin> target_xocl_plugin;
 };
 
 }
