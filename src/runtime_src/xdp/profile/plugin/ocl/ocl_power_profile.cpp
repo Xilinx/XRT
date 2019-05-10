@@ -42,13 +42,6 @@ void OclPowerProfile::poll_power() {
     std::string vccint_curr_path = target_device->getSysfsPath(subdev, vccint_curr_entry).get();
     std::string vccint_vol_path = target_device->getSysfsPath(subdev, vccint_vol_entry).get();
 
-    std::cout << "aux_curr_path: " << aux_curr_path << std::endl;
-    std::cout << "aux_vol_path: " << aux_vol_path << std::endl;
-    std::cout << "pex_curr_path: " << pex_curr_path << std::endl;
-    std::cout << "pex_vol_path: " << pex_vol_path << std::endl;
-    std::cout << "vccint_curr_path: " << vccint_curr_path << std::endl;
-    std::cout << "vccint_vol_path: " << vccint_vol_path << std::endl;
-
     while (should_continue()) {
         // TODO: do the reading, logging of the data and pausing
         std::ifstream aux_curr_fs(aux_curr_path);
