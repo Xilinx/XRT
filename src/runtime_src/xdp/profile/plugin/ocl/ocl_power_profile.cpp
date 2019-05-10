@@ -60,12 +60,12 @@ void OclPowerProfile::poll_power() {
         std::getline(vccint_vol_fs, vccint_vol_str);
 
         std::cout << "before conversion" << std::endl;
-        std::cout << "aux_curr: " << aux_curr << std::endl;
-        std::cout << "aux_vol: " << aux_vol << std::endl;
-        std::cout << "pex_curr: " << pex_curr << std::endl;
-        std::cout << "pex_vol: " << pex_vol << std::endl;
-        std::cout << "vccint_curr: " << vccint_curr << std::endl;
-        std::cout << "vccint_vol: " << vccint_vol << std::endl;
+        std::cout << "aux_curr_str: " << aux_curr_str << std::endl;
+        std::cout << "aux_vol_str: " << aux_vol_str << std::endl;
+        std::cout << "pex_curr_str: " << pex_curr_str << std::endl;
+        std::cout << "pex_vol_str: " << pex_vol_str << std::endl;
+        std::cout << "vccint_curr_str: " << vccint_curr_str << std::endl;
+        std::cout << "vccint_vol_str: " << vccint_vol_str << std::endl;
 
         int aux_curr = std::stoi(aux_curr_str);
         int aux_vol = std::stoi(aux_vol_str);
@@ -74,7 +74,7 @@ void OclPowerProfile::poll_power() {
         int vccint_curr = std::stoi(vccint_curr_str);
         int vccint_vol = std::stoi(vccint_vol_str);
 
-        std::cout << "before conversion" << std::endl;
+        std::cout << "after conversion" << std::endl;
         std::cout << "aux_curr: " << aux_curr << std::endl;
         std::cout << "aux_vol: " << aux_vol << std::endl;
         std::cout << "pex_curr: " << pex_curr << std::endl;
