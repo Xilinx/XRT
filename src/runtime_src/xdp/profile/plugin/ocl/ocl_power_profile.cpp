@@ -7,8 +7,6 @@ OclPowerProfile::OclPowerProfile(xrt::device* xrt_device, std::shared_ptr<XoclPl
     target_device = xrt_device;
     target_xocl_plugin = xocl_plugin;
     if (power_profile_config != "off") {
-        power_profiling_output.open("ocl_power_profile.csv", std::ios::out);
-        write_header();
         start_polling();
     }
 }
@@ -17,6 +15,9 @@ OclPowerProfile::~OclPowerProfile() {
     if (power_profile_config != "off") {
         stop_polling();
         polling_thread.join();
+        power_profiling_output.open("ocl_power_profile.csv", std::ios::out);
+        write_header();
+        write_trace();
         power_profiling_output.close();
     }
 }
@@ -80,6 +81,7 @@ void OclPowerProfile::poll_power() {
         });
 
         // TODO: step 2 write the result into the ofstream
+        /*
         power_profiling_output << timestamp << ","
                             << aux_curr << ","
                             << aux_vol << ","
@@ -87,6 +89,7 @@ void OclPowerProfile::poll_power() {
                             << pex_vol << ","
                             << vccint_curr << ","
                             << vccint_vol << std::endl;
+        */
 
         // TODO: step 3 pause the thread for certain time
         std::this_thread::sleep_for (std::chrono::milliseconds(200));
@@ -124,6 +127,18 @@ void OclPowerProfile::write_header() {
                         << "pex_vol,"
                         << "vccint_curr,"
                         << "vccint_vol" << std::endl;
+}
+
+void OclPowerProfile::write_trace() {
+    for (auto power_stat : power_trace) {
+        power_profiling_output << power_stat.timestamp << ","
+                            << power_stat.aux_curr << ","
+                            << power_stat.aux_vol << ","
+                            << power_stat.pex_curr << ","
+                            << power_stat.pex_vol << ","
+                            << power_stat.vccint_curr << ","
+                            << power_stat.vccint_vol << std::endl;
+    }
 }
 
 }

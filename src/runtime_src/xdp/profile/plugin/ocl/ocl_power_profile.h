@@ -38,6 +38,7 @@ public:
     void start_polling();
     void stop_polling();
     void write_header();
+    void write_trace();
 private:
     std::ofstream power_profiling_output;
     std::mutex status_lock;
