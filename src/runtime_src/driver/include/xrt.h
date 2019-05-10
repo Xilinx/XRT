@@ -37,6 +37,12 @@
 #define XCL_DRIVER_DLLESPEC __attribute__((visibility("default")))
 #endif
 
+#if defined(__GNUC__)
+# define XRT_DEPRECATED __attribute__((deprecated))
+#else
+# define XRT_DEPRECATED
+#endif
+
 
 #include "xclbin.h"
 #include "xclperf.h"
@@ -657,7 +663,8 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int 
  * @boHandle:      BO handle
  * Return          size_t size of the BO on success
  *
- * This API will be deprecated in the future. New clients should use xclGetBOProperties() instead
+ * This API is deprecated and will be removed in future release. 
+ * New clients should use xclGetBOProperties() instead
  */
 inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -668,7 +675,8 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned 
 /*
  * Get the physical address on the device
  *
- * This function will be deprecated in the future. New clinets should use xclGetBOProperties() instead.
+ * This API is deprecated and will be removed in future release. 
+ * New clinets should use xclGetBOProperties() instead.
  *
  * @handle:        Device handle
  * @boHandle:      BO handle
@@ -699,9 +707,10 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
  * @size:          Size of buffer
  * Return:         Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
  *
- * Allocate a buffer on the device DDR and return its address. This API will be deprecated in future.
- * Use xclAllocBO() in all new code.
+ * Allocate a buffer on the device DDR and return its address. This API is deprecated and 
+ * will be removed in future release. Use xclAllocBO() in all new code.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size);
 
 /**
@@ -713,9 +722,10 @@ XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t
  * @flags:         Desired DDR bank as a bitmap.
  * Return:         Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
  *
- * Allocate a buffer on a specific device DDR and return its address. This API will be deprecated in future.
- * Use xclAllocBO() in all new code.
+ * Allocate a buffer on a specific device DDR and return its address. This API is deprecated and 
+ * will be removed in future release. Use xclAllocBO() in all new code.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size,
                                                    enum xclMemoryDomains domain,
                                                    unsigned flags);
@@ -727,9 +737,10 @@ XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_
  * @buf:           Physical address of buffer
  *
  * The physical address should have been previously allocated by xclAllocDeviceBuffe() or xclAllocDeviceBuffer2().
- * The address should point to the beginning of the buffer and not at an offset in the buffer. This API will
- * be deprecated in future. Use xclFreeBO() together with BO allocation APIs.
+ * The address should point to the beginning of the buffer and not at an offset in the buffer. This API 
+ * is deprecated and will be removed in future release. Use xclFreeBO() together with BO allocation APIs.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf);
 
 /**
@@ -743,9 +754,10 @@ XCL_DRIVER_DLLESPEC void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t bu
  * Return:         Size of data moved or standard error number
  *
  * Copy host buffer contents to previously allocated device memory. ``seek`` specifies how many bytes to skip
- * at the beginning of the destination before copying ``size`` bytes of host buffer. This API will be
- * deprecated in future. Use xclSyncBO() together with other BO APIs.
+ * at the beginning of the destination before copying ``size`` bytes of host buffer. This API is deprecated 
+ * and will be removed in future release. Use xclSyncBO() together with other BO APIs.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest,
                                                     const void *src, size_t size, size_t seek);
 
@@ -760,9 +772,10 @@ XCL_DRIVER_DLLESPEC size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint
  * Return:         Size of data moved or standard error number
  *
  * Copy contents of previously allocated device memory to host buffer. ``skip`` specifies how many bytes to skip
- * from the beginning of the source before copying ``size`` bytes of device buffer. This API will be
- * deprecated in future. Use xclSyncBO() together with other BO APIs.
+ * from the beginning of the source before copying ``size`` bytes of device buffer. This API is deprecated 
+ * and will be removed in future release. Use xclSyncBO() together with other BO APIs.
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest,
                                                     uint64_t src, size_t size, size_t skip);
 
@@ -838,10 +851,9 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  *
  * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
- * *This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
+ * This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
  * execution management please use XRT Compute Unit Execution Management APIs defined below*
  */
-
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
                                     const void *hostBuf, size_t size);
 
