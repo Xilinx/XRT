@@ -185,20 +185,6 @@ get_hal_logging()
 }
 
 inline bool
-get_multiprocess()
-{
-  static bool value = detail::get_bool_value("Runtime.multiprocess",true);
-  return value;
-}
-
-inline bool
-get_frequency_scaling()
-{
-  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
-  return value;
-}
-
-inline bool
 get_xclbin_programing()
 {
   static bool value = detail::get_bool_value("Runtime.xclbin_programing",true);
@@ -287,6 +273,20 @@ inline bool
 get_cdma()
 {
   static unsigned int value = detail::get_bool_value("Runtime.cdma",true);
+  return value;
+}
+
+inline bool
+get_multiprocess()
+{
+  static bool value = get_kds() && detail::get_bool_value("Runtime.multiprocess",true);
+  return value;
+}
+
+inline bool
+get_frequency_scaling()
+{
+  static bool value = !get_multiprocess() && detail::get_bool_value("Runtime.frequency_scaling",true);
   return value;
 }
 
