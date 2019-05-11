@@ -12,16 +12,19 @@ SET (DKMS_PRERM "prerm")
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
+  @ONLY
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   ${DKMS_POSTINST}
+  @ONLY
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   ${DKMS_PRERM}
+  @ONLY
   )
 
 SET (XRT_DKMS_SRCS
