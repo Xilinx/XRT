@@ -5,9 +5,15 @@
 # XRT_VERSION_MINOR
 # XRT_VERSION_PATCH
 
+
+if(NOT WIN32) # TODO: Add Windows Support
 INCLUDE (FindPkgConfig)
 
+endif (NOT WIN32)
+
 # -- DRM --
+if(NOT WIN32) # TODO: Add Windows Support
+
 pkg_check_modules(DRM REQUIRED libdrm)
 IF(DRM_FOUND)
   MESSAGE(STATUS "Looking for DRM - found at ${DRM_PREFIX} ${DRM_VERSION}")
@@ -16,7 +22,11 @@ ELSE(DRM_FOUND)
   MESSAGE(FATAL_ERROR "Looking for DRM - not found")
 ENDIF(DRM_FOUND)
 
+endif (NOT WIN32)
+
+
 # -- OpenCL header files -- 
+if(NOT WIN32) # TODO: Add Windows Support
 pkg_check_modules(OPENCL REQUIRED OpenCL)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
@@ -24,6 +34,8 @@ IF(OPENCL_FOUND)
 ELSE(OPENCL_FOUND)
   MESSAGE(FATAL_ERROR "Looking for OPENCL - not found")
 ENDIF(OPENCL_FOUND)
+
+endif (NOT WIN32)
 
 # -- Git --
 find_package(Git)
@@ -34,6 +46,7 @@ ELSE(GIT_FOUND)
   MESSAGE(FATAL_ERROR "Looking for GIT - not found")
 endif(GIT_FOUND)
 
+if(NOT WIN32) # TODO: Add Windows Support
 find_program(LSB_RELEASE lsb_release)
 find_program(UNAME uname)
 
@@ -51,9 +64,12 @@ execute_process(COMMAND ${UNAME} -r
   OUTPUT_VARIABLE LINUX_KERNEL_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+endif (NOT WIN32)
 
 #set(Boost_DEBUG 1)
 INCLUDE (FindBoost)
+
+if(NOT WIN32) # TODO: Add Windows Support
 # On older systems libboost_system.a is not compiled with -fPIC which leads to
 # link errors when XRT shared objects try to link with it.
 # Static linking with Boost is enabled on Ubuntu 18.04.
@@ -65,8 +81,15 @@ if (${LINUX_FLAVOR} STREQUAL pynqlinux)
 endif()
 find_package(Boost REQUIRED COMPONENTS system filesystem )
 
+endif (NOT WIN32)
+
+if(NOT WIN32) # TODO: Add Windows Support
 INCLUDE (FindCurses)
 find_package(Curses REQUIRED)
+
+endif (NOT WIN32)
+
+if(NOT WIN32) # TODO: Add Windows Support
 
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 set (XRT_INSTALL_INCLUDE_DIR "${XRT_INSTALL_DIR}/include")
@@ -131,3 +154,5 @@ include (CMake/coverity.cmake)
 
 set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)
+endif (NOT WIN32)
+
