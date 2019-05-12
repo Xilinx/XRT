@@ -1,5 +1,7 @@
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
+# XRT_VERSION_STRING
+# LINUX_KERNEL_VERSION
 
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
 
@@ -12,16 +14,19 @@ SET (DKMS_PRERM "prerm")
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
+  @ONLY
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   ${DKMS_POSTINST}
+  @ONLY
   )
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   ${DKMS_PRERM}
+  @ONLY
   )
 
 SET (XRT_DKMS_SRCS
