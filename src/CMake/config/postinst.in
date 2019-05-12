@@ -38,7 +38,7 @@ fi
 
 if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
     echo "****************************************************************"
-    echo "* DKMS failed to install drivers."
+    echo "* DKMS failed to install XRT drivers."
     echo "* Please check if kernel development headers are installed for OS variant used."
     echo "* "
     echo "* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@"
