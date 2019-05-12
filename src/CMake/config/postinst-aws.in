@@ -24,4 +24,13 @@ if [ $? -eq 0 ]; then
     udevadm trigger
 fi
 
+if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@ |grep installed`" ]; then
+    echo "****************************************************************"
+    echo "* DKMS failed to install AWS drivers."
+    echo "* Please check if kernel development headers are installed for OS variant used."
+    echo "* "
+    echo "* Check build logs in /var/lib/dkms/xrt-aws/@XRT_VERSION_STRING@"
+    echo "****************************************************************"
+fi
+
 exit 0

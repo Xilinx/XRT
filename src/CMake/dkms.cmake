@@ -1,5 +1,7 @@
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
+# XRT_VERSION_STRING
+# LINUX_KERNEL_VERSION
 
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
 

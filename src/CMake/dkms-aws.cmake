@@ -1,5 +1,7 @@
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
+# XRT_VERSION_STRING
+# LINUX_KERNEL_VERSION
 
 set(XRT_DKMS_INSTALL_DIR_aws "/usr/src/xrt-aws-${XRT_VERSION_STRING}")
 
@@ -11,19 +13,19 @@ set(DKMS_PRERM "prerm-aws")
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/dkms-awsmgmt/${DKMS_FILE_NAME}.in"
-  "dkms-awsmgmt/${DKMS_FILE_NAME}"
+  "aws/${DKMS_FILE_NAME}"
   @ONLY
   )
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
-  "${DKMS_POSTINST}"
+  "aws/postinst"
   @ONLY
   )
 
 configure_file(
   "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
-  "${DKMS_PRERM}"
+  "aws/prerm"
   @ONLY
   )
 
@@ -57,4 +59,4 @@ foreach(DKMS_FILE ${XRT_DKMS_SRCS_aws})
   list(APPEND XRT_DKMS_ABS_SRCS_aws ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
 endforeach()
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/dkms-awsmgmt/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} COMPONENT aws)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/aws/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR_aws} COMPONENT aws)

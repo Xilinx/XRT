@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017 Xilinx, Inc.
+ * Copyright (C) 2017-2019 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -30,7 +30,7 @@
 #include <linux/vmalloc.h>
 #include <linux/version.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/delay.h>
 
 MODULE_LICENSE("GPL v2");
@@ -881,5 +881,3 @@ static void awsmgmt_exit(void)
 
 module_init(awsmgmt_init);
 module_exit(awsmgmt_exit);
-
-
